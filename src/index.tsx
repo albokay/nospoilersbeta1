@@ -4057,7 +4057,7 @@ const bannerRef = useRef<HTMLDivElement|null>(null);
             );
           })}
           {displayed.length<baseVisible.length && <div ref={sentinelRef} style={{height:1}} />}
-          {displayed.length===0 && <div className="muted" style={{fontSize:14}}>No posts match your filters.</div>}
+          {displayed.length===0 && <div className="muted" style={{fontSize:14}}>No posts match your filters. Come back after you've watched more.</div>}
         </div>
       )}
 
