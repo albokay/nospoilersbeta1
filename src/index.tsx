@@ -3437,46 +3437,107 @@ function App(){
     openShow(id);
   };
 
-  const header = (
-    <header className="site bleed">
-      <div className="container" style={{
-        height:GLOBAL_HEADER_H,
-        display:"grid",
-        alignItems:"center",
-        gridTemplateColumns:"1fr auto 1fr"
-      }}>
-        <div /> {/* left spacer to keep brand centered */}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <h1
-            className="brand brandLink"
-            style={{margin:0}}
-            tabIndex={0}
-            aria-label="Go to homepage"
-            onClick={goHomepage}
-            onKeyDown={(e)=>{ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goHomepage(); } }}
-          >
-            NO-SPOILERS
-          </h1>
-        </div>
-        <div style={{display:"flex",justifyContent:"flex-end"}}>
-          <button
-            className="profileChip"
-            onClick={()=>{
-              setExpandedShowId(null);
-              setActiveThreadId(null);
-              setFocusReplyId(null);
-              setShowProfile(true);
-              requestAnimationFrame(()=>window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-            }}
-            title="View profile"
-          >
-            <span className="avatar">h</span>
-            <span style={{fontWeight:700, color:"#000"}}>hi_itsme</span>
-          </button>
-        </div>
+  
+
+
+
+
+
+
+
+
+const header = (
+  <header className="site bleed">
+    {/* Inner wrapper is the positioning context for the tagline */}
+    <div
+      style={{
+        position: "relative",
+        height: GLOBAL_HEADER_H,
+        display: "flex",
+        alignItems: "center",
+        padding: "0 0",
+        width: "100%",
+      }}
+    >
+      {/* LEFT: brand */}
+      <div style={{ flex: "0 0 auto" }}>
+        <h1
+          className="brand brandLink"
+          style={{ margin: 0 }}
+          tabIndex={0}
+          aria-label="Go to homepage"
+          onClick={goHomepage}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              goHomepage();
+            }
+          }}
+        >
+          NO-SPOILERS
+        </h1>
       </div>
-    </header>
-  );
+
+      {/* CENTER: tagline, nudged down a bit */}
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "55%",                // the “nudge down” you liked
+          transform: "translate(-50%, -50%)",
+          fontSize: 16,
+          fontWeight: 600,
+          textTransform: "uppercase",
+          whiteSpace: "nowrap",
+        }}
+      >
+        A PLACE TO TALK ABOUT THE SHOWS YOU&apos;RE CATCHING UP ON.
+      </div>
+
+      {/* RIGHT: profile chip */}
+      <div
+        style={{
+          marginLeft: "auto",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        <button
+          className="profileChip"
+          onClick={() => {
+            setExpandedShowId(null);
+            setActiveThreadId(null);
+            setFocusReplyId(null);
+            setShowProfile(true);
+            requestAnimationFrame(() =>
+              window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })
+            );
+          }}
+          title="View profile"
+        >
+          <span className="avatar">h</span>
+          <span style={{ fontWeight: 700, color: "#000" }}>hi_itsme</span>
+        </button>
+      </div>
+    </div>
+  </header>
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   return (
     <section className="container" style={{paddingBottom:28}}>
@@ -3514,24 +3575,20 @@ function App(){
           {/* About blurb — shows only on the actual homepage, hides on forum/profile */}
           {!expandedShowId && (
             <div className="homeAbout" style={{display:"flex", justifyContent:"center"}}>
-              <div style={{maxWidth: 400, width:"100%", padding:"30px 16px"}}>
-                <br></br>
-                <p>A PLACE TO TALK ABOUT THE SHOWS YOU'RE CATCHING UP ON.</p>
-                <br></br>
-                ***<br></br><br></br>
-                <p>Hello friendly beta-tester! <br></br><br></br>
-                The BREAKING BAD forum is fully populated with posts that discuss the actual show. THE PENGUIN and SEVERANCE forums are empty but you can still create posts. <br></br><br></br>
+              <div style={{maxWidth: 460, width:"100%", padding:"30px 16px"}}>
+               <p>** Hello friendly beta-tester!<br /></p><br></br>
+                <p>The BREAKING BAD forum is fully populated with posts that discuss the actual show. THE PENGUIN and SEVERANCE forums are empty. You can create posts across all forums (but not replies). <br></br><br></br>
                 If you want to test the logic of the site without reading BREAKING BAD spoilers even while beta testing, search for “Simulated Show” in the “find a show” search field at the top of the page. It is a thread with generic posts that will help you understand the logic of the site. <br></br><br></br>
                 Below are some notes for myself about where things are and where they can go. Feel free to read them if you are interested. <br></br><br></br>
                 — Alborz<br></br><br></br>
                 P.S.: This is a mock site — the back button on your browser window will leave the site altogether. And refreshing your page will reset the site.
 </p>
-                <br></br>
+                <br></br><br></br><br></br>
                 <div className="frontAccent">
                 <p>IDEAS FOR THE FUTURE:</p>
                 <p>- functional friends / watch together features</p>
                 <p>- figure out: start with only a handful of shows and reach out to show communities to build beta users? Is it like Facebook — growing show by show (vs college by college)? Or can anyone create a new forum for whatever show they’re watching?</p>
-                <p>- think more about “watch diary” vibes so that there is built-in value even before the forum is fully active and lively</p>
+                <p>- think more about “watch diary” vibes (like Letterboxd) so that there is built-in value even before the forum is fully active and lively</p>
                 <p>- figure out way of seeding shows with links to existing articles (using dates to align with watch progress) and existing external forum posts. This is another potential way of creating value before forum is fully active)</p>
                 <p>- think more about anti-scroll, anti-distraction, anti-addiction ethos. This is a healthy place to engage deeply and intentionally with the shows you love (or hate)</p>
                 <p>- tag show types on the backend (prestige, comedy, sitcom, reality, etc.) so that prompt suggestions are populated according to show type</p>
