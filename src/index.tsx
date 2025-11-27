@@ -3520,10 +3520,11 @@ function App(){
                 <br></br>
                 ***<br></br><br></br>
                 <p>Hello friendly beta-tester! <br></br><br></br>
-                The BREAKING BAD forum is fully populated with posts that discuss the actual show. THE PENGUIN and SEVERANCE are empty. <br></br><br></br>
-                If you want to test the logic of the site without reading BREAKING BAD spoilers even while beta testing, search for “Simulated Show” in the “find a show” field at the top of the page. It is a thread with generic posts that will help you understand the logic of the site. <br></br><br></br>
+                The BREAKING BAD forum is fully populated with posts that discuss the actual show. THE PENGUIN and SEVERANCE forums are empty but you can still create posts. <br></br><br></br>
+                If you want to test the logic of the site without reading BREAKING BAD spoilers even while beta testing, search for “Simulated Show” in the “find a show” search field at the top of the page. It is a thread with generic posts that will help you understand the logic of the site. <br></br><br></br>
                 Below are some notes for myself about where things are and where they can go. Feel free to read them if you are interested. <br></br><br></br>
-                — Alborz
+                — Alborz<br></br><br></br>
+                P.S.: This is a mock site — the back button on your browser window will leave the site altogether. And refreshing your page will reset the site.
 </p>
                 <br></br>
                 <div className="frontAccent">
@@ -3535,13 +3536,12 @@ function App(){
                 <p>- think more about anti-scroll, anti-distraction, anti-addiction ethos. This is a healthy place to engage deeply and intentionally with the shows you love (or hate)</p>
                 <p>- tag show types on the backend (prestige, comedy, sitcom, reality, etc.) so that prompt suggestions are populated according to show type</p>
                 <br></br>
-                <p>THOUGHTS ABOUT SPOILER TROLL POSTING:</p>
+                <p>THOUGHTS ABOUT TROLLS:</p>
                 <p>- there is a lot of trolling friction that makes the troll's experience unsatisfying</p>
-                <p>- remember, if a troll’s progress is set later, their posts won’t be visible to earlier watchers. Trolling only moves forward in time.</p>
-                <p>- a troll has to pick the season and episode where they want to troll — highly specific trolling discourages the behavior</p>
+                <p>- remember, once a troll’s progress is set, their posts won’t be visible to earlier watchers. Trolling only moves forward in time.</p>
+                <p>- a troll has to pick a season and episode from which to troll. if they pick very early, then they don't have as much runway to troll because most of the forum will be hidden from them. And most of the reactions to their troll will be hidden from them. If they pick later, then fewer viewers will see their trolling. All of this discourages the behavior</p>
                 <p>- enforce time limits on updating show progress (since someone can’t honestly have watched a new episode in less time than an episode length)</p>
                 <p>- setting your progress backwards is disabled, so a troll can’t decide to be a troll retroactively</p>
-                <p>- the hardest troll to dissuade is the one who creates a new profile exclusively to troll. E.g. setting progress to S01E01 for maximum impact. **BUT** it is still an odd trolling choice because with their setting at a lower episode, they wouldn’t be able to see many reactions at all (from users with progress set to later episodes). More trolling friction. </p>
                 <p></p>
               </div>
               </div>
