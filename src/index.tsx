@@ -3514,11 +3514,17 @@ function App(){
           {/* About blurb — shows only on the actual homepage, hides on forum/profile */}
           {!expandedShowId && (
             <div className="homeAbout" style={{display:"flex", justifyContent:"center"}}>
-              <div style={{maxWidth: 510, width:"100%", padding:"0 16px"}}>
+              <div style={{maxWidth: 400, width:"100%", padding:"30px 16px"}}>
                 <br></br>
-                <p>A place to talk about the shows you’re catching up on.</p>
+                <p>A PLACE TO TALK ABOUT THE SHOWS YOU'RE CATCHING UP ON.</p>
                 <br></br>
-                <p>Everything across the site is filtered by the latest episode you’ve watched, so — NO SPOILERS.</p>
+                ***<br></br><br></br>
+                <p>Hello friendly beta-tester! <br></br><br></br>
+                The BREAKING BAD forum is fully populated with posts that discuss the actual show. THE PENGUIN and SEVERANCE are empty. <br></br><br></br>
+                If you want to test the logic of the site without reading BREAKING BAD spoilers even while beta testing, search for “Simulated Show” in the “find a show” field at the top of the page. It is a thread with generic posts that will help you understand the logic of the site. <br></br><br></br>
+                Below are some notes for myself about where things are and where they can go. Feel free to read them if you are interested. <br></br><br></br>
+                — Alborz
+</p>
                 <br></br>
                 <div className="frontAccent">
                 <p>IDEAS FOR THE FUTURE:</p>
