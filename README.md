@@ -12,3 +12,4 @@ This version includes your full single-file UI so you see the forum immediately 
 3) Open the printed localhost URL.
 
 > Styling note: This build uses simple inline CSS instead of Tailwind. Functionality is the same.
+# nospoilersbeta1
