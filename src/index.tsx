@@ -3460,7 +3460,7 @@ const header = (
       }}
     >
       {/* LEFT: brand */}
-      <div style={{ flex: "0 0 auto" }}>
+      <div style={{ flex: "0 0 auto", marginLeft: 20 }}>
         <h1
           className="brand brandLink"
           style={{ margin: 0 }}
@@ -3498,6 +3498,7 @@ const header = (
       <div
         style={{
           marginLeft: "auto",
+          marginRight: 20,
           display: "flex",
           alignItems: "center",
         }}
