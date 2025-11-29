@@ -3578,7 +3578,7 @@ const header = (
             <div className="homeAbout" style={{display:"flex", justifyContent:"center"}}>
               <div style={{maxWidth: 460, width:"100%", padding:"30px 16px"}}>
                <p>** Hello friendly beta-tester!<br /></p><br></br>
-                <p>The BREAKING BAD forum is fully populated with posts that discuss the actual show. THE PENGUIN and SEVERANCE forums are empty. You can create posts across all forums (but not replies). <br></br><br></br>
+                <p>The BREAKING BAD forum is populated with posts that discuss the actual show. THE PENGUIN and SEVERANCE forums are empty. You can create posts across all forums (but not replies). <br></br><br></br>
                 If you want to test the logic of the site without reading BREAKING BAD spoilers even while beta testing, search for “Simulated Show” in the “find a show” search field at the top of the page. It is a thread with generic posts that will help you understand the logic of the site. <br></br><br></br>
                 Below are some notes for myself about where things are and where they can go. Feel free to read them if you are interested. <br></br><br></br>
                 — Alborz<br></br><br></br>
