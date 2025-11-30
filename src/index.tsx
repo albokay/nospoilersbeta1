@@ -3553,7 +3553,7 @@ const header = (
                 Popular Right Now
               </div>
               <div style={{fontSize:26}}>
-                {["bb","penguin","severance"].map((id, idx, arr)=>{
+                {["bb","penguin","simshow"].map((id, idx, arr)=>{
                   const s = seedShows.find(x=>x.id===id);
                   if(!s) return null;
                   const sep = idx < arr.length-1 ? " / " : "";
