@@ -3588,7 +3588,7 @@ const header = (
                 <div className="frontAccent">
                 <p>IDEAS FOR THE FUTURE:</p>
                 <p>- functional friends / watch together features</p>
-                <p>- a.i.-created wiki-style-summaries of show (plot / characters / etc.), up to your viewing progress </p>
+                <p>- a.i.-generated wiki-style-summaries of show (plot / characters / etc.), up to your viewing progress </p>
                 <p>- figure out: start with only a handful of shows and reach out to show communities to build beta users? Is it like Facebook — growing show by show (vs college by college)? Or can anyone create a new forum for whatever show they’re watching?</p>
                 <p>- think more about “watch diary” vibes (like Letterboxd) so that there is built-in value even before the forum is fully active and lively</p>
                 <p>- figure out way of seeding shows with links to existing articles (using dates to align with watch progress) and existing external forum posts. This is another potential way of creating value before forum is fully active)</p>
