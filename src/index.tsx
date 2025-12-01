@@ -3969,6 +3969,7 @@ const bannerRef = useRef<HTMLDivElement|null>(null);
     className="btn post h40"
     onClick={()=> setComposeOpen(true)}
     title="Start a new post (will auto-tag to your current S/E)"
+
   >
     + New Post
   </button>
@@ -4074,7 +4075,7 @@ const bannerRef = useRef<HTMLDivElement|null>(null);
             );
           })}
           {displayed.length<baseVisible.length && <div ref={sentinelRef} style={{height:1}} />}
-          {displayed.length===0 && <div className="muted" style={{fontSize:14}}>No posts match your filters.</div>}
+          {displayed.length===0 && <div className="muted" style={{fontSize:14}}>No posts match your progress.</div>}
         </div>
       )}
 
