@@ -4464,8 +4464,22 @@ function OneSelectProgress({
 
   return (
     <>
-      <div style={{display:"flex",alignItems:"center",gap:8,fontStyle:"italic",fontWeight:700,color:"var(--dos-cyan)"}}>
-        <select className="badge h40" value={selectedId} onChange={onSelect}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          fontStyle: "italic",
+          fontWeight: 700,
+          color: "var(--green)",          // was var(--dos-cyan)
+        }}
+      >
+        <select
+          className="badge h40"
+          style={{ color: "var(--green)" }} // force the option text to green
+          value={selectedId}
+          onChange={onSelect}
+        >
           {opts.map(o=>{
           const curS = value?.s ?? 1;
           const curE = value?.e ?? 1;
