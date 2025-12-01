@@ -80,6 +80,36 @@ header.site{
   font-size:46px;
   line-height:1; font-weight:800; letter-spacing:0.02em;
 }
+
+
+.siteTagline{
+  text-align:center;
+  font-size:18px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:0.02em;
+  margin:4px 0 10px;
+}
+
+/* On wider screens, visually tuck the tagline up toward the header bar */
+@media (min-width: 901px){
+  .siteTagline{
+    margin-top:-39px;   /* pulls it up closer under NO-SPOILERS */
+  }
+}
+
+/* On narrower screens, let it sit clearly below and be a bit smaller */
+@media (max-width: 1280px){
+  .siteTagline{
+    font-size:18px;
+    padding:0 16px;
+    margin-top:4px;     /* no negative margin = “pops down” */
+  }
+}
+
+
+
+
 .stickybar{
   position:sticky; top:0; z-index:70; border-top:1px solid var(--dos-border);
   border-bottom:1px solid var(--dos-border); background:rgba(0,0,0,0.995);
@@ -3464,10 +3494,8 @@ function App(){
 
 const header = (
   <header className="site bleed">
-    {/* Inner wrapper is the positioning context for the tagline */}
     <div
       style={{
-        position: "relative",
         height: GLOBAL_HEADER_H,
         display: "flex",
         alignItems: "center",
@@ -3492,22 +3520,6 @@ const header = (
         >
           NO-SPOILERS
         </h1>
-      </div>
-
-      {/* CENTER: tagline, nudged down a bit */}
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "55%",                // the “nudge down” you liked
-          transform: "translate(-50%, -50%)",
-          fontSize: 16,
-          fontWeight: 600,
-          textTransform: "uppercase",
-          whiteSpace: "nowrap",
-        }}
-      >
-        A PLACE TO TALK ABOUT THE SHOWS YOU&apos;RE CATCHING UP ON.
       </div>
 
       {/* RIGHT: profile chip */}
@@ -3537,8 +3549,14 @@ const header = (
         </button>
       </div>
     </div>
+
+    {/* Tagline sits below the row; CSS will “tuck” it up on wide screens */}
+    <div className="siteTagline">
+      A PLACE TO TALK ABOUT THE SHOWS YOU&apos;RE CATCHING UP ON.
+    </div>
   </header>
 );
+
 
 
 
