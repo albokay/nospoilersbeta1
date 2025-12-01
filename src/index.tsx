@@ -526,252 +526,252 @@ function pushPost({
     });
   }
 
-  // THREAD 1: AA — 01/02 - POST about 01/02
-  setReplies(
-    findThread("AA", 1, 2, "AA — 01/02"),
-    1,
-    2,
-    [
-      { author: "BB" },
-      { author: "CC" },
-      { author: "DD" },
-      { author: "EE" },
-      { author: "FF" },
-      { author: "GG" },
-      { author: "HH" },
-      { author: "II" },
-    ]
-  );
+    // THREAD 1: AA — 01/02 - POST about 01/02
+    setReplies(
+      findThread("AA", 1, 2, "AA — 01/02"),
+      1,
+      2,
+      [
+        { author: "BB" },
+        { author: "CC" },
+        { author: "DD" },
+        { author: "EE" },
+        { author: "FF" },
+        { author: "GG" },
+        { author: "HH" },
+        { author: "II" },
+      ]
+    );
 
-  // THREAD 2: BB — 01/07 - POST about 01/07
-  setReplies(
-    findThread("BB", 1, 7, "BB — 01/07"),
-    1,
-    7,
-    [
-      { author: "CC" },
-      { author: "DD" },
-      { author: "EE" },
-      { author: "FF" },
-      { author: "GG" },
-      { author: "HH" },
-      { author: "II" },
-      { author: "JJ" },
-      { author: "KK" },
-    ]
-  );
+    // THREAD 2: BB — 01/07 - POST about 01/07
+    setReplies(
+      findThread("BB", 1, 7, "BB — 01/07"),
+      1,
+      7,
+      [
+        { author: "CC" },
+        { author: "DD" },
+        { author: "EE" },
+        { author: "FF" },
+        { author: "GG" },
+        { author: "HH" },
+        { author: "II" },
+        { author: "JJ" },
+        { author: "KK" },
+      ]
+    );
 
-  // THREAD 3: EE — 02/07 - POST about 02/03
-  setReplies(
-    findThread("EE", 2, 3, "EE — 02/07"),
-    2,
-    3,
-    [
-      { author: "CC" },
-      { author: "DD" },
-      { author: "FF" },
-      { author: "GG" },
-      { author: "HH" },
-      { author: "II" },
-      { author: "JJ" },
-      { author: "KK" },
-      { author: "LL" },
-    ]
-  );
+    // THREAD 3: EE — 02/07 - POST about 02/03
+    setReplies(
+  findThread("EE", 2, 7, "EE — 02/07"),
+  2,
+  3,
+      [
+        { author: "CC" },
+        { author: "DD" },
+        { author: "FF" },
+        { author: "GG" },
+        { author: "HH" },
+        { author: "II" },
+        { author: "JJ" },
+        { author: "KK" },
+        { author: "LL" },
+      ]
+    );
 
-  // THREAD 4: GG — 03/06 - POST about 02/07
-  setReplies(
-    findThread("GG", 2, 7, "GG — 03/06"),
-    2,
-    7,
-    [
-      { author: "EE" },
-      { author: "FF" },
-      { author: "HH" },
-      { author: "II" },
-      { author: "JJ" },
-      { author: "KK" },
-      { author: "LL" },
-      { author: "MM" },
-      { author: "NN" },
-    ]
-  );
+    // THREAD 4: GG — 03/06 - POST about 02/07
+    setReplies(
+  findThread("GG", 3, 6, "GG — 03/06"),
+  2,
+  7,
+      [
+        { author: "EE" },
+        { author: "FF" },
+        { author: "HH" },
+        { author: "II" },
+        { author: "JJ" },
+        { author: "KK" },
+        { author: "LL" },
+        { author: "MM" },
+        { author: "NN" },
+      ]
+    );
 
-  // THREAD 5: FF — 03/02 - POST about 03/02
-  setReplies(
-    findThread("FF", 3, 2, "FF — 03/02"),
-    3,
-    2,
-    [
-      { author: "GG" },
-      { author: "HH" },
-      { author: "II" },
-      { author: "JJ" },
-      { author: "KK" },
-      { author: "LL" },
-      { author: "MM" },
-      { author: "NN" },
-      { author: "OO" },
-    ]
-  );
+    // THREAD 5: FF — 03/02 - POST about 03/02
+    setReplies(
+      findThread("FF", 3, 2, "FF — 03/02"),
+      3,
+      2,
+      [
+        { author: "GG" },
+        { author: "HH" },
+        { author: "II" },
+        { author: "JJ" },
+        { author: "KK" },
+        { author: "LL" },
+        { author: "MM" },
+        { author: "NN" },
+        { author: "OO" },
+      ]
+    );
 
-  // THREAD 6: HH — 03/08 - POST about 03/06
-  setReplies(
-    findThread("HH", 3, 6, "HH — 03/08"),
-    3,
-    6,
-    [
-      { author: "GG" },
-      { author: "II" },
-      { author: "JJ" },
-      { author: "KK" },
-      { author: "LL" },
-      { author: "MM" },
-      { author: "NN" },
-      { author: "OO" },
-    ]
-  );
+    // THREAD 6: HH — 03/08 - POST about 03/06
+    setReplies(
+  findThread("HH", 3, 8, "HH — 03/08"),
+  3,
+  6,
+      [
+        { author: "GG" },
+        { author: "II" },
+        { author: "JJ" },
+        { author: "KK" },
+        { author: "LL" },
+        { author: "MM" },
+        { author: "NN" },
+        { author: "OO" },
+      ]
+    );
 
-  // THREAD 7: II — 04/01 - POST about 03/08
-  setReplies(
-    findThread("II", 3, 8, "II — 04/01"),
-    3,
-    8,
-    [
-      { author: "HH" },
-      { author: "JJ" },
-      { author: "KK" },
-      { author: "LL" },
-      { author: "MM" },
-      { author: "NN" },
-      { author: "OO" },
-    ]
-  );
+    // THREAD 7: II — 04/01 - POST about 03/08
+    setReplies(
+  findThread("II", 4, 1, "II — 04/01 - POST about 03/08"),
+  3,
+  8,
+      [
+        { author: "HH" },
+        { author: "JJ" },
+        { author: "KK" },
+        { author: "LL" },
+        { author: "MM" },
+        { author: "NN" },
+        { author: "OO" },
+      ]
+    );
 
-  // THREAD 8: II — 04/01 - POST about 04/01
-  setReplies(
-    findThread("II", 4, 1, "II — 04/01 - POST about 04/01"),
-    4,
-    1,
-    [
-      { author: "JJ" },
-      { author: "KK" },
-      { author: "LL" },
-      { author: "MM" },
-      { author: "NN" },
-      { author: "OO" },
-    ]
-  );
+    // THREAD 8: II — 04/01 - POST about 04/01
+    setReplies(
+      findThread("II", 4, 1, "II — 04/01 - POST about 04/01"),
+      4,
+      1,
+      [
+        { author: "JJ" },
+        { author: "KK" },
+        { author: "LL" },
+        { author: "MM" },
+        { author: "NN" },
+        { author: "OO" },
+      ]
+    );
 
-  // THREAD 9: OO — 05/08 - POST about 01/02
-  setReplies(
-    findThread("OO", 1, 2, "OO — 05/08"),
-    1,
-    2,
-    [
-      { author: "AA" },
-      { author: "CC" },
-      { author: "EE" },
-      { author: "GG" },
-      { author: "JJ" },
-      { author: "MM" },
-      { author: "NN" },
-    ]
-  );
+    // THREAD 9: OO — 05/08 - POST about 01/02
+    setReplies(
+  findThread("OO", 5, 8, "OO — 05/08"),
+  1,
+  2,
+      [
+        { author: "AA" },
+        { author: "CC" },
+        { author: "EE" },
+        { author: "GG" },
+        { author: "JJ" },
+        { author: "MM" },
+        { author: "NN" },
+      ]
+    );
 
-  // THREAD 10: NN — 05/05 - POST about 02/03
-  setReplies(
-    findThread("NN", 2, 3, "NN — 05/05"),
-    2,
-    3,
-    [
-      { author: "CC" },
-      { author: "DD" },
-      { author: "EE" },
-      { author: "FF" },
-      { author: "GG" },
-      { author: "HH" },
-      { author: "II" },
-      { author: "JJ" },
-    ]
-  );
+    // THREAD 10: NN — 05/05 - POST about 02/03
+    setReplies(
+  findThread("NN", 5, 5, "NN — 05/05"),
+  2,
+  3,
+      [
+        { author: "CC" },
+        { author: "DD" },
+        { author: "EE" },
+        { author: "FF" },
+        { author: "GG" },
+        { author: "HH" },
+        { author: "II" },
+        { author: "JJ" },
+      ]
+    );
 
-  // THREAD 11: GG — 01/07 - POST about 01/07
-  setReplies(
-    findThread("GG", 1, 7, "GG — 01/07"),
-    1,
-    7,
-    [
-      { author: "CC" },
-      { author: "DD" },
-      { author: "EE" },
-      { author: "FF" },
-      { author: "HH" },
-      { author: "II" },
-    ]
-  );
+    // THREAD 11: GG — 01/07 - POST about 01/07
+    setReplies(
+      findThread("GG", 1, 7, "GG — 01/07"),
+      1,
+      7,
+      [
+        { author: "CC" },
+        { author: "DD" },
+        { author: "EE" },
+        { author: "FF" },
+        { author: "HH" },
+        { author: "II" },
+      ]
+    );
 
-  // THREAD 12: KK — 03/02 - POST about 03/02
-  setReplies(
-    findThread("KK", 3, 2, "KK — 03/02"),
-    3,
-    2,
-    [
-      { author: "GG" },
-      { author: "HH" },
-      { author: "II" },
-      { author: "JJ" },
-      { author: "LL" },
-      { author: "MM" },
-    ]
-  );
+    // THREAD 12: KK — 03/02 - POST about 03/02
+    setReplies(
+      findThread("KK", 3, 2, "KK — 03/02"),
+      3,
+      2,
+      [
+        { author: "GG" },
+        { author: "HH" },
+        { author: "II" },
+        { author: "JJ" },
+        { author: "LL" },
+        { author: "MM" },
+      ]
+    );
 
-  // THREAD 13: MM — 02/07 - POST about 02/07
-  setReplies(
-    findThread("MM", 2, 7, "MM — 02/07"),
-    2,
-    7,
-    [
-      { author: "EE" },
-      { author: "FF" },
-      { author: "GG" },
-      { author: "HH" },
-      { author: "II" },
-      { author: "JJ" },
-      { author: "KK" },
-    ]
-  );
+    // THREAD 13: MM — 02/07 - POST about 02/07
+    setReplies(
+      findThread("MM", 2, 7, "MM — 02/07"),
+      2,
+      7,
+      [
+        { author: "EE" },
+        { author: "FF" },
+        { author: "GG" },
+        { author: "HH" },
+        { author: "II" },
+        { author: "JJ" },
+        { author: "KK" },
+      ]
+    );
 
-  // THREAD 14: NN — 03/06 - POST about 03/06
-  setReplies(
-    findThread("NN", 3, 6, "NN — 03/06"),
-    3,
-    6,
-    [
-      { author: "GG" },
-      { author: "HH" },
-      { author: "II" },
-      { author: "JJ" },
-      { author: "KK" },
-      { author: "LL" },
-    ]
-  );
+    // THREAD 14: NN — 03/06 - POST about 03/06
+    setReplies(
+      findThread("NN", 3, 6, "NN — 03/06"),
+      3,
+      6,
+      [
+        { author: "GG" },
+        { author: "HH" },
+        { author: "II" },
+        { author: "JJ" },
+        { author: "KK" },
+        { author: "LL" },
+      ]
+    );
 
-  // THREAD 15: OO — 04/01 - POST about 04/01
-  setReplies(
-    findThread("OO", 4, 1, "OO — 04/01"),
-    4,
-    1,
-    [
-      { author: "JJ" },
-      { author: "KK" },
-      { author: "LL" },
-      { author: "MM" },
-      { author: "NN" },
-      { author: "OO" },
-    ]
-  );
-})();
+    // THREAD 15: OO — 04/01 - POST about 04/01
+    setReplies(
+      findThread("OO", 4, 1, "OO — 04/01"),
+      4,
+      1,
+      [
+        { author: "JJ" },
+        { author: "KK" },
+        { author: "LL" },
+        { author: "MM" },
+        { author: "NN" },
+        { author: "OO" },
+      ]
+    );
+  })();
 
 
 
@@ -1289,6 +1289,14 @@ updatedAtOffsetH: randBetween(1, 24*14)
 
 
 
+
+
+
+
+
+
+
+
 (function seedSimshowThreads() {
   const showId = "simshow";
 
@@ -1296,10 +1304,10 @@ updatedAtOffsetH: randBetween(1, 24*14)
   pushPost({
     showId,
     season: 1,
-    episode: 2,
+    episode: 2, // current progress 01/02
     author: "AA",
-    title: "AA — current progress 01/02 - POST about 01/02",
-    body: "Post about Season 01 Episode 02.",
+    title: "AA's current progress is 01/02 - POST about 01/01",
+    body: "Post about Season 01 Episode 01.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
 
@@ -1307,31 +1315,31 @@ updatedAtOffsetH: randBetween(1, 24*14)
   pushPost({
     showId,
     season: 1,
-    episode: 7,
+    episode: 7, // current progress 01/07
     author: "BB",
-    title: "BB — current progress 01/07 - POST about 01/07",
+    title: "BB's current progress is 01/07 - POST is about 01/07",
     body: "Post about Season 01 Episode 07.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
 
-  // THREAD 3
+  // THREAD 3 (EE has watched ahead to 02/07 but is posting about 02/03)
   pushPost({
     showId,
     season: 2,
-    episode: 3,
+    episode: 7, // current progress 02/07
     author: "EE",
-    title: "EE — current progress 02/07 - POST about 02/03",
-    body: "Post about Season 02 Episode 03.",
+    title: "EE's current progress is 02/07 - POST is about 01/06",
+    body: "Post about Season 01 Episode 06.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
 
-  // THREAD 4
+  // THREAD 4 (GG has watched ahead to 03/06 but is posting about 02/07)
   pushPost({
     showId,
-    season: 2,
-    episode: 7,
+    season: 3,
+    episode: 6, // current progress 03/06  (WAS 2,7)
     author: "GG",
-    title: "GG — current progress 03/06 - POST about 02/07",
+    title: "GG's current progress is 03/06 - POST is about 02/07",
     body: "Post about Season 02 Episode 07.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
@@ -1340,64 +1348,64 @@ updatedAtOffsetH: randBetween(1, 24*14)
   pushPost({
     showId,
     season: 3,
-    episode: 2,
+    episode: 2, // current progress 03/02
     author: "FF",
-    title: "FF — current progress 03/02 - POST about 03/02",
+    title: "FF's current progress is 03/02 - POST is about 03/02",
     body: "Post about Season 03 Episode 02.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
 
-  // THREAD 6
+  // THREAD 6 (HH has watched ahead to 03/08 but is posting about 03/06)
   pushPost({
     showId,
     season: 3,
-    episode: 6,
+    episode: 8, // current progress 03/08  (WAS 3,6)
     author: "HH",
-    title: "HH — current progress 03/08 - POST about 03/06",
+    title: "HH's current progress is 03/08 - POST is about 03/06",
     body: "Post about Season 03 Episode 06.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
 
-  // THREAD 7
+  // THREAD 7 (II has watched ahead to 04/01 but is posting about 03/08)
   pushPost({
     showId,
-    season: 3,
-    episode: 8,
+    season: 4,
+    episode: 1, // current progress 04/01  (WAS 3,8)
     author: "II",
-    title: "II — current progress 04/01 - POST about 03/08",
+    title: "II's current progress is 04/01 - POST is about 03/08",
     body: "Post about Season 03 Episode 08.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
 
-  // THREAD 8
+  // THREAD 8 (II at same progress, posting about 04/01)
   pushPost({
     showId,
     season: 4,
-    episode: 1,
+    episode: 1, // current progress 04/01
     author: "II",
-    title: "II — current progress 04/01 - POST about 04/01",
+    title: "II's current progress is 04/01 - POST is about 04/01",
     body: "Post about Season 04 Episode 01.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
 
-  // THREAD 9 (retro)
+  // THREAD 9 (OO has watched ahead to 05/08 but is posting about 01/02)
   pushPost({
     showId,
-    season: 1,
-    episode: 2,
+    season: 5,
+    episode: 8, // current progress 05/08  (WAS 1,2)
     author: "OO",
-    title: "OO — current progress 05/08 - POST about 01/02",
+    title: "OO's current progress is 05/08 - POST is about 01/02",
     body: "Post about Season 01 Episode 02.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
 
-  // THREAD 10
+  // THREAD 10 (NN has watched ahead to 05/05 but is posting about 02/03)
   pushPost({
     showId,
-    season: 2,
-    episode: 3,
+    season: 5,
+    episode: 5, // current progress 05/05  (WAS 2,3)
     author: "NN",
-    title: "NN — current progress 05/05 - POST about 02/03",
+    title: "NN's current progress is 05/05 - POST is about 02/03",
     body: "Post about Season 02 Episode 03.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
@@ -1408,7 +1416,7 @@ updatedAtOffsetH: randBetween(1, 24*14)
     season: 1,
     episode: 7,
     author: "GG",
-    title: "GG — current progress 01/07 - POST about 01/07",
+    title: "GG's current progress is 01/07 - POST is about 01/07",
     body: "Post about Season 01 Episode 07.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
@@ -1419,7 +1427,7 @@ updatedAtOffsetH: randBetween(1, 24*14)
     season: 3,
     episode: 2,
     author: "KK",
-    title: "KK — current progress 03/02 - POST about 03/02",
+    title: "KK's current progress is 03/02 - POST is about 03/02",
     body: "Post about Season 03 Episode 02.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
@@ -1430,7 +1438,7 @@ updatedAtOffsetH: randBetween(1, 24*14)
     season: 2,
     episode: 7,
     author: "MM",
-    title: "MM — current progress 02/07 - POST about 02/07",
+    title: "MM's current progress is 02/07 - POST is about 02/07",
     body: "Post about Season 02 Episode 07.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
@@ -1441,7 +1449,7 @@ updatedAtOffsetH: randBetween(1, 24*14)
     season: 3,
     episode: 6,
     author: "NN",
-    title: "NN — current progress 03/06 - POST about 03/06",
+    title: "NN's current progress is 03/06 - POST is about 03/06",
     body: "Post about Season 03 Episode 06.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
@@ -1452,11 +1460,19 @@ updatedAtOffsetH: randBetween(1, 24*14)
     season: 4,
     episode: 1,
     author: "OO",
-    title: "OO — current progress 04/01 - POST about 04/01",
-    body: "Post about Season 04 Episode 01.",
+    title: "OO's current progress is 04/01 - POST is about 03/08",
+    body: "Post about Season 03 Episode 08.",
     updatedAtOffsetH: randBetween(1, 24 * 14),
   });
 })();
+
+
+
+
+
+
+
+
 
 
 
