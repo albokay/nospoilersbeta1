@@ -4141,7 +4141,7 @@ function LikeBadge({
   count, userLiked, onClick, title="this post!", readOnly=false
 }:{ count: number; userLiked?: boolean; onClick?: (e: React.MouseEvent)=>void; title?: string; readOnly?: boolean; }){
   const dots = Math.min(39, Math.max(0, count || 0));
-  const reachedThis = (count || 0) >= 15;
+  const reachedThis = (count || 0) >= 12;
   const clickable = !!onClick && !readOnly;
   const color = userLiked ? "var(--green)" : "var(--dos-fg)";
   return (
