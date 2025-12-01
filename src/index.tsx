@@ -3595,7 +3595,7 @@ const header = (
               <div style={{maxWidth: 460, width:"100%", padding:"30px 16px"}}>
                <p>** Hello friendly beta-tester!<br /></p><br></br>
                 <p>The BREAKING BAD forum is populated with posts that discuss the actual show. THE PENGUIN forum is empty. Right now you can create posts across all forums (but not replies). <br></br><br></br>
-                If you haven’t seen BREAKING BAD and don’t want spoilers while beta testing, you can use “Simulated Show” to test the logic of the show. It is a thread with generic posts that should help you understand the logic of the site. <br></br><br></br>
+               If you haven’t seen BREAKING BAD and don’t want spoilers while beta testing, you can use “Simulated Show” to test the logic of the show. It is a thread with generic posts that should help you understand the logic of the site. <br></br><br></br>
                 Below are some notes for myself about where things are and where they can go. Feel free to read them if you are interested. <br></br><br></br>
                 — Alborz<br></br><br></br>
                 P.S.: This is a mock site — the back button on your browser window will leave the site altogether. And refreshing your page will reset the site.
