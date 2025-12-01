@@ -454,7 +454,7 @@ function pushPost({
   title,
   body,
   updatedAtOffsetH = 0,
-  likes = 0,
+  likes = randBetween(0, 15),
   isPrivate = false
 }: {
   showId?: string; season:number; episode:number; author:string; title:string; body:string;
@@ -4141,7 +4141,7 @@ function LikeBadge({
   count, userLiked, onClick, title="this post!", readOnly=false
 }:{ count: number; userLiked?: boolean; onClick?: (e: React.MouseEvent)=>void; title?: string; readOnly?: boolean; }){
   const dots = Math.min(39, Math.max(0, count || 0));
-  const reachedThis = (count || 0) >= 12;
+  const reachedThis = (count || 0) >= 15;
   const clickable = !!onClick && !readOnly;
   const color = userLiked ? "var(--green)" : "var(--dos-fg)";
   return (
