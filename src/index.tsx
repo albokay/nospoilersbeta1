@@ -103,7 +103,7 @@ header.site{
   .siteTagline{
     font-size:18px;
     padding:0 16px;
-    margin-top:4px;     /* no negative margin = “pops down” */
+    margin-top:-6px;     /* no negative margin = “pops down” */
   }
 }
 
@@ -3552,7 +3552,7 @@ const header = (
 
     {/* Tagline sits below the row; CSS will “tuck” it up on wide screens */}
     <div className="siteTagline">
-      A PLACE TO TALK ABOUT THE SHOWS YOU&apos;RE CATCHING UP ON.
+      TALK ABOUT THE SHOWS YOU&apos;RE CATCHING UP ON
     </div>
   </header>
 );
