@@ -1647,8 +1647,8 @@ const repliesByThread: { [threadId: string]: Reply[] } = {};
           (p.season === t.season && p.episode > t.episode);
 
         const body = isAhead
-          ? `${authorId} — has watched S${progS}E${progE} but is REPLYING about S${subjS}E${subjE}.`
-          : `${authorId} — has watched S${subjS}E${subjE} - and is REPLYING about S${subjS}E${subjE}.`;
+          ? `${authorId} — has watched S${progS}E${progE} but is REPLYING to a poster who is on S${subjS}E${subjE}.`
+          : `${authorId} — has watched S${subjS}E${subjE} - and is REPLYING to a poster who is on S${subjS}E${subjE}.`;
 
         return {
           id: `${t.id}-sim-${idx + 1}`,
