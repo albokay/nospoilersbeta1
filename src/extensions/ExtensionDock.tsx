@@ -39,16 +39,27 @@ const FRIEND_EPISODE = 5;
 // Your current BB progress (updated by an event from the app)
 const [bbProg, setBbProg] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
 
+const hasReachedFriendPost =
+  bbProg.s > FRIEND_SEASON ||
+  (bbProg.s === FRIEND_SEASON && bbProg.e >= FRIEND_EPISODE);
+
 
   const handleMikeClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    // Fire a custom event the main app can listen for (optional future wiring)
-    window.dispatchEvent(new CustomEvent("dock:open-thread-by-title", {
-      detail: { show: "Severance", title: "Knickknacks as ritual — S01E01" }
-    }));
-    // Demo feedback so you can see it's clickable now
-    try { alert('Opening "Knickknacks as ritual — S01E01" in Severance'); } catch {}
-  };
+  e.preventDefault();
+  // Fire a custom event the main app can listen for (optional future wiring)
+  window.dispatchEvent(
+    new CustomEvent("dock:open-thread-by-title", {
+      detail: {
+        show: "Breaking Bad",
+        title: "Gus Fring: The Most Polite Threat in TV History",
+      },
+    })
+  );
+  // Demo feedback so you can see it's clickable now
+  try {
+    alert('Link to friend alerts not working yet!');
+  } catch {}
+};
 
   const ui = (
     <div style={{ position: "fixed", right: 16, bottom: 16, zIndex: 2147483000 }}>
@@ -111,20 +122,26 @@ const [bbProg, setBbProg] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
         </div>
 
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          <li style={{ fontSize: 12, lineHeight: 1.35, margin: "6px 0" }}>
-            <b>@SlateOrbit</b> just <span style={hl}>watched</span> <b>S01E03</b> of <b>Severance</b>.
-          </li>
-          <li style={{ fontSize: 12, lineHeight: 1.35, margin: "6px 0" }}>
-            <a
-              href="#"
-              onClick={handleMikeClick}
-              style={{ color: "inherit", textDecoration: "underline", cursor: "pointer" }}
-              aria-label='Open post: "Knickknacks as ritual — S01E01" in Severance'
-            >
-              <b>@LoomSignal</b> just <span style={hl}>posted</span> about <b>Severance S01E01</b>.
-            </a>
-          </li>
-        </ul>
+  <li style={{ fontSize: 12, lineHeight: 1.35, margin: "6px 0" }}>
+    <b>@SlateOrbit</b> <span style={hl}>watched</span> <b>S01E03</b> of <b>Breaking Bad</b>.
+  </li>
+
+  {hasReachedFriendPost && (
+    <li style={{ fontSize: 12, lineHeight: 1.35, margin: "6px 0" }}>
+      <a
+        href="#"
+        onClick={handleMikeClick}
+        style={{ color: "inherit", textDecoration: "underline", cursor: "pointer" }}
+        aria-label='Open post: "Gus Fring: The Most Polite Threat in TV History" in Breaking Bad'
+      >
+        <b>@LoomSignal</b> <span style={hl}>posted</span> about{" "}
+        <b>Breaking Bad S04E05</b>.
+      </a>
+    </li>
+  )}
+</ul>
+
+
       </div>
     </div>
   );
