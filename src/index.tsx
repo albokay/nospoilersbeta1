@@ -3569,7 +3569,7 @@ const header = (
                 Popular Right Now
               </div>
               <div style={{fontSize:26}}>
-                {["bb","penguin","simshow"].map((id, idx, arr)=>{
+                {["bb","simshow"].map((id, idx, arr)=>{
                   const s = seedShows.find(x=>x.id===id);
                   if(!s) return null;
                   const sep = idx < arr.length-1 ? " / " : "";
@@ -3646,6 +3646,7 @@ const header = (
             showId={expandedShowId}
             progress={progress}
             updateProgressFor={(sid, next)=>{
+  // 1) Update progress + new-highlight logic (unchanged)
   setProgress(prev=>{
     const before = prev[sid];
     const computeVisibleIds = (sid:string, prog?:{s:number;e:number}) => {
@@ -3665,7 +3666,28 @@ const header = (
     }
     return { ...prev, [sid]: next };
   });
+
+  // 2) If an open thread for this show is no longer viewable at the new progress,
+  //    kick the user back to the main forum feed.
+  setActiveThreadId(currentId => {
+    if (!currentId) return currentId;
+
+    const t = seedThreads.find(t => t.id === currentId);
+    if (!t) return currentId;
+
+    // Only care about threads from the show whose progress just changed
+    if (t.showId !== sid) return currentId;
+
+    const stillVisible = canView(
+      { season: t.season, episode: t.episode },
+      next
+    );
+
+    // If the thread would no longer be visible, exit the thread view
+    return stillVisible ? currentId : null;
+  });
 }}
+
             newHighlights={newHighlights}
             setNewHighlights={setNewHighlights}
             visitedThreads={visitedThreads}
@@ -4124,7 +4146,7 @@ function LikeBadge({
   count, userLiked, onClick, title="this post!", readOnly=false
 }:{ count: number; userLiked?: boolean; onClick?: (e: React.MouseEvent)=>void; title?: string; readOnly?: boolean; }){
   const dots = Math.min(39, Math.max(0, count || 0));
-  const reachedThis = (count || 0) >= 15;
+  const reachedThis = (count || 0) >= 12;
   const clickable = !!onClick && !readOnly;
   const color = userLiked ? "var(--green)" : "var(--dos-fg)";
   return (
@@ -4422,7 +4444,7 @@ function OneSelectProgress({
   const opts = buildProgressOptions(show);
   const currentId = `${value?.s || 1}-${value?.e || 1}`;
   const [selectedId,setSelectedId]=useState(currentId);
-  const [pending,setPending]=useState<{id:string;s:number;e:number}|null>(null);
+  const [pending,setPending]=useState<{id:string;s:number;e:number;backwards?:boolean}|null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(()=>{ setSelectedId(currentId); setPending(null); setConfirmOpen(false); onPendingChange?.(false); },[currentId]);
@@ -4436,17 +4458,16 @@ function OneSelectProgress({
   const curE = value?.e ?? 1;
 
   const backwards = (next.s < curS) || (next.s === curS && next.e < curE);
-  if (backwards) {
-    setSelectedId(`${curS}-${curE}`);
-    return;
-  }
 
+  // Always allow the move; just remember if it was backwards
   setSelectedId(nextId);
-  setPending(next);
+  setPending({ ...next, backwards });
   onPendingChange?.(true);
   onChangeSelected?.({ s: next.s, e: next.e });
   if (requireConfirm) setConfirmOpen(true);
 }
+
+
   function confirmSelection(){
     if(pending){
       onConfirm({s:pending.s,e:pending.e});
@@ -4464,51 +4485,73 @@ function OneSelectProgress({
   }
 
   return (
-    <>
-      <div
+  <>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        fontStyle: "italic",
+        fontWeight: 700,
+        color: "black",                 // label: “You’ve watched…” in black
+      }}
+    >
+      <select
+        className="badge h40"
+        value={selectedId}
+        onChange={onSelect}
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          fontStyle: "italic",
-          fontWeight: 700,
-          color: "var(--green)",          // was var(--dos-cyan)
+          background: "white",          // filled-in white pill
+          color: "black",               // black text
         }}
       >
-        <select
-          className="badge h40"
-          style={{ color: "var(--green)" }} // force the option text to green
-          value={selectedId}
-          onChange={onSelect}
-        >
-          {opts.map(o=>{
+        {opts.map((o) => {
           const curS = value?.s ?? 1;
           const curE = value?.e ?? 1;
-          const disabled = (o.s < curS) || (o.s === curS && o.e < curE);
+          const disabled = false;
           return (
             <option key={o.id} value={o.id} disabled={disabled}>
               {o.label}
             </option>
           );
         })}
-        </select>
-      </div>
+      </select>
+    </div>
+
 
       {requireConfirm && confirmOpen && (
-        <Modal onClose={cancelSelection}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-            <h3 className="title" style={{fontSize:20,margin:0}}>Are you sure?</h3>
-            <button className="btn" onClick={cancelSelection}>✕</button>
-          </div>
-          <p className="muted" style={{marginTop:0}}>
-            Updating your watch progress will change which posts and replies you can see.
-          </p>
-          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
-            <button className="btn btn-danger" onClick={cancelSelection}>No</button>
-            <button className="btn btn-danger" onClick={confirmSelection}>Yes</button>
-          </div>
-        </Modal>
-      )}
+  <Modal onClose={cancelSelection}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+      <h3 className="title" style={{fontSize:20,margin:0}}>ARE YOU SURE?</h3>
+      <button className="btn" onClick={cancelSelection}>✕</button>
+    </div>
+
+    {pending?.backwards ? (
+      <>
+      <br></br>
+        <p style={{marginTop:0, fontWeight:700}}>*HEADS UP BETA-TESTER*</p>
+        <p className="muted" style={{marginTop:4}}>
+          In a live version of the site, users would not be able to turn their watch
+          progress backward — I don’t think there is a legitimate reason to do so.
+          Disabling the ability to turn back the clock will make it more difficult
+          for trolls to troll.
+          <br /><br />
+          But for the purposes of beta-testing, you can flip back and forth at will.
+        </p>
+      </>
+    ) : (
+      <p className="muted" style={{marginTop:0}}>
+        <br></br>Updating your watch progress will change which posts and replies you can see.
+      </p>
+    )}
+
+    <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
+      <button className="btn btn-danger" onClick={cancelSelection}>No</button>
+      <button className="btn btn-danger" onClick={confirmSelection}>Yes</button>
+    </div>
+  </Modal>
+)}
+
     </>
   );
 }
