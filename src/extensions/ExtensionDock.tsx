@@ -134,7 +134,7 @@ const hasReachedFriendPost =
         style={{ color: "inherit", textDecoration: "underline", cursor: "pointer" }}
         aria-label='Open post: "Gus Fring: The Most Polite Threat in TV History" in Breaking Bad'
       >
-        <b>@LoomSignal</b> <span style={hl}>posted</span> about{" "}
+        <b>@_quietloop</b> <span style={hl}>posted</span> about{" "}
         <b>Breaking Bad S04E05</b>.
       </a>
     </li>
