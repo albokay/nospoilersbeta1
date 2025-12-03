@@ -3594,10 +3594,10 @@ const header = (
             <div className="homeAbout" style={{display:"flex", justifyContent:"center"}}>
               <div style={{maxWidth: 460, width:"100%", padding:"30px 16px"}}>
                <p>** Hello friendly beta-tester!<br /></p><br></br>
-                <p>The BREAKING BAD forum is populated with posts that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site. Use either one depending on your sensitivity to BREAKING BAD spoilers.<br></br><br></br>
-                On this mock site, you can create posts across all forums but not replies. <br></br><br></br>
-                Use the “find a show” search field to go to a new show forum (they are all empty for now). <br></br><br></br>
-                The back button on your browser window will leave this mock site altogether, and refreshing your page will reset the site.<br></br><br></br>
+                <p>The BREAKING BAD forum is populated with posts that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site.<br></br><br></br>
+                On this mock site, you can create posts (but not replies) across all forums. <br></br><br></br>
+                Use the “find a show” search field to go to a new show forum. They are all empty for now. <br></br><br></br>
+                The back button on your browser window will leave this mockup site altogether, and refreshing your page will reset it. Click and post with abandon — nothing is breakable or actually publishable for now!<br></br><br></br>
                 — Alborz<br></br><br></br>
                 P.S.: Below are some notes for myself about where things are and where they can go. Feel free to read them if you are interested.
 </p>
@@ -3606,10 +3606,11 @@ const header = (
                 <p>IDEAS FOR THE FUTURE:</p>
                 <p>- functional friends / watch together features</p>
                 <p>- a.i.-generated wiki-style-summaries of show (plot / characters / etc.), up to your viewing progress </p>
-                <p>- figure out: start with only a handful of shows and reach out to show communities to build beta users? Is it like Facebook — growing show by show (vs college by college)? Or can anyone create a new forum for whatever show they’re watching?</p>
-                <p>- think more about “watch diary” vibes (like Letterboxd) so that there is built-in value even before the forum is fully active and lively</p>
-                <p>- figure out way of seeding shows with links to existing articles (using dates to align with watch progress) and existing external forum posts. This is another potential way of creating value before forum is fully active)</p>
-                <p>- think more about anti-scroll, anti-distraction, anti-addiction ethos. This is a healthy place to engage deeply and intentionally with the shows you love (or hate)</p>
+                <p>- expand to narrative games</p>
+                <p>- figure out: how does a site like this launch? with only a handful of shows and reach out to show communities to build beta users? Is it like Facebook — growing show by show (vs college by college)? Or can anyone create a new forum for whatever show they’re watching?</p>
+                <p>- there's nothing sadder than an inactive forum. a watch diary vibe (like Letterboxd) at the start will help create value for users as the forum side of things picks up steam</p>
+                <p>- figure out way of seeding shows with links to existing articles (using dates to align with watch progress) and existing external forum posts. this is another potential way of creating value before forum is fully active</p>
+                <p>- think more about anti-scroll, anti-distraction, anti-addiction ethos. This is a healthy place to engage deeply and intentionally with the shows you love to watch</p>
                 <p>- tag show types on the backend (prestige, comedy, sitcom, reality, etc.) so that prompt suggestions are populated according to show type</p>
                 <br></br>
                 <p>THOUGHTS ABOUT TROLLS:</p>
@@ -3948,7 +3949,7 @@ const bannerRef = useRef<HTMLDivElement|null>(null);
             >
               {String((seedShows.find(s=>s.id===showId)?.name)||showId)}
             </span>
-
+{false && (
             <div className="inlineSearch" style={{flex:"1 1 auto", display:"flex", justifyContent:"center"}}>
               <input
                 placeholder="search in this forum (press Enter)"
@@ -3962,7 +3963,7 @@ const bannerRef = useRef<HTMLDivElement|null>(null);
                 <button aria-label="Clear search" onClick={clearSearch} className="inlineSearchClear">×</button>
               )}
             </div>
-
+)}
             {!thread && (
               <div style={{display:"flex",alignItems:"center",gap:8, flex:"0 0 auto"}}>
                 <select className="badge" value={sortBy} onChange={(e)=>setSortBy(e.target.value as any)}>
@@ -4098,7 +4099,7 @@ const bannerRef = useRef<HTMLDivElement|null>(null);
             );
           })}
           {displayed.length<baseVisible.length && <div ref={sentinelRef} style={{height:1}} />}
-          {displayed.length===0 && <div className="muted" style={{fontSize:14}}>No posts match your progress.</div>}
+          {displayed.length===0 && <div className="muted" style={{fontSize:14}}>No posts match your watch progress.</div>}
         </div>
       )}
 
