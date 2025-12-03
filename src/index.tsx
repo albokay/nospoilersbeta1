@@ -4534,7 +4534,7 @@ function OneSelectProgress({
         <p className="muted" style={{marginTop:4}}>
           In a live version of the site, users would not be able to turn their watch
           progress backward — I don’t think there is a legitimate reason to do so.
-          Disabling the ability to turn back the clock will make it more difficult
+          Restricting the ability to turn back the clock will make it more difficult
           for trolls to troll.
           <br /><br />
           But for the purposes of beta-testing, you can flip back and forth at will.
