@@ -4278,7 +4278,7 @@ function RepliesList({
             <h3 className="title" style={{margin:0}}>Are you sure?</h3>
             <button className="btn" onClick={()=>setPromptFor(null)}>✕</button>
           </div>
-          <p className="muted" style={{marginTop:6}}>There may be spoilers ahead!</p>
+          <p className="muted" style={{marginTop:6}}>This person is replying to an episode you've watched, BUT they're further along in the show. <br></br><br></br>There may be spoilers ahead!</p>
           <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}>
             <button className="btn btn-danger" onClick={()=>setPromptFor(null)}>Nevermind</button>
             <button
