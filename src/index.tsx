@@ -3391,6 +3391,8 @@ function App(){
   const pickShow = useMemo(()=>seedShows.find(s=>s.id===pickShowId)||null,[pickShowId]);
   const [hasPendingChange,setHasPendingChange]=useState(false);
   const [firstSel, setFirstSel] = useState<{s:number;e:number} | null>(null);
+  const [pickShowMode, setPickShowMode] = useState<"set" | "confirm">("set");
+
   useEffect(()=>{
     if (pickShowId) {
       const init = progress[pickShowId] || { s:1, e:1 };
@@ -3453,9 +3455,17 @@ function App(){
   };
 
   const handlePickFromSearch = (showId:string)=>{
-    if(progress[showId]) openShow(showId);
-    else { setPickShowId(showId); setShowProfile(false); }
-  };
+  if (progress[showId]) {
+    // If we already know your progress for this show, just jump in
+    openShow(showId);
+  } else {
+    // New show: open the “Set your progress” modal
+    setPickShowMode("set");
+    setPickShowId(showId);
+    setShowProfile(false);
+  }
+};
+
   const handleStartNewForum = (query: string)=>{
     const name = query || prompt("Name your new show/forum:");
     if(!name) return;
@@ -3583,10 +3593,15 @@ const header = (
               </div>
             </div>
             <YourShowsSelect
-              progress={progress}
-              value={""}
-              onChange={(id)=>{ if(id) openShow(id); }}
-            />
+  progress={progress}
+  value={""}
+  onChange={(id) => {
+    if (!id) return;
+    setPickShowMode("confirm");   // <-- coming from “Your Shows”
+    setPickShowId(id);            // opens the modal for that show
+    setShowProfile(false);
+  }}
+/>
           </div>
 
           {/* About blurb — shows only on the actual homepage, hides on forum/profile */}
@@ -3711,52 +3726,91 @@ const header = (
       )}
 
       {pickShow && (
-        <Modal onClose={()=>setPickShowId(null)}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-            <h3 className="title" style={{fontSize:20,margin:0}}>Set your progress</h3>
-            <button className="btn" onClick={()=>setPickShowId(null)}>✕</button>
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-            <OneSelectProgress
-              show={pickShow}
-              value={progress[pickShow.id] || {s:1,e:1}}
-              onConfirm={(val)=>{
-                setFirstSel(val);
-                updateProgressFor(pickShow.id,val);
-                setHasPendingChange(false);
-                setPickShowId(null);
-                openShow(pickShow.id);
-              }}
-              onPendingChange={setHasPendingChange}
-              requireConfirm={false}
-              onChangeSelected={(val)=> setFirstSel(val)}
-            />
-            <div style={{marginLeft:"auto",display:"flex",gap:8}}>
-              <button className="btn" onClick={()=>setPickShowId(null)}>Cancel</button>
-              <button
-                className="btn primary"
-                onClick={()=>{
-  const chosen = firstSel || (progress[pickShow.id] || {s:1,e:1});
+  <Modal
+    onClose={() => {
+      setPickShowId(null);
+      setPickShowMode("set");
+    }}
+  >
+    <div
+      style={{
+        display:"flex",
+        justifyContent:"space-between",
+        alignItems:"flex-start",
+        marginBottom:12
+      }}
+    >
+      <h3 className="title" style={{fontSize:20,margin:0}}>
+        {pickShowMode === "confirm"
+          ? "Confirm or update your progress"
+          : "Set your progress"}
+      </h3>
+      <button
+        className="btn"
+        onClick={() => {
+          setPickShowId(null);
+          setPickShowMode("set");
+        }}
+      >
+        ✕
+      </button>
+    </div>
 
-  // NEW: tell the dock your BB progress
-  if (pickShow.id === "bb") {
-    window.dispatchEvent(new CustomEvent("dock:progress", {
-      detail: { showId: "bb", s: chosen.s, e: chosen.e }
-    }));
-  }
+    <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+      <OneSelectProgress
+        show={pickShow}
+        value={progress[pickShow.id] || {s:1,e:1}}
+        onConfirm={(val)=>{
+          setFirstSel(val);
+          updateProgressFor(pickShow.id,val);
+          setHasPendingChange(false);
+          setPickShowId(null);
+          setPickShowMode("set");
+          openShow(pickShow.id);
+        }}
+        onPendingChange={setHasPendingChange}
+        requireConfirm={false}
+        onChangeSelected={(val)=> setFirstSel(val)}
+      />
+      <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+        <button
+          className="btn"
+          onClick={() => {
+            setPickShowId(null);
+            setPickShowMode("set");
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          className="btn primary"
+          onClick={()=>{
+            const chosen = firstSel || (progress[pickShow.id] || {s:1,e:1});
 
-  updateProgressFor(pickShow.id, chosen);
-  setPickShowId(null);
-  openShow(pickShow.id);
-}}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-          <p className="muted" style={{fontSize:14,marginTop:8}}>Your feed will only show posts up to your selected episode.</p>
-        </Modal>
-      )}
+            // NEW: tell the dock your BB progress
+            if (pickShow.id === "bb") {
+              window.dispatchEvent(new CustomEvent("dock:progress", {
+                detail: { showId: "bb", s: chosen.s, e: chosen.e }
+              }));
+            }
+
+            updateProgressFor(pickShow.id, chosen);
+            setPickShowId(null);
+            setPickShowMode("set");
+            openShow(pickShow.id);
+          }}
+        >
+          Confirm
+        </button>
+      </div>
+    </div>
+
+    <p className="muted" style={{fontSize:14,marginTop:8}}>
+      Your feed will only show posts up to your selected episode.
+    </p>
+  </Modal>
+)}
+
     </section>
   );
 }
