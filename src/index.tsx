@@ -3510,7 +3510,7 @@ const header = (
             }
           }}
         >
-          NO-SPOILERS
+          SIDEBAR
         </h1>
       </div>
 
