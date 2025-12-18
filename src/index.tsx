@@ -99,9 +99,9 @@ header.site{
 }
 
 /* On narrower screens, let it sit clearly below and be a bit smaller */
-@media (max-width: 1280px){
+@media (max-width: 1080px){
   .siteTagline{
-    font-size:18px;
+    font-size:14px;
     padding:0 16px;
     margin-top:-6px;     /* no negative margin = “pops down” */
   }
