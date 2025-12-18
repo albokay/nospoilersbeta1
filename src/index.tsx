@@ -3544,7 +3544,7 @@ const header = (
 
     {/* Tagline sits below the row; CSS will “tuck” it up on wide screens */}
     <div className="siteTagline">
-      TALK ABOUT THE SHOWS YOU&apos;RE CATCHING UP ON
+      proof of concept mockup for spoiler-safe TV discussion forum
     </div>
   </header>
 );
