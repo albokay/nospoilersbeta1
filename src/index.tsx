@@ -3614,27 +3614,8 @@ const header = (
                 Use the “find a show” search field to go to a new show forum. They are all empty for now. <br></br><br></br>
                 The back button on your browser window will leave this mockup site altogether, and refreshing your page will reset it. Click and post with abandon — nothing is breakable or actually publishable for now!<br></br><br></br>
                 — Alborz<br></br><br></br>
-                P.S.: Below are some notes for myself about where things are and where they can go. Feel free to read them if you are interested.
 </p>
-                <br></br><br></br><br></br>
-                <div className="frontAccent">
-                <p>IDEAS FOR THE FUTURE:</p>
-                <p>- functional friends / watch together features</p>
-                <p>- a.i.-generated wiki-style-summaries of show (plot / characters / etc.), up to your viewing progress </p>
-                <p>- expand to narrative games</p>
-                <p>- figure out: how does a site like this launch? with only a handful of shows and reach out to show communities to build beta users? Is it like Facebook — growing show by show (vs college by college)? Or can anyone create a new forum for whatever show they’re watching?</p>
-                <p>- there's nothing sadder than an inactive forum. a watch diary vibe (like Letterboxd) at the start will help create value for users as the forum side of things picks up steam</p>
-                <p>- figure out way of seeding shows with links to existing articles (using dates to align with watch progress) and existing external forum posts. this is another potential way of creating value before forum is fully active</p>
-                <p>- think more about anti-scroll, anti-distraction, anti-addiction ethos. This is a healthy place to engage deeply and intentionally with the shows you love to watch</p>
-                <p>- tag show types on the backend (prestige, comedy, sitcom, reality, etc.) so that prompt suggestions are populated according to show type</p>
-                <br></br>
-                <p>THOUGHTS ABOUT TROLLS:</p>
-                <p>- there is a lot of trolling friction that makes the troll's experience unsatisfying</p>
-                <p>- remember, once a troll’s progress is set, their posts won’t be visible to earlier watchers. Trolling only moves forward in time.</p>
-                <p>- a troll has to pick a season and episode from which to troll. if they pick very early, then they don't have as much runway to troll because most of the forum will be hidden from them. And most of the reactions to their troll will be hidden from them. If they pick later, then fewer viewers will see their trolling. All of this discourages the behavior</p>
-                <p>- enforce time limits on updating show progress (since someone can’t honestly have watched a new episode in less time than an episode length)</p>
-                <p>- setting your progress backwards is disabled, so a troll can’t decide to be a troll retroactively</p>
-                <p></p>
+                
               </div>
               </div>
             </div>
