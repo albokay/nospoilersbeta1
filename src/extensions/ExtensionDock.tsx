@@ -81,8 +81,9 @@ const hasReachedFriendPost =
       <div
   className="card"
   style={{
-    minWidth: 320,
-    maxWidth: 380,
+   width: 380,          // lock it
+  maxWidth: "none",    // prevent shrink-to-fit behavior
+  minWidth: 0,         // optional: remove the min constraint
     background: "rgba(0,0,0,0.25)",           // was 0.65
     border: "1px solid var(--dos-border)",
     boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
