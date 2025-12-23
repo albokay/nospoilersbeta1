@@ -39,6 +39,8 @@ const FRIEND_EPISODE = 5;
 // Your current BB progress (updated by an event from the app)
 const [bbProg, setBbProg] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
 
+const isMobile = window.matchMedia("(max-width: 700px)").matches;
+
 const hasReachedFriendPost =
   bbProg.s > FRIEND_SEASON ||
   (bbProg.s === FRIEND_SEASON && bbProg.e >= FRIEND_EPISODE);
@@ -62,7 +64,20 @@ const hasReachedFriendPost =
 };
 
   const ui = (
-    <div style={{ position: "fixed", right: 16, bottom: 16, zIndex: 2147483000 }}>
+<div
+  style={{
+    position: "fixed",
+    bottom: 16,
+    zIndex: 2147483000,
+
+    // Desktop (current behavior)
+    right: isMobile ? "auto" : 16,
+
+    // Mobile (centered)
+    left: isMobile ? "50%" : "auto",
+    transform: isMobile ? "translateX(-50%)" : "none",
+  }}
+>
       <div
   className="card"
   style={{
