@@ -3613,7 +3613,7 @@ const header = (
                 On this mock site, you can create posts (but not replies) across all forums. <br></br><br></br>
                 Use the “find a show” search field to go to a new show forum. They are all empty for now. <br></br><br></br>
                 The back button on your browser window will leave this mockup site altogether, and refreshing your page will reset it. Click and post with abandon — nothing is breakable or actually publishable for now!<br></br><br></br>
-                — Alborz<br></br><br></br></p>
+                — Alborz<br></br><br></br><br></br><br></br></p>
               </div>
               </div>
           )}
