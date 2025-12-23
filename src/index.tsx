@@ -3963,7 +3963,7 @@ const bannerRef = useRef<HTMLDivElement|null>(null);
   };
 
   return (
-    <section className="container" style={{paddingTop:16, paddingBottom: 190}}>
+    <section className="container" style={{paddingTop:16, paddingBottom: 140}}>
       {/* TWO-ROW STICKY BANNER */}
       <div className="stickybar bleed" style={{top:GLOBAL_HEADER_H}} ref={bannerRef}>
         <div className="container">
