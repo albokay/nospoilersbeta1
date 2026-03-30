@@ -154,7 +154,7 @@ export default function App() {
             </button>
           )}
           {!authLoading && user && username && (
-            <button className="btn h40" onClick={signOut} title="Sign out">
+            <button className="btn h40" onClick={() => { goHomepage(); signOut(); }} title="Sign out">
               Sign out
             </button>
           )}
