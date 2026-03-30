@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import type { Thread, Reply } from "../types";
-import { fetchRepliesForThread, insertReply, likeReply as dbLikeReply } from "../lib/db";
+import { fetchRepliesForThread, insertReply, likeReply as dbLikeReply, editReply as dbEditReply, deleteReply as dbDeleteReply } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
@@ -35,12 +35,19 @@ export default function RepliesList({
       if (cancelled) return;
       setReplies(data);
       setRepliesLoading(false);
-
     }).catch(() => setRepliesLoading(false));
     return () => { cancelled = true; };
   }, [thread.id, user]);
 
   const [localLiked, setLocalLiked] = useState<Record<string, boolean>>({});
+
+  // ── Local edit/delete state ────────────────────────────────
+  const [localEditedBody, setLocalEditedBody] = useState<Record<string, string>>({});
+  const [localDeleted, setLocalDeleted] = useState<Record<string, boolean>>({});
+  const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
+  const [editReplyBody, setEditReplyBody] = useState("");
+  const [editReplySubmitting, setEditReplySubmitting] = useState(false);
+  const [editReplyError, setEditReplyError] = useState<string | null>(null);
 
   const byId = useMemo(() => {
     const map: Record<string, Reply> = {};
@@ -157,8 +164,6 @@ export default function RepliesList({
     if (!user) { onAuthRequired(); return; }
     const alreadyLiked = likedByUserReplies[rid] || localLiked[rid];
     if (alreadyLiked) return;
-    // Pass the currently displayed count so the optimistic update uses the right base,
-    // even when likesReplies[rid] hasn't been seeded for this reply yet
     const reply = replies.find(r => r.id === rid);
     const baseCount = likesReplies[rid] ?? reply?.likes ?? 0;
     likeReply(rid, baseCount);
@@ -167,8 +172,50 @@ export default function RepliesList({
       await dbLikeReply(user.id, rid);
     } catch (err) {
       console.error("Failed to like reply:", err);
-      // Rollback local
       setLocalLiked((prev) => { const n = { ...prev }; delete n[rid]; return n; });
+    }
+  };
+
+  // ── Edit/delete reply handlers ─────────────────────────────
+  const handleStartEditReply = (r: Reply) => {
+    setEditingReplyId(r.id);
+    setEditReplyBody(localEditedBody[r.id] ?? r.body);
+    setEditReplyError(null);
+    // Close reply-to form if open
+    setReplyingToId(null);
+  };
+
+  const handleCancelEditReply = () => {
+    setEditingReplyId(null);
+    setEditReplyBody("");
+    setEditReplyError(null);
+  };
+
+  const handleSaveEditReply = async (rid: string) => {
+    const body = editReplyBody.trim();
+    if (!body) return;
+    setEditReplySubmitting(true);
+    setEditReplyError(null);
+    try {
+      await dbEditReply(rid, body);
+      setLocalEditedBody(prev => ({ ...prev, [rid]: body }));
+      setReplies(prev => prev.map(r => r.id === rid ? { ...r, body, isEdited: true } : r));
+      setEditingReplyId(null);
+    } catch (e: any) {
+      setEditReplyError(e?.message ?? "Failed to save. Please try again.");
+    } finally {
+      setEditReplySubmitting(false);
+    }
+  };
+
+  const handleDeleteReply = async (rid: string) => {
+    if (!window.confirm("Delete this reply? It will turn into a stub.")) return;
+    try {
+      await dbDeleteReply(rid);
+      setLocalDeleted(prev => ({ ...prev, [rid]: true }));
+      setReplies(prev => prev.map(r => r.id === rid ? { ...r, isDeleted: true } : r));
+    } catch {
+      alert("Failed to delete. Please try again.");
     }
   };
 
@@ -319,6 +366,26 @@ export default function RepliesList({
       {repliesLoading && <div className="muted" style={{ fontSize: 14 }}>Loading replies…</div>}
       <div style={{ display: "grid", gap: 12 }}>
         {replies.map((r) => {
+          const isReplyDeleted = r.isDeleted || !!localDeleted[r.id];
+          const isReplyEdited = r.isEdited;
+          const isReplyOwn = !!profile && r.author === profile.username;
+
+          // Deleted stubs always show (no spoiler content in stub text)
+          if (isReplyDeleted) {
+            return (
+              <div
+                key={r.id}
+                id={`c-${r.id}`}
+                className="card"
+                style={{ marginLeft: 8, opacity: 0.45, borderLeft: "4px solid var(--dos-border)" }}
+              >
+                <span className="muted" style={{ fontSize: 14 }}>
+                  (@{r.author}) deleted their reply.
+                </span>
+              </div>
+            );
+          }
+
           const vis = isVisible(r);
           const parent = r.replyToId ? byId[r.replyToId] : null;
           const likeCt = likesReplies[r.id] ?? r.likes;
@@ -343,6 +410,8 @@ export default function RepliesList({
             );
           }
 
+          const isCurrentlyEditing = editingReplyId === r.id;
+
           return (
             <div
               key={r.id}
@@ -357,6 +426,9 @@ export default function RepliesList({
                     <span style={{ color: "var(--dos-cyan)", fontWeight: 700 }}>
                       S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
                     </span>
+                  )}
+                  {isReplyEdited && (
+                    <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
                   )}
                 </div>
                 <div className="muted" style={{ fontSize: 12 }}>{timeAgo(r.updatedAt)}</div>
@@ -375,22 +447,62 @@ export default function RepliesList({
                 </div>
               )}
 
-              <div style={{ marginTop: 8, fontSize: 15 }}>{r.body}</div>
+              {isCurrentlyEditing ? (
+                /* ── Inline edit form ── */
+                <div style={{ marginTop: 8 }}>
+                  <textarea
+                    value={editReplyBody}
+                    onChange={e => setEditReplyBody(e.target.value)}
+                    rows={3}
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      background: "var(--dos-bg)", color: "var(--dos-fg)",
+                      border: "1px solid var(--dos-border)", borderRadius: 4,
+                      padding: "8px 10px", fontSize: 14, resize: "vertical",
+                      fontFamily: "inherit",
+                    }}
+                    autoFocus
+                  />
+                  {editReplyError && (
+                    <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{editReplyError}</div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+                    <button className="btn" onClick={handleCancelEditReply} disabled={editReplySubmitting}>Cancel</button>
+                    <button
+                      className="btn primary"
+                      onClick={() => handleSaveEditReply(r.id)}
+                      disabled={editReplySubmitting || !editReplyBody.trim()}
+                    >
+                      {editReplySubmitting ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginTop: 8, fontSize: 15 }}>{r.body}</div>
+              )}
 
-              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 10 }}>
-                <LikeBadge
-                  count={likeCt}
-                  userLiked={userLiked}
-                  onClick={() => handleLikeReply(r.id)}
-                  title="this post!"
-                />
-                <button
-                  className="btn"
-                  onClick={() => replyingToId === r.id ? handleCancelReply() : handleReplyClick(r.id)}
-                >
-                  {replyingToId === r.id ? "Cancel" : "Reply"}
-                </button>
-              </div>
+              {!isCurrentlyEditing && (
+                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                  <LikeBadge
+                    count={likeCt}
+                    userLiked={userLiked}
+                    onClick={() => handleLikeReply(r.id)}
+                    title="this post!"
+                  />
+                  {isReplyOwn && (
+                    <>
+                      <button className="btn" style={{ fontSize: 13 }} onClick={() => handleStartEditReply(r)}>Edit</button>
+                      <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={() => handleDeleteReply(r.id)}>Delete</button>
+                    </>
+                  )}
+                  <button
+                    className="btn"
+                    onClick={() => replyingToId === r.id ? handleCancelReply() : handleReplyClick(r.id)}
+                  >
+                    {replyingToId === r.id ? "Cancel" : "Reply"}
+                  </button>
+                </div>
+              )}
 
               {replyingToId === r.id && (
                 <div style={{ marginTop: 10, borderTop: "1px solid var(--dos-border)", paddingTop: 10 }}>

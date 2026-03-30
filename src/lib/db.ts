@@ -33,6 +33,8 @@ function rowToThread(row: any): Thread {
     updatedAt:  new Date(row.updated_at).getTime(),
     likes:      row.likes_count ?? 0,
     isPrivate:  row.is_private ?? false,
+    isDeleted:  row.is_deleted ?? false,
+    isEdited:   row.is_edited ?? false,
   };
 }
 
@@ -47,7 +49,6 @@ export async function fetchThreadsForShow(showId: string): Promise<{
     .from("threads")
     .select("*, replies(id, season, episode, created_at)")
     .eq("show_id", showId)
-    .eq("is_private", false)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   const threads = (data ?? []).map(rowToThread);
@@ -84,6 +85,31 @@ export async function insertThread(data: {
     .from("threads").insert(row).select().single();
   if (error) throw error;
   return rowToThread(inserted);
+}
+
+export async function editThread(threadId: string, title: string, body: string): Promise<void> {
+  const preview = body.slice(0, 240) + (body.length > 240 ? "…" : "");
+  const { error } = await supabase
+    .from("threads")
+    .update({ title, body, preview, is_edited: true, updated_at: new Date().toISOString() })
+    .eq("id", threadId);
+  if (error) throw error;
+}
+
+export async function deleteThread(threadId: string): Promise<void> {
+  const { error } = await supabase
+    .from("threads")
+    .update({ is_deleted: true })
+    .eq("id", threadId);
+  if (error) throw error;
+}
+
+export async function makeThreadPrivate(threadId: string): Promise<void> {
+  const { error } = await supabase
+    .from("threads")
+    .update({ is_private: true })
+    .eq("id", threadId);
+  if (error) throw error;
 }
 
 // ── Likes ─────────────────────────────────────────────────────────────────────
@@ -128,6 +154,8 @@ function rowToReply(row: any): Reply {
     updatedAt: new Date(row.updated_at).getTime(),
     likes:     row.likes_count ?? 0,
     replyToId: row.reply_to_id ?? undefined,
+    isDeleted: row.is_deleted ?? false,
+    isEdited:  row.is_edited ?? false,
   };
 }
 
@@ -141,6 +169,22 @@ export async function fetchRepliesForThread(threadId: string): Promise<Reply[]> 
   return (data ?? []).map(rowToReply);
 }
 
+export async function editReply(replyId: string, body: string): Promise<void> {
+  const { error } = await supabase
+    .from("replies")
+    .update({ body, is_edited: true, updated_at: new Date().toISOString() })
+    .eq("id", replyId);
+  if (error) throw error;
+}
+
+export async function deleteReply(replyId: string): Promise<void> {
+  const { error } = await supabase
+    .from("replies")
+    .update({ is_deleted: true })
+    .eq("id", replyId);
+  if (error) throw error;
+}
+
 // ── Profile page queries ──────────────────────────────────────────────────────
 
 export async function fetchUserThreads(userId: string): Promise<Thread[]> {
@@ -148,7 +192,7 @@ export async function fetchUserThreads(userId: string): Promise<Thread[]> {
     .from("threads")
     .select("*")
     .eq("author_id", userId)
-    .eq("is_private", false)
+    .eq("is_deleted", false)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(rowToThread);
@@ -160,7 +204,7 @@ export async function fetchRepliesToUserThreads(userId: string): Promise<{ reply
     .from("threads")
     .select("*")
     .eq("author_id", userId)
-    .eq("is_private", false);
+    .eq("is_deleted", false);
   if (tErr) throw tErr;
   const threads = (threadData ?? []).map(rowToThread);
   if (!threads.length) return [];
@@ -174,6 +218,7 @@ export async function fetchRepliesToUserThreads(userId: string): Promise<{ reply
     .select("*")
     .in("thread_id", threadIds)
     .neq("author_id", userId)
+    .eq("is_deleted", false)
     .order("created_at", { ascending: false })
     .limit(200);
   if (rErr) throw rErr;

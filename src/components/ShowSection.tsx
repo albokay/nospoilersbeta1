@@ -334,6 +334,17 @@ export default function ShowSection({
           onAuthRequired={onAuthRequired}
           hiddenNewReplies={getNewCounts(thread.id).hiddenNew}
           onRiskyReveal={(rid: string) => setRiskyRevealedIds(prev => new Set([...prev, rid]))}
+          onThreadUpdate={(updated: Thread) => setDbThreads(prev => prev.map(t => t.id === updated.id ? updated : t))}
+          onThreadDelete={() => {
+            setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isDeleted: true } : t));
+            setActiveThreadId(null);
+            setTimeout(() => scrollToShowTop(), 0);
+          }}
+          onThreadMakePrivate={() => {
+            setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPrivate: true } : t));
+            setActiveThreadId(null);
+            setTimeout(() => scrollToShowTop(), 0);
+          }}
         />
       ) : (
         <div style={{ marginTop: 12 }}>
@@ -346,6 +357,25 @@ export default function ShowSection({
             const isOwn = !!username && t.author === username;
             const likeCt = likesThreads[t.id] ?? t.likes;
             const { visibleNew, hiddenNew, totalVisible } = getNewCounts(t.id);
+
+            // Deleted or private stubs — not clickable
+            if (t.isDeleted || t.isPrivate) {
+              return (
+                <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
+                  <div
+                    className="card"
+                    style={{ margin: 0, opacity: 0.45, cursor: "default", borderLeft: "1px solid var(--dos-border)" }}
+                  >
+                    <div className="muted" style={{ fontSize: 14, padding: "2px 0" }}>
+                      {t.isDeleted
+                        ? `(@${t.author}) deleted their post.`
+                        : `🔒 (@${t.author}) turned their post private.`
+                      }
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
@@ -385,7 +415,10 @@ export default function ShowSection({
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h2 style={{ margin: 0, fontSize: 22 }} className="title">
-                    <span>{t.titleBase}</span>
+                    {t.titleBase}
+                    {t.isEdited && (
+                      <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
+                    )}
                     {t.showId !== "simshow" && (
                       <span style={{ color: "var(--dos-cyan)" }}>{` — S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")}`}</span>
                     )}
