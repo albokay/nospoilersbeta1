@@ -40,6 +40,7 @@ export default function ShowSection({
   const [dbThreads, setDbThreads] = useState<Thread[]>([]);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
   const [replyMeta, setReplyMeta] = useState<Record<string, ReplyMeta[]>>({});
+  const [hasExternalReplies, setHasExternalReplies] = useState<Record<string, boolean>>({});
   const [threadsLoading, setThreadsLoading] = useState(false);
 
   // ── New-reply tracking (persisted to localStorage) ────────
@@ -80,11 +81,12 @@ export default function ShowSection({
     let cancelled = false;
     setThreadsLoading(true);
     setDbThreads([]);
-    fetchThreadsForShow(showId).then(async ({ threads, replyCounts: rc, replyMeta: rm }) => {
+    fetchThreadsForShow(showId).then(async ({ threads, replyCounts: rc, replyMeta: rm, hasExternalReplies: her }) => {
       if (cancelled) return;
       setDbThreads(threads);
       setReplyCounts(rc);
       setReplyMeta(rm);
+      setHasExternalReplies(her);
       // Initialize both timestamps for threads encountered for the first time
       const now = Date.now();
       setLastOpenedAt(prev => {
@@ -336,15 +338,24 @@ export default function ShowSection({
           onRiskyReveal={(rid: string) => setRiskyRevealedIds(prev => new Set([...prev, rid]))}
           onThreadUpdate={(updated: Thread) => setDbThreads(prev => prev.map(t => t.id === updated.id ? updated : t))}
           onThreadDelete={() => {
-            setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isDeleted: true } : t));
+            const tid = activeThreadId!;
+            const hadExternal = hasExternalReplies[tid] ?? false;
+            if (hadExternal) {
+              setDbThreads(prev => prev.map(t => t.id === tid ? { ...t, isDeleted: true } : t));
+            } else {
+              setDbThreads(prev => prev.filter(t => t.id !== tid));
+            }
             setActiveThreadId(null);
             setTimeout(() => scrollToShowTop(), 0);
           }}
           onThreadMakePrivate={() => {
-            setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPrivate: true } : t));
+            // Completely remove from list — others see nothing
+            setDbThreads(prev => prev.filter(t => t.id !== activeThreadId));
             setActiveThreadId(null);
             setTimeout(() => scrollToShowTop(), 0);
           }}
+          hasExternalReplies={hasExternalReplies[thread.id] ?? false}
+          onExternalReplyAdded={(tid: string) => setHasExternalReplies(prev => ({ ...prev, [tid]: true }))}
         />
       ) : (
         <div style={{ marginTop: 12 }}>
@@ -357,20 +368,31 @@ export default function ShowSection({
             const isOwn = !!username && t.author === username;
             const likeCt = likesThreads[t.id] ?? t.likes;
             const { visibleNew, hiddenNew, totalVisible } = getNewCounts(t.id);
+            const hasExternal = hasExternalReplies[t.id] ?? false;
 
-            // Deleted or private stubs — not clickable
-            if (t.isDeleted || t.isPrivate) {
+            // Private: owner sees normally (with 🔒 in title); others see nothing
+            if (t.isPrivate && !isOwn) return null;
+
+            // Deleted:
+            //   - no external replies → completely gone for everyone
+            //   - has external replies → show clickable stub so others can still see replies
+            if (t.isDeleted) {
+              if (!hasExternal) return null;
               return (
                 <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
                   <div
-                    className="card"
-                    style={{ margin: 0, opacity: 0.45, cursor: "default", borderLeft: "1px solid var(--dos-border)" }}
+                    className="card threadCard"
+                    style={{ margin: 0, opacity: 0.72, cursor: "pointer", borderLeft: "1px solid var(--dos-border)", position: "relative" }}
+                    onClick={() => {
+                      setActiveThreadId(t.id);
+                      setTimeout(() => scrollToShowTop(), 0);
+                    }}
                   >
                     <div className="muted" style={{ fontSize: 14, padding: "2px 0" }}>
-                      {t.isDeleted
-                        ? `(@${t.author}) deleted their post.`
-                        : `🔒 (@${t.author}) turned their post private.`
-                      }
+                      (@{t.author}) deleted their post.
+                    </div>
+                    <div className="replyCount">
+                      <span>💬 {totalVisible}</span>
                     </div>
                   </div>
                 </div>
@@ -415,6 +437,7 @@ export default function ShowSection({
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h2 style={{ margin: 0, fontSize: 22 }} className="title">
+                    {t.isPrivate && <span style={{ marginRight: 4 }}>🔒</span>}
                     {t.titleBase}
                     {t.isEdited && (
                       <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>

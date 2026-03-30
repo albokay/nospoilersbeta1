@@ -9,7 +9,7 @@ import LikeBadge from "./LikeBadge";
 export default function RepliesList({
   thread, progressForShow, riskyMode = false,
   likeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
-  threadReplyOpen, onThreadReplyClose, onRiskyReveal,
+  threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded,
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
@@ -22,6 +22,7 @@ export default function RepliesList({
   threadReplyOpen?: boolean;
   onThreadReplyClose?: () => void;
   onRiskyReveal?: (rid: string) => void;
+  onExternalReplyAdded?: () => void;
 }) {
   const { user, profile } = useAuth();
 
@@ -99,6 +100,7 @@ export default function RepliesList({
       setReplies((prev) => [...prev, newReply]);
       setThreadReplyBody("");
       onThreadReplyClose?.();
+      if (profile.username !== thread.author) onExternalReplyAdded?.();
       setTimeout(() => {
         const el = document.getElementById(`c-${newReply.id}`);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -149,6 +151,7 @@ export default function RepliesList({
       setReplies((prev) => [...prev, newReply]);
       setReplyingToId(null);
       setReplyBody("");
+      if (profile.username !== thread.author) onExternalReplyAdded?.();
       setTimeout(() => {
         const el = document.getElementById(`c-${newReply.id}`);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });

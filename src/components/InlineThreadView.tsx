@@ -12,6 +12,7 @@ export default function InlineThreadView({
   likeReply, likesReplies, likedByUserReplies,
   mode, focusReplyId, onAuthRequired, hiddenNewReplies = 0, onRiskyReveal,
   onThreadUpdate, onThreadDelete, onThreadMakePrivate,
+  hasExternalReplies = false, onExternalReplyAdded,
 }: {
   thread: Thread;
   show: any;
@@ -32,6 +33,8 @@ export default function InlineThreadView({
   onThreadUpdate?: (updated: Thread) => void;
   onThreadDelete?: () => void;
   onThreadMakePrivate?: () => void;
+  hasExternalReplies?: boolean;
+  onExternalReplyAdded?: (threadId: string) => void;
 }) {
   const { user, profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
@@ -180,22 +183,30 @@ export default function InlineThreadView({
               {show.name} • S{thread.season}E{thread.episode} • Started by <span className="username">@{thread.author}</span> • {timeAgo(thread.updatedAt)}
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <div style={{ whiteSpace: "pre-wrap" }}>{thread.body}</div>
-            </div>
+            {thread.isDeleted ? (
+              <div className="muted" style={{ marginTop: 12, fontSize: 14, fontStyle: "italic" }}>
+                (@{thread.author}) deleted their post.
+              </div>
+            ) : (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ whiteSpace: "pre-wrap" }}>{thread.body}</div>
+              </div>
+            )}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-              {isOwn && (
-                <>
-                  <button className="btn" style={{ fontSize: 13 }} onClick={handleStartEdit}>Edit</button>
-                  <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={handleDelete}>Delete</button>
-                  {!thread.isPrivate && (
-                    <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePrivate}>🔒 Private</button>
-                  )}
-                </>
-              )}
-              <button className="btn" onClick={handleReplyToThread}>Reply</button>
-            </div>
+            {!thread.isDeleted && (
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                {isOwn && (
+                  <>
+                    <button className="btn" style={{ fontSize: 13 }} onClick={handleStartEdit}>Edit</button>
+                    <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={handleDelete}>Delete</button>
+                    {!thread.isPrivate && !hasExternalReplies && (
+                      <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePrivate}>Turn Private</button>
+                    )}
+                  </>
+                )}
+                <button className="btn" onClick={handleReplyToThread}>Reply</button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -213,6 +224,7 @@ export default function InlineThreadView({
           threadReplyOpen={threadReplyOpen}
           onThreadReplyClose={() => setThreadReplyOpen(false)}
           onRiskyReveal={onRiskyReveal}
+          onExternalReplyAdded={onExternalReplyAdded ? () => onExternalReplyAdded(thread.id) : undefined}
         />
       </div>
     </section>

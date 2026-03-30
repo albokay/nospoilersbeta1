@@ -44,16 +44,18 @@ export async function fetchThreadsForShow(showId: string): Promise<{
   threads: Thread[];
   replyCounts: Record<string, number>;
   replyMeta: Record<string, ReplyMeta[]>;
+  hasExternalReplies: Record<string, boolean>;
 }> {
   const { data, error } = await supabase
     .from("threads")
-    .select("*, replies(id, season, episode, created_at)")
+    .select("*, replies(id, season, episode, created_at, author_id)")
     .eq("show_id", showId)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   const threads = (data ?? []).map(rowToThread);
   const replyCounts: Record<string, number> = {};
   const replyMeta: Record<string, ReplyMeta[]> = {};
+  const hasExternalReplies: Record<string, boolean> = {};
   for (const row of data ?? []) {
     const replies = row.replies ?? [];
     replyCounts[row.id] = replies.length;
@@ -63,8 +65,9 @@ export async function fetchThreadsForShow(showId: string): Promise<{
       episode: r.episode,
       createdAt: new Date(r.created_at).getTime(),
     }));
+    hasExternalReplies[row.id] = replies.some((r: any) => r.author_id !== row.author_id);
   }
-  return { threads, replyCounts, replyMeta };
+  return { threads, replyCounts, replyMeta, hasExternalReplies };
 }
 
 // ── Write: threads ───────────────────────────────────────────────────────────
