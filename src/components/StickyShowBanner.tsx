@@ -12,7 +12,7 @@ export default function StickyShowBanner({ title, season, episode, onBack }: Pro
 
   return (
     // Sits right under a 48px site header (h-12). If your header is different, adjust top-12.
-    <div className="sticky top-12 z-40 bg-white/80 backdrop-blur border-b">
+    <div className="sticky top-12 z-40 bg-white/95 backdrop-blur border-b border-[#E0DDD8]">
       <div className="max-w-5xl mx-auto px-0 py-2 flex items-center justify-between">
         <div className="px-4">
           <div className="text-xs uppercase tracking-wider text-gray-500">Show</div>
@@ -28,14 +28,14 @@ export default function StickyShowBanner({ title, season, episode, onBack }: Pro
           {onBack ? (
             <button
               onClick={onBack}
-              className="inline-flex items-center gap-1 text-sm border rounded-full px-3 py-1 hover:bg-mist"
+              className="inline-flex items-center gap-1 text-sm border border-[#E0DDD8] rounded-full px-3 py-1 hover:border-[#5B9A72] hover:text-[#5B9A72] transition-colors"
             >
               ← Back to {title}
             </button>
           ) : (
             <Link
               to={`/show/${slug}`}
-              className="inline-flex items-center gap-1 text-sm border rounded-full px-3 py-1 hover:bg-mist"
+              className="inline-flex items-center gap-1 text-sm border border-[#E0DDD8] rounded-full px-3 py-1 hover:border-[#5B9A72] hover:text-[#5B9A72] transition-colors"
             >
               ← Back to {title}
             </Link>

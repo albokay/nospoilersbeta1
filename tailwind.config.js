@@ -7,9 +7,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: '#111217',
-        mist: '#f5f6f8',
-        pop: '#5B9DFF'
+        ink: '#1C1C1C',
+        mist: '#F5F0E8',
+        pop: '#5B9A72',
+        orange: '#E05535',
+        gold: '#F0B429',
       }
     },
   },

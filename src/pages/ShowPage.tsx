@@ -35,7 +35,7 @@ export default function ShowPage() {
 
         <div className="flex flex-wrap gap-2">
           {data.seasons.map(s => (
-            <Link key={s.n} to={`?s=${s.n}`} className="text-sm border rounded-full px-3 py-1 hover:bg-mist">
+            <Link key={s.n} to={`?s=${s.n}`} className="text-sm border border-[#E0DDD8] rounded-full px-3 py-1 hover:border-[#5B9A72] hover:text-[#5B9A72] transition-colors">
               Season {s.n}
             </Link>
           ))}
@@ -43,13 +43,13 @@ export default function ShowPage() {
 
         <div className="space-y-3">
           {data.posts.length === 0 && (
-            <p className="text-gray-600 text-sm">
+            <p className="text-[#888888] text-sm">
               No posts yet. Be the first to start a spoiler-safe thread.
             </p>
           )}
           {data.posts.map(p => (
-            <article key={p.id} className="border rounded-xl p-4">
-              <div className="text-xs text-gray-500">S{p.season} • E{p.episode} • by {p.author}</div>
+            <article key={p.id} className="border border-[#E0DDD8] rounded-xl p-4">
+              <div className="text-xs text-[#888888]">S{p.season} • E{p.episode} • by {p.author}</div>
               <div className="mt-1">{p.text}</div>
               <div className="mt-3">
                 <Link to={`?s=${p.season}&e=${p.episode}`} className="text-sm underline">

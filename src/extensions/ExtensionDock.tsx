@@ -39,29 +39,56 @@ const FRIEND_EPISODE = 5;
 // Your current BB progress (updated by an event from the app)
 const [bbProg, setBbProg] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
 
+const isMobile = window.matchMedia("(max-width: 700px)").matches;
+
+const hasReachedFriendPost =
+  bbProg.s > FRIEND_SEASON ||
+  (bbProg.s === FRIEND_SEASON && bbProg.e >= FRIEND_EPISODE);
+
 
   const handleMikeClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    // Fire a custom event the main app can listen for (optional future wiring)
-    window.dispatchEvent(new CustomEvent("dock:open-thread-by-title", {
-      detail: { show: "Severance", title: "Knickknacks as ritual — S01E01" }
-    }));
-    // Demo feedback so you can see it's clickable now
-    try { alert('Opening "Knickknacks as ritual — S01E01" in Severance'); } catch {}
-  };
+  e.preventDefault();
+  // Fire a custom event the main app can listen for (optional future wiring)
+  window.dispatchEvent(
+    new CustomEvent("dock:open-thread-by-title", {
+      detail: {
+        show: "Breaking Bad",
+        title: "Gus Fring: The Most Polite Threat in TV History",
+      },
+    })
+  );
+  // Demo feedback so you can see it's clickable now
+  try {
+    alert('Link to friend alerts not working yet!');
+  } catch {}
+};
 
   const ui = (
-    <div style={{ position: "fixed", right: 16, bottom: 16, zIndex: 2147483000 }}>
+<div
+  style={{
+    position: "fixed",
+    bottom: 16,
+    zIndex: 2147483000,
+
+    // Desktop (current behavior)
+    right: isMobile ? "auto" : 16,
+
+    // Mobile (centered)
+    left: isMobile ? "50%" : "auto",
+    transform: isMobile ? "translateX(-50%)" : "none",
+  }}
+>
       <div
   className="card"
   style={{
-    minWidth: 320,
-    maxWidth: 380,
-    background: "rgba(0,0,0,0.25)",           // was 0.65
-    border: "1px solid var(--dos-border)",
-    boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
-    backdropFilter: "blur(10px)",              // <-- add
-    WebkitBackdropFilter: "blur(10px)",        // <-- add (Safari)
+   width: 380,
+  maxWidth: "none",
+  minWidth: 0,
+    background: "rgba(201,168,67,0.97)",
+    border: "1px solid rgba(255,255,255,0.35)",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.20)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
   }}
 >
 
@@ -96,9 +123,9 @@ const [bbProg, setBbProg] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
   // compare === -1 → behind friend
   return (
     <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
-      <span style={{ color: "var(--danger, #ff3b30)" }}>•</span>&nbsp;You’re watching <b>Breaking Bad</b> with <b>@_quietloop</b>.{" "}
+      <span style={{ color: "var(--danger, #f45028)" }}>•</span>&nbsp;You’re watching <b>Breaking Bad</b> with <b>@_quietloop</b>.{" "}
       They just watched <b>S{String(FRIEND_SEASON).padStart(2,"0")} E{String(FRIEND_EPISODE).padStart(2,"0")}</b>.&nbsp;
-      <span style={{ color: "var(--danger, #ff3b30)" }}>Time to catch up!</span>
+      <span style={{ color: "var(--danger, #f45028)" }}>Time to catch up!</span>
     </div>
   );
 })()}
@@ -111,20 +138,26 @@ const [bbProg, setBbProg] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
         </div>
 
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          <li style={{ fontSize: 12, lineHeight: 1.35, margin: "6px 0" }}>
-            <b>@SlateOrbit</b> just <span style={hl}>watched</span> <b>S01E03</b> of <b>Severance</b>.
-          </li>
-          <li style={{ fontSize: 12, lineHeight: 1.35, margin: "6px 0" }}>
-            <a
-              href="#"
-              onClick={handleMikeClick}
-              style={{ color: "inherit", textDecoration: "underline", cursor: "pointer" }}
-              aria-label='Open post: "Knickknacks as ritual — S01E01" in Severance'
-            >
-              <b>@LoomSignal</b> just <span style={hl}>posted</span> about <b>Severance S01E01</b>.
-            </a>
-          </li>
-        </ul>
+  <li style={{ fontSize: 12, lineHeight: 1.35, margin: "6px 0" }}>
+    <b>@SlateOrbit</b> <span style={hl}>watched</span> <b>S01E03</b> of <b>Breaking Bad</b>.
+  </li>
+
+  {hasReachedFriendPost && (
+    <li style={{ fontSize: 12, lineHeight: 1.35, margin: "6px 0" }}>
+      <a
+        href="#"
+        onClick={handleMikeClick}
+        style={{ color: "inherit", textDecoration: "underline", cursor: "pointer" }}
+        aria-label='Open post: "Gus Fring: The Most Polite Threat in TV History" in Breaking Bad'
+      >
+        <b>@_quietloop</b> <span style={hl}>posted</span> about{" "}
+        <b>Breaking Bad S04E05</b>.
+      </a>
+    </li>
+  )}
+</ul>
+
+
       </div>
     </div>
   );
