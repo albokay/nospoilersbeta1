@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
+import { useAuth } from "./lib/auth";
 import ExtensionDock from "./extensions/ExtensionDock";
 import SearchShows from "./components/SearchShows";
 import YourShowsSelect from "./components/YourShowsSelect";
@@ -9,6 +10,7 @@ import ShowSection from "./components/ShowSection";
 import ProfilePage from "./components/ProfilePage";
 import Modal from "./components/Modal";
 import OneSelectProgress from "./components/OneSelectProgress";
+import AuthModal from "./components/AuthModal";
 
 const SINGLE_PAGE = true;
 const GLOBAL_HEADER_H = 72;
@@ -16,7 +18,9 @@ const GLOBAL_HEADER_H = 72;
 export default function App() {
   useEffect(injectDOSStyles, []);
 
-  const username = "hi_itsme";
+  const { user, profile, loading: authLoading, signOut } = useAuth();
+  const username = profile?.username ?? null;
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const [expandedShowId, setExpandedShowId] = useState<string | null>(null);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -127,21 +131,33 @@ export default function App() {
           </h1>
         </div>
 
-        <div style={{ marginLeft: "auto", marginRight: 20, display: "flex", alignItems: "center" }}>
-          <button
-            className="profileChip"
-            onClick={() => {
-              setExpandedShowId(null);
-              setActiveThreadId(null);
-              setFocusReplyId(null);
-              setShowProfile(true);
-              requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-            }}
-            title="View profile"
-          >
-            <span className="avatar">h</span>
-            <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>hi_itsme</span>
-          </button>
+        <div style={{ marginLeft: "auto", marginRight: 20, display: "flex", alignItems: "center", gap: 8 }}>
+          {!authLoading && !user && (
+            <button className="btn h40" onClick={() => setShowAuthModal(true)}>
+              Sign in / Join
+            </button>
+          )}
+          {!authLoading && user && username && (
+            <button
+              className="profileChip"
+              onClick={() => {
+                setExpandedShowId(null);
+                setActiveThreadId(null);
+                setFocusReplyId(null);
+                setShowProfile(true);
+                requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+              }}
+              title="View profile"
+            >
+              <span className="avatar">{username[0].toUpperCase()}</span>
+              <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
+            </button>
+          )}
+          {!authLoading && user && username && (
+            <button className="btn h40" onClick={signOut} title="Sign out">
+              Sign out
+            </button>
+          )}
         </div>
       </div>
 
@@ -155,6 +171,7 @@ export default function App() {
     <section className="container" style={{ paddingBottom: 28 }}>
       {header}
       <ExtensionDock />
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {!showProfile && (
         <>
           <SearchShows onPick={handlePickFromSearch} onStartNewForum={handleStartNewForum} />
@@ -204,7 +221,7 @@ export default function App() {
         </>
       )}
 
-      {showProfile && (
+      {showProfile && username && (
         <ProfilePage
           username={username}
           progress={progress}
@@ -221,7 +238,7 @@ export default function App() {
       {SINGLE_PAGE && !showProfile && expandedShowId && (
         <div style={{ marginTop: 40 }}>
           <ShowSection
-            username={username}
+            username={username ?? ""}
             showId={expandedShowId}
             progress={progress}
             updateProgressFor={(sid: string, next: { s: number; e: number }) => {

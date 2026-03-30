@@ -1,5 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
+import { AuthProvider } from "./lib/auth";
 import App from "./App";
 
 declare global {
@@ -10,4 +11,8 @@ if (!window.__reactRoot) {
   window.__reactRoot = createRoot(document.getElementById("root")!);
 }
 
-window.__reactRoot.render(<App />);
+window.__reactRoot.render(
+  <AuthProvider>
+    <App />
+  </AuthProvider>
+);
