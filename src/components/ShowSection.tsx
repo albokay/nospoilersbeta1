@@ -354,7 +354,7 @@ export default function ShowSection({
 
             return (
               <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
-                {hiddenNew > 0 && (
+                {isOwn && hiddenNew > 0 && (
                   <div style={{
                     position: "absolute", left: -14, top: "50%", transform: "translateY(-50%)",
                     width: 28, height: 28, borderRadius: "50%",

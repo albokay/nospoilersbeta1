@@ -28,7 +28,8 @@ export default function InlineThreadView({
   hiddenNewReplies?: number;
   onRiskyReveal?: (rid: string) => void;
 }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const isOwn = !!profile && thread.author === profile.username;
   const [threadReplyOpen, setThreadReplyOpen] = useState(false);
 
   useEffect(() => { onMountAlignTop?.(); }, []);
@@ -49,7 +50,7 @@ export default function InlineThreadView({
                 {` — S${String(thread.season).padStart(2, "0")}E${String(thread.episode).padStart(2, "0")}`}
               </span>
             )}
-            {hiddenNewReplies > 0 && (
+            {isOwn && hiddenNewReplies > 0 && (
               <span style={{
                 width: 28, height: 28, borderRadius: "50%",
                 background: "var(--danger)", color: "#fff",
