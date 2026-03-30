@@ -28,6 +28,10 @@ export default function ShowSection({
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [mode, setMode] = useState<"standard" | "risky">("standard");
+  const [riskyRevealedIds, setRiskyRevealedIds] = useState<Set<string>>(new Set());
+
+  // Clear risky reveals when switching back to standard, or when thread changes
+  useEffect(() => { setRiskyRevealedIds(new Set()); }, [mode, activeThreadId]);
   const [composeOpen, setComposeOpen] = useState(false);
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const topRef = bannerRef;
@@ -67,7 +71,7 @@ export default function ShowSection({
       const visible = canView({ season: r.season, episode: r.episode }, prog);
       if (visible) totalVisible++;
       if (visible && r.createdAt > openedAt) visibleNew++;
-      if (!visible && r.createdAt > baseAt) hiddenNew++;
+      if (!visible && r.createdAt > baseAt && !riskyRevealedIds.has(r.id)) hiddenNew++;
     }
     return { visibleNew, hiddenNew, totalVisible };
   };
@@ -334,6 +338,7 @@ export default function ShowSection({
           focusReplyId={focusReplyId}
           onAuthRequired={onAuthRequired}
           hiddenNewReplies={getNewCounts(thread.id).hiddenNew}
+          onRiskyReveal={(rid: string) => setRiskyRevealedIds(prev => new Set([...prev, rid]))}
         />
       ) : (
         <div style={{ marginTop: 12 }}>

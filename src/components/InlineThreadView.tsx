@@ -9,7 +9,7 @@ export default function InlineThreadView({
   thread, show, onBack, progressForShow, onMountAlignTop,
   likeThread, likedByUser, likesCount,
   likeReply, likesReplies, likedByUserReplies,
-  mode, focusReplyId, onAuthRequired, hiddenNewReplies = 0
+  mode, focusReplyId, onAuthRequired, hiddenNewReplies = 0, onRiskyReveal
 }: {
   thread: Thread;
   show: any;
@@ -26,6 +26,7 @@ export default function InlineThreadView({
   focusReplyId?: string | null;
   onAuthRequired: () => void;
   hiddenNewReplies?: number;
+  onRiskyReveal?: (rid: string) => void;
 }) {
   const { user } = useAuth();
   const [threadReplyOpen, setThreadReplyOpen] = useState(false);
@@ -100,6 +101,7 @@ export default function InlineThreadView({
           onAuthRequired={onAuthRequired}
           threadReplyOpen={threadReplyOpen}
           onThreadReplyClose={() => setThreadReplyOpen(false)}
+          onRiskyReveal={onRiskyReveal}
         />
       </div>
     </section>

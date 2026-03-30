@@ -9,7 +9,7 @@ import LikeBadge from "./LikeBadge";
 export default function RepliesList({
   thread, progressForShow, riskyMode = false,
   likeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
-  threadReplyOpen, onThreadReplyClose,
+  threadReplyOpen, onThreadReplyClose, onRiskyReveal,
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
@@ -21,6 +21,7 @@ export default function RepliesList({
   onAuthRequired: () => void;
   threadReplyOpen?: boolean;
   onThreadReplyClose?: () => void;
+  onRiskyReveal?: (rid: string) => void;
 }) {
   const { user, profile } = useAuth();
 
@@ -277,6 +278,7 @@ export default function RepliesList({
                 if (!promptFor) return;
                 const id = promptFor.id;
                 setRevealed((r) => ({ ...r, [id]: true }));
+                onRiskyReveal?.(id);
                 setPromptFor(null);
                 setTimeout(() => scrollTo(id, true), 0);
               }}
