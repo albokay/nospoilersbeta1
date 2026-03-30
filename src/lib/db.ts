@@ -36,20 +36,34 @@ function rowToThread(row: any): Thread {
   };
 }
 
-export async function fetchThreadsForShow(showId: string): Promise<{ threads: Thread[]; replyCounts: Record<string, number> }> {
+export type ReplyMeta = { id: string; season: number; episode: number; createdAt: number };
+
+export async function fetchThreadsForShow(showId: string): Promise<{
+  threads: Thread[];
+  replyCounts: Record<string, number>;
+  replyMeta: Record<string, ReplyMeta[]>;
+}> {
   const { data, error } = await supabase
     .from("threads")
-    .select("*, replies(count)")
+    .select("*, replies(id, season, episode, created_at)")
     .eq("show_id", showId)
     .eq("is_private", false)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   const threads = (data ?? []).map(rowToThread);
   const replyCounts: Record<string, number> = {};
+  const replyMeta: Record<string, ReplyMeta[]> = {};
   for (const row of data ?? []) {
-    replyCounts[row.id] = row.replies?.[0]?.count ?? 0;
+    const replies = row.replies ?? [];
+    replyCounts[row.id] = replies.length;
+    replyMeta[row.id] = replies.map((r: any) => ({
+      id: r.id,
+      season: r.season,
+      episode: r.episode,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
   }
-  return { threads, replyCounts };
+  return { threads, replyCounts, replyMeta };
 }
 
 // ── Write: threads ───────────────────────────────────────────────────────────

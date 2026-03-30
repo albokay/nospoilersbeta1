@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Thread } from "../types";
 import { seedShows } from "../lib/mockData";
 import { fetchThreadsForShow, fetchUserThreadLikes, insertThread, likeThread as dbLikeThread } from "../lib/db";
+import type { ReplyMeta } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
@@ -34,16 +35,58 @@ export default function ShowSection({
   // ── DB state ──────────────────────────────────────────────
   const [dbThreads, setDbThreads] = useState<Thread[]>([]);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+  const [replyMeta, setReplyMeta] = useState<Record<string, ReplyMeta[]>>({});
   const [threadsLoading, setThreadsLoading] = useState(false);
+
+  // ── New-reply tracking (persisted to localStorage) ────────
+  const [lastVisitedAt, setLastVisitedAt] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("ns_last_visited") || "{}"); } catch { return {}; }
+  });
+
+  const markThreadVisited = (tid: string) => {
+    setLastVisitedAt(prev => {
+      const next = { ...prev, [tid]: Date.now() };
+      localStorage.setItem("ns_last_visited", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const getNewCounts = (threadId: string) => {
+    const meta = replyMeta[threadId] ?? [];
+    const prog = progress[showId];
+    const lastSeen = lastVisitedAt[threadId] ?? Date.now();
+    let visibleNew = 0, hiddenNew = 0, totalVisible = 0;
+    for (const r of meta) {
+      const visible = canView({ season: r.season, episode: r.episode }, prog);
+      if (visible) totalVisible++;
+      if (r.createdAt > lastSeen) {
+        if (visible) visibleNew++;
+        else hiddenNew++;
+      }
+    }
+    return { visibleNew, hiddenNew, totalVisible };
+  };
 
   useEffect(() => {
     let cancelled = false;
     setThreadsLoading(true);
     setDbThreads([]);
-    fetchThreadsForShow(showId).then(async ({ threads, replyCounts: rc }) => {
+    fetchThreadsForShow(showId).then(async ({ threads, replyCounts: rc, replyMeta: rm }) => {
       if (cancelled) return;
       setDbThreads(threads);
       setReplyCounts(rc);
+      setReplyMeta(rm);
+      // Initialize lastVisitedAt for threads never seen before (so existing replies aren't flagged as new)
+      setLastVisitedAt(prev => {
+        const next = { ...prev };
+        const now = Date.now();
+        let changed = false;
+        for (const tid of Object.keys(rm)) {
+          if (!(tid in next)) { next[tid] = now; changed = true; }
+        }
+        if (changed) localStorage.setItem("ns_last_visited", JSON.stringify(next));
+        return changed ? next : prev;
+      });
       setLikesThreads((m: any) => {
         const next = { ...m };
         for (const t of threads) if (!(t.id in next)) next[t.id] = t.likes;
@@ -287,14 +330,26 @@ export default function ShowSection({
             const isRead = !!visitedThreads[t.id];
             const isOwn = !!username && t.author === username;
             const likeCt = likesThreads[t.id] ?? t.likes;
-            const replyCt = replyCounts[t.id] ?? 0;
+            const { visibleNew, hiddenNew, totalVisible } = getNewCounts(t.id);
 
             return (
+              <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
+                {hiddenNew > 0 && (
+                  <div style={{
+                    position: "absolute", left: -20, top: "50%", transform: "translateY(-50%)",
+                    width: 22, height: 22, borderRadius: "50%",
+                    background: "var(--danger)", color: "#fff",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 10, fontWeight: 800, lineHeight: 1, zIndex: 1,
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                  }}>
+                    {hiddenNew}
+                  </div>
+                )}
               <div
-                key={t.id}
                 className="card threadCard"
                 style={{
-                  margin: "12px 0",
+                  margin: 0,
                   opacity: (isRead && !isOwn) ? 0.41 : 1,
                   cursor: "pointer",
                   position: "relative",
@@ -302,6 +357,7 @@ export default function ShowSection({
                   borderLeft: isOwn ? "8px solid var(--dos-user)" : isNew ? "8px solid var(--green)" : "1px solid var(--dos-border)"
                 }}
                 onClick={() => {
+                  markThreadVisited(t.id);
                   setVisitedThreads((v: any) => ({ ...v, [t.id]: true }));
                   setNewHighlights((nh: any) => {
                     const next = { ...(nh[showId] || {}) };
@@ -332,7 +388,15 @@ export default function ShowSection({
                   <div className="clamp3">{t.preview}</div>
                 </div>
 
-                <div className="replyCount">💬 {replyCt}</div>
+                <div className="replyCount">
+                  <span style={visibleNew > 0 ? {
+                    background: "#7abd8e", color: "#fff", borderRadius: 9999,
+                    padding: "2px 7px", fontWeight: 700,
+                  } : {}}>
+                    💬 {totalVisible}
+                  </span>
+                </div>
+              </div>
               </div>
             );
           })}
