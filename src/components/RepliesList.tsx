@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import type { Thread, Reply } from "../types";
-import { repliesByThread } from "../lib/mockData";
+import { fetchRepliesForThread } from "../lib/db";
 import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
@@ -17,7 +17,18 @@ export default function RepliesList({
   likedByUserReplies: Record<string, boolean>;
   focusReplyId?: string | null;
 }) {
-  const replies = repliesByThread[thread.id] || [];
+  const [replies, setReplies] = useState<Reply[]>([]);
+  const [repliesLoading, setRepliesLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRepliesLoading(true);
+    fetchRepliesForThread(thread.id).then(data => {
+      if (!cancelled) { setReplies(data); setRepliesLoading(false); }
+    }).catch(() => setRepliesLoading(false));
+    return () => { cancelled = true; };
+  }, [thread.id]);
+
   const byId = useMemo(() => {
     const map: Record<string, Reply> = {};
     for (const r of replies) map[r.id] = r;
@@ -136,6 +147,7 @@ export default function RepliesList({
         </Modal>
       )}
 
+      {repliesLoading && <div className="muted" style={{ fontSize: 14 }}>Loading replies…</div>}
       <div style={{ display: "grid", gap: 12 }}>
         {replies.map((r) => {
           const vis = isVisible(r);

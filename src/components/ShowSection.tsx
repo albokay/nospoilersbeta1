@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Thread } from "../types";
-import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
-import { canView, visibleRepliesCount, timeAgo } from "../lib/utils";
+import { seedShows } from "../lib/mockData";
+import { fetchThreadsForShow } from "../lib/db";
+import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
 import ModeToggle from "./ModeToggle";
@@ -25,10 +26,34 @@ export default function ShowSection({
   const [searchQuery, setSearchQuery] = useState("");
   const [mode, setMode] = useState<"standard" | "risky">("standard");
   const [composeOpen, setComposeOpen] = useState(false);
-  const [threadsVersion, setThreadsVersion] = useState(0);
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const topRef = bannerRef;
 
+  // ── DB state ──────────────────────────────────────────────
+  const [dbThreads, setDbThreads] = useState<Thread[]>([]);
+  const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+  const [threadsLoading, setThreadsLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setThreadsLoading(true);
+    setDbThreads([]);
+    fetchThreadsForShow(showId).then(({ threads, replyCounts: rc }) => {
+      if (cancelled) return;
+      setDbThreads(threads);
+      setReplyCounts(rc);
+      // Seed likes state from DB counts
+      setLikesThreads((m: any) => {
+        const next = { ...m };
+        for (const t of threads) if (!(t.id in next)) next[t.id] = t.likes;
+        return next;
+      });
+      setThreadsLoading(false);
+    }).catch(() => setThreadsLoading(false));
+    return () => { cancelled = true; };
+  }, [showId]);
+
+  // ── Scoring / filtering ───────────────────────────────────
   const scoreThread = (t: Thread, q: string) => {
     const text = `${t.titleBase} ${t.preview} ${t.body} ${t.author}`.toLowerCase();
     const phrase = q.trim().toLowerCase();
@@ -46,10 +71,7 @@ export default function ShowSection({
 
   const baseVisible = useMemo(() => {
     const prog = progress[showId];
-    let list = seedThreads
-      .filter(t => t.showId === showId)
-      .filter(t => !t.isPrivate)
-      .filter(t => canView(t, prog));
+    let list = dbThreads.filter(t => canView(t, prog));
 
     if (searchQuery.trim()) {
       const withScores = list
@@ -75,9 +97,8 @@ export default function ShowSection({
         return b.updatedAt - a.updatedAt;
       });
     }
-
     return list;
-  }, [showId, progress, searchQuery, sortBy, likesThreads, threadsVersion]);
+  }, [dbThreads, progress, searchQuery, sortBy, likesThreads]);
 
   const [limit, setLimit] = useState(10);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -94,7 +115,7 @@ export default function ShowSection({
   }, [baseVisible.length]);
 
   const displayed = useMemo(() => baseVisible.slice(0, limit), [baseVisible, limit]);
-  const thread = activeThreadId ? seedThreads.find(t => t.id === activeThreadId && t.showId === showId) : null;
+  const thread = activeThreadId ? dbThreads.find(t => t.id === activeThreadId && t.showId === showId) : null;
 
   useEffect(() => {
     if (thread?.id) {
@@ -115,11 +136,11 @@ export default function ShowSection({
   };
 
   const likeThread = (tid: string) => {
-    setLikesThreads((m: any) => ({ ...m, [tid]: (m[tid] ?? (seedThreads.find(t => t.id === tid)?.likes || 0)) + 1 }));
+    setLikesThreads((m: any) => ({ ...m, [tid]: (m[tid] ?? 0) + 1 }));
     setLikedByUserThreads((u: any) => u[tid] ? u : ({ ...u, [tid]: true }));
   };
   const likeReply = (rid: string) => {
-    setLikesReplies((m: any) => ({ ...m, [rid]: (m[rid] ?? (Object.values(repliesByThread).flat().find(r => r.id === rid)?.likes || 0)) + 1 }));
+    setLikesReplies((m: any) => ({ ...m, [rid]: (m[rid] ?? 0) + 1 }));
     setLikedByUserReplies((u: any) => u[rid] ? u : ({ ...u, [rid]: true }));
   };
 
@@ -140,9 +161,9 @@ export default function ShowSection({
       body: body || "(blank)",
       updatedAt: now, likes: 0, isPrivate
     };
-    seedThreads.push(t);
-    repliesByThread[id] = [];
-    setThreadsVersion(v => v + 1);
+    // Optimistically add to local state (step 3 will persist to DB)
+    setDbThreads(prev => [t, ...prev]);
+    setReplyCounts(rc => ({ ...rc, [id]: 0 }));
     setComposeOpen(false);
     setPostTitle(""); setPostBody("");
     setActiveThreadId(id);
@@ -168,21 +189,6 @@ export default function ShowSection({
             >
               {String((seedShows.find(s => s.id === showId)?.name) || showId)}
             </span>
-            {false && (
-              <div className="inlineSearch" style={{ flex: "1 1 auto", display: "flex", justifyContent: "center" }}>
-                <input
-                  placeholder="search in this forum (press Enter)"
-                  className="badge"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={onSearchKey}
-                  style={{ width: "100%", paddingRight: (searchInput || searchQuery) ? 28 : 12 }}
-                />
-                {(searchInput || searchQuery) && (
-                  <button aria-label="Clear search" onClick={clearSearch} className="inlineSearchClear">×</button>
-                )}
-              </div>
-            )}
             {!thread && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto" }}>
                 <select className="badge" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
@@ -199,7 +205,7 @@ export default function ShowSection({
           {/* Row 2 */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: `${ROW_PAD_Y}px 0` }}>
             {!thread ? (
-              <button className="btn post h40" onClick={() => setComposeOpen(true)} title="Start a new post (will auto-tag to your current S/E)">
+              <button className="btn post h40" onClick={() => setComposeOpen(true)} title="Start a new post">
                 + New Post
               </button>
             ) : (
@@ -244,11 +250,14 @@ export default function ShowSection({
         />
       ) : (
         <div style={{ marginTop: 12 }}>
-          {displayed.map((t) => {
+          {threadsLoading && (
+            <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading…</div>
+          )}
+          {!threadsLoading && displayed.map((t) => {
             const isNew = !!newHighlights[showId]?.[t.id];
             const isRead = !!visitedThreads[t.id];
             const likeCt = likesThreads[t.id] ?? t.likes;
-            const replyCt = visibleRepliesCount(t.id, repliesByThread, progress[showId]);
+            const replyCt = replyCounts[t.id] ?? 0;
 
             return (
               <div
@@ -276,7 +285,9 @@ export default function ShowSection({
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h2 style={{ margin: 0, fontSize: 22 }} className="title">
                     <span>{t.titleBase}</span>
-                    <span style={{ color: "var(--dos-cyan)" }}>{` — S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")}`}</span>
+                    {t.showId !== "simshow" && (
+                      <span style={{ color: "var(--dos-cyan)" }}>{` — S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")}`}</span>
+                    )}
                   </h2>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <LikeBadge count={likeCt} readOnly title="open post to vote" />
@@ -295,8 +306,10 @@ export default function ShowSection({
               </div>
             );
           })}
-          {displayed.length < baseVisible.length && <div ref={sentinelRef} style={{ height: 1 }} />}
-          {displayed.length === 0 && <div className="muted" style={{ fontSize: 14 }}>No posts match your watch progress.</div>}
+          {!threadsLoading && displayed.length < baseVisible.length && <div ref={sentinelRef} style={{ height: 1 }} />}
+          {!threadsLoading && displayed.length === 0 && (
+            <div className="muted" style={{ fontSize: 14 }}>No posts match your watch progress.</div>
+          )}
         </div>
       )}
 
@@ -319,7 +332,6 @@ export default function ShowSection({
             <div className="muted" style={{ fontSize: 13 }}>
               Your post is automatically marked to <b>S{String(postProgress.s).padStart(2, "0")}E{String(postProgress.e).padStart(2, "0")}</b> and will only show to people who've watched at least that far.
             </div>
-
             <textarea
               className="card"
               placeholder="Food for thought: did that last episode remind you of something from earlier in the show...or even from your own life?"
@@ -327,7 +339,6 @@ export default function ShowSection({
               onChange={(e) => setPostBody(e.target.value)}
               style={{ width: "100%", height: 260, resize: "vertical" }}
             />
-
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
               <button className="btn" onClick={() => setComposeOpen(false)}>Cancel</button>
               <button className="btn btn-danger" onClick={() => submitPost(false)}>Post</button>
