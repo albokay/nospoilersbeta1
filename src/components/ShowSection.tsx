@@ -221,8 +221,8 @@ export default function ShowSection({
       setLikedByUserThreads((u: any) => { const n = { ...u }; delete n[tid]; return n; });
     });
   };
-  const likeReply = (rid: string) => {
-    setLikesReplies((m: any) => ({ ...m, [rid]: (m[rid] ?? 0) + 1 }));
+  const likeReply = (rid: string, baseCount?: number) => {
+    setLikesReplies((m: any) => ({ ...m, [rid]: (baseCount ?? m[rid] ?? 0) + 1 }));
     setLikedByUserReplies((u: any) => u[rid] ? u : ({ ...u, [rid]: true }));
   };
 

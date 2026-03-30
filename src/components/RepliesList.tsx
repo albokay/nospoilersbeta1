@@ -14,7 +14,7 @@ export default function RepliesList({
   thread: Thread;
   progressForShow?: { s: number; e: number };
   riskyMode?: boolean;
-  likeReply: (rid: string) => void;
+  likeReply: (rid: string, baseCount?: number) => void;
   likesReplies: Record<string, number>;
   likedByUserReplies: Record<string, boolean>;
   focusReplyId?: string | null;
@@ -168,8 +168,11 @@ export default function RepliesList({
     if (!user) { onAuthRequired(); return; }
     const alreadyLiked = likedByUserReplies[rid] || localLiked[rid];
     if (alreadyLiked) return;
-    // Optimistic update via parent
-    likeReply(rid);
+    // Pass the currently displayed count so the optimistic update uses the right base,
+    // even when likesReplies[rid] hasn't been seeded for this reply yet
+    const reply = replies.find(r => r.id === rid);
+    const baseCount = likesReplies[rid] ?? reply?.likes ?? 0;
+    likeReply(rid, baseCount);
     setLocalLiked((prev) => ({ ...prev, [rid]: true }));
     try {
       await dbLikeReply(user.id, rid);
