@@ -142,10 +142,8 @@ header.site{
 .flash-cover{ position:absolute; inset:0; background:rgba(255,255,255,0.44); pointer-events:none; opacity:1; transition:opacity 2000ms ease; }
 
 /* like badge */
-.likeWrap{ display:inline-flex; align-items:center; gap:6px; user-select:none; }
-.likeDots{ letter-spacing:1px; }
-.likeBang{ font-weight:900; }
-.likeThis{ font-style:italic; font-weight:900; }
+.likeWrap{ display:inline-flex; align-items:baseline; gap:4px; user-select:none; }
+.likeThis{ font-style:italic; font-weight:700; }
 
 /* profile chip */
 .profileChip{
