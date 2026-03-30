@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Thread } from "../types";
 import { seedShows } from "../lib/mockData";
-import { fetchThreadsForShow, fetchUserThreadLikes, insertThread, likeThread as dbLikeThread } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread } from "../lib/db";
 import type { ReplyMeta } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -110,15 +110,6 @@ export default function ShowSection({
         for (const t of threads) if (!(t.id in next)) next[t.id] = t.likes;
         return next;
       });
-      // Load which threads this user has already liked
-      if (user) {
-        const liked = await fetchUserThreadLikes(user.id, threads.map(t => t.id));
-        setLikedByUserThreads((u: any) => {
-          const next = { ...u };
-          for (const tid of liked) next[tid] = true;
-          return next;
-        });
-      }
       setThreadsLoading(false);
     }).catch(() => setThreadsLoading(false));
     return () => { cancelled = true; };

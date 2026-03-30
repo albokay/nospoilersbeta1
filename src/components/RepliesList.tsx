@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import type { Thread, Reply } from "../types";
-import { fetchRepliesForThread, fetchUserReplyLikes, insertReply, likeReply as dbLikeReply } from "../lib/db";
+import { fetchRepliesForThread, insertReply, likeReply as dbLikeReply } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
@@ -36,17 +36,6 @@ export default function RepliesList({
       setReplies(data);
       setRepliesLoading(false);
 
-      // Load user reply likes if logged in
-      if (user && data.length > 0) {
-        const ids = data.map((r) => r.id);
-        const liked = await fetchUserReplyLikes(user.id, ids);
-        // Notify parent about any likes we found
-        // (parent state is in ShowSection — we call likeReply to sync, but that would write to DB)
-        // Instead we update our local display via likedByUserReplies passed from parent
-        // The parent already handles initial load, but for completeness we could emit
-        // For now just store locally
-        setLocalLiked(Object.fromEntries([...liked].map((id) => [id, true])));
-      }
     }).catch(() => setRepliesLoading(false));
     return () => { cancelled = true; };
   }, [thread.id, user]);

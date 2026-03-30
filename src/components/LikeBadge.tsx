@@ -18,9 +18,6 @@ export default function LikeBadge({
   // ☆ = not yet liked by this user, ⭐️ = liked by this user, 🤩 = hot threshold
   const icon = isHot ? "🤩" : userLiked ? "⭐️" : "☆";
 
-  // Dim only when truly inactive (no likes at all, not liked by user)
-  const dimmed = count === 0 && !userLiked;
-
   return (
     <button
       className="likeWrap"
@@ -35,8 +32,6 @@ export default function LikeBadge({
         display: "inline-flex",
         alignItems: "baseline",
         gap: 4,
-        opacity: dimmed ? 0.35 : 1,
-        transition: "opacity 150ms",
         color: "var(--dos-fg)",
       }}
     >
