@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Thread } from "../types";
 import { seedShows } from "../lib/mockData";
-import { fetchThreadsForShow } from "../lib/db";
+import { fetchThreadsForShow, fetchUserThreadLikes, insertThread, likeThread as dbLikeThread } from "../lib/db";
+import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
@@ -17,8 +18,9 @@ export default function ShowSection({
   visitedThreads, setVisitedThreads, activeThreadId, setActiveThreadId, onHomepage,
   likesThreads, setLikesThreads, likedByUserThreads, setLikedByUserThreads,
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
-  focusReplyId
+  focusReplyId, onAuthRequired
 }: any) {
+  const { user, profile } = useAuth();
   const show = seedShows.find((s) => s.id === showId) || { id: showId, name: showId, seasons: [10] };
 
   const [sortBy, setSortBy] = useState<"post" | "episode" | "hot">("post");
@@ -38,20 +40,28 @@ export default function ShowSection({
     let cancelled = false;
     setThreadsLoading(true);
     setDbThreads([]);
-    fetchThreadsForShow(showId).then(({ threads, replyCounts: rc }) => {
+    fetchThreadsForShow(showId).then(async ({ threads, replyCounts: rc }) => {
       if (cancelled) return;
       setDbThreads(threads);
       setReplyCounts(rc);
-      // Seed likes state from DB counts
       setLikesThreads((m: any) => {
         const next = { ...m };
         for (const t of threads) if (!(t.id in next)) next[t.id] = t.likes;
         return next;
       });
+      // Load which threads this user has already liked
+      if (user) {
+        const liked = await fetchUserThreadLikes(user.id, threads.map(t => t.id));
+        setLikedByUserThreads((u: any) => {
+          const next = { ...u };
+          for (const tid of liked) next[tid] = true;
+          return next;
+        });
+      }
       setThreadsLoading(false);
     }).catch(() => setThreadsLoading(false));
     return () => { cancelled = true; };
-  }, [showId]);
+  }, [showId, user?.id]);
 
   // ── Scoring / filtering ───────────────────────────────────
   const scoreThread = (t: Thread, q: string) => {
@@ -136,8 +146,15 @@ export default function ShowSection({
   };
 
   const likeThread = (tid: string) => {
+    if (!user) { onAuthRequired(); return; }
+    if (likedByUserThreads[tid]) return;
     setLikesThreads((m: any) => ({ ...m, [tid]: (m[tid] ?? 0) + 1 }));
-    setLikedByUserThreads((u: any) => u[tid] ? u : ({ ...u, [tid]: true }));
+    setLikedByUserThreads((u: any) => ({ ...u, [tid]: true }));
+    dbLikeThread(user.id, tid).catch(() => {
+      // Rollback on error
+      setLikesThreads((m: any) => ({ ...m, [tid]: Math.max(0, (m[tid] ?? 1) - 1) }));
+      setLikedByUserThreads((u: any) => { const n = { ...u }; delete n[tid]; return n; });
+    });
   };
   const likeReply = (rid: string) => {
     setLikesReplies((m: any) => ({ ...m, [rid]: (m[rid] ?? 0) + 1 }));
@@ -148,26 +165,33 @@ export default function ShowSection({
   const [postBody, setPostBody] = useState("");
   const postProgress = progress[showId] || { s: 1, e: 1 };
 
-  const submitPost = (isPrivate = false) => {
+  const [postSubmitting, setPostSubmitting] = useState(false);
+
+  const submitPost = async (isPrivate = false) => {
+    if (!user || !profile) { onAuthRequired(); return; }
     const title = (postTitle || "").trim();
     const body = (postBody || "").trim();
     if (!title && !body) { alert("Write something first."); return; }
-    const now = Date.now();
-    const id = `${showId}-u-${now}`;
-    const t: Thread = {
-      id, showId, season: postProgress.s, episode: postProgress.e,
-      author: username, titleBase: title || "Untitled note",
-      preview: (body || "").slice(0, 240) + ((body || "").length > 240 ? "…" : ""),
-      body: body || "(blank)",
-      updatedAt: now, likes: 0, isPrivate
-    };
-    // Optimistically add to local state (step 3 will persist to DB)
-    setDbThreads(prev => [t, ...prev]);
-    setReplyCounts(rc => ({ ...rc, [id]: 0 }));
-    setComposeOpen(false);
-    setPostTitle(""); setPostBody("");
-    setActiveThreadId(id);
-    setTimeout(() => scrollToShowTop(), 0);
+    setPostSubmitting(true);
+    try {
+      const t = await insertThread({
+        showId, season: postProgress.s, episode: postProgress.e,
+        authorId: user.id, authorName: profile.username,
+        title: title || "Untitled note",
+        preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
+        body: body || "(blank)", isPrivate,
+      });
+      setDbThreads(prev => [t, ...prev]);
+      setReplyCounts(rc => ({ ...rc, [t.id]: 0 }));
+      setComposeOpen(false);
+      setPostTitle(""); setPostBody("");
+      setActiveThreadId(t.id);
+      setTimeout(() => scrollToShowTop(), 0);
+    } catch (e) {
+      alert("Failed to post. Please try again.");
+    } finally {
+      setPostSubmitting(false);
+    }
   };
 
   return (
@@ -205,7 +229,11 @@ export default function ShowSection({
           {/* Row 2 */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: `${ROW_PAD_Y}px 0` }}>
             {!thread ? (
-              <button className="btn post h40" onClick={() => setComposeOpen(true)} title="Start a new post">
+              <button
+                className="btn post h40"
+                onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
+                title="Start a new post"
+              >
                 + New Post
               </button>
             ) : (
@@ -247,6 +275,7 @@ export default function ShowSection({
           likedByUserReplies={likedByUserReplies}
           mode={mode}
           focusReplyId={focusReplyId}
+          onAuthRequired={onAuthRequired}
         />
       ) : (
         <div style={{ marginTop: 12 }}>
@@ -340,9 +369,9 @@ export default function ShowSection({
               style={{ width: "100%", height: 260, resize: "vertical" }}
             />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
-              <button className="btn" onClick={() => setComposeOpen(false)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => submitPost(false)}>Post</button>
-              <button className="btn post" onClick={() => submitPost(true)}>Post privately</button>
+              <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting}>Cancel</button>
+              <button className="btn btn-danger" onClick={() => submitPost(false)} disabled={postSubmitting}>{postSubmitting ? "Posting…" : "Post"}</button>
+              <button className="btn post" onClick={() => submitPost(true)} disabled={postSubmitting}>Post privately</button>
             </div>
           </div>
         </Modal>
