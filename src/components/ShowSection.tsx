@@ -189,21 +189,7 @@ export default function ShowSection({
     prevProgRef.current = cur;
   }, [progress[showId]?.s, progress[showId]?.e, dbThreads]);
 
-  const [limit, setLimit] = useState(10);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => setLimit(10), [showId, searchQuery, sortBy]);
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
-    const obs = new IntersectionObserver(entries => {
-      if (entries[0]?.isIntersecting) setLimit(n => Math.min(n + 10, baseVisible.length));
-    }, { rootMargin: "200px" });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [baseVisible.length]);
-
-  const displayed = useMemo(() => baseVisible.slice(0, limit), [baseVisible, limit]);
+  const displayed = baseVisible;
   const thread = activeThreadId ? dbThreads.find(t => t.id === activeThreadId && t.showId === showId) : null;
 
   useEffect(() => {
@@ -215,9 +201,9 @@ export default function ShowSection({
   }, [thread?.id, showId, setVisitedThreads, setNewHighlights]);
 
   const onSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") { setSearchQuery(searchInput); setLimit(10); }
+    if (e.key === "Enter") { setSearchQuery(searchInput); }
   };
-  const clearSearch = () => { setSearchInput(""); setSearchQuery(""); setLimit(10); };
+  const clearSearch = () => { setSearchInput(""); setSearchQuery(""); };
 
   const scrollToShowTop = () => {
     const y = (topRef.current?.getBoundingClientRect().top || 0) + window.scrollY;
@@ -438,7 +424,6 @@ export default function ShowSection({
               </div>
             );
           })}
-          {!threadsLoading && displayed.length < baseVisible.length && <div ref={sentinelRef} style={{ height: 1 }} />}
           {!threadsLoading && displayed.length === 0 && (
             <div className="muted" style={{ fontSize: 14 }}>No posts match your watch progress.</div>
           )}
