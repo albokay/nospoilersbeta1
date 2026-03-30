@@ -285,6 +285,7 @@ export default function ShowSection({
           {!threadsLoading && displayed.map((t) => {
             const isNew = !!newHighlights[showId]?.[t.id];
             const isRead = !!visitedThreads[t.id];
+            const isOwn = !!username && t.author === username;
             const likeCt = likesThreads[t.id] ?? t.likes;
             const replyCt = replyCounts[t.id] ?? 0;
 
@@ -294,11 +295,11 @@ export default function ShowSection({
                 className="card threadCard"
                 style={{
                   margin: "12px 0",
-                  opacity: isRead ? 0.41 : 1,
+                  opacity: (isRead && !isOwn) ? 0.41 : 1,
                   cursor: "pointer",
                   position: "relative",
                   paddingTop: 12,
-                  borderLeft: isNew ? "8px solid var(--green)" : "1px solid var(--dos-border)"
+                  borderLeft: isOwn ? "8px solid var(--dos-user)" : isNew ? "8px solid var(--green)" : "1px solid var(--dos-border)"
                 }}
                 onClick={() => {
                   setVisitedThreads((v: any) => ({ ...v, [t.id]: true }));

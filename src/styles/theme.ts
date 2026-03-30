@@ -5,7 +5,7 @@ export function injectDOSStyles() {
 :root{
   --dos-bg:#C9A843; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF; --dos-border:rgba(255,255,255,0.35);
-  --dos-accent:#FFFFFF; --danger:#f45028; --green:#A8E6CF;
+  --dos-accent:#FFFFFF; --danger:#f45028; --green:#A8E6CF; --dos-user:#2256c9;
 }
 
 .brandLink{ cursor:pointer; }
@@ -151,6 +151,7 @@ header.site{
 .profileChip{
   display:inline-flex; align-items:center; gap:8px; cursor:pointer;
   border:1px solid var(--dos-border); padding:6px 10px; border-radius:9999px;
+  background: var(--dos-user);
 }
 .avatar{
   width:22px; height:22px; border:1px solid var(--dos-border); border-radius:50%;
