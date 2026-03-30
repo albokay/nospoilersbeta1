@@ -9,7 +9,7 @@ export default function InlineThreadView({
   thread, show, onBack, progressForShow, onMountAlignTop,
   likeThread, likedByUser, likesCount,
   likeReply, likesReplies, likedByUserReplies,
-  mode, focusReplyId, onAuthRequired
+  mode, focusReplyId, onAuthRequired, hiddenNewReplies = 0
 }: {
   thread: Thread;
   show: any;
@@ -25,6 +25,7 @@ export default function InlineThreadView({
   mode: "standard" | "risky";
   focusReplyId?: string | null;
   onAuthRequired: () => void;
+  hiddenNewReplies?: number;
 }) {
   const { user } = useAuth();
   const [threadReplyOpen, setThreadReplyOpen] = useState(false);
@@ -40,11 +41,22 @@ export default function InlineThreadView({
     <section className="container" style={{ padding: "16px 0 24px" }}>
       <div className="card" style={{ marginTop: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ margin: 0, fontSize: 22 }} className="title">
+          <h2 style={{ margin: 0, fontSize: 22, display: "flex", alignItems: "center", gap: 10 }} className="title">
             <span>{thread.titleBase}</span>
             {thread.showId !== "simshow" && (
               <span style={{ color: "var(--dos-cyan)" }}>
                 {` — S${String(thread.season).padStart(2, "0")}E${String(thread.episode).padStart(2, "0")}`}
+              </span>
+            )}
+            {hiddenNewReplies > 0 && (
+              <span style={{
+                width: 28, height: 28, borderRadius: "50%",
+                background: "var(--danger)", color: "#fff",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 800, lineHeight: 1,
+                boxShadow: "0 2px 6px rgba(0,0,0,0.30)", flexShrink: 0,
+              }}>
+                {hiddenNewReplies}
               </span>
             )}
           </h2>

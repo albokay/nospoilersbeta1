@@ -333,6 +333,7 @@ export default function ShowSection({
           mode={mode}
           focusReplyId={focusReplyId}
           onAuthRequired={onAuthRequired}
+          hiddenNewReplies={getNewCounts(thread.id).hiddenNew}
         />
       ) : (
         <div style={{ marginTop: 12 }}>
