@@ -127,6 +127,30 @@ export async function fetchRepliesForThread(threadId: string): Promise<Reply[]> 
   return (data ?? []).map(rowToReply);
 }
 
+// ── Progress ──────────────────────────────────────────────────────────────────
+
+export async function fetchProgress(userId: string): Promise<Record<string, { s: number; e: number }>> {
+  const { data, error } = await supabase
+    .from("progress")
+    .select("show_id, season, episode")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const result: Record<string, { s: number; e: number }> = {};
+  for (const row of data ?? []) {
+    result[row.show_id] = { s: row.season, e: row.episode };
+  }
+  return result;
+}
+
+export async function upsertProgress(userId: string, showId: string, s: number, e: number): Promise<void> {
+  const { error } = await supabase
+    .from("progress")
+    .upsert({ user_id: userId, show_id: showId, season: s, episode: e }, { onConflict: "user_id,show_id" });
+  if (error) throw error;
+}
+
+// ── Replies ──────────────────────────────────────────────────────────────────
+
 export async function insertReply(data: {
   threadId: string; showId: string; season: number; episode: number;
   authorId: string; authorName: string; body: string; replyToId?: string;

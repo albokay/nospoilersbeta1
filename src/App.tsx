@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
+import { fetchProgress, upsertProgress } from "./lib/db";
 import { useAuth } from "./lib/auth";
 import ExtensionDock from "./extensions/ExtensionDock";
 import SearchShows from "./components/SearchShows";
@@ -28,6 +29,14 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
 
   const [progress, setProgress] = useState<{ [sid: string]: { s: number; e: number } }>({});
+
+  // Load progress from DB when user logs in; clear it when they log out
+  useEffect(() => {
+    if (!user) { setProgress({}); return; }
+    fetchProgress(user.id).then(saved => {
+      setProgress(saved);
+    }).catch(err => console.error("Failed to load progress:", err));
+  }, [user?.id]);
 
   const [pickShowId, setPickShowId] = useState<string | null>(null);
   const pickShow = useMemo(() => seedShows.find(s => s.id === pickShowId) || null, [pickShowId]);
@@ -70,6 +79,11 @@ export default function App() {
       setNewHighlights(nh => ({ ...nh, [sid]: isNew }));
       return { ...prev, [sid]: next };
     });
+    if (user) {
+      upsertProgress(user.id, sid, next.s, next.e).catch(err =>
+        console.error("Failed to save progress:", err)
+      );
+    }
   };
 
   const openShow = (id: string) => {
@@ -268,6 +282,12 @@ export default function App() {
                 const stillVisible = canView({ season: t.season, episode: t.episode }, next);
                 return stillVisible ? currentId : null;
               });
+
+              if (user) {
+                upsertProgress(user.id, sid, next.s, next.e).catch(err =>
+                  console.error("Failed to save progress:", err)
+                );
+              }
             }}
             newHighlights={newHighlights}
             setNewHighlights={setNewHighlights}
