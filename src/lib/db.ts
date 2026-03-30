@@ -127,6 +127,78 @@ export async function fetchRepliesForThread(threadId: string): Promise<Reply[]> 
   return (data ?? []).map(rowToReply);
 }
 
+// ── Profile page queries ──────────────────────────────────────────────────────
+
+export async function fetchUserThreads(userId: string): Promise<Thread[]> {
+  const { data, error } = await supabase
+    .from("threads")
+    .select("*")
+    .eq("author_id", userId)
+    .eq("is_private", false)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToThread);
+}
+
+// Replies in threads the user started, not written by the user themselves
+export async function fetchRepliesToUserThreads(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
+  const { data: threadData, error: tErr } = await supabase
+    .from("threads")
+    .select("*")
+    .eq("author_id", userId)
+    .eq("is_private", false);
+  if (tErr) throw tErr;
+  const threads = (threadData ?? []).map(rowToThread);
+  if (!threads.length) return [];
+
+  const threadIds = threads.map(t => t.id);
+  const threadById: Record<string, Thread> = {};
+  for (const t of threads) threadById[t.id] = t;
+
+  const { data: replyData, error: rErr } = await supabase
+    .from("replies")
+    .select("*")
+    .in("thread_id", threadIds)
+    .neq("author_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (rErr) throw rErr;
+
+  return (replyData ?? []).map((row: any) => ({
+    reply: rowToReply(row),
+    thread: threadById[row.thread_id],
+  })).filter(x => x.thread);
+}
+
+export async function fetchLikedThreads(userId: string): Promise<Thread[]> {
+  const { data, error } = await supabase
+    .from("likes_threads")
+    .select("threads(*)")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data ?? [])
+    .map((row: any) => row.threads)
+    .filter(Boolean)
+    .map(rowToThread)
+    .sort((a: Thread, b: Thread) => b.updatedAt - a.updatedAt);
+}
+
+export async function fetchLikedReplies(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
+  const { data, error } = await supabase
+    .from("likes_replies")
+    .select("replies(*, threads(*))")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data ?? [])
+    .map((row: any) => {
+      const r = row.replies;
+      if (!r || !r.threads) return null;
+      return { reply: rowToReply(r), thread: rowToThread(r.threads) };
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => b.reply.updatedAt - a.reply.updatedAt) as { reply: Reply; thread: Thread }[];
+}
+
 // ── Progress ──────────────────────────────────────────────────────────────────
 
 export async function fetchProgress(userId: string): Promise<Record<string, { s: number; e: number }>> {

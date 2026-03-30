@@ -1,16 +1,21 @@
 import React, { useState, useMemo, useEffect } from "react";
 import type { Reply, Thread } from "../types";
-import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
-import { canView, visibleRepliesCount, timeAgo } from "../lib/utils";
+import { seedShows } from "../lib/mockData";
+import { fetchUserThreads, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies } from "../lib/db";
+import { useAuth } from "../lib/auth";
+import { canView, timeAgo } from "../lib/utils";
 import Tabs from "./Tabs";
 
 const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
 
+function showName(showId: string) {
+  return seedShows.find(s => s.id === showId)?.name || showId;
+}
+
 export default function ProfilePage({
   username,
   progress,
-  likesThreads, likesReplies, likedByUserThreads, likedByUserReplies,
   openThreadWithFocus, openShow, onClose
 }: {
   username: string;
@@ -23,108 +28,101 @@ export default function ProfilePage({
   openShow: (showId: string) => void;
   onClose: () => void;
 }) {
-  const myThreadsAll = useMemo(() => seedThreads
-    .filter(t => t.author === username)
-    .filter(t => canView({ season: t.season, episode: t.episode }, progress[t.showId]))
-    .sort((a, b) => b.updatedAt - a.updatedAt), [username, progress]);
+  const { user } = useAuth();
 
+  const [myThreads, setMyThreads] = useState<Thread[]>([]);
+  const [repliesToMe, setRepliesToMe] = useState<{ reply: Reply; thread: Thread }[]>([]);
+  const [likedThreadsList, setLikedThreadsList] = useState<Thread[]>([]);
+  const [likedRepliesList, setLikedRepliesList] = useState<{ reply: Reply; thread: Thread }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    Promise.all([
+      fetchUserThreads(user.id),
+      fetchRepliesToUserThreads(user.id),
+      fetchLikedThreads(user.id),
+      fetchLikedReplies(user.id),
+    ]).then(([threads, replies, likedT, likedR]) => {
+      setMyThreads(threads);
+      setRepliesToMe(replies);
+      setLikedThreadsList(likedT);
+      setLikedRepliesList(likedR);
+      setLoading(false);
+    }).catch(err => {
+      console.error("ProfilePage load error:", err);
+      setLoading(false);
+    });
+  }, [user?.id]);
+
+  // ── Spoiler-filter helpers ─────────────────────────────────
+  const visibleThreads = useMemo(() =>
+    myThreads.filter(t => canView({ season: t.season, episode: t.episode }, progress[t.showId])),
+    [myThreads, progress]);
+
+  const visibleRepliesToMe = useMemo(() =>
+    repliesToMe.filter(({ reply: r, thread: t }) =>
+      canView({ season: r.season, episode: r.episode }, progress[t.showId])),
+    [repliesToMe, progress]);
+
+  const visibleLikedThreads = useMemo(() =>
+    likedThreadsList.filter(t => canView({ season: t.season, episode: t.episode }, progress[t.showId])),
+    [likedThreadsList, progress]);
+
+  const visibleLikedReplies = useMemo(() =>
+    likedRepliesList.filter(({ reply: r, thread: t }) =>
+      canView({ season: r.season, episode: r.episode }, progress[t.showId])),
+    [likedRepliesList, progress]);
+
+  // ── Tab state ──────────────────────────────────────────────
   const postTabs = useMemo(() => {
-    const ids = Array.from(new Set(myThreadsAll.map(t => t.showId)));
-    return ids.map(id => ({ id, label: seedShows.find(s => s.id === id)?.name || id }));
-  }, [myThreadsAll]);
-
-  const [postTab, setPostTab] = useState<string>(postTabs[0]?.id || "");
-  useEffect(() => { if (!postTabs.find(t => t.id === postTab) && postTabs[0]) setPostTab(postTabs[0].id); }, [postTabs, postTab]);
-  const myThreads = useMemo(() => myThreadsAll.filter(t => t.showId === postTab), [myThreadsAll, postTab]);
-
-  const repliesToMeAll = useMemo(() => {
-    const out: { r: Reply; t: Thread }[] = [];
-    for (const t of seedThreads) {
-      const list = repliesByThread[t.id] || [];
-      const byId: Record<string, Reply> = {}; list.forEach(r => byId[r.id] = r);
-      const prog = progress[t.showId];
-      const chainVisible = (r: Reply) => {
-        if (!canView({ season: r.season, episode: r.episode }, prog)) return false;
-        let cur = r.replyToId ? byId[r.replyToId] : null;
-        while (cur) {
-          if (!canView({ season: cur.season, episode: cur.episode }, prog)) return false;
-          cur = cur.replyToId ? byId[cur.replyToId] : null;
-        }
-        return true;
-      };
-      for (const r of list) {
-        if (!r.replyToId) continue;
-        const parent = list.find(x => x.id === r.replyToId);
-        const involvesMe = (parent && parent.author === username) || (r.author === username);
-        if (involvesMe && chainVisible(r)) out.push({ r, t });
-      }
-    }
-    return out.sort((a, b) => (b.r.updatedAt - a.r.updatedAt)).slice(0, 200);
-  }, [username, progress]);
+    const ids = Array.from(new Set(visibleThreads.map(t => t.showId)));
+    return ids.map(id => ({ id, label: showName(id) }));
+  }, [visibleThreads]);
+  const [postTab, setPostTab] = useState("");
+  useEffect(() => {
+    if (!postTabs.find(t => t.id === postTab) && postTabs[0]) setPostTab(postTabs[0].id);
+  }, [postTabs]);
+  const myThreadsFiltered = useMemo(() =>
+    postTab ? visibleThreads.filter(t => t.showId === postTab) : visibleThreads,
+    [visibleThreads, postTab]);
 
   const replyTabs = useMemo(() => {
-    const ids = Array.from(new Set(repliesToMeAll.map(p => p.t.showId)));
-    return ids.map(id => ({ id, label: seedShows.find(s => s.id === id)?.name || id }));
-  }, [repliesToMeAll]);
-
-  const [replyTab, setReplyTab] = useState<string>(replyTabs[0]?.id || "");
-  useEffect(() => { if (!replyTabs.find(t => t.id === replyTab) && replyTabs[0]) setReplyTab(replyTabs[0].id); }, [replyTabs, replyTab]);
-  const repliesToMe = useMemo(() => repliesToMeAll.filter(p => p.t.showId === replyTab), [repliesToMeAll, replyTab]);
-
-  const likedThreadsList = useMemo(() => seedThreads
-    .filter(t => likedByUserThreads[t.id])
-    .filter(t => canView({ season: t.season, episode: t.episode }, progress[t.showId]))
-    .sort((a, b) => b.updatedAt - a.updatedAt), [likedByUserThreads, progress]);
-
-  const likedRepliesList = useMemo(() => {
-    const rows: { r: Reply; t: Thread }[] = [];
-    for (const tid of Object.keys(repliesByThread)) {
-      const list = repliesByThread[tid];
-      const t = seedThreads.find(x => x.id === tid);
-      if (!t) continue;
-      const byId: Record<string, Reply> = {}; list.forEach(r => byId[r.id] = r);
-      const prog = progress[t.showId];
-      const chainVisible = (r: Reply) => {
-        if (!canView({ season: r.season, episode: r.episode }, prog)) return false;
-        let cur = r.replyToId ? byId[r.replyToId] : null;
-        while (cur) {
-          if (!canView({ season: cur.season, episode: cur.episode }, prog)) return false;
-          cur = cur.replyToId ? byId[cur.replyToId] : null;
-        }
-        return true;
-      };
-      for (const r of list) if (likedByUserReplies[r.id] && chainVisible(r)) rows.push({ r, t });
-    }
-    return rows.sort((a, b) => b.r.updatedAt - a.r.updatedAt);
-  }, [likedByUserReplies, progress]);
+    const ids = Array.from(new Set(visibleRepliesToMe.map(p => p.thread.showId)));
+    return ids.map(id => ({ id, label: showName(id) }));
+  }, [visibleRepliesToMe]);
+  const [replyTab, setReplyTab] = useState("");
+  useEffect(() => {
+    if (!replyTabs.find(t => t.id === replyTab) && replyTabs[0]) setReplyTab(replyTabs[0].id);
+  }, [replyTabs]);
+  const repliesToMeFiltered = useMemo(() =>
+    replyTab ? visibleRepliesToMe.filter(p => p.thread.showId === replyTab) : visibleRepliesToMe,
+    [visibleRepliesToMe, replyTab]);
 
   const likedPostTabs = useMemo(() => {
-    const ids = Array.from(new Set(likedThreadsList.map(t => t.showId)));
-    return ids.map(id => ({ id, label: seedShows.find(s => s.id === id)?.name || id }));
-  }, [likedThreadsList]);
-
-  const [likedPostTab, setLikedPostTab] = useState<string>(likedPostTabs[0]?.id || "");
+    const ids = Array.from(new Set(visibleLikedThreads.map(t => t.showId)));
+    return ids.map(id => ({ id, label: showName(id) }));
+  }, [visibleLikedThreads]);
+  const [likedPostTab, setLikedPostTab] = useState("");
   useEffect(() => {
     if (!likedPostTabs.find(t => t.id === likedPostTab) && likedPostTabs[0]) setLikedPostTab(likedPostTabs[0].id);
-  }, [likedPostTabs, likedPostTab]);
-  const likedThreads = useMemo(
-    () => likedPostTab ? likedThreadsList.filter(t => t.showId === likedPostTab) : likedThreadsList,
-    [likedThreadsList, likedPostTab]
-  );
+  }, [likedPostTabs]);
+  const likedThreadsFiltered = useMemo(() =>
+    likedPostTab ? visibleLikedThreads.filter(t => t.showId === likedPostTab) : visibleLikedThreads,
+    [visibleLikedThreads, likedPostTab]);
 
   const likedReplyTabs = useMemo(() => {
-    const ids = Array.from(new Set(likedRepliesList.map(p => p.t.showId)));
-    return ids.map(id => ({ id, label: seedShows.find(s => s.id === id)?.name || id }));
-  }, [likedRepliesList]);
-
-  const [likedReplyTab, setLikedReplyTab] = useState<string>(likedReplyTabs[0]?.id || "");
+    const ids = Array.from(new Set(visibleLikedReplies.map(p => p.thread.showId)));
+    return ids.map(id => ({ id, label: showName(id) }));
+  }, [visibleLikedReplies]);
+  const [likedReplyTab, setLikedReplyTab] = useState("");
   useEffect(() => {
     if (!likedReplyTabs.find(t => t.id === likedReplyTab) && likedReplyTabs[0]) setLikedReplyTab(likedReplyTabs[0].id);
-  }, [likedReplyTabs, likedReplyTab]);
-  const likedReplies = useMemo(
-    () => likedReplyTab ? likedRepliesList.filter(p => p.t.showId === likedReplyTab) : likedRepliesList,
-    [likedRepliesList, likedReplyTab]
-  );
+  }, [likedReplyTabs]);
+  const likedRepliesFiltered = useMemo(() =>
+    likedReplyTab ? visibleLikedReplies.filter(p => p.thread.showId === likedReplyTab) : visibleLikedReplies,
+    [visibleLikedReplies, likedReplyTab]);
 
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
@@ -147,20 +145,13 @@ export default function ProfilePage({
                   const rb = showB ? (pb.s - 1) + (pb.e / (showB.seasons[pb.s - 1] || 1)) : 0;
                   return rb - ra;
                 })
-                .map(sid => {
-                  const s = seedShows.find(x => x.id === sid);
-                  return (
-                    <a
-                      key={sid}
-                      onClick={() => openShow(sid)}
-                      style={{ cursor: "pointer", textDecoration: "underline", whiteSpace: "nowrap" }}
-                      title={`Go to ${s?.name || sid}`}
-                    >
-                      {s?.name || sid}
-                    </a>
-                  );
-                })
-              }
+                .map(sid => (
+                  <a key={sid} onClick={() => openShow(sid)}
+                    style={{ cursor: "pointer", textDecoration: "underline", whiteSpace: "nowrap" }}
+                    title={`Go to ${showName(sid)}`}>
+                    {showName(sid)}
+                  </a>
+                ))}
             </div>
 
             <div style={{ flex: "0 0 auto" }}>
@@ -171,25 +162,23 @@ export default function ProfilePage({
       </div>
 
       <div className="container" style={{ marginTop: 16 }}>
+        {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading your profile…</div>}
+
         {/* Your posts */}
         <section style={{ marginTop: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", marginBottom: 8 }}>
             <div className="title hangL" style={{ fontSize: 18 }}>Your posts</div>
             <Tabs tabs={postTabs} value={postTab} onChange={setPostTab} />
           </div>
-
           <div className="card scrollWin" style={{ maxHeight: 6 * 120 + 48, overflow: "auto" }}>
-            {myThreads.length === 0 && <div className="muted">No posts yet.</div>}
-            {myThreads.map(t => (
-              <div
-                key={t.id}
-                className="card threadCard"
+            {!loading && myThreadsFiltered.length === 0 && <div className="muted">No posts yet.</div>}
+            {myThreadsFiltered.map(t => (
+              <div key={t.id} className="card threadCard"
                 style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
-                onClick={() => openThreadWithFocus(t.showId, t.id)}
-              >
+                onClick={() => openThreadWithFocus(t.showId, t.id)}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div className="title" style={{ fontSize: 18 }}>
-                    {t.isPrivate && <span title="Private" aria-label="Private" style={{ marginRight: 8 }}>🔒</span>}
+                    {t.isPrivate && <span title="Private" style={{ marginRight: 8 }}>🔒</span>}
                     {t.titleBase}
                     {t.showId !== "simshow" && (
                       <span style={{ color: "var(--dos-cyan)" }}>
@@ -201,11 +190,8 @@ export default function ProfilePage({
                     <span className="username">@{t.author}</span> • {timeAgo(t.updatedAt)}
                   </div>
                 </div>
-                <div className="muted" style={{ fontSize: 14, marginTop: 4 }}>
-                  {seedShows.find(s => s.id === t.showId)?.name || t.showId}
-                </div>
+                <div className="muted" style={{ fontSize: 14, marginTop: 4 }}>{showName(t.showId)}</div>
                 <div style={{ marginTop: 6 }} className="clamp3">{t.preview}</div>
-                <div className="replyCount">💬 {visibleRepliesCount(t.id, repliesByThread, progress[t.showId])}</div>
               </div>
             ))}
           </div>
@@ -217,16 +203,17 @@ export default function ProfilePage({
             <div className="title hangL" style={{ fontSize: 18 }}>Replies to you</div>
             <Tabs tabs={replyTabs} value={replyTab} onChange={setReplyTab} />
           </div>
-
           <div className="card scrollWin" style={{ maxHeight: 6 * 110 + 48, overflow: "auto" }}>
-            {repliesToMe.length === 0 && <div className="muted">No replies yet.</div>}
-            {repliesToMe.map(({ r, t }) => (
+            {!loading && repliesToMeFiltered.length === 0 && <div className="muted">No replies yet.</div>}
+            {repliesToMeFiltered.map(({ reply: r, thread: t }) => (
               <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
                 onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div className="muted" style={{ fontSize: 14 }}>
-                    On <b>{t.titleBase}</b> <span style={{ color: "var(--dos-cyan)" }}>S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}</span> • <span className="username">@{r.author}</span> • {timeAgo(r.updatedAt)}
-                  </div>
+                <div className="muted" style={{ fontSize: 14 }}>
+                  On <b>{t.titleBase}</b>{" "}
+                  <span style={{ color: "var(--dos-cyan)" }}>
+                    S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                  </span>{" "}
+                  • <span className="username">@{r.author}</span> • {timeAgo(r.updatedAt)}
                 </div>
                 <div style={{ marginTop: 6, fontSize: 15 }} className="clamp3">{r.body}</div>
               </div>
@@ -244,22 +231,21 @@ export default function ProfilePage({
               <Tabs tabs={likedPostTabs} value={likedPostTab} onChange={setLikedPostTab} />
             )}
             <div className="card scrollWin" style={{ maxHeight: 6 * 120 + 48, overflow: "auto" }}>
-              {likedThreads.length === 0 && <div className="muted">You haven't liked any posts yet.</div>}
-              {likedThreads.map(t => (
-                <div
-                  key={t.id}
-                  className="card"
+              {!loading && likedThreadsFiltered.length === 0 && <div className="muted">You haven't liked any posts yet.</div>}
+              {likedThreadsFiltered.map(t => (
+                <div key={t.id} className="card"
                   style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
-                  onClick={() => openThreadWithFocus(t.showId, t.id)}
-                >
+                  onClick={() => openThreadWithFocus(t.showId, t.id)}>
                   <div className="muted" style={{ fontSize: 14 }}>
-                    {seedShows.find(s => s.id === t.showId)?.name || t.showId} • {timeAgo(t.updatedAt)}
+                    {showName(t.showId)} • {timeAgo(t.updatedAt)}
                   </div>
                   <div className="title" style={{ fontSize: 18, marginTop: 6 }}>
-                    {t.titleBase} <span style={{ color: "var(--dos-cyan)" }}>— S{String(t.season).padStart(2, "0")}E{String(t.episode).padStart(2, "0")}</span>
+                    {t.titleBase}{" "}
+                    <span style={{ color: "var(--dos-cyan)" }}>
+                      — S{String(t.season).padStart(2, "0")}E{String(t.episode).padStart(2, "0")}
+                    </span>
                   </div>
                   <div style={{ marginTop: 6 }} className="clamp3">{t.preview}</div>
-                  <div className="replyCount">💬 {visibleRepliesCount(t.id, repliesByThread, progress[t.showId])}</div>
                 </div>
               ))}
             </div>
@@ -271,12 +257,16 @@ export default function ProfilePage({
               <Tabs tabs={likedReplyTabs} value={likedReplyTab} onChange={setLikedReplyTab} />
             )}
             <div className="card scrollWin" style={{ maxHeight: 6 * 110 + 48, overflow: "auto" }}>
-              {likedReplies.length === 0 && <div className="muted">You haven't liked any replies yet.</div>}
-              {likedReplies.map(({ r, t }) => (
+              {!loading && likedRepliesFiltered.length === 0 && <div className="muted">You haven't liked any replies yet.</div>}
+              {likedRepliesFiltered.map(({ reply: r, thread: t }) => (
                 <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
                   onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
                   <div className="muted" style={{ fontSize: 14 }}>
-                    On <b>{t.titleBase}</b> <span style={{ color: "var(--dos-cyan)" }}>S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}</span> • <span className="username">@{r.author}</span> • {timeAgo(r.updatedAt)}
+                    On <b>{t.titleBase}</b>{" "}
+                    <span style={{ color: "var(--dos-cyan)" }}>
+                      S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                    </span>{" "}
+                    • <span className="username">@{r.author}</span> • {timeAgo(r.updatedAt)}
                   </div>
                   <div style={{ marginTop: 6 }}>{r.body}</div>
                 </div>
@@ -291,8 +281,9 @@ export default function ProfilePage({
           <div className="card">
             {Object.keys(progress).length === 0 && <div className="muted">No shows yet.</div>}
             {Object.keys(progress).map((sid) => (
-              <a key={sid} onClick={() => openShow(sid)} style={{ display: "block", padding: "6px 8px", borderRadius: 8, cursor: "pointer" }}>
-                {seedShows.find(s => s.id === sid)?.name || sid}
+              <a key={sid} onClick={() => openShow(sid)}
+                style={{ display: "block", padding: "6px 8px", borderRadius: 8, cursor: "pointer" }}>
+                {showName(sid)}
               </a>
             ))}
           </div>
