@@ -39,14 +39,20 @@ export default function ShowSection({
   const [threadsLoading, setThreadsLoading] = useState(false);
 
   // ── New-reply tracking (persisted to localStorage) ────────
-  const [lastVisitedAt, setLastVisitedAt] = useState<Record<string, number>>(() => {
-    try { return JSON.parse(localStorage.getItem("ns_last_visited") || "{}"); } catch { return {}; }
+  // lastOpenedAt: updated every time user opens a thread → clears the green (visible-new) bubble
+  // hiddenBaseAt:  set ONCE when the thread is first encountered → never updated on open,
+  //               so hidden replies stay flagged until progress advances and makes them visible
+  const [lastOpenedAt, setLastOpenedAt] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("ns_last_opened") || "{}"); } catch { return {}; }
+  });
+  const [hiddenBaseAt, setHiddenBaseAt] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("ns_hidden_base") || "{}"); } catch { return {}; }
   });
 
   const markThreadVisited = (tid: string) => {
-    setLastVisitedAt(prev => {
+    setLastOpenedAt(prev => {
       const next = { ...prev, [tid]: Date.now() };
-      localStorage.setItem("ns_last_visited", JSON.stringify(next));
+      localStorage.setItem("ns_last_opened", JSON.stringify(next));
       return next;
     });
   };
@@ -54,15 +60,14 @@ export default function ShowSection({
   const getNewCounts = (threadId: string) => {
     const meta = replyMeta[threadId] ?? [];
     const prog = progress[showId];
-    const lastSeen = lastVisitedAt[threadId] ?? Date.now();
+    const openedAt = lastOpenedAt[threadId] ?? Date.now();
+    const baseAt = hiddenBaseAt[threadId] ?? Date.now();
     let visibleNew = 0, hiddenNew = 0, totalVisible = 0;
     for (const r of meta) {
       const visible = canView({ season: r.season, episode: r.episode }, prog);
       if (visible) totalVisible++;
-      if (r.createdAt > lastSeen) {
-        if (visible) visibleNew++;
-        else hiddenNew++;
-      }
+      if (visible && r.createdAt > openedAt) visibleNew++;
+      if (!visible && r.createdAt > baseAt) hiddenNew++;
     }
     return { visibleNew, hiddenNew, totalVisible };
   };
@@ -76,15 +81,24 @@ export default function ShowSection({
       setDbThreads(threads);
       setReplyCounts(rc);
       setReplyMeta(rm);
-      // Initialize lastVisitedAt for threads never seen before (so existing replies aren't flagged as new)
-      setLastVisitedAt(prev => {
+      // Initialize both timestamps for threads encountered for the first time
+      const now = Date.now();
+      setLastOpenedAt(prev => {
         const next = { ...prev };
-        const now = Date.now();
         let changed = false;
         for (const tid of Object.keys(rm)) {
           if (!(tid in next)) { next[tid] = now; changed = true; }
         }
-        if (changed) localStorage.setItem("ns_last_visited", JSON.stringify(next));
+        if (changed) localStorage.setItem("ns_last_opened", JSON.stringify(next));
+        return changed ? next : prev;
+      });
+      setHiddenBaseAt(prev => {
+        const next = { ...prev };
+        let changed = false;
+        for (const tid of Object.keys(rm)) {
+          if (!(tid in next)) { next[tid] = now; changed = true; }
+        }
+        if (changed) localStorage.setItem("ns_hidden_base", JSON.stringify(next));
         return changed ? next : prev;
       });
       setLikesThreads((m: any) => {
@@ -336,12 +350,12 @@ export default function ShowSection({
               <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
                 {hiddenNew > 0 && (
                   <div style={{
-                    position: "absolute", left: -20, top: "50%", transform: "translateY(-50%)",
-                    width: 22, height: 22, borderRadius: "50%",
+                    position: "absolute", left: -14, top: "50%", transform: "translateY(-50%)",
+                    width: 28, height: 28, borderRadius: "50%",
                     background: "var(--danger)", color: "#fff",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 10, fontWeight: 800, lineHeight: 1, zIndex: 1,
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                    fontSize: 11, fontWeight: 800, lineHeight: 1, zIndex: 1,
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.30)",
                   }}>
                     {hiddenNew}
                   </div>
