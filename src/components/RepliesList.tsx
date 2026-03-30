@@ -8,7 +8,8 @@ import LikeBadge from "./LikeBadge";
 
 export default function RepliesList({
   thread, progressForShow, riskyMode = false,
-  likeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired
+  likeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
+  threadReplyOpen, onThreadReplyClose,
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
@@ -18,6 +19,8 @@ export default function RepliesList({
   likedByUserReplies: Record<string, boolean>;
   focusReplyId?: string | null;
   onAuthRequired: () => void;
+  threadReplyOpen?: boolean;
+  onThreadReplyClose?: () => void;
 }) {
   const { user, profile } = useAuth();
 
@@ -63,7 +66,52 @@ export default function RepliesList({
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // ── Thread-level reply form state ─────────────────────────
+  const [threadReplyBody, setThreadReplyBody] = useState("");
+  const [threadReplySubmitting, setThreadReplySubmitting] = useState(false);
+  const [threadReplyError, setThreadReplyError] = useState<string | null>(null);
+  const threadReplyRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (threadReplyOpen && threadReplyRef.current) {
+      setThreadReplyBody("");
+      setThreadReplyError(null);
+      setTimeout(() => threadReplyRef.current?.focus(), 50);
+    }
+  }, [threadReplyOpen]);
+
+  const handleSubmitThreadReply = async () => {
+    if (!user || !profile) { onAuthRequired(); return; }
+    const body = threadReplyBody.trim();
+    if (!body) return;
+    setThreadReplySubmitting(true);
+    setThreadReplyError(null);
+    try {
+      const newReply = await insertReply({
+        threadId: thread.id,
+        showId: thread.showId,
+        season: progressForShow?.s ?? thread.season,
+        episode: progressForShow?.e ?? thread.episode,
+        authorId: user.id,
+        authorName: profile.username,
+        body,
+      });
+      setReplies((prev) => [...prev, newReply]);
+      setThreadReplyBody("");
+      onThreadReplyClose?.();
+      setTimeout(() => {
+        const el = document.getElementById(`c-${newReply.id}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 80);
+    } catch (err: any) {
+      setThreadReplyError(err?.message ?? "Failed to post. Please try again.");
+    } finally {
+      setThreadReplySubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (replyingToId && replyTextareaRef.current) {
@@ -75,11 +123,13 @@ export default function RepliesList({
     if (!user) { onAuthRequired(); return; }
     setReplyingToId(replyId);
     setReplyBody("");
+    setReplyError(null);
   };
 
   const handleCancelReply = () => {
     setReplyingToId(null);
     setReplyBody("");
+    setReplyError(null);
   };
 
   const handleSubmitReply = async (replyToId: string) => {
@@ -87,8 +137,8 @@ export default function RepliesList({
     const body = replyBody.trim();
     if (!body) return;
     setSubmitting(true);
+    setReplyError(null);
     try {
-      const parentReply = byId[replyToId];
       const newReply = await insertReply({
         threadId: thread.id,
         showId: thread.showId,
@@ -102,13 +152,12 @@ export default function RepliesList({
       setReplies((prev) => [...prev, newReply]);
       setReplyingToId(null);
       setReplyBody("");
-      // Scroll to new reply
       setTimeout(() => {
         const el = document.getElementById(`c-${newReply.id}`);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 80);
-    } catch (err) {
-      console.error("Failed to post reply:", err);
+    } catch (err: any) {
+      setReplyError(err?.message ?? "Failed to post. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -238,6 +287,41 @@ export default function RepliesList({
         </Modal>
       )}
 
+      {threadReplyOpen && (
+        <div className="card" style={{ marginBottom: 12, borderLeft: "4px solid var(--dos-accent)" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Reply to this post</div>
+          <textarea
+            ref={threadReplyRef}
+            value={threadReplyBody}
+            onChange={(e) => setThreadReplyBody(e.target.value)}
+            placeholder="Write your reply…"
+            rows={3}
+            style={{
+              width: "100%", boxSizing: "border-box",
+              background: "var(--dos-bg)", color: "var(--dos-fg)",
+              border: "1px solid var(--dos-border)", borderRadius: 4,
+              padding: "8px 10px", fontSize: 14, resize: "vertical",
+              fontFamily: "inherit",
+            }}
+          />
+          {threadReplyError && (
+            <div style={{ color: "var(--dos-red, #f45028)", fontSize: 13, marginTop: 4 }}>{threadReplyError}</div>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+            <button className="btn" onClick={() => { onThreadReplyClose?.(); setThreadReplyBody(""); setThreadReplyError(null); }} disabled={threadReplySubmitting}>
+              Cancel
+            </button>
+            <button
+              className="btn primary"
+              onClick={handleSubmitThreadReply}
+              disabled={threadReplySubmitting || !threadReplyBody.trim()}
+            >
+              {threadReplySubmitting ? "Posting…" : "Post reply"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {repliesLoading && <div className="muted" style={{ fontSize: 14 }}>Loading replies…</div>}
       <div style={{ display: "grid", gap: 12 }}>
         {replies.map((r) => {
@@ -330,6 +414,9 @@ export default function RepliesList({
                       fontFamily: "inherit",
                     }}
                   />
+                  {replyError && (
+                    <div style={{ color: "var(--dos-red, #f45028)", fontSize: 13, marginTop: 4 }}>{replyError}</div>
+                  )}
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
                     <button className="btn" onClick={handleCancelReply} disabled={submitting}>
                       Cancel

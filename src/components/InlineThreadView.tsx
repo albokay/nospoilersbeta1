@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import type { Thread } from "../types";
 import { timeAgo } from "../lib/utils";
+import { useAuth } from "../lib/auth";
 import LikeBadge from "./LikeBadge";
 import RepliesList from "./RepliesList";
 
@@ -25,7 +26,15 @@ export default function InlineThreadView({
   focusReplyId?: string | null;
   onAuthRequired: () => void;
 }) {
+  const { user } = useAuth();
+  const [threadReplyOpen, setThreadReplyOpen] = useState(false);
+
   useEffect(() => { onMountAlignTop?.(); }, []);
+
+  const handleReplyToThread = () => {
+    if (!user) { onAuthRequired(); return; }
+    setThreadReplyOpen(true);
+  };
 
   return (
     <section className="container" style={{ padding: "16px 0 24px" }}>
@@ -57,18 +66,29 @@ export default function InlineThreadView({
           <div style={{ whiteSpace: "pre-wrap" }}>{thread.body}</div>
         </div>
 
-        <div style={{ marginTop: 12 }}>
-          <RepliesList
-            thread={thread}
-            progressForShow={progressForShow}
-            riskyMode={mode === "risky"}
-            likeReply={likeReply}
-            likesReplies={likesReplies}
-            likedByUserReplies={likedByUserReplies}
-            focusReplyId={focusReplyId}
-            onAuthRequired={onAuthRequired}
-          />
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+          <button
+            className="btn"
+            onClick={handleReplyToThread}
+          >
+            Reply
+          </button>
         </div>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <RepliesList
+          thread={thread}
+          progressForShow={progressForShow}
+          riskyMode={mode === "risky"}
+          likeReply={likeReply}
+          likesReplies={likesReplies}
+          likedByUserReplies={likedByUserReplies}
+          focusReplyId={focusReplyId}
+          onAuthRequired={onAuthRequired}
+          threadReplyOpen={threadReplyOpen}
+          onThreadReplyClose={() => setThreadReplyOpen(false)}
+        />
       </div>
     </section>
   );

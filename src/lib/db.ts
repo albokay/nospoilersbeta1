@@ -60,6 +60,7 @@ export async function insertThread(data: {
   title: string; preview: string; body: string; isPrivate: boolean;
 }): Promise<Thread> {
   const row = {
+    id: crypto.randomUUID(),
     show_id: data.showId, season: data.season, episode: data.episode,
     author_id: data.authorId, author_name: data.authorName,
     title: data.title, preview: data.preview, body: data.body,
@@ -131,6 +132,7 @@ export async function insertReply(data: {
   authorId: string; authorName: string; body: string; replyToId?: string;
 }): Promise<Reply> {
   const row = {
+    id: crypto.randomUUID(),
     thread_id: data.threadId, show_id: data.showId,
     season: data.season, episode: data.episode,
     author_id: data.authorId, author_name: data.authorName,
