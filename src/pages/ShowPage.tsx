@@ -34,7 +34,7 @@ export default function ShowPage() {
         <h1 className="text-xl font-semibold">{data.title}</h1>
 
         <div className="flex flex-wrap gap-2">
-          {data.seasons.map(s => (
+          {data.seasons.map((s: any) => (
             <Link key={s.n} to={`?s=${s.n}`} className="text-sm border border-[#E0DDD8] rounded-full px-3 py-1 hover:border-[#5B9A72] hover:text-[#5B9A72] transition-colors">
               Season {s.n}
             </Link>
@@ -47,7 +47,7 @@ export default function ShowPage() {
               No posts yet. Be the first to start a spoiler-safe thread.
             </p>
           )}
-          {data.posts.map(p => (
+          {data.posts.map((p: any) => (
             <article key={p.id} className="border border-[#E0DDD8] rounded-xl p-4">
               <div className="text-xs text-[#888888]">S{p.season} • E{p.episode} • by {p.author}</div>
               <div className="mt-1">{p.text}</div>
