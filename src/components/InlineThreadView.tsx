@@ -8,7 +8,7 @@ export default function InlineThreadView({
   thread, show, onBack, progressForShow, onMountAlignTop,
   likeThread, likedByUser, likesCount,
   likeReply, likesReplies, likedByUserReplies,
-  mode, focusReplyId
+  mode, focusReplyId, onAuthRequired
 }: {
   thread: Thread;
   show: any;
@@ -23,6 +23,7 @@ export default function InlineThreadView({
   likedByUserReplies: Record<string, boolean>;
   mode: "standard" | "risky";
   focusReplyId?: string | null;
+  onAuthRequired: () => void;
 }) {
   useEffect(() => { onMountAlignTop?.(); }, []);
 
@@ -45,7 +46,6 @@ export default function InlineThreadView({
               onClick={(e) => { e.stopPropagation(); likeThread(); }}
               title="this post!"
             />
-            <button className="btn">Reply</button>
           </div>
         </div>
 
@@ -66,6 +66,7 @@ export default function InlineThreadView({
             likesReplies={likesReplies}
             likedByUserReplies={likedByUserReplies}
             focusReplyId={focusReplyId}
+            onAuthRequired={onAuthRequired}
           />
         </div>
       </div>

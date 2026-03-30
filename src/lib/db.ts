@@ -52,6 +52,53 @@ export async function fetchThreadsForShow(showId: string): Promise<{ threads: Th
   return { threads, replyCounts };
 }
 
+// ── Write: threads ───────────────────────────────────────────────────────────
+
+export async function insertThread(data: {
+  showId: string; season: number; episode: number;
+  authorId: string; authorName: string;
+  title: string; preview: string; body: string; isPrivate: boolean;
+}): Promise<Thread> {
+  const row = {
+    show_id: data.showId, season: data.season, episode: data.episode,
+    author_id: data.authorId, author_name: data.authorName,
+    title: data.title, preview: data.preview, body: data.body,
+    is_private: data.isPrivate, likes_count: 0,
+  };
+  const { data: inserted, error } = await supabase
+    .from("threads").insert(row).select().single();
+  if (error) throw error;
+  return rowToThread(inserted);
+}
+
+// ── Likes ─────────────────────────────────────────────────────────────────────
+
+export async function fetchUserThreadLikes(userId: string, threadIds: string[]): Promise<Set<string>> {
+  if (!threadIds.length) return new Set();
+  const { data } = await supabase
+    .from("likes_threads").select("thread_id")
+    .eq("user_id", userId).in("thread_id", threadIds);
+  return new Set((data ?? []).map((r: any) => r.thread_id));
+}
+
+export async function fetchUserReplyLikes(userId: string, replyIds: string[]): Promise<Set<string>> {
+  if (!replyIds.length) return new Set();
+  const { data } = await supabase
+    .from("likes_replies").select("reply_id")
+    .eq("user_id", userId).in("reply_id", replyIds);
+  return new Set((data ?? []).map((r: any) => r.reply_id));
+}
+
+export async function likeThread(userId: string, threadId: string): Promise<void> {
+  await supabase.from("likes_threads").insert({ user_id: userId, thread_id: threadId });
+  await supabase.rpc("increment_thread_likes", { thread_id: threadId });
+}
+
+export async function likeReply(userId: string, replyId: string): Promise<void> {
+  await supabase.from("likes_replies").insert({ user_id: userId, reply_id: replyId });
+  await supabase.rpc("increment_reply_likes", { reply_id: replyId });
+}
+
 // ── Replies ──────────────────────────────────────────────────────────────────
 
 function rowToReply(row: any): Reply {
@@ -77,4 +124,20 @@ export async function fetchRepliesForThread(threadId: string): Promise<Reply[]> 
     .order("created_at", { ascending: true });
   if (error) throw error;
   return (data ?? []).map(rowToReply);
+}
+
+export async function insertReply(data: {
+  threadId: string; showId: string; season: number; episode: number;
+  authorId: string; authorName: string; body: string; replyToId?: string;
+}): Promise<Reply> {
+  const row = {
+    thread_id: data.threadId, show_id: data.showId,
+    season: data.season, episode: data.episode,
+    author_id: data.authorId, author_name: data.authorName,
+    body: data.body, reply_to_id: data.replyToId ?? null, likes_count: 0,
+  };
+  const { data: inserted, error } = await supabase
+    .from("replies").insert(row).select().single();
+  if (error) throw error;
+  return rowToReply(inserted);
 }
