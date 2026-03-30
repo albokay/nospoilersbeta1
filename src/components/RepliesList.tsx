@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import type { Thread, Reply } from "../types";
-import { fetchRepliesForThread } from "../lib/db";
+import { fetchRepliesForThread, fetchUserReplyLikes, insertReply, likeReply as dbLikeReply } from "../lib/db";
+import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
 
 export default function RepliesList({
   thread, progressForShow, riskyMode = false,
-  likeReply, likesReplies, likedByUserReplies, focusReplyId
+  likeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
@@ -16,18 +17,37 @@ export default function RepliesList({
   likesReplies: Record<string, number>;
   likedByUserReplies: Record<string, boolean>;
   focusReplyId?: string | null;
+  onAuthRequired: () => void;
 }) {
+  const { user, profile } = useAuth();
+
   const [replies, setReplies] = useState<Reply[]>([]);
   const [repliesLoading, setRepliesLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setRepliesLoading(true);
-    fetchRepliesForThread(thread.id).then(data => {
-      if (!cancelled) { setReplies(data); setRepliesLoading(false); }
+    fetchRepliesForThread(thread.id).then(async (data) => {
+      if (cancelled) return;
+      setReplies(data);
+      setRepliesLoading(false);
+
+      // Load user reply likes if logged in
+      if (user && data.length > 0) {
+        const ids = data.map((r) => r.id);
+        const liked = await fetchUserReplyLikes(user.id, ids);
+        // Notify parent about any likes we found
+        // (parent state is in ShowSection — we call likeReply to sync, but that would write to DB)
+        // Instead we update our local display via likedByUserReplies passed from parent
+        // The parent already handles initial load, but for completeness we could emit
+        // For now just store locally
+        setLocalLiked(Object.fromEntries([...liked].map((id) => [id, true])));
+      }
     }).catch(() => setRepliesLoading(false));
     return () => { cancelled = true; };
-  }, [thread.id]);
+  }, [thread.id, user]);
+
+  const [localLiked, setLocalLiked] = useState<Record<string, boolean>>({});
 
   const byId = useMemo(() => {
     const map: Record<string, Reply> = {};
@@ -38,6 +58,77 @@ export default function RepliesList({
   const [revealed, setRevealed] = useState<Record<string, true>>({});
   const [progressReveal, setProgressReveal] = useState<Record<string, true>>({});
   const [promptFor, setPromptFor] = useState<Reply | null>(null);
+
+  // ── Inline reply form state ───────────────────────────────
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyBody, setReplyBody] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (replyingToId && replyTextareaRef.current) {
+      replyTextareaRef.current.focus();
+    }
+  }, [replyingToId]);
+
+  const handleReplyClick = (replyId: string) => {
+    if (!user) { onAuthRequired(); return; }
+    setReplyingToId(replyId);
+    setReplyBody("");
+  };
+
+  const handleCancelReply = () => {
+    setReplyingToId(null);
+    setReplyBody("");
+  };
+
+  const handleSubmitReply = async (replyToId: string) => {
+    if (!user || !profile) { onAuthRequired(); return; }
+    const body = replyBody.trim();
+    if (!body) return;
+    setSubmitting(true);
+    try {
+      const parentReply = byId[replyToId];
+      const newReply = await insertReply({
+        threadId: thread.id,
+        showId: thread.showId,
+        season: progressForShow?.s ?? thread.season,
+        episode: progressForShow?.e ?? thread.episode,
+        authorId: user.id,
+        authorName: profile.username,
+        body,
+        replyToId,
+      });
+      setReplies((prev) => [...prev, newReply]);
+      setReplyingToId(null);
+      setReplyBody("");
+      // Scroll to new reply
+      setTimeout(() => {
+        const el = document.getElementById(`c-${newReply.id}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 80);
+    } catch (err) {
+      console.error("Failed to post reply:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleLikeReply = async (rid: string) => {
+    if (!user) { onAuthRequired(); return; }
+    const alreadyLiked = likedByUserReplies[rid] || localLiked[rid];
+    if (alreadyLiked) return;
+    // Optimistic update via parent
+    likeReply(rid);
+    setLocalLiked((prev) => ({ ...prev, [rid]: true }));
+    try {
+      await dbLikeReply(user.id, rid);
+    } catch (err) {
+      console.error("Failed to like reply:", err);
+      // Rollback local
+      setLocalLiked((prev) => { const n = { ...prev }; delete n[rid]; return n; });
+    }
+  };
 
   useEffect(() => {
     if (!focusReplyId) return;
@@ -153,6 +244,7 @@ export default function RepliesList({
           const vis = isVisible(r);
           const parent = r.replyToId ? byId[r.replyToId] : null;
           const likeCt = likesReplies[r.id] ?? r.likes;
+          const userLiked = likedByUserReplies[r.id] || !!localLiked[r.id];
 
           if (!riskyMode && !vis.show) return null;
 
@@ -210,16 +302,54 @@ export default function RepliesList({
               <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 10 }}>
                 <LikeBadge
                   count={likeCt}
-                  userLiked={!!likedByUserReplies[r.id]}
-                  onClick={() => likeReply(r.id)}
+                  userLiked={userLiked}
+                  onClick={() => handleLikeReply(r.id)}
                   title="this post!"
                 />
-                <button className="btn">Reply</button>
+                <button
+                  className="btn"
+                  onClick={() => replyingToId === r.id ? handleCancelReply() : handleReplyClick(r.id)}
+                >
+                  {replyingToId === r.id ? "Cancel" : "Reply"}
+                </button>
               </div>
+
+              {replyingToId === r.id && (
+                <div style={{ marginTop: 10, borderTop: "1px solid var(--dos-border)", paddingTop: 10 }}>
+                  <textarea
+                    ref={replyTextareaRef}
+                    value={replyBody}
+                    onChange={(e) => setReplyBody(e.target.value)}
+                    placeholder={`Reply to @${r.author}…`}
+                    rows={3}
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      background: "var(--dos-bg)", color: "var(--dos-fg)",
+                      border: "1px solid var(--dos-border)", borderRadius: 4,
+                      padding: "8px 10px", fontSize: 14, resize: "vertical",
+                      fontFamily: "inherit",
+                    }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+                    <button className="btn" onClick={handleCancelReply} disabled={submitting}>
+                      Cancel
+                    </button>
+                    <button
+                      className="btn primary"
+                      onClick={() => handleSubmitReply(r.id)}
+                      disabled={submitting || !replyBody.trim()}
+                    >
+                      {submitting ? "Posting…" : "Post reply"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
-        {replies.length === 0 && <div className="muted" style={{ fontSize: 14 }}>No replies yet.</div>}
+        {!repliesLoading && replies.length === 0 && (
+          <div className="muted" style={{ fontSize: 14 }}>No replies yet.</div>
+        )}
       </div>
     </>
   );

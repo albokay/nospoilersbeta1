@@ -285,6 +285,7 @@ export default function App() {
             likedByUserReplies={likedByUserReplies}
             setLikedByUserReplies={setLikedByUserReplies}
             focusReplyId={focusReplyId}
+            onAuthRequired={() => setShowAuthModal(true)}
           />
         </div>
       )}
