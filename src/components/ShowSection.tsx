@@ -171,10 +171,28 @@ export default function ShowSection({
     return list;
   }, [dbThreads, progress, searchQuery, sortBy, likesThreads]);
 
+  // ── Green-tab: compute newly visible threads from real dbThreads ──
+  const prevProgRef = useRef<{ s: number; e: number } | undefined>(undefined);
+  useEffect(() => {
+    const cur = progress[showId];
+    const prev = prevProgRef.current;
+    if (prev && cur && dbThreads.length > 0 && (prev.s !== cur.s || prev.e !== cur.e)) {
+      const newly: Record<string, true> = {};
+      for (const t of dbThreads) {
+        if (!canView(t, prev) && canView(t, cur)) newly[t.id] = true;
+      }
+      if (Object.keys(newly).length > 0) {
+        // Merge — don't replace — so previously revealed-but-unvisited posts keep their green tab
+        setNewHighlights((nh: any) => ({ ...nh, [showId]: { ...(nh[showId] || {}), ...newly } }));
+      }
+    }
+    prevProgRef.current = cur;
+  }, [progress[showId]?.s, progress[showId]?.e, dbThreads]);
+
   const [limit, setLimit] = useState(10);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => setLimit(10), [showId, progress[showId]?.s, progress[showId]?.e, searchQuery, sortBy]);
+  useEffect(() => setLimit(10), [showId, searchQuery, sortBy]);
   useEffect(() => {
     if (!sentinelRef.current) return;
     const el = sentinelRef.current;

@@ -69,16 +69,8 @@ export default function App() {
     setLikesThreads(lt); setLikesReplies(lr);
   }, []);
 
-  const computeVisibleIds = (sid: string, prog?: { s: number; e: number }) =>
-    !prog ? [] : seedThreads.filter(t => t.showId === sid).filter(t => canView(t, prog)).map(t => t.id);
-
   const updateProgressFor = (sid: string, next: { s: number; e: number }) => {
-    setProgress(prev => {
-      const before = prev[sid]; const beforeIds = computeVisibleIds(sid, before); const afterIds = computeVisibleIds(sid, next);
-      const isNew: any = {}; afterIds.forEach(id => { if (!beforeIds.includes(id)) isNew[id] = true; });
-      setNewHighlights(nh => ({ ...nh, [sid]: isNew }));
-      return { ...prev, [sid]: next };
-    });
+    setProgress(prev => ({ ...prev, [sid]: next }));
     if (user) {
       upsertProgress(user.id, sid, next.s, next.e).catch(err =>
         console.error("Failed to save progress:", err)
@@ -256,23 +248,7 @@ export default function App() {
             showId={expandedShowId}
             progress={progress}
             updateProgressFor={(sid: string, next: { s: number; e: number }) => {
-              setProgress(prev => {
-                const before = prev[sid];
-                const computeIds = (sid: string, prog?: { s: number; e: number }) => {
-                  if (!prog) return [] as string[];
-                  return seedThreads
-                    .filter(t => t.showId === sid)
-                    .filter(t => !t.isPrivate)
-                    .filter(t => canView({ season: t.season, episode: t.episode }, prog))
-                    .map(t => t.id);
-                };
-                const beforeIds = computeIds(sid, before);
-                const afterIds = computeIds(sid, next);
-                const newly = {} as { [tid: string]: true };
-                for (const id of afterIds) if (!beforeIds.includes(id)) newly[id] = true;
-                if (Object.keys(newly).length) setNewHighlights(nh => ({ ...nh, [sid]: newly }));
-                return { ...prev, [sid]: next };
-              });
+              setProgress(prev => ({ ...prev, [sid]: next }));
 
               setActiveThreadId(currentId => {
                 if (!currentId) return currentId;
