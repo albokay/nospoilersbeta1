@@ -329,13 +329,14 @@ export async function createShow(show: {
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 export async function adminDeleteShow(showId: string): Promise<void> {
-  // cascade: replies → threads → show
+  // cascade: replies → threads → progress → show
   const { data: threads } = await supabase.from("threads").select("id").eq("show_id", showId);
   const threadIds = (threads ?? []).map((t: any) => t.id);
   if (threadIds.length) {
     await supabase.from("replies").delete().in("thread_id", threadIds);
     await supabase.from("threads").delete().in("id", threadIds);
   }
+  await supabase.from("progress").delete().eq("show_id", showId);
   const { error } = await supabase.from("shows").delete().eq("id", showId);
   if (error) throw error;
 }
