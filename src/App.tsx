@@ -142,6 +142,12 @@ export default function App() {
           </div>
         )}
 
+        {!isHomepage && (
+          <div className="siteTagline" style={{ flex: 1, margin: 0 }}>
+            watch. together. whenever.
+          </div>
+        )}
+
         <div style={{ marginLeft: "auto", marginRight: 20, display: "flex", alignItems: "center", gap: 8 }}>
           {!authLoading && !user && (
             <button className="btn h40" onClick={() => setShowAuthModal(true)}>
@@ -172,11 +178,6 @@ export default function App() {
         </div>
       </div>
 
-      {!isHomepage && (
-        <div className="siteTagline">
-          watch. together. whenever.
-        </div>
-      )}
     </header>
   );
 

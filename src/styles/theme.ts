@@ -33,16 +33,16 @@ body{
 hr{ border:none; border-top:1px solid var(--dos-border); }
 .title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; }
 .muted{ color:var(--dos-gray); }
-.card{ background:transparent; border:4px solid var(--dos-border); padding:12px; border-radius:24px; }
+.card{ background:transparent; border:3px solid var(--dos-border); padding:12px; border-radius:23px; }
 
 /* controls */
 .badge{
-  background:transparent; color:var(--dos-fg); border:4px solid var(--dos-border);
-  border-radius:9999px; padding:10px 14px; outline:none; font-weight:500;
+  background:transparent; color:var(--dos-fg); border:3px solid var(--dos-border);
+  border-radius:9999px; padding:10px 13px; outline:none; font-weight:500;
 }
 .badge:focus{ border-color:var(--dos-cyan); }
 .btn{
-  background:transparent; color:var(--dos-fg); border:4px solid var(--dos-border);
+  background:transparent; color:var(--dos-fg); border:3px solid var(--dos-border);
   border-radius:9999px; padding:6px 12px; cursor:pointer; font-weight:500;
 }
 .btn.primary{ border-color:var(--dos-cyan); color:var(--dos-cyan); }
@@ -73,7 +73,7 @@ header.site{
   font-size:18px;
   font-weight:600;
   letter-spacing:0.02em;
-  margin:4px 0 10px;
+  margin:3px 0 10px;
 }
 
 /* On wider screens, visually tuck the tagline up toward the header bar */
@@ -111,14 +111,14 @@ header.site{
   position:absolute; top:calc(100% + 8px); width:480px; max-width:90vw; z-index:9999;
   max-height:320px; overflow:auto; background:rgba(201,168,67,0.97);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
-  border:4px solid var(--dos-border); border-radius:24px; box-shadow:0 8px 24px rgba(0,0,0,0.15);
+  border:3px solid var(--dos-border); border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
 }
 
 /* "Your shows" */
 .listPill{
-  width:480px; max-width:90vw; height:40px; border-radius:9999px; padding:0 24px;
+  width:480px; max-width:90vw; height:40px; border-radius:9999px; padding:0 23px;
   font-size:15px; font-weight:600; letter-spacing:0.01em;
-  display:inline-flex; align-items:center; justify-content:center; border:4px solid var(--dos-border);
+  display:inline-flex; align-items:center; justify-content:center; border:3px solid var(--dos-border);
 }
 
 /* forum search */
@@ -132,7 +132,7 @@ header.site{
 .threadCard{ border-color:var(--dos-border); }
 .replyBarNew{ background:var(--green); height:6px; }
 .clamp3{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
-.redacted{ background:#e8e4dc; color:#888; border:4px solid #ccc; border-radius:24px; }
+.redacted{ background:#e8e4dc; color:#888; border:3px solid #ccc; border-radius:23px; }
 
 /* mode toggle */
 .modeToggle{ width:240px; height:38px; }
@@ -142,7 +142,7 @@ header.site{
 .flash-cover{ position:absolute; inset:0; background:rgba(255,255,255,0.44); pointer-events:none; opacity:1; transition:opacity 2000ms ease; }
 
 /* like badge */
-.likeWrap{ display:inline-flex; align-items:baseline; gap:4px; user-select:none; }
+.likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }
 .likeThis{ font-style:italic; font-weight:700; }
 
 /* profile chip */

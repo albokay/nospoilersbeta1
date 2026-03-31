@@ -85,7 +85,7 @@ const hasReachedFriendPost =
   maxWidth: "none",
   minWidth: 0,
     background: "rgba(201,168,67,0.97)",
-    border: "4px solid #fff",
+    border: "3px solid #fff",
     boxShadow: "0 8px 32px rgba(0,0,0,0.20)",
     backdropFilter: "blur(10px)",
     WebkitBackdropFilter: "blur(10px)",
