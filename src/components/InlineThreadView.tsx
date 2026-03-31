@@ -9,7 +9,7 @@ import RepliesList from "./RepliesList";
 export default function InlineThreadView({
   thread, show, onBack, progressForShow, onMountAlignTop,
   likeThread, likedByUser, likesCount,
-  likeReply, likesReplies, likedByUserReplies,
+  likeReply, unlikeReply, likesReplies, likedByUserReplies,
   mode, focusReplyId, onAuthRequired, hiddenNewReplies = 0, onRiskyReveal,
   onThreadUpdate, onThreadDelete, onThreadMakePrivate, onThreadMakePublic,
   hasExternalReplies = false, onExternalReplyAdded,
@@ -23,6 +23,7 @@ export default function InlineThreadView({
   likedByUser: boolean;
   likesCount: number;
   likeReply: (rid: string) => void;
+  unlikeReply: (rid: string) => void;
   likesReplies: Record<string, number>;
   likedByUserReplies: Record<string, boolean>;
   mode: "standard" | "risky";
@@ -229,6 +230,7 @@ export default function InlineThreadView({
           progressForShow={progressForShow}
           riskyMode={mode === "risky"}
           likeReply={likeReply}
+          unlikeReply={unlikeReply}
           likesReplies={likesReplies}
           likedByUserReplies={likedByUserReplies}
           focusReplyId={focusReplyId}

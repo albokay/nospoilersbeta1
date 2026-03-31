@@ -146,9 +146,19 @@ export async function likeThread(userId: string, threadId: string): Promise<void
   await supabase.rpc("increment_thread_likes", { thread_id: threadId });
 }
 
+export async function unlikeThread(userId: string, threadId: string): Promise<void> {
+  await supabase.from("likes_threads").delete().eq("user_id", userId).eq("thread_id", threadId);
+  await supabase.rpc("decrement_thread_likes", { thread_id: threadId });
+}
+
 export async function likeReply(userId: string, replyId: string): Promise<void> {
   await supabase.from("likes_replies").insert({ user_id: userId, reply_id: replyId });
   await supabase.rpc("increment_reply_likes", { reply_id: replyId });
+}
+
+export async function unlikeReply(userId: string, replyId: string): Promise<void> {
+  await supabase.from("likes_replies").delete().eq("user_id", userId).eq("reply_id", replyId);
+  await supabase.rpc("decrement_reply_likes", { reply_id: replyId });
 }
 
 // ── Replies ──────────────────────────────────────────────────────────────────

@@ -22,13 +22,13 @@ export default function LikeBadge({
     <button
       className="likeWrap"
       onClick={clickable ? onClick : undefined}
-      title={clickable ? (userLiked ? "Already liked" : title) : undefined}
+      title={clickable ? (userLiked ? "Un-star" : title) : undefined}
       style={{
         border: "3px solid var(--dos-border)",
         borderRadius: 9999,
         padding: "4px 11px",
         background: "transparent",
-        cursor: clickable && !userLiked ? "pointer" : "default",
+        cursor: clickable ? "pointer" : "default",
         display: "inline-flex",
         alignItems: "baseline",
         gap: 5,

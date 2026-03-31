@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import type { Thread, Reply } from "../types";
-import { fetchRepliesForThread, insertReply, likeReply as dbLikeReply, editReply as dbEditReply, deleteReply as dbDeleteReply } from "../lib/db";
+import { fetchRepliesForThread, insertReply, likeReply as dbLikeReply, unlikeReply as dbUnlikeReply, editReply as dbEditReply, deleteReply as dbDeleteReply } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
@@ -8,13 +8,14 @@ import LikeBadge from "./LikeBadge";
 
 export default function RepliesList({
   thread, progressForShow, riskyMode = false,
-  likeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
+  likeReply, unlikeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
   threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded,
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
   riskyMode?: boolean;
   likeReply: (rid: string, baseCount?: number) => void;
+  unlikeReply: (rid: string) => void;
   likesReplies: Record<string, number>;
   likedByUserReplies: Record<string, boolean>;
   focusReplyId?: string | null;
@@ -166,7 +167,18 @@ export default function RepliesList({
   const handleLikeReply = async (rid: string) => {
     if (!user) { onAuthRequired(); return; }
     const alreadyLiked = likedByUserReplies[rid] || localLiked[rid];
-    if (alreadyLiked) return;
+    if (alreadyLiked) {
+      // Unlike
+      unlikeReply(rid);
+      setLocalLiked((prev) => { const n = { ...prev }; delete n[rid]; return n; });
+      try {
+        await dbUnlikeReply(user.id, rid);
+      } catch (err) {
+        console.error("Failed to unlike reply:", err);
+        setLocalLiked((prev) => ({ ...prev, [rid]: true }));
+      }
+      return;
+    }
     const reply = replies.find(r => r.id === rid);
     const baseCount = likesReplies[rid] ?? reply?.likes ?? 0;
     likeReply(rid, baseCount);

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Thread } from "../types";
 import { seedShows } from "../lib/mockData";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply } from "../lib/db";
 import type { ReplyMeta } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -205,18 +205,31 @@ export default function ShowSection({
 
   const likeThread = (tid: string) => {
     if (!user) { onAuthRequired(); return; }
-    if (likedByUserThreads[tid]) return;
-    setLikesThreads((m: any) => ({ ...m, [tid]: (m[tid] ?? 0) + 1 }));
-    setLikedByUserThreads((u: any) => ({ ...u, [tid]: true }));
-    dbLikeThread(user.id, tid).catch(() => {
-      // Rollback on error
+    if (likedByUserThreads[tid]) {
+      // Unlike
       setLikesThreads((m: any) => ({ ...m, [tid]: Math.max(0, (m[tid] ?? 1) - 1) }));
       setLikedByUserThreads((u: any) => { const n = { ...u }; delete n[tid]; return n; });
-    });
+      dbUnlikeThread(user.id, tid).catch(() => {
+        setLikesThreads((m: any) => ({ ...m, [tid]: (m[tid] ?? 0) + 1 }));
+        setLikedByUserThreads((u: any) => ({ ...u, [tid]: true }));
+      });
+    } else {
+      // Like
+      setLikesThreads((m: any) => ({ ...m, [tid]: (m[tid] ?? 0) + 1 }));
+      setLikedByUserThreads((u: any) => ({ ...u, [tid]: true }));
+      dbLikeThread(user.id, tid).catch(() => {
+        setLikesThreads((m: any) => ({ ...m, [tid]: Math.max(0, (m[tid] ?? 1) - 1) }));
+        setLikedByUserThreads((u: any) => { const n = { ...u }; delete n[tid]; return n; });
+      });
+    }
   };
   const likeReply = (rid: string, baseCount?: number) => {
     setLikesReplies((m: any) => ({ ...m, [rid]: (baseCount ?? m[rid] ?? 0) + 1 }));
     setLikedByUserReplies((u: any) => u[rid] ? u : ({ ...u, [rid]: true }));
+  };
+  const unlikeReply = (rid: string) => {
+    setLikesReplies((m: any) => ({ ...m, [rid]: Math.max(0, (m[rid] ?? 1) - 1) }));
+    setLikedByUserReplies((u: any) => { const n = { ...u }; delete n[rid]; return n; });
   };
 
   const [postTitle, setPostTitle] = useState("");
@@ -330,6 +343,7 @@ export default function ShowSection({
           likedByUser={!!likedByUserThreads[thread.id]}
           likesCount={likesThreads[thread.id] ?? thread.likes}
           likeReply={likeReply}
+          unlikeReply={unlikeReply}
           likesReplies={likesReplies}
           likedByUserReplies={likedByUserReplies}
           mode={mode}

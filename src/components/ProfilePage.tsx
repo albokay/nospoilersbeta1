@@ -221,9 +221,9 @@ export default function ProfilePage({
           </div>
         </section>
 
-        {/* You liked */}
+        {/* You starred */}
         <section style={{ marginTop: 24 }}>
-          <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>You liked</div>
+          <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>You starred</div>
 
           <div className="card" style={{ marginBottom: 12 }}>
             <div className="title" style={{ fontSize: 16 }}>Posts</div>
@@ -231,7 +231,7 @@ export default function ProfilePage({
               <Tabs tabs={likedPostTabs} value={likedPostTab} onChange={setLikedPostTab} />
             )}
             <div className="card scrollWin" style={{ maxHeight: 6 * 120 + 48, overflow: "auto" }}>
-              {!loading && likedThreadsFiltered.length === 0 && <div className="muted">You haven't liked any posts yet.</div>}
+              {!loading && likedThreadsFiltered.length === 0 && <div className="muted">You haven't starred any posts yet.</div>}
               {likedThreadsFiltered.map(t => (
                 <div key={t.id} className="card"
                   style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
@@ -257,7 +257,7 @@ export default function ProfilePage({
               <Tabs tabs={likedReplyTabs} value={likedReplyTab} onChange={setLikedReplyTab} />
             )}
             <div className="card scrollWin" style={{ maxHeight: 6 * 110 + 48, overflow: "auto" }}>
-              {!loading && likedRepliesFiltered.length === 0 && <div className="muted">You haven't liked any replies yet.</div>}
+              {!loading && likedRepliesFiltered.length === 0 && <div className="muted">You haven't starred any replies yet.</div>}
               {likedRepliesFiltered.map(({ reply: r, thread: t }) => (
                 <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
                   onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
