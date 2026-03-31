@@ -15,6 +15,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
+import PublicProfilePage from "./components/PublicProfilePage";
 
 const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
 
@@ -39,6 +40,7 @@ export default function App() {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [focusReplyId, setFocusReplyId] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [publicProfileUsername, setPublicProfileUsername] = useState<string | null>(null);
 
   const [progress, setProgress] = useState<{ [sid: string]: { s: number; e: number } }>({});
 
@@ -93,6 +95,7 @@ export default function App() {
   const openShow = (id: string) => {
     if (!id) return;
     setShowProfile(false);
+    setPublicProfileUsername(null);
     setExpandedShowId(id);
     setActiveThreadId(null);
     setFocusReplyId(null);
@@ -111,7 +114,17 @@ export default function App() {
     setActiveThreadId(null);
     setFocusReplyId(null);
     setShowProfile(false);
+    setPublicProfileUsername(null);
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+  };
+
+  const handleClickProfile = (name: string) => {
+    setExpandedShowId(null);
+    setActiveThreadId(null);
+    setFocusReplyId(null);
+    setShowProfile(false);
+    setPublicProfileUsername(name);
+    requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
   };
 
   const handlePickFromSearch = (showId: string) => {
@@ -133,7 +146,7 @@ export default function App() {
     openShow(id);
   };
 
-  const isHomepage = !expandedShowId && !showProfile;
+  const isHomepage = !expandedShowId && !showProfile && !publicProfileUsername;
   const [showAdmin, setShowAdmin] = useState(() => window.location.search.includes("admin"));
   const isAdmin = user?.id === ADMIN_USER_ID;
 
@@ -211,7 +224,7 @@ export default function App() {
           </div>
         </div>
       )}
-      {!showProfile && (
+      {!showProfile && !publicProfileUsername && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28, placeItems: "center", marginTop: 36 }}>
             <YourShowsSelect
@@ -284,6 +297,17 @@ export default function App() {
         />
       )}
 
+      {publicProfileUsername && (
+        <PublicProfilePage
+          username={publicProfileUsername}
+          shows={shows}
+          viewerProgress={progress}
+          openThreadWithFocus={openThreadWithFocus}
+          openShow={openShow}
+          onClose={() => setPublicProfileUsername(null)}
+        />
+      )}
+
       {SINGLE_PAGE && !showProfile && expandedShowId && (
         <div style={{ marginTop: 8 }}>
           <ShowSection
@@ -327,6 +351,7 @@ export default function App() {
             setLikedByUserReplies={setLikedByUserReplies}
             focusReplyId={focusReplyId}
             onAuthRequired={() => setShowAuthModal(true)}
+            onClickProfile={handleClickProfile}
           />
         </div>
       )}
