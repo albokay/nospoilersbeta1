@@ -196,7 +196,7 @@ export default function App() {
       )}
       {!showProfile && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28, placeItems: "center" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28, placeItems: "center", marginTop: 36 }}>
             <YourShowsSelect
               progress={progress}
               value={""}
@@ -258,7 +258,7 @@ export default function App() {
       )}
 
       {SINGLE_PAGE && !showProfile && expandedShowId && (
-        <div style={{ marginTop: 40 }}>
+        <div style={{ marginTop: 8 }}>
           <ShowSection
             username={username ?? ""}
             showId={expandedShowId}

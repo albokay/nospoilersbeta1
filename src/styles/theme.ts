@@ -100,6 +100,19 @@ header.site{
   border-bottom:1px solid var(--dos-border); background:rgba(201,168,67,0.98);
 }
 
+/* banner row 1: title + sort — stacks on mobile */
+.bannerRow1{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:20px 0 8px;
+}
+@media (max-width: 600px){
+  .bannerRow1{
+    flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; padding:16px 0 8px; text-align:center;
+  }
+  .bannerRow1 .hangL{ transform:none; }
+}
+
 /* homepage search */
 .splashSearchWrap{
   position:relative; display:flex; align-items:center; justify-content:flex-start;

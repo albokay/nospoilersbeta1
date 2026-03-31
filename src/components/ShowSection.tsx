@@ -258,16 +258,16 @@ export default function ShowSection({
       <div className="stickybar bleed" style={{ top: GLOBAL_HEADER_H }} ref={bannerRef}>
         <div className="container">
           {/* Row 1 */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: `${ROW_PAD_Y}px 0`, overflow: "hidden" }}>
+          <div className="bannerRow1">
             <span
-              className="hangL"
+              className="hangL bannerTitle"
               role={thread ? "button" : "heading"}
               title={thread ? "Back to forum" : "Forum"}
               onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
               style={{
                 fontSize: 28, fontWeight: 800, letterSpacing: .5, textTransform: "uppercase",
                 color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
-                whiteSpace: "nowrap", overflow: "visible", flex: "1 1 auto", minWidth: 0,
+                flex: "0 0 auto",
               }}
             >
               {String((seedShows.find(s => s.id === showId)?.name) || showId)}
