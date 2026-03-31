@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect } from "react";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
-import { fetchProgress, upsertProgress } from "./lib/db";
+import { fetchProgress, upsertProgress, fetchShows } from "./lib/db";
+import type { Show } from "./lib/db";
 import { useAuth } from "./lib/auth";
 import ExtensionDock from "./extensions/ExtensionDock";
 import SearchShows from "./components/SearchShows";
@@ -19,6 +20,11 @@ const GLOBAL_HEADER_H = 72;
 
 export default function App() {
   useEffect(injectDOSStyles, []);
+
+  const [shows, setShows] = useState<Show[]>(seedShows as Show[]);
+  useEffect(() => {
+    fetchShows().then(setShows).catch(() => {/* keep seedShows fallback */});
+  }, []);
 
   const { user, profile, loading: authLoading, signOut } = useAuth();
   const username = profile?.username ?? null;
@@ -40,7 +46,7 @@ export default function App() {
   }, [user?.id]);
 
   const [pickShowId, setPickShowId] = useState<string | null>(null);
-  const pickShow = useMemo(() => seedShows.find(s => s.id === pickShowId) || null, [pickShowId]);
+  const pickShow = useMemo(() => shows.find(s => s.id === pickShowId) || null, [pickShowId, shows]);
   const [hasPendingChange, setHasPendingChange] = useState(false);
   const [firstSel, setFirstSel] = useState<{ s: number; e: number } | null>(null);
   const [pickShowMode, setPickShowMode] = useState<"set" | "confirm">("set");
@@ -198,6 +204,7 @@ export default function App() {
         <>
           <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28, placeItems: "center", marginTop: 36 }}>
             <YourShowsSelect
+              shows={shows}
               progress={progress}
               value={""}
               onChange={(id) => {
@@ -213,7 +220,7 @@ export default function App() {
               </div>
               <div style={{ fontSize: 26 }}>
                 {["bb", "simshow"].map((id, idx, arr) => {
-                  const s = seedShows.find(x => x.id === id);
+                  const s = shows.find(x => x.id === id);
                   if (!s) return null;
                   const sep = idx < arr.length - 1 ? " / " : "";
                   return (
@@ -226,7 +233,7 @@ export default function App() {
               </div>
             </div>
           </div>
-          <SearchShows onPick={handlePickFromSearch} onStartNewForum={handleStartNewForum} />
+          <SearchShows shows={shows} onPick={handlePickFromSearch} onStartNewForum={handleStartNewForum} />
 
           {!expandedShowId && (
             <div className="homeAbout" style={{ display: "flex", justifyContent: "center" }}>
@@ -245,6 +252,7 @@ export default function App() {
 
       {showProfile && username && (
         <ProfilePage
+          shows={shows}
           username={username}
           progress={progress}
           likesThreads={likesThreads}
@@ -260,6 +268,7 @@ export default function App() {
       {SINGLE_PAGE && !showProfile && expandedShowId && (
         <div style={{ marginTop: 8 }}>
           <ShowSection
+            shows={shows}
             username={username ?? ""}
             showId={expandedShowId}
             progress={progress}

@@ -7,15 +7,31 @@ import type { Thread, Reply } from "../types";
 
 // ── Shows ────────────────────────────────────────────────────────────────────
 
-export type Show = { id: string; name: string; seasons: number[] };
+export type Show = {
+  id: string;
+  name: string;
+  seasons: number[];
+  tvmazeId?: string;
+  status?: string;
+  isHidden?: boolean;
+  lastSyncedAt?: string;
+};
 
 export async function fetchShows(): Promise<Show[]> {
   const { data, error } = await supabase
     .from("shows")
-    .select("id, name, seasons")
+    .select("id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at")
     .order("name");
   if (error) throw error;
-  return data as Show[];
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    seasons: row.seasons,
+    tvmazeId: row.tvmaze_id ?? undefined,
+    status: row.status ?? "Ended",
+    isHidden: row.is_hidden ?? false,
+    lastSyncedAt: row.last_synced_at ?? undefined,
+  }));
 }
 
 // ── Threads ──────────────────────────────────────────────────────────────────

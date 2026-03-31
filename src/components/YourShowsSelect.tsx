@@ -1,9 +1,9 @@
 import React from "react";
-import { seedShows } from "../lib/mockData";
+import type { Show } from "../lib/db";
 
 export default function YourShowsSelect({
-  progress, value, onChange
-}: { progress: Record<string, { s: number; e: number }>; value: string; onChange: (id: string) => void }) {
+  shows, progress, value, onChange
+}: { shows: Show[]; progress: Record<string, { s: number; e: number }>; value: string; onChange: (id: string) => void }) {
   const keys = Object.keys(progress);
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -17,7 +17,7 @@ export default function YourShowsSelect({
       >
         <option value="" disabled>Select your show</option>
         {keys.map((id) => {
-          const s = seedShows.find(x => x.id === id);
+          const s = shows.find(x => x.id === id);
           return <option key={id} value={id}>{s?.name || id}</option>;
         })}
       </select>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import type { Reply, Thread } from "../types";
 import { seedShows } from "../lib/mockData";
+import type { Show } from "../lib/db";
 import { fetchUserThreads, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -9,15 +10,13 @@ import Tabs from "./Tabs";
 const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
 
-function showName(showId: string) {
-  return seedShows.find(s => s.id === showId)?.name || showId;
-}
-
 export default function ProfilePage({
+  shows: showsProp,
   username,
   progress,
   openThreadWithFocus, openShow, onClose
 }: {
+  shows: Show[];
   username: string;
   progress: Record<string, { s: number; e: number }>;
   likesThreads: Record<string, number>;
@@ -29,6 +28,8 @@ export default function ProfilePage({
   onClose: () => void;
 }) {
   const { user } = useAuth();
+  const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
+  const showName = (showId: string) => allShows.find(s => s.id === showId)?.name || showId;
 
   const [myThreads, setMyThreads] = useState<Thread[]>([]);
   const [repliesToMe, setRepliesToMe] = useState<{ reply: Reply; thread: Thread }[]>([]);
@@ -138,8 +139,8 @@ export default function ProfilePage({
             <div className="scrollWin" style={{ display: "flex", gap: 12, overflowX: "auto", padding: "4px 0", flex: "1 1 auto" }}>
               {Object.keys(progress)
                 .sort((a, b) => {
-                  const showA = seedShows.find(s => s.id === a);
-                  const showB = seedShows.find(s => s.id === b);
+                  const showA = allShows.find(s => s.id === a);
+                  const showB = allShows.find(s => s.id === b);
                   const pa = progress[a]; const pb = progress[b];
                   const ra = showA ? (pa.s - 1) + (pa.e / (showA.seasons[pa.s - 1] || 1)) : 0;
                   const rb = showB ? (pb.s - 1) + (pb.e / (showB.seasons[pb.s - 1] || 1)) : 0;

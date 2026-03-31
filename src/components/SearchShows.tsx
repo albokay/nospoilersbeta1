@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { seedShows } from "../lib/mockData";
+import type { Show } from "../lib/db";
 
-export default function SearchShows({ onPick, onStartNewForum }: {
+export default function SearchShows({ shows, onPick, onStartNewForum }: {
+  shows: Show[];
   onPick: (showId: string) => void;
   onStartNewForum: (query: string) => void;
 }) {
@@ -12,8 +13,8 @@ export default function SearchShows({ onPick, onStartNewForum }: {
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return seedShows.filter(s => s.name.toLowerCase().includes(q)).slice(0, 25);
-  }, [query]);
+    return shows.filter(s => !s.isHidden && s.name.toLowerCase().includes(q)).slice(0, 25);
+  }, [query, shows]);
 
   useEffect(() => { if (hi >= matches.length) setHi(0); }, [matches.length]);
 

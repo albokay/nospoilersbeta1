@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Thread } from "../types";
 import { seedShows } from "../lib/mockData";
+import type { Show } from "../lib/db";
 import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply } from "../lib/db";
 import type { ReplyMeta } from "../lib/db";
 import { useAuth } from "../lib/auth";
@@ -15,14 +16,15 @@ const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
 
 export default function ShowSection({
-  username, showId, progress, updateProgressFor, newHighlights, setNewHighlights,
+  shows: showsProp, username, showId, progress, updateProgressFor, newHighlights, setNewHighlights,
   visitedThreads, setVisitedThreads, activeThreadId, setActiveThreadId, onHomepage,
   likesThreads, setLikesThreads, likedByUserThreads, setLikedByUserThreads,
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
   focusReplyId, onAuthRequired
 }: any) {
   const { user, profile } = useAuth();
-  const show = seedShows.find((s) => s.id === showId) || { id: showId, name: showId, seasons: [10] };
+  const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
+  const show = allShows.find((s) => s.id === showId) || { id: showId, name: showId, seasons: [10] };
 
   const [sortBy, setSortBy] = useState<"post" | "episode" | "hot">("post");
   const [searchInput, setSearchInput] = useState("");
@@ -283,7 +285,7 @@ export default function ShowSection({
                 flex: "0 0 auto",
               }}
             >
-              {String((seedShows.find(s => s.id === showId)?.name) || showId)}
+              {String((allShows.find(s => s.id === showId)?.name) || showId)}
             </span>
             {!thread && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto" }}>
@@ -321,7 +323,7 @@ export default function ShowSection({
                 />
               )}
               <OneSelectProgress
-                show={seedShows.find(s => s.id === showId) || { seasons: [10] }}
+                show={allShows.find(s => s.id === showId) || { seasons: [10] }}
                 value={progress[showId] || { s: 1, e: 1 }}
                 onConfirm={(val) => updateProgressFor(showId, val)}
                 requireConfirm={true}
@@ -335,7 +337,7 @@ export default function ShowSection({
       {thread ? (
         <InlineThreadView
           thread={{ ...thread, likes: likesThreads[thread.id] ?? thread.likes }}
-          show={seedShows.find(s => s.id === showId) || { name: showId }}
+          show={allShows.find(s => s.id === showId) || { name: showId }}
           onBack={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
           progressForShow={progress[showId] || { s: 1, e: 1 }}
           onMountAlignTop={() => scrollToShowTop()}
