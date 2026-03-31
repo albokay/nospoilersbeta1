@@ -21,9 +21,11 @@ const GLOBAL_HEADER_H = 72;
 export default function App() {
   useEffect(injectDOSStyles, []);
 
-  const [shows, setShows] = useState<Show[]>(seedShows as Show[]);
+  const [shows, setShows] = useState<Show[]>([]);
   useEffect(() => {
-    fetchShows().then(setShows).catch(() => {/* keep seedShows fallback */});
+    fetchShows().then(setShows).catch(() => setShows(
+      seedShows.filter(s => s.id === "bb" || s.id === "simshow") as Show[]
+    ));
   }, []);
 
   const { user, profile, loading: authLoading, signOut } = useAuth();
