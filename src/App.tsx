@@ -186,7 +186,7 @@ export default function App() {
       <ExtensionDock />
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {isHomepage && (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95 }}>
           <SidebarLogo />
           <div style={{ marginTop: 12, fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
             watch. together. whenever.
