@@ -64,100 +64,32 @@ const hasReachedFriendPost =
 };
 
   const ui = (
-<div
-  style={{
-    position: "fixed",
-    bottom: 16,
-    zIndex: 2147483000,
-
-    // Desktop (current behavior)
-    right: isMobile ? "auto" : 16,
-
-    // Mobile (centered)
-    left: isMobile ? "50%" : "auto",
-    transform: isMobile ? "translateX(-50%)" : "none",
-  }}
->
+    <div
+      style={{
+        position: "fixed",
+        bottom: 16,
+        zIndex: 2147483000,
+        right: isMobile ? "auto" : 16,
+        left: isMobile ? "50%" : "auto",
+        transform: isMobile ? "translateX(-50%)" : "none",
+      }}
+    >
       <div
-  className="card"
-  style={{
-   width: 380,
-  maxWidth: "none",
-  minWidth: 0,
-    background: "rgba(201,168,67,0.97)",
-    border: "3px solid #fff",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.20)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-  }}
->
-
-        {/* Top status line */}
-{(() => {
-  // -1 = you're behind, 0 = exact match, 1 = you're ahead
-  const compare =
-    bbProg.s > FRIEND_SEASON ? 1 :
-    bbProg.s < FRIEND_SEASON ? -1 :
-    bbProg.e > FRIEND_EPISODE ? 1 :
-    bbProg.e < FRIEND_EPISODE ? -1 :
-    0;
-
-  if (compare === 1) {
-    // you are past S04E05
-    return (
-      <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
-        <span style={{ color: "var(--green, #00AA00)" }}>•</span>&nbsp;You&apos;ve watched passed <b>@_quietloop</b>. <br></br><span style={{ color: "var(--green, #00AA00)" }}>Time for them to catch up!</span>
-      </div>
-    );
-  }
-
-  if (compare === 0) {
-    // exactly S04E05
-    return (
-      <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
-        <span style={{ color: "var(--green, #00AA00)" }}>•</span>&nbsp;You&apos;re all <span style={{ color: "var(--green, #00AA00)" }}>caught up</span> with <b>@_quietloop</b>!
-      </div>
-    );
-  }
-
-  // compare === -1 → behind friend
-  return (
-    <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
-      <span style={{ color: "var(--danger, #f45028)" }}>•</span>&nbsp;You’re watching <b>Breaking Bad</b> with <b>@_quietloop</b>.{" "}
-      They just watched <b>S{String(FRIEND_SEASON).padStart(2,"0")} E{String(FRIEND_EPISODE).padStart(2,"0")}</b>.&nbsp;
-      <span style={{ color: "var(--danger, #f45028)" }}>Time to catch up!</span>
-    </div>
-  );
-})()}
-
-
-
-        {/* Friends header */}
-        <div className="title" style={{ fontSize: 12, letterSpacing: "0.08em", opacity: 0.9, marginBottom: 6, textAlign: "center" }}>
-          YOUR FRIENDS:
-        </div>
-
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-  <li style={{ fontSize: 12, lineHeight: 1.35, margin: "6px 0" }}>
-    <b>@SlateOrbit</b> <span style={hl}>watched</span> <b>S01E03</b> of <b>Breaking Bad</b>.
-  </li>
-
-  {hasReachedFriendPost && (
-    <li style={{ fontSize: 12, lineHeight: 1.35, margin: "6px 0" }}>
-      <a
-        href="#"
-        onClick={handleMikeClick}
-        style={{ color: "inherit", textDecoration: "underline", cursor: "pointer" }}
-        aria-label='Open post: "Gus Fring: The Most Polite Threat in TV History" in Breaking Bad'
+        className="card"
+        style={{
+          width: 340,
+          maxWidth: "92vw",
+          background: "rgba(201,168,67,0.97)",
+          border: "3px solid #fff",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.20)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          padding: "14px 16px",
+        }}
       >
-        <b>@_quietloop</b> <span style={hl}>posted</span> about{" "}
-        <b>Breaking Bad S04E05</b>.
-      </a>
-    </li>
-  )}
-</ul>
-
-
+        <div style={{ fontSize: 12, lineHeight: 1.5, fontWeight: 700, color: "#fff" }}>
+          ⏳FUTURE FEATURE: alerts about friends you’re watching shows with. Have they caught up to you? Are they ahead? Are there posts or replies about shows you’re watching together?
+        </div>
       </div>
     </div>
   );
