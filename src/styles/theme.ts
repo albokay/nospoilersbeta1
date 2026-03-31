@@ -101,12 +101,20 @@ header.site{
 }
 
 /* homepage search */
-.splashSearchWrap{ position:relative; display:flex; align-items:center; width:288px; max-width:90vw; margin:20px auto; }
-.splashSearch{
-  width:100%; text-align:center; padding:0 16px;
-  font-size:15px; font-weight:600; letter-spacing:0.01em;
+.splashSearchWrap{
+  position:relative; display:flex; align-items:center; justify-content:center;
+  width:288px; max-width:90vw; margin:20px auto;
+  height:40px; border:3px solid var(--dos-border); border-radius:9999px;
+  padding:0 16px; gap:5px;
 }
-.splashSearchIcon{ display:none; }
+.splashSearch{
+  background:transparent; border:none !important; border-radius:0 !important; outline:none;
+  flex:0 1 auto; min-width:0; width:auto;
+  text-align:left; padding:0;
+  font-size:15px; font-weight:600; letter-spacing:0.01em; color:inherit;
+}
+.splashSearch::placeholder{ color:inherit; opacity:1; }
+.splashSearchIcon{ font-size:18px; opacity:.85; flex-shrink:0; line-height:1; }
 .dropdownPanel{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
   max-height:320px; overflow:auto; background:rgba(201,168,67,0.97);
