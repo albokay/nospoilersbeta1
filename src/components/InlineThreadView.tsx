@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { Thread } from "../types";
 import { timeAgo } from "../lib/utils";
 import { useAuth } from "../lib/auth";
-import { editThread as dbEditThread, deleteThread as dbDeleteThread, makeThreadPrivate as dbMakeThreadPrivate } from "../lib/db";
+import { editThread as dbEditThread, deleteThread as dbDeleteThread, makeThreadPrivate as dbMakeThreadPrivate, makeThreadPublic as dbMakeThreadPublic } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import RepliesList from "./RepliesList";
 
@@ -11,7 +11,7 @@ export default function InlineThreadView({
   likeThread, likedByUser, likesCount,
   likeReply, likesReplies, likedByUserReplies,
   mode, focusReplyId, onAuthRequired, hiddenNewReplies = 0, onRiskyReveal,
-  onThreadUpdate, onThreadDelete, onThreadMakePrivate,
+  onThreadUpdate, onThreadDelete, onThreadMakePrivate, onThreadMakePublic,
   hasExternalReplies = false, onExternalReplyAdded,
 }: {
   thread: Thread;
@@ -33,6 +33,7 @@ export default function InlineThreadView({
   onThreadUpdate?: (updated: Thread) => void;
   onThreadDelete?: () => void;
   onThreadMakePrivate?: () => void;
+  onThreadMakePublic?: () => void;
   hasExternalReplies?: boolean;
   onExternalReplyAdded?: (threadId: string) => void;
 }) {
@@ -101,6 +102,15 @@ export default function InlineThreadView({
     try {
       await dbMakeThreadPrivate(thread.id);
       onThreadMakePrivate?.();
+    } catch {
+      alert("Failed. Please try again.");
+    }
+  };
+
+  const handleMakePublic = async () => {
+    try {
+      await dbMakeThreadPublic(thread.id);
+      onThreadMakePublic?.();
     } catch {
       alert("Failed. Please try again.");
     }
@@ -201,6 +211,9 @@ export default function InlineThreadView({
                     <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={handleDelete}>Delete</button>
                     {!thread.isPrivate && !hasExternalReplies && (
                       <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePrivate}>Turn Private</button>
+                    )}
+                    {thread.isPrivate && (
+                      <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePublic}>Turn Public</button>
                     )}
                   </>
                 )}

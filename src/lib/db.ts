@@ -115,6 +115,14 @@ export async function makeThreadPrivate(threadId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function makeThreadPublic(threadId: string): Promise<void> {
+  const { error } = await supabase
+    .from("threads")
+    .update({ is_private: false })
+    .eq("id", threadId);
+  if (error) throw error;
+}
+
 // ── Likes ─────────────────────────────────────────────────────────────────────
 
 export async function fetchUserThreadLikes(userId: string, threadIds: string[]): Promise<Set<string>> {
