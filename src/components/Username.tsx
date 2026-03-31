@@ -1,7 +1,5 @@
 import React from "react";
-import { USERNAMES } from "../lib/mockData";
-
-const SEED_SET = new Set(USERNAMES);
+import { SEED_AUTHORS } from "../lib/mockData";
 
 /**
  * Renders a username as plain text if it's a seeded/fake account,
@@ -18,7 +16,7 @@ export default function Username({
 }) {
   const Tag = bold ? "b" : "span";
 
-  if (SEED_SET.has(name)) {
+  if (SEED_AUTHORS.has(name)) {
     return <Tag className="username">@{name}</Tag>;
   }
 

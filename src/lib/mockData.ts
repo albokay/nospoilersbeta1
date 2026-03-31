@@ -37,6 +37,17 @@ export const USERNAMES = [
   "GusGusNoSpoils","GaleSingAlong","TucoRageQuit","HuellRules","MikeIsCalm"
 ];
 
+// All seeded/fake authors across every pushPost call — used to block clickability
+export const SEED_AUTHORS = new Set([
+  ...USERNAMES,
+  "PopcornTheory","SlateOrbit","LoomSignal","_quietloop","QuietLoop",
+  "DeadFreight","DreamInReverse","EchoMoth","EchoMothFan","EmpireBusiness",
+  "EndTimes","FiftyOneWatcher","GlidingOverAll","OzymandiasFan","ProblemDog",
+  "SalamancaShrine","SayMyName","SkylerPointOfView","TheScheduleIsTheStory",
+  // single/double-letter placeholder authors used in simshow
+  "AA","BB","CC","DD","EE","FF","GG","HH","II","JJ","KK","LL","MM","NN","OO",
+]);
+
 const TITLES: Record<string,string[]> = {
   bb: [
     "Blue vs. purity chat","Desert as a character","Cold open masterclass","The fly episode appreciation",
