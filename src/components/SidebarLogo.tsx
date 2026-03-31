@@ -31,30 +31,30 @@ const ARRANGEMENTS: Layout[] = [
   // 2 · lightBlue→blue→white staircase climbing upper-right,
   //     orange isolated lower-left at text level, green isolated lower-center
   {
-    lightBlue: { x: 97,  y: 44  },
-    blue:      { x: 125, y: 20  },
-    white:     { x: 160, y: 5   },
-    orange:    { x: 5,   y: 80  },
+    lightBlue: { x: 97,  y: 40  },
+    blue:      { x: 125, y: 16  },
+    white:     { x: 160, y: 1   },
+    orange:    { x: -3,  y: 80  },
     green:     { x: 62,  y: 100 },
   },
   // 3 · white upper-left, green overlapping white lower-right,
   //     orange overlapping green lower-left (at text level),
   //     lightBlue upper-right cluster, blue overlapping lightBlue lower-right
   {
-    white:     { x: 5,   y: 5  },
-    green:     { x: 38,  y: 32 },
-    orange:    { x: 5,   y: 72 },
+    white:     { x: 5,   y: 13 },
+    green:     { x: 30,  y: 40 },
+    orange:    { x: -11, y: 80 },
     lightBlue: { x: 132, y: 5  },
     blue:      { x: 162, y: 30 },
   },
   // 4 · lightBlue upper-left, blue overlapping lightBlue lower-left,
   //     white upper-center, orange center, green isolated lower-right (behind "bar")
   {
-    lightBlue: { x: -8,  y: -10 },
-    blue:      { x: -28, y: 15  },
-    white:     { x: 75,  y: 5   },
-    orange:    { x: 40,  y: 52  },
-    green:     { x: 168, y: 88  },
+    lightBlue: { x: -8,  y: -4  },
+    blue:      { x: -24, y: 21  },
+    white:     { x: 75,  y: 11  },
+    orange:    { x: 40,  y: 58  },
+    green:     { x: 168, y: 94  },
   },
 ];
 
