@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Thread } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale } from "../lib/db";
 import type { ReplyMeta } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -16,7 +16,7 @@ const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
 
 export default function ShowSection({
-  shows: showsProp, username, showId, progress, updateProgressFor, newHighlights, setNewHighlights,
+  shows: showsProp, onShowUpdated, username, showId, progress, updateProgressFor, newHighlights, setNewHighlights,
   visitedThreads, setVisitedThreads, activeThreadId, setActiveThreadId, onHomepage,
   likesThreads, setLikesThreads, likedByUserThreads, setLikedByUserThreads,
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
@@ -78,6 +78,15 @@ export default function ShowSection({
     }
     return { visibleNew, hiddenNew, totalVisible };
   };
+
+  // Background staleness refresh for ongoing shows
+  useEffect(() => {
+    const currentShow = allShows.find(s => s.id === showId);
+    if (!currentShow) return;
+    refreshShowIfStale(currentShow).then(updated => {
+      if (updated) onShowUpdated?.(updated);
+    }).catch(() => {});
+  }, [showId]);
 
   useEffect(() => {
     let cancelled = false;

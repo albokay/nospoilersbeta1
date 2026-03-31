@@ -326,6 +326,39 @@ export async function createShow(show: {
   };
 }
 
+// ── Staleness refresh ─────────────────────────────────────────────────────────
+
+export async function refreshShowIfStale(show: Show): Promise<Show | null> {
+  if (show.status !== "Running" || !show.tvmazeId) return null;
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+  const lastSync = show.lastSyncedAt ? new Date(show.lastSyncedAt).getTime() : 0;
+  if (Date.now() - lastSync < SEVEN_DAYS) return null;
+
+  // Fetch latest episodes from TVmaze
+  const res = await fetch(`https://api.tvmaze.com/shows/${show.tvmazeId}/episodes`);
+  if (!res.ok) return null;
+  const episodes: any[] = await res.json();
+  const bySeason: Record<number, number> = {};
+  for (const ep of episodes) {
+    if (ep.type === "regular" || !ep.type) {
+      bySeason[ep.season] = (bySeason[ep.season] ?? 0) + 1;
+    }
+  }
+  const maxSeason = Math.max(...Object.keys(bySeason).map(Number));
+  const seasons: number[] = [];
+  for (let i = 1; i <= maxSeason; i++) seasons.push(bySeason[i] ?? 1);
+  if (!seasons.length) return null;
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("shows")
+    .update({ seasons, last_synced_at: now })
+    .eq("id", show.id);
+  if (error) return null;
+
+  return { ...show, seasons, lastSyncedAt: now };
+}
+
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 export async function adminDeleteShow(showId: string): Promise<void> {

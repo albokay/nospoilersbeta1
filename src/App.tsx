@@ -288,6 +288,7 @@ export default function App() {
         <div style={{ marginTop: 8 }}>
           <ShowSection
             shows={shows}
+            onShowUpdated={(updated) => setShows(prev => prev.map(s => s.id === updated.id ? updated : s))}
             username={username ?? ""}
             showId={expandedShowId}
             progress={progress}
