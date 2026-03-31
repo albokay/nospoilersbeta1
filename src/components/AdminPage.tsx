@@ -5,10 +5,12 @@ import { adminDeleteShow, adminToggleHidden } from "../lib/db";
 export default function AdminPage({
   shows,
   onShowsChange,
+  onShowDeleted,
   onClose,
 }: {
   shows: Show[];
   onShowsChange: (shows: Show[]) => void;
+  onShowDeleted?: (showId: string) => void;
   onClose: () => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export default function AdminPage({
     try {
       await adminDeleteShow(show.id);
       onShowsChange(shows.filter(s => s.id !== show.id));
+      onShowDeleted?.(show.id);
     } catch (e: any) {
       setError(e?.message ?? "Failed to delete show.");
     } finally {

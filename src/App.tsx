@@ -334,6 +334,11 @@ export default function App() {
         <AdminPage
           shows={shows}
           onShowsChange={setShows}
+          onShowDeleted={(showId) => {
+            setShows(prev => prev.filter(s => s.id !== showId));
+            setProgress(prev => { const n = { ...prev }; delete n[showId]; return n; });
+            if (expandedShowId === showId) goHomepage();
+          }}
           onClose={() => setShowAdmin(false)}
         />
       )}
