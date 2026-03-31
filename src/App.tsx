@@ -202,7 +202,6 @@ export default function App() {
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
       {header}
-      <ExtensionDock />
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {isHomepage && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95 }}>
@@ -255,16 +254,19 @@ export default function App() {
           />
 
           {!expandedShowId && (
-            <div className="homeAbout" style={{ display: "flex", justifyContent: "center" }}>
-              <div style={{ maxWidth: 460, width: "100%", padding: "30px 16px" }}>
-                <p>** Hello friendly beta-tester!</p><br />
-                <p>The BREAKING BAD forum is populated with posts (a.i. generated) that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site.<br /><br />
-                  On this mock site, you can create posts across all forums.<br /><br />
-                  You can use the "find a show" search field to go to a new show forum. They are all empty for now.<br /><br />
-                  The back button on your browser window will leave this mockup site altogether. Click and post with abandon!<br /><br />
-                  — Alborz<br /><br /><br /><br /><br /></p>
+            <>
+              <div className="homeAbout" style={{ display: "flex", justifyContent: "center" }}>
+                <div style={{ maxWidth: 460, width: "100%", padding: "30px 16px" }}>
+                  <p>** Hello friendly beta-tester!</p><br />
+                  <p>The BREAKING BAD forum is populated with posts (a.i. generated) that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site.<br /><br />
+                    On this mock site, you can create posts across all forums.<br /><br />
+                    You can use the "find a show" search field to go to a new show forum. They are all empty for now.<br /><br />
+                    The back button on your browser window will leave this mockup site altogether. Click and post with abandon!<br /><br />
+                    — Alborz<br /><br /></p>
+                </div>
               </div>
-            </div>
+              <ExtensionDock />
+            </>
           )}
         </>
       )}
