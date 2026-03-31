@@ -5,6 +5,7 @@ import { useAuth } from "../lib/auth";
 import { editThread as dbEditThread, deleteThread as dbDeleteThread, makeThreadPrivate as dbMakeThreadPrivate, makeThreadPublic as dbMakeThreadPublic } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import RepliesList from "./RepliesList";
+import Username from "./Username";
 
 export default function InlineThreadView({
   thread, show, onBack, progressForShow, onMountAlignTop,
@@ -12,7 +13,7 @@ export default function InlineThreadView({
   likeReply, unlikeReply, likesReplies, likedByUserReplies,
   mode, focusReplyId, onAuthRequired, hiddenNewReplies = 0, onRiskyReveal,
   onThreadUpdate, onThreadDelete, onThreadMakePrivate, onThreadMakePublic,
-  hasExternalReplies = false, onExternalReplyAdded,
+  hasExternalReplies = false, onExternalReplyAdded, onClickProfile,
 }: {
   thread: Thread;
   show: any;
@@ -37,6 +38,7 @@ export default function InlineThreadView({
   onThreadMakePublic?: () => void;
   hasExternalReplies?: boolean;
   onExternalReplyAdded?: (threadId: string) => void;
+  onClickProfile?: (username: string) => void;
 }) {
   const { user, profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
@@ -190,7 +192,7 @@ export default function InlineThreadView({
             </div>
 
             <div className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-              {show.name} • S{thread.season}E{thread.episode} • Started by <span className="username">@{thread.author}</span> • {timeAgo(thread.updatedAt)}
+              {show.name} • S{thread.season}E{thread.episode} • Started by <Username name={thread.author} onClickProfile={onClickProfile ?? (() => {})} /> • {timeAgo(thread.updatedAt)}
             </div>
 
             {thread.isDeleted ? (
@@ -239,6 +241,7 @@ export default function InlineThreadView({
           onThreadReplyClose={() => setThreadReplyOpen(false)}
           onRiskyReveal={onRiskyReveal}
           onExternalReplyAdded={onExternalReplyAdded ? () => onExternalReplyAdded(thread.id) : undefined}
+          onClickProfile={onClickProfile}
         />
       </div>
     </section>

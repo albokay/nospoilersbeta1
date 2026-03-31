@@ -5,11 +5,12 @@ import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
+import Username from "./Username";
 
 export default function RepliesList({
   thread, progressForShow, riskyMode = false,
   likeReply, unlikeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
-  threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded,
+  threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onClickProfile,
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
@@ -24,6 +25,7 @@ export default function RepliesList({
   onThreadReplyClose?: () => void;
   onRiskyReveal?: (rid: string) => void;
   onExternalReplyAdded?: () => void;
+  onClickProfile?: (username: string) => void;
 }) {
   const { user, profile } = useAuth();
 
@@ -436,7 +438,7 @@ export default function RepliesList({
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: 14 }}>
-                  <b className="username">@{r.author}</b>{" "}
+                  <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold />{" "}
                   {thread.showId !== "simshow" && (
                     <span style={{ color: "var(--dos-cyan)", fontWeight: 700 }}>
                       S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
@@ -458,7 +460,7 @@ export default function RepliesList({
                   >
                     in reply to
                   </button>{" "}
-                  @{parent.author}
+                  <Username name={parent.author} onClickProfile={onClickProfile ?? (() => {})} />
                 </div>
               )}
 

@@ -11,6 +11,7 @@ import LikeBadge from "./LikeBadge";
 import ModeToggle from "./ModeToggle";
 import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
+import Username from "./Username";
 
 const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
@@ -20,7 +21,7 @@ export default function ShowSection({
   visitedThreads, setVisitedThreads, activeThreadId, setActiveThreadId, onHomepage,
   likesThreads, setLikesThreads, likedByUserThreads, setLikedByUserThreads,
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
-  focusReplyId, onAuthRequired
+  focusReplyId, onAuthRequired, onClickProfile
 }: any) {
   const { user, profile } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
@@ -383,6 +384,7 @@ export default function ShowSection({
           }}
           hasExternalReplies={(replyCounts[thread.id] ?? 0) > 0}
           onExternalReplyAdded={(tid: string) => setHasExternalReplies(prev => ({ ...prev, [tid]: true }))}
+          onClickProfile={onClickProfile}
         />
       ) : (
         <div style={{ marginTop: 12 }}>
@@ -480,7 +482,7 @@ export default function ShowSection({
                 </div>
 
                 <div className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-                  {show.name} • S{t.season}E{t.episode} • Started by <span className="username">@{t.author}</span> • {timeAgo(t.updatedAt)}
+                  {show.name} • S{t.season}E{t.episode} • Started by <Username name={t.author} onClickProfile={onClickProfile} /> • {timeAgo(t.updatedAt)}
                 </div>
 
                 <div style={{ marginTop: 6 }}>
