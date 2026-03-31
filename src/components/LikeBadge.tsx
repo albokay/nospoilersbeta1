@@ -24,27 +24,27 @@ export default function LikeBadge({
       onClick={clickable ? onClick : undefined}
       title={clickable ? (userLiked ? "Already liked" : title) : undefined}
       style={{
-        border: "1px solid var(--dos-border)",
+        border: "4px solid var(--dos-border)",
         borderRadius: 9999,
-        padding: "3px 9px",
+        padding: "5px 14px",
         background: "transparent",
         cursor: clickable && !userLiked ? "pointer" : "default",
         display: "inline-flex",
         alignItems: "baseline",
-        gap: 4,
+        gap: 5,
         color: "var(--dos-fg)",
       }}
     >
-      <span style={{ fontSize: 14, lineHeight: 1 }}>{icon}</span>
+      <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>
 
       {isHot && (
-        <span className="likeThis" style={{ fontSize: 12, fontWeight: 700, fontStyle: "italic" }}>
+        <span className="likeThis" style={{ fontSize: 18, fontWeight: 700, fontStyle: "italic" }}>
           this!
         </span>
       )}
 
       {count >= 2 && (
-        <sub style={{ fontSize: 10, fontWeight: 700, lineHeight: 1 }}>
+        <sub style={{ fontSize: 15, fontWeight: 700, lineHeight: 1 }}>
           {count}
         </sub>
       )}

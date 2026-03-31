@@ -4,8 +4,8 @@ export function injectDOSStyles() {
   const css = `
 :root{
   --dos-bg:#C9A843; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
-  --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF; --dos-border:rgba(255,255,255,0.35);
-  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#2256c9;
+  --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
+  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#2256c9; --dos-border:#ffffff;
 }
 
 .brandLink{ cursor:pointer; }
@@ -50,7 +50,8 @@ hr{ border:none; border-top:1px solid var(--dos-border); }
 .btn-danger{ border-color:var(--danger); color:var(--danger); }
 .btn-danger:hover{ background:var(--danger); color:#fff; border-color:var(--danger); }
 /* Green styling for +Post */
-.btn.post{ border-color: var(--green); color: var(--green); }
+.btn.post{ background: var(--green); color: #fff; border-color: var(--green); }
+.btn.post:hover{ background: #5fa878; border-color: #5fa878; color: #fff; }
 /* Fix dark inputs/textareas */
 input, textarea, select { color: var(--dos-fg); background: rgba(0,0,0,0.12); }
 input::placeholder, textarea::placeholder { color: var(--dos-gray); }
@@ -105,7 +106,7 @@ header.site{
   width:480px; max-width:90vw; text-align:center; padding-left:32px;
   font-size:15px; font-weight:600; letter-spacing:0.01em;
 }
-.splashSearchIcon{ position:absolute; left:calc(50% - 240px + 10px); top:50%; transform:translateY(-50%); font-size:15px; opacity:.7; }
+.splashSearchIcon{ position:absolute; left:calc(50% - 240px + 10px); top:50%; transform:translateY(-50%); font-size:22px; opacity:.85; }
 .dropdownPanel{
   position:absolute; top:calc(100% + 8px); width:480px; max-width:90vw; z-index:9999;
   max-height:320px; overflow:auto; background:rgba(201,168,67,0.97);
@@ -147,13 +148,13 @@ header.site{
 /* profile chip */
 .profileChip{
   display:inline-flex; align-items:center; gap:8px; cursor:pointer;
-  border:4px solid var(--dos-border); padding:6px 10px; border-radius:9999px;
+  border:none; padding:6px 10px; border-radius:9999px;
   background: var(--dos-user);
 }
 .avatar{
-  width:22px; height:22px; border:2px solid var(--dos-border); border-radius:50%;
+  width:22px; height:22px; border:none; border-radius:50%;
   display:inline-grid; place-items:center; font-size:12px; line-height:1;
-  background:rgba(0,0,0,.06);
+  background:#fff; color:var(--dos-user); font-weight:700;
 }
 
 /* username highlight (site-wide for inline mentions) */
@@ -179,7 +180,7 @@ header.site{
 /* bottom-right replies badge */
 .replyCount{
   position:absolute; right:12px; bottom:8px;
-  font-size:12px; color:var(--dos-gray);
+  font-size:22px; color:var(--dos-gray);
 }
 
 /* homepage blurb spacing */

@@ -383,7 +383,7 @@ export default function ShowSection({
                 <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
                   <div
                     className="card threadCard"
-                    style={{ margin: 0, opacity: 0.72, cursor: "pointer", borderLeft: "1px solid var(--dos-border)", position: "relative" }}
+                    style={{ margin: 0, opacity: 0.72, cursor: "pointer", position: "relative" }}
                     onClick={() => {
                       setActiveThreadId(t.id);
                       setTimeout(() => scrollToShowTop(), 0);
@@ -422,7 +422,7 @@ export default function ShowSection({
                   cursor: "pointer",
                   position: "relative",
                   paddingTop: 12,
-                  borderLeft: isOwn ? "8px solid var(--dos-user)" : isNew ? "8px solid var(--green)" : "1px solid var(--dos-border)"
+                  borderLeft: isOwn ? "4px solid var(--dos-user)" : isNew ? "4px solid var(--green)" : "4px solid var(--dos-border)"
                 }}
                 onClick={() => {
                   markThreadVisited(t.id);

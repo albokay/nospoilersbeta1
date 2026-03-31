@@ -420,7 +420,7 @@ export default function RepliesList({
               key={r.id}
               id={`c-${r.id}`}
               className="card"
-              style={{ borderLeft: (progressReveal[r.id] ? "8px solid var(--green)" : "4px solid var(--dos-border)"), marginLeft: 8, position: "relative" }}
+              style={{ borderLeft: (progressReveal[r.id] ? "4px solid var(--green)" : "4px solid var(--dos-border)"), marginLeft: 8, position: "relative" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: 14 }}>
