@@ -295,6 +295,37 @@ export async function fetchLikedReplies(userId: string): Promise<{ reply: Reply;
     .sort((a: any, b: any) => b.reply.updatedAt - a.reply.updatedAt) as { reply: Reply; thread: Thread }[];
 }
 
+// ── Create show ──────────────────────────────────────────────────────────────
+
+export async function createShow(show: {
+  id: string;
+  name: string;
+  seasons: number[];
+  tvmazeId?: string;
+  status?: string;
+}): Promise<Show> {
+  const row = {
+    id: show.id,
+    name: show.name,
+    seasons: show.seasons,
+    tvmaze_id: show.tvmazeId ?? null,
+    status: show.status ?? "Ended",
+    is_hidden: false,
+    last_synced_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from("shows").insert(row).select().single();
+  if (error) throw error;
+  return {
+    id: data.id,
+    name: data.name,
+    seasons: data.seasons,
+    tvmazeId: data.tvmaze_id ?? undefined,
+    status: data.status ?? "Ended",
+    isHidden: data.is_hidden ?? false,
+  };
+}
+
 // ── Progress ──────────────────────────────────────────────────────────────────
 
 export async function fetchProgress(userId: string): Promise<Record<string, { s: number; e: number }>> {

@@ -233,7 +233,14 @@ export default function App() {
               </div>
             </div>
           </div>
-          <SearchShows shows={shows} onPick={handlePickFromSearch} onStartNewForum={handleStartNewForum} />
+          <SearchShows
+            shows={shows}
+            onPick={handlePickFromSearch}
+            onShowCreated={(newShow) => {
+              setShows(prev => [...prev, newShow]);
+              setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+            }}
+          />
 
           {!expandedShowId && (
             <div className="homeAbout" style={{ display: "flex", justifyContent: "center" }}>
