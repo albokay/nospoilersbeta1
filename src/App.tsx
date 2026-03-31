@@ -14,6 +14,9 @@ import Modal from "./components/Modal";
 import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
+import AdminPage from "./components/AdminPage";
+
+const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
 
 const SINGLE_PAGE = true;
 const GLOBAL_HEADER_H = 72;
@@ -131,6 +134,8 @@ export default function App() {
   };
 
   const isHomepage = !expandedShowId && !showProfile;
+  const [showAdmin, setShowAdmin] = useState(() => window.location.search.includes("admin"));
+  const isAdmin = user?.id === ADMIN_USER_ID;
 
   const header = (
     <header className="site bleed" style={{ borderBottom: isHomepage ? "none" : undefined }}>
@@ -181,6 +186,11 @@ export default function App() {
           {!authLoading && user && username && (
             <button className="btn h40" onClick={() => { goHomepage(); signOut(); }} title="Sign out">
               Sign out
+            </button>
+          )}
+          {!authLoading && isAdmin && (
+            <button className="btn h40" onClick={() => { setShowAdmin(true); setExpandedShowId(null); setShowProfile(false); }} title="Admin">
+              ⚙
             </button>
           )}
         </div>
@@ -318,6 +328,14 @@ export default function App() {
             onAuthRequired={() => setShowAuthModal(true)}
           />
         </div>
+      )}
+
+      {showAdmin && isAdmin && (
+        <AdminPage
+          shows={shows}
+          onShowsChange={setShows}
+          onClose={() => setShowAdmin(false)}
+        />
       )}
 
       {pickShow && (

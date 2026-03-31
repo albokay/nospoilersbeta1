@@ -326,6 +326,25 @@ export async function createShow(show: {
   };
 }
 
+// ── Admin ─────────────────────────────────────────────────────────────────────
+
+export async function adminDeleteShow(showId: string): Promise<void> {
+  // cascade: replies → threads → show
+  const { data: threads } = await supabase.from("threads").select("id").eq("show_id", showId);
+  const threadIds = (threads ?? []).map((t: any) => t.id);
+  if (threadIds.length) {
+    await supabase.from("replies").delete().in("thread_id", threadIds);
+    await supabase.from("threads").delete().in("id", threadIds);
+  }
+  const { error } = await supabase.from("shows").delete().eq("id", showId);
+  if (error) throw error;
+}
+
+export async function adminToggleHidden(showId: string, isHidden: boolean): Promise<void> {
+  const { error } = await supabase.from("shows").update({ is_hidden: isHidden }).eq("id", showId);
+  if (error) throw error;
+}
+
 // ── Progress ──────────────────────────────────────────────────────────────────
 
 export async function fetchProgress(userId: string): Promise<Record<string, { s: number; e: number }>> {
