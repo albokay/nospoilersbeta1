@@ -258,7 +258,7 @@ export async function fetchLikedThreads(userId: string): Promise<Thread[]> {
   if (error) throw error;
   return (data ?? [])
     .map((row: any) => row.threads)
-    .filter(Boolean)
+    .filter((t: any) => t && !t.is_deleted)
     .map(rowToThread)
     .sort((a: Thread, b: Thread) => b.updatedAt - a.updatedAt);
 }
@@ -272,7 +272,7 @@ export async function fetchLikedReplies(userId: string): Promise<{ reply: Reply;
   return (data ?? [])
     .map((row: any) => {
       const r = row.replies;
-      if (!r || !r.threads) return null;
+      if (!r || !r.threads || r.is_deleted || r.threads.is_deleted) return null;
       return { reply: rowToReply(r), thread: rowToThread(r.threads) };
     })
     .filter(Boolean)
