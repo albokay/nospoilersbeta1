@@ -162,7 +162,7 @@ export default function ProfilePage({
                     key={sid}
                     onClick={() => setActiveTab(sid)}
                     style={{
-                      padding: "8px 18px",
+                      padding: active ? "8px 18px" : "5px 18px",
                       background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
                       border: "2px solid var(--dos-border)",
                       borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
@@ -173,7 +173,10 @@ export default function ProfilePage({
                       fontWeight: active ? 800 : 500,
                       fontSize: 14,
                       marginBottom: -2,
+                      position: "relative",
+                      zIndex: active ? 1 : 0,
                       letterSpacing: 0.3,
+                      alignSelf: "flex-end",
                     }}
                   >
                     {showName(sid)}
