@@ -12,6 +12,7 @@ import ProfilePage from "./components/ProfilePage";
 import Modal from "./components/Modal";
 import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
+import SidebarLogo from "./components/SidebarLogo";
 
 const SINGLE_PAGE = true;
 const GLOBAL_HEADER_H = 72;
@@ -121,21 +122,25 @@ export default function App() {
     openShow(id);
   };
 
+  const isHomepage = !expandedShowId && !showProfile;
+
   const header = (
-    <header className="site bleed">
+    <header className="site bleed" style={{ borderBottom: isHomepage ? "none" : undefined }}>
       <div style={{ height: GLOBAL_HEADER_H, display: "flex", alignItems: "center", padding: "0 0", width: "100%" }}>
-        <div style={{ flex: "0 0 auto", marginLeft: 20 }}>
-          <h1
-            className="brand brandLink"
-            style={{ margin: 0 }}
-            tabIndex={0}
-            aria-label="Go to homepage"
-            onClick={goHomepage}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHomepage(); } }}
-          >
-            <img src="/sidebar-logo.png" alt="sidebar" style={{ height: 38, width: "auto", display: "block" }} />
-          </h1>
-        </div>
+        {!isHomepage && (
+          <div style={{ flex: "0 0 auto", marginLeft: 20 }}>
+            <h1
+              className="brand brandLink"
+              style={{ margin: 0 }}
+              tabIndex={0}
+              aria-label="Go to homepage"
+              onClick={goHomepage}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHomepage(); } }}
+            >
+              <img src="/sidebar-logo.png" alt="sidebar" style={{ height: 38, width: "auto", display: "block" }} />
+            </h1>
+          </div>
+        )}
 
         <div style={{ marginLeft: "auto", marginRight: 20, display: "flex", alignItems: "center", gap: 8 }}>
           {!authLoading && !user && (
@@ -167,9 +172,11 @@ export default function App() {
         </div>
       </div>
 
-      <div className="siteTagline">
-        proof of concept mockup for spoiler-safe TV discussion forum
-      </div>
+      {!isHomepage && (
+        <div className="siteTagline">
+          watch. together. whenever.
+        </div>
+      )}
     </header>
   );
 
@@ -178,6 +185,14 @@ export default function App() {
       {header}
       <ExtensionDock />
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {isHomepage && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px" }}>
+          <SidebarLogo />
+          <div style={{ marginTop: 12, fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
+            watch. together. whenever.
+          </div>
+        </div>
+      )}
       {!showProfile && (
         <>
           <SearchShows onPick={handlePickFromSearch} onStartNewForum={handleStartNewForum} />

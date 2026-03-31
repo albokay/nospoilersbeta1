@@ -71,7 +71,6 @@ header.site{
   text-align:center;
   font-size:18px;
   font-weight:600;
-  text-transform:uppercase;
   letter-spacing:0.02em;
   margin:4px 0 10px;
 }
