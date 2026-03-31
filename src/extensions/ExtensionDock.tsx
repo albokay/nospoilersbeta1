@@ -88,7 +88,7 @@ const hasReachedFriendPost =
         }}
       >
         <div style={{ fontSize: 12, lineHeight: 1.5, fontWeight: 400, color: "#fff" }}>
-          ⏳<b>FUTURE FEATURE:</b> ALERTS ABOUT FRIENDS YOU'RE WATCHING SHOWS WITH. <br></br><br></br>Have they caught up to you? Are they ahead? Are there posts or replies about shows you’re watching together?
+          ⏳<b>FUTURE FEATURE:</b> ALERTS ABOUT FRIENDS YOU'RE WATCHING SHOWS WITH.⏳<br></br><br></br>Have they caught up to you? Are they ahead? Are there posts or replies about shows you’re watching together?
         </div>
       </div>
     </div>
