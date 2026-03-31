@@ -5,7 +5,7 @@ export function injectDOSStyles() {
 :root{
   --dos-bg:#C9A843; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF; --dos-border:rgba(255,255,255,0.35);
-  --dos-accent:#FFFFFF; --danger:#f45028; --green:#A8E6CF; --dos-user:#2256c9;
+  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#2256c9;
 }
 
 .brandLink{ cursor:pointer; }
@@ -33,16 +33,16 @@ body{
 hr{ border:none; border-top:1px solid var(--dos-border); }
 .title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; }
 .muted{ color:var(--dos-gray); }
-.card{ background:transparent; border:2px solid var(--dos-border); padding:12px; border-radius:12px; }
+.card{ background:transparent; border:4px solid var(--dos-border); padding:12px; border-radius:24px; }
 
 /* controls */
 .badge{
-  background:transparent; color:var(--dos-fg); border:2px solid var(--dos-border);
+  background:transparent; color:var(--dos-fg); border:4px solid var(--dos-border);
   border-radius:9999px; padding:10px 14px; outline:none; font-weight:500;
 }
 .badge:focus{ border-color:var(--dos-cyan); }
 .btn{
-  background:transparent; color:var(--dos-fg); border:2px solid var(--dos-border);
+  background:transparent; color:var(--dos-fg); border:4px solid var(--dos-border);
   border-radius:9999px; padding:6px 12px; cursor:pointer; font-weight:500;
 }
 .btn.primary{ border-color:var(--dos-cyan); color:var(--dos-cyan); }
@@ -110,14 +110,14 @@ header.site{
   position:absolute; top:calc(100% + 8px); width:480px; max-width:90vw; z-index:9999;
   max-height:320px; overflow:auto; background:rgba(201,168,67,0.97);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
-  border:2px solid var(--dos-border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15);
+  border:4px solid var(--dos-border); border-radius:24px; box-shadow:0 8px 24px rgba(0,0,0,0.15);
 }
 
 /* "Your shows" */
 .listPill{
   width:480px; max-width:90vw; height:40px; border-radius:9999px; padding:0 24px;
   font-size:15px; font-weight:600; letter-spacing:0.01em;
-  display:inline-flex; align-items:center; justify-content:center; border:2px solid var(--dos-border);
+  display:inline-flex; align-items:center; justify-content:center; border:4px solid var(--dos-border);
 }
 
 /* forum search */
@@ -131,7 +131,7 @@ header.site{
 .threadCard{ border-color:var(--dos-border); }
 .replyBarNew{ background:var(--green); height:6px; }
 .clamp3{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
-.redacted{ background:#e8e4dc; color:#888; border:2px solid #ccc; border-radius:12px; }
+.redacted{ background:#e8e4dc; color:#888; border:4px solid #ccc; border-radius:24px; }
 
 /* mode toggle */
 .modeToggle{ width:240px; height:38px; }
@@ -147,7 +147,7 @@ header.site{
 /* profile chip */
 .profileChip{
   display:inline-flex; align-items:center; gap:8px; cursor:pointer;
-  border:2px solid var(--dos-border); padding:6px 10px; border-radius:9999px;
+  border:4px solid var(--dos-border); padding:6px 10px; border-radius:9999px;
   background: var(--dos-user);
 }
 .avatar{
