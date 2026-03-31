@@ -422,6 +422,7 @@ export default function ShowSection({
                   cursor: "pointer",
                   position: "relative",
                   paddingTop: 12,
+                  paddingBottom: 36,
                   borderLeft: isOwn ? "4px solid var(--dos-user)" : isNew ? "4px solid var(--green)" : "4px solid var(--dos-border)"
                 }}
                 onClick={() => {
