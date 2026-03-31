@@ -103,10 +103,10 @@ header.site{
 /* homepage search */
 .splashSearchWrap{ position:relative; display:flex; align-items:center; width:288px; max-width:90vw; margin:20px auto; }
 .splashSearch{
-  width:100%; text-align:center; padding-left:32px;
+  width:100%; text-align:center; padding:0 16px;
   font-size:15px; font-weight:600; letter-spacing:0.01em;
 }
-.splashSearchIcon{ position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:22px; opacity:.85; pointer-events:none; }
+.splashSearchIcon{ display:none; }
 .dropdownPanel{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
   max-height:320px; overflow:auto; background:rgba(201,168,67,0.97);
@@ -119,6 +119,7 @@ header.site{
   width:288px; max-width:90vw; height:40px; border-radius:9999px; padding:0 23px;
   font-size:15px; font-weight:600; letter-spacing:0.01em;
   display:inline-flex; align-items:center; justify-content:center; border:3px solid var(--dos-border);
+  text-align:center; text-align-last:center;
 }
 
 /* forum search */
