@@ -258,7 +258,7 @@ export default function ShowSection({
       <div className="stickybar bleed" style={{ top: GLOBAL_HEADER_H }} ref={bannerRef}>
         <div className="container">
           {/* Row 1 */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: `${ROW_PAD_Y}px 0` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: `${ROW_PAD_Y}px 0`, overflow: "hidden" }}>
             <span
               className="hangL"
               role={thread ? "button" : "heading"}
@@ -266,7 +266,8 @@ export default function ShowSection({
               onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
               style={{
                 fontSize: 28, fontWeight: 800, letterSpacing: .5, textTransform: "uppercase",
-                color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none", flex: "0 0 auto"
+                color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
+                whiteSpace: "nowrap", overflow: "visible", flex: "1 1 auto", minWidth: 0,
               }}
             >
               {String((seedShows.find(s => s.id === showId)?.name) || showId)}
