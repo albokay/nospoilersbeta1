@@ -262,7 +262,7 @@ export default function App() {
                   You can use the "find a show" search field to go to a new show forum. They are all empty for now.<br /><br />
                   The back button on your browser window will leave this mockup site altogether. Click and post with abandon!<br /><br />
                   — Alborz<br /><br />
-                  ⏳ <b>FUTURE FEATURE:</b> alerts about friends you're watching shows with. Have they caught up to you? Are they ahead? Are there new posts or replies about shows you're watching together?<br /><br /><br /></p>
+                  ⌚️ <b>FUTURE FEATURE:</b> alerts about friends you're watching shows with. Have they caught up to you? Are they ahead? Are there new posts or replies about shows you're watching together? ⏳<br /><br /><br /></p>
               </div>
             </div>
           )}
