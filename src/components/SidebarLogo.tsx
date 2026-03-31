@@ -50,10 +50,10 @@ const ARRANGEMENTS: Layout[] = [
   // 4 · lightBlue upper-left, blue overlapping lightBlue lower-left,
   //     white upper-center, orange center, green isolated lower-right (behind "bar")
   {
-    lightBlue: { x: -8,  y: -4  },
-    blue:      { x: -24, y: 21  },
-    white:     { x: 75,  y: 11  },
-    orange:    { x: 40,  y: 58  },
+    lightBlue: { x: -8,  y: 4   },
+    blue:      { x: -24, y: 29  },
+    white:     { x: 75,  y: 19  },
+    orange:    { x: 40,  y: 66  },
     green:     { x: 168, y: 94  },
   },
 ];
