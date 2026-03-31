@@ -44,8 +44,8 @@ const ARRANGEMENTS: Layout[] = [
     white:     { x: 5,   y: 13 },
     green:     { x: 30,  y: 40 },
     orange:    { x: -11, y: 80 },
-    lightBlue: { x: 132, y: 5  },
-    blue:      { x: 162, y: 30 },
+    lightBlue: { x: 174, y: 36 },
+    blue:      { x: 204, y: 61 },
   },
   // 4 · lightBlue upper-left, blue overlapping lightBlue lower-left,
   //     white upper-center, orange center, green isolated lower-right (behind "bar")
@@ -138,6 +138,7 @@ export default function SidebarLogo({
                 position: "absolute",
                 width: BLOCK,
                 height: BLOCK,
+                borderRadius: 15,
                 background: block.color,
                 zIndex: block.z,
                 mixBlendMode: block.blend as React.CSSProperties["mixBlendMode"],
