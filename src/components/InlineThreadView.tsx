@@ -98,7 +98,6 @@ export default function InlineThreadView({
   };
 
   const handleMakePrivate = async () => {
-    if (!window.confirm("Make this post private? Others will see a stub instead of your post.")) return;
     try {
       await dbMakeThreadPrivate(thread.id);
       onThreadMakePrivate?.();

@@ -349,10 +349,8 @@ export default function ShowSection({
             setTimeout(() => scrollToShowTop(), 0);
           }}
           onThreadMakePrivate={() => {
-            // Completely remove from list — others see nothing
-            setDbThreads(prev => prev.filter(t => t.id !== activeThreadId));
-            setActiveThreadId(null);
-            setTimeout(() => scrollToShowTop(), 0);
+            // Mark private in state — owner still sees it with 🔒, others see nothing
+            setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPrivate: true } : t));
           }}
           onThreadMakePublic={() => {
             setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPrivate: false } : t));
