@@ -401,6 +401,69 @@ export async function upsertProgress(userId: string, showId: string, s: number, 
   if (error) throw error;
 }
 
+// ── Public profile ────────────────────────────────────────────────────────────
+
+export type PublicProfile = { id: string; username: string };
+
+/** Resolves a username → userId. Returns null if not found or is a seed user. */
+export async function fetchPublicProfileByUsername(username: string): Promise<PublicProfile | null> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, username, is_seed")
+    .eq("username", username)
+    .single();
+  if (!data || data.is_seed) return null;
+  return { id: data.id, username: data.username };
+}
+
+/** Public threads by a user — excludes deleted and private posts. */
+export async function fetchPublicThreadsForUser(userId: string): Promise<Thread[]> {
+  const { data, error } = await supabase
+    .from("threads")
+    .select("*")
+    .eq("author_id", userId)
+    .eq("is_deleted", false)
+    .eq("is_private", false)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToThread);
+}
+
+/** Public replies by a user — excludes deleted replies and replies in deleted threads. */
+export async function fetchPublicRepliesForUser(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
+  const { data, error } = await supabase
+    .from("replies")
+    .select("*, threads(*)")
+    .eq("author_id", userId)
+    .eq("is_deleted", false)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return (data ?? [])
+    .map((row: any) => {
+      const t = row.threads;
+      if (!t || t.is_deleted || t.is_private) return null;
+      return { reply: rowToReply(row), thread: rowToThread(t) };
+    })
+    .filter(Boolean) as { reply: Reply; thread: Thread }[];
+}
+
+/** Shows a user is tracking (progress rows), sorted by show name. */
+export async function fetchPublicProgressForUser(
+  userId: string
+): Promise<Record<string, { s: number; e: number }>> {
+  const { data, error } = await supabase
+    .from("progress")
+    .select("show_id, season, episode")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const result: Record<string, { s: number; e: number }> = {};
+  for (const row of data ?? []) {
+    result[row.show_id] = { s: row.season, e: row.episode };
+  }
+  return result;
+}
+
 // ── Replies ──────────────────────────────────────────────────────────────────
 
 export async function insertReply(data: {
