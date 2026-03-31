@@ -26,7 +26,7 @@ export default function LikeBadge({
       style={{
         border: "3px solid var(--dos-border)",
         borderRadius: 9999,
-        padding: "5px 14px",
+        padding: "4px 11px",
         background: "transparent",
         cursor: clickable && !userLiked ? "pointer" : "default",
         display: "inline-flex",
@@ -35,16 +35,16 @@ export default function LikeBadge({
         color: "var(--dos-fg)",
       }}
     >
-      <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>
+      <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>
 
       {isHot && (
-        <span className="likeThis" style={{ fontSize: 18, fontWeight: 700, fontStyle: "italic" }}>
+        <span className="likeThis" style={{ fontSize: 14, fontWeight: 700, fontStyle: "italic" }}>
           this!
         </span>
       )}
 
       {count >= 2 && (
-        <sub style={{ fontSize: 15, fontWeight: 700, lineHeight: 1 }}>
+        <sub style={{ fontSize: 12, fontWeight: 700, lineHeight: 1 }}>
           {count}
         </sub>
       )}

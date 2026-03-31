@@ -180,7 +180,7 @@ header.site{
 /* bottom-right replies badge */
 .replyCount{
   position:absolute; right:12px; bottom:8px;
-  font-size:22px; color:var(--dos-gray);
+  font-size:18px; color:var(--dos-gray);
 }
 
 /* homepage blurb spacing */
