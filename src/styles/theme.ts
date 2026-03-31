@@ -102,14 +102,14 @@ header.site{
 
 /* homepage search */
 .splashSearchWrap{
-  position:relative; display:flex; align-items:center; justify-content:center;
+  position:relative; display:flex; align-items:center; justify-content:flex-start;
   width:288px; max-width:90vw; margin:20px auto;
   height:40px; border:3px solid var(--dos-border); border-radius:9999px;
   padding:0 16px; gap:5px;
 }
 .splashSearch{
   background:transparent; border:none !important; border-radius:0 !important; outline:none;
-  flex:0 1 auto; min-width:0; width:auto;
+  flex:1; min-width:0; width:100%;
   text-align:left; padding:0;
   font-size:15px; font-weight:600; letter-spacing:0.01em; color:inherit;
 }
@@ -127,7 +127,7 @@ header.site{
   width:288px; max-width:90vw; height:40px; border-radius:9999px; padding:0 23px;
   font-size:15px; font-weight:600; letter-spacing:0.01em;
   display:inline-flex; align-items:center; justify-content:center; border:3px solid var(--dos-border);
-  text-align:center; text-align-last:center;
+  text-align:left; text-align-last:left; justify-content:flex-start;
 }
 
 /* forum search */
