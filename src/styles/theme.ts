@@ -17,7 +17,7 @@ body{
   margin:0;
   background:var(--dos-bg);
   color:var(--dos-fg);
-  font-size:14px;
+  font-size:16px;
   line-height:1.5;
   letter-spacing:0.01em;
   font-family: "Inter","Nunito",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;

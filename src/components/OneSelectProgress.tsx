@@ -73,32 +73,27 @@ export default function OneSelectProgress({
       {requireConfirm && confirmOpen && (
         <Modal onClose={cancelSelection}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-            <h3 className="title" style={{ fontSize: 20, margin: 0 }}>ARE YOU SURE?</h3>
+            <h3 className="title" style={{ fontSize: 20, margin: 0 }}>Set your progress</h3>
             <button className="btn" onClick={cancelSelection}>✕</button>
           </div>
 
-          {pending?.backwards ? (
+          <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>
+            Your feed will only show posts up to your selected episode.
+          </p>
+
+          {pending?.backwards && (
             <>
-              <br />
-              <p style={{ marginTop: 0, fontWeight: 700 }}>*HEADS UP BETA-TESTER*</p>
-              <p className="muted" style={{ marginTop: 4 }}>
+              <p style={{ marginTop: 12, marginBottom: 0, fontWeight: 700 }}>*HEADS UP BETA-TESTER*</p>
+              <p className="muted" style={{ marginTop: 4, marginBottom: 0 }}>
                 In a live version of the site, users would not be able to turn their watch
-                progress backward — I don't think there is a legitimate reason to do so.
-                Restricting the ability to turn back the clock will make it more difficult
-                for trolls to troll.
-                <br /><br />
-                But for the purposes of beta-testing, you can flip back and forth at will.
+                progress backward. But for beta-testing, you can flip back and forth at will.
               </p>
             </>
-          ) : (
-            <p className="muted" style={{ marginTop: 0 }}>
-              <br />Updating your watch progress will change which posts and replies you can see.
-            </p>
           )}
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-            <button className="btn btn-danger" onClick={cancelSelection}>No</button>
-            <button className="btn btn-danger" onClick={confirmSelection}>Yes</button>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+            <button className="btn" onClick={cancelSelection}>Cancel</button>
+            <button className="btn" onClick={confirmSelection}>Confirm</button>
           </div>
         </Modal>
       )}

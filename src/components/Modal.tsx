@@ -18,7 +18,8 @@ export default function Modal({ children, onClose }: { children: React.ReactNode
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.35)" }} />
       <div className="card" style={{
         position: "relative", width: "min(820px,92vw)", background: "rgba(201,168,67,0.98)",
-        backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", boxShadow: "0 16px 48px rgba(0,0,0,0.25)"
+        backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
+        padding: "24px 28px",
       }}>
         {children}
       </div>

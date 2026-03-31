@@ -355,7 +355,7 @@ export default function ShowSection({
           onThreadMakePublic={() => {
             setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPrivate: false } : t));
           }}
-          hasExternalReplies={hasExternalReplies[thread.id] ?? false}
+          hasExternalReplies={(replyCounts[thread.id] ?? 0) > 0}
           onExternalReplyAdded={(tid: string) => setHasExternalReplies(prev => ({ ...prev, [tid]: true }))}
         />
       ) : (
