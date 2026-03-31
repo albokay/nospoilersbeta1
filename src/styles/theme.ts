@@ -101,14 +101,14 @@ header.site{
 }
 
 /* homepage search */
-.splashSearchWrap{ position:relative; display:flex; justify-content:center; margin:20px 0; }
+.splashSearchWrap{ position:relative; display:flex; align-items:center; width:288px; max-width:90vw; margin:20px auto; }
 .splashSearch{
-  width:480px; max-width:90vw; text-align:center; padding-left:32px;
+  width:100%; text-align:center; padding-left:32px;
   font-size:15px; font-weight:600; letter-spacing:0.01em;
 }
-.splashSearchIcon{ position:absolute; left:calc(50% - 240px + 10px); top:50%; transform:translateY(-50%); font-size:22px; opacity:.85; }
+.splashSearchIcon{ position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:22px; opacity:.85; pointer-events:none; }
 .dropdownPanel{
-  position:absolute; top:calc(100% + 8px); width:480px; max-width:90vw; z-index:9999;
+  position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
   max-height:320px; overflow:auto; background:rgba(201,168,67,0.97);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   border:3px solid var(--dos-border); border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
@@ -116,7 +116,7 @@ header.site{
 
 /* "Your shows" */
 .listPill{
-  width:480px; max-width:90vw; height:40px; border-radius:9999px; padding:0 23px;
+  width:288px; max-width:90vw; height:40px; border-radius:9999px; padding:0 23px;
   font-size:15px; font-weight:600; letter-spacing:0.01em;
   display:inline-flex; align-items:center; justify-content:center; border:3px solid var(--dos-border);
 }

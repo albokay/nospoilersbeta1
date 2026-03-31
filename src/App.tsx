@@ -196,8 +196,17 @@ export default function App() {
       )}
       {!showProfile && (
         <>
-          <SearchShows onPick={handlePickFromSearch} onStartNewForum={handleStartNewForum} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28, placeItems: "center" }}>
+            <YourShowsSelect
+              progress={progress}
+              value={""}
+              onChange={(id) => {
+                if (!id) return;
+                setPickShowMode("confirm");
+                setPickShowId(id);
+                setShowProfile(false);
+              }}
+            />
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
                 Popular Right Now
@@ -216,26 +225,17 @@ export default function App() {
                 })}
               </div>
             </div>
-            <YourShowsSelect
-              progress={progress}
-              value={""}
-              onChange={(id) => {
-                if (!id) return;
-                setPickShowMode("confirm");
-                setPickShowId(id);
-                setShowProfile(false);
-              }}
-            />
           </div>
+          <SearchShows onPick={handlePickFromSearch} onStartNewForum={handleStartNewForum} />
 
           {!expandedShowId && (
             <div className="homeAbout" style={{ display: "flex", justifyContent: "center" }}>
               <div style={{ maxWidth: 460, width: "100%", padding: "30px 16px" }}>
-                <p>** Hello friendly beta-tester!<br /></p><br />
-                <p>The BREAKING BAD forum is populated with posts that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site.<br /><br />
-                  On this mock site, you can create posts (but not replies) across all forums. <br /><br />
-                  Use the "find a show" search field to go to a new show forum. They are all empty for now. <br /><br />
-                  The back button on your browser window will leave this mockup site altogether, and refreshing your page will reset it. Click and post with abandon — nothing is breakable or actually publishable for now!<br /><br />
+                <p>** Hello friendly beta-tester!</p><br />
+                <p>The BREAKING BAD forum is populated with posts (a.i. generated) that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site.<br /><br />
+                  On this mock site, you can create posts across all forums.<br /><br />
+                  You can use the "find a show" search field to go to a new show forum. They are all empty for now.<br /><br />
+                  The back button on your browser window will leave this mockup site altogether. Click and post with abandon!<br /><br />
                   — Alborz<br /><br /><br /><br /><br /></p>
               </div>
             </div>
