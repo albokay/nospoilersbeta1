@@ -19,8 +19,8 @@ export default function SidebarLogo({ scale = 1 }: SidebarLogoProps) {
       src={picked}
       alt="sidebar"
       style={{
-        width: 729 * scale,
-        height: 402 * scale,
+        width: 729 * 0.7 * scale,
+        height: 402 * 0.7 * scale,
         display: "block",
         userSelect: "none",
         maxWidth: "92vw",
