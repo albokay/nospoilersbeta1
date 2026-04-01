@@ -381,14 +381,22 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 export async function adminDeleteShow(showId: string): Promise<void> {
-  // cascade: replies → threads → progress → show
+  // 1. fetch all thread ids for this show (needed to delete replies)
   const { data: threads } = await supabase.from("threads").select("id").eq("show_id", showId);
   const threadIds = (threads ?? []).map((t: any) => t.id);
+
+  // 2. delete replies for those threads
   if (threadIds.length) {
     await supabase.from("replies").delete().in("thread_id", threadIds);
-    await supabase.from("threads").delete().in("id", threadIds);
   }
+
+  // 3. delete threads directly by show_id (avoids silent batch-size failures)
+  await supabase.from("threads").delete().eq("show_id", showId);
+
+  // 4. delete progress rows
   await supabase.from("progress").delete().eq("show_id", showId);
+
+  // 5. delete the show itself
   const { error } = await supabase.from("shows").delete().eq("id", showId);
   if (error) throw error;
 }

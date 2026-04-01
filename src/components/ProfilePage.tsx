@@ -100,12 +100,15 @@ export default function ProfilePage({
   }, [myThreads, myReplies, repliesToMe, likedThreadsList, likedRepliesList, progress]);
 
   const [activeTab, setActiveTab] = useState("");
-  // Set initial tab exactly once when loading completes — avoids the progress-key ordering race
   useEffect(() => {
-    if (!loading && showTabOrder.length) {
-      setActiveTab(showTabOrder[0]);
-    }
+    if (!loading && showTabOrder.length) setActiveTab(showTabOrder[0]);
   }, [loading]);
+
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  // clear expanded state when switching tabs
+  useEffect(() => { setExpandedIds(new Set()); }, [activeTab]);
+  const toggleExpand = (id: string) =>
+    setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   // All content filtered to active tab
   const tabThreads = useMemo(() =>
@@ -212,9 +215,12 @@ export default function ProfilePage({
                   {tabThreads.map(t => (
                     <div key={t.id} className="card threadCard"
                       style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id)}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div className="title" style={{ fontSize: 18 }}>
+                      onClick={() => toggleExpand(t.id)}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <div className="title"
+                          style={{ fontSize: 18, textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" }}
+                          onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id); }}
+                          title="Open in forum">
                           {t.isPrivate && <span title="Private" style={{ marginRight: 8 }}>🔒</span>}
                           {t.titleBase}
                           {t.showId !== "simshow" && (
@@ -223,9 +229,12 @@ export default function ProfilePage({
                             </span>
                           )}
                         </div>
-                        <div className="muted" style={{ fontSize: 14 }}>{timeAgo(t.updatedAt)}</div>
+                        <div className="muted" style={{ fontSize: 14, flexShrink: 0 }}>{timeAgo(t.updatedAt)}</div>
                       </div>
-                      <div style={{ marginTop: 6 }} className="clamp3">{t.preview}</div>
+                      <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined }}
+                        className={expandedIds.has(t.id) ? undefined : "clamp3"}>
+                        {expandedIds.has(t.id) ? t.body : t.preview}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -238,8 +247,11 @@ export default function ProfilePage({
                   {tabMyReplies.length === 0 && <div className="muted">No replies yet.</div>}
                   {tabMyReplies.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
-                      <div className="muted" style={{ fontSize: 14 }}>
+                      onClick={() => toggleExpand(r.id)}>
+                      <div className="muted"
+                        style={{ fontSize: 14, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}
+                        onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id, r.id); }}
+                        title="Open in forum">
                         On <b>{t.titleBase}</b>{" "}
                         {t.showId !== "simshow" && (
                           <span style={{ color: "var(--dos-cyan)" }}>
@@ -248,7 +260,10 @@ export default function ProfilePage({
                         )}{" "}
                         • {timeAgo(r.updatedAt)}
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 15 }} className="clamp3">{r.body}</div>
+                      <div style={{ marginTop: 6, fontSize: 15 }}
+                        className={expandedIds.has(r.id) ? undefined : "clamp3"}>
+                        {r.body}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -261,15 +276,21 @@ export default function ProfilePage({
                   {tabRepliesToMe.length === 0 && <div className="muted">No replies yet.</div>}
                   {tabRepliesToMe.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
-                      <div className="muted" style={{ fontSize: 14 }}>
+                      onClick={() => toggleExpand(r.id)}>
+                      <div className="muted"
+                        style={{ fontSize: 14, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}
+                        onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id, r.id); }}
+                        title="Open in forum">
                         On <b>{t.titleBase}</b>{" "}
                         <span style={{ color: "var(--dos-cyan)" }}>
                           S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
                         </span>{" "}
                         • <span className="username">@{r.author}</span> • {timeAgo(r.updatedAt)}
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 15 }} className="clamp3">{r.body}</div>
+                      <div style={{ marginTop: 6, fontSize: 15 }}
+                        className={expandedIds.has(r.id) ? undefined : "clamp3"}>
+                        {r.body}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -283,9 +304,12 @@ export default function ProfilePage({
                   {tabLikedThreads.map(t => (
                     <div key={t.id} className="card threadCard"
                       style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id)}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div className="title" style={{ fontSize: 18 }}>
+                      onClick={() => toggleExpand(t.id)}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <div className="title"
+                          style={{ fontSize: 18, textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" }}
+                          onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id); }}
+                          title="Open in forum">
                           {t.titleBase}
                           {t.showId !== "simshow" && (
                             <span style={{ color: "var(--dos-cyan)" }}>
@@ -293,9 +317,12 @@ export default function ProfilePage({
                             </span>
                           )}
                         </div>
-                        <div className="muted" style={{ fontSize: 14 }}>{timeAgo(t.updatedAt)}</div>
+                        <div className="muted" style={{ fontSize: 14, flexShrink: 0 }}>{timeAgo(t.updatedAt)}</div>
                       </div>
-                      <div style={{ marginTop: 6 }} className="clamp3">{t.preview}</div>
+                      <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined }}
+                        className={expandedIds.has(t.id) ? undefined : "clamp3"}>
+                        {expandedIds.has(t.id) ? t.body : t.preview}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -308,15 +335,21 @@ export default function ProfilePage({
                   {tabLikedReplies.length === 0 && <div className="muted">No starred replies yet.</div>}
                   {tabLikedReplies.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
-                      <div className="muted" style={{ fontSize: 14 }}>
+                      onClick={() => toggleExpand(r.id)}>
+                      <div className="muted"
+                        style={{ fontSize: 14, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}
+                        onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id, r.id); }}
+                        title="Open in forum">
                         On <b>{t.titleBase}</b>{" "}
                         <span style={{ color: "var(--dos-cyan)" }}>
                           S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
                         </span>{" "}
                         • <span className="username">@{r.author}</span> • {timeAgo(r.updatedAt)}
                       </div>
-                      <div style={{ marginTop: 6 }} className="clamp3">{r.body}</div>
+                      <div style={{ marginTop: 6 }}
+                        className={expandedIds.has(r.id) ? undefined : "clamp3"}>
+                        {r.body}
+                      </div>
                     </div>
                   ))}
                 </div>
