@@ -153,7 +153,7 @@ export default function ProfilePage({
           {showTabOrder.length > 0 && (
             /* marginBottom: -2 makes the tab row overlap the content border below by 2px,
                so the active tab (z-index 1, no bottom border) visually "opens" into the content */
-            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2, paddingLeft: 65 }}>
+            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
               {showTabOrder.map(sid => {
                 const active = sid === activeTab;
                 return (
@@ -190,7 +190,7 @@ export default function ProfilePage({
 
           {activeTab && (
             /* borderTop is the "line" — active tab overlaps and covers it with its own background */
-            <div style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
+            <div style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20, marginLeft: -45, paddingLeft: 45 }}>
             <>
               {/* Your posts */}
               <section style={{ marginTop: 0 }}>

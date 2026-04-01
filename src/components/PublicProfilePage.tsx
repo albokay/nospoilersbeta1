@@ -136,7 +136,7 @@ export default function PublicProfilePage({
         <div className="container" style={{ marginTop: 16 }}>
           {/* Scrollable show folder tabs */}
           {showTabOrder.length > 0 && (
-            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2, paddingLeft: 65 }}>
+            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
               {showTabOrder.map(sid => {
                 const active = sid === activeTab;
                 return (
@@ -172,7 +172,7 @@ export default function PublicProfilePage({
           )}
 
           {activeTab && (
-            <div style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
+            <div style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20, marginLeft: -45, paddingLeft: 45 }}>
             <>
               {/* Their posts */}
               <section style={{ marginTop: 0 }}>
