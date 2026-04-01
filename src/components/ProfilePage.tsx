@@ -228,7 +228,7 @@ export default function ProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {t.body !== t.preview && (
-                            <div className="title" style={{ fontSize: 18, cursor: "pointer" }}
+                            <div style={{ fontSize: 14, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "2px 10px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
                               {expandedIds.has(t.id) ? "⌃ less" : "⌄ expand"}
                             </div>
@@ -264,7 +264,7 @@ export default function ProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {(r.body.length > 180 || r.body.includes('\n')) && (
-                            <div className="muted" style={{ fontSize: 14, cursor: "pointer" }}
+                            <div style={{ fontSize: 14, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "2px 10px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {expandedIds.has(r.id) ? "⌃ less" : "⌄ expand"}
                             </div>
@@ -299,7 +299,7 @@ export default function ProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {(r.body.length > 180 || r.body.includes('\n')) && (
-                            <div className="muted" style={{ fontSize: 14, cursor: "pointer" }}
+                            <div style={{ fontSize: 14, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "2px 10px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {expandedIds.has(r.id) ? "⌃ less" : "⌄ expand"}
                             </div>
@@ -336,7 +336,7 @@ export default function ProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {t.body !== t.preview && (
-                            <div className="title" style={{ fontSize: 18, cursor: "pointer" }}
+                            <div style={{ fontSize: 14, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "2px 10px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
                               {expandedIds.has(t.id) ? "⌃ less" : "⌄ expand"}
                             </div>
@@ -371,7 +371,7 @@ export default function ProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {(r.body.length > 180 || r.body.includes('\n')) && (
-                            <div className="muted" style={{ fontSize: 14, cursor: "pointer" }}
+                            <div style={{ fontSize: 14, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "2px 10px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {expandedIds.has(r.id) ? "⌃ less" : "⌄ expand"}
                             </div>
