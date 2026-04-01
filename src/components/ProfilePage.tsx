@@ -153,7 +153,7 @@ export default function ProfilePage({
           {showTabOrder.length > 0 && (
             /* marginBottom: -2 makes the tab row overlap the content border below by 2px,
                so the active tab (z-index 1, no bottom border) visually "opens" into the content */
-            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
+            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2, paddingLeft: 20 }}>
               {showTabOrder.map(sid => {
                 const active = sid === activeTab;
                 return (
