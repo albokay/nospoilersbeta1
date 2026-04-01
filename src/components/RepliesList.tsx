@@ -10,7 +10,7 @@ import Username from "./Username";
 export default function RepliesList({
   thread, progressForShow, riskyMode = false,
   likeReply, unlikeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
-  threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onClickProfile,
+  threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, onClickProfile,
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
@@ -25,6 +25,7 @@ export default function RepliesList({
   onThreadReplyClose?: () => void;
   onRiskyReveal?: (rid: string) => void;
   onExternalReplyAdded?: () => void;
+  onReplyDeleted?: (rid: string) => void;
   onClickProfile?: (username: string) => void;
 }) {
   const { user, profile } = useAuth();
@@ -231,6 +232,7 @@ export default function RepliesList({
       await dbDeleteReply(rid);
       setLocalDeleted(prev => ({ ...prev, [rid]: true }));
       setReplies(prev => prev.map(r => r.id === rid ? { ...r, isDeleted: true } : r));
+      onReplyDeleted?.(rid);
     } catch {
       alert("Failed to delete. Please try again.");
     }

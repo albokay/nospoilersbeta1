@@ -397,6 +397,10 @@ export default function ShowSection({
           }}
           hasExternalReplies={(replyCounts[thread.id] ?? 0) > 0}
           onExternalReplyAdded={(tid: string) => setHasExternalReplies(prev => ({ ...prev, [tid]: true }))}
+          onReplyDeleted={(rid: string) => {
+            const tid = thread.id;
+            setReplyMeta(prev => ({ ...prev, [tid]: (prev[tid] ?? []).filter(r => r.id !== rid) }));
+          }}
           onClickProfile={onClickProfile}
         />
       ) : (
