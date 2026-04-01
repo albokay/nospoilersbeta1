@@ -207,7 +207,7 @@ export default function ProfilePage({
               {/* Your posts */}
               <section style={{ marginTop: 0 }}>
                 <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your posts</div>
-                <div className="card">
+                <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabThreads.length === 0 && <div className="muted">No posts yet.</div>}
                   {tabThreads.map(t => (
                     <div key={t.id} className="card threadCard"
@@ -234,7 +234,7 @@ export default function ProfilePage({
               {/* Your replies */}
               <section style={{ marginTop: 24 }}>
                 <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your replies</div>
-                <div className="card">
+                <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabMyReplies.length === 0 && <div className="muted">No replies yet.</div>}
                   {tabMyReplies.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
@@ -257,7 +257,7 @@ export default function ProfilePage({
               {/* Replies to you */}
               <section style={{ marginTop: 24 }}>
                 <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Replies to you</div>
-                <div className="card">
+                <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No replies yet.</div>}
                   {tabRepliesToMe.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
@@ -278,7 +278,7 @@ export default function ProfilePage({
               {/* Starred posts */}
               <section style={{ marginTop: 24 }}>
                 <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your starred posts</div>
-                <div className="card">
+                <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabLikedThreads.length === 0 && <div className="muted">No starred posts yet.</div>}
                   {tabLikedThreads.map(t => (
                     <div key={t.id} className="card threadCard"
@@ -304,7 +304,7 @@ export default function ProfilePage({
               {/* Starred replies */}
               <section style={{ marginTop: 24 }}>
                 <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your starred replies</div>
-                <div className="card">
+                <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabLikedReplies.length === 0 && <div className="muted">No starred replies yet.</div>}
                   {tabLikedReplies.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}

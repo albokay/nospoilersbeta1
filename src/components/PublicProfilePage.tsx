@@ -177,7 +177,7 @@ export default function PublicProfilePage({
               {/* Their posts */}
               <section style={{ marginTop: 0 }}>
                 <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Posts</div>
-                <div className="card">
+                <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabThreads.length === 0 && (
                     <div className="muted">No posts visible to you yet.</div>
                   )}
@@ -205,7 +205,7 @@ export default function PublicProfilePage({
               {/* Their replies */}
               <section style={{ marginTop: 24 }}>
                 <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Replies</div>
-                <div className="card">
+                <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabReplies.length === 0 && (
                     <div className="muted">No replies visible to you yet.</div>
                   )}
