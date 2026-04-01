@@ -133,7 +133,7 @@ export default function PublicProfilePage({
       )}
 
       {!loading && !notFound && (
-        <div className="container" style={{ marginTop: 16 }}>
+        <div className="container" style={{ marginTop: 32 }}>
           {/* Scrollable show folder tabs */}
           {showTabOrder.length > 0 && (
             <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>

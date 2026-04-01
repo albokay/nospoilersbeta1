@@ -148,7 +148,7 @@ export default function ProfilePage({
       {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading your profile…</div>}
 
       {!loading && (
-        <div className="container" style={{ marginTop: 16 }}>
+        <div className="container" style={{ marginTop: 32 }}>
           {/* Scrollable show folder tabs */}
           {showTabOrder.length > 0 && (
             /* marginBottom: -2 makes the tab row overlap the content border below by 2px,
