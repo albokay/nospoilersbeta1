@@ -349,9 +349,18 @@ export default function ShowSection({
                 + New Post
               </button>
             ) : (
-              <button className="btn h40" onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}>
-                ← Back to forum
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button className="btn h40" onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}>
+                  ← Back to forum
+                </button>
+                <button
+                  className="btn post h40"
+                  onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
+                  title="Start a new post"
+                >
+                  + New Post
+                </button>
+              </div>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {thread && (

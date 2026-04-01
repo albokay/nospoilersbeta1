@@ -227,17 +227,19 @@ export default function App() {
       {!showProfile && !publicProfileUsername && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28, placeItems: "center", marginTop: 36 }}>
-            <YourShowsSelect
-              shows={shows}
-              progress={progress}
-              value={""}
-              onChange={(id) => {
-                if (!id) return;
-                setPickShowMode("confirm");
-                setPickShowId(id);
-                setShowProfile(false);
-              }}
-            />
+            {user && (
+              <YourShowsSelect
+                shows={shows}
+                progress={progress}
+                value={""}
+                onChange={(id) => {
+                  if (!id) return;
+                  setPickShowMode("confirm");
+                  setPickShowId(id);
+                  setShowProfile(false);
+                }}
+              />
+            )}
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
                 Popular Right Now
