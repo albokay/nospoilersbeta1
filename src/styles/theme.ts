@@ -203,8 +203,8 @@ header.site{
 .scrollWin::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,0.6); }
 
 /* buttons inside white reply cards */
-.btn-on-white{ color:#888 !important; border-color:#ccc !important; background:transparent !important; }
-.btn-on-white:hover{ background:#aaa !important; border-color:#aaa !important; color:#fff !important; }
+.btn-on-white{ color:#999 !important; border-color:#999 !important; background:transparent !important; }
+.btn-on-white:hover{ background:#999 !important; border-color:#999 !important; color:#fff !important; }
 
 /* bottom-right replies badge */
 .replyCount{

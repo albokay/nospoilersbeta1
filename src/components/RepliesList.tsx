@@ -437,7 +437,7 @@ export default function RepliesList({
               key={r.id}
               id={`c-${r.id}`}
               className="card"
-              style={{ borderLeft: (progressReveal[r.id] ? "4px solid var(--green)" : "4px solid var(--dos-border)"), marginLeft: 8, position: "relative", background: "#fff", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
+              style={{ borderLeft: (progressReveal[r.id] ? "4px solid var(--green)" : "4px solid #ddd"), marginLeft: 8, position: "relative", background: "#fff", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)", ["--dos-border" as any]: "#999", ["--dos-fg" as any]: "#999" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: 14 }}>

@@ -42,7 +42,7 @@ const ARRANGEMENTS: Layout[] = [
   //     lightBlue upper-right cluster, blue overlapping lightBlue lower-right
   {
     white:     { x: 5,   y: 13 },
-    green:     { x: 30,  y: 40 },
+    green:     { x: 26,  y: 44 },
     orange:    { x: -11, y: 80 },
     lightBlue: { x: 174, y: 36 },
     blue:      { x: 204, y: 61 },
