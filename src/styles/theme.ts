@@ -202,6 +202,13 @@ header.site{
 }
 .scrollWin::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,0.6); }
 
+/* Reply cards: white bg, yellow text & buttons */
+.reply-card{ background:#fff !important; }
+.reply-card .btn{ color:var(--dos-bg) !important; border-color:var(--dos-bg) !important; background:transparent !important; }
+.reply-card .btn:hover{ background:var(--dos-bg) !important; color:#fff !important; border-color:var(--dos-bg) !important; }
+.reply-card .likeWrap{ color:var(--dos-bg) !important; border-color:var(--dos-bg) !important; background:transparent !important; }
+.reply-card .likeWrap:hover{ background:var(--dos-bg) !important; color:#fff !important; border-color:var(--dos-bg) !important; }
+
 /* bottom-right replies badge */
 .replyCount{
   position:absolute; right:12px; bottom:8px;
