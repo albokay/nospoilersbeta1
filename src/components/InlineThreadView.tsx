@@ -169,17 +169,6 @@ export default function InlineThreadView({
                     {` — S${String(thread.season).padStart(2, "0")}E${String(thread.episode).padStart(2, "0")}`}
                   </span>
                 )}
-                {isOwn && hiddenNewReplies > 0 && (
-                  <span style={{
-                    width: 28, height: 28, borderRadius: "50%",
-                    background: "var(--danger)", color: "#fff",
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 11, fontWeight: 800, lineHeight: 1,
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.30)", flexShrink: 0,
-                  }}>
-                    {hiddenNewReplies}
-                  </span>
-                )}
               </h2>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                 <LikeBadge

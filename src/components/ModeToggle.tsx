@@ -1,9 +1,10 @@
 import React from "react";
 
-export default function ModeToggle({ value, onToggle, disabled = false }: {
+export default function ModeToggle({ value, onToggle, disabled = false, hiddenNewReplies = 0 }: {
   value: "standard" | "risky";
   onToggle: () => void;
   disabled?: boolean;
+  hiddenNewReplies?: number;
 }) {
   const isRisky = value === "risky";
   return (
@@ -20,7 +21,19 @@ export default function ModeToggle({ value, onToggle, disabled = false }: {
       disabled={disabled}
     >
       <span style={{ flex: "1 1 0", textAlign: "center", fontWeight: 700, fontSize: 13, color: isRisky ? "var(--dos-gray)" : "var(--dos-light)", zIndex: 2, padding: "0 8px" }}>Standard</span>
-      <span style={{ flex: "1 1 0", textAlign: "center", fontWeight: 700, fontSize: 13, color: isRisky ? "var(--dos-light)" : "var(--dos-gray)", zIndex: 2, padding: "0 8px" }}>Risky</span>
+      <span style={{ flex: "1 1 0", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, fontWeight: 700, fontSize: 13, color: isRisky ? "var(--dos-light)" : "var(--dos-gray)", zIndex: 2, padding: "0 8px" }}>
+        Risky
+        {hiddenNewReplies > 0 && (
+          <span style={{
+            width: 18, height: 18, borderRadius: "50%",
+            background: "var(--danger)", color: "#fff",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            fontSize: 10, fontWeight: 800, lineHeight: 1, flexShrink: 0,
+          }}>
+            {hiddenNewReplies}
+          </span>
+        )}
+      </span>
       <span className="modeKnob" style={{ position: "absolute", top: 2, bottom: 2, left: isRisky ? "calc(50% + 2px)" : "2px", width: "calc(50% - 4px)", background: "var(--dos-blue)", border: "1px solid var(--dos-border)" }} />
     </button>
   );

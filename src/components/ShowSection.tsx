@@ -342,6 +342,7 @@ export default function ShowSection({
                 <ModeToggle
                   value={mode}
                   onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
+                  hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
                 />
               )}
               <OneSelectProgress
