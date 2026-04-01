@@ -111,6 +111,7 @@ header.site{
     gap:8px; padding:16px 0 8px; text-align:center;
   }
   .hangL{ transform:none; }
+  .hangLContent{ margin-left:0 !important; padding-left:0 !important; }
 }
 
 /* homepage search */
