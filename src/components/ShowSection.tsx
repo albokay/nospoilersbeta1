@@ -266,6 +266,18 @@ export default function ShowSection({
       });
       setDbThreads(prev => [t, ...prev]);
       setReplyCounts(rc => ({ ...rc, [t.id]: 0 }));
+      // Anchor hiddenBaseAt at creation time so future hidden replies are correctly flagged
+      const now = Date.now();
+      setHiddenBaseAt(prev => {
+        const next = { ...prev, [t.id]: now };
+        localStorage.setItem("ns_hidden_base", JSON.stringify(next));
+        return next;
+      });
+      setLastOpenedAt(prev => {
+        const next = { ...prev, [t.id]: now };
+        localStorage.setItem("ns_last_opened", JSON.stringify(next));
+        return next;
+      });
       setComposeOpen(false);
       setPostTitle(""); setPostBody("");
       setActiveThreadId(t.id);
