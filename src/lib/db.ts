@@ -266,6 +266,25 @@ export async function fetchRepliesToUserThreads(userId: string): Promise<{ reply
   })).filter(x => x.thread);
 }
 
+/** Replies written BY the user, with their parent thread for context. */
+export async function fetchUserReplies(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
+  const { data, error } = await supabase
+    .from("replies")
+    .select("*, threads(*)")
+    .eq("author_id", userId)
+    .eq("is_deleted", false)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return (data ?? [])
+    .map((row: any) => {
+      const t = row.threads;
+      if (!t || t.is_deleted) return null;
+      return { reply: rowToReply(row), thread: rowToThread(t) };
+    })
+    .filter(Boolean) as { reply: Reply; thread: Thread }[];
+}
+
 export async function fetchLikedThreads(userId: string): Promise<Thread[]> {
   const { data, error } = await supabase
     .from("likes_threads")

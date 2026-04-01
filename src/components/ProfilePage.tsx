@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import type { Reply, Thread } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 
@@ -31,6 +31,7 @@ export default function ProfilePage({
   const showName = (showId: string) => allShows.find(s => s.id === showId)?.name || showId;
 
   const [myThreads, setMyThreads] = useState<Thread[]>([]);
+  const [myReplies, setMyReplies] = useState<{ reply: Reply; thread: Thread }[]>([]);
   const [repliesToMe, setRepliesToMe] = useState<{ reply: Reply; thread: Thread }[]>([]);
   const [likedThreadsList, setLikedThreadsList] = useState<Thread[]>([]);
   const [likedRepliesList, setLikedRepliesList] = useState<{ reply: Reply; thread: Thread }[]>([]);
@@ -41,11 +42,13 @@ export default function ProfilePage({
     setLoading(true);
     Promise.all([
       fetchUserThreads(user.id),
+      fetchUserReplies(user.id),
       fetchRepliesToUserThreads(user.id),
       fetchLikedThreads(user.id),
       fetchLikedReplies(user.id),
-    ]).then(([threads, replies, likedT, likedR]) => {
+    ]).then(([threads, myR, replies, likedT, likedR]) => {
       setMyThreads(threads);
+      setMyReplies(myR);
       setRepliesToMe(replies);
       setLikedThreadsList(likedT);
       setLikedRepliesList(likedR);
@@ -60,6 +63,11 @@ export default function ProfilePage({
   const visibleThreads = useMemo(() =>
     myThreads.filter(t => canView({ season: t.season, episode: t.episode }, progress[t.showId])),
     [myThreads, progress]);
+
+  const visibleMyReplies = useMemo(() =>
+    myReplies.filter(({ reply: r, thread: t }) =>
+      canView({ season: r.season, episode: r.episode }, progress[t.showId])),
+    [myReplies, progress]);
 
   const visibleRepliesToMe = useMemo(() =>
     repliesToMe.filter(({ reply: r, thread: t }) =>
@@ -82,13 +90,14 @@ export default function ProfilePage({
       if (!latest[sid] || ts > latest[sid]) latest[sid] = ts;
     };
     myThreads.forEach(t => bump(t.showId, t.updatedAt));
+    myReplies.forEach(({ reply: r, thread: t }) => bump(t.showId, r.updatedAt));
     repliesToMe.forEach(({ reply: r, thread: t }) => bump(t.showId, r.updatedAt));
     likedThreadsList.forEach(t => bump(t.showId, t.updatedAt));
     likedRepliesList.forEach(({ reply: r, thread: t }) => bump(t.showId, r.updatedAt));
     // include shows from progress even if no posts yet
     Object.keys(progress).forEach(sid => { if (!latest[sid]) latest[sid] = 0; });
     return Object.keys(latest).sort((a, b) => latest[b] - latest[a]);
-  }, [myThreads, repliesToMe, likedThreadsList, likedRepliesList, progress]);
+  }, [myThreads, myReplies, repliesToMe, likedThreadsList, likedRepliesList, progress]);
 
   const [activeTab, setActiveTab] = useState("");
   // Set initial tab exactly once when loading completes — avoids the progress-key ordering race
@@ -101,6 +110,9 @@ export default function ProfilePage({
   // All content filtered to active tab
   const tabThreads = useMemo(() =>
     visibleThreads.filter(t => t.showId === activeTab), [visibleThreads, activeTab]);
+
+  const tabMyReplies = useMemo(() =>
+    visibleMyReplies.filter(p => p.thread.showId === activeTab), [visibleMyReplies, activeTab]);
 
   const tabRepliesToMe = useMemo(() =>
     visibleRepliesToMe.filter(p => p.thread.showId === activeTab), [visibleRepliesToMe, activeTab]);
@@ -214,6 +226,29 @@ export default function ProfilePage({
                         <div className="muted" style={{ fontSize: 14 }}>{timeAgo(t.updatedAt)}</div>
                       </div>
                       <div style={{ marginTop: 6 }} className="clamp3">{t.preview}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Your replies */}
+              <section style={{ marginTop: 24 }}>
+                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your replies</div>
+                <div className="card">
+                  {tabMyReplies.length === 0 && <div className="muted">No replies yet.</div>}
+                  {tabMyReplies.map(({ reply: r, thread: t }) => (
+                    <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
+                      onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
+                      <div className="muted" style={{ fontSize: 14 }}>
+                        On <b>{t.titleBase}</b>{" "}
+                        {t.showId !== "simshow" && (
+                          <span style={{ color: "var(--dos-cyan)" }}>
+                            S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                          </span>
+                        )}{" "}
+                        • {timeAgo(r.updatedAt)}
+                      </div>
+                      <div style={{ marginTop: 6, fontSize: 15 }} className="clamp3">{r.body}</div>
                     </div>
                   ))}
                 </div>
