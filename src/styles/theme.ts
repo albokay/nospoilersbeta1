@@ -105,6 +105,8 @@ header.site{
   display:flex; align-items:center; justify-content:space-between;
   gap:12px; padding:20px 0 8px;
 }
+/* subtle "hang left" headers */
+.hangL{ transform: translateX(-45px); }
 /* Profile page folder content — extends border line 45px left to align with hangL headers */
 .hangLContent{ margin-left:-45px; padding-left:45px; }
 
@@ -199,9 +201,6 @@ header.site{
   background:rgba(255,255,255,0.4); border:1px solid var(--dos-border); border-radius:8px;
 }
 .scrollWin::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,0.6); }
-
-/* subtle "hang left" headers */
-.hangL{ transform: translateX(-45px); } /* ← tweak this */
 
 /* bottom-right replies badge */
 .replyCount{
