@@ -263,7 +263,7 @@ export default function ProfilePage({
                           )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                          {(r.body.length > 180 || r.body.includes('\n')) && (
+                          {(r.body.length > 260 || r.body.split('\n').length > 3) && (
                             <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "1px 8px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {expandedIds.has(r.id) ? "▴ less" : "▾ expand"}
@@ -298,7 +298,7 @@ export default function ProfilePage({
                           • <span className="username">@{r.author}</span>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                          {(r.body.length > 180 || r.body.includes('\n')) && (
+                          {(r.body.length > 260 || r.body.split('\n').length > 3) && (
                             <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "1px 8px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {expandedIds.has(r.id) ? "▴ less" : "▾ expand"}
@@ -370,7 +370,7 @@ export default function ProfilePage({
                           • <span className="username">@{r.author}</span>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                          {(r.body.length > 180 || r.body.includes('\n')) && (
+                          {(r.body.length > 260 || r.body.split('\n').length > 3) && (
                             <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "1px 8px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {expandedIds.has(r.id) ? "▴ less" : "▾ expand"}
