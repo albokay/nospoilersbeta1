@@ -105,13 +105,16 @@ header.site{
   display:flex; align-items:center; justify-content:space-between;
   gap:12px; padding:20px 0 8px;
 }
-@media (max-width: 600px){
+/* Profile page folder content — extends border line 45px left to align with hangL headers */
+.hangLContent{ margin-left:-45px; padding-left:45px; }
+
+@media (max-width: 768px){
   .bannerRow1{
     flex-direction:column; align-items:center; justify-content:center;
     gap:8px; padding:16px 0 8px; text-align:center;
   }
   .hangL{ transform:none; }
-  .hangLContent{ margin-left:0 !important; padding-left:0 !important; }
+  .hangLContent{ margin-left:0; padding-left:0; }
 }
 
 /* homepage search */
