@@ -10,7 +10,7 @@ import Username from "./Username";
 export default function RepliesList({
   thread, progressForShow, riskyMode = false,
   likeReply, unlikeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
-  threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, onClickProfile,
+  threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile,
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
@@ -26,6 +26,7 @@ export default function RepliesList({
   onRiskyReveal?: (rid: string) => void;
   onExternalReplyAdded?: () => void;
   onReplyDeleted?: (rid: string) => void;
+  freshReplyIds?: Record<string, true>;
   onClickProfile?: (username: string) => void;
 }) {
   const { user, profile } = useAuth();
@@ -61,7 +62,7 @@ export default function RepliesList({
   }, [replies]);
 
   const [revealed, setRevealed] = useState<Record<string, true>>({});
-  const [progressReveal, setProgressReveal] = useState<Record<string, true>>({});
+  const [progressReveal, setProgressReveal] = useState<Record<string, true>>(() => freshReplyIds ?? {});
   const [promptFor, setPromptFor] = useState<Reply | null>(null);
 
   // ── Inline reply form state ───────────────────────────────

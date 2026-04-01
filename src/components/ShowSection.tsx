@@ -32,6 +32,8 @@ export default function ShowSection({
   const [searchQuery, setSearchQuery] = useState("");
   const [mode, setMode] = useState<"standard" | "risky">("standard");
   const [riskyRevealedIds, setRiskyRevealedIds] = useState<Set<string>>(new Set());
+  const [freshReplyThreadIds, setFreshReplyThreadIds] = useState<Record<string, true>>({});
+  const [freshReplyIds, setFreshReplyIds] = useState<Record<string, true>>({});
 
   // Clear risky reveals only when the thread changes, not on mode toggle
   useEffect(() => { setRiskyRevealedIds(new Set()); }, [activeThreadId]);
@@ -187,8 +189,21 @@ export default function ShowSection({
         if (!canView(t, prev) && canView(t, cur)) newly[t.id] = true;
       }
       if (Object.keys(newly).length > 0) {
-        // Merge — don't replace — so previously revealed-but-unvisited posts keep their green tab
         setNewHighlights((nh: any) => ({ ...nh, [showId]: { ...(nh[showId] || {}), ...newly } }));
+      }
+      // Track replies newly revealed by progress advancement
+      const newReplyThreads: Record<string, true> = {};
+      const newReplyIds: Record<string, true> = {};
+      for (const [tid, meta] of Object.entries(replyMeta)) {
+        for (const r of meta) {
+          const was = canView({ season: r.season, episode: r.episode }, prev);
+          const now = canView({ season: r.season, episode: r.episode }, cur);
+          if (!was && now) { newReplyThreads[tid] = true; newReplyIds[r.id] = true; }
+        }
+      }
+      if (Object.keys(newReplyThreads).length > 0) {
+        setFreshReplyThreadIds(prev => ({ ...prev, ...newReplyThreads }));
+        setFreshReplyIds(prev => ({ ...prev, ...newReplyIds }));
       }
     }
     prevProgRef.current = cur;
@@ -202,6 +217,7 @@ export default function ShowSection({
       const tid = thread.id;
       setVisitedThreads((v: any) => ({ ...v, [tid]: true }));
       setNewHighlights((nh: any) => { const next = { ...(nh[showId] || {}) }; delete next[tid]; return { ...nh, [showId]: next }; });
+      setFreshReplyThreadIds(prev => { const next = { ...prev }; delete next[tid]; return next; });
     }
   }, [thread?.id, showId, setVisitedThreads, setNewHighlights]);
 
@@ -401,6 +417,7 @@ export default function ShowSection({
             const tid = thread.id;
             setReplyMeta(prev => ({ ...prev, [tid]: (prev[tid] ?? []).filter(r => r.id !== rid) }));
           }}
+          freshReplyIds={freshReplyIds}
           onClickProfile={onClickProfile}
         />
       ) : (
@@ -507,7 +524,7 @@ export default function ShowSection({
                 </div>
 
                 <div className="replyCount">
-                  <span style={visibleNew > 0 ? {
+                  <span style={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? {
                     background: "#7abd8e", color: "#fff", borderRadius: 9999,
                     padding: "2px 7px", fontWeight: 700,
                   } : {}}>

@@ -13,7 +13,7 @@ export default function InlineThreadView({
   likeReply, unlikeReply, likesReplies, likedByUserReplies,
   mode, focusReplyId, onAuthRequired, hiddenNewReplies = 0, onRiskyReveal,
   onThreadUpdate, onThreadDelete, onThreadMakePrivate, onThreadMakePublic,
-  hasExternalReplies = false, onExternalReplyAdded, onReplyDeleted, onClickProfile,
+  hasExternalReplies = false, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile,
 }: {
   thread: Thread;
   show: any;
@@ -39,6 +39,7 @@ export default function InlineThreadView({
   hasExternalReplies?: boolean;
   onExternalReplyAdded?: (threadId: string) => void;
   onReplyDeleted?: (rid: string) => void;
+  freshReplyIds?: Record<string, true>;
   onClickProfile?: (username: string) => void;
 }) {
   const { user, profile } = useAuth();
@@ -232,6 +233,7 @@ export default function InlineThreadView({
           onRiskyReveal={onRiskyReveal}
           onExternalReplyAdded={onExternalReplyAdded ? () => onExternalReplyAdded(thread.id) : undefined}
           onReplyDeleted={onReplyDeleted}
+          freshReplyIds={freshReplyIds}
           onClickProfile={onClickProfile}
         />
       </div>

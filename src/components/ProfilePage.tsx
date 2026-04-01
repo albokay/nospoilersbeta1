@@ -128,38 +128,6 @@ export default function ProfilePage({
 
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
-      {/* Sticky header — show pills stay as forum quick-links */}
-      <div className="stickybar bleed" style={{ top: GLOBAL_HEADER_H }}>
-        <div className="container" style={{ padding: `${ROW_PAD_Y}px 0` }}>
-          <div className="hangL" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flex: "0 0 auto" }}>
-              <div className="avatar">{(username?.[0] || "?").toUpperCase()}</div>
-              <div className="title" style={{ fontSize: 22, fontWeight: 700, color: "var(--dos-fg)" }}>{username}</div>
-              <div className="muted" style={{ fontStyle: "italic", fontWeight: 600, letterSpacing: 0.2 }}>is watching…</div>
-            </div>
-            <div className="scrollWin" style={{ display: "flex", gap: 12, overflowX: "auto", padding: "4px 0", flex: "1 1 auto" }}>
-              {Object.keys(progress).sort((a, b) => {
-                const showA = allShows.find(s => s.id === a);
-                const showB = allShows.find(s => s.id === b);
-                const pa = progress[a]; const pb = progress[b];
-                const ra = showA ? (pa.s - 1) + (pa.e / (showA.seasons[pa.s - 1] || 1)) : 0;
-                const rb = showB ? (pb.s - 1) + (pb.e / (showB.seasons[pb.s - 1] || 1)) : 0;
-                return rb - ra;
-              }).map(sid => (
-                <a key={sid} onClick={() => openShow(sid)}
-                  style={{ cursor: "pointer", textDecoration: "underline", whiteSpace: "nowrap" }}
-                  title={`Go to ${showName(sid)}`}>
-                  {showName(sid)}
-                </a>
-              ))}
-            </div>
-            <div style={{ flex: "0 0 auto" }}>
-              <button className="btn h40" onClick={onClose}>Homepage</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading your profile…</div>}
 
       {!loading && (
@@ -174,7 +142,7 @@ export default function ProfilePage({
                 return (
                   <button
                     key={sid}
-                    onClick={() => setActiveTab(sid)}
+                    onClick={() => active ? openShow(sid) : setActiveTab(sid)}
                     style={{
                       padding: active ? "8px 18px" : "5px 18px",
                       background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
@@ -190,6 +158,8 @@ export default function ProfilePage({
                       alignSelf: "flex-end",
                       position: "relative",
                       zIndex: active ? 1 : 0,
+                      textDecoration: active ? "underline" : "none",
+                      textUnderlineOffset: 3,
                     }}
                   >
                     {showName(sid)}
