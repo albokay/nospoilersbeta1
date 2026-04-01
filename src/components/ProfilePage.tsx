@@ -229,7 +229,10 @@ export default function ProfilePage({
                             </span>
                           )}
                         </div>
-                        <div className="muted" style={{ fontSize: 14, flexShrink: 0 }}>{timeAgo(t.updatedAt)}</div>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
+                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(t.updatedAt)}</div>
+                          <div className="muted" style={{ fontSize: 11, opacity: 0.7 }}>{expandedIds.has(t.id) ? "⌃ less" : "⌄ expand"}</div>
+                        </div>
                       </div>
                       <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined }}
                         className={expandedIds.has(t.id) ? undefined : "clamp3"}>
@@ -248,17 +251,20 @@ export default function ProfilePage({
                   {tabMyReplies.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
                       onClick={() => toggleExpand(r.id)}>
-                      <div className="muted"
-                        style={{ fontSize: 14, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}
-                        onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id, r.id); }}
-                        title="Open in forum">
-                        On <b>{t.titleBase}</b>{" "}
-                        {t.showId !== "simshow" && (
-                          <span style={{ color: "var(--dos-cyan)" }}>
-                            S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
-                          </span>
-                        )}{" "}
-                        • {timeAgo(r.updatedAt)}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <div className="muted"
+                          style={{ fontSize: 14, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}
+                          onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id, r.id); }}
+                          title="Open in forum">
+                          On <b>{t.titleBase}</b>{" "}
+                          {t.showId !== "simshow" && (
+                            <span style={{ color: "var(--dos-cyan)" }}>
+                              S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                            </span>
+                          )}{" "}
+                          • {timeAgo(r.updatedAt)}
+                        </div>
+                        <div className="muted" style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }}>{expandedIds.has(r.id) ? "⌃ less" : "⌄ expand"}</div>
                       </div>
                       <div style={{ marginTop: 6, fontSize: 15 }}
                         className={expandedIds.has(r.id) ? undefined : "clamp3"}>
@@ -277,15 +283,18 @@ export default function ProfilePage({
                   {tabRepliesToMe.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
                       onClick={() => toggleExpand(r.id)}>
-                      <div className="muted"
-                        style={{ fontSize: 14, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}
-                        onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id, r.id); }}
-                        title="Open in forum">
-                        On <b>{t.titleBase}</b>{" "}
-                        <span style={{ color: "var(--dos-cyan)" }}>
-                          S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
-                        </span>{" "}
-                        • <span className="username">@{r.author}</span> • {timeAgo(r.updatedAt)}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <div className="muted"
+                          style={{ fontSize: 14, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}
+                          onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id, r.id); }}
+                          title="Open in forum">
+                          On <b>{t.titleBase}</b>{" "}
+                          <span style={{ color: "var(--dos-cyan)" }}>
+                            S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                          </span>{" "}
+                          • <span className="username">@{r.author}</span> • {timeAgo(r.updatedAt)}
+                        </div>
+                        <div className="muted" style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }}>{expandedIds.has(r.id) ? "⌃ less" : "⌄ expand"}</div>
                       </div>
                       <div style={{ marginTop: 6, fontSize: 15 }}
                         className={expandedIds.has(r.id) ? undefined : "clamp3"}>
@@ -317,7 +326,10 @@ export default function ProfilePage({
                             </span>
                           )}
                         </div>
-                        <div className="muted" style={{ fontSize: 14, flexShrink: 0 }}>{timeAgo(t.updatedAt)}</div>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
+                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(t.updatedAt)}</div>
+                          <div className="muted" style={{ fontSize: 11, opacity: 0.7 }}>{expandedIds.has(t.id) ? "⌃ less" : "⌄ expand"}</div>
+                        </div>
                       </div>
                       <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined }}
                         className={expandedIds.has(t.id) ? undefined : "clamp3"}>
@@ -336,15 +348,18 @@ export default function ProfilePage({
                   {tabLikedReplies.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
                       onClick={() => toggleExpand(r.id)}>
-                      <div className="muted"
-                        style={{ fontSize: 14, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}
-                        onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id, r.id); }}
-                        title="Open in forum">
-                        On <b>{t.titleBase}</b>{" "}
-                        <span style={{ color: "var(--dos-cyan)" }}>
-                          S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
-                        </span>{" "}
-                        • <span className="username">@{r.author}</span> • {timeAgo(r.updatedAt)}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <div className="muted"
+                          style={{ fontSize: 14, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" }}
+                          onClick={(e) => { e.stopPropagation(); openThreadWithFocus(t.showId, t.id, r.id); }}
+                          title="Open in forum">
+                          On <b>{t.titleBase}</b>{" "}
+                          <span style={{ color: "var(--dos-cyan)" }}>
+                            S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                          </span>{" "}
+                          • <span className="username">@{r.author}</span> • {timeAgo(r.updatedAt)}
+                        </div>
+                        <div className="muted" style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }}>{expandedIds.has(r.id) ? "⌃ less" : "⌄ expand"}</div>
                       </div>
                       <div style={{ marginTop: 6 }}
                         className={expandedIds.has(r.id) ? undefined : "clamp3"}>
