@@ -136,7 +136,7 @@ export default function PublicProfilePage({
         <div className="container" style={{ marginTop: 16 }}>
           {/* Scrollable show folder tabs */}
           {showTabOrder.length > 0 && (
-            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2, paddingLeft: 20 }}>
+            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2, paddingLeft: 65 }}>
               {showTabOrder.map(sid => {
                 const active = sid === activeTab;
                 return (
