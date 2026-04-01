@@ -437,7 +437,7 @@ export default function RepliesList({
               key={r.id}
               id={`c-${r.id}`}
               className="card"
-              style={{ borderLeft: (progressReveal[r.id] ? "4px solid var(--green)" : "4px solid #ddd"), marginLeft: 8, position: "relative", background: "#fff", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)", ["--dos-border" as any]: "#999", ["--dos-fg" as any]: "#999" }}
+              style={{ borderLeft: (progressReveal[r.id] ? "4px solid var(--green)" : "4px solid var(--dos-border)"), marginLeft: 8, position: "relative" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: 14 }}>
@@ -487,9 +487,9 @@ export default function RepliesList({
                     <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{editReplyError}</div>
                   )}
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
-                    <button className="btn btn-on-white" onClick={handleCancelEditReply} disabled={editReplySubmitting}>Cancel</button>
+                    <button className="btn" onClick={handleCancelEditReply} disabled={editReplySubmitting}>Cancel</button>
                     <button
-                      className="btn primary btn-on-white"
+                      className="btn primary"
                       onClick={() => handleSaveEditReply(r.id)}
                       disabled={editReplySubmitting || !editReplyBody.trim()}
                     >
@@ -511,12 +511,12 @@ export default function RepliesList({
                   />
                   {isReplyOwn && (
                     <>
-                      <button className="btn btn-on-white" style={{ fontSize: 13 }} onClick={() => handleStartEditReply(r)}>Edit</button>
+                      <button className="btn" style={{ fontSize: 13 }} onClick={() => handleStartEditReply(r)}>Edit</button>
                       <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={() => handleDeleteReply(r.id)}>Delete</button>
                     </>
                   )}
                   <button
-                    className="btn btn-on-white"
+                    className="btn"
                     onClick={() => replyingToId === r.id ? handleCancelReply() : handleReplyClick(r.id)}
                   >
                     {replyingToId === r.id ? "Cancel" : "Reply"}
@@ -544,11 +544,11 @@ export default function RepliesList({
                     <div style={{ color: "var(--dos-red, #f45028)", fontSize: 13, marginTop: 4 }}>{replyError}</div>
                   )}
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
-                    <button className="btn btn-on-white" onClick={handleCancelReply} disabled={submitting}>
+                    <button className="btn" onClick={handleCancelReply} disabled={submitting}>
                       Cancel
                     </button>
                     <button
-                      className="btn primary btn-on-white"
+                      className="btn primary"
                       onClick={() => handleSubmitReply(r.id)}
                       disabled={submitting || !replyBody.trim()}
                     >
