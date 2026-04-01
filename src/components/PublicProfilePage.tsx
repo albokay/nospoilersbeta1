@@ -136,38 +136,34 @@ export default function PublicProfilePage({
         <div className="container" style={{ marginTop: 16 }}>
           {/* Scrollable show folder tabs */}
           {showTabOrder.length > 0 && (
-            <div style={{ position: "relative", marginBottom: 24 }}>
-              <div style={{ display: "flex", overflowX: "auto", gap: 4, paddingBottom: 2 }}>
-                {showTabOrder.map(sid => {
-                  const active = sid === activeTab;
-                  return (
-                    <button
-                      key={sid}
-                      onClick={() => setActiveTab(sid)}
-                      style={{
-                        padding: active ? "8px 18px" : "5px 18px",
-                        background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
-                        border: "2px solid var(--dos-border)",
-                        borderBottom: active ? "none" : "2px solid var(--dos-border)",
-                        borderRadius: "8px 8px 0 0",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                        color: "var(--dos-fg)",
-                        fontWeight: active ? 800 : 500,
-                        fontSize: 14,
-                        letterSpacing: 0.3,
-                        alignSelf: "flex-end",
-                      }}
-                    >
-                      {showName(sid)}
-                    </button>
-                  );
-                })}
-              </div>
-              <div style={{
-                position: "absolute", bottom: 0, left: 0, right: 0,
-                height: 2, background: "var(--dos-border)",
-              }} />
+            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
+              {showTabOrder.map(sid => {
+                const active = sid === activeTab;
+                return (
+                  <button
+                    key={sid}
+                    onClick={() => setActiveTab(sid)}
+                    style={{
+                      padding: active ? "8px 18px" : "5px 18px",
+                      background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
+                      border: "2px solid var(--dos-border)",
+                      borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
+                      borderRadius: "8px 8px 0 0",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      color: "var(--dos-fg)",
+                      fontWeight: active ? 800 : 500,
+                      fontSize: 14,
+                      letterSpacing: 0.3,
+                      alignSelf: "flex-end",
+                      position: "relative",
+                      zIndex: active ? 1 : 0,
+                    }}
+                  >
+                    {showName(sid)}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -176,6 +172,7 @@ export default function PublicProfilePage({
           )}
 
           {activeTab && (
+            <div style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
             <>
               {/* Their posts */}
               <section style={{ marginTop: 0 }}>
@@ -228,6 +225,7 @@ export default function PublicProfilePage({
                 </div>
               </section>
             </>
+            </div>
           )}
         </div>
       )}
