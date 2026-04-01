@@ -33,8 +33,8 @@ export default function ShowSection({
   const [mode, setMode] = useState<"standard" | "risky">("standard");
   const [riskyRevealedIds, setRiskyRevealedIds] = useState<Set<string>>(new Set());
 
-  // Clear risky reveals when switching back to standard, or when thread changes
-  useEffect(() => { setRiskyRevealedIds(new Set()); }, [mode, activeThreadId]);
+  // Clear risky reveals only when the thread changes, not on mode toggle
+  useEffect(() => { setRiskyRevealedIds(new Set()); }, [activeThreadId]);
   const [composeOpen, setComposeOpen] = useState(false);
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const topRef = bannerRef;
