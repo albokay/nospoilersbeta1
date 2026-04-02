@@ -260,97 +260,104 @@ export default function App() {
   const showAdmin = location.search.includes("admin");
   const isAdmin = user?.id === ADMIN_USER_ID;
 
-  const header = (
-    <header className="site bleed" style={{ borderBottom: isHomepage ? "none" : undefined }}>
-      <div style={{ height: GLOBAL_HEADER_H, display: "flex", alignItems: "center", padding: "0 0", width: "100%" }}>
-        {!isHomepage && (
-          <div style={{ flex: "0 0 auto", marginLeft: 20 }}>
-            <h1
-              className="brand brandLink"
-              style={{ margin: 0 }}
-              tabIndex={0}
-              aria-label="Go to homepage"
-              onClick={goHomepage}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHomepage(); } }}
+  // ── Fixed ? button (homepage only) ──────────────────────────
+  const fixedHelp = isHomepage ? (
+    <div style={{ position: "fixed", top: 14, left: 14, zIndex: 1000 }}>
+      <Tooltip text="A spoiler-safe TV forum built around your watch progress — no spoilers guaranteed." direction="below" align="left">
+        <button className="btn" style={{ width: 34, height: 34, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800, lineHeight: 1 }}>
+          ?
+        </button>
+      </Tooltip>
+    </div>
+  ) : null;
+
+  // ── Fixed auth / profile / admin controls (top-right, all pages) ─
+  const fixedAuth = (
+    <div style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
+      {!authLoading && !user && (
+        <button className="btn" onClick={() => setShowAuthModal(true)}>
+          Sign in / Join
+        </button>
+      )}
+      {!authLoading && user && username && (() => {
+        const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
+        const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
+        const pillTooltipText =
+          pillBadge === "green" ? "You have new replies to read!" :
+          pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
+          null;
+        const pillContent = (
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <button
+              className="profileChip"
+              onClick={() => {
+                navigate("/profile");
+                requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+              }}
             >
-              <img src="/sidebar-logo.png" alt="sidebar" style={{ height: 38, width: "auto", display: "block" }} />
-            </h1>
+              <span className="avatar">{username[0].toUpperCase()}</span>
+              <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
+            </button>
+            {pillBadge === "green" && (
+              <div style={{ position: "absolute", top: -6, right: -6, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+            )}
+            {pillBadge === "red" && (
+              <div style={{ position: "absolute", top: -6, right: -6, width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+            )}
           </div>
-        )}
+        );
+        return pillTooltipText
+          ? <Tooltip text={pillTooltipText} direction="below" align="right">{pillContent}</Tooltip>
+          : pillContent;
+      })()}
+      {!authLoading && user && username && (
+        <button className="btn" onClick={() => { goHomepage(); signOut(); }}>
+          Sign out
+        </button>
+      )}
+      {!authLoading && isAdmin && (
+        <button className="btn" onClick={() => navigate("/?admin")} title="Admin" style={{ fontSize: 18 }}>
+          ⚙
+        </button>
+      )}
+    </div>
+  );
 
-        {!isHomepage && (
-          <div className="siteTagline" style={{ flex: 1, margin: 0 }}>
-            watch. together. whenever.
-          </div>
-        )}
-
-        <div style={{ marginLeft: "auto", marginRight: 20, display: "flex", alignItems: "center", gap: 8 }}>
-          {!authLoading && !user && (
-            <button className="btn" onClick={() => setShowAuthModal(true)}>
-              Sign in / Join
-            </button>
-          )}
-          {!authLoading && user && username && (() => {
-            const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
-            const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
-            const pillTooltipText =
-              pillBadge === "green" ? "You have new replies to read!" :
-              pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
-              null;
-            const pillContent = (
-              <div style={{ position: "relative", display: "inline-block" }}>
-                <button
-                  className="profileChip"
-                  onClick={() => {
-                    navigate("/profile");
-                    requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-                  }}
-                >
-                  <span className="avatar">{username[0].toUpperCase()}</span>
-                  <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
-                </button>
-                {pillBadge === "green" && (
-                  <div style={{ position: "absolute", top: -6, right: -6, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
-                )}
-                {pillBadge === "red" && (
-                  <div style={{ position: "absolute", top: -6, right: -6, width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
-                )}
-              </div>
-            );
-            return pillTooltipText
-              ? <Tooltip text={pillTooltipText} direction="below" align="right">{pillContent}</Tooltip>
-              : pillContent;
-          })()}
-          {!authLoading && user && username && (
-            <button className="btn" onClick={() => { goHomepage(); signOut(); }}>
-              Sign out
-            </button>
-          )}
-          {!authLoading && isAdmin && (
-            <button className="btn" onClick={() => navigate("/?admin")} title="Admin" style={{ fontSize: 18 }}>
-              ⚙
-            </button>
-          )}
+  const header = (
+    <header className="site bleed">
+      <div style={{ height: GLOBAL_HEADER_H, display: "flex", alignItems: "center", padding: "0 0", width: "100%" }}>
+        <div style={{ flex: "0 0 auto", marginLeft: 20 }}>
+          <h1
+            className="brand brandLink"
+            style={{ margin: 0 }}
+            tabIndex={0}
+            aria-label="Go to homepage"
+            onClick={goHomepage}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHomepage(); } }}
+          >
+            <img src="/sidebar-logo.png" alt="sidebar" style={{ height: 38, width: "auto", display: "block" }} />
+          </h1>
+        </div>
+        <div className="siteTagline" style={{ flex: 1, margin: 0 }}>
+          watch. together. whenever.
         </div>
       </div>
-
     </header>
   );
 
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
-      {header}
+      {fixedHelp}
+      {fixedAuth}
+      {!isHomepage && header}
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {isHomepage && (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95, paddingTop: 64 }}>
           <SidebarLogo />
           <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
               watch. together. whenever.
             </span>
-            <Tooltip text="A spoiler-safe TV forum built around your watch progress — no spoilers guaranteed." direction="below" align="center">
-              <span style={{ fontSize: 22, fontWeight: 900, color: "var(--dos-fg)", opacity: 0.75, cursor: "default", userSelect: "none", lineHeight: 1 }}>ℹ</span>
-            </Tooltip>
           </div>
         </div>
       )}
