@@ -67,6 +67,12 @@ export default function App() {
     return s ? parseInt(s, 10) : 0;
   });
 
+  // Track when user last acknowledged invisible replies (clears red badge)
+  const [invisibleSeenAt, setInvisibleSeenAt] = useState<number>(() => {
+    const s = localStorage.getItem("ns_invisible_seen_at");
+    return s ? parseInt(s, 10) : 0;
+  });
+
   // Compute pill badge state
   const { hasVisibleNewReplies, invisibleShowName } = useMemo(() => {
     let hasVisible = false;
@@ -74,13 +80,13 @@ export default function App() {
     for (const { reply: r, thread: t } of repliesToUser) {
       const canSee = canView({ season: r.season, episode: r.episode }, progress[t.showId]);
       if (canSee) { if (r.updatedAt > visibleSeenAt) hasVisible = true; }
-      else if (!latestInvisible || r.updatedAt > latestInvisible.reply.updatedAt) latestInvisible = { reply: r, thread: t };
+      else if (r.updatedAt > invisibleSeenAt && (!latestInvisible || r.updatedAt > latestInvisible.reply.updatedAt)) latestInvisible = { reply: r, thread: t };
     }
     return {
       hasVisibleNewReplies: hasVisible,
       invisibleShowName: latestInvisible ? (shows.find(s => s.id === latestInvisible!.thread.showId)?.name ?? latestInvisible.thread.showId) : "",
     };
-  }, [repliesToUser, progress, visibleSeenAt, shows]);
+  }, [repliesToUser, progress, visibleSeenAt, invisibleSeenAt, shows]);
 
   // Capture the pre-clear seenAt so ProfilePage can detect which replies are "new"
   const hasVisibleRef = useRef(hasVisibleNewReplies);
@@ -92,6 +98,8 @@ export default function App() {
       const now = Date.now();
       setVisibleSeenAt(now);
       localStorage.setItem("ns_visible_seen_at", String(now));
+      setInvisibleSeenAt(now);
+      localStorage.setItem("ns_invisible_seen_at", String(now));
     }
   }, [showProfile]);
 
