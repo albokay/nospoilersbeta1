@@ -34,6 +34,35 @@ export default function App() {
     fetchShows().then(setShows).catch(() => setShows(
       seedShows.filter(s => s.id === "bb" || s.id === "simshow") as Show[]
     ));
+
+    // Real-time sync: push show list changes to all connected clients instantly
+    const rowToShow = (row: any): Show => ({
+      id: row.id,
+      name: row.name,
+      seasons: row.seasons,
+      tvmazeId: row.tvmaze_id ?? undefined,
+      status: row.status ?? "Ended",
+      isHidden: row.is_hidden ?? false,
+      lastSyncedAt: row.last_synced_at ?? undefined,
+    });
+
+    const channel = supabase
+      .channel("shows-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "shows" }, (payload) => {
+        const s = rowToShow(payload.new);
+        setShows(prev => prev.some(x => x.id === s.id) ? prev : [...prev, s].sort((a, b) => a.name.localeCompare(b.name)));
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "shows" }, (payload) => {
+        const s = rowToShow(payload.new);
+        setShows(prev => prev.map(x => x.id === s.id ? s : x));
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "shows" }, (payload) => {
+        const deletedId = (payload.old as any).id;
+        setShows(prev => prev.filter(x => x.id !== deletedId));
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const { user, profile, loading: authLoading, signOut } = useAuth();
