@@ -476,7 +476,8 @@ export default function ShowSection({
               <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
                 {isOwn && hiddenNew > 0 && (
                   <Tooltip
-                    text="You have new replies waiting for you from users eager for you to catch up."
+                    text="There are hidden replies from viewers who are further along."
+                    direction="right"
                     style={{ position: "absolute", left: -14, top: "50%", transform: "translateY(-50%)", zIndex: 1 }}
                   >
                     <div style={{

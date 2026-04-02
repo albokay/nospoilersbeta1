@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
@@ -66,13 +66,6 @@ export default function App() {
     const s = localStorage.getItem("ns_visible_seen_at");
     return s ? parseInt(s, 10) : 0;
   });
-  useEffect(() => {
-    if (showProfile) {
-      const now = Date.now();
-      setVisibleSeenAt(now);
-      localStorage.setItem("ns_visible_seen_at", String(now));
-    }
-  }, [showProfile]);
 
   // Compute pill badge state
   const { pillBadge, invisibleShowName, hasVisibleNewReplies } = useMemo(() => {
@@ -90,6 +83,21 @@ export default function App() {
     const invisibleShowName = latestInvisible ? (shows.find(s => s.id === latestInvisible!.thread.showId)?.name ?? latestInvisible.thread.showId) : "";
     return { pillBadge: hasVisible ? "green" : latestInvisible ? "red" : null, invisibleShowName, hasVisibleNewReplies: hasVisible };
   }, [repliesToUser, progress, visibleSeenAt, shows]);
+
+  // Capture green dot state at the moment profile opens, then clear visible-seen
+  const hasVisibleRef = useRef(hasVisibleNewReplies);
+  hasVisibleRef.current = hasVisibleNewReplies;
+  const [profileGreenDot, setProfileGreenDot] = useState(false);
+  useEffect(() => {
+    if (showProfile) {
+      setProfileGreenDot(hasVisibleRef.current);
+      const now = Date.now();
+      setVisibleSeenAt(now);
+      localStorage.setItem("ns_visible_seen_at", String(now));
+    } else {
+      setProfileGreenDot(false);
+    }
+  }, [showProfile]);
 
   const [pickShowId, setPickShowId] = useState<string | null>(null);
   const pickShow = useMemo(() => shows.find(s => s.id === pickShowId) || null, [pickShowId, shows]);
@@ -236,12 +244,12 @@ export default function App() {
                 <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
               </button>
               {pillBadge === "green" && (
-                <Tooltip text="You have new replies to read." direction="below" style={{ position: "absolute", top: -4, right: -4, zIndex: 2 }}>
+                <Tooltip text="You have new replies to read!" direction="below" align="right" style={{ position: "absolute", top: -4, right: -4, zIndex: 2 }}>
                   <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--green)", border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
                 </Tooltip>
               )}
               {pillBadge === "red" && (
-                <Tooltip text={`FYI: you have new replies from people who've watched more of ${invisibleShowName} than you. You'll get to read them once you catch up!`} direction="below" style={{ position: "absolute", top: -4, right: -4, zIndex: 2 }}>
+                <Tooltip text={`FYI: ${invisibleShowName} has replies beyond your progress. You'll see them once you catch up with the show.`} direction="below" align="right" style={{ position: "absolute", top: -4, right: -4, zIndex: 2 }}>
                   <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--danger)", border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
                 </Tooltip>
               )}
@@ -269,7 +277,7 @@ export default function App() {
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {isHomepage && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95 }}>
-          <Tooltip text="A spoiler-safe TV discussion forum built around your watch progress. Set your watch progress, and you won't see any spoilers." style={{ display: "block" }}>
+          <Tooltip text="A spoiler-safe TV forum built around your watch progress — no spoilers guaranteed." direction="below" style={{ display: "block" }}>
             <SidebarLogo />
           </Tooltip>
           <div style={{ marginTop: 12, fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
@@ -351,7 +359,7 @@ export default function App() {
           openThreadWithFocus={openThreadWithFocus}
           openShow={openShow}
           onClose={goHomepage}
-          hasVisibleNewReplies={hasVisibleNewReplies}
+          hasVisibleNewReplies={profileGreenDot}
         />
       )}
 
