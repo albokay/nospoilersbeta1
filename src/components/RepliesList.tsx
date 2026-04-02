@@ -392,7 +392,7 @@ export default function RepliesList({
             }}
           />
           {threadReplyError && (
-            <div style={{ color: "var(--dos-red, #f45028)", fontSize: 13, marginTop: 4 }}>{threadReplyError}</div>
+            <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{threadReplyError}</div>
           )}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
             <button className="btn" onClick={() => { onThreadReplyClose?.(); setThreadReplyBody(""); setThreadReplyError(null); }} disabled={threadReplySubmitting}>
@@ -572,7 +572,7 @@ export default function RepliesList({
                     }}
                   />
                   {replyError && (
-                    <div style={{ color: "var(--dos-red, #f45028)", fontSize: 13, marginTop: 4 }}>{replyError}</div>
+                    <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{replyError}</div>
                   )}
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
                     <button className="btn" onClick={handleCancelReply} disabled={submitting}>
