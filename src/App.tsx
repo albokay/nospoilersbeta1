@@ -254,7 +254,7 @@ export default function App() {
 
         <div style={{ marginLeft: "auto", marginRight: 20, display: "flex", alignItems: "center", gap: 8 }}>
           {!authLoading && !user && (
-            <button className="btn h40" onClick={() => setShowAuthModal(true)}>
+            <button className="btn" onClick={() => setShowAuthModal(true)}>
               Sign in / Join
             </button>
           )}
@@ -293,12 +293,12 @@ export default function App() {
               : pillContent;
           })()}
           {!authLoading && user && username && (
-            <button className="btn h40" onClick={() => { goHomepage(); signOut(); }} title="Sign out">
+            <button className="btn" onClick={() => { goHomepage(); signOut(); }}>
               Sign out
             </button>
           )}
           {!authLoading && isAdmin && (
-            <button className="btn h40" onClick={() => { setShowAdmin(true); setExpandedShowId(null); setShowProfile(false); }} title="Admin">
+            <button className="btn" onClick={() => { setShowAdmin(true); setExpandedShowId(null); setShowProfile(false); }} title="Admin">
               ⚙
             </button>
           )}
