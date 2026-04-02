@@ -227,34 +227,39 @@ export default function App() {
               Sign in / Join
             </button>
           )}
-          {!authLoading && user && username && (
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <button
-                className="profileChip"
-                onClick={() => {
-                  setExpandedShowId(null);
-                  setActiveThreadId(null);
-                  setFocusReplyId(null);
-                  setShowProfile(true);
-                  requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-                }}
-                title="View profile"
-              >
-                <span className="avatar">{username[0].toUpperCase()}</span>
-                <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
-              </button>
-              {pillBadge === "green" && (
-                <Tooltip text="You have new replies to read!" direction="below" align="right" style={{ position: "absolute", top: -4, right: -4, zIndex: 2 }}>
-                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--green)", border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
-                </Tooltip>
-              )}
-              {pillBadge === "red" && (
-                <Tooltip text={`FYI: ${invisibleShowName} has replies beyond your progress. You'll see them once you catch up with the show.`} direction="below" align="right" style={{ position: "absolute", top: -4, right: -4, zIndex: 2 }}>
-                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--danger)", border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
-                </Tooltip>
-              )}
-            </div>
-          )}
+          {!authLoading && user && username && (() => {
+            const pillTooltipText =
+              pillBadge === "green" ? "You have new replies to read!" :
+              pillBadge === "red"   ? `FYI: ${invisibleShowName} has replies beyond your progress. You'll see them once you catch up with the show.` :
+              null;
+            const pillContent = (
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <button
+                  className="profileChip"
+                  onClick={() => {
+                    setExpandedShowId(null);
+                    setActiveThreadId(null);
+                    setFocusReplyId(null);
+                    setShowProfile(true);
+                    requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+                  }}
+                  title="View profile"
+                >
+                  <span className="avatar">{username[0].toUpperCase()}</span>
+                  <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
+                </button>
+                {pillBadge === "green" && (
+                  <div style={{ position: "absolute", top: -4, right: -4, width: 14, height: 14, borderRadius: "50%", background: "var(--green)", border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+                )}
+                {pillBadge === "red" && (
+                  <div style={{ position: "absolute", top: -4, right: -4, width: 14, height: 14, borderRadius: "50%", background: "var(--danger)", border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+                )}
+              </div>
+            );
+            return pillTooltipText
+              ? <Tooltip text={pillTooltipText} direction="below" align="right">{pillContent}</Tooltip>
+              : pillContent;
+          })()}
           {!authLoading && user && username && (
             <button className="btn h40" onClick={() => { goHomepage(); signOut(); }} title="Sign out">
               Sign out

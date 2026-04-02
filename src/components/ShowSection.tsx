@@ -477,7 +477,7 @@ export default function ShowSection({
                 {isOwn && hiddenNew > 0 && (
                   <Tooltip
                     text="There are hidden replies from viewers who are further along."
-                    direction="right"
+                    direction="left"
                     style={{ position: "absolute", left: -14, top: "50%", transform: "translateY(-50%)", zIndex: 1 }}
                   >
                     <div style={{
