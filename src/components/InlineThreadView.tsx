@@ -163,13 +163,13 @@ export default function InlineThreadView({
               <h2 style={{ margin: 0, fontSize: 22, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }} className="title">
                 {thread.isPrivate && <span>🔒</span>}
                 <span>{thread.titleBase}</span>
+                {thread.showId !== "simshow" && (
+                  <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7 }}>
+                    {`(S${String(thread.season).padStart(2, "0")}E${String(thread.episode).padStart(2, "0")})`}
+                  </span>
+                )}
                 {thread.isEdited && (
                   <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7 }}>(edited)</span>
-                )}
-                {thread.showId !== "simshow" && (
-                  <span style={{ color: "var(--dos-cyan)" }}>
-                    {` — S${String(thread.season).padStart(2, "0")}E${String(thread.episode).padStart(2, "0")}`}
-                  </span>
                 )}
               </h2>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -183,7 +183,7 @@ export default function InlineThreadView({
             </div>
 
             <div className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-              {show.name} • S{thread.season}E{thread.episode} • Started by <Username name={thread.author} onClickProfile={onClickProfile ?? (() => {})} /> • {timeAgo(thread.updatedAt)}
+              {show.name} • Started by <Username name={thread.author} onClickProfile={onClickProfile ?? (() => {})} /> • {timeAgo(thread.updatedAt)}
             </div>
 
             {thread.isDeleted ? (
