@@ -91,6 +91,7 @@ export default function ShowSection({
     const baseAt = hiddenBaseAt[threadId] ?? Date.now();
     let visibleNew = 0, hiddenNew = 0, totalVisible = 0;
     for (const r of meta) {
+      if (r.authorId === user?.id) continue; // never count own replies
       const visible = canView({ season: r.season, episode: r.episode }, prog);
       if (visible) totalVisible++;
       if (visible && r.createdAt > openedAt) visibleNew++;
@@ -155,7 +156,7 @@ export default function ShowSection({
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "replies", filter: `show_id=eq.${showId}` }, (payload) => {
         const r = payload.new as any;
         if (!r) return;
-        const meta = { id: r.id, season: r.season, episode: r.episode, createdAt: new Date(r.created_at).getTime() };
+        const meta = { id: r.id, season: r.season, episode: r.episode, createdAt: new Date(r.created_at).getTime(), authorId: r.author_id };
         setReplyMeta(prev => ({ ...prev, [r.thread_id]: [...(prev[r.thread_id] ?? []), meta] }));
         setReplyCounts(prev => ({ ...prev, [r.thread_id]: (prev[r.thread_id] ?? 0) + 1 }));
         setHasExternalReplies(prev => ({ ...prev, [r.thread_id]: true }));

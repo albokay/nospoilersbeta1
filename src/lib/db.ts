@@ -54,7 +54,7 @@ function rowToThread(row: any): Thread {
   };
 }
 
-export type ReplyMeta = { id: string; season: number; episode: number; createdAt: number };
+export type ReplyMeta = { id: string; season: number; episode: number; createdAt: number; authorId: string };
 
 export async function fetchThreadsForShow(showId: string): Promise<{
   threads: Thread[];
@@ -80,6 +80,7 @@ export async function fetchThreadsForShow(showId: string): Promise<{
       season: r.season,
       episode: r.episode,
       createdAt: new Date(r.created_at).getTime(),
+      authorId: r.author_id,
     }));
     hasExternalReplies[row.id] = replies.some((r: any) => r.author_id !== row.author_id);
   }
