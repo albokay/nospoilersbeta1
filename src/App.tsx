@@ -24,7 +24,7 @@ import Tooltip from "./components/Tooltip";
 const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
 
 const SINGLE_PAGE = true;
-const GLOBAL_HEADER_H = 46;
+const GLOBAL_HEADER_H = 56;
 
 export default function App() {
   useEffect(injectDOSStyles, []);

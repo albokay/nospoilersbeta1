@@ -30,7 +30,7 @@ import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
 import Username from "./Username";
 
-const GLOBAL_HEADER_H = 46;
+const GLOBAL_HEADER_H = 56;
 const ROW_PAD_Y = 8;
 
 export default function ShowSection({
@@ -374,7 +374,7 @@ export default function ShowSection({
       <div className="stickybar bleed" style={{ top: GLOBAL_HEADER_H }} ref={bannerRef}>
         <div className="container">
           {(navLeft || navRight) && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 0 4px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0 4px" }}>
               <div className="hangL">{navLeft}</div>
               <div>{navRight}</div>
             </div>
