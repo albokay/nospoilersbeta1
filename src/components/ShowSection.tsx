@@ -91,9 +91,9 @@ export default function ShowSection({
     const baseAt = hiddenBaseAt[threadId] ?? Date.now();
     let visibleNew = 0, hiddenNew = 0, totalVisible = 0;
     for (const r of meta) {
-      if (r.authorId === user?.id) continue; // never count own replies
       const visible = canView({ season: r.season, episode: r.episode }, prog);
       if (visible) totalVisible++;
+      if (r.authorId === user?.id) continue; // own replies don't trigger indicators
       if (visible && r.createdAt > openedAt) visibleNew++;
       if (!visible && r.createdAt > baseAt && !riskyRevealedIds.has(r.id)) hiddenNew++;
     }
