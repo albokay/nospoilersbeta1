@@ -127,7 +127,7 @@ export default function AdminPage({
           zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <div className="card" style={{
-            background: "rgba(201,168,67,0.98)", border: "3px solid #fff",
+            background: "var(--dos-bg)", border: "3px solid #fff",
             borderRadius: 24, padding: "24px 28px", maxWidth: 360, width: "92vw",
           }}>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>

@@ -240,7 +240,7 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
           onMouseDown={(e) => { if (e.target === e.currentTarget) { setConfirming(null); setCreateError(null); } }}
         >
           <div className="card" style={{
-            background: "rgba(201,168,67,0.98)", border: "3px solid #fff",
+            background: "var(--dos-bg)", border: "3px solid #fff",
             borderRadius: 24, padding: "24px 28px", maxWidth: 380, width: "92vw",
           }}>
             <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>{confirming.name}</div>
