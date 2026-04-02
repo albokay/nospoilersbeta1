@@ -167,7 +167,13 @@ header.site{
 .modeKnob{ transition:left 160ms ease; }
 
 /* flash overlay */
-.flash-cover{ position:absolute; inset:0; background:rgba(222,168,56,0.38); pointer-events:none; opacity:1; transition:opacity 2000ms ease; border-radius:inherit; }
+@keyframes flash-blink{
+  0%   { opacity:1; }
+  28%  { opacity:0.08; }
+  52%  { opacity:0.82; }
+  100% { opacity:0; }
+}
+.flash-cover{ position:absolute; inset:0; background:rgba(222,168,56,0.55); pointer-events:none; border-radius:inherit; animation:flash-blink 3s ease forwards; }
 
 /* like badge */
 .likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }

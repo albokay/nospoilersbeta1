@@ -322,8 +322,7 @@ export default function RepliesList({
       const style = getComputedStyle(el);
       el.style.position = (style.position === "static") ? "relative" : style.position;
       el.appendChild(cover);
-      requestAnimationFrame(() => { cover.style.opacity = "0"; });
-      setTimeout(() => { cover.remove(); }, 2000);
+      setTimeout(() => { cover.remove(); }, 3100);
     }
   };
 
