@@ -271,6 +271,22 @@ export default function App() {
     </div>
   ) : null;
 
+  // ── Fixed sidebar logo (non-homepage, top-left) ───────────
+  const fixedLogo = !isHomepage ? (
+    <div style={{ position: "fixed", top: 14, left: 14, zIndex: 1000 }}>
+      <h1
+        className="brand brandLink"
+        style={{ margin: 0 }}
+        tabIndex={0}
+        aria-label="Go to homepage"
+        onClick={goHomepage}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHomepage(); } }}
+      >
+        <img src="/sidebar-logo.png" alt="sidebar" style={{ height: 38, width: "auto", display: "block" }} />
+      </h1>
+    </div>
+  ) : null;
+
   // ── Fixed auth / profile / admin controls (top-right, all pages) ─
   const fixedAuth = (
     <div style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
@@ -323,31 +339,16 @@ export default function App() {
     </div>
   );
 
+  // Header is a pure height-spacer + full-bleed bottom border.
+  // Logo and auth are both position:fixed so they float above this bar.
   const header = (
-    <header className="site bleed">
-      <div style={{ height: GLOBAL_HEADER_H, display: "flex", alignItems: "center", padding: "0 0", width: "100%" }}>
-        <div style={{ flex: "0 0 auto", marginLeft: 20 }}>
-          <h1
-            className="brand brandLink"
-            style={{ margin: 0 }}
-            tabIndex={0}
-            aria-label="Go to homepage"
-            onClick={goHomepage}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHomepage(); } }}
-          >
-            <img src="/sidebar-logo.png" alt="sidebar" style={{ height: 38, width: "auto", display: "block" }} />
-          </h1>
-        </div>
-        <div className="siteTagline" style={{ flex: 1, margin: 0 }}>
-          watch. together. whenever.
-        </div>
-      </div>
-    </header>
+    <header className="site bleed" style={{ height: GLOBAL_HEADER_H }} />
   );
 
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
       {fixedHelp}
+      {fixedLogo}
       {fixedAuth}
       {!isHomepage && header}
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
