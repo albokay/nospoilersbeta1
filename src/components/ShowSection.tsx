@@ -266,6 +266,15 @@ export default function ShowSection({
   const displayed = baseVisible;
   const thread = activeThreadId ? dbThreads.find(t => t.id === activeThreadId && t.showId === showId) : null;
 
+  // Shared progress-confirm handler: updates progress, then navigates back to
+  // the forum if the currently-open thread is no longer visible at the new progress.
+  const handleProgressConfirm = (val: { s: number; e: number }) => {
+    updateProgressFor(showId, val);
+    if (thread && !canView({ season: thread.season, episode: thread.episode }, val)) {
+      setActiveThreadId(null);
+    }
+  };
+
   useEffect(() => {
     if (thread?.id) {
       const tid = thread.id;
@@ -421,7 +430,7 @@ export default function ShowSection({
               <OneSelectProgress
                 show={allShows.find(s => s.id === showId) || { seasons: [10] }}
                 value={progress[showId] || { s: 1, e: 1 }}
-                onConfirm={(val) => updateProgressFor(showId, val)}
+                onConfirm={handleProgressConfirm}
                 requireConfirm={true}
                 compactLabel="progress"
               />
@@ -468,7 +477,7 @@ export default function ShowSection({
                 <OneSelectProgress
                   show={allShows.find(s => s.id === showId) || { seasons: [10] }}
                   value={progress[showId] || { s: 1, e: 1 }}
-                  onConfirm={(val) => updateProgressFor(showId, val)}
+                  onConfirm={handleProgressConfirm}
                   requireConfirm={true}
                   compactLabel={isMobile ? "watch progress" : undefined}
                 />

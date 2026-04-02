@@ -450,15 +450,8 @@ export default function App() {
             progress={progress}
             updateProgressFor={(sid: string, next: { s: number; e: number }) => {
               setProgress(prev => ({ ...prev, [sid]: next }));
-
-              // If the open thread is no longer visible at the new progress, go back to the forum
-              if (activeThreadId) {
-                const t = seedThreads.find(t => t.id === activeThreadId);
-                if (t && t.showId === sid && !canView({ season: t.season, episode: t.episode }, next)) {
-                  navigate(`/show/${sid}`);
-                }
-              }
-
+              // Thread-visibility check is handled inside ShowSection's handleProgressConfirm,
+              // which has access to the real dbThreads.
               if (user) {
                 upsertProgress(user.id, sid, next.s, next.e).catch(err =>
                   console.error("Failed to save progress:", err)
