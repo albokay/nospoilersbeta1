@@ -167,7 +167,7 @@ header.site{
 .modeKnob{ transition:left 160ms ease; }
 
 /* flash overlay */
-.flash-cover{ position:absolute; inset:0; background:rgba(255,255,255,0.44); pointer-events:none; opacity:1; transition:opacity 2000ms ease; }
+.flash-cover{ position:absolute; inset:0; background:rgba(222,168,56,0.38); pointer-events:none; opacity:1; transition:opacity 2000ms ease; border-radius:inherit; }
 
 /* like badge */
 .likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }
