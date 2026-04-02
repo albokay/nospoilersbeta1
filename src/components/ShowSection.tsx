@@ -1,4 +1,19 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+
+const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
+
+// Returns true if the thread's red dot should still be shown.
+// Starts the 36h expiry clock on first call with hasDot=true; clears on hasDot=false.
+function threadDotActive(threadId: string, hasDot: boolean): boolean {
+  const key = `ns_tdot_${threadId}`;
+  if (!hasDot) { localStorage.removeItem(key); return false; }
+  const stored = localStorage.getItem(key);
+  const now = Date.now();
+  if (!stored) { localStorage.setItem(key, String(now)); return true; }
+  const seenAt = parseInt(stored, 10);
+  if (now - seenAt >= THIRTY_SIX_HOURS) { localStorage.removeItem(key); return false; }
+  return true;
+}
 import type { Thread } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -474,7 +489,7 @@ export default function ShowSection({
 
             return (
               <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
-                {isOwn && hiddenNew > 0 && (
+                {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
                   <Tooltip
                     text="You have hidden replies from viewers who are further along!"
                     direction="above"

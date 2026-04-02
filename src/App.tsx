@@ -67,35 +67,51 @@ export default function App() {
     return s ? parseInt(s, 10) : 0;
   });
 
-  // Track when user last acknowledged invisible replies (clears red badge)
+  // When user last clicked to dismiss invisible replies (filters them out of the pill)
   const [invisibleSeenAt, setInvisibleSeenAt] = useState<number>(() => {
     const s = localStorage.getItem("ns_invisible_seen_at");
     return s ? parseInt(s, 10) : 0;
   });
 
+  // When the red indicator was FIRST shown this "session" of notifications
+  const [invisibleFirstSeenAt, setInvisibleFirstSeenAt] = useState<number>(() => {
+    const s = localStorage.getItem("ns_invisible_first_seen_at");
+    return s ? parseInt(s, 10) : 0;
+  });
+
   // Compute pill badge state
   const { hasVisibleNewReplies, invisibleShowName } = useMemo(() => {
-    const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
-    // Snooze is active if the user acknowledged within the last 36 hours
-    const invisibleSnoozed = invisibleSeenAt > 0 && Date.now() - invisibleSeenAt < THIRTY_SIX_HOURS;
-
     let hasVisible = false;
     let latestInvisible: { reply: Reply; thread: Thread } | null = null;
     for (const { reply: r, thread: t } of repliesToUser) {
       const canSee = canView({ season: r.season, episode: r.episode }, progress[t.showId]);
       if (canSee) { if (r.updatedAt > visibleSeenAt) hasVisible = true; }
-      else {
-        // Show red if: snooze expired (36h passed) OR this reply arrived after last acknowledgment
-        const shouldShow = !invisibleSnoozed || r.updatedAt > invisibleSeenAt;
-        if (shouldShow && (!latestInvisible || r.updatedAt > latestInvisible.reply.updatedAt))
-          latestInvisible = { reply: r, thread: t };
-      }
+      else if (r.updatedAt > invisibleSeenAt && (!latestInvisible || r.updatedAt > latestInvisible.reply.updatedAt))
+        latestInvisible = { reply: r, thread: t };
     }
     return {
       hasVisibleNewReplies: hasVisible,
       invisibleShowName: latestInvisible ? (shows.find(s => s.id === latestInvisible!.thread.showId)?.name ?? latestInvisible.thread.showId) : "",
     };
   }, [repliesToUser, progress, visibleSeenAt, invisibleSeenAt, shows]);
+
+  // Start the 36h expiry clock the first time the red indicator appears;
+  // clear it when there are no more new invisible replies (user caught up or dismissed).
+  const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
+  useEffect(() => {
+    if (invisibleShowName) {
+      if (!invisibleFirstSeenAt) {
+        const now = Date.now();
+        setInvisibleFirstSeenAt(now);
+        localStorage.setItem("ns_invisible_first_seen_at", String(now));
+      }
+    } else {
+      if (invisibleFirstSeenAt) {
+        setInvisibleFirstSeenAt(0);
+        localStorage.removeItem("ns_invisible_first_seen_at");
+      }
+    }
+  }, [invisibleShowName]);
 
   // Capture the pre-clear seenAt so ProfilePage can detect which replies are "new"
   const hasVisibleRef = useRef(hasVisibleNewReplies);
@@ -109,6 +125,8 @@ export default function App() {
       localStorage.setItem("ns_visible_seen_at", String(now));
       setInvisibleSeenAt(now);
       localStorage.setItem("ns_invisible_seen_at", String(now));
+      setInvisibleFirstSeenAt(0);
+      localStorage.removeItem("ns_invisible_first_seen_at");
     }
   }, [showProfile]);
 
@@ -241,7 +259,8 @@ export default function App() {
             </button>
           )}
           {!authLoading && user && username && (() => {
-            const pillBadge = hasVisibleNewReplies ? "green" : invisibleShowName ? "red" : null;
+            const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
+            const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
             const pillTooltipText =
               pillBadge === "green" ? "You have new replies to read!" :
               pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
