@@ -344,7 +344,7 @@ export default function RepliesList({
   };
 
   const replyLabel = (r: Reply) =>
-    `This viewer has watched S${String(r.season).padStart(2, "0")}E${String(r.episode).padStart(2, "0")}. Click to reveal.`;
+    `This viewer has watched S${String(r.season).padStart(2, "0")} E${String(r.episode).padStart(2, "0")}. Click to reveal.`;
 
   return (
     <>
@@ -475,7 +475,7 @@ export default function RepliesList({
                   <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold />{" "}
                   {thread.showId !== "simshow" && (
                     <span style={{ color: "var(--dos-cyan)", fontWeight: 700 }}>
-                      S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                      S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
                     </span>
                   )}
                   {isReplyEdited && (
