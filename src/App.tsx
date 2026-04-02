@@ -67,35 +67,24 @@ export default function App() {
     return s ? parseInt(s, 10) : 0;
   });
 
-  // Compute pill badge state
-  const { pillBadge, invisibleShowName, hasVisibleNewReplies } = useMemo(() => {
-    if (!repliesToUser.length) return { pillBadge: null as null | "green" | "red", invisibleShowName: "", hasVisibleNewReplies: false };
-    let hasVisible = false;
-    let latestInvisible: { reply: Reply; thread: Thread } | null = null;
+  // Compute pill badge state (green only — red is shown on profile page posts directly)
+  const hasVisibleNewReplies = useMemo(() => {
     for (const { reply: r, thread: t } of repliesToUser) {
-      const canSee = canView({ season: r.season, episode: r.episode }, progress[t.showId]);
-      if (canSee) {
-        if (r.updatedAt > visibleSeenAt) hasVisible = true;
-      } else {
-        if (!latestInvisible || r.updatedAt > latestInvisible.reply.updatedAt) latestInvisible = { reply: r, thread: t };
-      }
+      if (canView({ season: r.season, episode: r.episode }, progress[t.showId]) && r.updatedAt > visibleSeenAt) return true;
     }
-    const invisibleShowName = latestInvisible ? (shows.find(s => s.id === latestInvisible!.thread.showId)?.name ?? latestInvisible.thread.showId) : "";
-    return { pillBadge: hasVisible ? "green" : latestInvisible ? "red" : null, invisibleShowName, hasVisibleNewReplies: hasVisible };
-  }, [repliesToUser, progress, visibleSeenAt, shows]);
+    return false;
+  }, [repliesToUser, progress, visibleSeenAt]);
 
-  // Capture green dot state at the moment profile opens, then clear visible-seen
+  // Capture the pre-clear seenAt so ProfilePage can detect which replies are "new"
   const hasVisibleRef = useRef(hasVisibleNewReplies);
   hasVisibleRef.current = hasVisibleNewReplies;
-  const [profileGreenDot, setProfileGreenDot] = useState(false);
+  const [openedAtSeenAt, setOpenedAtSeenAt] = useState(0);
   useEffect(() => {
     if (showProfile) {
-      setProfileGreenDot(hasVisibleRef.current);
+      setOpenedAtSeenAt(visibleSeenAt); // capture BEFORE clearing
       const now = Date.now();
       setVisibleSeenAt(now);
       localStorage.setItem("ns_visible_seen_at", String(now));
-    } else {
-      setProfileGreenDot(false);
     }
   }, [showProfile]);
 
@@ -228,10 +217,8 @@ export default function App() {
             </button>
           )}
           {!authLoading && user && username && (() => {
-            const pillTooltipText =
-              pillBadge === "green" ? "You have new replies to read!" :
-              pillBadge === "red"   ? `FYI: ${invisibleShowName} has replies beyond your progress. You'll see them once you catch up with the show.` :
-              null;
+            const pillBadge = hasVisibleNewReplies ? "green" : null;
+            const pillTooltipText = pillBadge === "green" ? "You have new replies to read!" : null;
             const pillContent = (
               <div style={{ position: "relative", display: "inline-block" }}>
                 <button
@@ -250,9 +237,6 @@ export default function App() {
                 </button>
                 {pillBadge === "green" && (
                   <div style={{ position: "absolute", top: -4, right: -4, width: 14, height: 14, borderRadius: "50%", background: "var(--green)", border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
-                )}
-                {pillBadge === "red" && (
-                  <div style={{ position: "absolute", top: -4, right: -4, width: 14, height: 14, borderRadius: "50%", background: "var(--danger)", border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
                 )}
               </div>
             );
@@ -364,7 +348,8 @@ export default function App() {
           openThreadWithFocus={openThreadWithFocus}
           openShow={openShow}
           onClose={goHomepage}
-          hasVisibleNewReplies={profileGreenDot}
+          repliesToUser={repliesToUser}
+          openedAtSeenAt={openedAtSeenAt}
         />
       )}
 

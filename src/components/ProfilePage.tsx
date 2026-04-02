@@ -5,6 +5,7 @@ import type { Show } from "../lib/db";
 import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
+import Tooltip from "./Tooltip";
 
 const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
@@ -14,7 +15,8 @@ export default function ProfilePage({
   username,
   progress,
   openThreadWithFocus, openShow, onClose,
-  hasVisibleNewReplies = false,
+  repliesToUser = [],
+  openedAtSeenAt = 0,
 }: {
   shows: Show[];
   username: string;
@@ -26,7 +28,8 @@ export default function ProfilePage({
   openThreadWithFocus: (showId: string, threadId: string, replyId?: string) => void;
   openShow: (showId: string) => void;
   onClose: () => void;
-  hasVisibleNewReplies?: boolean;
+  repliesToUser?: { reply: Reply; thread: Thread }[];
+  openedAtSeenAt?: number;
 }) {
   const { user } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
@@ -128,6 +131,38 @@ export default function ProfilePage({
   const tabLikedReplies = useMemo(() =>
     visibleLikedReplies.filter(p => p.thread.showId === activeTab), [visibleLikedReplies, activeTab]);
 
+  // Which threads have invisible replies (beyond user's progress)
+  const invisibleByThreadId = useMemo(() => {
+    const r: Record<string, true> = {};
+    for (const { reply, thread: t } of repliesToUser) {
+      if (!canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) r[t.id] = true;
+    }
+    return r;
+  }, [repliesToUser, progress]);
+
+  // Which reply IDs are newly visible (unread since profile was opened)
+  const newVisibleReplyIds = useMemo(() => {
+    const r: Record<string, true> = {};
+    for (const { reply, thread: t } of repliesToUser) {
+      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId]) && reply.updatedAt > openedAtSeenAt) r[reply.id] = true;
+    }
+    return r;
+  }, [repliesToUser, progress, openedAtSeenAt]);
+
+  // Per-tab activity: "green" if new visible replies, "red" if only invisible
+  const tabActivity = useMemo(() => {
+    const r: Record<string, "green" | "red"> = {};
+    for (const { reply, thread: t } of repliesToUser) {
+      const sid = t.showId;
+      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) {
+        if (reply.updatedAt > openedAtSeenAt) r[sid] = "green";
+      } else {
+        if (!r[sid]) r[sid] = "red";
+      }
+    }
+    return r;
+  }, [repliesToUser, progress, openedAtSeenAt]);
+
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
       {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading your profile…</div>}
@@ -141,31 +176,41 @@ export default function ProfilePage({
             <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
               {showTabOrder.map(sid => {
                 const active = sid === activeTab;
+                const activity = !active ? tabActivity[sid] : null;
                 return (
-                  <button
-                    key={sid}
-                    onClick={() => active ? openShow(sid) : setActiveTab(sid)}
-                    style={{
-                      padding: active ? "8px 18px" : "5px 18px",
-                      background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
-                      border: "2px solid var(--dos-border)",
-                      borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
-                      borderRadius: "8px 8px 0 0",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      color: "var(--dos-fg)",
-                      fontWeight: active ? 800 : 500,
-                      fontSize: 14,
-                      letterSpacing: 0.3,
-                      alignSelf: "flex-end",
-                      position: "relative",
-                      zIndex: active ? 1 : 0,
-                      textDecoration: active ? "underline" : "none",
-                      textUnderlineOffset: 3,
-                    }}
-                  >
-                    {showName(sid)}
-                  </button>
+                  <div key={sid} style={{ position: "relative", alignSelf: "flex-end" }}>
+                    <button
+                      onClick={() => active ? openShow(sid) : setActiveTab(sid)}
+                      style={{
+                        padding: active ? "8px 18px" : "5px 18px",
+                        background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
+                        border: "2px solid var(--dos-border)",
+                        borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
+                        borderRadius: "8px 8px 0 0",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        color: "var(--dos-fg)",
+                        fontWeight: active ? 800 : 500,
+                        fontSize: 14,
+                        letterSpacing: 0.3,
+                        position: "relative",
+                        zIndex: active ? 1 : 0,
+                        textDecoration: active ? "underline" : "none",
+                        textUnderlineOffset: 3,
+                        display: "block",
+                      }}
+                    >
+                      {showName(sid)}
+                    </button>
+                    {activity && (
+                      <div style={{
+                        position: "absolute", top: 2, right: 2, zIndex: 2,
+                        width: 10, height: 10, borderRadius: "50%", pointerEvents: "none",
+                        background: activity === "green" ? "var(--green)" : "var(--danger)",
+                        border: "2px solid var(--dos-bg)",
+                      }} />
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -188,6 +233,15 @@ export default function ProfilePage({
                     <div key={t.id} className="card threadCard"
                       style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id)}>
+                      {invisibleByThreadId[t.id] && (
+                        <Tooltip
+                          text="You have hidden replies from viewers who are further along!"
+                          direction="left"
+                          style={{ position: "absolute", left: -6, top: -6, zIndex: 2 }}
+                        >
+                          <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--danger)", border: "2px solid var(--dos-bg)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+                        </Tooltip>
+                      )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="title" style={{ fontSize: 18 }}>
                           {t.isPrivate && <span title="Private" style={{ marginRight: 8 }}>🔒</span>}
@@ -217,22 +271,24 @@ export default function ProfilePage({
                 </div>
               </section>
 
-              {/* Your replies */}
+              {/* Replies to you — moved above "Your replies" */}
               <section style={{ marginTop: 24 }}>
-                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your replies</div>
+                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Replies to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
-                  {tabMyReplies.length === 0 && <div className="muted">No replies yet.</div>}
-                  {tabMyReplies.map(({ reply: r, thread: t }) => (
-                    <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
+                  {tabRepliesToMe.length === 0 && <div className="muted">No replies yet.</div>}
+                  {tabRepliesToMe.map(({ reply: r, thread: t }) => (
+                    <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
+                      {newVisibleReplyIds[r.id] && (
+                        <div style={{ position: "absolute", left: -6, top: -6, width: 14, height: 14, borderRadius: "50%", background: "var(--green)", border: "2px solid var(--dos-bg)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
+                      )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="muted" style={{ fontSize: 14 }}>
                           On <b>{t.titleBase}</b>{" "}
-                          {t.showId !== "simshow" && (
-                            <span style={{ color: "var(--dos-cyan)" }}>
-                              S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
-                            </span>
-                          )}
+                          <span style={{ color: "var(--dos-cyan)" }}>
+                            S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                          </span>{" "}
+                          • <span className="username">@{r.author}</span>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {(r.body.length > 260 || r.body.split('\n').length > 3) && (
@@ -253,26 +309,22 @@ export default function ProfilePage({
                 </div>
               </section>
 
-              {/* Replies to you */}
+              {/* Your replies */}
               <section style={{ marginTop: 24 }}>
-                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                  Replies to you
-                  {hasVisibleNewReplies && (
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--green)", display: "inline-block", flexShrink: 0 }} />
-                  )}
-                </div>
+                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your replies</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
-                  {tabRepliesToMe.length === 0 && <div className="muted">No replies yet.</div>}
-                  {tabRepliesToMe.map(({ reply: r, thread: t }) => (
+                  {tabMyReplies.length === 0 && <div className="muted">No replies yet.</div>}
+                  {tabMyReplies.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="muted" style={{ fontSize: 14 }}>
                           On <b>{t.titleBase}</b>{" "}
-                          <span style={{ color: "var(--dos-cyan)" }}>
-                            S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
-                          </span>{" "}
-                          • <span className="username">@{r.author}</span>
+                          {t.showId !== "simshow" && (
+                            <span style={{ color: "var(--dos-cyan)" }}>
+                              S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                            </span>
+                          )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {(r.body.length > 260 || r.body.split('\n').length > 3) && (
