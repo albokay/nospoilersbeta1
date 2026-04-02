@@ -165,7 +165,7 @@ export default function InlineThreadView({
                 <span>{thread.titleBase}</span>
                 {thread.showId !== "simshow" && (
                   <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7 }}>
-                    {`(S${String(thread.season).padStart(2, "0")}E${String(thread.episode).padStart(2, "0")})`}
+                    {`(S${String(thread.season).padStart(2, "0")} E${String(thread.episode).padStart(2, "0")})`}
                   </span>
                 )}
                 {thread.isEdited && (

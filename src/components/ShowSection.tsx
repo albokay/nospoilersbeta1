@@ -626,7 +626,7 @@ export default function ShowSection({
                     {t.titleBase}
                     {t.showId !== "simshow" && (
                       <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7 }}>
-                        {`(S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")})`}
+                        {`(S${String(t.season).padStart(2, "0")} E${String(t.episode).padStart(2, "0")})`}
                       </span>
                     )}
                     {t.isEdited && (
