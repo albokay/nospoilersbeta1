@@ -502,6 +502,7 @@ export default function App() {
                   setShows((prev: any) => [...prev, newShow]);
                   setProgress((p: any) => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
                 }}
+                style={{ width: 250, margin: 0 }}
               />
             }
             navRight={user ? (
@@ -514,6 +515,7 @@ export default function App() {
                   setPickShowMode("confirm");
                   setPickShowId(id);
                 }}
+                compact
               />
             ) : null}
           />

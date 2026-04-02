@@ -2,13 +2,14 @@ import React from "react";
 import type { Show } from "../lib/db";
 
 export default function YourShowsSelect({
-  shows, progress, value, onChange
-}: { shows: Show[]; progress: Record<string, { s: number; e: number }>; value: string; onChange: (id: string) => void }) {
+  shows, progress, value, onChange, compact
+}: { shows: Show[]; progress: Record<string, { s: number; e: number }>; value: string; onChange: (id: string) => void; compact?: boolean }) {
   const keys = Object.keys(progress);
   return (
-    <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: compact ? "flex-end" : "center", width: compact ? "auto" : "100%" }}>
       <select
-        className="badge listPill"
+        className={compact ? "badge" : "badge listPill"}
+        style={compact ? { width: "auto" } : undefined}
         value={value}
         onChange={(ev) => onChange(ev.target.value)}
       >

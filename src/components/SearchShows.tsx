@@ -50,10 +50,11 @@ function slugify(name: string): string {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export default function SearchShows({ shows, onPick, onShowCreated }: {
+export default function SearchShows({ shows, onPick, onShowCreated, style }: {
   shows: Show[];
   onPick: (showId: string) => void;
   onShowCreated?: (show: Show) => void;
+  style?: React.CSSProperties;
   // legacy prop kept for compat — no longer used
   onStartNewForum?: (query: string) => void;
 }) {
@@ -144,7 +145,7 @@ export default function SearchShows({ shows, onPick, onShowCreated }: {
 
   return (
     <>
-      <div className="splashSearchWrap">
+      <div className="splashSearchWrap" style={style}>
         <span className="splashSearchIcon" aria-hidden>🔍</span>
         <input
           placeholder="find a show"
