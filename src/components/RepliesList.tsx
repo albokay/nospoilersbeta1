@@ -3,7 +3,10 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 /** Resolves once the page finishes scrolling (scrollend event or debounce fallback). */
 function afterScroll(): Promise<void> {
   return new Promise(resolve => {
-    if ("onscrollend" in window) {
+    // Store the check in a plain boolean so TypeScript doesn't narrow `window` to `never`
+    // in the else branch (modern TS lib includes onscrollend on Window).
+    const hasScrollEnd: boolean = "onscrollend" in window;
+    if (hasScrollEnd) {
       window.addEventListener("scrollend", () => resolve(), { once: true });
     } else {
       let t: ReturnType<typeof setTimeout>;
