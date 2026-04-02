@@ -240,7 +240,6 @@ export default function App() {
                     setShowProfile(true);
                     requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
                   }}
-                  title="View profile"
                 >
                   <span className="avatar">{username[0].toUpperCase()}</span>
                   <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
