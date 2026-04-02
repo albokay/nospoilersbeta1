@@ -368,7 +368,7 @@ export default function RepliesList({
             rows={3}
             style={{
               width: "100%", boxSizing: "border-box",
-              background: "var(--dos-bg)", color: "var(--dos-fg)",
+              background: "#fff", color: "#000",
               border: "1px solid var(--dos-border)", borderRadius: 4,
               padding: "8px 10px", fontSize: 14, resize: "vertical",
               fontFamily: "inherit",

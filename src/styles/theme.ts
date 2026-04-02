@@ -53,8 +53,12 @@ hr{ border:none; border-top:1px solid var(--dos-border); }
 .btn.post{ background: var(--green); color: #fff; border-color: var(--green); }
 .btn.post:hover{ background: #5fa878; border-color: #5fa878; color: #fff; }
 /* Fix dark inputs/textareas */
-input, textarea, select { color: var(--dos-fg); background: rgba(0,0,0,0.12); }
-input::placeholder, textarea::placeholder { color: var(--dos-gray); }
+select { color: var(--dos-fg); background: rgba(0,0,0,0.12); }
+input, textarea { color: #000; background: #fff; }
+input::placeholder, textarea::placeholder { color: #aaa; }
+/* Ensure compose/reply typing fields stay white even when .badge or .card class is present */
+input.badge, textarea.card, textarea { background: #fff !important; color: #000 !important; }
+input.badge::placeholder, textarea::placeholder { color: #aaa !important; }
 .h40{ height:40px; display:inline-flex; align-items:center; }
 
 /* sticky bars */
