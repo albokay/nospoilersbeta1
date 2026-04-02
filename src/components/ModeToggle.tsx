@@ -17,15 +17,15 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
       style={{
         position: "relative", display: "inline-flex", alignItems: "center", gap: 0, borderRadius: 0, padding: 0,
         border: "1px solid var(--dos-border)", background: "transparent", overflow: "hidden", opacity: disabled ? .6 : 1,
-        ...(compact ? { width: "auto", minWidth: 88, height: 38, borderRadius: 0 } : {}),
+        ...(compact ? { width: "auto", minWidth: 76, height: 32, borderRadius: 0 } : {}),
       }}
       title={isRisky ? "Risky: show redacted stubs (click to reveal)" : "Standard: hide newer comments"}
       disabled={disabled}
     >
-      <span style={{ flex: "1 1 0", textAlign: "center", fontWeight: 700, fontSize: compact ? 12 : 13, color: isRisky ? "var(--dos-gray)" : "var(--dos-light)", zIndex: 2, padding: compact ? "0 6px" : "0 8px", whiteSpace: "nowrap" }}>
+      <span style={{ flex: "1 1 0", textAlign: "center", fontWeight: 700, fontSize: compact ? 11 : 13, color: isRisky ? "var(--dos-gray)" : "var(--dos-light)", zIndex: 2, padding: compact ? "0 5px" : "0 8px", whiteSpace: "nowrap" }}>
         {compact ? "std" : "Standard"}
       </span>
-      <span style={{ flex: "1 1 0", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, fontWeight: 700, fontSize: compact ? 12 : 13, color: isRisky ? "var(--dos-light)" : "var(--dos-gray)", zIndex: 2, padding: compact ? "0 6px" : "0 8px", whiteSpace: "nowrap" }}>
+      <span style={{ flex: "1 1 0", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, fontWeight: 700, fontSize: compact ? 11 : 13, color: isRisky ? "var(--dos-light)" : "var(--dos-gray)", zIndex: 2, padding: compact ? "0 5px" : "0 8px", whiteSpace: "nowrap" }}>
         {compact ? "risk" : "Risky"}
         {hiddenNewReplies > 0 && (
           <span style={{

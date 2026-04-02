@@ -395,41 +395,36 @@ export default function ShowSection({
 
           {/* Row 2 */}
           {thread && isMobile ? (
-            /* ── Thread · mobile: two rows ── */
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: `${ROW_PAD_Y}px 0` }}>
-              {/* Row 1: ← to forum  +  New Post */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  className="btn h40"
-                  onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
-                  style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
-                >
-                  ← to forum
-                </button>
-                <button
-                  className="btn post h40"
-                  onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
-                  style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
-                >
-                  + New Post
-                </button>
-              </div>
-              {/* Row 2: std/risk toggle  +  watch progress */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <ModeToggle
-                  value={mode}
-                  onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
-                  hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
-                  compact={true}
-                />
-                <OneSelectProgress
-                  show={allShows.find(s => s.id === showId) || { seasons: [10] }}
-                  value={progress[showId] || { s: 1, e: 1 }}
-                  onConfirm={(val) => updateProgressFor(showId, val)}
-                  requireConfirm={true}
-                  compactLabel="watch progress"
-                />
-              </div>
+            /* ── Thread · mobile: single row, compact ── */
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: `${ROW_PAD_Y}px 0` }}>
+              <button
+                className="btn"
+                onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
+                style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
+              >
+                ← to forum
+              </button>
+              <button
+                className="btn post"
+                onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
+                style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
+              >
+                + New Post
+              </button>
+              <div style={{ flex: 1 }} />
+              <ModeToggle
+                value={mode}
+                onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
+                hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
+                compact={true}
+              />
+              <OneSelectProgress
+                show={allShows.find(s => s.id === showId) || { seasons: [10] }}
+                value={progress[showId] || { s: 1, e: 1 }}
+                onConfirm={(val) => updateProgressFor(showId, val)}
+                requireConfirm={true}
+                compactLabel="progress"
+              />
             </div>
           ) : (
             /* ── Thread · desktop  OR  Forum (any width) ── */

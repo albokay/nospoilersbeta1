@@ -59,7 +59,7 @@ export default function OneSelectProgress({
   if (compactLabel) {
     return (
       <>
-        <button className="btn h40" style={{ whiteSpace: "nowrap", background: "#fff", color: "#000", border: "none" }} onClick={() => setMobileOpen(true)}>
+        <button className="btn" style={{ whiteSpace: "nowrap", background: "#fff", color: "#000", border: "none", fontSize: 12, padding: "5px 9px", lineHeight: 1.2 }} onClick={() => setMobileOpen(true)}>
           {compactLabel} ▾
         </button>
         {mobileOpen && (
