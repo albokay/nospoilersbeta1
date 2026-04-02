@@ -26,11 +26,11 @@ body{
 
 /* full-bleed helpers */
 .bleed{ width:100vw; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); }
-.bleed-line{ width:100vw; margin-left:calc(50% - 50vw); border:0; border-top:1px solid var(--dos-border); }
+.bleed-line{ display:none; }
 
 /* layout primitives */
 .container{ width:min(1040px, 92vw); margin:0 auto; background:transparent; }
-hr{ border:none; border-top:1px solid var(--dos-border); }
+hr{ display:none; }
 .title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; }
 .muted{ color:var(--dos-gray); }
 .card{ background:transparent; border:3px solid var(--dos-border); padding:12px; border-radius:23px; }
@@ -64,7 +64,6 @@ input.badge::placeholder, textarea::placeholder { color: #aaa !important; }
 /* sticky bars */
 header.site{
   position:sticky; top:0; z-index:90; background:rgba(222,168,56,0.98);
-  border-bottom:1px solid var(--dos-border);
 }
 .brand{
   line-height:0; font-size:0;
@@ -100,8 +99,7 @@ header.site{
 
 
 .stickybar{
-  position:sticky; top:0; z-index:70; border-top:1px solid var(--dos-border);
-  border-bottom:1px solid var(--dos-border); background:rgba(222,168,56,0.98);
+  position:sticky; top:0; z-index:70; background:rgba(222,168,56,0.98);
 }
 
 /* banner row 1: title + sort — stacks on mobile */
@@ -239,6 +237,10 @@ header.site{
   opacity: 1 !important; /* neutralize dimming if present */
 }
 
+/* Global mock zoom (Chrome/Chromium only) */
+html, body {
+  zoom: .9;
+}
 body { -webkit-font-smoothing: antialiased; }
 
 `;
