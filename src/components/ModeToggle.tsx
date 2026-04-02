@@ -23,10 +23,10 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
       disabled={disabled}
     >
       <span style={{ flex: "1 1 0", textAlign: "center", fontWeight: 700, fontSize: compact ? 12 : 13, color: isRisky ? "var(--dos-gray)" : "var(--dos-light)", zIndex: 2, padding: compact ? "0 6px" : "0 8px", whiteSpace: "nowrap" }}>
-        {compact ? "Std" : "Standard"}
+        {compact ? "std" : "Standard"}
       </span>
       <span style={{ flex: "1 1 0", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, fontWeight: 700, fontSize: compact ? 12 : 13, color: isRisky ? "var(--dos-light)" : "var(--dos-gray)", zIndex: 2, padding: compact ? "0 6px" : "0 8px", whiteSpace: "nowrap" }}>
-        {compact ? "Risk" : "Risky"}
+        {compact ? "risk" : "Risky"}
         {hiddenNewReplies > 0 && (
           <span style={{
             width: 16, height: 16, borderRadius: "50%",
