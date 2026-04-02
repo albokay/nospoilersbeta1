@@ -214,7 +214,7 @@ export default function ProfilePage({
                     </button>
                     {activity && (
                       <div style={{
-                        position: "absolute", top: -6, right: -4, zIndex: 2,
+                        position: "absolute", top: -6, right: 2, zIndex: 2,
                         width: 15, height: 15, borderRadius: "50%", pointerEvents: "none",
                         background: activity === "green" ? "var(--green)" : "var(--danger)",
                         boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
