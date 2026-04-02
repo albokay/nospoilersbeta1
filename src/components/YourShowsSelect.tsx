@@ -4,7 +4,7 @@ import type { Show } from "../lib/db";
 export default function YourShowsSelect({
   shows, progress, value, onChange, compact
 }: { shows: Show[]; progress: Record<string, { s: number; e: number }>; value: string; onChange: (id: string) => void; compact?: boolean }) {
-  const keys = Object.keys(progress);
+  const keys = Object.keys(progress).filter(id => shows.some(x => x.id === id));
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: compact ? "flex-end" : "center", width: compact ? "auto" : "100%" }}>
       <select
