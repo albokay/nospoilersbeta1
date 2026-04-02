@@ -24,7 +24,7 @@ import Tooltip from "./components/Tooltip";
 const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
 
 const SINGLE_PAGE = true;
-const GLOBAL_HEADER_H = 56;
+const GLOBAL_HEADER_H = 52;
 
 export default function App() {
   useEffect(injectDOSStyles, []);
@@ -494,7 +494,17 @@ export default function App() {
             focusReplyId={focusReplyId}
             onAuthRequired={() => setShowAuthModal(true)}
             onClickProfile={handleClickProfile}
-            navLeft={user ? (
+            navLeft={
+              <SearchShows
+                shows={shows}
+                onPick={handlePickFromSearch}
+                onShowCreated={(newShow: any) => {
+                  setShows((prev: any) => [...prev, newShow]);
+                  setProgress((p: any) => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+                }}
+              />
+            }
+            navRight={user ? (
               <YourShowsSelect
                 shows={shows}
                 progress={progress}
@@ -506,16 +516,6 @@ export default function App() {
                 }}
               />
             ) : null}
-            navRight={
-              <SearchShows
-                shows={shows}
-                onPick={handlePickFromSearch}
-                onShowCreated={(newShow: any) => {
-                  setShows((prev: any) => [...prev, newShow]);
-                  setProgress((p: any) => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
-                }}
-              />
-            }
           />
         </div>
       )}

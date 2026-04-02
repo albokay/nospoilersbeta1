@@ -30,7 +30,7 @@ import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
 import Username from "./Username";
 
-const GLOBAL_HEADER_H = 56;
+const GLOBAL_HEADER_H = 52;
 const ROW_PAD_Y = 8;
 
 export default function ShowSection({
