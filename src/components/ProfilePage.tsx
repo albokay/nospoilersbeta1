@@ -298,7 +298,7 @@ export default function ProfilePage({
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No replies yet.</div>}
                   {tabRepliesToMe.map(({ reply: r, thread: t }) => (
-                    <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
+                    <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", position: "relative", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
                       {newVisibleReplyIds[r.id] && (
                         <div style={{ position: "absolute", left: -10, top: -10, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
@@ -307,7 +307,7 @@ export default function ProfilePage({
                         <div className="muted" style={{ fontSize: 14 }}>
                           On <b>{t.titleBase}</b>{" "}
                           <span style={{ color: "var(--dos-cyan)" }}>
-                            S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                            S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
                           </span>{" "}
                           • <span className="username">@{r.author}</span>
                         </div>
@@ -336,14 +336,14 @@ export default function ProfilePage({
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabMyReplies.length === 0 && <div className="muted">No replies yet.</div>}
                   {tabMyReplies.map(({ reply: r, thread: t }) => (
-                    <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
+                    <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="muted" style={{ fontSize: 14 }}>
                           On <b>{t.titleBase}</b>{" "}
                           {t.showId !== "simshow" && (
                             <span style={{ color: "var(--dos-cyan)" }}>
-                              S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                              S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
                             </span>
                           )}
                         </div>
@@ -409,13 +409,13 @@ export default function ProfilePage({
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabLikedReplies.length === 0 && <div className="muted">No starred replies yet.</div>}
                   {tabLikedReplies.map(({ reply: r, thread: t }) => (
-                    <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
+                    <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="muted" style={{ fontSize: 14 }}>
                           On <b>{t.titleBase}</b>{" "}
                           <span style={{ color: "var(--dos-cyan)" }}>
-                            S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
+                            S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
                           </span>{" "}
                           • <span className="username">@{r.author}</span>
                         </div>
