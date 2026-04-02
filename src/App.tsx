@@ -348,8 +348,8 @@ export default function App() {
             <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
               watch. together. whenever.
             </span>
-            <Tooltip text="A spoiler-safe TV forum built around your watch progress — no spoilers guaranteed." direction="right" align="center">
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--dos-fg)", opacity: 0.55, cursor: "default", userSelect: "none" }}>ℹ</span>
+            <Tooltip text="A spoiler-safe TV forum built around your watch progress — no spoilers guaranteed." direction="below" align="center">
+              <span style={{ fontSize: 22, fontWeight: 900, color: "var(--dos-fg)", opacity: 0.75, cursor: "default", userSelect: "none", lineHeight: 1 }}>ℹ</span>
             </Tooltip>
           </div>
         </div>
