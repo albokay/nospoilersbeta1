@@ -75,12 +75,21 @@ export default function App() {
 
   // Compute pill badge state
   const { hasVisibleNewReplies, invisibleShowName } = useMemo(() => {
+    const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
+    // Snooze is active if the user acknowledged within the last 36 hours
+    const invisibleSnoozed = invisibleSeenAt > 0 && Date.now() - invisibleSeenAt < THIRTY_SIX_HOURS;
+
     let hasVisible = false;
     let latestInvisible: { reply: Reply; thread: Thread } | null = null;
     for (const { reply: r, thread: t } of repliesToUser) {
       const canSee = canView({ season: r.season, episode: r.episode }, progress[t.showId]);
       if (canSee) { if (r.updatedAt > visibleSeenAt) hasVisible = true; }
-      else if (r.updatedAt > invisibleSeenAt && (!latestInvisible || r.updatedAt > latestInvisible.reply.updatedAt)) latestInvisible = { reply: r, thread: t };
+      else {
+        // Show red if: snooze expired (36h passed) OR this reply arrived after last acknowledgment
+        const shouldShow = !invisibleSnoozed || r.updatedAt > invisibleSeenAt;
+        if (shouldShow && (!latestInvisible || r.updatedAt > latestInvisible.reply.updatedAt))
+          latestInvisible = { reply: r, thread: t };
+      }
     }
     return {
       hasVisibleNewReplies: hasVisible,
