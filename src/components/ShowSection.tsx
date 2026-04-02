@@ -8,6 +8,7 @@ import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
+import Tooltip from "./Tooltip";
 import ModeToggle from "./ModeToggle";
 import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
@@ -474,16 +475,20 @@ export default function ShowSection({
             return (
               <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
                 {isOwn && hiddenNew > 0 && (
-                  <div style={{
-                    position: "absolute", left: -14, top: "50%", transform: "translateY(-50%)",
-                    width: 28, height: 28, borderRadius: "50%",
-                    background: "var(--danger)", color: "#fff",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 11, fontWeight: 800, lineHeight: 1, zIndex: 1,
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.30)",
-                  }}>
-                    {hiddenNew}
-                  </div>
+                  <Tooltip
+                    text="You have new replies waiting for you from users eager for you to catch up."
+                    style={{ position: "absolute", left: -14, top: "50%", transform: "translateY(-50%)", zIndex: 1 }}
+                  >
+                    <div style={{
+                      width: 28, height: 28, borderRadius: "50%",
+                      background: "var(--danger)", color: "#fff",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: 800, lineHeight: 1,
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.30)",
+                    }}>
+                      {hiddenNew}
+                    </div>
+                  </Tooltip>
                 )}
               <div
                 className="card threadCard"

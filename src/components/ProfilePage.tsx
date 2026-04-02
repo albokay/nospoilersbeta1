@@ -13,7 +13,8 @@ export default function ProfilePage({
   shows: showsProp,
   username,
   progress,
-  openThreadWithFocus, openShow, onClose
+  openThreadWithFocus, openShow, onClose,
+  hasVisibleNewReplies = false,
 }: {
   shows: Show[];
   username: string;
@@ -25,6 +26,7 @@ export default function ProfilePage({
   openThreadWithFocus: (showId: string, threadId: string, replyId?: string) => void;
   openShow: (showId: string) => void;
   onClose: () => void;
+  hasVisibleNewReplies?: boolean;
 }) {
   const { user } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
@@ -253,7 +255,12 @@ export default function ProfilePage({
 
               {/* Replies to you */}
               <section style={{ marginTop: 24 }}>
-                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Replies to you</div>
+                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                  Replies to you
+                  {hasVisibleNewReplies && (
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--green)", display: "inline-block", flexShrink: 0 }} />
+                  )}
+                </div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No replies yet.</div>}
                   {tabRepliesToMe.map(({ reply: r, thread: t }) => (

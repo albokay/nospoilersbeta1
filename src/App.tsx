@@ -2,8 +2,9 @@ import React, { useState, useMemo, useEffect } from "react";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
-import { fetchProgress, upsertProgress, fetchShows } from "./lib/db";
+import { fetchProgress, upsertProgress, fetchShows, fetchRepliesToUserThreads } from "./lib/db";
 import type { Show } from "./lib/db";
+import type { Reply, Thread } from "./types";
 import { useAuth } from "./lib/auth";
 import ExtensionDock from "./extensions/ExtensionDock";
 import SearchShows from "./components/SearchShows";
@@ -16,6 +17,7 @@ import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
 import PublicProfilePage from "./components/PublicProfilePage";
+import Tooltip from "./components/Tooltip";
 
 const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
 
@@ -51,6 +53,43 @@ export default function App() {
       setProgress(saved);
     }).catch(err => console.error("Failed to load progress:", err));
   }, [user?.id]);
+
+  // Replies-to-user for profile pill badge
+  const [repliesToUser, setRepliesToUser] = useState<{ reply: Reply; thread: Thread }[]>([]);
+  useEffect(() => {
+    if (!user) { setRepliesToUser([]); return; }
+    fetchRepliesToUserThreads(user.id).then(setRepliesToUser).catch(() => {});
+  }, [user?.id]);
+
+  // Track when user last visited their profile (clears green badge)
+  const [visibleSeenAt, setVisibleSeenAt] = useState<number>(() => {
+    const s = localStorage.getItem("ns_visible_seen_at");
+    return s ? parseInt(s, 10) : 0;
+  });
+  useEffect(() => {
+    if (showProfile) {
+      const now = Date.now();
+      setVisibleSeenAt(now);
+      localStorage.setItem("ns_visible_seen_at", String(now));
+    }
+  }, [showProfile]);
+
+  // Compute pill badge state
+  const { pillBadge, invisibleShowName, hasVisibleNewReplies } = useMemo(() => {
+    if (!repliesToUser.length) return { pillBadge: null as null | "green" | "red", invisibleShowName: "", hasVisibleNewReplies: false };
+    let hasVisible = false;
+    let latestInvisible: { reply: Reply; thread: Thread } | null = null;
+    for (const { reply: r, thread: t } of repliesToUser) {
+      const canSee = canView({ season: r.season, episode: r.episode }, progress[t.showId]);
+      if (canSee) {
+        if (r.updatedAt > visibleSeenAt) hasVisible = true;
+      } else {
+        if (!latestInvisible || r.updatedAt > latestInvisible.reply.updatedAt) latestInvisible = { reply: r, thread: t };
+      }
+    }
+    const invisibleShowName = latestInvisible ? (shows.find(s => s.id === latestInvisible!.thread.showId)?.name ?? latestInvisible.thread.showId) : "";
+    return { pillBadge: hasVisible ? "green" : latestInvisible ? "red" : null, invisibleShowName, hasVisibleNewReplies: hasVisible };
+  }, [repliesToUser, progress, visibleSeenAt, shows]);
 
   const [pickShowId, setPickShowId] = useState<string | null>(null);
   const pickShow = useMemo(() => shows.find(s => s.id === pickShowId) || null, [pickShowId, shows]);
@@ -181,20 +220,32 @@ export default function App() {
             </button>
           )}
           {!authLoading && user && username && (
-            <button
-              className="profileChip"
-              onClick={() => {
-                setExpandedShowId(null);
-                setActiveThreadId(null);
-                setFocusReplyId(null);
-                setShowProfile(true);
-                requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-              }}
-              title="View profile"
-            >
-              <span className="avatar">{username[0].toUpperCase()}</span>
-              <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
-            </button>
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <button
+                className="profileChip"
+                onClick={() => {
+                  setExpandedShowId(null);
+                  setActiveThreadId(null);
+                  setFocusReplyId(null);
+                  setShowProfile(true);
+                  requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+                }}
+                title="View profile"
+              >
+                <span className="avatar">{username[0].toUpperCase()}</span>
+                <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
+              </button>
+              {pillBadge === "green" && (
+                <Tooltip text="You have new replies to read." direction="below" style={{ position: "absolute", top: -4, right: -4, zIndex: 2 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--green)", border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+                </Tooltip>
+              )}
+              {pillBadge === "red" && (
+                <Tooltip text={`FYI: you have new replies from people who've watched more of ${invisibleShowName} than you. You'll get to read them once you catch up!`} direction="below" style={{ position: "absolute", top: -4, right: -4, zIndex: 2 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--danger)", border: "2px solid #fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+                </Tooltip>
+              )}
+            </div>
           )}
           {!authLoading && user && username && (
             <button className="btn h40" onClick={() => { goHomepage(); signOut(); }} title="Sign out">
@@ -218,7 +269,9 @@ export default function App() {
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {isHomepage && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95 }}>
-          <SidebarLogo />
+          <Tooltip text="A spoiler-safe TV discussion forum built around your watch progress. Set your watch progress, and you won't see any spoilers." style={{ display: "block" }}>
+            <SidebarLogo />
+          </Tooltip>
           <div style={{ marginTop: 12, fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
             watch. together. whenever.
           </div>
@@ -298,6 +351,7 @@ export default function App() {
           openThreadWithFocus={openThreadWithFocus}
           openShow={openShow}
           onClose={goHomepage}
+          hasVisibleNewReplies={hasVisibleNewReplies}
         />
       )}
 
