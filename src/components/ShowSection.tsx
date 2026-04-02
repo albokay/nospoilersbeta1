@@ -382,7 +382,7 @@ export default function ShowSection({
           {/* Row 1 */}
           <div className="bannerRow1">
             <span
-              className="hangL bannerTitle"
+              className="bannerTitle"
               role={thread ? "button" : "heading"}
               title={thread ? "Back to forum" : "Forum"}
               onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
