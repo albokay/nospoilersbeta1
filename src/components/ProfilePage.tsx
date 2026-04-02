@@ -246,7 +246,8 @@ export default function ProfilePage({
                       {invisibleByThreadId[t.id] && (
                         <Tooltip
                           text="You have hidden replies from viewers who are further along!"
-                          direction="left"
+                          direction="below"
+                          align="left"
                           style={{ position: "absolute", left: -6, top: -6, zIndex: 2 }}
                         >
                           <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--danger)", border: "2px solid var(--dos-bg)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
