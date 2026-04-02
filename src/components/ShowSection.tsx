@@ -43,7 +43,7 @@ export default function ShowSection({
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const show = allShows.find((s) => s.id === showId) || { id: showId, name: showId, seasons: [10] };
 
-  const [sortBy, setSortBy] = useState<"post" | "episode" | "hot">("post");
+  const [sortBy, setSortBy] = useState<"relevance" | "post" | "episode" | "hot">("relevance");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [mode, setMode] = useState<"standard" | "risky">("standard");
@@ -175,7 +175,20 @@ export default function ShowSection({
       list = withScores.map(x => x.t);
     }
 
-    if (sortBy === "post") {
+    if (sortBy === "relevance") {
+      const newlyVisible = newHighlights[showId] ?? {};
+      list = [...list].sort((a, b) => {
+        // P1: newly visible first
+        const aNv = newlyVisible[a.id] ? 1 : 0;
+        const bNv = newlyVisible[b.id] ? 1 : 0;
+        if (bNv !== aNv) return bNv - aNv;
+        // P2: episode order (most recent episode first)
+        if (a.season !== b.season) return b.season - a.season;
+        if (a.episode !== b.episode) return b.episode - a.episode;
+        // P3: post date (newest first)
+        return b.updatedAt - a.updatedAt;
+      });
+    } else if (sortBy === "post") {
       list = [...list].sort((a, b) => b.updatedAt - a.updatedAt);
     } else if (sortBy === "episode") {
       list = [...list].sort((a, b) => {
@@ -192,7 +205,7 @@ export default function ShowSection({
       });
     }
     return list;
-  }, [dbThreads, progress, searchQuery, sortBy, likesThreads]);
+  }, [dbThreads, progress, searchQuery, sortBy, likesThreads, newHighlights, showId]);
 
   // ── Green-tab: compute newly visible threads from real dbThreads ──
   const prevProgRef = useRef<{ s: number; e: number } | undefined>(undefined);
@@ -344,6 +357,7 @@ export default function ShowSection({
             {!thread && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto" }}>
                 <select className="badge" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+                  <option value="relevance">Relevance</option>
                   <option value="post">Post date</option>
                   <option value="episode">Episode order</option>
                   <option value="hot">Hot</option>
