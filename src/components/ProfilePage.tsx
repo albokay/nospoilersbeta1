@@ -257,7 +257,7 @@ export default function ProfilePage({
                           text={`You have ${invisibleCountByThreadId[t.id] ?? ""} hidden ${(invisibleCountByThreadId[t.id] ?? 0) === 1 ? "reply" : "replies"} from viewers who are further along!`}
                           direction="below"
                           align="left"
-                          gap={28}
+                          gap={48}
                           style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
                         >
                           <div style={{ width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
