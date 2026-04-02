@@ -239,12 +239,6 @@ header.site{
   opacity: 1 !important; /* neutralize dimming if present */
 }
 
-/* Global mock zoom (Chrome/Chromium only) */
-html, body {
-  zoom: .9;          /* ~90% */
-}
-
-/* Optional: keep text crisp on high-DPI while zoomed */
 body { -webkit-font-smoothing: antialiased; }
 
 `;
