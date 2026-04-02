@@ -4,7 +4,7 @@ import { useAuth } from "../lib/auth";
 
 type Mode = "signin" | "signup";
 
-export default function AuthModal({ onClose }: { onClose: () => void }) {
+export default function AuthModal({ onClose, hint }: { onClose: () => void; hint?: string }) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
@@ -33,7 +33,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal onClose={onClose}>
+    <Modal onClose={onClose} topContent={hint ? hint : undefined}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <h3 className="title" style={{ margin: 0, fontSize: 20 }}>
           {mode === "signin" ? "Sign in" : "Create account"}

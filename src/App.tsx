@@ -39,6 +39,7 @@ export default function App() {
   const { user, profile, loading: authLoading, signOut } = useAuth();
   const username = profile?.username ?? null;
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authHint, setAuthHint] = useState<string | null>(null);
 
   // ── URL-driven navigation (React Router) ─────────────────────
   const navigate = useNavigate();
@@ -291,7 +292,7 @@ export default function App() {
           setShows(prev => [...prev, newShow]);
           setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
         }}
-        onAuthRequired={() => setShowAuthModal(true)}
+        onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
         style={{ width: 220, margin: 0, height: 34 }}
       />
     </div>
@@ -374,7 +375,7 @@ export default function App() {
       {fixedLogo}
       {fixedAuth}
       {!isHomepage && header}
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); }} hint={authHint ?? undefined} />}
       {isHomepage && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95, paddingTop: 64 }}>
           <SidebarLogo />
@@ -429,7 +430,7 @@ export default function App() {
                     setShows(prev => [...prev, newShow]);
                     setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
                   }}
-                  onAuthRequired={() => setShowAuthModal(true)}
+                  onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
                 />
               </div>
             </>
