@@ -31,6 +31,16 @@ export default function RepliesList({
 }) {
   const { user, profile } = useAuth();
 
+  // Capture the timestamp of the PREVIOUS visit, then immediately stamp now.
+  // This means green dots show on this visit for replies added since last visit,
+  // but disappear on any subsequent visit (navigate away / refresh).
+  const [lastVisitAt] = useState<number>(() => {
+    const key = `ns_tvisit_${thread.id}`;
+    const prev = parseInt(localStorage.getItem(key) || "0", 10);
+    localStorage.setItem(key, String(Date.now()));
+    return prev; // 0 on first-ever visit → no dots shown
+  });
+
   const [replies, setReplies] = useState<Reply[]>([]);
   const [repliesLoading, setRepliesLoading] = useState(false);
 
@@ -432,6 +442,8 @@ export default function RepliesList({
 
           const isCurrentlyEditing = editingReplyId === r.id;
 
+          const isNewReply = lastVisitAt > 0 && r.updatedAt > lastVisitAt && !isReplyOwn;
+
           return (
             <div
               key={r.id}
@@ -439,6 +451,9 @@ export default function RepliesList({
               className="card reply-card"
               style={{ borderLeft: (progressReveal[r.id] ? "4px solid var(--green)" : "4px solid var(--dos-border)"), marginLeft: 8, position: "relative", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
             >
+              {isNewReply && (
+                <div style={{ position: "absolute", left: -10, top: -10, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: 14 }}>
                   <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold />{" "}
