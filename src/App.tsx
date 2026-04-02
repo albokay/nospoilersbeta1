@@ -298,7 +298,7 @@ export default function App() {
             </button>
           )}
           {!authLoading && isAdmin && (
-            <button className="btn" onClick={() => { setShowAdmin(true); setExpandedShowId(null); setShowProfile(false); }} title="Admin">
+            <button className="btn" onClick={() => { setShowAdmin(true); setExpandedShowId(null); setShowProfile(false); }} title="Admin" style={{ fontSize: 18 }}>
               ⚙
             </button>
           )}
