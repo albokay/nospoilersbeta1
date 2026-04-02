@@ -322,7 +322,7 @@ export default function RepliesList({
       const style = getComputedStyle(el);
       el.style.position = (style.position === "static") ? "relative" : style.position;
       el.appendChild(cover);
-      setTimeout(() => { cover.remove(); }, 3100);
+      setTimeout(() => { cover.remove(); }, 1300);
     }
   };
 

@@ -173,7 +173,7 @@ header.site{
   52%  { opacity:0.82; }
   100% { opacity:0; }
 }
-.flash-cover{ position:absolute; inset:0; background:rgba(222,168,56,0.55); pointer-events:none; border-radius:inherit; animation:flash-blink 3s ease forwards; }
+.flash-cover{ position:absolute; inset:0; background:rgba(222,168,56,0.55); pointer-events:none; border-radius:inherit; animation:flash-blink 1.2s ease forwards; }
 
 /* like badge */
 .likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }
