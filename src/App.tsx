@@ -271,9 +271,9 @@ export default function App() {
     </div>
   ) : null;
 
-  // ── Fixed sidebar logo (non-homepage, top-left) ───────────
+  // ── Fixed sidebar logo + "find a show" (non-homepage, top-left) ─
   const fixedLogo = !isHomepage ? (
-    <div style={{ position: "fixed", top: 14, left: 14, zIndex: 1000 }}>
+    <div style={{ position: "fixed", top: 14, left: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 14 }}>
       <h1
         className="brand brandLink"
         style={{ margin: 0 }}
@@ -284,12 +284,34 @@ export default function App() {
       >
         <img src="/sidebar-logo.png" alt="sidebar" style={{ height: 38, width: "auto", display: "block" }} />
       </h1>
+      <SearchShows
+        shows={shows}
+        onPick={handlePickFromSearch}
+        onShowCreated={(newShow) => {
+          setShows(prev => [...prev, newShow]);
+          setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+        }}
+        style={{ width: 220, margin: 0, height: 34 }}
+      />
     </div>
   ) : null;
 
   // ── Fixed auth / profile / admin controls (top-right, all pages) ─
   const fixedAuth = (
     <div style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
+      {!isHomepage && !authLoading && user && (
+        <YourShowsSelect
+          shows={shows}
+          progress={progress}
+          value={""}
+          onChange={(id: string) => {
+            if (!id) return;
+            setPickShowMode("confirm");
+            setPickShowId(id);
+          }}
+          compact
+        />
+      )}
       {!authLoading && !user && (
         <button className="btn" onClick={() => setShowAuthModal(true)}>
           Sign in / Join
@@ -494,30 +516,6 @@ export default function App() {
             focusReplyId={focusReplyId}
             onAuthRequired={() => setShowAuthModal(true)}
             onClickProfile={handleClickProfile}
-            navLeft={
-              <SearchShows
-                shows={shows}
-                onPick={handlePickFromSearch}
-                onShowCreated={(newShow: any) => {
-                  setShows((prev: any) => [...prev, newShow]);
-                  setProgress((p: any) => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
-                }}
-                style={{ width: 250, margin: 0 }}
-              />
-            }
-            navRight={user ? (
-              <YourShowsSelect
-                shows={shows}
-                progress={progress}
-                value={""}
-                onChange={(id: string) => {
-                  if (!id) return;
-                  setPickShowMode("confirm");
-                  setPickShowId(id);
-                }}
-                compact
-              />
-            ) : null}
           />
         </div>
       )}
