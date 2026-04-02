@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
-import { fetchProgress, upsertProgress, fetchShows, fetchRepliesToUserThreads } from "./lib/db";
+import { fetchProgress, upsertProgress, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies } from "./lib/db";
 import { supabase } from "./lib/supabaseClient";
 import type { Show } from "./lib/db";
 import type { Reply, Thread } from "./types";
@@ -165,6 +165,21 @@ export default function App() {
   const [likesReplies, setLikesReplies] = useState<Record<string, number>>({});
   const [likedByUserThreads, setLikedByUserThreads] = useState<Record<string, boolean>>({});
   const [likedByUserReplies, setLikedByUserReplies] = useState<Record<string, boolean>>({});
+
+  // Load the user's likes from DB on login so stars persist across refreshes
+  useEffect(() => {
+    if (!user) { setLikedByUserThreads({}); setLikedByUserReplies({}); return; }
+    fetchLikedThreads(user.id).then(threads => {
+      const map: Record<string, boolean> = {};
+      threads.forEach(t => { map[t.id] = true; });
+      setLikedByUserThreads(map);
+    }).catch(() => {});
+    fetchLikedReplies(user.id).then(pairs => {
+      const map: Record<string, boolean> = {};
+      pairs.forEach(({ reply }) => { map[reply.id] = true; });
+      setLikedByUserReplies(map);
+    }).catch(() => {});
+  }, [user?.id]);
 
   useEffect(() => {
     const lt: Record<string, number> = {};
