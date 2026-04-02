@@ -627,9 +627,6 @@ export default function ShowSection({
                     {t.isEdited && (
                       <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
                     )}
-                    {t.showId !== "simshow" && (
-                      <span style={{ color: "var(--dos-cyan)" }}>{` — S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")}`}</span>
-                    )}
                   </h2>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <LikeBadge count={likeCt} readOnly title="open post to vote" />
