@@ -395,9 +395,10 @@ export default function ShowSection({
 
           {/* Row 2 */}
           {thread && isMobile ? (
-            /* ── Thread · mobile: three stacked rows ── */
+            /* ── Thread · mobile: two rows ── */
             <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: `${ROW_PAD_Y}px 0` }}>
-              <div>
+              {/* Row 1: ← to forum  +  New Post */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   className="btn h40"
                   onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
@@ -405,8 +406,6 @@ export default function ShowSection({
                 >
                   ← to forum
                 </button>
-              </div>
-              <div>
                 <button
                   className="btn post h40"
                   onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
@@ -415,6 +414,7 @@ export default function ShowSection({
                   + New Post
                 </button>
               </div>
+              {/* Row 2: std/risk toggle  +  watch progress */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <ModeToggle
                   value={mode}
