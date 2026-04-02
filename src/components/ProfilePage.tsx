@@ -135,11 +135,20 @@ export default function ProfilePage({
   const tabLikedReplies = useMemo(() =>
     visibleLikedReplies.filter(p => p.thread.showId === activeTab), [visibleLikedReplies, activeTab]);
 
-  // Which threads have invisible replies (beyond user's progress)
+  // Which threads have invisible replies, and how many
   const invisibleByThreadId = useMemo(() => {
     const r: Record<string, true> = {};
     for (const { reply, thread: t } of repliesToUser) {
       if (!canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) r[t.id] = true;
+    }
+    return r;
+  }, [repliesToUser, progress]);
+
+  const invisibleCountByThreadId = useMemo(() => {
+    const r: Record<string, number> = {};
+    for (const { reply, thread: t } of repliesToUser) {
+      if (!canView({ season: reply.season, episode: reply.episode }, progress[t.showId]))
+        r[t.id] = (r[t.id] ?? 0) + 1;
     }
     return r;
   }, [repliesToUser, progress]);
@@ -245,9 +254,10 @@ export default function ProfilePage({
                       onClick={() => openThreadWithFocus(t.showId, t.id)}>
                       {invisibleByThreadId[t.id] && (
                         <Tooltip
-                          text="You have hidden replies from viewers who are further along!"
+                          text={`You have ${invisibleCountByThreadId[t.id] ?? ""} hidden ${(invisibleCountByThreadId[t.id] ?? 0) === 1 ? "reply" : "replies"} from viewers who are further along!`}
                           direction="below"
                           align="left"
+                          gap={28}
                           style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
                         >
                           <div style={{ width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />

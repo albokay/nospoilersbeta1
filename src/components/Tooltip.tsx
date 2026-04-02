@@ -12,12 +12,14 @@ export default function Tooltip({
   direction = "above",
   align = "center",
   style,
+  gap = GAP,
 }: {
   text: string;
   children: React.ReactNode;
   direction?: Direction;
   align?: Align;
   style?: React.CSSProperties;
+  gap?: number;
 }) {
   const [show, setShow] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -33,18 +35,18 @@ export default function Tooltip({
     if (direction === "left") return {
       position: "fixed",
       top: rect.top + rect.height / 2,
-      left: rect.left - TW - GAP,
+      left: rect.left - TW - gap,
       transform: "translateY(-50%)",
     };
     if (direction === "right") return {
       position: "fixed",
       top: rect.top + rect.height / 2,
-      left: rect.left + rect.width + GAP,
+      left: rect.left + rect.width + gap,
       transform: "translateY(-50%)",
     };
     const vert: React.CSSProperties = direction === "above"
-      ? { bottom: window.innerHeight - rect.top + GAP }
-      : { top: rect.top + rect.height + GAP };
+      ? { bottom: window.innerHeight - rect.top + gap }
+      : { top: rect.top + rect.height + gap };
     const horiz: React.CSSProperties =
       align === "right"  ? { right: window.innerWidth - rect.left - rect.width } :
       align === "left"   ? { left: rect.left } :
