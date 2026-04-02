@@ -3,6 +3,7 @@ import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
 import { fetchProgress, upsertProgress, fetchShows, fetchRepliesToUserThreads } from "./lib/db";
+import { supabase } from "./lib/supabaseClient";
 import type { Show } from "./lib/db";
 import type { Reply, Thread } from "./types";
 import { useAuth } from "./lib/auth";
@@ -56,9 +57,23 @@ export default function App() {
 
   // Replies-to-user for profile pill badge
   const [repliesToUser, setRepliesToUser] = useState<{ reply: Reply; thread: Thread }[]>([]);
+
+  // Fetch on login + whenever the user navigates to a show or the profile
   useEffect(() => {
     if (!user) { setRepliesToUser([]); return; }
     fetchRepliesToUserThreads(user.id).then(setRepliesToUser).catch(() => {});
+  }, [user?.id, expandedShowId, showProfile]);
+
+  // Live: refetch whenever any reply is inserted/updated/deleted in the DB
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`user-replies-rt-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "replies" }, () => {
+        fetchRepliesToUserThreads(user.id).then(setRepliesToUser).catch(() => {});
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [user?.id]);
 
   // Track when user last visited their profile (clears green badge)
