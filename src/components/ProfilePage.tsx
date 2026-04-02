@@ -215,9 +215,9 @@ export default function ProfilePage({
                     {activity && (
                       <div style={{
                         position: "absolute", top: 2, right: 2, zIndex: 2,
-                        width: 10, height: 10, borderRadius: "50%", pointerEvents: "none",
+                        width: 15, height: 15, borderRadius: "50%", pointerEvents: "none",
                         background: activity === "green" ? "var(--green)" : "var(--danger)",
-                        border: "2px solid var(--dos-bg)",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
                       }} />
                     )}
                   </div>
@@ -248,9 +248,9 @@ export default function ProfilePage({
                           text="You have hidden replies from viewers who are further along!"
                           direction="below"
                           align="left"
-                          style={{ position: "absolute", left: -6, top: -6, zIndex: 2 }}
+                          style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
                         >
-                          <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--danger)", border: "2px solid var(--dos-bg)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+                          <div style={{ width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
                         </Tooltip>
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
@@ -291,7 +291,7 @@ export default function ProfilePage({
                     <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
                       {newVisibleReplyIds[r.id] && (
-                        <div style={{ position: "absolute", left: -6, top: -6, width: 14, height: 14, borderRadius: "50%", background: "var(--green)", border: "2px solid var(--dos-bg)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
+                        <div style={{ position: "absolute", left: -10, top: -10, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="muted" style={{ fontSize: 14 }}>
