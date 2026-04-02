@@ -374,7 +374,7 @@ export default function ShowSection({
       <div className="stickybar bleed" style={{ top: GLOBAL_HEADER_H }} ref={bannerRef}>
         <div className="container">
           {(navLeft || navRight) && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0 4px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 0 4px" }}>
               <div className="hangL">{navLeft}</div>
               <div>{navRight}</div>
             </div>
