@@ -1,18 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 
 type Direction = "above" | "below" | "right" | "left";
-type Align = "center" | "left" | "right"; // for above/below only
+type Align = "center" | "left" | "right";
 
-function getPositionStyle(direction: Direction, align: Align): React.CSSProperties {
-  if (direction === "right") return { left: "calc(100% + 8px)", top: "50%", transform: "translateY(-50%)" };
-  if (direction === "left")  return { right: "calc(100% + 8px)", top: "50%", transform: "translateY(-50%)" };
-  const vert = direction === "above" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" };
-  const horiz: React.CSSProperties =
-    align === "right"  ? { right: 0 } :
-    align === "left"   ? { left: 0 } :
-                         { left: "50%", transform: "translateX(-50%)" };
-  return { ...vert, ...horiz };
-}
+const TW = 230;  // tooltip width
+const GAP = 10;  // gap between element and tooltip bubble
 
 export default function Tooltip({
   text,
@@ -28,32 +20,62 @@ export default function Tooltip({
   style?: React.CSSProperties;
 }) {
   const [show, setShow] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const wrapperRef = useRef<HTMLSpanElement>(null);
+
+  const handleMouseEnter = () => {
+    if (wrapperRef.current) setRect(wrapperRef.current.getBoundingClientRect());
+    setShow(true);
+  };
+
+  const getFixedStyle = (): React.CSSProperties => {
+    if (!rect) return { display: "none" };
+    if (direction === "left") return {
+      position: "fixed",
+      top: rect.top + rect.height / 2,
+      left: rect.left - TW - GAP,
+      transform: "translateY(-50%)",
+    };
+    if (direction === "right") return {
+      position: "fixed",
+      top: rect.top + rect.height / 2,
+      left: rect.left + rect.width + GAP,
+      transform: "translateY(-50%)",
+    };
+    const vert: React.CSSProperties = direction === "above"
+      ? { bottom: window.innerHeight - rect.top + GAP }
+      : { top: rect.top + rect.height + GAP };
+    const horiz: React.CSSProperties =
+      align === "right"  ? { right: window.innerWidth - rect.left - rect.width } :
+      align === "left"   ? { left: rect.left } :
+                           { left: rect.left + rect.width / 2, transform: "translateX(-50%)" };
+    return { position: "fixed", ...vert, ...horiz };
+  };
+
   return (
     <span
+      ref={wrapperRef}
       style={{ position: "relative", display: "inline-block", ...style }}
-      onMouseEnter={() => setShow(true)}
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={() => setShow(false)}
     >
       {children}
-      {show && (
-        <div
-          style={{
-            position: "absolute",
-            ...getPositionStyle(direction, align),
-            background: "var(--dos-bg)",
-            color: "#fff",
-            borderRadius: 18,
-            padding: "9px 14px",
-            fontSize: 13,
-            fontWeight: 500,
-            lineHeight: 1.4,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.32)",
-            width: 230,
-            zIndex: 9999,
-            pointerEvents: "none",
-            textAlign: "center",
-          }}
-        >
+      {show && rect && (
+        <div style={{
+          ...getFixedStyle(),
+          background: "var(--dos-bg)",
+          color: "#fff",
+          borderRadius: 18,
+          padding: "9px 14px",
+          fontSize: 13,
+          fontWeight: 500,
+          lineHeight: 1.4,
+          boxShadow: "0 4px 20px rgba(0,0,0,0.32)",
+          width: TW,
+          zIndex: 9999,
+          pointerEvents: "none",
+          textAlign: "center",
+        }}>
           {text}
         </div>
       )}

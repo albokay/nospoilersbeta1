@@ -105,8 +105,12 @@ export default function ProfilePage({
   }, [myThreads, myReplies, repliesToMe, likedThreadsList, likedRepliesList, progress]);
 
   const [activeTab, setActiveTab] = useState("");
+  const [viewedTabIds, setViewedTabIds] = useState<Set<string>>(new Set());
   useEffect(() => {
-    if (!loading && showTabOrder.length) setActiveTab(showTabOrder[0]);
+    if (!loading && showTabOrder.length) {
+      setActiveTab(showTabOrder[0]);
+      setViewedTabIds(prev => new Set([...prev, showTabOrder[0]]));
+    }
   }, [loading]);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -176,11 +180,17 @@ export default function ProfilePage({
             <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
               {showTabOrder.map(sid => {
                 const active = sid === activeTab;
-                const activity = !active ? tabActivity[sid] : null;
+                const activity = !active && !viewedTabIds.has(sid) ? tabActivity[sid] : null;
                 return (
                   <div key={sid} style={{ position: "relative", alignSelf: "flex-end" }}>
                     <button
-                      onClick={() => active ? openShow(sid) : setActiveTab(sid)}
+                      onClick={() => {
+                        if (active) { openShow(sid); }
+                        else {
+                          setActiveTab(sid);
+                          setViewedTabIds(prev => new Set([...prev, sid]));
+                        }
+                      }}
                       style={{
                         padding: active ? "8px 18px" : "5px 18px",
                         background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
