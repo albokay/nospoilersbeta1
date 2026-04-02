@@ -364,48 +364,52 @@ export default function App() {
       )}
       {!showProfile && !publicProfileUsername && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28, placeItems: "center", marginTop: 36 }}>
-            {user && (
-              <YourShowsSelect
-                shows={shows}
-                progress={progress}
-                value={""}
-                onChange={(id) => {
-                  if (!id) return;
-                  setPickShowMode("confirm");
-                  setPickShowId(id);
-                }}
-              />
-            )}
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
-                Popular Right Now
+          {!expandedShowId && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28, placeItems: "center", marginTop: 36 }}>
+                {user && (
+                  <YourShowsSelect
+                    shows={shows}
+                    progress={progress}
+                    value={""}
+                    onChange={(id) => {
+                      if (!id) return;
+                      setPickShowMode("confirm");
+                      setPickShowId(id);
+                    }}
+                  />
+                )}
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
+                    Popular Right Now
+                  </div>
+                  <div style={{ fontSize: 26 }}>
+                    {["bb", "simshow"].map((id, idx, arr) => {
+                      const s = shows.find(x => x.id === id);
+                      if (!s) return null;
+                      const sep = idx < arr.length - 1 ? " / " : "";
+                      return (
+                        <span key={id}>
+                          <a onClick={() => handlePickFromSearch(id)} style={{ cursor: "pointer" }}>{s.name}</a>
+                          {sep}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: 26 }}>
-                {["bb", "simshow"].map((id, idx, arr) => {
-                  const s = shows.find(x => x.id === id);
-                  if (!s) return null;
-                  const sep = idx < arr.length - 1 ? " / " : "";
-                  return (
-                    <span key={id}>
-                      <a onClick={() => handlePickFromSearch(id)} style={{ cursor: "pointer" }}>{s.name}</a>
-                      {sep}
-                    </span>
-                  );
-                })}
+              <div style={{ marginTop: 24 }}>
+                <SearchShows
+                  shows={shows}
+                  onPick={handlePickFromSearch}
+                  onShowCreated={(newShow) => {
+                    setShows(prev => [...prev, newShow]);
+                    setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+                  }}
+                />
               </div>
-            </div>
-          </div>
-          <div style={{ marginTop: 24 }}>
-            <SearchShows
-              shows={shows}
-              onPick={handlePickFromSearch}
-              onShowCreated={(newShow) => {
-                setShows(prev => [...prev, newShow]);
-                setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
-              }}
-            />
-          </div>
+            </>
+          )}
 
           {!expandedShowId && (
             <div className="homeAbout" style={{ display: "flex", justifyContent: "center" }}>
