@@ -1,4 +1,31 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+
+/** Resolves once the page finishes scrolling (scrollend event or debounce fallback). */
+function afterScroll(): Promise<void> {
+  return new Promise(resolve => {
+    if ("onscrollend" in window) {
+      window.addEventListener("scrollend", () => resolve(), { once: true });
+    } else {
+      let t: ReturnType<typeof setTimeout>;
+      const onScroll = () => {
+        clearTimeout(t);
+        t = setTimeout(() => { window.removeEventListener("scroll", onScroll); resolve(); }, 150);
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      // safety net: if already at position, scroll may never fire
+      setTimeout(() => { window.removeEventListener("scroll", onScroll); resolve(); }, 800);
+    }
+  });
+}
+
+function flashEl(el: HTMLElement) {
+  const s = getComputedStyle(el);
+  el.style.position = s.position === "static" ? "relative" : s.position;
+  const cover = document.createElement("div");
+  cover.className = "flash-cover";
+  el.appendChild(cover);
+  setTimeout(() => cover.remove(), 1300);
+}
 import type { Thread, Reply } from "../types";
 import { fetchRepliesForThread, insertReply, likeReply as dbLikeReply, unlikeReply as dbUnlikeReply, editReply as dbEditReply, deleteReply as dbDeleteReply } from "../lib/db";
 import { useAuth } from "../lib/auth";
@@ -255,13 +282,7 @@ export default function RepliesList({
       const el = document.getElementById(`c-${focusReplyId}`);
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-      const cover = document.createElement("div");
-      cover.className = "flash-cover";
-      const s = getComputedStyle(el);
-      (el as HTMLElement).style.position = (s.position === "static") ? "relative" : s.position;
-      el.appendChild(cover);
-      requestAnimationFrame(() => { cover.style.opacity = "0"; });
-      setTimeout(() => cover.remove(), 2000);
+      afterScroll().then(() => flashEl(el));
     };
     setTimeout(run, 80);
   }, [focusReplyId]);
@@ -316,14 +337,7 @@ export default function RepliesList({
     const el = document.getElementById(`c-${replyId}`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-    if (flash) {
-      const cover = document.createElement("div");
-      cover.className = "flash-cover";
-      const style = getComputedStyle(el);
-      el.style.position = (style.position === "static") ? "relative" : style.position;
-      el.appendChild(cover);
-      setTimeout(() => { cover.remove(); }, 1300);
-    }
+    if (flash) afterScroll().then(() => flashEl(el));
   };
 
   const replyLabel = (r: Reply) =>
