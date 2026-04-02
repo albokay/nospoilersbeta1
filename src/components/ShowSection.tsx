@@ -18,6 +18,7 @@ import type { Thread } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
 import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale } from "../lib/db";
+import { supabase } from "../lib/supabaseClient";
 import type { ReplyMeta } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -146,6 +147,22 @@ export default function ShowSection({
     }).catch(() => setThreadsLoading(false));
     return () => { cancelled = true; };
   }, [showId, user?.id]);
+
+  // ── Live reply updates via Supabase real-time ─────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel(`show-replies-rt-${showId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "replies", filter: `show_id=eq.${showId}` }, (payload) => {
+        const r = payload.new as any;
+        if (!r) return;
+        const meta = { id: r.id, season: r.season, episode: r.episode, createdAt: new Date(r.created_at).getTime() };
+        setReplyMeta(prev => ({ ...prev, [r.thread_id]: [...(prev[r.thread_id] ?? []), meta] }));
+        setReplyCounts(prev => ({ ...prev, [r.thread_id]: (prev[r.thread_id] ?? 0) + 1 }));
+        setHasExternalReplies(prev => ({ ...prev, [r.thread_id]: true }));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [showId]);
 
   // ── Scoring / filtering ───────────────────────────────────
   const scoreThread = (t: Thread, q: string) => {
