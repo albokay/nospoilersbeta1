@@ -3,18 +3,11 @@ import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import './index.css'
 import App from './App'
-import Home from '@/pages/Home'
-import ShowPage from '@/pages/ShowPage'
 
+// Single wildcard route: React Router owns the URL, App derives all nav
+// state from useLocation() — back/forward work natively.
 const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <App />,
-    children: [
-      { index: true, element: <Home /> },
-      { path: 'show/:slug', element: <ShowPage /> },
-    ]
-  }
+  { path: '*', element: <App /> }
 ])
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

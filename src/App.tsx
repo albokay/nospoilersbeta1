@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
@@ -39,11 +40,26 @@ export default function App() {
   const username = profile?.username ?? null;
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const [expandedShowId, setExpandedShowId] = useState<string | null>(null);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  // ── URL-driven navigation (React Router) ─────────────────────
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Derive all nav state from the URL so the browser's back/forward buttons
+  // work automatically — no manual pushState needed.
+  //   /                         → homepage
+  //   /show/:showId             → show forum
+  //   /show/:showId/thread/:id  → thread view
+  //   /profile                  → own profile
+  //   /user/:username           → public profile
+  const pathParts = location.pathname.split("/").filter(Boolean);
+  const expandedShowId   = pathParts[0] === "show" ? (pathParts[1] ?? null) : null;
+  const activeThreadId   = pathParts[0] === "show" && pathParts[2] === "thread" ? (pathParts[3] ?? null) : null;
+  const showProfile      = location.pathname === "/profile";
+  const publicProfileUsername = pathParts[0] === "user" ? decodeURIComponent(pathParts[1] ?? "") || null : null;
+
+  // focusReplyId is still ephemeral state — it is set programmatically when
+  // navigating from a notification, and cleared by RepliesList after scrolling.
   const [focusReplyId, setFocusReplyId] = useState<string | null>(null);
-  const [showProfile, setShowProfile] = useState(false);
-  const [publicProfileUsername, setPublicProfileUsername] = useState<string | null>(null);
 
   const [progress, setProgress] = useState<{ [sid: string]: { s: number; e: number } }>({});
 
@@ -202,36 +218,23 @@ export default function App() {
 
   const openShow = (id: string) => {
     if (!id) return;
-    setShowProfile(false);
-    setPublicProfileUsername(null);
-    setExpandedShowId(id);
-    setActiveThreadId(null);
-    setFocusReplyId(null);
+    navigate(`/show/${id}`);
     requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
   };
 
   const openThreadWithFocus = (showId: string, threadId: string, replyId?: string) => {
-    openShow(showId);
-    setActiveThreadId(threadId);
     setFocusReplyId(replyId || null);
+    navigate(`/show/${showId}/thread/${threadId}`);
     requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
   };
 
   const goHomepage = () => {
-    setExpandedShowId(null);
-    setActiveThreadId(null);
-    setFocusReplyId(null);
-    setShowProfile(false);
-    setPublicProfileUsername(null);
+    navigate("/");
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   };
 
   const handleClickProfile = (name: string) => {
-    setExpandedShowId(null);
-    setActiveThreadId(null);
-    setFocusReplyId(null);
-    setShowProfile(false);
-    setPublicProfileUsername(name);
+    navigate(`/user/${encodeURIComponent(name)}`);
     requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
   };
 
@@ -241,7 +244,6 @@ export default function App() {
     } else {
       setPickShowMode("set");
       setPickShowId(showId);
-      setShowProfile(false);
     }
   };
 
@@ -255,7 +257,7 @@ export default function App() {
   };
 
   const isHomepage = !expandedShowId && !showProfile && !publicProfileUsername;
-  const [showAdmin, setShowAdmin] = useState(() => window.location.search.includes("admin"));
+  const showAdmin = location.search.includes("admin");
   const isAdmin = user?.id === ADMIN_USER_ID;
 
   const header = (
@@ -300,10 +302,7 @@ export default function App() {
                 <button
                   className="profileChip"
                   onClick={() => {
-                    setExpandedShowId(null);
-                    setActiveThreadId(null);
-                    setFocusReplyId(null);
-                    setShowProfile(true);
+                    navigate("/profile");
                     requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
                   }}
                 >
@@ -328,7 +327,7 @@ export default function App() {
             </button>
           )}
           {!authLoading && isAdmin && (
-            <button className="btn" onClick={() => { setShowAdmin(true); setExpandedShowId(null); setShowProfile(false); }} title="Admin" style={{ fontSize: 18 }}>
+            <button className="btn" onClick={() => navigate("/?admin")} title="Admin" style={{ fontSize: 18 }}>
               ⚙
             </button>
           )}
@@ -364,7 +363,6 @@ export default function App() {
                   if (!id) return;
                   setPickShowMode("confirm");
                   setPickShowId(id);
-                  setShowProfile(false);
                 }}
               />
             )}
@@ -405,7 +403,7 @@ export default function App() {
                 <p>The BREAKING BAD forum is populated with posts (a.i. generated) that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site.<br /><br />
                   On this mock site, you can create posts across all forums.<br /><br />
                   You can use the "find a show" search field to go to a new show forum. They are all empty for now.<br /><br />
-                  The back button on your browser window will leave this mockup site altogether. Click and post with abandon!<br /><br />
+                  The back and forward buttons on your browser window navigate within the site. Click and post with abandon!<br /><br />
                   — Alborz<br /><br />
                   🕓 <b>FUTURE FEATURE:</b> alerts about friends you're watching shows with. Have they caught up to you? Are they ahead? Are there new posts or replies about shows you're watching together? ⏳<br /><br /><br /></p>
               </div>
@@ -438,7 +436,7 @@ export default function App() {
           viewerProgress={progress}
           openThreadWithFocus={openThreadWithFocus}
           openShow={openShow}
-          onClose={() => setPublicProfileUsername(null)}
+          onClose={goHomepage}
         />
       )}
 
@@ -453,14 +451,13 @@ export default function App() {
             updateProgressFor={(sid: string, next: { s: number; e: number }) => {
               setProgress(prev => ({ ...prev, [sid]: next }));
 
-              setActiveThreadId(currentId => {
-                if (!currentId) return currentId;
-                const t = seedThreads.find(t => t.id === currentId);
-                if (!t) return currentId;
-                if (t.showId !== sid) return currentId;
-                const stillVisible = canView({ season: t.season, episode: t.episode }, next);
-                return stillVisible ? currentId : null;
-              });
+              // If the open thread is no longer visible at the new progress, go back to the forum
+              if (activeThreadId) {
+                const t = seedThreads.find(t => t.id === activeThreadId);
+                if (t && t.showId === sid && !canView({ season: t.season, episode: t.episode }, next)) {
+                  navigate(`/show/${sid}`);
+                }
+              }
 
               if (user) {
                 upsertProgress(user.id, sid, next.s, next.e).catch(err =>
@@ -473,7 +470,10 @@ export default function App() {
             visitedThreads={visitedThreads}
             setVisitedThreads={setVisitedThreads}
             activeThreadId={activeThreadId}
-            setActiveThreadId={setActiveThreadId}
+            setActiveThreadId={(tid: string | null) => {
+              if (tid) navigate(`/show/${expandedShowId}/thread/${tid}`);
+              else navigate(`/show/${expandedShowId}`);
+            }}
             onHomepage={goHomepage}
             likesThreads={likesThreads}
             setLikesThreads={setLikesThreads}
@@ -499,7 +499,7 @@ export default function App() {
             setProgress(prev => { const n = { ...prev }; delete n[showId]; return n; });
             if (expandedShowId === showId) goHomepage();
           }}
-          onClose={() => setShowAdmin(false)}
+          onClose={goHomepage}
         />
       )}
 
