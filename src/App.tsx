@@ -264,7 +264,7 @@ export default function App() {
   const fixedHelp = isHomepage ? (
     <div style={{ position: "fixed", top: 14, left: 14, zIndex: 1000 }}>
       <Tooltip text="A spoiler-safe TV forum built around your watch progress — no spoilers guaranteed." direction="below" align="left">
-        <button className="btn" style={{ width: 34, height: 34, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800, lineHeight: 1 }}>
+        <button className="btn" style={{ width: 34, height: 34, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800, lineHeight: 1, background: "#fff", border: "none", color: "var(--dos-bg)" }}>
           ?
         </button>
       </Tooltip>
