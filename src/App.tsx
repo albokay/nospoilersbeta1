@@ -494,6 +494,30 @@ export default function App() {
             focusReplyId={focusReplyId}
             onAuthRequired={() => setShowAuthModal(true)}
             onClickProfile={handleClickProfile}
+            navRow={
+              <>
+                {user && (
+                  <YourShowsSelect
+                    shows={shows}
+                    progress={progress}
+                    value={""}
+                    onChange={(id: string) => {
+                      if (!id) return;
+                      setPickShowMode("confirm");
+                      setPickShowId(id);
+                    }}
+                  />
+                )}
+                <SearchShows
+                  shows={shows}
+                  onPick={handlePickFromSearch}
+                  onShowCreated={(newShow: any) => {
+                    setShows((prev: any) => [...prev, newShow]);
+                    setProgress((p: any) => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+                  }}
+                />
+              </>
+            }
           />
         </div>
       )}

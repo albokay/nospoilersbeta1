@@ -38,7 +38,7 @@ export default function ShowSection({
   visitedThreads, setVisitedThreads, activeThreadId, setActiveThreadId, onHomepage,
   likesThreads, setLikesThreads, likedByUserThreads, setLikedByUserThreads,
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
-  focusReplyId, onAuthRequired, onClickProfile
+  focusReplyId, onAuthRequired, onClickProfile, navRow
 }: any) {
   const { user, profile } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
@@ -373,6 +373,11 @@ export default function ShowSection({
       {/* TWO-ROW STICKY BANNER */}
       <div className="stickybar bleed" style={{ top: GLOBAL_HEADER_H }} ref={bannerRef}>
         <div className="container">
+          {navRow && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0 4px" }}>
+              {navRow}
+            </div>
+          )}
           {/* Row 1 */}
           <div className="bannerRow1">
             <span
