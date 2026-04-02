@@ -343,11 +343,14 @@ export default function App() {
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       {isHomepage && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95 }}>
-          <Tooltip text="A spoiler-safe TV forum built around your watch progress — no spoilers guaranteed." direction="below" style={{ display: "block" }}>
-            <SidebarLogo />
-          </Tooltip>
-          <div style={{ marginTop: 12, fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
-            watch. together. whenever.
+          <SidebarLogo />
+          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
+              watch. together. whenever.
+            </span>
+            <Tooltip text="A spoiler-safe TV forum built around your watch progress — no spoilers guaranteed." direction="right" align="center">
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--dos-fg)", opacity: 0.55, cursor: "default", userSelect: "none" }}>ℹ</span>
+            </Tooltip>
           </div>
         </div>
       )}
