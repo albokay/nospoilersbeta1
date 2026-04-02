@@ -478,7 +478,7 @@ export default function ShowSection({
                   <Tooltip
                     text="You have hidden replies from viewers who are further along!"
                     direction="left"
-                    style={{ position: "absolute", left: -14, top: "50%", transform: "translateY(-50%)", zIndex: 1 }}
+                    style={{ position: "absolute", left: -14, top: "calc(50% - 14px)", zIndex: 1 }}
                   >
                     <div style={{
                       width: 28, height: 28, borderRadius: "50%",
