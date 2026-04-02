@@ -30,7 +30,7 @@ import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
 import Username from "./Username";
 
-const GLOBAL_HEADER_H = 72;
+const GLOBAL_HEADER_H = 56;
 const ROW_PAD_Y = 8;
 
 export default function ShowSection({
@@ -38,7 +38,7 @@ export default function ShowSection({
   visitedThreads, setVisitedThreads, activeThreadId, setActiveThreadId, onHomepage,
   likesThreads, setLikesThreads, likedByUserThreads, setLikedByUserThreads,
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
-  focusReplyId, onAuthRequired, onClickProfile, navRow
+  focusReplyId, onAuthRequired, onClickProfile, navLeft, navRight
 }: any) {
   const { user, profile } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
@@ -369,13 +369,14 @@ export default function ShowSection({
   };
 
   return (
-    <section className="container" style={{ paddingTop: 16, paddingBottom: 140 }}>
+    <section className="container" style={{ paddingBottom: 140 }}>
       {/* TWO-ROW STICKY BANNER */}
       <div className="stickybar bleed" style={{ top: GLOBAL_HEADER_H }} ref={bannerRef}>
         <div className="container">
-          {navRow && (
+          {(navLeft || navRight) && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0 4px" }}>
-              {navRow}
+              <div className="hangL">{navLeft}</div>
+              <div>{navRight}</div>
             </div>
           )}
           {/* Row 1 */}
