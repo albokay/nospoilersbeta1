@@ -624,6 +624,11 @@ export default function ShowSection({
                   <h2 style={{ margin: 0, fontSize: 22 }} className="title">
                     {t.isPrivate && <span style={{ marginRight: 4 }}>🔒</span>}
                     {t.titleBase}
+                    {t.showId !== "simshow" && (
+                      <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7 }}>
+                        {`(S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")})`}
+                      </span>
+                    )}
                     {t.isEdited && (
                       <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
                     )}
@@ -634,7 +639,7 @@ export default function ShowSection({
                 </div>
 
                 <div className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-                  {show.name} • S{t.season}E{t.episode} • Started by <Username name={t.author} onClickProfile={onClickProfile} /> • {timeAgo(t.updatedAt)}
+                  {show.name} • Started by <Username name={t.author} onClickProfile={onClickProfile} /> • {timeAgo(t.updatedAt)}
                 </div>
 
                 <div style={{ marginTop: 6 }}>
