@@ -44,6 +44,13 @@ export default function ShowSection({
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const show = allShows.find((s) => s.id === showId) || { id: showId, name: showId, seasons: [10] };
 
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+
   const [sortBy, setSortBy] = useState<"relevance" | "post" | "episode" | "hot">("relevance");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -387,42 +394,51 @@ export default function ShowSection({
           <hr className="bleed-line" />
 
           {/* Row 2 */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: `${ROW_PAD_Y}px 0` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: `${ROW_PAD_Y}px 0`, flexWrap: "wrap" }}>
             {!thread ? (
               <button
                 className="btn post h40"
                 onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
                 title="Start a new post"
+                style={{ lineHeight: 1.2 }}
               >
                 + New Post
               </button>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button className="btn h40" onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}>
-                  ← Back to forum
+              <div style={{ display: "flex", alignItems: "center", gap: 8, ...(isMobile ? { width: "100%" } : {}) }}>
+                <button
+                  className="btn h40"
+                  onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
+                  style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
+                >
+                  {isMobile ? "← to forum" : "← Back to forum"}
                 </button>
                 <button
                   className="btn post h40"
                   onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
                   title="Start a new post"
+                  style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
                 >
                   + New Post
                 </button>
               </div>
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, ...(isMobile ? { width: "100%", justifyContent: "space-between" } : {}) }}>
               {thread && (
                 <ModeToggle
                   value={mode}
                   onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
                   hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
+                  compact={isMobile}
                 />
               )}
+              {!thread && isMobile && <div />}
               <OneSelectProgress
                 show={allShows.find(s => s.id === showId) || { seasons: [10] }}
                 value={progress[showId] || { s: 1, e: 1 }}
                 onConfirm={(val) => updateProgressFor(showId, val)}
                 requireConfirm={true}
+                compactLabel={isMobile ? "watch progress" : undefined}
               />
             </div>
           </div>

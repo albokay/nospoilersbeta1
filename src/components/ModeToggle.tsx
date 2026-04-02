@@ -1,10 +1,11 @@
 import React from "react";
 
-export default function ModeToggle({ value, onToggle, disabled = false, hiddenNewReplies = 0 }: {
+export default function ModeToggle({ value, onToggle, disabled = false, hiddenNewReplies = 0, compact = false }: {
   value: "standard" | "risky";
   onToggle: () => void;
   disabled?: boolean;
   hiddenNewReplies?: number;
+  compact?: boolean;
 }) {
   const isRisky = value === "risky";
   return (
@@ -12,23 +13,26 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
       onClick={disabled ? undefined : onToggle}
       aria-label={`Toggle mode (currently ${isRisky ? "Risky" : "Standard"})`}
       aria-pressed={isRisky}
-      className="btn modeToggle"
+      className={compact ? "btn" : "btn modeToggle"}
       style={{
         position: "relative", display: "inline-flex", alignItems: "center", gap: 0, borderRadius: 0, padding: 0,
-        border: "1px solid var(--dos-border)", background: "transparent", overflow: "hidden", opacity: disabled ? .6 : 1
+        border: "1px solid var(--dos-border)", background: "transparent", overflow: "hidden", opacity: disabled ? .6 : 1,
+        ...(compact ? { width: "auto", minWidth: 88, height: 38, borderRadius: 0 } : {}),
       }}
       title={isRisky ? "Risky: show redacted stubs (click to reveal)" : "Standard: hide newer comments"}
       disabled={disabled}
     >
-      <span style={{ flex: "1 1 0", textAlign: "center", fontWeight: 700, fontSize: 13, color: isRisky ? "var(--dos-gray)" : "var(--dos-light)", zIndex: 2, padding: "0 8px" }}>Standard</span>
-      <span style={{ flex: "1 1 0", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, fontWeight: 700, fontSize: 13, color: isRisky ? "var(--dos-light)" : "var(--dos-gray)", zIndex: 2, padding: "0 8px" }}>
-        Risky
+      <span style={{ flex: "1 1 0", textAlign: "center", fontWeight: 700, fontSize: compact ? 12 : 13, color: isRisky ? "var(--dos-gray)" : "var(--dos-light)", zIndex: 2, padding: compact ? "0 6px" : "0 8px", whiteSpace: "nowrap" }}>
+        {compact ? "Std" : "Standard"}
+      </span>
+      <span style={{ flex: "1 1 0", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, fontWeight: 700, fontSize: compact ? 12 : 13, color: isRisky ? "var(--dos-light)" : "var(--dos-gray)", zIndex: 2, padding: compact ? "0 6px" : "0 8px", whiteSpace: "nowrap" }}>
+        {compact ? "Risk" : "Risky"}
         {hiddenNewReplies > 0 && (
           <span style={{
-            width: 18, height: 18, borderRadius: "50%",
+            width: 16, height: 16, borderRadius: "50%",
             background: "var(--danger)", color: "#fff",
             display: "inline-flex", alignItems: "center", justifyContent: "center",
-            fontSize: 10, fontWeight: 800, lineHeight: 1, flexShrink: 0,
+            fontSize: 9, fontWeight: 800, lineHeight: 1, flexShrink: 0,
           }}>
             {hiddenNewReplies}
           </span>
