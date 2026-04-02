@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { Show } from "../lib/db";
 import { createShow } from "../lib/db";
+import { useAuth } from "../lib/auth";
 
 // ── TVmaze helpers ─────────────────────────────────────────────────────────
 
@@ -50,14 +51,16 @@ function slugify(name: string): string {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export default function SearchShows({ shows, onPick, onShowCreated, style }: {
+export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequired, style }: {
   shows: Show[];
   onPick: (showId: string) => void;
   onShowCreated?: (show: Show) => void;
+  onAuthRequired?: () => void;
   style?: React.CSSProperties;
   // legacy prop kept for compat — no longer used
   onStartNewForum?: (query: string) => void;
 }) {
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -111,6 +114,11 @@ export default function SearchShows({ shows, onPick, onShowCreated, style }: {
   };
 
   const handlePickTVmaze = (tv: TVmazeShow) => {
+    if (!user) {
+      setOpen(false);
+      onAuthRequired?.();
+      return;
+    }
     setConfirming(tv);
     setOpen(false);
     setCreateError(null);

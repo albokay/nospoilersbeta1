@@ -291,6 +291,7 @@ export default function App() {
           setShows(prev => [...prev, newShow]);
           setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
         }}
+        onAuthRequired={() => setShowAuthModal(true)}
         style={{ width: 220, margin: 0, height: 34 }}
       />
     </div>
@@ -428,6 +429,7 @@ export default function App() {
                     setShows(prev => [...prev, newShow]);
                     setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
                   }}
+                  onAuthRequired={() => setShowAuthModal(true)}
                 />
               </div>
             </>
