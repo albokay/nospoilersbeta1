@@ -252,7 +252,7 @@ export default function ProfilePage({
                   {tabThreads.length === 0 && <div className="muted">No posts yet.</div>}
                   {tabThreads.map(t => (
                     <div key={t.id} className="card threadCard"
-                      style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
+                      style={{ margin: "10px 0 10px 40px", cursor: "pointer", position: "relative" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id)}>
                       {invisibleByThreadId[t.id] && (
                         <Tooltip
