@@ -243,9 +243,9 @@ export default function ProfilePage({
             /* borderTop is the "line" — active tab overlaps and covers it with its own background */
             <div className="hangLContent" style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
             <>
-              {/* Your posts */}
+              {/* Your watch diary */}
               <section style={{ marginTop: 0 }}>
-                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your posts</div>
+                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your watch diary</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabThreads.length === 0 && <div className="muted">No posts yet.</div>}
                   {tabThreads.map(t => (
