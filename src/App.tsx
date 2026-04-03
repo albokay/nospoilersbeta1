@@ -204,6 +204,7 @@ export default function App() {
     }
   }, [pickShowId, progress]);
 
+  const [betaOpen, setBetaOpen] = useState(false);
   const [newHighlights, setNewHighlights] = useState<{ [sid: string]: { [tid: string]: true } }>({});
   const [visitedThreads, setVisitedThreads] = useState<{ [tid: string]: true }>({});
 
@@ -569,16 +570,57 @@ export default function App() {
           )}
 
           {!expandedShowId && (
-            <div className="homeAbout" style={{ display: "flex", justifyContent: "center" }}>
-              <div style={{ maxWidth: 460, width: "100%", padding: "30px 16px" }}>
-                <p>** Hello friendly beta-tester!</p><br />
-                <p>The BREAKING BAD forum is populated with posts (a.i. generated) that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site.<br /><br />
-                  On this mock site, you can create posts across all forums.<br /><br />
-                  You can use the "find a show" search field to go to a new show forum. They are all empty for now.<br /><br />
-                  The back and forward buttons on your browser window navigate within the site. Click and post with abandon!<br /><br />
-                  — Alborz<br /><br />
-                  🕓 <b>FUTURE FEATURE:</b> alerts about friends you're watching shows with. Have they caught up to you? Are they ahead? Are there new posts or replies about shows you're watching together? ⏳<br /><br /><br /></p>
-              </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 8 }}>
+              {/* Beta message pill toggle */}
+              <button
+                onClick={() => setBetaOpen(o => !o)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  borderRadius: 999,
+                  boxShadow: "0 0 0 2px var(--dos-border)",
+                  border: "none",
+                  overflow: "hidden",
+                  background: "transparent",
+                  padding: 0,
+                  cursor: "pointer",
+                  gap: 0,
+                }}
+              >
+                <span style={{
+                  padding: "3px 10px",
+                  fontSize: 12,
+                  fontWeight: !betaOpen ? 700 : 400,
+                  background: !betaOpen ? "var(--dos-border)" : "transparent",
+                  color: !betaOpen ? "var(--dos-bg)" : "transparent",
+                  whiteSpace: "nowrap",
+                }}>
+                  click here beta tester!
+                </span>
+                <span style={{
+                  padding: "3px 10px",
+                  fontSize: 12,
+                  fontWeight: betaOpen ? 700 : 400,
+                  background: betaOpen ? "var(--dos-border)" : "transparent",
+                  color: betaOpen ? "var(--dos-bg)" : "transparent",
+                  whiteSpace: "nowrap",
+                }}>
+                  Hello!
+                </span>
+              </button>
+
+              {betaOpen && (
+                <div className="homeAbout" style={{ display: "flex", justifyContent: "center" }}>
+                  <div style={{ maxWidth: 460, width: "100%", padding: "30px 16px" }}>
+                    <p>The BREAKING BAD forum is populated with posts (a.i. generated) that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site.<br /><br />
+                      On this mock site, you can create posts across all forums.<br /><br />
+                      You can use the "find a show" search field to go to a new show forum. They are all empty for now.<br /><br />
+                      The back and forward buttons on your browser window navigate within the site. Click and post with abandon!<br /><br />
+                      — Alborz<br /><br />
+                      🕓 <b>FUTURE FEATURE:</b> alerts about friends you're watching shows with. Have they caught up to you? Are they ahead? Are there new posts or replies about shows you're watching together? ⏳<br /><br /><br /></p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>
