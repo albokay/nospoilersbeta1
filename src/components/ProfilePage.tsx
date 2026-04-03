@@ -223,7 +223,7 @@ export default function ProfilePage({
               <section style={{ marginTop: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 8 }}>
                   <div className="title" style={{ fontSize: 18 }}>your Watch Diary</div>
-                  <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
+                  <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0, marginLeft: 16 }}>
                     {(["all", "private"] as const).map(opt => (
                       <button
                         key={opt}
@@ -233,7 +233,7 @@ export default function ProfilePage({
                           fontSize: 12,
                           fontWeight: diaryFilter === opt ? 700 : 400,
                           background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
-                          color: "var(--dos-fg)",
+                          color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
                           border: "none",
                           cursor: "pointer",
                           whiteSpace: "nowrap",
