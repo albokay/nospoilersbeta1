@@ -452,7 +452,7 @@ export default function ShowSection({
                 + New Post
               </button>
               <div style={{ flex: 1 }} />
-              <div style={{ marginLeft: -15 }}>
+              <div style={{ marginLeft: -30 }}>
                 <ModeToggle
                   value={mode}
                   onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
@@ -501,7 +501,7 @@ export default function ShowSection({
               )}
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {thread && (
-                  <div style={{ marginLeft: -15 }}>
+                  <div style={{ marginLeft: -30 }}>
                     <ModeToggle
                       value={mode}
                       onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
