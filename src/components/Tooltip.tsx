@@ -13,6 +13,7 @@ export default function Tooltip({
   align = "center",
   style,
   gap = GAP,
+  useAbsolute = false,
 }: {
   text: string;
   children: React.ReactNode;
@@ -20,6 +21,7 @@ export default function Tooltip({
   align?: Align;
   style?: React.CSSProperties;
   gap?: number;
+  useAbsolute?: boolean;
 }) {
   const [show, setShow] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -28,6 +30,17 @@ export default function Tooltip({
   const handleMouseEnter = () => {
     if (wrapperRef.current) setRect(wrapperRef.current.getBoundingClientRect());
     setShow(true);
+  };
+
+  const getAbsoluteStyle = (): React.CSSProperties => {
+    const vert: React.CSSProperties = direction === "above"
+      ? { bottom: `calc(100% + ${gap}px)` }
+      : { top: `calc(100% + ${gap}px)` };
+    const horiz: React.CSSProperties =
+      align === "right"  ? { right: 0 } :
+      align === "left"   ? { left: 0 } :
+                           { left: "50%", transform: "translateX(-50%)" };
+    return { position: "absolute", ...vert, ...horiz };
   };
 
   const getFixedStyle = (): React.CSSProperties => {
@@ -62,9 +75,9 @@ export default function Tooltip({
       onMouseLeave={() => setShow(false)}
     >
       {children}
-      {show && rect && (
+      {show && (useAbsolute || rect) && (
         <div style={{
-          ...getFixedStyle(),
+          ...(useAbsolute ? getAbsoluteStyle() : getFixedStyle()),
           background: "var(--dos-bg)",
           color: "#fff",
           borderRadius: 18,

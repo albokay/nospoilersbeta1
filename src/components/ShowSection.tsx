@@ -588,8 +588,9 @@ export default function ShowSection({
                 {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
                   <Tooltip
                     text="You have hidden replies from viewers who are further along!"
-                    direction="above"
+                    direction="right"
                     align="left"
+                    useAbsolute
                     style={{ position: "absolute", left: -14, top: "calc(50% - 14px)", zIndex: 1 }}
                   >
                     <div style={{

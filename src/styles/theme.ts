@@ -127,7 +127,7 @@ header.site{
   width:288px; max-width:90vw; margin:20px auto;
   height:40px; border:3px solid #bdd4de; border-radius:9999px;
   padding:0 16px; gap:5px;
-  background:#bdd4de; color:#f45028;
+  background:#bdd4de; color:var(--dos-bg);
 }
 .splashSearch{
   background:transparent; border:none !important; border-radius:0 !important; outline:none;
