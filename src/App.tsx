@@ -267,7 +267,12 @@ export default function App() {
   };
 
   const handleClickProfile = (name: string) => {
-    navigate(`/user/${encodeURIComponent(name)}`);
+    // Own username goes to /profile; everyone else to /user/:username
+    if (name === username) {
+      navigate("/profile");
+    } else {
+      navigate(`/user/${encodeURIComponent(name)}`);
+    }
     requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
   };
 
@@ -511,7 +516,7 @@ export default function App() {
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
                     style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
                   >
-                    review your watch diary
+                    review your Watch Diary
                   </button>
                 )}
                 {user && (

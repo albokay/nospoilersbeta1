@@ -183,7 +183,7 @@ export default function InlineThreadView({
             </div>
 
             <div className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-              {show.name} • Started by <Username name={thread.author} onClickProfile={onClickProfile ?? (() => {})} /> • {timeAgo(thread.updatedAt)}
+              Started by <Username name={thread.author} onClickProfile={onClickProfile ?? (() => {})} /> • {timeAgo(thread.updatedAt)}
             </div>
 
             {thread.isDeleted ? (

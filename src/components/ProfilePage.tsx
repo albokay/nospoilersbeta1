@@ -126,6 +126,8 @@ export default function ProfilePage({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   // clear expanded state when switching tabs
   useEffect(() => { setExpandedIds(new Set()); }, [activeTab]);
+
+  const [diaryFilter, setDiaryFilter] = useState<"all" | "private">("all");
   const toggleExpand = (id: string) =>
     setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
@@ -217,14 +219,38 @@ export default function ProfilePage({
           {activeTab && (
             <div className="hangLContent" style={{ paddingTop: 20 }}>
             <>
-              {/* Your watch diary */}
+              {/* Your Watch Diary */}
               <section style={{ marginTop: 0 }}>
-                <div className="title" style={{ fontSize: 18, marginBottom: 8, textAlign: "center" }}>Your watch diary</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 8 }}>
+                  <div className="title" style={{ fontSize: 18 }}>your Watch Diary</div>
+                  <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
+                    {(["all", "private"] as const).map(opt => (
+                      <button
+                        key={opt}
+                        onClick={() => setDiaryFilter(opt)}
+                        style={{
+                          padding: "3px 10px",
+                          fontSize: 12,
+                          fontWeight: diaryFilter === opt ? 700 : 400,
+                          background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
+                          color: "var(--dos-fg)",
+                          border: "none",
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {opt === "all" ? "all" : "private only"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="diaryOuter">
                 <div className="diaryCardWrap">
                 <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
-                  {tabThreads.length === 0 && <div className="muted">No posts yet.</div>}
-                  {tabThreads.map(t => (
+                  {(() => {
+                    const filtered = diaryFilter === "private" ? tabThreads.filter(t => t.isPrivate) : tabThreads;
+                    if (filtered.length === 0) return <div className="muted">{diaryFilter === "private" ? "No private posts yet." : "No posts yet."}</div>;
+                    return filtered.map(t => (
                     <div key={t.id} className="card threadCard"
                       style={{ margin: "10px 0 10px 20px", cursor: "pointer", position: "relative" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id)}>
@@ -264,7 +290,8 @@ export default function ProfilePage({
                         {expandedIds.has(t.id) ? t.body : t.preview}
                       </div>
                     </div>
-                  ))}
+                  ));
+                  })()}
                   <div style={{ height: 32, flexShrink: 0 }} aria-hidden />
                 </div>
                 </div>{/* /diaryCardWrap */}
