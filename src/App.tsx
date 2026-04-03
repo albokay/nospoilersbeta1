@@ -529,7 +529,7 @@ export default function App() {
                       setPickShowMode("confirm");
                       setPickShowId(id);
                     }}
-                    placeholder="your SHOW FORUMS"
+                    placeholder="your shows"
                     wrapperStyle={{ width: 288, maxWidth: "90vw" }}
                   />
                 )}
@@ -541,7 +541,7 @@ export default function App() {
                     setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
                   }}
                   onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-                  placeholder="FIND your show"
+                  placeholder="join a new show"
                   style={{ margin: 0 }}
                 />
               </div>
