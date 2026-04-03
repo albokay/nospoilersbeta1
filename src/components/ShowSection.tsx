@@ -70,17 +70,19 @@ export default function ShowSection({
     if (!wasStandard || mode !== "risky") return;
     // Give RepliesList one frame to render the stubs
     setTimeout(() => {
-      const first = document.querySelector<HTMLElement>(".card.redacted");
-      if (!first) return;
-      first.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Flash after scroll settles
+      const stubs = Array.from(document.querySelectorAll<HTMLElement>(".card.redacted"));
+      if (!stubs.length) return;
+      stubs[0].scrollIntoView({ behavior: "smooth", block: "center" });
+      // Flash ALL stubs after scroll settles
       setTimeout(() => {
-        const s = getComputedStyle(first);
-        first.style.position = s.position === "static" ? "relative" : s.position;
-        const cover = document.createElement("div");
-        cover.className = "flash-cover";
-        first.appendChild(cover);
-        setTimeout(() => cover.remove(), 1300);
+        stubs.forEach(el => {
+          const s = getComputedStyle(el);
+          el.style.position = s.position === "static" ? "relative" : s.position;
+          const cover = document.createElement("div");
+          cover.className = "flash-cover";
+          el.appendChild(cover);
+          setTimeout(() => cover.remove(), 1300);
+        });
       }, 650);
     }, 30);
   }, [mode]);
