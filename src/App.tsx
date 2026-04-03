@@ -365,7 +365,7 @@ export default function App() {
               }}
             >
               <span className="avatar">{username[0].toUpperCase()}</span>
-              <span style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
+              <span className="profileChipLabel" style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
             </button>
             {pillBadge === "green" && (
               <div style={{ position: "absolute", top: -6, right: -6, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />

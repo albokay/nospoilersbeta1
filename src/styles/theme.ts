@@ -123,15 +123,16 @@ header.site{
 
 /* homepage search */
 .splashSearchWrap{
-  position:relative; display:flex; align-items:center; justify-content:flex-start;
+  position:relative; display:flex; align-items:center; justify-content:center;
   width:288px; max-width:90vw; margin:20px auto;
-  height:40px; border:3px solid var(--dos-border); border-radius:9999px;
+  height:40px; border:3px solid #bdd4de; border-radius:9999px;
   padding:0 16px; gap:5px;
+  background:#bdd4de; color:#fff;
 }
 .splashSearch{
   background:transparent; border:none !important; border-radius:0 !important; outline:none;
   flex:1; min-width:0; width:100%;
-  text-align:left; padding:0;
+  text-align:center; padding:0;
   font-size:15px; font-weight:600; letter-spacing:0.01em; color:inherit;
 }
 .splashSearch::placeholder{ color:inherit; opacity:1; }
@@ -191,6 +192,10 @@ header.site{
   width:22px; height:22px; border:none; border-radius:50%;
   display:inline-grid; place-items:center; font-size:12px; line-height:1;
   background:#fff; color:var(--dos-user); font-weight:700;
+}
+@media(max-width:600px){
+  .profileChipLabel{ display:none; }
+  .profileChip{ padding:6px; }
 }
 
 /* username highlight (site-wide for inline mentions) */
