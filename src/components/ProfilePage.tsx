@@ -182,9 +182,10 @@ export default function ProfilePage({
 
       {!loading && (
         <div className="container" style={{ marginTop: 32 }}>
-          {/* Scrollable show folder tabs */}
+          {/* Scrollable show folder tabs — sticky wrapper holds tab row + border line as one unit */}
           {showTabOrder.length > 0 && (
-            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
+            <div style={{ position: "sticky", top: 56, zIndex: 90, background: "var(--dos-bg)" }}>
+              <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
                 {showTabOrder.map(sid => {
                   const active = sid === activeTab;
                   const activity = !active && !viewedTabIds.has(sid) ? tabActivity[sid] : null;
@@ -230,6 +231,9 @@ export default function ProfilePage({
                     </div>
                   );
                 })}
+              </div>
+              {/* Horizontal line lives here so it sticks with the tabs */}
+              <div style={{ borderTop: "2px solid var(--dos-border)" }} />
             </div>
           )}
 
@@ -239,7 +243,7 @@ export default function ProfilePage({
 
           {activeTab && (
             /* borderTop is the "line" — active tab overlaps and covers it with its own background */
-            <div className="hangLContent" style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
+            <div className="hangLContent" style={{ paddingTop: 20 }}>
             <>
               {/* Your watch diary */}
               <section style={{ marginTop: 0 }}>
