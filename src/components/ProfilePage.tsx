@@ -184,56 +184,55 @@ export default function ProfilePage({
         <div className="container" style={{ marginTop: 32 }}>
           {/* Scrollable show folder tabs */}
           {showTabOrder.length > 0 && (
-            /* sticky wrapper keeps tabs pinned below the fixed header while scrolling */
             <div style={{ position: "sticky", top: 56, zIndex: 90, background: "var(--dos-bg)", paddingTop: 4 }}>
-            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
-              {showTabOrder.map(sid => {
-                const active = sid === activeTab;
-                const activity = !active && !viewedTabIds.has(sid) ? tabActivity[sid] : null;
-                return (
-                  <div key={sid} style={{ position: "relative", alignSelf: "flex-end" }}>
-                    <button
-                      onClick={() => {
-                        if (active) { openShow(sid); }
-                        else {
-                          setActiveTab(sid);
-                          setViewedTabIds(prev => new Set([...prev, sid]));
-                        }
-                      }}
-                      style={{
-                        padding: active ? "8px 18px" : "5px 18px",
-                        background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
-                        border: "2px solid var(--dos-border)",
-                        borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
-                        borderRadius: "8px 8px 0 0",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                        color: "var(--dos-fg)",
-                        fontWeight: active ? 800 : 500,
-                        fontSize: 14,
-                        letterSpacing: 0.3,
-                        position: "relative",
-                        zIndex: active ? 1 : 0,
-                        textDecoration: active ? "underline" : "none",
-                        textUnderlineOffset: 3,
-                        display: "block",
-                      }}
-                    >
-                      {showName(sid)}
-                    </button>
-                    {activity && (
-                      <div style={{
-                        position: "absolute", top: -6, right: 2, zIndex: 2,
-                        width: 15, height: 15, borderRadius: "50%", pointerEvents: "none",
-                        background: activity === "green" ? "var(--green)" : "var(--danger)",
-                        boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
-                      }} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>{/* /tabs row */}
-            </div>{/* /sticky wrapper */}
+              <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
+                {showTabOrder.map(sid => {
+                  const active = sid === activeTab;
+                  const activity = !active && !viewedTabIds.has(sid) ? tabActivity[sid] : null;
+                  return (
+                    <div key={sid} style={{ position: "relative", alignSelf: "flex-end" }}>
+                      <button
+                        onClick={() => {
+                          if (active) { openShow(sid); }
+                          else {
+                            setActiveTab(sid);
+                            setViewedTabIds(prev => new Set([...prev, sid]));
+                          }
+                        }}
+                        style={{
+                          padding: active ? "8px 18px" : "5px 18px",
+                          background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
+                          border: "2px solid var(--dos-border)",
+                          borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
+                          borderRadius: "8px 8px 0 0",
+                          cursor: "pointer",
+                          whiteSpace: "nowrap",
+                          color: "var(--dos-fg)",
+                          fontWeight: active ? 800 : 500,
+                          fontSize: 14,
+                          letterSpacing: 0.3,
+                          position: "relative",
+                          zIndex: active ? 1 : 0,
+                          textDecoration: active ? "underline" : "none",
+                          textUnderlineOffset: 3,
+                          display: "block",
+                        }}
+                      >
+                        {showName(sid)}
+                      </button>
+                      {activity && (
+                        <div style={{
+                          position: "absolute", top: -6, right: 2, zIndex: 2,
+                          width: 15, height: 15, borderRadius: "50%", pointerEvents: "none",
+                          background: activity === "green" ? "var(--green)" : "var(--danger)",
+                          boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                        }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
           {showTabOrder.length === 0 && (

@@ -137,8 +137,8 @@ export default function PublicProfilePage({
                   </button>
                 );
               })}
-            </div>{/* /tabs row */}
-            </div>{/* /sticky wrapper */}
+            </div>
+            </div>
           )}
 
           {showTabOrder.length === 0 && (
