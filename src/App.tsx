@@ -549,7 +549,7 @@ export default function App() {
 
               {/* ── Example forum ── */}
               <div style={{ textAlign: "center", marginTop: 60 }}>
-                <div className="popularHeading" style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
+                <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
                   demo forum:
                 </div>
                 <button
@@ -591,8 +591,8 @@ export default function App() {
                 }}
               >
                 <span style={{
-                  padding: "3px 10px",
-                  fontSize: 12,
+                  padding: "5px 14px",
+                  fontSize: 14,
                   fontWeight: !betaOpen ? 700 : 400,
                   background: !betaOpen ? "var(--dos-border)" : "transparent",
                   color: !betaOpen ? "var(--dos-bg)" : "transparent",
@@ -601,8 +601,8 @@ export default function App() {
                   click here beta tester!
                 </span>
                 <span style={{
-                  padding: "3px 10px",
-                  fontSize: 12,
+                  padding: "5px 14px",
+                  fontSize: 14,
                   fontWeight: betaOpen ? 700 : 400,
                   background: betaOpen ? "var(--dos-border)" : "transparent",
                   color: betaOpen ? "var(--dos-bg)" : "transparent",
