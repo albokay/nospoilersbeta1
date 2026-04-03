@@ -51,12 +51,13 @@ function slugify(name: string): string {
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequired, style }: {
+export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequired, style, placeholder }: {
   shows: Show[];
   onPick: (showId: string) => void;
   onShowCreated?: (show: Show) => void;
   onAuthRequired?: () => void;
   style?: React.CSSProperties;
+  placeholder?: string;
   // legacy prop kept for compat — no longer used
   onStartNewForum?: (query: string) => void;
 }) {
@@ -156,7 +157,7 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
       <div className="splashSearchWrap" style={style}>
         <span className="splashSearchIcon" aria-hidden>🔍</span>
         <input
-          placeholder="find a show"
+          placeholder={placeholder ?? "find a show"}
           className="splashSearch"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}

@@ -146,7 +146,7 @@ export default function PublicProfilePage({
           )}
 
           {activeTab && (
-            <div className="hangLContent" style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
+            <div className="hangLContent" style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 90 }}>
             <>
               {/* Their posts — diary look */}
               <section style={{ marginTop: 0 }}>

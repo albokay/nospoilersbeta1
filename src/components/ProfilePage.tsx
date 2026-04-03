@@ -241,7 +241,7 @@ export default function ProfilePage({
 
           {activeTab && (
             /* borderTop is the "line" — active tab overlaps and covers it with its own background */
-            <div className="hangLContent" style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
+            <div className="hangLContent" style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 90 }}>
             <>
               {/* Your watch diary */}
               <section style={{ marginTop: 0 }}>

@@ -424,14 +424,15 @@ export default function App() {
         <>
           {!expandedShowId && (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28, placeItems: "center", marginTop: 36 }}>
+              {/* ── Tight nav unit ── */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 80 }}>
                 {user && (
                   <button
                     className="btn"
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, padding: "10px 28px", fontSize: 16, fontWeight: 700, letterSpacing: "0.01em" }}
+                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
                   >
-                    read your watch diary
+                    review your watch diary
                   </button>
                 )}
                 {user && (
@@ -444,28 +445,10 @@ export default function App() {
                       setPickShowMode("confirm");
                       setPickShowId(id);
                     }}
+                    placeholder="what's the word on your shows?"
+                    wrapperStyle={{ width: 288, maxWidth: "90vw" }}
                   />
                 )}
-                <div style={{ textAlign: "center" }}>
-                  <div className="popularHeading" style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
-                    Popular Right Now
-                  </div>
-                  <div style={{ fontSize: 26 }}>
-                    {["bb", "simshow"].map((id, idx, arr) => {
-                      const s = shows.find(x => x.id === id);
-                      if (!s) return null;
-                      const sep = idx < arr.length - 1 ? " / " : "";
-                      return (
-                        <span key={id}>
-                          <a onClick={() => handlePickFromSearch(id)} style={{ cursor: "pointer" }}>{s.name}</a>
-                          {sep}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              <div style={{ marginTop: 24 }}>
                 <SearchShows
                   shows={shows}
                   onPick={handlePickFromSearch}
@@ -474,7 +457,29 @@ export default function App() {
                     setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
                   }}
                   onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
+                  placeholder="find your new show"
+                  style={{ margin: 0 }}
                 />
+              </div>
+
+              {/* ── Popular Right Now ── */}
+              <div style={{ textAlign: "center", marginTop: 52 }}>
+                <div className="popularHeading" style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
+                  Popular Right Now
+                </div>
+                <div style={{ fontSize: 26 }}>
+                  {["bb", "simshow"].map((id, idx, arr) => {
+                    const s = shows.find(x => x.id === id);
+                    if (!s) return null;
+                    const sep = idx < arr.length - 1 ? " / " : "";
+                    return (
+                      <span key={id}>
+                        <a onClick={() => handlePickFromSearch(id)} style={{ cursor: "pointer" }}>{s.name}</a>
+                        {sep}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
             </>
           )}
