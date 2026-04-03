@@ -206,6 +206,7 @@ header.site{
 .diaryCardWrap::before{ transform:translate(-32px,-32px); z-index:-2; }
 .diaryCardWrap::after{  transform:translate(-16px,-16px); z-index:-1; }
 .diaryCardWrap > .card{ border:none; border-radius:0; }
+.diaryCardWrap .threadCard{ border-radius:0; }
 
 /* profile chip */
 .profileChip{
