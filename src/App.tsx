@@ -570,7 +570,7 @@ export default function App() {
           )}
 
           {!expandedShowId && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 56 }}>
               {/* Beta message pill toggle */}
               <button
                 onClick={() => setBetaOpen(o => !o)}
@@ -610,14 +610,21 @@ export default function App() {
               </button>
 
               {betaOpen && (
-                <div className="homeAbout" style={{ display: "flex", justifyContent: "center" }}>
-                  <div style={{ maxWidth: 460, width: "100%", padding: "30px 16px" }}>
-                    <p>The BREAKING BAD forum is populated with posts (a.i. generated) that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site.<br /><br />
-                      On this mock site, you can create posts across all forums.<br /><br />
-                      You can use the "find a show" search field to go to a new show forum. They are all empty for now.<br /><br />
-                      The back and forward buttons on your browser window navigate within the site. Click and post with abandon!<br /><br />
-                      — Alborz<br /><br />
-                      🕓 <b>FUTURE FEATURE:</b> alerts about friends you're watching shows with. Have they caught up to you? Are they ahead? Are there new posts or replies about shows you're watching together? ⏳<br /><br /><br /></p>
+                <div style={{ maxWidth: 460, width: "100%", padding: "0 16px", marginTop: 12 }}>
+                  <div style={{
+                    background: "#fff",
+                    borderRadius: 12,
+                    padding: "20px 24px",
+                    color: "var(--dos-bg)",
+                    fontSize: 15,
+                    lineHeight: 1.6,
+                  }}>
+                    The BREAKING BAD forum is populated with posts (a.i. generated) that discuss the actual show. SIMULATED SHOW uses generic posts to help you understand the logic of the site.<br /><br />
+                    On this mock site, you can create posts across all forums.<br /><br />
+                    You can use the "find a show" search field to go to a new show forum. They are all empty for now.<br /><br />
+                    The back and forward buttons on your browser window navigate within the site. Click and post with abandon!<br /><br />
+                    — Alborz<br /><br />
+                    🕓 <b>FUTURE FEATURE:</b> alerts about friends you're watching shows with. Have they caught up to you? Are they ahead? Are there new posts or replies about shows you're watching together? ⏳
                   </div>
                 </div>
               )}
