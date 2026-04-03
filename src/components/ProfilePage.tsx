@@ -291,6 +291,7 @@ export default function ProfilePage({
                       </div>
                     </div>
                   ))}
+                  <div style={{ height: 32, flexShrink: 0 }} aria-hidden />
                 </div>
                 </div>{/* /diaryCardWrap */}
                 </div>{/* /diaryOuter */}
