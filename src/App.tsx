@@ -404,7 +404,7 @@ export default function App() {
   // Header is a pure height-spacer + full-bleed bottom border.
   // Logo and auth are both position:fixed so they float above this bar.
   // On profile pages an extra fixed tab-bar sits just below, so the spacer is taller.
-  const PROFILE_TABS_H = 64;
+  const PROFILE_TABS_H = 152;
   const PROFILE_HEADER_H = GLOBAL_HEADER_H + PROFILE_TABS_H;
   const headerHeight = isProfilePage && profileTabData && profileTabData.showTabOrder.length > 0
     ? PROFILE_HEADER_H
@@ -423,7 +423,7 @@ export default function App() {
       zIndex: 999,
       background: "var(--dos-bg)",
       borderBottom: "2px solid var(--dos-border)",
-      paddingTop: 12,
+      paddingTop: 36,
       paddingLeft: "25vw",
       paddingRight: 16,
       display: "flex",
