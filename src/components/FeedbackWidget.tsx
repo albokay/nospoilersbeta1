@@ -53,31 +53,31 @@ export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
             onClick={handleOpen}
             style={{
               position: "fixed", bottom: 24, right: 20, zIndex: 10000,
-              background: "var(--dos-user)", color: "#fff", border: "none",
+              background: "#e8832a", color: "#fff", border: "none",
               borderRadius: 9999, padding: "10px 18px",
               fontWeight: 700, fontSize: 13, cursor: "pointer",
               boxShadow: "0 2px 12px rgba(0,0,0,0.25)",
             }}
           >
-            send me thoughts
+            feedback
           </button>
         ) : (
           <div
             onClick={handleOpen}
             style={{
-              position: "fixed", right: 0, top: "66%",
+              position: "fixed", right: 0, top: "72%",
               transform: "translateY(-50%) rotate(180deg)",
               writingMode: "vertical-rl" as React.CSSProperties["writingMode"],
               zIndex: 10000,
-              background: "var(--dos-user)", color: "#fff",
+              background: "#e8832a", color: "#fff",
               padding: "14px 9px",
               cursor: "pointer", fontWeight: 700, fontSize: 13,
-              letterSpacing: 0.4, borderRadius: "0 0 0 8px",
+              letterSpacing: 0.4, borderRadius: "0 8px 8px 0",
               userSelect: "none" as React.CSSProperties["userSelect"],
               boxShadow: "-2px 2px 8px rgba(0,0,0,0.18)",
             }}
           >
-            send me thoughts
+            feedback
           </div>
         )
       )}
@@ -122,7 +122,7 @@ export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
           borderBottom: "2px solid var(--dos-border)",
         }}>
           <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 0.3 }}>
-            send me thoughts
+            Send me your thoughts
           </div>
           <button
             onClick={handleClose}
@@ -139,7 +139,7 @@ export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
           {/* Prompt header */}
           <div style={{
-            fontWeight: 700, fontSize: 13, lineHeight: 1.6,
+            fontWeight: 700, fontSize: 15, lineHeight: 1.6,
             color: "var(--dos-fg)", opacity: 0.85,
           }}>
             {PROMPT}
