@@ -13,20 +13,43 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
       onClick={disabled ? undefined : onToggle}
       aria-label={`Toggle mode (currently ${isRisky ? "Risky" : "Standard"})`}
       aria-pressed={isRisky}
-      className={compact ? "btn" : "btn modeToggle"}
-      style={{
-        position: "relative", display: "inline-flex", alignItems: "center", gap: 0, borderRadius: 0, padding: 0,
-        border: "1px solid var(--dos-border)", background: "transparent", overflow: "hidden", opacity: disabled ? .6 : 1,
-        ...(compact ? { width: "auto", minWidth: 76, height: 32, borderRadius: 0 } : {}),
-      }}
       title={isRisky ? "Risky: show redacted stubs (click to reveal)" : "Standard: hide newer comments"}
       disabled={disabled}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        borderRadius: 999,
+        overflow: "hidden",
+        border: "2px solid var(--dos-border)",
+        background: "transparent",
+        padding: 0,
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.6 : 1,
+        gap: 0,
+      }}
     >
-      <span style={{ flex: "1 1 0", textAlign: "center", fontWeight: 700, fontSize: compact ? 11 : 13, color: isRisky ? "var(--dos-gray)" : "var(--dos-light)", zIndex: 2, padding: compact ? "0 5px" : "0 8px", whiteSpace: "nowrap" }}>
-        {compact ? "std" : "Standard"}
+      <span style={{
+        padding: compact ? "3px 8px" : "3px 10px",
+        fontSize: compact ? 11 : 12,
+        fontWeight: !isRisky ? 700 : 400,
+        background: !isRisky ? "var(--dos-border)" : "transparent",
+        color: !isRisky ? "var(--dos-bg)" : "var(--dos-fg)",
+        whiteSpace: "nowrap",
+      }}>
+        {compact ? "std" : "standard"}
       </span>
-      <span style={{ flex: "1 1 0", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, fontWeight: 700, fontSize: compact ? 11 : 13, color: isRisky ? "var(--dos-light)" : "var(--dos-gray)", zIndex: 2, padding: compact ? "0 5px" : "0 8px", whiteSpace: "nowrap" }}>
-        {compact ? "risk" : "Risky"}
+      <span style={{
+        padding: compact ? "3px 8px" : "3px 10px",
+        fontSize: compact ? 11 : 12,
+        fontWeight: isRisky ? 700 : 400,
+        background: isRisky ? "var(--dos-border)" : "transparent",
+        color: isRisky ? "var(--dos-bg)" : "var(--dos-fg)",
+        whiteSpace: "nowrap",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+      }}>
+        {compact ? "risk" : "risky"}
         {hiddenNewReplies > 0 && (
           <span style={{
             width: 16, height: 16, borderRadius: "50%",
@@ -38,7 +61,6 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
           </span>
         )}
       </span>
-      <span className="modeKnob" style={{ position: "absolute", top: 2, bottom: 2, left: isRisky ? "calc(50% + 2px)" : "2px", width: "calc(50% - 4px)", background: "var(--dos-blue)", border: "1px solid var(--dos-border)" }} />
     </button>
   );
 }
