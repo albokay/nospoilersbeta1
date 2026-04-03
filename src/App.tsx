@@ -314,16 +314,18 @@ export default function App() {
       >
         <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
       </h1>
-      <SearchShows
-        shows={shows}
-        onPick={handlePickFromSearch}
-        onShowCreated={(newShow) => {
-          setShows(prev => [...prev, newShow]);
-          setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
-        }}
-        onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-        style={{ width: 220, margin: 0, height: 34 }}
-      />
+      <span className="mobileHide" style={{ display: "inline-flex" }}>
+        <SearchShows
+          shows={shows}
+          onPick={handlePickFromSearch}
+          onShowCreated={(newShow) => {
+            setShows(prev => [...prev, newShow]);
+            setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+          }}
+          onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
+          style={{ width: 220, margin: 0, height: 34 }}
+        />
+      </span>
     </div>
   ) : null;
 
@@ -331,17 +333,19 @@ export default function App() {
   const fixedAuth = (
     <div className="fixedAuthWrap" style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
       {!isHomepage && !authLoading && user && (
-        <YourShowsSelect
-          shows={shows}
-          progress={progress}
-          value={""}
-          onChange={(id: string) => {
-            if (!id) return;
-            setPickShowMode("confirm");
-            setPickShowId(id);
-          }}
-          compact
-        />
+        <span className="mobileHide" style={{ display: "inline-flex" }}>
+          <YourShowsSelect
+            shows={shows}
+            progress={progress}
+            value={""}
+            onChange={(id: string) => {
+              if (!id) return;
+              setPickShowMode("confirm");
+              setPickShowId(id);
+            }}
+            compact
+          />
+        </span>
       )}
       {!authLoading && !user && (
         <button className="btn" onClick={() => setShowAuthModal(true)}>
@@ -434,7 +438,7 @@ export default function App() {
                   />
                 )}
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
+                  <div className="popularHeading" style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
                     Popular Right Now
                   </div>
                   <div style={{ fontSize: 26 }}>

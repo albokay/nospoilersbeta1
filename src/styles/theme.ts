@@ -224,13 +224,32 @@ header.site{
   .profileChipLabel{ display:none; }
   .profileChip{ padding:6px; }
   .brandLogoImg{ height:34px !important; }
-  .fixedAuthWrap{ flex-direction:column; align-items:flex-end; gap:5px; }
+  /* Row layout (not column) — avatar + ✕ side-by-side, fits under 56 px header */
+  .fixedAuthWrap{ flex-direction:row; align-items:center; gap:8px; }
   .signOutLabel{ display:none; }
   .signOutX{ display:inline-flex; }
   .signOutBtn{
     width:34px; height:34px; border-radius:50%; padding:0;
     display:inline-flex; align-items:center; justify-content:center; font-size:14px;
   }
+
+  /* Hide non-essential fixed-header items that cause collision on narrow screens */
+  .mobileHide{ display:none !important; }
+
+  /* Diary stacked-paper: reduce offsets so they don't bleed off-screen */
+  .diaryOuter{ margin-top:20px; margin-left:20px; margin-bottom:12px; }
+  .diaryOuter::before{ transform:translate(-20px,-20px); }
+  .diaryCardWrap::before{ transform:translate(-13px,-13px); }
+  .diaryCardWrap::after{ transform:translate(-7px,-7px); }
+
+  /* Forum banner title: smaller on narrow screens */
+  .bannerTitle{ font-size:20px !important; letter-spacing:0.01em !important; }
+
+  /* Thread cards: tighten horizontal padding so content has more room */
+  .card.threadCard{ padding-left:10px; padding-right:10px; }
+
+  /* Homepage hero: scale down "Popular Right Now" header */
+  .popularHeading{ font-size:20px !important; }
 }
 @media(min-width:601px){
   .signOutX{ display:none; }
