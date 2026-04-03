@@ -548,8 +548,8 @@ export default function App() {
               </div>
 
               {/* ── Example forum ── */}
-              <div style={{ textAlign: "center", marginTop: 88 }}>
-                <div className="popularHeading" style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 12 }}>
+              <div style={{ textAlign: "center", marginTop: 60 }}>
+                <div className="popularHeading" style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
                   demo forum:
                 </div>
                 <button
