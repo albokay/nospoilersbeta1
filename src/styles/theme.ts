@@ -183,9 +183,19 @@ header.site{
 .likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }
 .likeThis{ font-style:italic; font-weight:700; }
 
-/* watch diary stacked pages */
+/* watch diary stacked pages — 4 sheets total, back=top-left, front=bottom-right */
+.diaryOuter{
+  position:relative;
+  margin-top:48px; margin-left:48px; margin-bottom:24px;
+}
+.diaryOuter::before{
+  content:""; position:absolute; inset:0;
+  border:3px solid #fff; border-radius:0;
+  background:var(--dos-bg);
+  transform:translate(-48px,-48px); z-index:-3;
+}
 .diaryCardWrap{
-  position:relative; z-index:0; margin-bottom:20px;
+  position:relative; z-index:0;
 }
 .diaryCardWrap::before,
 .diaryCardWrap::after{
@@ -193,8 +203,8 @@ header.site{
   border:3px solid #fff; border-radius:0;
   background:var(--dos-bg);
 }
-.diaryCardWrap::before{ transform:translate(14px, 26px); z-index:-2; }
-.diaryCardWrap::after{  transform:translate(7px,  13px); z-index:-1; }
+.diaryCardWrap::before{ transform:translate(-32px,-32px); z-index:-2; }
+.diaryCardWrap::after{  transform:translate(-16px,-16px); z-index:-1; }
 .diaryCardWrap > .card{ border:none; border-radius:0; }
 
 /* profile chip */
