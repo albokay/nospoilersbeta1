@@ -573,7 +573,7 @@ export default function App() {
           )}
 
           {!expandedShowId && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 100 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 120 }}>
               {/* Beta message pill toggle */}
               <button
                 onClick={() => setBetaOpen(o => !o)}
@@ -598,7 +598,7 @@ export default function App() {
                   color: !betaOpen ? "var(--dos-bg)" : "transparent",
                   whiteSpace: "nowrap",
                 }}>
-                  click here beta tester!
+                  *click here beta tester!
                 </span>
                 <span style={{
                   padding: "5px 14px",
