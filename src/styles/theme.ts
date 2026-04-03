@@ -123,20 +123,20 @@ header.site{
 
 /* homepage search */
 .splashSearchWrap{
-  position:relative; display:flex; align-items:center; justify-content:center;
+  position:relative; display:flex; align-items:center;
   width:288px; max-width:90vw; margin:20px auto;
   height:40px; border:3px solid #bdd4de; border-radius:9999px;
-  padding:0 16px; gap:5px;
+  padding:0 16px;
   background:#bdd4de; color:#c19231;
 }
 .splashSearch{
   background:transparent; border:none !important; border-radius:0 !important; outline:none;
-  flex:1; min-width:0; width:100%;
-  text-align:center; padding:0;
+  position:absolute; left:0; right:0;
+  text-align:center; padding:0 36px;
   font-size:15px; font-weight:600; letter-spacing:0.01em; color:inherit;
 }
 .splashSearch::placeholder{ color:inherit; opacity:1; }
-.splashSearchIcon{ font-size:18px; opacity:.85; flex-shrink:0; line-height:1; }
+.splashSearchIcon{ font-size:18px; opacity:.85; flex-shrink:0; line-height:1; position:relative; z-index:1; }
 .dropdownPanel{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
   max-height:320px; overflow:auto; background:rgba(222,168,56,0.97);
