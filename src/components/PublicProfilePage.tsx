@@ -106,39 +106,36 @@ export default function PublicProfilePage({
         <div className="container" style={{ marginTop: 32 }}>
           {/* Scrollable show folder tabs */}
           {showTabOrder.length > 0 && (
-            <div style={{ position: "sticky", top: 56, zIndex: 90, background: "var(--dos-bg)" }}>
-              <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
-                {showTabOrder.map(sid => {
-                  const active = sid === activeTab;
-                  return (
-                    <button
-                      key={sid}
-                      onClick={() => active ? openShow(sid) : setActiveTab(sid)}
-                      style={{
-                        padding: active ? "8px 18px" : "5px 18px",
-                        background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
-                        border: "2px solid var(--dos-border)",
-                        borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
-                        borderRadius: "8px 8px 0 0",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                        color: "var(--dos-fg)",
-                        fontWeight: active ? 800 : 500,
-                        fontSize: 14,
-                        letterSpacing: 0.3,
-                        alignSelf: "flex-end",
-                        position: "relative",
-                        zIndex: active ? 1 : 0,
-                        textDecoration: active ? "underline" : "none",
-                        textUnderlineOffset: 3,
-                      }}
-                    >
-                      {showName(sid)}
-                    </button>
-                  );
-                })}
-              </div>
-              <div style={{ borderTop: "2px solid var(--dos-border)" }} />
+            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
+              {showTabOrder.map(sid => {
+                const active = sid === activeTab;
+                return (
+                  <button
+                    key={sid}
+                    onClick={() => active ? openShow(sid) : setActiveTab(sid)}
+                    style={{
+                      padding: active ? "8px 18px" : "5px 18px",
+                      background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
+                      border: "2px solid var(--dos-border)",
+                      borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
+                      borderRadius: "8px 8px 0 0",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      color: "var(--dos-fg)",
+                      fontWeight: active ? 800 : 500,
+                      fontSize: 14,
+                      letterSpacing: 0.3,
+                      alignSelf: "flex-end",
+                      position: "relative",
+                      zIndex: active ? 1 : 0,
+                      textDecoration: active ? "underline" : "none",
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    {showName(sid)}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -147,7 +144,7 @@ export default function PublicProfilePage({
           )}
 
           {activeTab && (
-            <div className="hangLContent" style={{ paddingTop: 20 }}>
+            <div className="hangLContent" style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
             <>
               {/* Their posts — diary look */}
               <section style={{ marginTop: 0 }}>
