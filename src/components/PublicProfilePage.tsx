@@ -146,16 +146,18 @@ export default function PublicProfilePage({
           {activeTab && (
             <div className="hangLContent" style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
             <>
-              {/* Their posts */}
+              {/* Their posts — diary look */}
               <section style={{ marginTop: 0 }}>
-                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Posts</div>
-                <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
+                <div className="title" style={{ fontSize: 18, marginBottom: 8, textAlign: "center" }}>{username}'s public journal</div>
+                <div className="diaryOuter">
+                <div className="diaryCardWrap">
+                <div className="card" style={{ maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
                   {tabThreads.length === 0 && (
                     <div className="muted">No posts visible to you yet.</div>
                   )}
                   {tabThreads.map(t => (
                     <div key={t.id} className="card threadCard"
-                      style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
+                      style={{ margin: "10px 0 10px 20px", cursor: "pointer", position: "relative" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id)}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="title" style={{ fontSize: 18 }}>
@@ -182,7 +184,10 @@ export default function PublicProfilePage({
                       </div>
                     </div>
                   ))}
+                  <div style={{ height: 32, flexShrink: 0 }} aria-hidden />
                 </div>
+                </div>{/* /diaryCardWrap */}
+                </div>{/* /diaryOuter */}
               </section>
 
               {/* Their replies */}
