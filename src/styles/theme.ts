@@ -195,6 +195,7 @@ header.site{
 }
 .diaryCardWrap::before{ transform:translate(11px, 11px); z-index:-2; }
 .diaryCardWrap::after{  transform:translate(6px,  6px);  z-index:-1; }
+.diaryCardWrap > .card{ border:none; }
 
 /* profile chip */
 .profileChip{
