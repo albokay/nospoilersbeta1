@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Reply, Thread } from "../types";
 import type { Show } from "../lib/db";
 import {
@@ -8,6 +8,7 @@ import {
   fetchPublicProgressForUser,
 } from "../lib/db";
 import { canView, timeAgo } from "../lib/utils";
+import type { ProfileTabData } from "./ProfilePage";
 
 const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
@@ -19,6 +20,7 @@ export default function PublicProfilePage({
   openThreadWithFocus,
   openShow,
   onClose,
+  onTabsChange,
 }: {
   username: string;
   shows: Show[];
@@ -26,6 +28,7 @@ export default function PublicProfilePage({
   openThreadWithFocus: (showId: string, threadId: string, replyId?: string) => void;
   openShow: (showId: string) => void;
   onClose: () => void;
+  onTabsChange?: (data: ProfileTabData | null) => void;
 }) {
   const showName = (sid: string) => shows.find(s => s.id === sid)?.name || sid;
 
@@ -94,6 +97,24 @@ export default function PublicProfilePage({
   const tabReplies = useMemo(() =>
     visibleReplies.filter(p => p.thread.showId === activeTab), [visibleReplies, activeTab]);
 
+  // Push tab data up to App.tsx so it can render tabs in the fixed global header
+  const onTabsChangeRef = useRef(onTabsChange);
+  onTabsChangeRef.current = onTabsChange;
+  useEffect(() => {
+    if (loading) return;
+    onTabsChangeRef.current?.({
+      showTabOrder,
+      activeTab,
+      onTabClick: (sid: string) => {
+        if (sid === activeTab) openShow(sid);
+        else setActiveTab(sid);
+      },
+      tabActivity: {},
+      viewedTabIds: new Set(),
+    });
+  }, [loading, showTabOrder, activeTab]);
+  useEffect(() => { return () => { onTabsChangeRef.current?.(null); }; }, []);
+
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
       {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading profile…</div>}
@@ -103,48 +124,13 @@ export default function PublicProfilePage({
       )}
 
       {!loading && !notFound && (
-        <div className="container" style={{ marginTop: 32 }}>
-          {/* Scrollable show folder tabs */}
-          {showTabOrder.length > 0 && (
-            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
-              {showTabOrder.map(sid => {
-                const active = sid === activeTab;
-                return (
-                  <button
-                    key={sid}
-                    onClick={() => active ? openShow(sid) : setActiveTab(sid)}
-                    style={{
-                      padding: active ? "8px 18px" : "5px 18px",
-                      background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
-                      border: "2px solid var(--dos-border)",
-                      borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
-                      borderRadius: "8px 8px 0 0",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      color: "var(--dos-fg)",
-                      fontWeight: active ? 800 : 500,
-                      fontSize: 14,
-                      letterSpacing: 0.3,
-                      alignSelf: "flex-end",
-                      position: "relative",
-                      zIndex: active ? 1 : 0,
-                      textDecoration: active ? "underline" : "none",
-                      textUnderlineOffset: 3,
-                    }}
-                  >
-                    {showName(sid)}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {showTabOrder.length === 0 && (
+        <div className="container" style={{ marginTop: 12 }}>
+          {showTabOrder.length === 0 && !loading && (
             <div className="muted" style={{ padding: "24px 0" }}>Nothing to show yet.</div>
           )}
 
           {activeTab && (
-            <div className="hangLContent" style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
+            <div className="hangLContent" style={{ paddingTop: 20 }}>
             <>
               {/* Their posts — diary look */}
               <section style={{ marginTop: 0 }}>

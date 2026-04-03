@@ -12,7 +12,7 @@ import ExtensionDock from "./extensions/ExtensionDock";
 import SearchShows from "./components/SearchShows";
 import YourShowsSelect from "./components/YourShowsSelect";
 import ShowSection from "./components/ShowSection";
-import ProfilePage from "./components/ProfilePage";
+import ProfilePage, { type ProfileTabData } from "./components/ProfilePage";
 import Modal from "./components/Modal";
 import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
@@ -207,6 +207,9 @@ export default function App() {
   const [newHighlights, setNewHighlights] = useState<{ [sid: string]: { [tid: string]: true } }>({});
   const [visitedThreads, setVisitedThreads] = useState<{ [tid: string]: true }>({});
 
+  // Profile tab data lifted from ProfilePage / PublicProfilePage for fixed-header rendering
+  const [profileTabData, setProfileTabData] = useState<ProfileTabData | null>(null);
+
   const [likesThreads, setLikesThreads] = useState<Record<string, number>>({});
   const [likesReplies, setLikesReplies] = useState<Record<string, number>>({});
   const [likedByUserThreads, setLikedByUserThreads] = useState<Record<string, boolean>>({});
@@ -287,6 +290,7 @@ export default function App() {
   };
 
   const isHomepage = !expandedShowId && !showProfile && !publicProfileUsername;
+  const isProfilePage = showProfile || !!publicProfileUsername;
   const showAdmin = location.search.includes("admin");
   const isAdmin = user?.id === ADMIN_USER_ID;
 
@@ -399,15 +403,79 @@ export default function App() {
 
   // Header is a pure height-spacer + full-bleed bottom border.
   // Logo and auth are both position:fixed so they float above this bar.
+  // On profile pages an extra fixed tab-bar sits just below, so the spacer is taller.
+  const PROFILE_TABS_H = 44;
+  const PROFILE_HEADER_H = GLOBAL_HEADER_H + PROFILE_TABS_H;
+  const headerHeight = isProfilePage && profileTabData && profileTabData.showTabOrder.length > 0
+    ? PROFILE_HEADER_H
+    : GLOBAL_HEADER_H;
   const header = (
-    <header className="site bleed" style={{ height: GLOBAL_HEADER_H }} />
+    <header className="site bleed" style={{ height: headerHeight }} />
   );
+
+  // Fixed tab bar that sits immediately below the global header on profile pages
+  const fixedProfileTabs = isProfilePage && profileTabData && profileTabData.showTabOrder.length > 0 ? (
+    <div style={{
+      position: "fixed",
+      top: GLOBAL_HEADER_H,
+      left: 0,
+      right: 0,
+      zIndex: 999,
+      background: "var(--dos-bg)",
+      borderBottom: "2px solid var(--dos-border)",
+      padding: "0 16px",
+      display: "flex",
+      overflowX: "auto",
+      gap: 4,
+      alignItems: "flex-end",
+    }}>
+      {profileTabData.showTabOrder.map(sid => {
+        const active = sid === profileTabData.activeTab;
+        const activity = profileTabData.tabActivity?.[sid];
+        const viewed = profileTabData.viewedTabIds?.has(sid);
+        return (
+          <button
+            key={sid}
+            onClick={() => profileTabData.onTabClick(sid)}
+            style={{
+              padding: active ? "8px 18px" : "5px 18px",
+              background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
+              border: "2px solid var(--dos-border)",
+              borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
+              borderRadius: "8px 8px 0 0",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              color: "var(--dos-fg)",
+              fontWeight: active ? 800 : 500,
+              fontSize: 14,
+              letterSpacing: 0.3,
+              position: "relative",
+              marginBottom: -2,
+              textDecoration: active ? "underline" : "none",
+              textUnderlineOffset: 3,
+            }}
+          >
+            {shows.find(s => s.id === sid)?.name || sid}
+            {!viewed && activity && (
+              <span style={{
+                position: "absolute", top: 4, right: 4,
+                width: 8, height: 8, borderRadius: "50%",
+                background: activity === "green" ? "var(--green)" : "var(--danger)",
+                pointerEvents: "none",
+              }} />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
 
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
       {fixedHelp}
       {fixedLogo}
       {fixedAuth}
+      {fixedProfileTabs}
       {!isHomepage && header}
       {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); }} hint={authHint ?? undefined} />}
       {isHomepage && (
@@ -514,6 +582,7 @@ export default function App() {
           onClose={goHomepage}
           repliesToUser={repliesToUser}
           openedAtSeenAt={openedAtSeenAt}
+          onTabsChange={setProfileTabData}
         />
       )}
 
@@ -525,6 +594,7 @@ export default function App() {
           openThreadWithFocus={openThreadWithFocus}
           openShow={openShow}
           onClose={goHomepage}
+          onTabsChange={setProfileTabData}
         />
       )}
 

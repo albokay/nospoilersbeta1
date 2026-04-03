@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Reply, Thread } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -10,6 +10,14 @@ import Tooltip from "./Tooltip";
 const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
 
+export type ProfileTabData = {
+  showTabOrder: string[];
+  activeTab: string;
+  onTabClick: (sid: string) => void;
+  tabActivity: Record<string, "green" | "red">;
+  viewedTabIds: Set<string>;
+};
+
 export default function ProfilePage({
   shows: showsProp,
   username,
@@ -17,6 +25,7 @@ export default function ProfilePage({
   openThreadWithFocus, openShow, onClose,
   repliesToUser = [],
   openedAtSeenAt = 0,
+  onTabsChange,
 }: {
   shows: Show[];
   username: string;
@@ -30,6 +39,7 @@ export default function ProfilePage({
   onClose: () => void;
   repliesToUser?: { reply: Reply; thread: Thread }[];
   openedAtSeenAt?: number;
+  onTabsChange?: (data: ProfileTabData | null) => void;
 }) {
   const { user } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
@@ -176,70 +186,36 @@ export default function ProfilePage({
     return r;
   }, [repliesToUser, progress, openedAtSeenAt]);
 
+  // Push tab data up to App.tsx so it can render tabs in the fixed global header
+  const onTabsChangeRef = useRef(onTabsChange);
+  onTabsChangeRef.current = onTabsChange;
+  useEffect(() => {
+    if (loading) return;
+    onTabsChangeRef.current?.({
+      showTabOrder,
+      activeTab,
+      onTabClick: (sid: string) => {
+        if (sid === activeTab) openShow(sid);
+        else { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
+      },
+      tabActivity,
+      viewedTabIds,
+    });
+  }, [loading, showTabOrder, activeTab, tabActivity, viewedTabIds]);
+  useEffect(() => { return () => { onTabsChangeRef.current?.(null); }; }, []);
+
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
       {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading your profile…</div>}
 
       {!loading && (
-        <div className="container" style={{ marginTop: 32 }}>
-          {/* Scrollable show folder tabs */}
-          {showTabOrder.length > 0 && (
-            <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
-                {showTabOrder.map(sid => {
-                  const active = sid === activeTab;
-                  const activity = !active && !viewedTabIds.has(sid) ? tabActivity[sid] : null;
-                  return (
-                    <div key={sid} style={{ position: "relative", alignSelf: "flex-end" }}>
-                      <button
-                        onClick={() => {
-                          if (active) { openShow(sid); }
-                          else {
-                            setActiveTab(sid);
-                            setViewedTabIds(prev => new Set([...prev, sid]));
-                          }
-                        }}
-                        style={{
-                          padding: active ? "8px 18px" : "5px 18px",
-                          background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
-                          border: "2px solid var(--dos-border)",
-                          borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
-                          borderRadius: "8px 8px 0 0",
-                          cursor: "pointer",
-                          whiteSpace: "nowrap",
-                          color: "var(--dos-fg)",
-                          fontWeight: active ? 800 : 500,
-                          fontSize: 14,
-                          letterSpacing: 0.3,
-                          position: "relative",
-                          zIndex: active ? 1 : 0,
-                          textDecoration: active ? "underline" : "none",
-                          textUnderlineOffset: 3,
-                          display: "block",
-                        }}
-                      >
-                        {showName(sid)}
-                      </button>
-                      {activity && (
-                        <div style={{
-                          position: "absolute", top: -6, right: 2, zIndex: 2,
-                          width: 15, height: 15, borderRadius: "50%", pointerEvents: "none",
-                          background: activity === "green" ? "var(--green)" : "var(--danger)",
-                          boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
-                        }} />
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-
+        <div className="container" style={{ marginTop: 12 }}>
           {showTabOrder.length === 0 && (
             <div className="muted" style={{ padding: "24px 0" }}>No shows yet.</div>
           )}
 
           {activeTab && (
-            /* borderTop is the "line" — active tab overlaps and covers it with its own background */
-            <div className="hangLContent" style={{ borderTop: "2px solid var(--dos-border)", paddingTop: 20 }}>
+            <div className="hangLContent" style={{ paddingTop: 20 }}>
             <>
               {/* Your watch diary */}
               <section style={{ marginTop: 0 }}>
