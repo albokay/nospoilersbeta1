@@ -213,10 +213,16 @@ export default function AdminPage({
                     )}
 
                     {/* Meta */}
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, fontSize: 12, opacity: 0.7 }}>
-                      <span style={{ fontWeight: 700 }}>@{row.username ?? "unknown"}</span>
-                      <span>{timeAgo(row.createdAt)}</span>
-                      <span style={{ fontFamily: "monospace" }}>{row.pageUrl}</span>
+                    <div style={{ marginBottom: 8, fontSize: 12, opacity: 0.7 }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 700 }}>@{row.username ?? "unknown"}</span>
+                        <span>{timeAgo(row.createdAt)}</span>
+                      </div>
+                      {row.pageUrl && (
+                        <div style={{ fontFamily: "monospace", marginTop: 2 }}>
+                          📍 {row.pageUrl}
+                        </div>
+                      )}
                     </div>
 
                     {/* Message */}
