@@ -127,7 +127,7 @@ header.site{
   width:288px; max-width:90vw; margin:20px auto;
   height:40px; border:3px solid #bdd4de; border-radius:9999px;
   padding:0 16px; gap:5px;
-  background:#bdd4de; color:#2256c9;
+  background:#bdd4de; color:#f45028;
 }
 .splashSearch{
   background:transparent; border:none !important; border-radius:0 !important; outline:none;
@@ -142,6 +142,7 @@ header.site{
   max-height:320px; overflow:auto; background:rgba(222,168,56,0.97);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   border:3px solid var(--dos-border); border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
+  color:var(--dos-fg);
 }
 
 /* "Your shows" */
