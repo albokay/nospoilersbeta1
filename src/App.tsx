@@ -614,7 +614,7 @@ export default function App() {
                   <div style={{
                     background: "#fff",
                     borderRadius: 12,
-                    padding: "20px 24px",
+                    padding: "20px 24px 32px",
                     color: "var(--dos-bg)",
                     fontSize: 15,
                     lineHeight: 1.6,
