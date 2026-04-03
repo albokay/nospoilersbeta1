@@ -185,17 +185,17 @@ header.site{
 
 /* watch diary stacked pages */
 .diaryCardWrap{
-  position:relative; z-index:0; margin-bottom:16px;
+  position:relative; z-index:0; margin-bottom:20px;
 }
 .diaryCardWrap::before,
 .diaryCardWrap::after{
   content:""; position:absolute; inset:0;
-  border:3px solid #fff; border-radius:23px;
+  border:3px solid #fff; border-radius:0;
   background:var(--dos-bg);
 }
-.diaryCardWrap::before{ transform:translate(11px, 11px); z-index:-2; }
-.diaryCardWrap::after{  transform:translate(6px,  6px);  z-index:-1; }
-.diaryCardWrap > .card{ border:none; }
+.diaryCardWrap::before{ transform:translate(14px, 26px); z-index:-2; }
+.diaryCardWrap::after{  transform:translate(7px,  13px); z-index:-1; }
+.diaryCardWrap > .card{ border:none; border-radius:0; }
 
 /* profile chip */
 .profileChip{
