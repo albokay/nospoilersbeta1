@@ -547,24 +547,27 @@ export default function App() {
                 />
               </div>
 
-              {/* ── Popular Right Now ── */}
+              {/* ── Example forum ── */}
               <div style={{ textAlign: "center", marginTop: 52 }}>
-                <div className="popularHeading" style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
-                  Popular Right Now
+                <div className="popularHeading" style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 12 }}>
+                  example forum:
                 </div>
-                <div style={{ fontSize: 26 }}>
-                  {["bb", "simshow"].map((id, idx, arr) => {
-                    const s = shows.find(x => x.id === id);
-                    if (!s) return null;
-                    const sep = idx < arr.length - 1 ? " / " : "";
-                    return (
-                      <span key={id}>
-                        <a onClick={() => handlePickFromSearch(id)} style={{ cursor: "pointer" }}>{s.name}</a>
-                        {sep}
-                      </span>
-                    );
-                  })}
-                </div>
+                <button
+                  onClick={() => handlePickFromSearch("bb")}
+                  style={{
+                    background: "var(--dos-bg)",
+                    color: "#fff",
+                    border: "2px solid #fff",
+                    borderRadius: 9999,
+                    padding: "8px 24px",
+                    fontSize: 18,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  {shows.find(s => s.id === "bb")?.name ?? "Breaking Bad"}
+                </button>
               </div>
             </>
           )}
@@ -614,7 +617,7 @@ export default function App() {
                   <div style={{
                     background: "#fff",
                     borderRadius: 12,
-                    padding: "20px 24px 32px",
+                    padding: "20px 24px 60px",
                     color: "var(--dos-bg)",
                     fontSize: 15,
                     lineHeight: 1.6,
