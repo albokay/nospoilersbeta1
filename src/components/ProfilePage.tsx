@@ -248,7 +248,7 @@ export default function ProfilePage({
                 <div className="title" style={{ fontSize: 18, marginBottom: 8, textAlign: "center" }}>Your watch diary</div>
                 <div className="diaryOuter">
                 <div className="diaryCardWrap">
-                <div className="card" style={{ position: "relative", zIndex: 1 }}>
+                <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
                   {tabThreads.length === 0 && <div className="muted">No posts yet.</div>}
                   {tabThreads.map(t => (
                     <div key={t.id} className="card threadCard"
