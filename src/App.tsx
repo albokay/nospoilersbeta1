@@ -352,7 +352,7 @@ export default function App() {
           Sign in / Join
         </button>
       )}
-      {!authLoading && user && username && (() => {
+      {!isHomepage && !authLoading && user && username && (() => {
         const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
         const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
         const pillTooltipText =
@@ -425,6 +425,15 @@ export default function App() {
           {!expandedShowId && (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 28, placeItems: "center", marginTop: 36 }}>
+                {user && (
+                  <button
+                    className="btn"
+                    onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
+                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, padding: "10px 28px", fontSize: 16, fontWeight: 700, letterSpacing: "0.01em" }}
+                  >
+                    read your watch diary
+                  </button>
+                )}
                 {user && (
                   <YourShowsSelect
                     shows={shows}

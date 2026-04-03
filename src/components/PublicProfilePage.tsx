@@ -106,6 +106,7 @@ export default function PublicProfilePage({
         <div className="container" style={{ marginTop: 32 }}>
           {/* Scrollable show folder tabs */}
           {showTabOrder.length > 0 && (
+            <div style={{ position: "sticky", top: 56, zIndex: 90, background: "var(--dos-bg)", paddingTop: 4 }}>
             <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
               {showTabOrder.map(sid => {
                 const active = sid === activeTab;
@@ -136,7 +137,8 @@ export default function PublicProfilePage({
                   </button>
                 );
               })}
-            </div>
+            </div>{/* /tabs row */}
+            </div>{/* /sticky wrapper */}
           )}
 
           {showTabOrder.length === 0 && (

@@ -184,8 +184,8 @@ export default function ProfilePage({
         <div className="container" style={{ marginTop: 32 }}>
           {/* Scrollable show folder tabs */}
           {showTabOrder.length > 0 && (
-            /* marginBottom: -2 makes the tab row overlap the content border below by 2px,
-               so the active tab (z-index 1, no bottom border) visually "opens" into the content */
+            /* sticky wrapper keeps tabs pinned below the fixed header while scrolling */
+            <div style={{ position: "sticky", top: 56, zIndex: 90, background: "var(--dos-bg)", paddingTop: 4 }}>
             <div style={{ display: "flex", overflowX: "auto", gap: 4, marginBottom: -2 }}>
               {showTabOrder.map(sid => {
                 const active = sid === activeTab;
@@ -232,7 +232,8 @@ export default function ProfilePage({
                   </div>
                 );
               })}
-            </div>
+            </div>{/* /tabs row */}
+            </div>{/* /sticky wrapper */}
           )}
 
           {showTabOrder.length === 0 && (

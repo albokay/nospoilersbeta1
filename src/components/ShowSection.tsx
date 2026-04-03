@@ -646,7 +646,7 @@ export default function ShowSection({
                 </div>
 
                 <div className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-                  {show.name} • Started by <Username name={t.author} onClickProfile={onClickProfile} /> • {timeAgo(t.updatedAt)}
+                  Started by <Username name={t.author} onClickProfile={onClickProfile} /> • {timeAgo(t.updatedAt)}
                 </div>
 
                 <div style={{ marginTop: 6 }}>
