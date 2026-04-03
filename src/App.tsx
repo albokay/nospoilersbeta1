@@ -413,7 +413,9 @@ export default function App() {
     <header className="site bleed" style={{ height: headerHeight }} />
   );
 
-  // Fixed tab bar that sits immediately below the global header on profile pages
+  // Fixed tab bar that sits immediately below the global header on profile pages.
+  // The separator line is an absolute element behind the scrollable tab row so that
+  // the active tab's matching-bg borderBottom paints over it — creating the folder-tab gap.
   const fixedProfileTabs = isProfilePage && profileTabData && profileTabData.showTabOrder.length > 0 ? (
     <div style={{
       position: "fixed",
@@ -422,53 +424,60 @@ export default function App() {
       right: 0,
       zIndex: 999,
       background: "var(--dos-bg)",
-      borderBottom: "2px solid var(--dos-border)",
-      paddingTop: 36,
-      paddingLeft: "25vw",
-      paddingRight: 16,
-      display: "flex",
-      overflowX: "auto",
-      gap: 4,
-      alignItems: "flex-end",
     }}>
-      {profileTabData.showTabOrder.map(sid => {
-        const active = sid === profileTabData.activeTab;
-        const activity = profileTabData.tabActivity?.[sid];
-        const viewed = profileTabData.viewedTabIds?.has(sid);
-        return (
-          <button
-            key={sid}
-            onClick={() => profileTabData.onTabClick(sid)}
-            style={{
-              padding: active ? "8px 18px" : "5px 18px",
-              background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
-              border: "2px solid var(--dos-border)",
-              borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
-              borderRadius: "8px 8px 0 0",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              color: "var(--dos-fg)",
-              fontWeight: active ? 800 : 500,
-              fontSize: 14,
-              letterSpacing: 0.3,
-              position: "relative",
-              marginBottom: -2,
-              textDecoration: active ? "underline" : "none",
-              textUnderlineOffset: 3,
-            }}
-          >
-            {shows.find(s => s.id === sid)?.name || sid}
-            {!viewed && activity && (
-              <span style={{
-                position: "absolute", top: 4, right: 4,
-                width: 8, height: 8, borderRadius: "50%",
-                background: activity === "green" ? "var(--green)" : "var(--danger)",
-                pointerEvents: "none",
-              }} />
-            )}
-          </button>
-        );
-      })}
+      {/* Separator line — behind the tab row so active tab can erase it */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "var(--dos-border)" }} />
+      {/* Scrollable tab row — higher stacking context, so buttons paint over the line */}
+      <div style={{
+        position: "relative",
+        zIndex: 1,
+        paddingTop: 36,
+        paddingLeft: "25vw",
+        paddingRight: 16,
+        display: "flex",
+        overflowX: "auto",
+        gap: 4,
+        alignItems: "flex-end",
+      }}>
+        {profileTabData.showTabOrder.map(sid => {
+          const active = sid === profileTabData.activeTab;
+          const activity = profileTabData.tabActivity?.[sid];
+          const viewed = profileTabData.viewedTabIds?.has(sid);
+          return (
+            <button
+              key={sid}
+              onClick={() => profileTabData.onTabClick(sid)}
+              style={{
+                padding: active ? "8px 18px" : "5px 18px",
+                background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
+                border: "2px solid var(--dos-border)",
+                borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
+                borderRadius: "8px 8px 0 0",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                color: "var(--dos-fg)",
+                fontWeight: active ? 800 : 500,
+                fontSize: 14,
+                letterSpacing: 0.3,
+                position: "relative",
+                marginBottom: 0,
+                textDecoration: active ? "underline" : "none",
+                textUnderlineOffset: 3,
+              }}
+            >
+              {shows.find(s => s.id === sid)?.name || sid}
+              {!viewed && activity && (
+                <span style={{
+                  position: "absolute", top: 4, right: 4,
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: activity === "green" ? "var(--green)" : "var(--danger)",
+                  pointerEvents: "none",
+                }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   ) : null;
 
