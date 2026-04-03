@@ -61,6 +61,29 @@ export default function ShowSection({
 
   // Clear risky reveals only when the thread changes, not on mode toggle
   useEffect(() => { setRiskyRevealedIds(new Set()); }, [activeThreadId]);
+
+  // When toggling FROM standard TO risky: scroll to + flash first redacted stub
+  const prevModeRef = useRef(mode);
+  useEffect(() => {
+    const wasStandard = prevModeRef.current === "standard";
+    prevModeRef.current = mode;
+    if (!wasStandard || mode !== "risky") return;
+    // Give RepliesList one frame to render the stubs
+    setTimeout(() => {
+      const first = document.querySelector<HTMLElement>(".card.redacted");
+      if (!first) return;
+      first.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Flash after scroll settles
+      setTimeout(() => {
+        const s = getComputedStyle(first);
+        first.style.position = s.position === "static" ? "relative" : s.position;
+        const cover = document.createElement("div");
+        cover.className = "flash-cover";
+        first.appendChild(cover);
+        setTimeout(() => cover.remove(), 1300);
+      }, 650);
+    }, 30);
+  }, [mode]);
   const [composeOpen, setComposeOpen] = useState(false);
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const topRef = bannerRef;
@@ -427,12 +450,14 @@ export default function ShowSection({
                 + New Post
               </button>
               <div style={{ flex: 1 }} />
-              <ModeToggle
-                value={mode}
-                onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
-                hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
-                compact={true}
-              />
+              <div style={{ marginLeft: -15 }}>
+                <ModeToggle
+                  value={mode}
+                  onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
+                  hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
+                  compact={true}
+                />
+              </div>
               <OneSelectProgress
                 show={allShows.find(s => s.id === showId) || { seasons: [10] }}
                 value={progress[showId] || { s: 1, e: 1 }}
@@ -474,11 +499,13 @@ export default function ShowSection({
               )}
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {thread && (
-                  <ModeToggle
-                    value={mode}
-                    onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
-                    hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
-                  />
+                  <div style={{ marginLeft: -15 }}>
+                    <ModeToggle
+                      value={mode}
+                      onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
+                      hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
+                    />
+                  </div>
                 )}
                 <OneSelectProgress
                   show={allShows.find(s => s.id === showId) || { seasons: [10] }}
