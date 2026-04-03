@@ -548,9 +548,9 @@ export default function App() {
               </div>
 
               {/* ── Example forum ── */}
-              <div style={{ textAlign: "center", marginTop: 52 }}>
+              <div style={{ textAlign: "center", marginTop: 88 }}>
                 <div className="popularHeading" style={{ fontSize: 28, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 12 }}>
-                  example forum:
+                  demo forum:
                 </div>
                 <button
                   onClick={() => handlePickFromSearch("bb")}
@@ -613,11 +613,11 @@ export default function App() {
               </button>
 
               {betaOpen && (
-                <div style={{ maxWidth: 460, width: "100%", padding: "0 16px", marginTop: 28 }}>
+                <div style={{ maxWidth: 460, width: "100%", padding: "0 16px", marginTop: 28, marginBottom: 60 }}>
                   <div style={{
                     background: "#fff",
                     borderRadius: 12,
-                    padding: "20px 24px 60px",
+                    padding: "20px 24px",
                     color: "var(--dos-bg)",
                     fontSize: 15,
                     lineHeight: 1.6,
