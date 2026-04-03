@@ -294,7 +294,7 @@ export default function App() {
   const fixedHelp = isHomepage ? (
     <div style={{ position: "fixed", top: 14, left: 14, zIndex: 1000 }}>
       <Tooltip text="A spoiler-safe TV forum built around your watch progress — no spoilers guaranteed." direction="below" align="left">
-        <button className="btn" style={{ width: 34, height: 34, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800, lineHeight: 1, background: "#fff", border: "none", color: "var(--dos-bg)" }}>
+        <button className="btn" style={{ width: 30, height: 30, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800, lineHeight: 1, background: "#fff", border: "none", outline: "none", color: "var(--dos-bg)" }}>
           ?
         </button>
       </Tooltip>
@@ -312,7 +312,7 @@ export default function App() {
         onClick={goHomepage}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHomepage(); } }}
       >
-        <img src="/sidebar-logo.png" alt="sidebar" style={{ height: 38, width: "auto", display: "block" }} />
+        <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
       </h1>
       <SearchShows
         shows={shows}

@@ -197,6 +197,7 @@ header.site{
 @media(max-width:600px){
   .profileChipLabel{ display:none; }
   .profileChip{ padding:6px; }
+  .brandLogoImg{ height:34px !important; }
   .fixedAuthWrap{ flex-direction:column; align-items:flex-end; gap:5px; }
   .signOutLabel{ display:none; }
   .signOutX{ display:inline-flex; }
