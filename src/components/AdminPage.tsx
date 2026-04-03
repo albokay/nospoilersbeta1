@@ -1,6 +1,20 @@
-import React, { useState } from "react";
-import type { Show } from "../lib/db";
-import { adminDeleteShow, adminToggleHidden } from "../lib/db";
+import React, { useState, useEffect } from "react";
+import type { Show, FeedbackRow } from "../lib/db";
+import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback } from "../lib/db";
+import { timeAgo } from "../lib/utils";
+
+type FeedbackStatus = "will-do" | "consider" | "done" | "ignore";
+const STATUS_LABELS: FeedbackStatus[] = ["will-do", "consider", "done", "ignore"];
+const STATUS_ORDER: Record<string, number> = { "will-do": 0, "consider": 1, "done": 4, "ignore": 5 };
+
+function sortFeedback(rows: FeedbackRow[]): FeedbackRow[] {
+  return [...rows].sort((a, b) => {
+    const aKey = a.status ? STATUS_ORDER[a.status] : (a.readAt ? 3 : 2);
+    const bKey = b.status ? STATUS_ORDER[b.status] : (b.readAt ? 3 : 2);
+    if (aKey !== bKey) return aKey - bKey;
+    return b.createdAt - a.createdAt;
+  });
+}
 
 export default function AdminPage({
   shows,
@@ -13,6 +27,7 @@ export default function AdminPage({
   onShowDeleted?: (showId: string) => void;
   onClose: () => void;
 }) {
+  // ── Shows state ──────────────────────────────────────────────────────────
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Show | null>(null);
@@ -47,6 +62,42 @@ export default function AdminPage({
     }
   };
 
+  // ── Feedback state ───────────────────────────────────────────────────────
+  const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchFeedback()
+      .then(rows => {
+        setFeedback(rows);
+        // Mark all currently unread as read
+        const unreadIds = rows.filter(r => !r.readAt).map(r => r.id);
+        if (unreadIds.length) markFeedbackRead(unreadIds).catch(() => {});
+      })
+      .catch(() => {})
+      .finally(() => setFeedbackLoading(false));
+  }, []);
+
+  const handleFeedbackStatus = async (id: string, status: FeedbackStatus | null) => {
+    await updateFeedbackStatus(id, status).catch(() => {});
+    setFeedback(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+  };
+
+  const handleFeedbackDelete = async (id: string) => {
+    await deleteFeedback(id).catch(() => {});
+    setFeedback(prev => prev.filter(r => r.id !== id));
+    setDeletingId(null);
+  };
+
+  const sortedFeedback = sortFeedback(feedback);
+
+  // Group label helper
+  const groupLabel = (row: FeedbackRow): string => {
+    if (row.status) return row.status;
+    return row.readAt ? "unchecked" : "new";
+  };
+
   return (
     <section className="container" style={{ paddingBottom: 60 }}>
       <div className="stickybar bleed" style={{ top: 72 }}>
@@ -58,6 +109,7 @@ export default function AdminPage({
         </div>
       </div>
 
+      {/* ── Forums section ── */}
       <div style={{ marginTop: 28 }}>
         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Forums ({shows.length})</div>
 
@@ -76,7 +128,6 @@ export default function AdminPage({
                 opacity: busy === show.id ? 0.5 : 1,
               }}
             >
-              {/* Show info */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 15 }}>
                   {show.name}
@@ -91,8 +142,6 @@ export default function AdminPage({
                   {` · ${show.seasons.length} season${show.seasons.length !== 1 ? "s" : ""}`}
                 </div>
               </div>
-
-              {/* Actions */}
               <div style={{ display: "flex", gap: 8, flex: "0 0 auto" }}>
                 <button
                   className="btn"
@@ -113,14 +162,121 @@ export default function AdminPage({
               </div>
             </div>
           ))}
-
           {sorted.length === 0 && (
             <div className="muted" style={{ padding: 16 }}>No forums yet.</div>
           )}
         </div>
       </div>
 
-      {/* Delete confirmation */}
+      {/* ── Feedback section ── */}
+      <div style={{ marginTop: 48 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
+          Feedback {!feedbackLoading && `(${feedback.length})`}
+        </div>
+
+        {feedbackLoading && <div className="muted">Loading…</div>}
+
+        {!feedbackLoading && feedback.length === 0 && (
+          <div className="muted">No feedback yet.</div>
+        )}
+
+        {!feedbackLoading && sortedFeedback.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {sortedFeedback.map((row, i) => {
+              // Show a group header when the group changes
+              const prevRow = sortedFeedback[i - 1];
+              const showGroupHeader = i === 0 || groupLabel(row) !== groupLabel(prevRow);
+              const isNew = !row.readAt && !row.status;
+
+              return (
+                <React.Fragment key={row.id}>
+                  {showGroupHeader && (
+                    <div style={{
+                      fontSize: 11, fontWeight: 800, textTransform: "uppercase",
+                      letterSpacing: 1, opacity: 0.55, marginTop: i === 0 ? 0 : 8,
+                    }}>
+                      {groupLabel(row)}
+                    </div>
+                  )}
+                  <div className="card" style={{
+                    padding: "14px 16px",
+                    background: isNew ? "rgba(255,255,255,0.18)" : undefined,
+                    position: "relative",
+                  }}>
+                    {/* Unread dot */}
+                    {isNew && (
+                      <div style={{
+                        position: "absolute", top: 12, right: 12,
+                        width: 10, height: 10, borderRadius: "50%",
+                        background: "var(--green)",
+                      }} />
+                    )}
+
+                    {/* Meta */}
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8, fontSize: 12, opacity: 0.7 }}>
+                      <span style={{ fontWeight: 700 }}>@{row.username ?? "unknown"}</span>
+                      <span>{timeAgo(row.createdAt)}</span>
+                      <span style={{ fontFamily: "monospace" }}>{row.pageUrl}</span>
+                    </div>
+
+                    {/* Message */}
+                    <div style={{ fontSize: 15, lineHeight: 1.55, marginBottom: 14, whiteSpace: "pre-wrap" }}>
+                      {row.message}
+                    </div>
+
+                    {/* Status checkboxes + delete */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                      {STATUS_LABELS.map(s => (
+                        <label key={s} style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 13, fontWeight: row.status === s ? 700 : 400 }}>
+                          <input
+                            type="checkbox"
+                            checked={row.status === s}
+                            onChange={() => handleFeedbackStatus(row.id, row.status === s ? null : s)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          {s}
+                        </label>
+                      ))}
+
+                      <div style={{ marginLeft: "auto" }}>
+                        {deletingId === row.id ? (
+                          <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <span style={{ fontSize: 12 }}>sure?</span>
+                            <button
+                              className="btn btn-danger"
+                              style={{ fontSize: 11, padding: "3px 8px" }}
+                              onClick={() => handleFeedbackDelete(row.id)}
+                            >
+                              yes, delete
+                            </button>
+                            <button
+                              className="btn"
+                              style={{ fontSize: 11, padding: "3px 8px" }}
+                              onClick={() => setDeletingId(null)}
+                            >
+                              cancel
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            className="btn btn-danger"
+                            style={{ fontSize: 11, padding: "3px 8px" }}
+                            onClick={() => setDeletingId(row.id)}
+                          >
+                            delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Delete show confirmation */}
       {confirmDelete && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",

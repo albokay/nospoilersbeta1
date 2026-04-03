@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
-import { fetchProgress, upsertProgress, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies } from "./lib/db";
+import { fetchProgress, upsertProgress, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount } from "./lib/db";
 import { supabase } from "./lib/supabaseClient";
 import type { Show } from "./lib/db";
 import type { Reply, Thread } from "./types";
@@ -20,6 +20,7 @@ import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
+import FeedbackWidget from "./components/FeedbackWidget";
 
 const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
 
@@ -28,6 +29,15 @@ const GLOBAL_HEADER_H = 56;
 
 export default function App() {
   useEffect(injectDOSStyles, []);
+
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 600);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth <= 600);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+
+  const [feedbackUnread, setFeedbackUnread] = useState(0);
 
   const [shows, setShows] = useState<Show[]>([]);
   useEffect(() => {
@@ -300,6 +310,17 @@ export default function App() {
   const showAdmin = location.search.includes("admin");
   const isAdmin = user?.id === ADMIN_USER_ID;
 
+  // Fetch unread feedback count for admin badge
+  useEffect(() => {
+    if (!isAdmin || !user) { setFeedbackUnread(0); return; }
+    fetchUnreadFeedbackCount().then(setFeedbackUnread).catch(() => {});
+  }, [isAdmin, user?.id]);
+
+  // Clear unread badge when admin panel opens
+  useEffect(() => {
+    if (showAdmin && isAdmin) setFeedbackUnread(0);
+  }, [showAdmin, isAdmin]);
+
   // ── Fixed ? button (homepage only) ──────────────────────────
   const fixedHelp = isHomepage ? (
     <div style={{ position: "fixed", top: 14, left: 14, zIndex: 1000 }}>
@@ -400,9 +421,23 @@ export default function App() {
         </button>
       )}
       {!authLoading && isAdmin && (
-        <button className="btn" onClick={() => navigate("/?admin")} title="Admin" style={{ fontSize: 18 }}>
-          ⚙
-        </button>
+        <div style={{ position: "relative", display: "inline-flex" }}>
+          <button className="btn" onClick={() => navigate("/?admin")} title="Admin" style={{ fontSize: 18 }}>
+            ⚙
+          </button>
+          {feedbackUnread > 0 && (
+            <div style={{
+              position: "absolute", top: -6, right: -6,
+              width: 18, height: 18, borderRadius: "50%",
+              background: "var(--danger)", color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 10, fontWeight: 800, lineHeight: 1,
+              pointerEvents: "none",
+            }}>
+              {feedbackUnread > 9 ? "9+" : feedbackUnread}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -494,6 +529,7 @@ export default function App() {
       {fixedAuth}
       {fixedProfileTabs}
       {!isHomepage && header}
+      <FeedbackWidget isMobile={isMobile} />
       {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); }} hint={authHint ?? undefined} />}
       {isHomepage && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95, paddingTop: 64 }}>

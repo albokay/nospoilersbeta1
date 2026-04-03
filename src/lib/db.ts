@@ -510,3 +510,84 @@ export async function insertReply(data: {
   if (error) throw error;
   return rowToReply(inserted);
 }
+
+// ── Feedback ──────────────────────────────────────────────────────────────────
+
+export type FeedbackRow = {
+  id: string;
+  userId: string | null;
+  username: string | null;
+  pageUrl: string | null;
+  message: string;
+  status: "will-do" | "consider" | "done" | "ignore" | null;
+  createdAt: number;
+  readAt: number | null;
+};
+
+export async function insertFeedback(
+  userId: string,
+  username: string,
+  pageUrl: string,
+  message: string
+): Promise<void> {
+  const { error } = await supabase.from("feedback").insert({
+    user_id: userId,
+    username,
+    page_url: pageUrl,
+    message,
+  });
+  if (error) throw error;
+}
+
+export async function fetchFeedback(): Promise<FeedbackRow[]> {
+  const { data, error } = await supabase
+    .from("feedback")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    userId: row.user_id,
+    username: row.username,
+    pageUrl: row.page_url,
+    message: row.message,
+    status: row.status ?? null,
+    createdAt: new Date(row.created_at).getTime(),
+    readAt: row.read_at ? new Date(row.read_at).getTime() : null,
+  }));
+}
+
+export async function updateFeedbackStatus(
+  id: string,
+  status: "will-do" | "consider" | "done" | "ignore" | null
+): Promise<void> {
+  const { error } = await supabase
+    .from("feedback")
+    .update({ status })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function markFeedbackRead(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  const { error } = await supabase
+    .from("feedback")
+    .update({ read_at: new Date().toISOString() })
+    .in("id", ids)
+    .is("read_at", null);
+  if (error) throw error;
+}
+
+export async function deleteFeedback(id: string): Promise<void> {
+  const { error } = await supabase.from("feedback").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function fetchUnreadFeedbackCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from("feedback")
+    .select("id", { count: "exact", head: true })
+    .is("read_at", null);
+  if (error) return 0;
+  return count ?? 0;
+}
