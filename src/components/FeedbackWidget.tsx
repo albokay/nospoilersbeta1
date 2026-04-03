@@ -4,7 +4,14 @@ import { useLocation } from "react-router-dom";
 import { insertFeedback } from "../lib/db";
 
 const MAX_CHARS = 2000;
-const PROMPT = "Let me know how things are working. Anything confusing? Anything glitching? Anything exciting? Any suggestions? Anything you love or want to see more of?";
+const PROMPT_LINES = [
+  "Let me know how things are working.",
+  "Any suggestions?",
+  "Anything confusing?",
+  "Anything glitching?",
+  "Anything exciting?",
+  "Anything you love or want more of?",
+];
 
 function canSubmit(): boolean {
   const last = localStorage.getItem("ns_fb_last");
@@ -53,7 +60,7 @@ export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
             onClick={handleOpen}
             style={{
               position: "fixed", bottom: 24, right: 20, zIndex: 10000,
-              background: "#e8832a", color: "#fff", border: "none",
+              background: "#f45028", color: "#fff", border: "none",
               borderRadius: 9999, padding: "10px 18px",
               fontWeight: 700, fontSize: 13, cursor: "pointer",
               boxShadow: "0 2px 12px rgba(0,0,0,0.25)",
@@ -69,12 +76,11 @@ export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
               transform: "translateY(-50%) rotate(180deg)",
               writingMode: "vertical-rl" as React.CSSProperties["writingMode"],
               zIndex: 10000,
-              background: "#e8832a", color: "#fff",
+              background: "#f45028", color: "#fff",
               padding: "14px 9px",
               cursor: "pointer", fontWeight: 700, fontSize: 13,
               letterSpacing: 0.4, borderRadius: "0 8px 8px 0",
               userSelect: "none" as React.CSSProperties["userSelect"],
-              boxShadow: "-2px 2px 8px rgba(0,0,0,0.18)",
             }}
           >
             feedback
@@ -138,11 +144,15 @@ export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
         {/* Panel body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
           {/* Prompt header */}
-          <div style={{
-            fontWeight: 700, fontSize: 15, lineHeight: 1.6,
-            color: "var(--dos-fg)", opacity: 0.85,
-          }}>
-            {PROMPT}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {PROMPT_LINES.map((line, i) => (
+              <div key={i} style={{
+                fontWeight: 700, fontSize: 15, lineHeight: 1.5,
+                color: "var(--dos-fg)", opacity: 0.85,
+              }}>
+                {line}
+              </div>
+            ))}
           </div>
 
           {/* Textarea */}
