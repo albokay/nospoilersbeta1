@@ -151,7 +151,7 @@ export default function PublicProfilePage({
                 <div className="title" style={{ fontSize: 18, marginBottom: 8, textAlign: "center" }}>{username}'s public journal</div>
                 <div className="diaryOuter">
                 <div className="diaryCardWrap">
-                <div className="card" style={{ maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
+                <div className="card" style={{ position: "relative", zIndex: 1 }}>
                   {tabThreads.length === 0 && (
                     <div className="muted">No posts visible to you yet.</div>
                   )}
