@@ -127,7 +127,7 @@ header.site{
   width:288px; max-width:90vw; margin:20px auto;
   height:40px; border:3px solid #bdd4de; border-radius:9999px;
   padding:0 16px; gap:5px;
-  background:#bdd4de; color:#fff;
+  background:#bdd4de; color:#2256c9;
 }
 .splashSearch{
   background:transparent; border:none !important; border-radius:0 !important; outline:none;
@@ -196,6 +196,16 @@ header.site{
 @media(max-width:600px){
   .profileChipLabel{ display:none; }
   .profileChip{ padding:6px; }
+  .fixedAuthWrap{ flex-direction:column; align-items:flex-end; gap:5px; }
+  .signOutLabel{ display:none; }
+  .signOutX{ display:inline-flex; }
+  .signOutBtn{
+    width:34px; height:34px; border-radius:50%; padding:0;
+    display:inline-flex; align-items:center; justify-content:center; font-size:14px;
+  }
+}
+@media(min-width:601px){
+  .signOutX{ display:none; }
 }
 
 /* username highlight (site-wide for inline mentions) */

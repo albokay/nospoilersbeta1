@@ -329,7 +329,7 @@ export default function App() {
 
   // ── Fixed auth / profile / admin controls (top-right, all pages) ─
   const fixedAuth = (
-    <div style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="fixedAuthWrap" style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
       {!isHomepage && !authLoading && user && (
         <YourShowsSelect
           shows={shows}
@@ -380,8 +380,9 @@ export default function App() {
           : pillContent;
       })()}
       {!authLoading && user && username && (
-        <button className="btn" onClick={() => { goHomepage(); signOut(); }}>
-          Sign out
+        <button className="btn signOutBtn" onClick={() => { goHomepage(); signOut(); }}>
+          <span className="signOutLabel">Sign out</span>
+          <span className="signOutX">✕</span>
         </button>
       )}
       {!authLoading && isAdmin && (
