@@ -242,8 +242,10 @@ header.site{
   .diaryCardWrap::before{ transform:translate(-13px,-13px); }
   .diaryCardWrap::after{ transform:translate(-7px,-7px); }
 
-  /* Forum banner title: smaller on narrow screens */
-  .bannerTitle{ font-size:20px !important; letter-spacing:0.01em !important; }
+  /* Forum banner: show title, all buttons/dropdowns bigger on mobile */
+  .bannerTitle{ font-size:26px !important; letter-spacing:0.01em !important; }
+  .stickybar .badge{ font-size:17px !important; padding:11px 18px !important; }
+  .stickybar .btn{ font-size:17px !important; padding:10px 18px !important; height:auto !important; }
 
   /* Thread cards: tighten horizontal padding so content has more room */
   .card.threadCard{ padding-left:10px; padding-right:10px; }
