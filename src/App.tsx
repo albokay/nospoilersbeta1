@@ -516,7 +516,7 @@ export default function App() {
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
                     style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
                   >
-                    review your Watch Diary
+                    review your WATCH DIARY
                   </button>
                 )}
                 {user && (
@@ -529,7 +529,7 @@ export default function App() {
                       setPickShowMode("confirm");
                       setPickShowId(id);
                     }}
-                    placeholder="what's the word on your shows?"
+                    placeholder="your SHOW FORUMS"
                     wrapperStyle={{ width: 288, maxWidth: "90vw" }}
                   />
                 )}
@@ -541,7 +541,7 @@ export default function App() {
                     setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
                   }}
                   onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-                  placeholder="find your new show"
+                  placeholder="FIND your show"
                   style={{ margin: 0 }}
                 />
               </div>
