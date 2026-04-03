@@ -183,6 +183,19 @@ header.site{
 .likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }
 .likeThis{ font-style:italic; font-weight:700; }
 
+/* watch diary stacked pages */
+.diaryCardWrap{
+  position:relative; z-index:0; margin-bottom:16px;
+}
+.diaryCardWrap::before,
+.diaryCardWrap::after{
+  content:""; position:absolute; inset:0;
+  border:3px solid #fff; border-radius:23px;
+  background:var(--dos-bg);
+}
+.diaryCardWrap::before{ transform:translate(11px, 11px); z-index:-2; }
+.diaryCardWrap::after{  transform:translate(6px,  6px);  z-index:-1; }
+
 /* profile chip */
 .profileChip{
   display:inline-flex; align-items:center; gap:8px; cursor:pointer;
