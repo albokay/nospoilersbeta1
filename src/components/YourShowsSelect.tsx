@@ -9,7 +9,7 @@ export default function YourShowsSelect({
     <div style={{ display: "flex", flexDirection: "column", alignItems: compact ? "flex-end" : "center", width: compact ? "auto" : "100%" }}>
       <select
         className={compact ? "badge" : "badge listPill"}
-        style={{ background: "#f45028", color: "#fff", border: "3px solid #f45028", ...(compact ? { width: "auto" } : {}) }}
+        style={{ background: "#7abd8e", color: "#fff", border: "3px solid #7abd8e", ...(compact ? { width: "auto" } : {}) }}
         value={value}
         onChange={(ev) => onChange(ev.target.value)}
       >
