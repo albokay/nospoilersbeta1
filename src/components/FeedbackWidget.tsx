@@ -72,7 +72,7 @@ export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
           <div
             onClick={handleOpen}
             style={{
-              position: "fixed", right: 0, top: "72%",
+              position: "fixed", right: 0, top: "75%",
               transform: "translateY(-50%) rotate(180deg)",
               writingMode: "vertical-rl" as React.CSSProperties["writingMode"],
               zIndex: 10000,
