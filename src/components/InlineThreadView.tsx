@@ -161,7 +161,7 @@ export default function InlineThreadView({
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: 22, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }} className="title">
-                {thread.isPrivate && <span>🔒</span>}
+                {thread.isPrivate && <span>📝</span>}
                 <span>{thread.titleBase}</span>
                 {thread.showId !== "simshow" && (
                   <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7 }}>

@@ -269,7 +269,7 @@ export default function ProfilePage({
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="title" style={{ fontSize: 18 }}>
-                          {t.isPrivate && <span title="Private" style={{ marginRight: 8 }}>🔒</span>}
+                          {t.isPrivate && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
                           {t.titleBase}
                           {t.showId !== "simshow" && (
                             <span style={{ color: "var(--dos-cyan)" }}>

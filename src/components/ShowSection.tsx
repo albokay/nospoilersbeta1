@@ -555,7 +555,7 @@ export default function ShowSection({
             setTimeout(() => scrollToShowTop(), 0);
           }}
           onThreadMakePrivate={() => {
-            // Mark private in state — owner still sees it with 🔒, others see nothing
+            // Mark private in state — owner still sees it with 📝, others see nothing
             setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPrivate: true } : t));
           }}
           onThreadMakePublic={() => {
@@ -583,7 +583,7 @@ export default function ShowSection({
             const { visibleNew, hiddenNew, totalVisible } = getNewCounts(t.id);
             const hasExternal = hasExternalReplies[t.id] ?? false;
 
-            // Private: owner sees normally (with 🔒 in title); others see nothing
+            // Private: owner sees normally (with 📝 in title); others see nothing
             if (t.isPrivate && !isOwn) return null;
 
             // Deleted:
@@ -658,7 +658,7 @@ export default function ShowSection({
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h2 style={{ margin: 0, fontSize: 22 }} className="title">
-                    {t.isPrivate && <span style={{ marginRight: 4 }}>🔒</span>}
+                    {t.isPrivate && <span style={{ marginRight: 4 }}>📝</span>}
                     {t.titleBase}
                     {t.showId !== "simshow" && (
                       <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7 }}>
