@@ -210,7 +210,7 @@ export default function InlineThreadView({
                     )}
                   </>
                 )}
-                <button className="btn" onClick={handleReplyToThread}>Reply</button>
+                <button className="btn" onClick={handleReplyToThread}>Write a response</button>
               </div>
             )}
           </>

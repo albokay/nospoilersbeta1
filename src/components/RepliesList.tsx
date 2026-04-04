@@ -376,7 +376,7 @@ export default function RepliesList({
 
       {threadReplyOpen && (
         <div className="card" style={{ marginBottom: 12, borderLeft: "4px solid var(--dos-accent)" }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Reply to this post</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>Write a response</div>
           <textarea
             ref={threadReplyRef}
             value={threadReplyBody}
@@ -403,7 +403,7 @@ export default function RepliesList({
               onClick={handleSubmitThreadReply}
               disabled={threadReplySubmitting || !threadReplyBody.trim()}
             >
-              {threadReplySubmitting ? "Posting…" : "Post reply"}
+              {threadReplySubmitting ? "Posting…" : "Write a response"}
             </button>
           </div>
         </div>
@@ -550,7 +550,7 @@ export default function RepliesList({
                     className="btn"
                     onClick={() => replyingToId === r.id ? handleCancelReply() : handleReplyClick(r.id)}
                   >
-                    {replyingToId === r.id ? "Cancel" : "Reply"}
+                    {replyingToId === r.id ? "Cancel" : "Write a response"}
                   </button>
                 </div>
               )}
@@ -583,7 +583,7 @@ export default function RepliesList({
                       onClick={() => handleSubmitReply(r.id)}
                       disabled={submitting || !replyBody.trim()}
                     >
-                      {submitting ? "Posting…" : "Post reply"}
+                      {submitting ? "Posting…" : "Write a response"}
                     </button>
                   </div>
                 </div>

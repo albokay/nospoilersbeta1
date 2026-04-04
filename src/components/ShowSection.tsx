@@ -417,7 +417,7 @@ export default function ShowSection({
                 flex: "0 0 auto",
               }}
             >
-              {String((allShows.find(s => s.id === showId)?.name) || showId)}
+              {`the ${String((allShows.find(s => s.id === showId)?.name) || showId)} room`}
             </span>
             {!thread && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto" }}>
@@ -449,7 +449,7 @@ export default function ShowSection({
                 onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
                 style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
               >
-                + New Post
+                + make an entry
               </button>
               <div style={{ flex: 1 }} />
               <div style={{ transform: "translateX(-10px)" }}>
@@ -478,7 +478,7 @@ export default function ShowSection({
                   title="Start a new post"
                   style={{ lineHeight: 1.2 }}
                 >
-                  + New Post
+                  + make an entry
                 </button>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -495,7 +495,7 @@ export default function ShowSection({
                     title="Start a new post"
                     style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
                   >
-                    + New Post
+                    + make an entry
                   </button>
                 </div>
               )}
@@ -616,7 +616,7 @@ export default function ShowSection({
               <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
                 {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
                   <Tooltip
-                    text="You have hidden replies from viewers who are further along!"
+                    text="People (who are ahead of you) have written you back!"
                     direction="right"
                     align="left"
                     useAbsolute
@@ -704,7 +704,7 @@ export default function ShowSection({
       {composeOpen && (
         <Modal onClose={() => setComposeOpen(false)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <h3 className="title" style={{ margin: 0 }}>New Post</h3>
+            <h3 className="title" style={{ margin: 0 }}>make an entry</h3>
             <button className="btn" onClick={() => setComposeOpen(false)}>✕</button>
           </div>
 
@@ -728,8 +728,8 @@ export default function ShowSection({
             />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
               <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => submitPost(false)} disabled={postSubmitting}>{postSubmitting ? "Posting…" : "Post"}</button>
-              <button className="btn post" onClick={() => submitPost(true)} disabled={postSubmitting}>Post privately</button>
+              <button className="btn btn-danger" onClick={() => submitPost(false)} disabled={postSubmitting}>{postSubmitting ? "Posting…" : "send to the room"}</button>
+              <button className="btn post" onClick={() => submitPost(true)} disabled={postSubmitting}>save to your log</button>
             </div>
           </div>
         </Modal>

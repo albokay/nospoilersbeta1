@@ -387,7 +387,7 @@ export default function App() {
         const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
         const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
         const pillTooltipText =
-          pillBadge === "green" ? "You have new replies to read!" :
+          pillBadge === "green" ? "Someone wrote you back!" :
           pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
           null;
         const pillContent = (
@@ -553,7 +553,7 @@ export default function App() {
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
                     style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
                   >
-                    review your WATCH DIARY
+                    review your journal
                   </button>
                 )}
                 {user && (
@@ -647,7 +647,7 @@ export default function App() {
                       onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
                       style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
                     >
-                      review your WATCH DIARY
+                      review your journal
                     </button>
                   )}
                   {user && (

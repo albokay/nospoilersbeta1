@@ -223,7 +223,7 @@ export default function ProfilePage({
               <section style={{ marginTop: 0 }}>
                 <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8, minHeight: 28 }}>
                   {/* Title pinned to center independently of toggle width */}
-                  <div className="title" style={{ fontSize: 18, position: "absolute", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", pointerEvents: "none" }}>your Watch Diary</div>
+                  <div className="title" style={{ fontSize: 18, position: "absolute", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", pointerEvents: "none" }}>your journal</div>
                   {/* Toggle floats right so it never touches the title */}
                   <div style={{ marginLeft: "auto", display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
                     {(["all", "private"] as const).map(opt => (
@@ -258,7 +258,7 @@ export default function ProfilePage({
                       onClick={() => openThreadWithFocus(t.showId, t.id)}>
                       {invisibleByThreadId[t.id] && (
                         <Tooltip
-                          text={`You have ${invisibleCountByThreadId[t.id] ?? ""} hidden ${(invisibleCountByThreadId[t.id] ?? 0) === 1 ? "reply" : "replies"} from viewers who are further along!`}
+                          text={`${invisibleCountByThreadId[t.id] ?? ""} people ahead of you have written back! You can read these once you catch up.`}
                           direction="below"
                           align="left"
                           gap={48}
@@ -300,9 +300,9 @@ export default function ProfilePage({
                 </div>{/* /diaryOuter */}
               </section>
 
-              {/* Replies to you — moved above "Your replies" */}
+              {/* Responses to you — moved above "your responses" */}
               <section style={{ marginTop: 24 }}>
-                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Replies to you</div>
+                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No replies yet.</div>}
                   {tabRepliesToMe.map(({ reply: r, thread: t }) => (
@@ -338,9 +338,9 @@ export default function ProfilePage({
                 </div>
               </section>
 
-              {/* Your replies */}
+              {/* your responses */}
               <section style={{ marginTop: 24 }}>
-                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your replies</div>
+                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>your responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabMyReplies.length === 0 && <div className="muted">No replies yet.</div>}
                   {tabMyReplies.map(({ reply: r, thread: t }) => (
