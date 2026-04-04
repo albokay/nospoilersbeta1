@@ -220,14 +220,19 @@ export default function AdminPage({
                         {row.message}
                       </td>
                       <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
-                        <select
-                          value={row.status ?? ""}
-                          onChange={e => handleFeedbackStatus(row.id, (e.target.value as any) || null)}
-                          style={{ fontSize: 12, fontFamily: "monospace", border: "1px solid #ccc", borderRadius: 3, padding: "2px 4px", background: "#fff" }}
-                        >
-                          <option value="">—</option>
-                          {STATUS_LABELS.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          {STATUS_LABELS.map(s => (
+                            <label key={s} style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 12 }}>
+                              <input
+                                type="checkbox"
+                                checked={row.status === s}
+                                onChange={() => handleFeedbackStatus(row.id, row.status === s ? null : s)}
+                                style={{ cursor: "pointer" }}
+                              />
+                              {s}
+                            </label>
+                          ))}
+                        </div>
                       </td>
                       <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
                         {deletingId === row.id ? (
