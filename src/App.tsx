@@ -601,7 +601,7 @@ export default function App() {
             /* Outer: centres the stack; extra paddingLeft+paddingTop reveal the peeking back pages */
             <div style={{ display: "flex", justifyContent: "center", paddingTop: isMobile ? 77 : 121, paddingLeft: isMobile ? 20 : 30, paddingRight: isMobile ? 4 : 0, paddingBottom: 40, zIndex: 95, position: "relative" }}>
               {/* Card-sized relative wrapper — back pages size off this */}
-              <div style={{ position: "relative", width: isMobile ? "auto" : 475, maxWidth: isMobile ? "88vw" : "65vw", ...(isMobile ? { alignSelf: "stretch", flex: 1 } : {}) }}>
+              <div style={{ position: "relative", width: isMobile ? "auto" : 713, maxWidth: isMobile ? "88vw" : "95vw", ...(isMobile ? { alignSelf: "stretch", flex: 1 } : {}) }}>
               {/* Page 3 — furthest back */}
               <div style={{
                 position: "absolute", top: 0, left: 0,
@@ -625,7 +625,7 @@ export default function App() {
                 position: "relative",
                 border: "2px solid #fff",
                 borderRadius: 0,
-                padding: isMobile ? "48px 28px 64px" : "68px 60px 92px",
+                padding: isMobile ? "48px 28px 64px" : "85px 60px 115px",
                 display: "flex", flexDirection: "column", alignItems: "center",
                 background: "var(--dos-bg)",
               }}>
