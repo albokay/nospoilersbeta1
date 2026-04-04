@@ -104,7 +104,7 @@ function annotateTextWithSups(
     if (m.endPos <= last) continue; // skip overlapping
     const pos = Math.max(m.pos, last);
     if (pos > last) nodes.push(text.slice(last, pos));
-    nodes.push(text.slice(pos, m.endPos));
+    nodes.push(<span key={`qt-${m.index}`} className="quoted-passage">{text.slice(pos, m.endPos)}</span>);
     nodes.push(
       <sup key={`sup-${m.index}`}>
         <button className="cite-sup-btn" onClick={m.onScrollTo} title="Jump to citing response">
