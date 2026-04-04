@@ -181,103 +181,72 @@ export default function AdminPage({
         )}
 
         {!feedbackLoading && sortedFeedback.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {sortedFeedback.map((row, i) => {
-              // Show a group header when the group changes
-              const prevRow = sortedFeedback[i - 1];
-              const showGroupHeader = i === 0 || groupLabel(row) !== groupLabel(prevRow);
-              const isNew = !row.readAt && !row.status;
-
-              return (
-                <React.Fragment key={row.id}>
-                  {showGroupHeader && (
-                    <div style={{
-                      fontSize: 11, fontWeight: 800, textTransform: "uppercase",
-                      letterSpacing: 1, opacity: 0.55, marginTop: i === 0 ? 0 : 8,
+          <div style={{ overflowX: "auto" }}>
+            <table style={{
+              width: "100%", borderCollapse: "collapse",
+              fontSize: 13, fontFamily: "monospace",
+              background: "#fff", color: "#000",
+            }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid #999", textAlign: "left" }}>
+                  <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>user</th>
+                  <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>when</th>
+                  <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>page</th>
+                  <th style={{ padding: "6px 10px", fontWeight: 700 }}>message</th>
+                  <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>status</th>
+                  <th style={{ padding: "6px 10px" }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedFeedback.map((row, i) => {
+                  const isNew = !row.readAt && !row.status;
+                  return (
+                    <tr key={row.id} style={{
+                      borderBottom: "1px solid #ddd",
+                      background: isNew ? "#fffbe6" : i % 2 === 0 ? "#fff" : "#f9f9f9",
+                      verticalAlign: "top",
                     }}>
-                      {groupLabel(row)}
-                    </div>
-                  )}
-                  <div className="card" style={{
-                    padding: "14px 16px",
-                    background: isNew ? "rgba(255,255,255,0.18)" : undefined,
-                    position: "relative",
-                  }}>
-                    {/* Unread dot */}
-                    {isNew && (
-                      <div style={{
-                        position: "absolute", top: 12, right: 12,
-                        width: 10, height: 10, borderRadius: "50%",
-                        background: "var(--green)",
-                      }} />
-                    )}
-
-                    {/* Meta */}
-                    <div style={{ marginBottom: 8, fontSize: 12, opacity: 0.7 }}>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontWeight: 700 }}>@{row.username ?? "unknown"}</span>
-                        <span>{timeAgo(row.createdAt)}</span>
-                      </div>
-                      {row.pageUrl && (
-                        <div style={{ fontFamily: "monospace", marginTop: 2 }}>
-                          {row.pageUrl}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Message */}
-                    <div style={{ fontSize: 15, lineHeight: 1.55, marginBottom: 14, whiteSpace: "pre-wrap" }}>
-                      {row.message}
-                    </div>
-
-                    {/* Status checkboxes + delete */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                      {STATUS_LABELS.map(s => (
-                        <label key={s} style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 13, fontWeight: row.status === s ? 700 : 400 }}>
-                          <input
-                            type="checkbox"
-                            checked={row.status === s}
-                            onChange={() => handleFeedbackStatus(row.id, row.status === s ? null : s)}
-                            style={{ cursor: "pointer" }}
-                          />
-                          {s}
-                        </label>
-                      ))}
-
-                      <div style={{ marginLeft: "auto" }}>
+                      <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
+                        {isNew && <span style={{ color: "green", marginRight: 4 }}>●</span>}
+                        @{row.username ?? "—"}
+                      </td>
+                      <td style={{ padding: "6px 10px", whiteSpace: "nowrap", color: "#555" }}>
+                        {timeAgo(row.createdAt)}
+                      </td>
+                      <td style={{ padding: "6px 10px", whiteSpace: "nowrap", color: "#555" }}>
+                        {row.pageUrl ?? "—"}
+                      </td>
+                      <td style={{ padding: "6px 10px", whiteSpace: "pre-wrap", maxWidth: 420, fontFamily: "inherit", fontSize: 13 }}>
+                        {row.message}
+                      </td>
+                      <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
+                        <select
+                          value={row.status ?? ""}
+                          onChange={e => handleFeedbackStatus(row.id, (e.target.value as any) || null)}
+                          style={{ fontSize: 12, fontFamily: "monospace", border: "1px solid #ccc", borderRadius: 3, padding: "2px 4px", background: "#fff" }}
+                        >
+                          <option value="">—</option>
+                          {STATUS_LABELS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </td>
+                      <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
                         {deletingId === row.id ? (
-                          <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <span style={{ fontSize: 12 }}>sure?</span>
-                            <button
-                              className="btn btn-danger"
-                              style={{ fontSize: 11, padding: "3px 8px" }}
-                              onClick={() => handleFeedbackDelete(row.id)}
-                            >
-                              yes, delete
-                            </button>
-                            <button
-                              className="btn"
-                              style={{ fontSize: 11, padding: "3px 8px" }}
-                              onClick={() => setDeletingId(null)}
-                            >
-                              cancel
-                            </button>
+                          <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                            <span style={{ color: "#c00" }}>sure?</span>
+                            <button onClick={() => handleFeedbackDelete(row.id)} style={{ fontSize: 11, cursor: "pointer", color: "#c00", background: "none", border: "1px solid #c00", borderRadius: 3, padding: "1px 6px" }}>yes</button>
+                            <button onClick={() => setDeletingId(null)} style={{ fontSize: 11, cursor: "pointer", background: "none", border: "1px solid #999", borderRadius: 3, padding: "1px 6px" }}>no</button>
                           </span>
                         ) : (
-                          <button
-                            className="btn btn-danger"
-                            style={{ fontSize: 11, padding: "3px 8px" }}
-                            onClick={() => setDeletingId(row.id)}
-                          >
+                          <button onClick={() => setDeletingId(row.id)} style={{ fontSize: 11, cursor: "pointer", color: "#c00", background: "none", border: "none", padding: 0, textDecoration: "underline" }}>
                             delete
                           </button>
                         )}
-                      </div>
-                    </div>
-                  </div>
-                </React.Fragment>
-              );
-            })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
