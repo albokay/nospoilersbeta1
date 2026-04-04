@@ -536,9 +536,9 @@ export default function App() {
           {!expandedShowId && isHomepage && (
             /* ── Stacked diary-pages card ── */
             /* Outer: centres the stack; extra paddingLeft+paddingTop reveal the peeking back pages */
-            <div style={{ display: "flex", justifyContent: "center", paddingTop: 110, paddingLeft: 30, paddingBottom: 40, zIndex: 95, position: "relative" }}>
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: isMobile ? 70 : 110, paddingLeft: isMobile ? 20 : 30, paddingRight: isMobile ? 4 : 0, paddingBottom: 40, zIndex: 95, position: "relative" }}>
               {/* Card-sized relative wrapper — back pages size off this */}
-              <div style={{ position: "relative", width: 475, maxWidth: "65vw" }}>
+              <div style={{ position: "relative", width: isMobile ? "auto" : 475, maxWidth: isMobile ? "88vw" : "65vw", ...(isMobile ? { alignSelf: "stretch", flex: 1 } : {}) }}>
               {/* Page 3 — furthest back */}
               <div style={{
                 position: "absolute", top: 0, left: 0,
@@ -546,7 +546,7 @@ export default function App() {
                 border: "2px solid #fff",
                 borderRadius: 0,
                 background: "var(--dos-bg)",
-                transform: "translate(-20px, -14px)",
+                transform: isMobile ? "translate(-16px, -11px)" : "translate(-20px, -14px)",
               }} />
               {/* Page 2 */}
               <div style={{
@@ -555,14 +555,14 @@ export default function App() {
                 border: "2px solid #fff",
                 borderRadius: 0,
                 background: "var(--dos-bg)",
-                transform: "translate(-10px, -7px)",
+                transform: isMobile ? "translate(-8px, -5px)" : "translate(-10px, -7px)",
               }} />
               {/* Main card */}
               <div style={{
                 position: "relative",
                 border: "2px solid #fff",
                 borderRadius: 0,
-                padding: "68px 60px 92px",
+                padding: isMobile ? "48px 28px 64px" : "68px 60px 92px",
                 display: "flex", flexDirection: "column", alignItems: "center",
                 background: "var(--dos-bg)",
               }}>
