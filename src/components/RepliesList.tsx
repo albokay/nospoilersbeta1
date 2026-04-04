@@ -106,7 +106,7 @@ function annotateTextWithSups(
     if (pos > last) nodes.push(text.slice(last, pos));
     nodes.push(<span key={`qt-${m.index}`} className="quoted-passage">{text.slice(pos, m.endPos)}</span>);
     nodes.push(
-      <sup key={`sup-${m.index}`}>
+      <sup key={`sup-${m.index}`} className="cite-sup">
         <button className="cite-sup-btn" onClick={m.onScrollTo} title="Jump to citing response">
           {superscriptNum(m.index)}
         </button>
@@ -123,12 +123,15 @@ function UnmatchedSups({ sups }: { sups: Array<{ index: number; onScrollTo: () =
   if (!sups.length) return null;
   return (
     <>
-      {sups.map(s => (
-        <sup key={`usup-${s.index}`}>
-          <button className="cite-sup-btn" onClick={s.onScrollTo} title="Jump to citing response">
-            {superscriptNum(s.index)}
-          </button>
-        </sup>
+      {sups.map((s, i) => (
+        <React.Fragment key={`usup-${s.index}`}>
+          {i > 0 && <sup className="cite-sup"><span className="cite-sup-btn" style={{ cursor: "default" }}>,</span></sup>}
+          <sup className="cite-sup">
+            <button className="cite-sup-btn" onClick={s.onScrollTo} title="Jump to citing response">
+              {superscriptNum(s.index)}
+            </button>
+          </sup>
+        </React.Fragment>
       ))}
     </>
   );
@@ -284,6 +287,7 @@ export default function RepliesList({
   }, [externalReplies]);
 
   const [localLiked, setLocalLiked] = useState<Record<string, boolean>>({});
+  const [quoteHintId, setQuoteHintId] = useState<string | null>(null);
 
   const [localEditedBody, setLocalEditedBody] = useState<Record<string, string>>({});
   const [localDeleted, setLocalDeleted] = useState<Record<string, boolean>>({});
@@ -428,19 +432,19 @@ export default function RepliesList({
   // Handle Quote action on a reply
   const handleQuote = (r: Reply) => {
     if (!user) { onAuthRequired(); return; }
-    // Try to get selected text within this reply element
     const sel = window.getSelection();
-    let quotedText = "";
-    if (sel && sel.toString().trim()) {
-      quotedText = sel.toString().trim();
-    } else {
-      quotedText = r.body.slice(0, 300) + (r.body.length > 300 ? "…" : "");
+    const selectedText = sel?.toString().trim() ?? "";
+    if (!selectedText) {
+      // No text selected — show the hint popup instead
+      setQuoteHintId(id => id === r.id ? null : r.id);
+      return;
     }
+    setQuoteHintId(null);
     onSetPendingReference?.({
       type: "quote",
       replyId: r.id,
       authorName: r.author,
-      quotedText,
+      quotedText: selectedText,
     });
     onScrollToComposer?.();
   };
@@ -601,31 +605,32 @@ export default function RepliesList({
                     </span>
                   )}
                   {/* Link citation superscripts in the heading */}
-                  {linkSups.map(s => (
-                    <sup key={`lsup-${s.index}`}>
-                      <button className="cite-sup-btn" onClick={s.onScrollTo} title="Jump to citing response">
-                        {superscriptNum(s.index)}
-                      </button>
-                    </sup>
+                  {linkSups.map((s, i) => (
+                    <React.Fragment key={`lsup-${s.index}`}>
+                      {i > 0 && <sup className="cite-sup"><span className="cite-sup-btn" style={{ cursor: "default" }}>,</span></sup>}
+                      <sup className="cite-sup">
+                        <button className="cite-sup-btn" onClick={s.onScrollTo} title="Jump to citing response">
+                          {superscriptNum(s.index)}
+                        </button>
+                      </sup>
+                    </React.Fragment>
                   ))}
                   {isReplyEdited && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7 }}>(edited)</span>
                   )}
                   {/* "Responding to" inline for link-type references */}
                   {r.referenceType === "link" && (referencedReply || r.referencedThreadId) && (
-                    <span style={{ fontSize: 13, opacity: 0.75, fontWeight: 400 }}>
-                      · responding to{" "}
-                      <button
-                        className="responding-to-label"
-                        onClick={() =>
-                          r.referencedReplyId
-                            ? scrollHighlight(`reply-${r.referencedReplyId}`)
-                            : scrollHighlight("thread-entry")
-                        }
-                      >
-                        {referencedReply ? referencedReply.author : thread.author}
-                      </button>
-                    </span>
+                    <button
+                      className="responding-to-label"
+                      style={{ fontSize: 13 }}
+                      onClick={() =>
+                        r.referencedReplyId
+                          ? scrollHighlight(`reply-${r.referencedReplyId}`)
+                          : scrollHighlight("thread-entry")
+                      }
+                    >
+                      · responding to {referencedReply ? referencedReply.author : thread.author}
+                    </button>
                   )}
                 </div>
                 <div className="muted" style={{ fontSize: 12 }}>{timeAgo(r.updatedAt)}</div>
@@ -691,14 +696,27 @@ export default function RepliesList({
                       <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={() => handleDeleteReply(r.id)}>Delete</button>
                     </>
                   )}
-                  <button
-                    className="btn"
-                    style={{ fontSize: 13 }}
-                    onClick={() => handleQuote(r)}
-                    title="Quote this response"
-                  >
-                    Quote
-                  </button>
+                  <div style={{ position: "relative", display: "inline-block" }}>
+                    <button
+                      className="btn"
+                      style={{ fontSize: 13 }}
+                      onClick={() => handleQuote(r)}
+                      title="Quote this response"
+                    >
+                      Quote
+                    </button>
+                    {quoteHintId === r.id && (
+                      <div className="quote-hint-popup">
+                        <button
+                          className="quote-hint-close"
+                          onClick={() => setQuoteHintId(null)}
+                          aria-label="Close"
+                        >✕</button>
+                        <p>Highlight the portion of this entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.</p>
+                        <p>If you want, you can always edit your response after you post it!</p>
+                      </div>
+                    )}
+                  </div>
                   <button
                     className="btn"
                     style={{ fontSize: 13 }}

@@ -341,9 +341,10 @@ body { -webkit-font-smoothing: antialiased; }
 /* "Responding to" label on link-type responses */
 .responding-to-label {
   color: var(--dos-bg);
-  font-weight: 700;
+  font-weight: 400;
   font-style: italic;
   text-decoration: underline;
+  opacity: 0.75;
   background: none;
   border: none;
   cursor: pointer;
@@ -351,6 +352,14 @@ body { -webkit-font-smoothing: antialiased; }
   font-size: inherit;
   font-family: inherit;
   line-height: inherit;
+}
+.responding-to-label:hover { opacity: 1; }
+
+/* Superscript wrapper — controls elevation (lower than browser default) */
+.cite-sup {
+  vertical-align: 0.35em;
+  font-size: 0.75em;
+  line-height: 0;
 }
 
 /* Shared citation superscript button — used inline in body, in headers, and in thread heading */
@@ -361,7 +370,7 @@ body { -webkit-font-smoothing: antialiased; }
   border: none;
   cursor: pointer;
   padding: 0 1px;
-  font-size: 1.5em;
+  font-size: 1.1em;
   font-family: inherit;
   line-height: 1;
 }
@@ -373,6 +382,38 @@ body { -webkit-font-smoothing: antialiased; }
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
 }
+
+/* Quote hint popup — appears below the Quote button when no text is selected */
+.quote-hint-popup {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  background: var(--dos-fg);
+  color: var(--dos-bg);
+  border: 2px solid var(--dos-border);
+  border-radius: 14px;
+  padding: 12px 14px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+.quote-hint-popup p { margin: 0 0 8px; }
+.quote-hint-popup p:last-child { margin-bottom: 0; }
+.quote-hint-close {
+  float: right;
+  margin: -2px -4px 4px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--dos-bg);
+  opacity: 0.6;
+  padding: 0 2px;
+  line-height: 1;
+}
+.quote-hint-close:hover { opacity: 1; }
 
 /* Footnote superscript links (thread-entry heading citations) */
 .footnote-sups {
