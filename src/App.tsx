@@ -535,30 +535,34 @@ export default function App() {
         <>
           {!expandedShowId && isHomepage && (
             /* ── Stacked diary-pages card ── */
-            <div style={{ position: "relative", display: "flex", justifyContent: "center", padding: "28px 0 28px 24px", zIndex: 95 }}>
+            /* Outer: centres the stack; extra paddingLeft+paddingTop reveal the peeking back pages */
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 32, paddingLeft: 30, paddingBottom: 40, zIndex: 95, position: "relative" }}>
+              {/* Card-sized relative wrapper — back pages size off this */}
+              <div style={{ position: "relative", width: 660, maxWidth: "88vw" }}>
               {/* Page 3 — furthest back */}
               <div style={{
-                position: "absolute", inset: 0,
-                border: "2px solid rgba(255,255,255,0.55)",
+                position: "absolute", top: 0, left: 0,
+                width: "100%", height: "100%",
+                border: "2px solid rgba(255,255,255,0.5)",
                 borderRadius: 10,
                 background: "var(--dos-bg)",
-                transform: "translate(-22px, -14px)",
+                transform: "translate(-20px, -14px)",
               }} />
               {/* Page 2 */}
               <div style={{
-                position: "absolute", inset: 0,
-                border: "2px solid rgba(255,255,255,0.78)",
+                position: "absolute", top: 0, left: 0,
+                width: "100%", height: "100%",
+                border: "2px solid rgba(255,255,255,0.75)",
                 borderRadius: 10,
                 background: "var(--dos-bg)",
-                transform: "translate(-11px, -7px)",
+                transform: "translate(-10px, -7px)",
               }} />
               {/* Main card */}
               <div style={{
-                position: "relative", zIndex: 1,
+                position: "relative",
                 border: "2px solid #fff",
                 borderRadius: 10,
                 padding: "50px 60px 56px",
-                width: 620, maxWidth: "86vw",
                 display: "flex", flexDirection: "column", alignItems: "center",
                 background: "var(--dos-bg)",
               }}>
@@ -630,6 +634,7 @@ export default function App() {
                     {shows.find(s => s.id === "bb")?.name ?? "Breaking Bad"}
                   </button>
                 </div>
+              </div>
               </div>
             </div>
           )}
