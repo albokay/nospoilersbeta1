@@ -226,12 +226,9 @@ header.site{
   .brandLogoImg{ height:34px !important; }
   /* Row layout (not column) — avatar + ✕ side-by-side, fits under 56 px header */
   .fixedAuthWrap{ flex-direction:row; align-items:center; gap:8px; }
-  .signOutLabel{ display:none; }
-  .signOutX{ display:inline-flex; }
-  .signOutBtn{
-    width:34px; height:34px; border-radius:50%; padding:0;
-    display:inline-flex; align-items:center; justify-content:center; font-size:14px;
-  }
+  .signOutLabel{ display:inline; }
+  .signOutX{ display:none; }
+  .signOutBtn{ padding:6px 10px; }
 
   /* Hide non-essential fixed-header items that cause collision on narrow screens */
   .mobileHide{ display:none !important; }
