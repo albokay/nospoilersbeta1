@@ -597,7 +597,7 @@ export default function App() {
                         setPickShowMode("confirm");
                         setPickShowId(id);
                       }}
-                      placeholder="your shows"
+                      placeholder="shows you follow"
                       wrapperStyle={{ width: 288, maxWidth: "90%" }}
                     />
                   )}
