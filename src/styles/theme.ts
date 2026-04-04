@@ -355,7 +355,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* Shared citation superscript button — used inline in body, in headers, and in thread heading */
 .cite-sup-btn {
-  color: #f45028;
+  color: #dea838;
   font-weight: 700;
   background: none;
   border: none;
@@ -369,7 +369,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* Subtle dotted underline on the quoted passage that carries a citation sup */
 .quoted-passage {
-  text-decoration: underline dotted rgba(244,80,40,0.45);
+  text-decoration: underline dotted rgba(222,168,56,0.55);
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
 }
