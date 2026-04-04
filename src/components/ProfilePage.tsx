@@ -241,7 +241,7 @@ export default function ProfilePage({
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {opt === "all" ? "all" : "private only"}
+                        {opt === "all" ? "all" : "private journal only"}
                       </button>
                     ))}
                   </div>
