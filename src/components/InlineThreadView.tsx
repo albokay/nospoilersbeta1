@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import type { Thread, Reply } from "../types";
+import type { Thread } from "../types";
 import { timeAgo } from "../lib/utils";
 import { useAuth } from "../lib/auth";
 import { editThread as dbEditThread, deleteThread as dbDeleteThread, makeThreadPrivate as dbMakeThreadPrivate, makeThreadPublic as dbMakeThreadPublic } from "../lib/db";
@@ -100,8 +100,8 @@ export default function InlineThreadView({
   // Track loaded replies count to show "Write a response" on entry when >= 5
   const [loadedRepliesCount, setLoadedRepliesCount] = useState(0);
 
-  // Track submitted replies so composer can add them without refetch
-  const [submittedReplies, setSubmittedReplies] = useState<Reply[] | undefined>(undefined);
+  // Increment to force RepliesList to re-fetch after a new reply is submitted
+  const [repliesKey, setRepliesKey] = useState(0);
 
   // Reset edit fields whenever thread changes
   useEffect(() => {
@@ -184,10 +184,9 @@ export default function InlineThreadView({
   };
 
   const handleComposerSubmitted = () => {
-    // Reload the replies list by clearing submittedReplies cache
-    // RepliesList will re-fetch on its own, but we can also trigger via key change
-    setSubmittedReplies(undefined);
-    // Also notify parent
+    // Increment key to force RepliesList to re-fetch (also re-runs onRepliesLoaded → citations refresh)
+    setRepliesKey(k => k + 1);
+    // Notify parent
     if (profile && profile.username !== thread.author) {
       onExternalReplyAdded?.(thread.id);
     }
@@ -195,7 +194,7 @@ export default function InlineThreadView({
 
   return (
     <section className="container" style={{ padding: "16px 0 24px" }}>
-      <div className="card" style={{ marginTop: 12 }}>
+      <div id="thread-entry" className="card" style={{ marginTop: 12 }}>
         {editing ? (
           /* ── Edit form ── */
           <div>
@@ -321,6 +320,7 @@ export default function InlineThreadView({
           threadCitations={threadCitations}
           composerRef={composerRef}
           onScrollToComposer={onScrollToComposer}
+          refreshKey={repliesKey}
           onRepliesLoaded={(replies) => {
             setLoadedRepliesCount(replies.filter(r => !r.isDeleted).length);
             onRepliesLoaded?.(replies.map(r => r.id));

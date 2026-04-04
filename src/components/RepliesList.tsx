@@ -38,30 +38,68 @@ import Username from "./Username";
 import type { PendingReference } from "./ResponseComposer";
 import { useScrollHighlight } from "../hooks/useScrollHighlight";
 
-/** Render a reply body, splitting on [QUOTE] token to insert blockquote. */
+// Matches [QUOTE: any text including newlines]
+const QUOTE_TOKEN_RE = /\[QUOTE:([\s\S]*?)\]/;
+
+/** Render a reply body, splitting on [QUOTE: text] or legacy [QUOTE] token. */
 function ReplyBody({
   body,
   quotedText,
   authorName,
   referenceType,
+  onScrollToRef,
 }: {
   body: string;
   quotedText?: string | null;
   authorName?: string | null;
   referenceType?: string | null;
+  onScrollToRef?: () => void;
 }) {
-  if (referenceType === "quote" && quotedText && body.includes("[QUOTE]")) {
-    const parts = body.split("[QUOTE]");
-    return (
-      <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
-        {parts[0]}
-        <blockquote className="blockquote-ref">
-          <div className="blockquote-author">{authorName ?? "Unknown"} wrote:</div>
-          <div className="blockquote-text">"{quotedText}"</div>
-        </blockquote>
-        {parts.slice(1).join("[QUOTE]")}
-      </div>
-    );
+  if (referenceType === "quote") {
+    // New inline format: [QUOTE: text]
+    const match = QUOTE_TOKEN_RE.exec(body);
+    if (match) {
+      const inlineText = match[1].trim();
+      const parts = body.split(QUOTE_TOKEN_RE);
+      // split on the full regex produces [before, captureGroup, after...]
+      // parts[0] = before, parts[1] = captured text, parts[2] = after
+      const before = parts[0] ?? "";
+      const after = parts.slice(2).join("") ?? "";
+      return (
+        <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
+          {before}
+          <blockquote
+            className="blockquote-ref"
+            onClick={onScrollToRef}
+            style={onScrollToRef ? { cursor: "pointer" } : undefined}
+            title={onScrollToRef ? "Click to jump to cited response" : undefined}
+          >
+            <div className="blockquote-author">{authorName ?? "Unknown"} wrote:</div>
+            <div className="blockquote-text">"{inlineText}"</div>
+          </blockquote>
+          {after}
+        </div>
+      );
+    }
+    // Legacy format: [QUOTE] token with separate quotedText field
+    if (quotedText && body.includes("[QUOTE]")) {
+      const parts = body.split("[QUOTE]");
+      return (
+        <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
+          {parts[0]}
+          <blockquote
+            className="blockquote-ref"
+            onClick={onScrollToRef}
+            style={onScrollToRef ? { cursor: "pointer" } : undefined}
+            title={onScrollToRef ? "Click to jump to cited response" : undefined}
+          >
+            <div className="blockquote-author">{authorName ?? "Unknown"} wrote:</div>
+            <div className="blockquote-text">"{quotedText}"</div>
+          </blockquote>
+          {parts.slice(1).join("[QUOTE]")}
+        </div>
+      );
+    }
   }
   return <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>{body}</div>;
 }
@@ -101,7 +139,7 @@ export default function RepliesList({
   likeReply, unlikeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
   threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile,
   onSetPendingReference, pendingReference, citations, threadCitations, composerRef, onScrollToComposer,
-  externalReplies, onRepliesLoaded,
+  externalReplies, onRepliesLoaded, refreshKey,
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
@@ -128,6 +166,7 @@ export default function RepliesList({
   onScrollToComposer?: () => void;
   externalReplies?: Reply[];          // externally loaded replies (from parent)
   onRepliesLoaded?: (replies: Reply[]) => void; // notify parent of loaded replies
+  refreshKey?: number;               // increment to force a re-fetch
 }) {
   const { user, profile } = useAuth();
   const { scrollTo: scrollHighlight } = useScrollHighlight();
@@ -152,7 +191,7 @@ export default function RepliesList({
       setRepliesLoading(false);
     }).catch(() => setRepliesLoading(false));
     return () => { cancelled = true; };
-  }, [thread.id, user]);
+  }, [thread.id, user, refreshKey]);
 
   // If parent provides externalReplies (e.g. after a new reply is submitted), merge them in
   useEffect(() => {
@@ -505,6 +544,13 @@ export default function RepliesList({
                   quotedText={r.quotedText}
                   authorName={referencedReply?.author ?? null}
                   referenceType={r.referenceType}
+                  onScrollToRef={
+                    r.referencedReplyId
+                      ? () => scrollHighlight(`reply-${r.referencedReplyId}`)
+                      : r.referencedThreadId
+                        ? () => scrollHighlight("thread-entry")
+                        : undefined
+                  }
                 />
               )}
 

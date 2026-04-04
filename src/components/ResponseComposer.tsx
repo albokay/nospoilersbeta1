@@ -50,16 +50,17 @@ export default function ResponseComposer({
   }, [pendingReference]);
 
   const handleInsertQuote = () => {
-    if (!textareaRef.current) return;
+    if (!textareaRef.current || !pendingReference?.quotedText) return;
     const ta = textareaRef.current;
     const pos = ta.selectionStart ?? body.length;
-    const newBody = body.slice(0, pos) + "[QUOTE]" + body.slice(pos);
+    const token = `[QUOTE: ${pendingReference.quotedText}]`;
+    const newBody = body.slice(0, pos) + token + body.slice(pos);
     setBody(newBody);
     setQuoteInserted(true);
     // Restore cursor after the token
     requestAnimationFrame(() => {
-      ta.selectionStart = pos + "[QUOTE]".length;
-      ta.selectionEnd = pos + "[QUOTE]".length;
+      ta.selectionStart = pos + token.length;
+      ta.selectionEnd = pos + token.length;
       ta.focus();
     });
   };
