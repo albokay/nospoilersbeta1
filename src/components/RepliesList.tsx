@@ -122,7 +122,7 @@ function annotateTextWithSups(
 function UnmatchedSups({ sups }: { sups: Array<{ index: number; onScrollTo: () => void }> }) {
   if (!sups.length) return null;
   return (
-    <>
+    <span style={{ letterSpacing: 0 }}>
       {sups.map((s, i) => (
         <React.Fragment key={`usup-${s.index}`}>
           {i > 0 && <sup className="cite-sup"><span className="cite-sup-btn" style={{ cursor: "default" }}>,</span></sup>}
@@ -133,7 +133,7 @@ function UnmatchedSups({ sups }: { sups: Array<{ index: number; onScrollTo: () =
           </sup>
         </React.Fragment>
       ))}
-    </>
+    </span>
   );
 }
 
@@ -604,17 +604,21 @@ export default function RepliesList({
                       S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
                     </span>
                   )}
-                  {/* Link citation superscripts in the heading */}
-                  {linkSups.map((s, i) => (
-                    <React.Fragment key={`lsup-${s.index}`}>
-                      {i > 0 && <sup className="cite-sup"><span className="cite-sup-btn" style={{ cursor: "default" }}>,</span></sup>}
-                      <sup className="cite-sup">
-                        <button className="cite-sup-btn" onClick={s.onScrollTo} title="Jump to citing response">
-                          {superscriptNum(s.index)}
-                        </button>
-                      </sup>
-                    </React.Fragment>
-                  ))}
+                  {/* Link citation superscripts in the heading — wrapped in one span to avoid flex gap blowout */}
+                  {linkSups.length > 0 && (
+                    <span style={{ letterSpacing: 0 }}>
+                      {linkSups.map((s, i) => (
+                        <React.Fragment key={`lsup-${s.index}`}>
+                          {i > 0 && <sup className="cite-sup"><span className="cite-sup-btn" style={{ cursor: "default" }}>,</span></sup>}
+                          <sup className="cite-sup">
+                            <button className="cite-sup-btn" onClick={s.onScrollTo} title="Jump to citing response">
+                              {superscriptNum(s.index)}
+                            </button>
+                          </sup>
+                        </React.Fragment>
+                      ))}
+                    </span>
+                  )}
                   {isReplyEdited && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7 }}>(edited)</span>
                   )}
@@ -718,7 +722,7 @@ export default function RepliesList({
                           aria-label="Close"
                         >✕</button>
                         <p>Highlight the portion of this entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.</p>
-                        <p>If you want, you can always edit your response after you post it!</p>
+                        <p>This might feel confusing, but try it out — you can always edit your response after you post it!</p>
                         </div>
                       </>
                     )}
