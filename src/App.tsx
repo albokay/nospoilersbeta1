@@ -643,7 +643,7 @@ export default function App() {
           )}
 
           {!expandedShowId && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 100 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 70 }}>
               {/* Beta message pill toggle */}
               <button
                 onClick={() => setBetaOpen(o => !o)}
