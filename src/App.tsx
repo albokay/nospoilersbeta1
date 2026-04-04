@@ -536,15 +536,15 @@ export default function App() {
           {!expandedShowId && isHomepage && (
             /* ── Stacked diary-pages card ── */
             /* Outer: centres the stack; extra paddingLeft+paddingTop reveal the peeking back pages */
-            <div style={{ display: "flex", justifyContent: "center", paddingTop: 32, paddingLeft: 30, paddingBottom: 40, zIndex: 95, position: "relative" }}>
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 80, paddingLeft: 30, paddingBottom: 40, zIndex: 95, position: "relative" }}>
               {/* Card-sized relative wrapper — back pages size off this */}
-              <div style={{ position: "relative", width: 660, maxWidth: "88vw" }}>
+              <div style={{ position: "relative", width: 528, maxWidth: "72vw" }}>
               {/* Page 3 — furthest back */}
               <div style={{
                 position: "absolute", top: 0, left: 0,
                 width: "100%", height: "100%",
-                border: "2px solid rgba(255,255,255,0.5)",
-                borderRadius: 10,
+                border: "2px solid #fff",
+                borderRadius: 0,
                 background: "var(--dos-bg)",
                 transform: "translate(-20px, -14px)",
               }} />
@@ -552,8 +552,8 @@ export default function App() {
               <div style={{
                 position: "absolute", top: 0, left: 0,
                 width: "100%", height: "100%",
-                border: "2px solid rgba(255,255,255,0.75)",
-                borderRadius: 10,
+                border: "2px solid #fff",
+                borderRadius: 0,
                 background: "var(--dos-bg)",
                 transform: "translate(-10px, -7px)",
               }} />
@@ -561,8 +561,8 @@ export default function App() {
               <div style={{
                 position: "relative",
                 border: "2px solid #fff",
-                borderRadius: 10,
-                padding: "50px 60px 56px",
+                borderRadius: 0,
+                padding: "50px 60px 67px",
                 display: "flex", flexDirection: "column", alignItems: "center",
                 background: "var(--dos-bg)",
               }}>
