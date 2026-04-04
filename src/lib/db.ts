@@ -64,7 +64,7 @@ export async function fetchThreadsForShow(showId: string): Promise<{
 }> {
   const { data, error } = await supabase
     .from("threads")
-    .select("*, replies(id, season, episode, created_at, author_id)")
+    .select("*, replies!thread_id(id, season, episode, created_at, author_id)")
     .eq("show_id", showId)
     .order("updated_at", { ascending: false });
   if (error) throw error;
@@ -511,7 +511,7 @@ export async function insertReply(data: {
     thread_id: data.threadId, show_id: data.showId,
     season: data.season, episode: data.episode,
     author_id: data.authorId, author_name: data.authorName,
-    body: data.body, reply_to_id: data.replyToId ?? null, likes_count: 0,
+    body: data.body, likes_count: 0,
     reference_type: data.referenceType ?? null,
     referenced_reply_id: data.referencedReplyId ?? null,
     referenced_thread_id: data.referencedThreadId ?? null,
