@@ -706,7 +706,12 @@ export default function RepliesList({
                       Quote
                     </button>
                     {quoteHintId === r.id && (
-                      <div className="quote-hint-popup">
+                      <>
+                        <div
+                          style={{ position: "fixed", inset: 0, zIndex: 99 }}
+                          onClick={() => setQuoteHintId(null)}
+                        />
+                        <div className="quote-hint-popup">
                         <button
                           className="quote-hint-close"
                           onClick={() => setQuoteHintId(null)}
@@ -714,7 +719,8 @@ export default function RepliesList({
                         >✕</button>
                         <p>Highlight the portion of this entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.</p>
                         <p>If you want, you can always edit your response after you post it!</p>
-                      </div>
+                        </div>
+                      </>
                     )}
                   </div>
                   <button

@@ -358,7 +358,6 @@ body { -webkit-font-smoothing: antialiased; }
 /* Superscript wrapper — controls elevation (lower than browser default) */
 .cite-sup {
   vertical-align: 0.35em;
-  font-size: 0.75em;
   line-height: 0;
 }
 
@@ -370,7 +369,7 @@ body { -webkit-font-smoothing: antialiased; }
   border: none;
   cursor: pointer;
   padding: 0 1px;
-  font-size: 1.1em;
+  font-size: 1.5em;
   font-family: inherit;
   line-height: 1;
 }
