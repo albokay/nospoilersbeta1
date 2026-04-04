@@ -536,7 +536,7 @@ export default function App() {
           {!expandedShowId && isHomepage && (
             /* ── Stacked diary-pages card ── */
             /* Outer: centres the stack; extra paddingLeft+paddingTop reveal the peeking back pages */
-            <div style={{ display: "flex", justifyContent: "center", paddingTop: isMobile ? 70 : 110, paddingLeft: isMobile ? 20 : 30, paddingRight: isMobile ? 4 : 0, paddingBottom: 40, zIndex: 95, position: "relative" }}>
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: isMobile ? 77 : 121, paddingLeft: isMobile ? 20 : 30, paddingRight: isMobile ? 4 : 0, paddingBottom: 40, zIndex: 95, position: "relative" }}>
               {/* Card-sized relative wrapper — back pages size off this */}
               <div style={{ position: "relative", width: isMobile ? "auto" : 475, maxWidth: isMobile ? "88vw" : "65vw", ...(isMobile ? { alignSelf: "stretch", flex: 1 } : {}) }}>
               {/* Page 3 — furthest back */}
