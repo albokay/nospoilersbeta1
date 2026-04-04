@@ -182,18 +182,22 @@ export async function unlikeReply(userId: string, replyId: string): Promise<void
 
 function rowToReply(row: any): Reply {
   return {
-    id:        row.id,
-    threadId:  row.thread_id,
-    showId:    row.show_id,
-    season:    row.season,
-    episode:   row.episode,
-    author:    row.author_name,
-    body:      row.body,
-    updatedAt: new Date(row.updated_at).getTime(),
-    likes:     row.likes_count ?? 0,
-    replyToId: row.reply_to_id ?? undefined,
-    isDeleted: row.is_deleted ?? false,
-    isEdited:  row.is_edited ?? false,
+    id:                 row.id,
+    threadId:           row.thread_id,
+    showId:             row.show_id,
+    season:             row.season,
+    episode:            row.episode,
+    author:             row.author_name,
+    body:               row.body,
+    updatedAt:          new Date(row.updated_at).getTime(),
+    likes:              row.likes_count ?? 0,
+    replyToId:          row.reply_to_id ?? undefined,
+    isDeleted:          row.is_deleted ?? false,
+    isEdited:           row.is_edited ?? false,
+    referenceType:      row.reference_type ?? null,
+    referencedReplyId:  row.referenced_reply_id ?? null,
+    referencedThreadId: row.referenced_thread_id ?? null,
+    quotedText:         row.quoted_text ?? null,
   };
 }
 
@@ -497,6 +501,10 @@ export async function fetchPublicProgressForUser(
 export async function insertReply(data: {
   threadId: string; showId: string; season: number; episode: number;
   authorId: string; authorName: string; body: string; replyToId?: string;
+  referenceType?: 'quote' | 'link' | null;
+  referencedReplyId?: string | null;
+  referencedThreadId?: string | null;
+  quotedText?: string | null;
 }): Promise<Reply> {
   const row = {
     id: crypto.randomUUID(),
@@ -504,11 +512,98 @@ export async function insertReply(data: {
     season: data.season, episode: data.episode,
     author_id: data.authorId, author_name: data.authorName,
     body: data.body, reply_to_id: data.replyToId ?? null, likes_count: 0,
+    reference_type: data.referenceType ?? null,
+    referenced_reply_id: data.referencedReplyId ?? null,
+    referenced_thread_id: data.referencedThreadId ?? null,
+    quoted_text: data.quotedText ?? null,
   };
   const { data: inserted, error } = await supabase
     .from("replies").insert(row).select().single();
   if (error) throw error;
-  return rowToReply(inserted);
+
+  const reply = rowToReply(inserted);
+
+  // Insert citation row if there's a reference
+  if (data.referenceType && (data.referencedReplyId || data.referencedThreadId)) {
+    const citationRow: any = { citing_reply_id: reply.id };
+    if (data.referencedReplyId) citationRow.cited_reply_id = data.referencedReplyId;
+    if (data.referencedThreadId) citationRow.cited_thread_id = data.referencedThreadId;
+    // Best-effort: don't throw if citation insert fails
+    await supabase.from("response_citations").insert(citationRow).then(({ error: e }) => {
+      if (e) console.warn("Citation insert failed:", e.message);
+    });
+  }
+
+  return reply;
+}
+
+// ── Citations ─────────────────────────────────────────────────────────────────
+
+export type CitationEntry = { citingReplyId: string; index: number };
+
+/**
+ * Fetch citations for a list of reply IDs, filtered by viewer progress.
+ * Returns a Map: citedReplyId → array of {citingReplyId, index} sorted by creation order.
+ */
+export async function fetchCitationsForReplies(
+  replyIds: string[],
+  viewerSeason: number,
+  viewerEpisode: number
+): Promise<Map<string, CitationEntry[]>> {
+  if (!replyIds.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("response_citations")
+    .select("cited_reply_id, citing_reply_id, created_at, replies!citing_reply_id(season, episode)")
+    .in("cited_reply_id", replyIds)
+    .order("created_at", { ascending: true });
+
+  if (error) { console.warn("fetchCitationsForReplies error:", error.message); return new Map(); }
+
+  const result = new Map<string, CitationEntry[]>();
+  for (const row of data ?? []) {
+    const citingReply = (row as any).replies;
+    if (!citingReply) continue;
+    // Filter: only show citation if the citing reply is within viewer's progress
+    const cSeason = citingReply.season as number;
+    const cEpisode = citingReply.episode as number;
+    if (cSeason > viewerSeason || (cSeason === viewerSeason && cEpisode > viewerEpisode)) continue;
+
+    const citedId = (row as any).cited_reply_id as string;
+    if (!result.has(citedId)) result.set(citedId, []);
+    const arr = result.get(citedId)!;
+    arr.push({ citingReplyId: (row as any).citing_reply_id as string, index: arr.length + 1 });
+  }
+  return result;
+}
+
+/**
+ * Fetch citations for an original thread entry, filtered by viewer progress.
+ * Returns array of {citingReplyId, index}.
+ */
+export async function fetchCitationsForThread(
+  threadId: string,
+  viewerSeason: number,
+  viewerEpisode: number
+): Promise<CitationEntry[]> {
+  const { data, error } = await supabase
+    .from("response_citations")
+    .select("citing_reply_id, created_at, replies!citing_reply_id(season, episode)")
+    .eq("cited_thread_id", threadId)
+    .order("created_at", { ascending: true });
+
+  if (error) { console.warn("fetchCitationsForThread error:", error.message); return []; }
+
+  const result: CitationEntry[] = [];
+  for (const row of data ?? []) {
+    const citingReply = (row as any).replies;
+    if (!citingReply) continue;
+    const cSeason = citingReply.season as number;
+    const cEpisode = citingReply.episode as number;
+    if (cSeason > viewerSeason || (cSeason === viewerSeason && cEpisode > viewerEpisode)) continue;
+    result.push({ citingReplyId: (row as any).citing_reply_id as string, index: result.length + 1 });
+  }
+  return result;
 }
 
 // ── Feedback ──────────────────────────────────────────────────────────────────

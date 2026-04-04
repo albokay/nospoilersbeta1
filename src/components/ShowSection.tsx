@@ -16,8 +16,8 @@ function threadDotActive(threadId: string, hasDot: boolean): boolean {
 }
 import type { Thread } from "../types";
 import { seedShows } from "../lib/mockData";
-import type { Show } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale } from "../lib/db";
+import type { Show, CitationEntry } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import type { ReplyMeta } from "../lib/db";
 import { useAuth } from "../lib/auth";
@@ -29,6 +29,7 @@ import ModeToggle from "./ModeToggle";
 import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
 import Username from "./Username";
+import type { PendingReference } from "./ResponseComposer";
 
 const GLOBAL_HEADER_H = 56;
 const ROW_PAD_Y = 8;
@@ -89,6 +90,46 @@ export default function ShowSection({
   const [composeOpen, setComposeOpen] = useState(false);
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const topRef = bannerRef;
+
+  // ── Reference system state ────────────────────────────────
+  const [pendingReference, setPendingReference] = useState<PendingReference | null>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const [citations, setCitations] = useState<Map<string, CitationEntry[]>>(new Map());
+  const [threadCitations, setThreadCitations] = useState<CitationEntry[]>([]);
+
+  const onScrollToComposer = () => {
+    const el = composerRef.current ?? document.getElementById("response-composer");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(() => {
+        const ta = el.querySelector("textarea");
+        if (ta) (ta as HTMLTextAreaElement).focus();
+      }, 350);
+    }
+  };
+
+  // Fetch thread-level citations when thread opens
+  const fetchCitations = async (threadId: string) => {
+    const prog = progress[showId] || { s: 1, e: 1 };
+    try {
+      const threadCits = await fetchCitationsForThread(threadId, prog.s, prog.e);
+      setThreadCitations(threadCits);
+      // Reply citations are fetched after replies load — see handleRepliesLoaded
+    } catch (e) {
+      console.warn("Failed to fetch thread citations:", e);
+    }
+  };
+
+  const handleRepliesLoaded = async (replyIds: string[]) => {
+    if (!replyIds.length) return;
+    const prog = progress[showId] || { s: 1, e: 1 };
+    try {
+      const cits = await fetchCitationsForReplies(replyIds, prog.s, prog.e);
+      setCitations(cits);
+    } catch (e) {
+      console.warn("Failed to fetch reply citations:", e);
+    }
+  };
 
   // ── DB state ──────────────────────────────────────────────
   const [dbThreads, setDbThreads] = useState<Thread[]>([]);
@@ -306,6 +347,12 @@ export default function ShowSection({
       setVisitedThreads((v: any) => ({ ...v, [tid]: true }));
       setNewHighlights((nh: any) => { const next = { ...(nh[showId] || {}) }; delete next[tid]; return { ...nh, [showId]: next }; });
       setFreshReplyThreadIds(prev => { const next = { ...prev }; delete next[tid]; return next; });
+      // Fetch thread-level citations
+      fetchCitations(tid);
+      // Clear pending reference when switching threads
+      setPendingReference(null);
+      setCitations(new Map());
+      setThreadCitations([]);
     }
   }, [thread?.id, showId, setVisitedThreads, setNewHighlights]);
 
@@ -569,6 +616,13 @@ export default function ShowSection({
           }}
           freshReplyIds={freshReplyIds}
           onClickProfile={onClickProfile}
+          pendingReference={pendingReference}
+          onSetPendingReference={setPendingReference}
+          composerRef={composerRef}
+          onScrollToComposer={onScrollToComposer}
+          citations={citations}
+          threadCitations={threadCitations}
+          onRepliesLoaded={handleRepliesLoaded}
         />
       ) : (
         <div style={{ marginTop: 12 }}>

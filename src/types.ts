@@ -13,4 +13,9 @@ export type Reply = {
   likes: number;
   isDeleted?: boolean;
   isEdited?: boolean;
+  // Reference system fields
+  referenceType?: 'quote' | 'link' | null;
+  referencedReplyId?: string | null;
+  referencedThreadId?: string | null;
+  quotedText?: string | null;
 };

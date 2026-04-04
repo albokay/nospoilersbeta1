@@ -1,11 +1,44 @@
 import React, { useEffect, useState } from "react";
-import type { Thread } from "../types";
+import type { Thread, Reply } from "../types";
 import { timeAgo } from "../lib/utils";
 import { useAuth } from "../lib/auth";
 import { editThread as dbEditThread, deleteThread as dbDeleteThread, makeThreadPrivate as dbMakeThreadPrivate, makeThreadPublic as dbMakeThreadPublic } from "../lib/db";
+import type { CitationEntry } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import RepliesList from "./RepliesList";
 import Username from "./Username";
+import ResponseComposer from "./ResponseComposer";
+import type { PendingReference } from "./ResponseComposer";
+import { useScrollHighlight } from "../hooks/useScrollHighlight";
+
+function superscriptNum(n: number): string {
+  const supers = ["¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"];
+  return supers[n - 1] ?? `(${n})`;
+}
+
+function FootnoteSups({
+  citations,
+  onScrollTo,
+}: {
+  citations: CitationEntry[];
+  onScrollTo: (id: string) => void;
+}) {
+  if (!citations.length) return null;
+  return (
+    <div className="footnote-sups">
+      {citations.map((c) => (
+        <sup key={c.citingReplyId}>
+          <button
+            onClick={() => onScrollTo(`reply-${c.citingReplyId}`)}
+            title="Jump to citing response"
+          >
+            {superscriptNum(c.index)}
+          </button>
+        </sup>
+      ))}
+    </div>
+  );
+}
 
 export default function InlineThreadView({
   thread, show, onBack, progressForShow, onMountAlignTop,
@@ -14,6 +47,9 @@ export default function InlineThreadView({
   mode, focusReplyId, onAuthRequired, hiddenNewReplies = 0, onRiskyReveal,
   onThreadUpdate, onThreadDelete, onThreadMakePrivate, onThreadMakePublic,
   hasExternalReplies = false, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile,
+  // New reference-system props
+  pendingReference, onSetPendingReference, composerRef, onScrollToComposer,
+  citations, threadCitations, onRepliesLoaded,
 }: {
   thread: Thread;
   show: any;
@@ -41,10 +77,18 @@ export default function InlineThreadView({
   onReplyDeleted?: (rid: string) => void;
   freshReplyIds?: Record<string, true>;
   onClickProfile?: (username: string) => void;
+  // Reference system
+  pendingReference?: PendingReference | null;
+  onSetPendingReference?: (ref: PendingReference | null) => void;
+  composerRef?: React.RefObject<HTMLDivElement>;
+  onScrollToComposer?: () => void;
+  citations?: Map<string, CitationEntry[]>;
+  threadCitations?: CitationEntry[];
+  onRepliesLoaded?: (replyIds: string[]) => void;
 }) {
   const { user, profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
-  const [threadReplyOpen, setThreadReplyOpen] = useState(false);
+  const { scrollTo: scrollHighlight } = useScrollHighlight();
 
   // ── Edit state ────────────────────────────────────────────
   const [editing, setEditing] = useState(false);
@@ -53,7 +97,13 @@ export default function InlineThreadView({
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Reset edit fields whenever thread changes (e.g. after save)
+  // Track loaded replies count to show "Write a response" on entry when >= 5
+  const [loadedRepliesCount, setLoadedRepliesCount] = useState(0);
+
+  // Track submitted replies so composer can add them without refetch
+  const [submittedReplies, setSubmittedReplies] = useState<Reply[] | undefined>(undefined);
+
+  // Reset edit fields whenever thread changes
   useEffect(() => {
     setEditTitle(thread.titleBase);
     setEditBody(thread.body);
@@ -63,9 +113,22 @@ export default function InlineThreadView({
 
   useEffect(() => { onMountAlignTop?.(); }, []);
 
-  const handleReplyToThread = () => {
+  const handleQuoteThread = () => {
     if (!user) { onAuthRequired(); return; }
-    setThreadReplyOpen(true);
+    const sel = window.getSelection();
+    let quotedText = "";
+    if (sel && sel.toString().trim()) {
+      quotedText = sel.toString().trim();
+    } else {
+      quotedText = thread.body.slice(0, 300) + (thread.body.length > 300 ? "…" : "");
+    }
+    onSetPendingReference?.({
+      type: "quote",
+      threadId: thread.id,
+      authorName: thread.author,
+      quotedText,
+    });
+    onScrollToComposer?.();
   };
 
   const handleStartEdit = () => {
@@ -117,6 +180,16 @@ export default function InlineThreadView({
       onThreadMakePublic?.();
     } catch {
       alert("Failed. Please try again.");
+    }
+  };
+
+  const handleComposerSubmitted = () => {
+    // Reload the replies list by clearing submittedReplies cache
+    // RepliesList will re-fetch on its own, but we can also trigger via key change
+    setSubmittedReplies(undefined);
+    // Also notify parent
+    if (profile && profile.username !== thread.author) {
+      onExternalReplyAdded?.(thread.id);
     }
   };
 
@@ -196,6 +269,11 @@ export default function InlineThreadView({
               </div>
             )}
 
+            {/* Footnote superscripts for original entry */}
+            {threadCitations && threadCitations.length > 0 && (
+              <FootnoteSups citations={threadCitations} onScrollTo={scrollHighlight} />
+            )}
+
             {!thread.isDeleted && (
               <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
                 {isOwn && (
@@ -210,7 +288,11 @@ export default function InlineThreadView({
                     )}
                   </>
                 )}
-                <button className="btn" onClick={handleReplyToThread}>Write a response</button>
+                <button className="btn" style={{ fontSize: 13 }} onClick={handleQuoteThread}>Quote</button>
+                {/* Show "Write a response" on original entry when >= 5 replies */}
+                {loadedRepliesCount >= 5 && (
+                  <button className="btn" onClick={onScrollToComposer}>Write a response</button>
+                )}
               </div>
             )}
           </>
@@ -228,15 +310,38 @@ export default function InlineThreadView({
           likedByUserReplies={likedByUserReplies}
           focusReplyId={focusReplyId}
           onAuthRequired={onAuthRequired}
-          threadReplyOpen={threadReplyOpen}
-          onThreadReplyClose={() => setThreadReplyOpen(false)}
           onRiskyReveal={onRiskyReveal}
           onExternalReplyAdded={onExternalReplyAdded ? () => onExternalReplyAdded(thread.id) : undefined}
           onReplyDeleted={onReplyDeleted}
           freshReplyIds={freshReplyIds}
           onClickProfile={onClickProfile}
+          onSetPendingReference={onSetPendingReference}
+          pendingReference={pendingReference}
+          citations={citations}
+          threadCitations={threadCitations}
+          composerRef={composerRef}
+          onScrollToComposer={onScrollToComposer}
+          onRepliesLoaded={(replies) => {
+            setLoadedRepliesCount(replies.filter(r => !r.isDeleted).length);
+            onRepliesLoaded?.(replies.map(r => r.id));
+          }}
         />
       </div>
+
+      {/* Composer always at bottom */}
+      <ResponseComposer
+        threadId={thread.id}
+        showId={thread.showId}
+        viewerSeason={progressForShow?.s ?? thread.season}
+        viewerEpisode={progressForShow?.e ?? thread.episode}
+        onSubmitted={handleComposerSubmitted}
+        pendingReference={pendingReference ?? null}
+        onClearReference={() => onSetPendingReference?.(null)}
+        composerRef={composerRef ?? { current: null }}
+        onAuthRequired={onAuthRequired}
+        threadAuthor={thread.author}
+        onExternalReplyAdded={onExternalReplyAdded ? () => onExternalReplyAdded(thread.id) : undefined}
+      />
     </section>
   );
 }

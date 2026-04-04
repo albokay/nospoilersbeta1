@@ -304,6 +304,132 @@ html, body {
 }
 body { -webkit-font-smoothing: antialiased; }
 
+/* ── Response reference system ───────────────────────────────────────────── */
+
+/* Highlight flash for scroll-to targets */
+@keyframes response-highlight-blink {
+  0%   { background-color: rgba(255,255,255,0.45); }
+  60%  { background-color: rgba(255,255,255,0.18); }
+  100% { background-color: transparent; }
+}
+.response-highlight {
+  animation: response-highlight-blink 1.5s ease forwards;
+}
+
+/* Blockquote reference rendered inline in body */
+.blockquote-ref {
+  border-left: 3px solid var(--dos-border);
+  background: rgba(0,0,0,0.07);
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 6px;
+  font-style: italic;
+}
+.blockquote-ref .blockquote-author {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--dos-bg);
+  opacity: 0.7;
+}
+.blockquote-ref .blockquote-text {
+  font-size: 14px;
+  color: var(--dos-bg);
+  opacity: 0.85;
+}
+
+/* "Responding to" label on link-type responses */
+.responding-to-label {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--dos-bg);
+  opacity: 0.65;
+  margin-bottom: 6px;
+}
+.responding-to-label a,
+.responding-to-label button {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-style: inherit;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+/* Footnote superscript links */
+.footnote-sups {
+  font-size: 11px;
+  margin-top: 4px;
+  color: var(--dos-bg);
+  opacity: 0.6;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.footnote-sups sup a,
+.footnote-sups sup button {
+  color: var(--dos-bg);
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 1px;
+  font-size: 11px;
+  font-family: inherit;
+  opacity: 0.75;
+}
+.footnote-sups sup a:hover,
+.footnote-sups sup button:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* Insert button in composer toolbar */
+.insert-btn {
+  background: transparent;
+  color: var(--dos-fg);
+  border: 2px solid var(--dos-border);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.insert-btn:hover {
+  background: var(--dos-blue);
+}
+
+/* Pending reference chip in composer */
+.pending-ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0,0,0,0.10);
+  border: 2px solid var(--dos-border);
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--dos-fg);
+}
+.pending-ref-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dos-fg);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.7;
+}
+.pending-ref-chip button:hover { opacity: 1; }
+
 `;
+
   const el = document.createElement("style"); el.id = id; el.textContent = css; document.head.appendChild(el);
 }
