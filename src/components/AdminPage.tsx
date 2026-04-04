@@ -220,7 +220,7 @@ export default function AdminPage({
                       </div>
                       {row.pageUrl && (
                         <div style={{ fontFamily: "monospace", marginTop: 2 }}>
-                          📍 {row.pageUrl}
+                          {row.pageUrl}
                         </div>
                       )}
                     </div>
