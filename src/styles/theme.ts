@@ -353,19 +353,32 @@ body { -webkit-font-smoothing: antialiased; }
   line-height: inherit;
 }
 
-/* Footnote superscript links */
+/* Shared citation superscript button — used inline in body, in headers, and in thread heading */
+.cite-sup-btn {
+  color: var(--dos-user);
+  font-weight: 700;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 1px;
+  font-size: inherit;
+  font-family: inherit;
+  line-height: 1;
+}
+.cite-sup-btn:hover { text-decoration: underline; }
+
+/* Footnote superscript links (thread-entry heading citations) */
 .footnote-sups {
   font-size: 11px;
   margin-top: 4px;
-  color: var(--dos-bg);
-  opacity: 0.6;
+  color: var(--dos-user);
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
 }
 .footnote-sups sup a,
 .footnote-sups sup button {
-  color: var(--dos-bg);
+  color: var(--dos-user);
   text-decoration: none;
   background: none;
   border: none;
@@ -373,13 +386,10 @@ body { -webkit-font-smoothing: antialiased; }
   padding: 0 1px;
   font-size: 11px;
   font-family: inherit;
-  opacity: 0.75;
+  font-weight: 700;
 }
 .footnote-sups sup a:hover,
-.footnote-sups sup button:hover {
-  opacity: 1;
-  text-decoration: underline;
-}
+.footnote-sups sup button:hover { text-decoration: underline; }
 
 /* Insert button in composer toolbar */
 .insert-btn {

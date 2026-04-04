@@ -41,19 +41,87 @@ import { useScrollHighlight } from "../hooks/useScrollHighlight";
 // Matches [QUOTE: any text including newlines]
 const QUOTE_TOKEN_RE = /\[QUOTE:([\s\S]*?)\]/;
 
-/** Render a reply body, splitting on [QUOTE: text] or legacy [QUOTE] token. */
+function superscriptNum(n: number): string {
+  const supers = ["¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"];
+  return supers[n - 1] ?? `(${n})`;
+}
+
+/** A pending inline citation superscript to be placed next to quoted text. */
+type SupEntry = { citedText: string; index: number; onScrollTo: () => void };
+
+/**
+ * Annotate a plain-text string with inline citation superscripts.
+ * Each sup is placed immediately after the matched quoted passage.
+ * Returns the annotated node array plus the set of indices that were matched
+ * (so callers can render unmatched sups as a fallback elsewhere).
+ */
+function annotateTextWithSups(
+  text: string,
+  sups: SupEntry[]
+): { nodes: React.ReactNode[]; matchedIndices: Set<number> } {
+  type Marker = { pos: number; endPos: number; index: number; onScrollTo: () => void };
+  const markers: Marker[] = [];
+  for (const s of sups) {
+    const t = (s.citedText ?? "").replace(/…$/, "").trim();
+    if (t.length < 4) continue;
+    const idx = text.indexOf(t);
+    if (idx !== -1) markers.push({ pos: idx, endPos: idx + t.length, index: s.index, onScrollTo: s.onScrollTo });
+  }
+  const matchedIndices = new Set(markers.map(m => m.index));
+  if (!markers.length) return { nodes: [text], matchedIndices };
+  markers.sort((a, b) => a.endPos - b.endPos);
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  for (const m of markers) {
+    if (m.endPos <= last) continue; // skip overlapping
+    const pos = Math.max(m.pos, last);
+    if (pos > last) nodes.push(text.slice(last, pos));
+    nodes.push(text.slice(pos, m.endPos));
+    nodes.push(
+      <sup key={`sup-${m.index}`}>
+        <button className="cite-sup-btn" onClick={m.onScrollTo} title="Jump to citing response">
+          {superscriptNum(m.index)}
+        </button>
+      </sup>
+    );
+    last = m.endPos;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return { nodes, matchedIndices };
+}
+
+/** Small inline fallback sups for quotes whose text couldn't be found in the body. */
+function UnmatchedSups({ sups }: { sups: Array<{ index: number; onScrollTo: () => void }> }) {
+  if (!sups.length) return null;
+  return (
+    <>
+      {sups.map(s => (
+        <sup key={`usup-${s.index}`}>
+          <button className="cite-sup-btn" onClick={s.onScrollTo} title="Jump to citing response">
+            {superscriptNum(s.index)}
+          </button>
+        </sup>
+      ))}
+    </>
+  );
+}
+
+/** Render a reply body, splitting on [QUOTE: text] or legacy [QUOTE] token,
+ *  and injecting inline citation superscripts next to matched quoted passages. */
 function ReplyBody({
   body,
   quotedText,
   authorName,
   referenceType,
   onScrollToRef,
+  quoteSups = [],
 }: {
   body: string;
   quotedText?: string | null;
   authorName?: string | null;
   referenceType?: string | null;
   onScrollToRef?: () => void;
+  quoteSups?: SupEntry[];
 }) {
   if (referenceType === "quote") {
     // New inline format: [QUOTE: text]
@@ -61,13 +129,15 @@ function ReplyBody({
     if (match) {
       const inlineText = match[1].trim();
       const parts = body.split(QUOTE_TOKEN_RE);
-      // split on the full regex produces [before, captureGroup, after...]
-      // parts[0] = before, parts[1] = captured text, parts[2] = after
       const before = parts[0] ?? "";
       const after = parts.slice(2).join("") ?? "";
+      const { nodes: beforeNodes, matchedIndices: bm } = annotateTextWithSups(before, quoteSups);
+      const remainingSups = quoteSups.filter(s => !bm.has(s.index));
+      const { nodes: afterNodes, matchedIndices: am } = annotateTextWithSups(after, remainingSups);
+      const unmatched = quoteSups.filter(s => !bm.has(s.index) && !am.has(s.index));
       return (
         <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
-          {before}
+          {beforeNodes}
           <blockquote
             className="blockquote-ref"
             onClick={onScrollToRef}
@@ -77,16 +147,23 @@ function ReplyBody({
             <div className="blockquote-author">{authorName ?? "Unknown"} wrote:</div>
             <div className="blockquote-text">"{inlineText}"</div>
           </blockquote>
-          {after}
+          {afterNodes}
+          <UnmatchedSups sups={unmatched} />
         </div>
       );
     }
     // Legacy format: [QUOTE] token with separate quotedText field
     if (quotedText && body.includes("[QUOTE]")) {
       const parts = body.split("[QUOTE]");
+      const before = parts[0] ?? "";
+      const after = parts.slice(1).join("[QUOTE]");
+      const { nodes: beforeNodes, matchedIndices: bm } = annotateTextWithSups(before, quoteSups);
+      const remainingSups = quoteSups.filter(s => !bm.has(s.index));
+      const { nodes: afterNodes, matchedIndices: am } = annotateTextWithSups(after, remainingSups);
+      const unmatched = quoteSups.filter(s => !bm.has(s.index) && !am.has(s.index));
       return (
         <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
-          {parts[0]}
+          {beforeNodes}
           <blockquote
             className="blockquote-ref"
             onClick={onScrollToRef}
@@ -96,42 +173,21 @@ function ReplyBody({
             <div className="blockquote-author">{authorName ?? "Unknown"} wrote:</div>
             <div className="blockquote-text">"{quotedText}"</div>
           </blockquote>
-          {parts.slice(1).join("[QUOTE]")}
+          {afterNodes}
+          <UnmatchedSups sups={unmatched} />
         </div>
       );
     }
   }
-  return <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>{body}</div>;
-}
-
-/** Footnote superscripts for a cited item */
-function FootnoteSups({
-  citations,
-  onScrollTo,
-}: {
-  citations: CitationEntry[];
-  onScrollTo: (id: string) => void;
-}) {
-  if (!citations.length) return null;
+  // Plain text — annotate with inline quote sups
+  const { nodes, matchedIndices } = annotateTextWithSups(body, quoteSups);
+  const unmatched = quoteSups.filter(s => !matchedIndices.has(s.index));
   return (
-    <div className="footnote-sups">
-      {citations.map((c) => (
-        <sup key={c.citingReplyId}>
-          <button
-            onClick={() => onScrollTo(`reply-${c.citingReplyId}`)}
-            title={`Jump to citing response`}
-          >
-            {superscriptNum(c.index)}
-          </button>
-        </sup>
-      ))}
+    <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
+      {nodes}
+      <UnmatchedSups sups={unmatched} />
     </div>
   );
-}
-
-function superscriptNum(n: number): string {
-  const supers = ["¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"];
-  return supers[n - 1] ?? `(${n})`;
 }
 
 export default function RepliesList({
@@ -464,6 +520,30 @@ export default function RepliesList({
           const referencedReply = r.referencedReplyId ? byId[r.referencedReplyId] : null;
           const replyCitations = citations?.get(r.id) ?? [];
 
+          // Split citations into quote (inline in body) and link (in header)
+          // Only show citations where the citing reply is visible to this viewer
+          const quoteSups: SupEntry[] = replyCitations
+            .filter(c => {
+              const cr = byId[c.citingReplyId];
+              return cr && !cr.isDeleted && canSeeSelf(cr) && cr.referenceType === 'quote' && !!cr.quotedText;
+            })
+            .map(c => ({
+              index: c.index,
+              citedText: (byId[c.citingReplyId].quotedText ?? "").replace(/…$/, "").trim(),
+              onScrollTo: () => scrollHighlight(`reply-${c.citingReplyId}`),
+            }))
+            .filter(s => s.citedText.length >= 4);
+
+          const linkSups = replyCitations
+            .filter(c => {
+              const cr = byId[c.citingReplyId];
+              return cr && !cr.isDeleted && canSeeSelf(cr) && cr.referenceType === 'link';
+            })
+            .map(c => ({
+              index: c.index,
+              onScrollTo: () => scrollHighlight(`reply-${c.citingReplyId}`),
+            }));
+
           return (
             <div
               key={r.id}
@@ -491,6 +571,14 @@ export default function RepliesList({
                       S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
                     </span>
                   )}
+                  {/* Link citation superscripts in the heading */}
+                  {linkSups.map(s => (
+                    <sup key={`lsup-${s.index}`}>
+                      <button className="cite-sup-btn" onClick={s.onScrollTo} title="Jump to citing response">
+                        {superscriptNum(s.index)}
+                      </button>
+                    </sup>
+                  ))}
                   {isReplyEdited && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7 }}>(edited)</span>
                   )}
@@ -556,14 +644,7 @@ export default function RepliesList({
                         ? () => scrollHighlight("thread-entry")
                         : undefined
                   }
-                />
-              )}
-
-              {/* Footnote superscripts */}
-              {!isCurrentlyEditing && replyCitations.length > 0 && (
-                <FootnoteSups
-                  citations={replyCitations}
-                  onScrollTo={scrollHighlight}
+                  quoteSups={quoteSups}
                 />
               )}
 
