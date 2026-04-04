@@ -223,7 +223,7 @@ export default function ProfilePage({
               <section style={{ marginTop: 0 }}>
                 <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8, minHeight: 28 }}>
                   {/* Title pinned to center independently of toggle width */}
-                  <div className="title" style={{ fontSize: 18, position: "absolute", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", pointerEvents: "none" }}>all your entries</div>
+                  <div className="title" style={{ fontSize: 18, position: "absolute", left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", pointerEvents: "none" }}>your journal</div>
                   {/* Toggle floats right so it never touches the title */}
                   <div style={{ marginLeft: "auto", display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
                     {(["all", "private"] as const).map(opt => (

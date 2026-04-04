@@ -134,7 +134,7 @@ export default function PublicProfilePage({
             <>
               {/* Their posts — diary look */}
               <section style={{ marginTop: 0 }}>
-                <div className="title" style={{ fontSize: 18, marginBottom: 8, textAlign: "center" }}>{username}'s public journal</div>
+                <div className="title" style={{ fontSize: 18, marginBottom: 8, textAlign: "center" }}>{username}'s journal</div>
                 <div className="diaryOuter">
                 <div className="diaryCardWrap">
                 <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
