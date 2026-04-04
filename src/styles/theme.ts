@@ -187,10 +187,11 @@ header.site{
 .diaryOuter{
   position:relative;
   margin-top:48px; margin-left:48px; margin-bottom:24px;
+  width:calc(120% - 58px); margin-right:calc(-20% + 10px);
 }
 .diaryOuter::before{
   content:""; position:absolute; inset:0;
-  border:3px solid #fff; border-radius:0;
+  border:1px solid #fff; border-radius:0;
   background:var(--dos-bg);
   transform:translate(-48px,-48px); z-index:-3;
 }
@@ -200,12 +201,12 @@ header.site{
 .diaryCardWrap::before,
 .diaryCardWrap::after{
   content:""; position:absolute; inset:0;
-  border:3px solid #fff; border-radius:0;
+  border:1px solid #fff; border-radius:0;
   background:var(--dos-bg);
 }
 .diaryCardWrap::before{ transform:translate(-32px,-32px); z-index:-2; }
 .diaryCardWrap::after{  transform:translate(-16px,-16px); z-index:-1; }
-.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 0 0 3px #fff; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 0 0 1px #fff; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
@@ -234,7 +235,7 @@ header.site{
   .mobileHide{ display:none !important; }
 
   /* Diary stacked-paper: reduce offsets so they don't bleed off-screen */
-  .diaryOuter{ margin-top:20px; margin-left:20px; margin-bottom:12px; }
+  .diaryOuter{ margin-top:20px; margin-left:20px; margin-bottom:12px; width:calc(120% - 24px); margin-right:calc(-20% + 4px); }
   .diaryOuter::before{ transform:translate(-20px,-20px); }
   .diaryCardWrap::before{ transform:translate(-13px,-13px); }
   .diaryCardWrap::after{ transform:translate(-7px,-7px); }
