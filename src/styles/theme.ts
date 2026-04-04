@@ -139,7 +139,7 @@ header.site{
 .splashSearchIcon{ font-size:18px; opacity:.85; flex-shrink:0; line-height:1; position:relative; z-index:1; }
 .dropdownPanel{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
-  max-height:320px; overflow:auto; background:rgba(222,168,56,0.97);
+  max-height:300px; overflow:auto; background:rgba(222,168,56,0.97);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   border:3px solid var(--dos-border); border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
   color:var(--dos-fg);
