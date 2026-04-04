@@ -422,7 +422,7 @@ export default function App() {
       )}
       {!authLoading && isAdmin && (
         <div style={{ position: "relative", display: "inline-flex" }}>
-          <button className="btn" onClick={() => navigate("/?admin")} title="Admin" style={{ fontSize: 18 }}>
+          <button className="btn" onClick={() => navigate(showAdmin ? "/" : "/?admin")} title="Admin" style={{ fontSize: 18 }}>
             ⚙
           </button>
           {feedbackUnread > 0 && (
