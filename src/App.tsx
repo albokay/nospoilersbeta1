@@ -533,7 +533,70 @@ export default function App() {
       {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); }} hint={authHint ?? undefined} />}
       {!showProfile && !publicProfileUsername && (
         <>
-          {!expandedShowId && isHomepage && (
+          {/* ── Mobile homepage (no diary pages) ── */}
+          {isHomepage && isMobile && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95, paddingTop: 64 }}>
+              <SidebarLogo />
+              <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
+                  watch. together. whenever.
+                </span>
+              </div>
+            </div>
+          )}
+          {!expandedShowId && isHomepage && isMobile && (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 80 }}>
+                {user && (
+                  <button
+                    className="btn"
+                    onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
+                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
+                  >
+                    review your WATCH DIARY
+                  </button>
+                )}
+                {user && (
+                  <YourShowsSelect
+                    shows={shows}
+                    progress={progress}
+                    value={""}
+                    onChange={(id) => {
+                      if (!id) return;
+                      setPickShowMode("confirm");
+                      setPickShowId(id);
+                    }}
+                    placeholder="shows you follow"
+                    wrapperStyle={{ width: 288, maxWidth: "90vw" }}
+                  />
+                )}
+                <SearchShows
+                  shows={shows}
+                  onPick={handlePickFromSearch}
+                  onShowCreated={(newShow) => {
+                    setShows(prev => [...prev, newShow]);
+                    setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+                  }}
+                  onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
+                  placeholder="join a new show"
+                  style={{ margin: 0 }}
+                />
+              </div>
+              <div style={{ textAlign: "center", marginTop: 60 }}>
+                <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
+                  demo forum:
+                </div>
+                <button
+                  onClick={() => handlePickFromSearch("bb")}
+                  style={{ background: "var(--dos-bg)", color: "#fff", border: "2px solid #fff", borderRadius: 9999, padding: "8px 24px", fontSize: 18, fontWeight: 700, cursor: "pointer", letterSpacing: 0.3 }}
+                >
+                  {shows.find(s => s.id === "bb")?.name ?? "Breaking Bad"}
+                </button>
+              </div>
+            </>
+          )}
+
+          {!expandedShowId && isHomepage && !isMobile && (
             /* ── Stacked diary-pages card ── */
             /* Outer: centres the stack; extra paddingLeft+paddingTop reveal the peeking back pages */
             <div style={{ display: "flex", justifyContent: "center", paddingTop: isMobile ? 77 : 121, paddingLeft: isMobile ? 20 : 30, paddingRight: isMobile ? 4 : 0, paddingBottom: 40, zIndex: 95, position: "relative" }}>
