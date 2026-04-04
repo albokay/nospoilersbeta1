@@ -538,7 +538,7 @@ export default function App() {
             /* Outer: centres the stack; extra paddingLeft+paddingTop reveal the peeking back pages */
             <div style={{ display: "flex", justifyContent: "center", paddingTop: 80, paddingLeft: 30, paddingBottom: 40, zIndex: 95, position: "relative" }}>
               {/* Card-sized relative wrapper — back pages size off this */}
-              <div style={{ position: "relative", width: 528, maxWidth: "72vw" }}>
+              <div style={{ position: "relative", width: 475, maxWidth: "65vw" }}>
               {/* Page 3 — furthest back */}
               <div style={{
                 position: "absolute", top: 0, left: 0,
@@ -562,10 +562,12 @@ export default function App() {
                 position: "relative",
                 border: "2px solid #fff",
                 borderRadius: 0,
-                padding: "50px 60px 67px",
+                padding: "68px 60px 92px",
                 display: "flex", flexDirection: "column", alignItems: "center",
                 background: "var(--dos-bg)",
               }}>
+                {/* Inner content scaled down 10% */}
+                <div style={{ zoom: 0.9, display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
                 {/* Logo + tagline */}
                 <SidebarLogo />
                 <div style={{ marginTop: 12, marginBottom: 0 }}>
@@ -634,6 +636,7 @@ export default function App() {
                     {shows.find(s => s.id === "bb")?.name ?? "Breaking Bad"}
                   </button>
                 </div>
+                </div>{/* end zoom wrapper */}
               </div>
               </div>
             </div>
