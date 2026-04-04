@@ -412,12 +412,12 @@ export default function ShowSection({
               title={thread ? "Back to forum" : "Forum"}
               onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
               style={{
-                fontSize: 28, fontWeight: 800, letterSpacing: .5, textTransform: "uppercase",
+                fontSize: 28, fontWeight: 800, letterSpacing: .5,
                 color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
                 flex: "0 0 auto",
               }}
             >
-              {`the ${String((allShows.find(s => s.id === showId)?.name) || showId)} room`}
+              {`the ${String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()} room`}
             </span>
             {!thread && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto" }}>
