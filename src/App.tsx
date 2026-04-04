@@ -531,81 +531,107 @@ export default function App() {
       {!isHomepage && header}
       <FeedbackWidget isMobile={isMobile} />
       {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); }} hint={authHint ?? undefined} />}
-      {isHomepage && (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95, paddingTop: 64 }}>
-          <SidebarLogo />
-          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
-              watch. together. whenever.
-            </span>
-          </div>
-        </div>
-      )}
       {!showProfile && !publicProfileUsername && (
         <>
-          {!expandedShowId && (
-            <>
-              {/* ── Tight nav unit ── */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 80 }}>
-                {user && (
-                  <button
-                    className="btn"
-                    onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
-                  >
-                    review your WATCH DIARY
-                  </button>
-                )}
-                {user && (
-                  <YourShowsSelect
-                    shows={shows}
-                    progress={progress}
-                    value={""}
-                    onChange={(id) => {
-                      if (!id) return;
-                      setPickShowMode("confirm");
-                      setPickShowId(id);
-                    }}
-                    placeholder="your shows"
-                    wrapperStyle={{ width: 288, maxWidth: "90vw" }}
-                  />
-                )}
-                <SearchShows
-                  shows={shows}
-                  onPick={handlePickFromSearch}
-                  onShowCreated={(newShow) => {
-                    setShows(prev => [...prev, newShow]);
-                    setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
-                  }}
-                  onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-                  placeholder="join a new show"
-                  style={{ margin: 0 }}
-                />
-              </div>
-
-              {/* ── Example forum ── */}
-              <div style={{ textAlign: "center", marginTop: 60 }}>
-                <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
-                  demo forum:
+          {!expandedShowId && isHomepage && (
+            /* ── Stacked diary-pages card ── */
+            <div style={{ position: "relative", display: "flex", justifyContent: "center", padding: "28px 0 28px 24px", zIndex: 95 }}>
+              {/* Page 3 — furthest back */}
+              <div style={{
+                position: "absolute", inset: 0,
+                border: "2px solid rgba(255,255,255,0.55)",
+                borderRadius: 10,
+                background: "var(--dos-bg)",
+                transform: "translate(-22px, -14px)",
+              }} />
+              {/* Page 2 */}
+              <div style={{
+                position: "absolute", inset: 0,
+                border: "2px solid rgba(255,255,255,0.78)",
+                borderRadius: 10,
+                background: "var(--dos-bg)",
+                transform: "translate(-11px, -7px)",
+              }} />
+              {/* Main card */}
+              <div style={{
+                position: "relative", zIndex: 1,
+                border: "2px solid #fff",
+                borderRadius: 10,
+                padding: "50px 60px 56px",
+                width: 620, maxWidth: "86vw",
+                display: "flex", flexDirection: "column", alignItems: "center",
+                background: "var(--dos-bg)",
+              }}>
+                {/* Logo + tagline */}
+                <SidebarLogo />
+                <div style={{ marginTop: 12, marginBottom: 0 }}>
+                  <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
+                    watch. together. whenever.
+                  </span>
                 </div>
-                <button
-                  onClick={() => handlePickFromSearch("bb")}
-                  style={{
-                    background: "var(--dos-bg)",
-                    color: "#fff",
-                    border: "2px solid #fff",
-                    borderRadius: 9999,
-                    padding: "8px 24px",
-                    fontSize: 18,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    letterSpacing: 0.3,
-                  }}
-                >
-                  {shows.find(s => s.id === "bb")?.name ?? "Breaking Bad"}
-                </button>
+
+                {/* ── Nav unit ── */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 40, width: "100%" }}>
+                  {user && (
+                    <button
+                      className="btn"
+                      onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
+                      style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
+                    >
+                      review your WATCH DIARY
+                    </button>
+                  )}
+                  {user && (
+                    <YourShowsSelect
+                      shows={shows}
+                      progress={progress}
+                      value={""}
+                      onChange={(id) => {
+                        if (!id) return;
+                        setPickShowMode("confirm");
+                        setPickShowId(id);
+                      }}
+                      placeholder="your shows"
+                      wrapperStyle={{ width: 288, maxWidth: "90%" }}
+                    />
+                  )}
+                  <SearchShows
+                    shows={shows}
+                    onPick={handlePickFromSearch}
+                    onShowCreated={(newShow) => {
+                      setShows(prev => [...prev, newShow]);
+                      setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+                    }}
+                    onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
+                    placeholder="join a new show"
+                    style={{ margin: 0 }}
+                  />
+                </div>
+
+                {/* ── Demo forum ── */}
+                <div style={{ textAlign: "center", marginTop: 48 }}>
+                  <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
+                    demo forum:
+                  </div>
+                  <button
+                    onClick={() => handlePickFromSearch("bb")}
+                    style={{
+                      background: "var(--dos-bg)",
+                      color: "#fff",
+                      border: "2px solid #fff",
+                      borderRadius: 9999,
+                      padding: "8px 24px",
+                      fontSize: 18,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      letterSpacing: 0.3,
+                    }}
+                  >
+                    {shows.find(s => s.id === "bb")?.name ?? "Breaking Bad"}
+                  </button>
+                </div>
               </div>
-            </>
+            </div>
           )}
 
           {!expandedShowId && (
