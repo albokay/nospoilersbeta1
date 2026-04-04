@@ -536,7 +536,7 @@ export default function App() {
           {!expandedShowId && isHomepage && (
             /* ── Stacked diary-pages card ── */
             /* Outer: centres the stack; extra paddingLeft+paddingTop reveal the peeking back pages */
-            <div style={{ display: "flex", justifyContent: "center", paddingTop: 80, paddingLeft: 30, paddingBottom: 40, zIndex: 95, position: "relative" }}>
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 110, paddingLeft: 30, paddingBottom: 40, zIndex: 95, position: "relative" }}>
               {/* Card-sized relative wrapper — back pages size off this */}
               <div style={{ position: "relative", width: 475, maxWidth: "65vw" }}>
               {/* Page 3 — furthest back */}
@@ -643,7 +643,7 @@ export default function App() {
           )}
 
           {!expandedShowId && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 120 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 100 }}>
               {/* Beta message pill toggle */}
               <button
                 onClick={() => setBetaOpen(o => !o)}
