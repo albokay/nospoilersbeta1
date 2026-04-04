@@ -483,27 +483,32 @@ export default function RepliesList({
                 <div style={{ position: "absolute", left: -10, top: -10, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
               )}
 
-              {/* "Responding to" label for link-type references */}
-              {r.referenceType === "link" && r.referencedReplyId && referencedReply && (
-                <div className="responding-to-label">
-                  Responding to{" "}
-                  <button onClick={() => scrollHighlight(`reply-${r.referencedReplyId}`)}>
-                    {referencedReply.author}
-                  </button>
-                  's thought
-                </div>
-              )}
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 14 }}>
-                  <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold />{" "}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "2px 6px" }}>
+                <div style={{ fontSize: 14, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" }}>
+                  <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold />
                   {thread.showId !== "simshow" && (
                     <span style={{ color: "var(--dos-cyan)", fontWeight: 700 }}>
                       S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
                     </span>
                   )}
                   {isReplyEdited && (
-                    <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
+                    <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7 }}>(edited)</span>
+                  )}
+                  {/* "Responding to" inline for link-type references */}
+                  {r.referenceType === "link" && (referencedReply || r.referencedThreadId) && (
+                    <span style={{ fontSize: 13, opacity: 0.75, fontWeight: 400 }}>
+                      · responding to{" "}
+                      <button
+                        className="responding-to-label"
+                        onClick={() =>
+                          r.referencedReplyId
+                            ? scrollHighlight(`reply-${r.referencedReplyId}`)
+                            : scrollHighlight("thread-entry")
+                        }
+                      >
+                        {referencedReply ? referencedReply.author : thread.author}
+                      </button>
+                    </span>
                   )}
                 </div>
                 <div className="muted" style={{ fontSize: 12 }}>{timeAgo(r.updatedAt)}</div>

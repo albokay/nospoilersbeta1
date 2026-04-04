@@ -542,19 +542,19 @@ export async function insertReply(data: {
 export type CitationEntry = { citingReplyId: string; index: number };
 
 /**
- * Fetch citations for a list of reply IDs, filtered by viewer progress.
+ * Fetch citations for a list of reply IDs.
  * Returns a Map: citedReplyId → array of {citingReplyId, index} sorted by creation order.
+ * Progress filtering (spoilers) is handled client-side in RepliesList via the existing
+ * isVisible check — avoids FK-ambiguity errors from the double reference_citations→replies FK.
  */
 export async function fetchCitationsForReplies(
-  replyIds: string[],
-  viewerSeason: number,
-  viewerEpisode: number
+  replyIds: string[]
 ): Promise<Map<string, CitationEntry[]>> {
   if (!replyIds.length) return new Map();
 
   const { data, error } = await supabase
     .from("response_citations")
-    .select("cited_reply_id, citing_reply_id, created_at, replies!citing_reply_id(season, episode)")
+    .select("cited_reply_id, citing_reply_id, created_at")
     .in("cited_reply_id", replyIds)
     .order("created_at", { ascending: true });
 
@@ -562,13 +562,6 @@ export async function fetchCitationsForReplies(
 
   const result = new Map<string, CitationEntry[]>();
   for (const row of data ?? []) {
-    const citingReply = (row as any).replies;
-    if (!citingReply) continue;
-    // Filter: only show citation if the citing reply is within viewer's progress
-    const cSeason = citingReply.season as number;
-    const cEpisode = citingReply.episode as number;
-    if (cSeason > viewerSeason || (cSeason === viewerSeason && cEpisode > viewerEpisode)) continue;
-
     const citedId = (row as any).cited_reply_id as string;
     if (!result.has(citedId)) result.set(citedId, []);
     const arr = result.get(citedId)!;
@@ -578,32 +571,24 @@ export async function fetchCitationsForReplies(
 }
 
 /**
- * Fetch citations for an original thread entry, filtered by viewer progress.
+ * Fetch citations for an original thread entry.
  * Returns array of {citingReplyId, index}.
  */
 export async function fetchCitationsForThread(
-  threadId: string,
-  viewerSeason: number,
-  viewerEpisode: number
+  threadId: string
 ): Promise<CitationEntry[]> {
   const { data, error } = await supabase
     .from("response_citations")
-    .select("citing_reply_id, created_at, replies!citing_reply_id(season, episode)")
+    .select("citing_reply_id, created_at")
     .eq("cited_thread_id", threadId)
     .order("created_at", { ascending: true });
 
   if (error) { console.warn("fetchCitationsForThread error:", error.message); return []; }
 
-  const result: CitationEntry[] = [];
-  for (const row of data ?? []) {
-    const citingReply = (row as any).replies;
-    if (!citingReply) continue;
-    const cSeason = citingReply.season as number;
-    const cEpisode = citingReply.episode as number;
-    if (cSeason > viewerSeason || (cSeason === viewerSeason && cEpisode > viewerEpisode)) continue;
-    result.push({ citingReplyId: (row as any).citing_reply_id as string, index: result.length + 1 });
-  }
-  return result;
+  return (data ?? []).map((row: any, i: number) => ({
+    citingReplyId: row.citing_reply_id as string,
+    index: i + 1,
+  }));
 }
 
 // ── Feedback ──────────────────────────────────────────────────────────────────

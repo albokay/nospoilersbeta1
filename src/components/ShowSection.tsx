@@ -110,9 +110,8 @@ export default function ShowSection({
 
   // Fetch thread-level citations when thread opens
   const fetchCitations = async (threadId: string) => {
-    const prog = progress[showId] || { s: 1, e: 1 };
     try {
-      const threadCits = await fetchCitationsForThread(threadId, prog.s, prog.e);
+      const threadCits = await fetchCitationsForThread(threadId);
       setThreadCitations(threadCits);
       // Reply citations are fetched after replies load — see handleRepliesLoaded
     } catch (e) {
@@ -122,9 +121,8 @@ export default function ShowSection({
 
   const handleRepliesLoaded = async (replyIds: string[]) => {
     if (!replyIds.length) return;
-    const prog = progress[showId] || { s: 1, e: 1 };
     try {
-      const cits = await fetchCitationsForReplies(replyIds, prog.s, prog.e);
+      const cits = await fetchCitationsForReplies(replyIds);
       setCitations(cits);
     } catch (e) {
       console.warn("Failed to fetch reply citations:", e);

@@ -340,24 +340,17 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* "Responding to" label on link-type responses */
 .responding-to-label {
-  font-size: 12px;
-  font-style: italic;
   color: var(--dos-bg);
-  opacity: 0.65;
-  margin-bottom: 6px;
-}
-.responding-to-label a,
-.responding-to-label button {
-  color: inherit;
   font-weight: 700;
+  font-style: italic;
   text-decoration: underline;
   background: none;
   border: none;
   cursor: pointer;
   padding: 0;
-  font-style: inherit;
   font-size: inherit;
   font-family: inherit;
+  line-height: inherit;
 }
 
 /* Footnote superscript links */
