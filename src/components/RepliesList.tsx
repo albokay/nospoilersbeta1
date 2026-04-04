@@ -50,8 +50,32 @@ function superscriptNum(n: number): string {
 type SupEntry = { citedText: string; index: number; onScrollTo: () => void };
 
 /**
+ * Nudge a match end-position so the sup lands after trailing punctuation
+ * or at the end of a partially-matched word, rather than mid-word or
+ * right before a punctuation mark.
+ */
+function adjustEndForSup(text: string, endPos: number): number {
+  if (endPos >= text.length) return endPos;
+  const ch = text[endPos];
+  // If the very next char is punctuation, advance past it (and any run of punctuation)
+  if (/[.,!?;:'"'"…\-)\]]/.test(ch)) {
+    let p = endPos;
+    while (p < text.length && /[.,!?;:'"'"…\-)\]]/.test(text[p])) p++;
+    return p;
+  }
+  // If mid-word (letter, digit, or apostrophe inside word), advance to word boundary
+  if (/\w/.test(ch)) {
+    let p = endPos;
+    while (p < text.length && /\w/.test(text[p])) p++;
+    return p;
+  }
+  return endPos;
+}
+
+/**
  * Annotate a plain-text string with inline citation superscripts.
- * Each sup is placed immediately after the matched quoted passage.
+ * Each sup is placed immediately after the matched quoted passage,
+ * adjusted past any trailing punctuation or partial word.
  * Returns the annotated node array plus the set of indices that were matched
  * (so callers can render unmatched sups as a fallback elsewhere).
  */
@@ -65,7 +89,11 @@ function annotateTextWithSups(
     const t = (s.citedText ?? "").replace(/…$/, "").trim();
     if (t.length < 4) continue;
     const idx = text.indexOf(t);
-    if (idx !== -1) markers.push({ pos: idx, endPos: idx + t.length, index: s.index, onScrollTo: s.onScrollTo });
+    if (idx !== -1) {
+      const rawEnd = idx + t.length;
+      const adjustedEnd = adjustEndForSup(text, rawEnd);
+      markers.push({ pos: idx, endPos: adjustedEnd, index: s.index, onScrollTo: s.onScrollTo });
+    }
   }
   const matchedIndices = new Set(markers.map(m => m.index));
   if (!markers.length) return { nodes: [text], matchedIndices };
@@ -520,15 +548,16 @@ export default function RepliesList({
           const referencedReply = r.referencedReplyId ? byId[r.referencedReplyId] : null;
           const replyCitations = citations?.get(r.id) ?? [];
 
-          // Split citations into quote (inline in body) and link (in header)
-          // Only show citations where the citing reply is visible to this viewer
+          // Split citations into quote (inline in body) and link (in header).
+          // Each group is numbered independently starting at 1.
+          // Only show citations where the citing reply is visible to this viewer.
           const quoteSups: SupEntry[] = replyCitations
             .filter(c => {
               const cr = byId[c.citingReplyId];
               return cr && !cr.isDeleted && canSeeSelf(cr) && cr.referenceType === 'quote' && !!cr.quotedText;
             })
-            .map(c => ({
-              index: c.index,
+            .map((c, i) => ({
+              index: i + 1,
               citedText: (byId[c.citingReplyId].quotedText ?? "").replace(/…$/, "").trim(),
               onScrollTo: () => scrollHighlight(`reply-${c.citingReplyId}`),
             }))
@@ -539,8 +568,8 @@ export default function RepliesList({
               const cr = byId[c.citingReplyId];
               return cr && !cr.isDeleted && canSeeSelf(cr) && cr.referenceType === 'link';
             })
-            .map(c => ({
-              index: c.index,
+            .map((c, i) => ({
+              index: i + 1,
               onScrollTo: () => scrollHighlight(`reply-${c.citingReplyId}`),
             }));
 
