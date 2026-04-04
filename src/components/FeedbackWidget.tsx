@@ -76,7 +76,7 @@ export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
               transform: "translateY(-50%) rotate(180deg)",
               writingMode: "vertical-rl" as React.CSSProperties["writingMode"],
               zIndex: 10000,
-              background: "var(--dos-bg)", color: "#fff",
+              background: "#fff", color: "var(--dos-bg)",
               padding: "14px 9px",
               cursor: "pointer", fontWeight: 700, fontSize: 13,
               letterSpacing: 0.4, borderRadius: "0 8px 8px 0",
