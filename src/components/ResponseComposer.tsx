@@ -153,7 +153,7 @@ export default function ResponseComposer({
         <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{error}</div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 8 }}>
         <button
           className="btn"
           onClick={onCancel}
@@ -191,7 +191,7 @@ export default function ResponseComposer({
             className="btn"
             onClick={() => handleSubmit(false)}
             disabled={submitting || !body.trim()}
-            style={{ background: "var(--green)", border: "none", color: "#fff" }}
+            style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff" }}
           >
             {submitting ? "Posting…" : "Send to the room"}
           </button>

@@ -807,7 +807,7 @@ export default function ShowSection({
               onChange={(e) => setPostBody(e.target.value)}
               style={{ width: "100%", height: 260, resize: "vertical" }}
             />
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
               <Tooltip
                 text="Post privately. Your entry will live in your journal alongside everything else you've written — a record of your watching life, whether or not you share it. (If you want, you can swap it to public later.)"
@@ -827,7 +827,7 @@ export default function ShowSection({
                 width={280}
                 tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
               >
-                <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--green)", border: "none", color: "#fff" }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
+                <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff" }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
               </Tooltip>
             </div>
           </div>
