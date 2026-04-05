@@ -205,7 +205,7 @@ header.site{
 }
 .diaryOuter::before{
   content:""; position:absolute; inset:0;
-  border:3px solid #fff; border-radius:0;
+  border:3px solid #fff; border-bottom:none; border-radius:0;
   background:var(--dos-bg);
   transform:translate(-48px,-48px); z-index:-3;
 }
@@ -215,7 +215,7 @@ header.site{
 .diaryCardWrap::before,
 .diaryCardWrap::after{
   content:""; position:absolute; inset:0;
-  border:3px solid #fff; border-radius:0;
+  border:3px solid #fff; border-bottom:none; border-radius:0;
   background:var(--dos-bg);
 }
 .diaryCardWrap::before{ transform:translate(-32px,-32px); z-index:-2; }
