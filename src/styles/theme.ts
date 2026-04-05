@@ -201,8 +201,8 @@ header.site{
 /* watch diary stacked pages — 4 sheets, front=top-right, back pages cascade lower-left */
 .diaryOuter{
   position:relative; z-index:0;
-  margin-top:33px; margin-left:0; margin-bottom:64px;
-  width: calc(100% + 80px);
+  margin-top:33px; margin-left:-24px; margin-bottom:64px;
+  width: calc(100% + 104px);
 }
 .diaryOuter::before{
   content:""; position:absolute; inset:0;
