@@ -597,7 +597,7 @@ export default function App() {
           )}
 
           {!expandedShowId && isHomepage && !isMobile && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 100, paddingBottom: 60, zIndex: 95, position: "relative" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 120, paddingBottom: 20, zIndex: 95, position: "relative" }}>
               <SidebarLogo />
               <div style={{ marginTop: 12 }}>
                 <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
@@ -642,7 +642,7 @@ export default function App() {
                 />
               </div>
 
-              <div style={{ textAlign: "center", marginTop: 100 }}>
+              <div style={{ textAlign: "center", marginTop: 130 }}>
                 <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
                   trial forum:
                 </div>
