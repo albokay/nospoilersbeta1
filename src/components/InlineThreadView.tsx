@@ -103,6 +103,20 @@ export default function InlineThreadView({
   // Increment to force RepliesList to re-fetch after a new reply is submitted
   const [repliesKey, setRepliesKey] = useState(0);
 
+  // Composer is hidden until the user explicitly opens it
+  const [composerOpen, setComposerOpen] = useState(false);
+
+  // Open the composer then scroll to it (needs one RAF to let the DOM render first)
+  const openComposer = () => {
+    setComposerOpen(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => onScrollToComposer?.()));
+  };
+
+  // Also open automatically when a pending reference (Quote/Link) is set from a reply
+  useEffect(() => {
+    if (pendingReference) openComposer();
+  }, [pendingReference]);
+
   // Reset edit fields whenever thread changes
   useEffect(() => {
     setEditTitle(thread.titleBase);
@@ -128,7 +142,7 @@ export default function InlineThreadView({
       authorName: thread.author,
       quotedText,
     });
-    onScrollToComposer?.();
+    openComposer();
   };
 
   const handleStartEdit = () => {
@@ -290,7 +304,7 @@ export default function InlineThreadView({
                 <button className="btn" style={{ fontSize: 13 }} onClick={handleQuoteThread}>Quote</button>
                 {/* Show "Write a response" on original entry when >= 5 replies */}
                 {loadedRepliesCount >= 5 && (
-                  <button className="btn" onClick={onScrollToComposer}>Write a response</button>
+                  <button className="btn" onClick={openComposer}>Write a response</button>
                 )}
               </div>
             )}
@@ -319,7 +333,7 @@ export default function InlineThreadView({
           citations={citations}
           threadCitations={threadCitations}
           composerRef={composerRef}
-          onScrollToComposer={onScrollToComposer}
+          onScrollToComposer={openComposer}
           refreshKey={repliesKey}
           onRepliesLoaded={(replies) => {
             setLoadedRepliesCount(replies.filter(r => !r.isDeleted).length);
@@ -328,8 +342,8 @@ export default function InlineThreadView({
         />
       </div>
 
-      {/* Composer always at bottom */}
-      <ResponseComposer
+      {/* Composer — only rendered after the user opens it */}
+      {composerOpen && <ResponseComposer
         threadId={thread.id}
         showId={thread.showId}
         viewerSeason={progressForShow?.s ?? thread.season}
@@ -341,7 +355,7 @@ export default function InlineThreadView({
         onAuthRequired={onAuthRequired}
         threadAuthor={thread.author}
         onExternalReplyAdded={onExternalReplyAdded ? () => onExternalReplyAdded(thread.id) : undefined}
-      />
+      />}
     </section>
   );
 }
