@@ -218,7 +218,7 @@ header.site{
 .diaryTab{
   padding:5px 14px;
   background:rgba(0,0,0,0.22);
-  border:2px solid rgba(255,255,255,0.85); border-bottom:none;
+  border:2px solid rgba(255,255,255,0.85); border-bottom:2px solid transparent;
   border-radius:10px 10px 0 0;
   color:#fff; font-size:13px; font-weight:500;
   cursor:pointer; white-space:nowrap; position:relative;
