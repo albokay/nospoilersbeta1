@@ -6,6 +6,7 @@ import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLik
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Tooltip from "./Tooltip";
+import EmptyProfileWelcome from "./EmptyProfileWelcome";
 
 const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
@@ -212,9 +213,7 @@ export default function ProfilePage({
 
       {!loading && (
         <div className="container" style={{ marginTop: 12 }}>
-          {showTabOrder.length === 0 && (
-            <div className="muted" style={{ padding: "24px 0" }}>No shows yet.</div>
-          )}
+          {showTabOrder.length === 0 && <EmptyProfileWelcome />}
 
           {activeTab && (
             <div className="hangLContent" style={{ paddingTop: 20 }}>
