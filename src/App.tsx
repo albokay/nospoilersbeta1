@@ -506,7 +506,7 @@ export default function App() {
                 textUnderlineOffset: 3,
               }}
             >
-              {shows.find(s => s.id === sid)?.name || sid}
+              {sid === "bb" ? "Breaking Bad (DEMO)" : shows.find(s => s.id === sid)?.name || sid}
               {!viewed && activity && (
                 <span style={{
                   position: "absolute", top: 4, right: 4,
@@ -590,7 +590,7 @@ export default function App() {
                   onClick={() => handlePickFromSearch("bb")}
                   style={{ background: "var(--dos-bg)", color: "#fff", border: "2px solid #fff", borderRadius: 9999, padding: "8px 24px", fontSize: 18, fontWeight: 700, cursor: "pointer", letterSpacing: 0.3 }}
                 >
-                  {shows.find(s => s.id === "bb")?.name ?? "Breaking Bad"}
+                  Breaking Bad (DEMO)
                 </button>
               </div>
             </>
@@ -680,7 +680,7 @@ export default function App() {
                 {/* ── Demo forum ── */}
                 <div style={{ textAlign: "center", marginTop: 48 }}>
                   <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
-                    demo forum:
+                    trial forum:
                   </div>
                   <button
                     onClick={() => handlePickFromSearch("bb")}
@@ -696,7 +696,7 @@ export default function App() {
                       letterSpacing: 0.3,
                     }}
                   >
-                    {shows.find(s => s.id === "bb")?.name ?? "Breaking Bad"}
+                    Breaking Bad (DEMO)
                   </button>
                 </div>
                 </div>{/* end zoom wrapper */}

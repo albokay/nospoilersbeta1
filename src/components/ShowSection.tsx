@@ -89,9 +89,8 @@ export default function ShowSection({
   }, [mode]);
 
   // One-time popup for the Breaking Bad room (seeded with AI content)
-  const [showBBPopup, setShowBBPopup] = useState(
-    () => showId === "bb" && !localStorage.getItem("ns_bb_popup_seen")
-  );
+  // TODO before shipping: restore localStorage gate: showId === "bb" && !localStorage.getItem("ns_bb_popup_seen")
+  const [showBBPopup, setShowBBPopup] = useState(showId === "bb");
   const dismissBBPopup = () => {
     localStorage.setItem("ns_bb_popup_seen", "1");
     setShowBBPopup(false);

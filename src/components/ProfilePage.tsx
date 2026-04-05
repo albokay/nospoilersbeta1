@@ -43,7 +43,7 @@ export default function ProfilePage({
 }) {
   const { user } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
-  const showName = (showId: string) => allShows.find(s => s.id === showId)?.name || showId;
+  const showName = (showId: string) => showId === "bb" ? "Breaking Bad (DEMO)" : allShows.find(s => s.id === showId)?.name || showId;
 
   const [myThreads, setMyThreads] = useState<Thread[]>([]);
   const [myReplies, setMyReplies] = useState<{ reply: Reply; thread: Thread }[]>([]);

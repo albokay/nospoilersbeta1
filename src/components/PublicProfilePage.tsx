@@ -30,7 +30,7 @@ export default function PublicProfilePage({
   onClose: () => void;
   onTabsChange?: (data: ProfileTabData | null) => void;
 }) {
-  const showName = (sid: string) => shows.find(s => s.id === sid)?.name || sid;
+  const showName = (sid: string) => sid === "bb" ? "Breaking Bad (DEMO)" : shows.find(s => s.id === sid)?.name || sid;
 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
