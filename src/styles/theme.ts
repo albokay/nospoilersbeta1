@@ -198,38 +198,43 @@ header.site{
 .likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }
 .likeThis{ font-style:italic; font-weight:700; }
 
-/* watch diary — tabbed stack, background pages cascade upper-left with show tabs */
+/* watch diary — folder-tab row attached to front page, background pages for depth */
 .diaryOuter{
   position:relative; z-index:0;
-  margin-top:80px; margin-left:-56px; margin-bottom:24px;
+  margin-top:16px; margin-left:-56px; margin-bottom:24px;
   width: calc(100% + 116px);
 }
-/* background show pages */
+/* background pages — visual depth only, upper-left cascade */
 .diaryBackPage{
   position:absolute; inset:0;
-  background:rgba(0,0,0,0.13);
-  border-left:3px solid rgba(255,255,255,0.7);
-  border-top:3px solid rgba(255,255,255,0.7);
-  cursor:pointer;
-  transition: background 0.15s;
+  border-left:3px solid rgba(255,255,255,0.55);
 }
-.diaryBackPage:hover{ background:rgba(0,0,0,0.08); }
-/* tab label sticking above each background page */
-.diaryBackPageTab{
-  position:absolute; bottom:100%; left:0;
+/* folder tab row sits directly above the front card */
+.diaryTabRow{
+  display:flex; align-items:flex-end; gap:4px;
+  position:relative; z-index:2; overflow:visible;
+}
+.diaryTab{
   padding:5px 16px;
   background:rgba(0,0,0,0.18);
-  border:3px solid rgba(255,255,255,0.7); border-bottom:none;
-  border-radius:7px 7px 0 0;
-  font-size:13px; font-weight:600; color:#fff;
-  white-space:nowrap; cursor:pointer;
+  border:2px solid rgba(255,255,255,0.85); border-bottom:2px solid rgba(255,255,255,0.85);
+  border-radius:8px 8px 0 0;
+  color:#fff; font-size:13px; font-weight:500;
+  cursor:pointer; white-space:nowrap; position:relative;
 }
-.diaryBackPage:hover .diaryBackPageTab{ background:rgba(0,0,0,0.1); }
+.diaryTab.active{
+  padding:7px 18px;
+  background:var(--dos-bg);
+  border-color:#fff;
+  border-bottom:2px solid var(--dos-bg);
+  font-weight:700;
+  margin-bottom:-2px;
+}
 /* front card */
 .diaryCardWrap{
-  position:relative; z-index:0;
+  position:relative; z-index:1;
 }
-.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 3px 0 0 #fff, inset 3px 0 0 0 #fff, inset -3px 0 0 0 #fff; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 2px 0 0 #fff, inset 2px 0 0 0 #fff, inset -2px 0 0 0 #fff; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
@@ -257,9 +262,10 @@ header.site{
   /* Hide non-essential fixed-header items that cause collision on narrow screens */
   .mobileHide{ display:none !important; }
 
-  /* Diary stacked-paper: tighten offsets on mobile */
-  .diaryOuter{ margin-top:48px; margin-left:0; margin-right:0; margin-bottom:12px; width:100%; }
-  .diaryBackPageTab{ font-size:11px; padding:4px 10px; }
+  /* Diary: tighten on mobile */
+  .diaryOuter{ margin-top:8px; margin-left:0; margin-right:0; margin-bottom:12px; width:100%; }
+  .diaryTab{ font-size:12px; padding:4px 10px; }
+  .diaryTab.active{ font-size:12px; padding:6px 12px; }
 
   /* Forum banner: show title, all buttons/dropdowns bigger on mobile */
   .bannerTitle{ font-size:26px !important; letter-spacing:0.01em !important; }
