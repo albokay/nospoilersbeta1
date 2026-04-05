@@ -248,7 +248,11 @@ export default function ProfilePage({
                 <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
                   {(() => {
                     const filtered = diaryFilter === "private" ? tabThreads.filter(t => t.isPrivate) : tabThreads;
-                    if (filtered.length === 0) return <div className="muted">{diaryFilter === "private" ? "No private posts yet." : "No posts yet."}</div>;
+                    if (filtered.length === 0) {
+                      if (diaryFilter === "private") return <div className="muted">No private posts yet.</div>;
+                      // True empty journal — show the welcome experience
+                      return <EmptyProfileWelcome />;
+                    }
                     return filtered.map(t => (
                     <div key={t.id} className="card threadCard"
                       style={{ margin: "10px 0 10px 20px", cursor: "pointer", position: "relative" }}
