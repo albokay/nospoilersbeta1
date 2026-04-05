@@ -216,11 +216,11 @@ header.site{
   position:relative; z-index:2; overflow:visible;
 }
 .diaryTab{
-  padding:7px 20px;
+  padding:5px 14px;
   background:rgba(0,0,0,0.22);
   border:2px solid rgba(255,255,255,0.85); border-bottom:none;
   border-radius:10px 10px 0 0;
-  color:#fff; font-size:15px; font-weight:600;
+  color:#fff; font-size:13px; font-weight:500;
   cursor:pointer; white-space:nowrap; position:relative;
 }
 .diaryTab.active{
@@ -228,8 +228,8 @@ header.site{
   background:var(--dos-bg);
   border-color:#fff;
   border-bottom:2px solid var(--dos-bg);
-  font-weight:800;
-  margin-bottom:-2px;
+  font-size:15px; font-weight:800;
+  margin-bottom:-3px;
 }
 /* front card */
 .diaryCardWrap{

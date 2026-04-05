@@ -248,7 +248,7 @@ export default function ProfilePage({
                       top = tabRowHeight - offset so that after translate(Y+offset)
                       the visual top of each line lands exactly at the card top. */}
                   {[48, 32, 16].map(offset => (
-                    <div key={offset} className="diaryBackPage" style={{ top: 43 - offset, transform: `translate(-${offset}px, ${offset}px)` }} />
+                    <div key={offset} className="diaryBackPage" style={{ top: 91 - 2 * offset, transform: `translate(-${offset}px, ${offset}px)` }} />
                   ))}
                   {/* Folder tab row — sits flush on top of the front card */}
                   <div className="diaryTabRow">
