@@ -244,6 +244,25 @@ export default function ProfilePage({
                   </div>
                 </div>
                 <div className="diaryOuter">
+                {/* Background show pages — rendered furthest-first so closer ones paint on top */}
+                {showTabOrder
+                  .filter(sid => sid !== activeTab)
+                  .slice(0, 3)
+                  .reverse()
+                  .map((sid, i, arr) => {
+                    const offset = (arr.length - i) * 16;
+                    return (
+                      <div
+                        key={sid}
+                        className="diaryBackPage"
+                        style={{ transform: `translate(-${offset}px, -${offset}px)` }}
+                        onClick={() => { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }}
+                      >
+                        <div className="diaryBackPageTab">{showName(sid)}</div>
+                      </div>
+                    );
+                  })
+                }
                 <div className="diaryCardWrap">
                 <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
                   {(() => {

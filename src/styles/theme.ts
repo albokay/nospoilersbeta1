@@ -198,29 +198,37 @@ header.site{
 .likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }
 .likeThis{ font-style:italic; font-weight:700; }
 
-/* watch diary stacked pages — 4 sheets, front=top-right, back pages cascade lower-left */
+/* watch diary — tabbed stack, background pages cascade upper-left with show tabs */
 .diaryOuter{
   position:relative; z-index:0;
-  margin-top:33px; margin-left:-56px; margin-bottom:64px;
+  margin-top:80px; margin-left:-56px; margin-bottom:24px;
   width: calc(100% + 116px);
 }
-.diaryOuter::before{
-  content:""; position:absolute; inset:0 0 48px 0;
-  border-left:3px solid #fff; border-radius:0;
-  background:var(--dos-bg);
-  transform:translate(-48px,48px); z-index:-1;
+/* background show pages */
+.diaryBackPage{
+  position:absolute; inset:0;
+  background:rgba(0,0,0,0.13);
+  border-left:3px solid rgba(255,255,255,0.7);
+  border-top:3px solid rgba(255,255,255,0.7);
+  cursor:pointer;
+  transition: background 0.15s;
 }
+.diaryBackPage:hover{ background:rgba(0,0,0,0.08); }
+/* tab label sticking above each background page */
+.diaryBackPageTab{
+  position:absolute; bottom:100%; left:0;
+  padding:5px 16px;
+  background:rgba(0,0,0,0.18);
+  border:3px solid rgba(255,255,255,0.7); border-bottom:none;
+  border-radius:7px 7px 0 0;
+  font-size:13px; font-weight:600; color:#fff;
+  white-space:nowrap; cursor:pointer;
+}
+.diaryBackPage:hover .diaryBackPageTab{ background:rgba(0,0,0,0.1); }
+/* front card */
 .diaryCardWrap{
   position:relative; z-index:0;
 }
-.diaryCardWrap::before,
-.diaryCardWrap::after{
-  content:""; position:absolute;
-  border-left:3px solid #fff; border-radius:0;
-  background:var(--dos-bg);
-}
-.diaryCardWrap::before{ inset:0 0 32px 0; transform:translate(-32px,32px); z-index:-2; }
-.diaryCardWrap::after{  inset:0 0 16px 0; transform:translate(-16px,16px); z-index:-1; }
 .diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 3px 0 0 #fff, inset 3px 0 0 0 #fff, inset -3px 0 0 0 #fff; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
@@ -249,11 +257,9 @@ header.site{
   /* Hide non-essential fixed-header items that cause collision on narrow screens */
   .mobileHide{ display:none !important; }
 
-  /* Diary stacked-paper: reduce offsets so they don't bleed off-screen */
-  .diaryOuter{ margin-top:4px; margin-left:20px; margin-right:0; margin-bottom:28px; }
-  .diaryOuter::before{ transform:translate(-20px,20px); }
-  .diaryCardWrap::before{ transform:translate(-13px,13px); }
-  .diaryCardWrap::after{ transform:translate(-7px,7px); }
+  /* Diary stacked-paper: tighten offsets on mobile */
+  .diaryOuter{ margin-top:48px; margin-left:0; margin-right:0; margin-bottom:12px; width:100%; }
+  .diaryBackPageTab{ font-size:11px; padding:4px 10px; }
 
   /* Forum banner: show title, all buttons/dropdowns bigger on mobile */
   .bannerTitle{ font-size:26px !important; letter-spacing:0.01em !important; }
