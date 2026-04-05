@@ -234,9 +234,8 @@ header.site{
 /* front card */
 .diaryCardWrap{
   position:relative; z-index:1;
-  border-left:2px solid #fff; border-right:2px solid #fff;
 }
-.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 2px 0 0 #fff, inset 0 -2px 0 0 #fff; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 2px 0 0 #fff, inset 2px 0 0 0 #fff, inset -2px 0 0 0 #fff, inset 0 -2px 0 0 #fff; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
