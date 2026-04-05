@@ -755,7 +755,7 @@ export default function RepliesList({
           );
         })}
         {!repliesLoading && replies.length === 0 && (
-          <div className="muted" style={{ fontSize: 14 }}>No replies yet.</div>
+          <div className="muted" style={{ fontSize: 14 }}>No responses yet.</div>
         )}
       </div>
 

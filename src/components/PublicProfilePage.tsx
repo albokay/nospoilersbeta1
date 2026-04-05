@@ -176,22 +176,33 @@ export default function PublicProfilePage({
                 </div>{/* /diaryOuter */}
               </section>
 
-              {/* Their replies */}
+              {/* Their responses */}
               <section style={{ marginTop: 24 }}>
-                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Replies</div>
+                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabReplies.length === 0 && (
-                    <div className="muted">No replies visible to you yet.</div>
+                    <div className="muted">No responses visible to you yet.</div>
                   )}
                   {tabReplies.map(({ reply: r, thread: t }) => (
-                    <div key={r.id} className="card" style={{ margin: "10px 0", cursor: "pointer" }}
+                    <div
+                      key={r.id}
+                      className="card reply-card"
+                      style={{
+                        margin: "10px 0", cursor: "pointer",
+                        color: "var(--dos-bg)",
+                        ["--dos-accent" as any]: "var(--dos-bg)",
+                        ["--dos-cyan" as any]: "var(--dos-bg)",
+                        ["--dos-gray" as any]: "rgba(222,168,56,0.65)",
+                      }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="muted" style={{ fontSize: 14 }}>
                           On <b>{t.titleBase}</b>{" "}
-                          <span style={{ color: "var(--dos-cyan)" }}>
-                            S{String(r.season).padStart(2, "0")}E{String(r.episode).padStart(2, "0")}
-                          </span>
+                          {t.showId !== "simshow" && (
+                            <span style={{ color: "var(--dos-cyan)", fontWeight: 700 }}>
+                              S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
+                            </span>
+                          )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {(r.body.length > 260 || r.body.split('\n').length > 3) && (

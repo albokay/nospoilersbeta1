@@ -304,7 +304,7 @@ export default function ProfilePage({
               <section style={{ marginTop: 24 }}>
                 <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
-                  {tabRepliesToMe.length === 0 && <div className="muted">No replies yet.</div>}
+                  {tabRepliesToMe.length === 0 && <div className="muted">No responses yet.</div>}
                   {tabRepliesToMe.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", position: "relative", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
@@ -342,7 +342,7 @@ export default function ProfilePage({
               <section style={{ marginTop: 24 }}>
                 <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>your responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
-                  {tabMyReplies.length === 0 && <div className="muted">No replies yet.</div>}
+                  {tabMyReplies.length === 0 && <div className="muted">No responses yet.</div>}
                   {tabMyReplies.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
@@ -413,9 +413,9 @@ export default function ProfilePage({
 
               {/* Starred replies */}
               <section style={{ marginTop: 24 }}>
-                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your starred replies</div>
+                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Your starred responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
-                  {tabLikedReplies.length === 0 && <div className="muted">No starred replies yet.</div>}
+                  {tabLikedReplies.length === 0 && <div className="muted">No starred responses yet.</div>}
                   {tabLikedReplies.map(({ reply: r, thread: t }) => (
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
