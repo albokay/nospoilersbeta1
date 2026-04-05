@@ -219,21 +219,17 @@ export default function InlineThreadView({
         <Modal
           onClose={dismissThreadIntro}
           width="min(520px,92vw)"
-          cardStyle={{ background: "#bdd4de", border: "none", color: "#000" }}
+          cardClassName="explanation-card"
         >
           <div style={{ padding: "16px 10px 10px" }}>
-            <p style={{ margin: "0 0 28px", fontSize: 22, lineHeight: 1.7, fontWeight: 500, color: "#000" }}>
+            <p style={{ margin: "0 0 28px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
               👋 Sidebar's response threads are deliberately different from typical forums. Every response goes to the bottom of the thread in the order it was written. This encourages you to react to each thread as a cohesive conversation. No indentation. No branching comment trees. No sub-heads. One conversation.
             </p>
-            <p style={{ margin: "0 0 36px", fontSize: 19, lineHeight: 1.7, color: "#000", opacity: 0.65, fontStyle: "italic" }}>
+            <p style={{ margin: "0 0 36px", fontSize: 19, lineHeight: 1.7, opacity: 0.65, fontStyle: "italic" }}>
               (But you'll see a couple unexpected ways to interact when you look around…)
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button
-                className="btn"
-                style={{ fontSize: 16, padding: "10px 24px", color: "#000", borderColor: "#000" }}
-                onClick={dismissThreadIntro}
-              >
+              <button className="btn" style={{ fontSize: 16, padding: "10px 24px" }} onClick={dismissThreadIntro}>
                 Got it
               </button>
             </div>

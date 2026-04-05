@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
-export default function Modal({ children, onClose, topContent, width, cardStyle }: { children: React.ReactNode; onClose: () => void; topContent?: React.ReactNode; width?: string; cardStyle?: React.CSSProperties }) {
+export default function Modal({ children, onClose, topContent, width, cardStyle, cardClassName }: { children: React.ReactNode; onClose: () => void; topContent?: React.ReactNode; width?: string; cardStyle?: React.CSSProperties; cardClassName?: string }) {
   const nodeRef = useRef<HTMLDivElement | null>(null);
   if (!nodeRef.current) {
     nodeRef.current = document.createElement("div");
@@ -27,7 +27,7 @@ export default function Modal({ children, onClose, topContent, width, cardStyle 
             {topContent}
           </div>
         )}
-        <div className="card" style={{
+        <div className={`card${cardClassName ? ` ${cardClassName}` : ""}`} style={{
           width: "100%", background: "var(--dos-bg)",
           backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
           padding: "16px 20px",

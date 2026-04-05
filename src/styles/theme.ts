@@ -388,6 +388,27 @@ body { -webkit-font-smoothing: antialiased; }
   text-decoration-color: rgba(255,255,255,0.55);
 }
 
+/* ── Explanation text ────────────────────────────────────────────────────────
+   Used for onboarding / instructional popups. Light-blue card, black text,
+   no border. Standard widths: Modal width="min(520px,92vw)".
+   Text: 22px / weight 500 / lh 1.7 (main), 19px / italic / opacity 0.65 (footnote).
+   Button: .btn with color #000 / borderColor #000.
+   ──────────────────────────────────────────────────────────────────────────── */
+.explanation-card {
+  background: #bdd4de !important;
+  border: none !important;
+  color: #000 !important;
+}
+.explanation-card .btn {
+  color: #000 !important;
+  border-color: #000 !important;
+}
+.explanation-card .btn:hover {
+  background: rgba(0,0,0,0.08) !important;
+  color: #000 !important;
+  border-color: #000 !important;
+}
+
 /* Quote hint popup — appears above the Quote button when no text is selected */
 .quote-hint-popup {
   position: absolute;
