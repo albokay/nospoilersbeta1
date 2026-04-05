@@ -53,7 +53,22 @@ hr{ display:none; }
 .btn.post{ background: var(--green); color: #fff; border-color: var(--green); }
 .btn.post:hover{ background: #5fa878; border-color: #5fa878; color: #fff; }
 /* Fix dark inputs/textareas */
-select { color: var(--dos-fg); background: rgba(0,0,0,0.12); }
+select {
+  color: var(--dos-fg);
+  background: rgba(0,0,0,0.12);
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid var(--dos-border);
+  border-radius: 9999px;
+  padding: 5px 32px 5px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ffffff' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
 input, textarea { color: #000; background: #fff; }
 input::placeholder, textarea::placeholder { color: #aaa; }
 /* Ensure compose/reply typing fields stay white even when .badge or .card class is present */
