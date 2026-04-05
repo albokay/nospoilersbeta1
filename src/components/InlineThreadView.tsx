@@ -104,13 +104,12 @@ export default function InlineThreadView({
   // Quote hint popup on the thread entry Quote button
   const [threadQuoteHint, setThreadQuoteHint] = useState(false);
 
-  // One-time thread intro popup — using sessionStorage while testing so
-  // hard-refresh always shows it. Swap to localStorage for production.
-  const [showThreadIntro, setShowThreadIntro] = useState(
-    () => !sessionStorage.getItem("ns_thread_intro_seen")
-  );
+  // One-time thread intro popup — always shown while testing (hard refresh works).
+  // TODO: swap useState(true) → useState(() => !localStorage.getItem("ns_thread_intro_seen"))
+  // and uncomment the localStorage line in dismissThreadIntro before shipping.
+  const [showThreadIntro, setShowThreadIntro] = useState(true);
   const dismissThreadIntro = () => {
-    sessionStorage.setItem("ns_thread_intro_seen", "1");
+    // localStorage.setItem("ns_thread_intro_seen", "1");
     setShowThreadIntro(false);
   };
 
