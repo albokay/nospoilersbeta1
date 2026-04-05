@@ -219,7 +219,7 @@ export default function InlineThreadView({
       {showThreadIntro && (
         <Modal
           onClose={dismissThreadIntro}
-          width="min(400px,92vw)"
+          width="min(520px,92vw)"
           cardStyle={{ background: "#bdd4de", border: "none", color: "#000" }}
         >
           <div style={{ padding: "16px 10px 10px" }}>
