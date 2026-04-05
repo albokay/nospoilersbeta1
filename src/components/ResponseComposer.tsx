@@ -158,6 +158,7 @@ export default function ResponseComposer({
           className="btn"
           onClick={onCancel}
           disabled={submitting}
+          style={{ background: "var(--danger)", border: "none", color: "#fff" }}
         >
           Cancel
         </button>
@@ -172,7 +173,7 @@ export default function ResponseComposer({
             className="btn"
             onClick={() => handleSubmit(true)}
             disabled={submitting || !body.trim()}
-            style={{ background: "transparent", border: "2px solid var(--dos-user)", color: "var(--dos-user)" }}
+            style={{ background: "var(--dos-bg)", border: "2px solid #fff", color: "#fff" }}
           >
             {submitting ? "Saving…" : "📝 Save to your journal"}
           </button>

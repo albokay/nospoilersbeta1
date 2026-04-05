@@ -808,7 +808,7 @@ export default function ShowSection({
               style={{ width: "100%", height: 260, resize: "vertical" }}
             />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
-              <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting}>Cancel</button>
+              <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
               <Tooltip
                 text="Post privately. Your entry will live in your journal alongside everything else you've written — a record of your watching life, whether or not you share it. (If you want, you can swap it to public later.)"
                 direction="above"
@@ -816,7 +816,7 @@ export default function ShowSection({
                 width={280}
                 tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
               >
-                <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "transparent", border: "2px solid var(--dos-user)", color: "var(--dos-user)" }}>📝 save to your journal</button>
+                <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--dos-bg)", border: "2px solid #fff", color: "#fff" }}>📝 save to your journal</button>
               </Tooltip>
               <Tooltip
                 text="Post publicly. Visible to anyone in this show room who has watched at least as far as you. They won't see spoilers from ahead of your progress, and neither will you see theirs."
