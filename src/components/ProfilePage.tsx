@@ -222,7 +222,7 @@ export default function ProfilePage({
               {/* Your Watch Diary */}
               <section style={{ marginTop: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 28 }}>
-                  <div className="title" style={{ fontSize: 18 }}>your {showName(activeTab)} journal</div>
+                  <div className="title" style={{ fontSize: 18 }}>your {showName(activeTab).toUpperCase()} journal</div>
                   <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
                     {(["all", "private"] as const).map(opt => (
                       <button
