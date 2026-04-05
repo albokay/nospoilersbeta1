@@ -13,7 +13,7 @@ export default function YourShowsSelect({
         value={value}
         onChange={(ev) => onChange(ev.target.value)}
       >
-        <option value="" disabled>{placeholder ?? "GO TO YOUR SHOW"}</option>
+        <option value="" disabled>{placeholder ?? "switch shows"}</option>
         {keys.map((id) => {
           const s = shows.find(x => x.id === id);
           return <option key={id} value={id}>{s?.name || id}</option>;
