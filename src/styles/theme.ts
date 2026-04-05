@@ -382,6 +382,12 @@ body { -webkit-font-smoothing: antialiased; }
   cursor: pointer;
 }
 
+/* On the original thread entry (yellow bg) sups and underlines must be white */
+.thread-entry-body .cite-sup-btn { color: #fff; }
+.thread-entry-body .quoted-passage {
+  text-decoration-color: rgba(255,255,255,0.55);
+}
+
 /* Quote hint popup — appears above the Quote button when no text is selected */
 .quote-hint-popup {
   position: absolute;

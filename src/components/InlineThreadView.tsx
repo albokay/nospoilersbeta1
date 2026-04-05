@@ -274,7 +274,7 @@ export default function InlineThreadView({
                 (@{thread.author}) deleted their post.
               </div>
             ) : (
-              <div style={{ marginTop: 12 }}>
+              <div style={{ marginTop: 12 }} className="thread-entry-body">
                 {(() => {
                   const { nodes, matchedIndices } = annotateTextWithSups(thread.body, threadQuoteSups);
                   const unmatched = threadQuoteSups.filter(s => !matchedIndices.has(s.index));
