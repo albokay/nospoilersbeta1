@@ -220,7 +220,7 @@ header.site{
 }
 .diaryCardWrap::before{ transform:translate(-32px,-32px); z-index:-2; }
 .diaryCardWrap::after{  transform:translate(-16px,-16px); z-index:-1; }
-.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 0 0 3px #fff; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 3px 0 0 #fff, inset 3px 0 0 0 #fff, inset -3px 0 0 0 #fff; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
