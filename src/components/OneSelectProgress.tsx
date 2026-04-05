@@ -116,7 +116,7 @@ export default function OneSelectProgress({
           className="badge h40"
           value={selectedId}
           onChange={onSelect}
-          style={{ background: "#bdd4de", color: "#2256c9", border: "3px solid #bdd4de", fontWeight: 700 }}
+          style={{ background: "#bdd4de", color: "#2256c9", border: "3px solid #bdd4de", fontWeight: 700, fontSize: 12 }}
         >
           {opts.map((o) => (
             <option key={o.id} value={o.id}>
