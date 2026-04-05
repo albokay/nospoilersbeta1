@@ -229,14 +229,7 @@ header.site{
   border-color:#fff;
   border-bottom:2px solid var(--dos-bg);
   font-size:15px; font-weight:800;
-  margin-bottom:-3px;
-}
-/* Bridge the 1px seam between the tab's left border and the card's left line */
-.diaryTab.active::after{
-  content:''; position:absolute;
-  left:-2px; bottom:-3px;
-  width:2px; height:3px;
-  background:#fff; z-index:3;
+  margin-bottom:-4px;
 }
 /* front card */
 .diaryCardWrap{
