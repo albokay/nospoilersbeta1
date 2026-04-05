@@ -201,7 +201,7 @@ header.site{
 /* watch diary stacked pages — 4 sheets, front=top-right, back pages cascade lower-left */
 .diaryOuter{
   position:relative; z-index:0;
-  margin-top:33px; margin-left:48px; margin-bottom:64px;
+  margin-top:33px; margin-left:48px; margin-right:-48px; margin-bottom:64px;
 }
 .diaryOuter::before{
   content:""; position:absolute; inset:0;
@@ -249,7 +249,7 @@ header.site{
   .mobileHide{ display:none !important; }
 
   /* Diary stacked-paper: reduce offsets so they don't bleed off-screen */
-  .diaryOuter{ margin-top:4px; margin-left:20px; margin-bottom:28px; }
+  .diaryOuter{ margin-top:4px; margin-left:20px; margin-right:0; margin-bottom:28px; }
   .diaryOuter::before{ transform:translate(-20px,20px); }
   .diaryCardWrap::before{ transform:translate(-13px,13px); }
   .diaryCardWrap::after{ transform:translate(-7px,7px); }
