@@ -260,7 +260,10 @@ export default function ProfilePage({
                         <button
                           key={sid}
                           className={`diaryTab${active ? " active" : ""}`}
-                          onClick={() => { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }}
+                          onClick={() => {
+                            if (sid === activeTab) { openShow(sid); }
+                            else { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
+                          }}
                         >
                           {showName(sid)}
                           {!viewed && activity && (
