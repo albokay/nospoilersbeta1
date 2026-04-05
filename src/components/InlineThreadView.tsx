@@ -5,6 +5,7 @@ import { useAuth } from "../lib/auth";
 import { editThread as dbEditThread, deleteThread as dbDeleteThread, makeThreadPrivate as dbMakeThreadPrivate, makeThreadPublic as dbMakeThreadPublic } from "../lib/db";
 import type { CitationEntry } from "../lib/db";
 import LikeBadge from "./LikeBadge";
+import Modal from "./Modal";
 import RepliesList from "./RepliesList";
 import Username from "./Username";
 import ResponseComposer from "./ResponseComposer";
@@ -102,6 +103,16 @@ export default function InlineThreadView({
 
   // Quote hint popup on the thread entry Quote button
   const [threadQuoteHint, setThreadQuoteHint] = useState(false);
+
+  // One-time thread intro popup — flag is written to localStorage only on dismiss,
+  // so hard-refreshing before clicking "Got it" still shows it (handy for testing).
+  const [showThreadIntro, setShowThreadIntro] = useState(
+    () => !localStorage.getItem("ns_thread_intro_seen")
+  );
+  const dismissThreadIntro = () => {
+    localStorage.setItem("ns_thread_intro_seen", "1");
+    setShowThreadIntro(false);
+  };
 
   // Open the composer then scroll to it (needs one RAF to let the DOM render first)
   const openComposer = () => {
@@ -205,6 +216,19 @@ export default function InlineThreadView({
 
   return (
     <section className="container" style={{ padding: "16px 0 24px" }}>
+      {showThreadIntro && (
+        <Modal onClose={dismissThreadIntro}>
+          <p style={{ margin: "0 0 12px", fontSize: 15, lineHeight: 1.6 }}>
+            Sidebar's response threads are deliberately different from typical forums. Every response goes to the bottom of the thread in the order it was written. This encourages you to react to each thread as a cohesive conversation. No indentation. No branching comment trees. No sub-heads. One conversation.
+          </p>
+          <p style={{ margin: "0 0 20px", fontSize: 15, lineHeight: 1.6, opacity: 0.8 }}>
+            (But you'll see a couple unexpected ways to interact when you look around…)
+          </p>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button className="btn primary" onClick={dismissThreadIntro}>Got it</button>
+          </div>
+        </Modal>
+      )}
       <div id="thread-entry" className="card" style={{ marginTop: 12 }}>
         {editing ? (
           /* ── Edit form ── */
