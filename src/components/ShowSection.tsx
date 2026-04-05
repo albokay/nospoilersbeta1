@@ -454,7 +454,7 @@ export default function ShowSection({
             <span
               className="bannerTitle"
               role={thread ? "button" : "heading"}
-              title={thread ? "Back to forum" : "Forum"}
+              title={thread ? "Back to room" : "Room"}
               onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
               style={{
                 fontSize: 28, fontWeight: 800, letterSpacing: .5,
@@ -532,7 +532,7 @@ export default function ShowSection({
                     onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
                     style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
                   >
-                    ← Back to forum
+                    ← Back to room
                   </button>
                   <button
                     className="btn post h40"
