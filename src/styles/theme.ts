@@ -198,16 +198,16 @@ header.site{
 .likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }
 .likeThis{ font-style:italic; font-weight:700; }
 
-/* watch diary stacked pages — 4 sheets total, back=top-left, front=bottom-right */
+/* watch diary stacked pages — 4 sheets, front=top-right, back pages cascade lower-left */
 .diaryOuter{
   position:relative; z-index:0;
-  margin-top:48px; margin-left:48px; margin-bottom:24px;
+  margin-top:8px; margin-left:48px; margin-bottom:64px;
 }
 .diaryOuter::before{
   content:""; position:absolute; inset:0;
-  border:3px solid #fff; border-bottom:none; border-radius:0;
+  border:3px solid #fff; border-top:none; border-right:none; border-radius:0;
   background:var(--dos-bg);
-  transform:translate(-48px,-48px); z-index:-1;
+  transform:translate(-48px,48px); z-index:-1;
 }
 .diaryCardWrap{
   position:relative; z-index:0;
@@ -215,12 +215,12 @@ header.site{
 .diaryCardWrap::before,
 .diaryCardWrap::after{
   content:""; position:absolute; inset:0;
-  border:3px solid #fff; border-bottom:none; border-radius:0;
+  border:3px solid #fff; border-top:none; border-right:none; border-radius:0;
   background:var(--dos-bg);
 }
-.diaryCardWrap::before{ transform:translate(-32px,-32px); z-index:-2; }
-.diaryCardWrap::after{  transform:translate(-16px,-16px); z-index:-1; }
-.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 3px 0 0 #fff, inset 3px 0 0 0 #fff, inset -3px 0 0 0 #fff; background:var(--dos-bg); }
+.diaryCardWrap::before{ transform:translate(-32px,32px); z-index:-2; }
+.diaryCardWrap::after{  transform:translate(-16px,16px); z-index:-1; }
+.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 0 0 3px #fff; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
@@ -249,10 +249,10 @@ header.site{
   .mobileHide{ display:none !important; }
 
   /* Diary stacked-paper: reduce offsets so they don't bleed off-screen */
-  .diaryOuter{ margin-top:20px; margin-left:20px; margin-bottom:12px; }
-  .diaryOuter::before{ transform:translate(-20px,-20px); }
-  .diaryCardWrap::before{ transform:translate(-13px,-13px); }
-  .diaryCardWrap::after{ transform:translate(-7px,-7px); }
+  .diaryOuter{ margin-top:4px; margin-left:20px; margin-bottom:28px; }
+  .diaryOuter::before{ transform:translate(-20px,20px); }
+  .diaryCardWrap::before{ transform:translate(-13px,13px); }
+  .diaryCardWrap::after{ transform:translate(-7px,7px); }
 
   /* Forum banner: show title, all buttons/dropdowns bigger on mobile */
   .bannerTitle{ font-size:26px !important; letter-spacing:0.01em !important; }
