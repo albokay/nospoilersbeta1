@@ -106,19 +106,25 @@ export default function ResponseComposer({
     >
       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Write a response</div>
 
-      {/* Pending reference chip */}
+      {/* Pending reference row */}
       {pendingReference && (
-        <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span className="pending-ref-chip">
-            {pendingReference.type === "quote"
-              ? `Quoting ${pendingReference.authorName}`
-              : `Linking to ${pendingReference.authorName}'s response`}
-            <button onClick={onClearReference} title="Discard reference">×</button>
-          </span>
-          {pendingReference.type === "quote" && !quoteInserted && (
-            <button className="insert-btn" onClick={handleInsertQuote}>
-              Insert quote
-            </button>
+        <div style={{ marginBottom: 8 }}>
+          {pendingReference.type === "quote" && !quoteInserted ? (
+            /* Combined insert + cancel pill */
+            <div className="insert-quote-chip">
+              <button className="insert-quote-main" onClick={handleInsertQuote}>
+                Insert quotation from {pendingReference.authorName}.
+              </button>
+              <button className="insert-quote-cancel" onClick={onClearReference} title="Cancel">×</button>
+            </div>
+          ) : (
+            /* After insertion or link type: small muted chip */
+            <span className="pending-ref-chip">
+              {pendingReference.type === "quote"
+                ? `Quoting ${pendingReference.authorName}`
+                : `Linking to ${pendingReference.authorName}'s response`}
+              <button onClick={onClearReference} title="Discard reference">×</button>
+            </span>
           )}
         </div>
       )}

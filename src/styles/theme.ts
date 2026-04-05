@@ -438,23 +438,43 @@ body { -webkit-font-smoothing: antialiased; }
 .footnote-sups sup a:hover,
 .footnote-sups sup button:hover { text-decoration: underline; }
 
-/* Insert button in composer toolbar */
-.insert-btn {
-  background: transparent;
-  color: var(--dos-fg);
+/* Combined "Insert quotation from [user]. ×" pill in composer */
+.insert-quote-chip {
+  display: inline-flex;
+  align-items: stretch;
   border: 2px solid var(--dos-border);
   border-radius: 9999px;
-  padding: 4px 10px;
-  font-size: 12px;
+  overflow: hidden;
+  font-size: 13px;
   font-weight: 600;
+}
+.insert-quote-main {
+  background: transparent;
+  color: var(--dos-fg);
+  border: none;
   cursor: pointer;
+  padding: 5px 10px 5px 14px;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.3;
+}
+.insert-quote-main:hover { background: var(--dos-blue); color: white; }
+.insert-quote-cancel {
+  background: transparent;
+  border: none;
+  border-left: 1.5px solid rgba(255,255,255,0.45);
+  color: var(--dos-fg);
+  cursor: pointer;
+  padding: 5px 12px;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.7;
   font-family: inherit;
 }
-.insert-btn:hover {
-  background: var(--dos-blue);
-}
+.insert-quote-cancel:hover { opacity: 1; background: rgba(0,0,0,0.08); }
 
-/* Pending reference chip in composer */
+/* Pending reference chip — used for link type and post-insert quote state */
 .pending-ref-chip {
   display: inline-flex;
   align-items: center;
