@@ -218,19 +218,18 @@ header.site{
 .diaryTab{
   padding:5px 14px;
   background:rgba(0,0,0,0.22);
-  border:2px solid rgba(255,255,255,0.85);
+  border:2px solid rgba(255,255,255,0.85); border-bottom:none;
   border-radius:10px 10px 0 0;
-  clip-path:inset(0 0 2px 0 round 10px 10px 0 0);
   color:#fff; font-size:13px; font-weight:500;
   cursor:pointer; white-space:nowrap; position:relative;
 }
 .diaryTab.active{
   padding:9px 22px;
   background:var(--dos-bg);
-  border:2px solid #fff;
+  border-color:#fff;
+  border-bottom:2px solid var(--dos-bg);
   font-size:15px; font-weight:800;
-  clip-path:inset(0 0 2px 0 round 10px 10px 0 0);
-  margin-bottom:-5px;
+  margin-bottom:-2px;
 }
 /* front card */
 .diaryCardWrap{
