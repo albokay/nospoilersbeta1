@@ -218,14 +218,16 @@ export default function InlineThreadView({
     <section className="container" style={{ padding: "16px 0 24px" }}>
       {showThreadIntro && (
         <Modal onClose={dismissThreadIntro}>
-          <p style={{ margin: "0 0 12px", fontSize: 15, lineHeight: 1.6 }}>
-            Sidebar's response threads are deliberately different from typical forums. Every response goes to the bottom of the thread in the order it was written. This encourages you to react to each thread as a cohesive conversation. No indentation. No branching comment trees. No sub-heads. One conversation.
-          </p>
-          <p style={{ margin: "0 0 20px", fontSize: 15, lineHeight: 1.6, opacity: 0.8 }}>
-            (But you'll see a couple unexpected ways to interact when you look around…)
-          </p>
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button className="btn primary" onClick={dismissThreadIntro}>Got it</button>
+          <div style={{ padding: "12px 8px 8px" }}>
+            <p style={{ margin: "0 0 24px", fontSize: 22, lineHeight: 1.65, fontWeight: 500 }}>
+              Sidebar's response threads are deliberately different from typical forums. Every response goes to the bottom of the thread in the order it was written. This encourages you to react to each thread as a cohesive conversation. No indentation. No branching comment trees. No sub-heads. One conversation.
+            </p>
+            <p style={{ margin: "0 0 32px", fontSize: 19, lineHeight: 1.65, opacity: 0.75, fontStyle: "italic" }}>
+              (But you'll see a couple unexpected ways to interact when you look around…)
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button className="btn primary" style={{ fontSize: 16, padding: "10px 24px" }} onClick={dismissThreadIntro}>Got it</button>
+            </div>
           </div>
         </Modal>
       )}
