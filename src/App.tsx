@@ -444,8 +444,8 @@ export default function App() {
 
   // Header is a pure height-spacer + full-bleed bottom border.
   // Logo and auth are both position:fixed so they float above this bar.
-  // On profile pages an extra fixed tab-bar sits just below, so the spacer is taller.
-  const PROFILE_TABS_H = 114;
+  // On profile pages an extra fixed button-bar sits just below, so the spacer is taller.
+  const PROFILE_TABS_H = 60;
   const PROFILE_HEADER_H = GLOBAL_HEADER_H + PROFILE_TABS_H;
   const headerHeight = isProfilePage && profileTabData && profileTabData.showTabOrder.length > 0
     ? PROFILE_HEADER_H
@@ -465,60 +465,49 @@ export default function App() {
       right: 0,
       zIndex: 999,
       background: "var(--dos-bg)",
+      display: "flex",
+      alignItems: "center",
+      paddingLeft: "25vw",
+      paddingRight: 16,
+      height: PROFILE_TABS_H,
+      overflowX: "auto",
+      gap: 8,
     }}>
-      {/* Separator line — behind the tab row so active tab can erase it */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "var(--dos-border)" }} />
-      {/* Scrollable tab row — higher stacking context, so buttons paint over the line */}
-      <div style={{
-        position: "relative",
-        zIndex: 1,
-        paddingTop: 36,
-        paddingLeft: "25vw",
-        paddingRight: 16,
-        display: "flex",
-        overflowX: "auto",
-        gap: 4,
-        alignItems: "flex-end",
-      }}>
-        {profileTabData.showTabOrder.map(sid => {
-          const active = sid === profileTabData.activeTab;
-          const activity = profileTabData.tabActivity?.[sid];
-          const viewed = profileTabData.viewedTabIds?.has(sid);
-          return (
-            <button
-              key={sid}
-              onClick={() => profileTabData.onTabClick(sid)}
-              style={{
-                padding: active ? "8px 18px" : "5px 18px",
-                background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
-                border: "2px solid var(--dos-border)",
-                borderBottom: active ? "2px solid var(--dos-bg)" : "2px solid var(--dos-border)",
-                borderRadius: "8px 8px 0 0",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                color: "var(--dos-fg)",
-                fontWeight: active ? 800 : 500,
-                fontSize: 14,
-                letterSpacing: 0.3,
-                position: "relative",
-                marginBottom: 0,
-                textDecoration: active ? "underline" : "none",
-                textUnderlineOffset: 3,
-              }}
-            >
-              {sid === "bb" ? "Breaking Bad (DEMO)" : shows.find(s => s.id === sid)?.name || sid}
-              {!viewed && activity && (
-                <span style={{
-                  position: "absolute", top: 4, right: 4,
-                  width: 8, height: 8, borderRadius: "50%",
-                  background: activity === "green" ? "var(--green)" : "var(--danger)",
-                  pointerEvents: "none",
-                }} />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {profileTabData.showTabOrder.map(sid => {
+        const active = sid === profileTabData.activeTab;
+        const activity = profileTabData.tabActivity?.[sid];
+        const viewed = profileTabData.viewedTabIds?.has(sid);
+        return (
+          <button
+            key={sid}
+            onClick={() => profileTabData.onTabClick(sid)}
+            style={{
+              padding: "7px 16px",
+              background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
+              border: active ? "2px solid #fff" : "2px solid transparent",
+              borderRadius: 9999,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              color: "var(--dos-fg)",
+              fontWeight: active ? 700 : 500,
+              fontSize: 14,
+              letterSpacing: 0.3,
+              position: "relative",
+              flexShrink: 0,
+            }}
+          >
+            {sid === "bb" ? "Breaking Bad (DEMO)" : shows.find(s => s.id === sid)?.name || sid}
+            {!viewed && activity && (
+              <span style={{
+                position: "absolute", top: 4, right: 4,
+                width: 8, height: 8, borderRadius: "50%",
+                background: activity === "green" ? "var(--green)" : "var(--danger)",
+                pointerEvents: "none",
+              }} />
+            )}
+          </button>
+        );
+      })}
     </div>
   ) : null;
 
