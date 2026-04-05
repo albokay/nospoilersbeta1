@@ -87,6 +87,16 @@ export default function ShowSection({
       }, 650);
     }, 30);
   }, [mode]);
+
+  // One-time popup for the Breaking Bad room (seeded with AI content)
+  const [showBBPopup, setShowBBPopup] = useState(
+    () => showId === "bb" && !localStorage.getItem("ns_bb_popup_seen")
+  );
+  const dismissBBPopup = () => {
+    localStorage.setItem("ns_bb_popup_seen", "1");
+    setShowBBPopup(false);
+  };
+
   const [composeOpen, setComposeOpen] = useState(false);
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const topRef = bannerRef;
@@ -440,6 +450,21 @@ export default function ShowSection({
 
   return (
     <section className="container" style={{ paddingBottom: 140 }}>
+      {showBBPopup && (
+        <Modal onClose={dismissBBPopup} width="min(520px,92vw)" cardClassName="explanation-card">
+          <div style={{ padding: "16px 10px 10px" }}>
+            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+              🧪 The Breaking Bad room is seeded with AI-generated entries so you can see how the forum works before real users fill it. The posts are illustrative, not real opinions.
+            </p>
+            <p style={{ margin: "0 0 36px", fontSize: 19, lineHeight: 1.7, opacity: 0.65, fontStyle: "italic" }}>
+              Try updating your watch progress using the dropdown in the top right of the room to see how the spoiler filter works in practice.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button className="btn" style={{ fontSize: 16, padding: "10px 24px" }} onClick={dismissBBPopup}>Got it</button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {/* TWO-ROW STICKY BANNER */}
       <div className="stickybar bleed" style={{ top: GLOBAL_HEADER_H }} ref={bannerRef}>
         <div className="container">
