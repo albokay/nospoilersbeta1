@@ -82,9 +82,10 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
     return shows.filter(s => !s.isHidden && s.name.toLowerCase().includes(q));
   }, [query, shows]);
 
-  // IDs already on Sidebar (for dedup)
+  // IDs already on Sidebar (for dedup) — exclude the "bb" demo room so
+  // users can still create a real Breaking Bad room via find-a-show.
   const existingTvmazeIds = useMemo(() =>
-    new Set(shows.map(s => s.tvmazeId).filter(Boolean) as string[]),
+    new Set(shows.filter(s => s.id !== "bb").map(s => s.tvmazeId).filter(Boolean) as string[]),
     [shows]);
 
   // Tier 2: TVmaze results, deduped
