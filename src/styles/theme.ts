@@ -229,7 +229,7 @@ header.site{
   border-color:#fff;
   border-bottom:2px solid var(--dos-bg);
   font-size:15px; font-weight:800;
-  margin-bottom:-2px;
+  margin-bottom:-3px;
 }
 /* front card */
 .diaryCardWrap{
