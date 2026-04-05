@@ -445,71 +445,13 @@ export default function App() {
   // Header is a pure height-spacer + full-bleed bottom border.
   // Logo and auth are both position:fixed so they float above this bar.
   // On profile pages an extra fixed button-bar sits just below, so the spacer is taller.
-  const PROFILE_TABS_H = 60;
-  const PROFILE_HEADER_H = GLOBAL_HEADER_H + PROFILE_TABS_H;
-  const headerHeight = isProfilePage && profileTabData && profileTabData.showTabOrder.length > 0
-    ? PROFILE_HEADER_H
-    : GLOBAL_HEADER_H;
+  const headerHeight = GLOBAL_HEADER_H;
   const header = (
     <header className="site bleed" style={{ height: headerHeight }} />
   );
 
-  // Fixed tab bar that sits immediately below the global header on profile pages.
-  // The separator line is an absolute element behind the scrollable tab row so that
-  // the active tab's matching-bg borderBottom paints over it — creating the folder-tab gap.
-  const fixedProfileTabs = isProfilePage && profileTabData && profileTabData.showTabOrder.length > 0 ? (
-    <div style={{
-      position: "fixed",
-      top: GLOBAL_HEADER_H,
-      left: 0,
-      right: 0,
-      zIndex: 999,
-      background: "var(--dos-bg)",
-      display: "flex",
-      alignItems: "center",
-      paddingLeft: "25vw",
-      paddingRight: 16,
-      height: PROFILE_TABS_H,
-      overflowX: "auto",
-      gap: 8,
-    }}>
-      {profileTabData.showTabOrder.map(sid => {
-        const active = sid === profileTabData.activeTab;
-        const activity = profileTabData.tabActivity?.[sid];
-        const viewed = profileTabData.viewedTabIds?.has(sid);
-        return (
-          <button
-            key={sid}
-            onClick={() => profileTabData.onTabClick(sid)}
-            style={{
-              padding: "7px 16px",
-              background: active ? "var(--dos-bg)" : "rgba(0,0,0,0.18)",
-              border: active ? "2px solid #fff" : "2px solid transparent",
-              borderRadius: 9999,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              color: "var(--dos-fg)",
-              fontWeight: active ? 700 : 500,
-              fontSize: 14,
-              letterSpacing: 0.3,
-              position: "relative",
-              flexShrink: 0,
-            }}
-          >
-            {sid === "bb" ? "Breaking Bad (DEMO)" : shows.find(s => s.id === sid)?.name || sid}
-            {!viewed && activity && (
-              <span style={{
-                position: "absolute", top: 4, right: 4,
-                width: 8, height: 8, borderRadius: "50%",
-                background: activity === "green" ? "var(--green)" : "var(--danger)",
-                pointerEvents: "none",
-              }} />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  ) : null;
+  // Show tabs are now integrated directly into the diary graphic on the profile page.
+  const fixedProfileTabs = null;
 
   return (
     <section className="container" style={{ paddingBottom: 28 }}>

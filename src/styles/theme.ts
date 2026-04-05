@@ -208,6 +208,7 @@ header.site{
 .diaryBackPage{
   position:absolute; inset:0;
   border-left:3px solid rgba(255,255,255,0.55);
+  border-bottom:3px solid rgba(255,255,255,0.55);
 }
 /* folder tab row sits directly above the front card */
 .diaryTabRow{
@@ -234,7 +235,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
 }
-.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 2px 0 0 #fff, inset 2px 0 0 0 #fff, inset -2px 0 0 0 #fff; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 2px 0 0 #fff, inset 2px 0 0 0 #fff, inset -2px 0 0 0 #fff, inset 0 -2px 0 0 #fff; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
