@@ -1,7 +1,5 @@
 import React from "react";
 
-const HOT_THRESHOLD = 20;
-
 export default function LikeBadge({
   count: rawCount, userLiked, onClick, title = "Like", readOnly = false
 }: {
@@ -11,12 +9,13 @@ export default function LikeBadge({
   title?: string;
   readOnly?: boolean;
 }) {
-  const count = Math.max(0, rawCount || 0);
+  // count is kept in props so callers can still pass it for backend ordering,
+  // but it is intentionally not rendered.
+  void rawCount;
   const clickable = !!onClick && !readOnly;
-  const isHot = count >= HOT_THRESHOLD;
 
-  // ☆ = not yet liked by this user, ⭐️ = liked by this user, 🤩 = hot threshold
-  const icon = isHot ? "🤩" : userLiked ? "⭐️" : "☆";
+  // ☆ = not yet starred by this user, ⭐️ = starred by this user
+  const icon = userLiked ? "⭐️" : "☆";
 
   return (
     <button
@@ -31,23 +30,10 @@ export default function LikeBadge({
         cursor: clickable ? "pointer" : "default",
         display: "inline-flex",
         alignItems: "baseline",
-        gap: 5,
         color: "var(--dos-fg)",
       }}
     >
       <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>
-
-      {isHot && (
-        <span className="likeThis" style={{ fontSize: 14, fontWeight: 700, fontStyle: "italic" }}>
-          this!
-        </span>
-      )}
-
-      {count >= 2 && (
-        <sub style={{ fontSize: 12, fontWeight: 700, lineHeight: 1 }}>
-          {count}
-        </sub>
-      )}
     </button>
   );
 }
