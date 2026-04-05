@@ -71,8 +71,6 @@ export default function InlineThreadView({
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Track loaded replies count to show "Write a response" on entry when >= 5
-  const [loadedRepliesCount, setLoadedRepliesCount] = useState(0);
   // Store full loaded replies so we can build inline sups for the thread entry body
   const [loadedReplies, setLoadedReplies] = useState<Reply[]>([]);
 
@@ -346,10 +344,7 @@ export default function InlineThreadView({
                     </>
                   )}
                 </div>
-                {/* Show "Write a response" on original entry when >= 5 replies */}
-                {loadedRepliesCount >= 5 && (
-                  <button className="btn" onClick={openComposer}>Write a response</button>
-                )}
+                <button className="btn" onClick={openComposer}>Write a response</button>
               </div>
             )}
           </>
@@ -380,7 +375,6 @@ export default function InlineThreadView({
           onScrollToComposer={openComposer}
           refreshKey={repliesKey}
           onRepliesLoaded={(replies) => {
-            setLoadedRepliesCount(replies.filter(r => !r.isDeleted).length);
             setLoadedReplies(replies);
             onRepliesLoaded?.(replies.map(r => r.id));
           }}

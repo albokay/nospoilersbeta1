@@ -789,10 +789,11 @@ export default function RepliesList({
         )}
       </div>
 
-      {/* "Write a response" button at the very bottom */}
-      <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
+      {/* "Write a response" button at the very bottom — right-aligned, breathing room above */}
+      <div style={{ marginTop: 40, display: "flex", justifyContent: "flex-end" }}>
         <button
           className="btn"
+          style={{ fontSize: 17, padding: "10px 22px" }}
           onClick={() => {
             if (!user) { onAuthRequired(); return; }
             onScrollToComposer?.();
