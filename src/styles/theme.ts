@@ -198,16 +198,22 @@ header.site{
 .likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }
 .likeThis{ font-style:italic; font-weight:700; }
 
-/* watch diary stacked pages — 4 sheets total, back=top-left, front=bottom-right */
+/* watch diary stacked pages — 5 sheets total, back=top-left, front=bottom-right */
 .diaryOuter{
   position:relative;
-  margin-top:48px; margin-left:48px; margin-bottom:24px;
+  margin-top:64px; margin-left:64px; margin-bottom:24px;
 }
 .diaryOuter::before{
   content:""; position:absolute; inset:0;
   border:3px solid #fff; border-bottom:none; border-radius:0;
   background:var(--dos-bg);
   transform:translate(-48px,-48px); z-index:-3;
+}
+.diaryOuter::after{
+  content:""; position:absolute; inset:0;
+  border:3px solid #fff; border-bottom:none; border-radius:0;
+  background:var(--dos-bg);
+  transform:translate(-64px,-64px); z-index:-4;
 }
 .diaryCardWrap{
   position:relative; z-index:0;
@@ -249,9 +255,10 @@ header.site{
   .mobileHide{ display:none !important; }
 
   /* Diary stacked-paper: reduce offsets so they don't bleed off-screen */
-  .diaryOuter{ margin-top:20px; margin-left:20px; margin-bottom:12px; }
-  .diaryOuter::before{ transform:translate(-20px,-20px); }
-  .diaryCardWrap::before{ transform:translate(-13px,-13px); }
+  .diaryOuter{ margin-top:28px; margin-left:28px; margin-bottom:12px; }
+  .diaryOuter::before{ transform:translate(-21px,-21px); }
+  .diaryOuter::after{ transform:translate(-28px,-28px); }
+  .diaryCardWrap::before{ transform:translate(-14px,-14px); }
   .diaryCardWrap::after{ transform:translate(-7px,-7px); }
 
   /* Forum banner: show title, all buttons/dropdowns bigger on mobile */
