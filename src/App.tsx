@@ -597,110 +597,61 @@ export default function App() {
           )}
 
           {!expandedShowId && isHomepage && !isMobile && (
-            /* ── Stacked diary-pages card ── */
-            /* Outer: centres the stack; extra paddingLeft+paddingTop reveal the peeking back pages */
-            <div style={{ display: "flex", justifyContent: "center", paddingTop: isMobile ? 77 : 121, paddingLeft: isMobile ? 20 : 30, paddingRight: isMobile ? 4 : 0, paddingBottom: 40, zIndex: 95, position: "relative" }}>
-              {/* Card-sized relative wrapper — back pages size off this */}
-              <div style={{ position: "relative", width: isMobile ? "auto" : 713, maxWidth: isMobile ? "88vw" : "95vw", ...(isMobile ? { alignSelf: "stretch", flex: 1 } : {}) }}>
-              {/* Page 3 — furthest back */}
-              <div style={{
-                position: "absolute", top: 0, left: 0,
-                width: "100%", height: "100%",
-                border: "2px solid #fff",
-                borderRadius: 0,
-                background: "var(--dos-bg)",
-                transform: isMobile ? "translate(-16px, -11px)" : "translate(-20px, -14px)",
-              }} />
-              {/* Page 2 */}
-              <div style={{
-                position: "absolute", top: 0, left: 0,
-                width: "100%", height: "100%",
-                border: "2px solid #fff",
-                borderRadius: 0,
-                background: "var(--dos-bg)",
-                transform: isMobile ? "translate(-8px, -5px)" : "translate(-10px, -7px)",
-              }} />
-              {/* Main card */}
-              <div style={{
-                position: "relative",
-                border: "2px solid #fff",
-                borderRadius: 0,
-                padding: isMobile ? "48px 28px 64px" : "85px 60px 115px",
-                display: "flex", flexDirection: "column", alignItems: "center",
-                background: "var(--dos-bg)",
-              }}>
-                {/* Inner content scaled down 10% */}
-                <div style={{ zoom: 0.9, display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-                {/* Logo + tagline */}
-                <SidebarLogo />
-                <div style={{ marginTop: 12, marginBottom: 0 }}>
-                  <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
-                    watch. together. whenever.
-                  </span>
-                </div>
-
-                {/* ── Nav unit ── */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 40, width: "100%" }}>
-                  {user && (
-                    <button
-                      className="btn"
-                      onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                      style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
-                    >
-                      review your journal
-                    </button>
-                  )}
-                  {user && (
-                    <YourShowsSelect
-                      shows={shows}
-                      progress={progress}
-                      value={""}
-                      onChange={(id) => {
-                        if (!id) return;
-                        setPickShowMode("confirm");
-                        setPickShowId(id);
-                      }}
-                      placeholder="shows you follow"
-                      wrapperStyle={{ width: 288, maxWidth: "90%" }}
-                    />
-                  )}
-                  <SearchShows
-                    shows={shows}
-                    onPick={handlePickFromSearch}
-                    onShowCreated={(newShow) => {
-                      setShows(prev => [...prev, newShow]);
-                      setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
-                    }}
-                    onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-                    placeholder="join a new show"
-                    style={{ margin: 0 }}
-                  />
-                </div>
-
-                {/* ── Demo forum ── */}
-                <div style={{ textAlign: "center", marginTop: 48 }}>
-                  <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
-                    trial forum:
-                  </div>
-                  <button
-                    onClick={() => handlePickFromSearch("bb")}
-                    style={{
-                      background: "var(--dos-bg)",
-                      color: "#fff",
-                      border: "2px solid #fff",
-                      borderRadius: 9999,
-                      padding: "8px 24px",
-                      fontSize: 18,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      letterSpacing: 0.3,
-                    }}
-                  >
-                    Breaking Bad (DEMO)
-                  </button>
-                </div>
-                </div>{/* end zoom wrapper */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 100, paddingBottom: 60, zIndex: 95, position: "relative" }}>
+              <SidebarLogo />
+              <div style={{ marginTop: 12 }}>
+                <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
+                  watch. together. whenever.
+                </span>
               </div>
+
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 40, width: "100%" }}>
+                {user && (
+                  <button
+                    className="btn"
+                    onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
+                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
+                  >
+                    review your journal
+                  </button>
+                )}
+                {user && (
+                  <YourShowsSelect
+                    shows={shows}
+                    progress={progress}
+                    value={""}
+                    onChange={(id) => {
+                      if (!id) return;
+                      setPickShowMode("confirm");
+                      setPickShowId(id);
+                    }}
+                    placeholder="shows you follow"
+                    wrapperStyle={{ width: 288, maxWidth: "90%" }}
+                  />
+                )}
+                <SearchShows
+                  shows={shows}
+                  onPick={handlePickFromSearch}
+                  onShowCreated={(newShow) => {
+                    setShows(prev => [...prev, newShow]);
+                    setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+                  }}
+                  onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
+                  placeholder="join a new show"
+                  style={{ margin: 0 }}
+                />
+              </div>
+
+              <div style={{ textAlign: "center", marginTop: 48 }}>
+                <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
+                  trial forum:
+                </div>
+                <button
+                  onClick={() => handlePickFromSearch("bb")}
+                  style={{ background: "var(--dos-bg)", color: "#fff", border: "2px solid #fff", borderRadius: 9999, padding: "8px 24px", fontSize: 18, fontWeight: 700, cursor: "pointer", letterSpacing: 0.3 }}
+                >
+                  Breaking Bad (DEMO)
+                </button>
               </div>
             </div>
           )}
