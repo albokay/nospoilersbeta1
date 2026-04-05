@@ -11,7 +11,7 @@ export default function EmptyProfileWelcome() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 0 32px" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "200px 0 48px" }}>
       <div style={{ width: "min(400px, 100%)" }}>
         <p style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 700, lineHeight: 1.4, color: "var(--dos-fg)", textAlign: "left" }}>
           Welcome to your journal.

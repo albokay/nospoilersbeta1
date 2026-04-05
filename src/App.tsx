@@ -642,7 +642,7 @@ export default function App() {
                 />
               </div>
 
-              <div style={{ textAlign: "center", marginTop: 48 }}>
+              <div style={{ textAlign: "center", marginTop: 100 }}>
                 <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
                   trial forum:
                 </div>
