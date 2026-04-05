@@ -56,20 +56,16 @@ type SupEntry = { citedText: string; index: number; onScrollTo: () => void };
  */
 function adjustEndForSup(text: string, endPos: number): number {
   if (endPos >= text.length) return endPos;
-  const ch = text[endPos];
-  // If the very next char is punctuation, advance past it (and any run of punctuation)
-  if (/[.,!?;:'"'"…\-)\]]/.test(ch)) {
-    let p = endPos;
-    while (p < text.length && /[.,!?;:'"'"…\-)\]]/.test(text[p])) p++;
-    return p;
-  }
-  // If mid-word (letter, digit, or apostrophe inside word), advance to word boundary
-  if (/\w/.test(ch)) {
-    let p = endPos;
-    while (p < text.length && /\w/.test(text[p])) p++;
-    return p;
-  }
+  // Step 1: if mid-word, advance to end of word
+  while (endPos < text.length && /\w/.test(text[endPos])) endPos++;
+  // Step 2: then advance past any immediately following punctuation
+  while (endPos < text.length && /[.,!?;:'"'"…\-)\]]/.test(text[endPos])) endPos++;
   return endPos;
+}
+
+/** Strip Unicode superscript digit characters that may have been captured in a text selection. */
+function stripSupChars(text: string): string {
+  return text.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, "");
 }
 
 /**
@@ -104,7 +100,16 @@ function annotateTextWithSups(
     if (m.endPos <= last) continue; // skip overlapping
     const pos = Math.max(m.pos, last);
     if (pos > last) nodes.push(text.slice(last, pos));
-    nodes.push(<span key={`qt-${m.index}`} className="quoted-passage">{text.slice(pos, m.endPos)}</span>);
+    nodes.push(
+      <span
+        key={`qt-${m.index}`}
+        className="quoted-passage"
+        onClick={m.onScrollTo}
+        title="Jump to citing response"
+      >
+        {text.slice(pos, m.endPos)}
+      </span>
+    );
     nodes.push(
       <sup key={`sup-${m.index}`} className="cite-sup">
         <button className="cite-sup-btn" onClick={m.onScrollTo} title="Jump to citing response">
@@ -158,7 +163,7 @@ function ReplyBody({
     // New inline format: [QUOTE: text]
     const match = QUOTE_TOKEN_RE.exec(body);
     if (match) {
-      const inlineText = match[1].trim();
+      const inlineText = stripSupChars(match[1].trim());
       const parts = body.split(QUOTE_TOKEN_RE);
       const before = parts[0] ?? "";
       const after = parts.slice(2).join("") ?? "";
@@ -202,7 +207,7 @@ function ReplyBody({
             title={onScrollToRef ? "Click to jump to cited response" : undefined}
           >
             <div className="blockquote-author">{authorName ?? "Unknown"} wrote:</div>
-            <div className="blockquote-text">"{quotedText}"</div>
+            <div className="blockquote-text">"{stripSupChars(quotedText ?? "")}"</div>
           </blockquote>
           {afterNodes}
           <UnmatchedSups sups={unmatched} />

@@ -342,9 +342,8 @@ body { -webkit-font-smoothing: antialiased; }
 .responding-to-label {
   color: var(--dos-bg);
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   text-decoration: underline;
-  opacity: 0.75;
   background: none;
   border: none;
   cursor: pointer;
@@ -353,7 +352,7 @@ body { -webkit-font-smoothing: antialiased; }
   font-family: inherit;
   line-height: inherit;
 }
-.responding-to-label:hover { opacity: 1; }
+.responding-to-label:hover { opacity: 0.75; }
 
 /* Superscript wrapper — controls elevation (lower than browser default) */
 .cite-sup {
@@ -380,6 +379,7 @@ body { -webkit-font-smoothing: antialiased; }
   text-decoration: underline dotted rgba(222,168,56,0.55);
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
+  cursor: pointer;
 }
 
 /* Quote hint popup — appears below the Quote button when no text is selected */
