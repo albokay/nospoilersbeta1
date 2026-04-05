@@ -500,7 +500,7 @@ export default function RepliesList({
         <Modal onClose={() => setQuoteHintId(null)} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 10px 10px" }}>
             <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
-              🗣️ Highlight the portion of this entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
+              🗣️ Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
             </p>
             <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
               The thread stays linear, but the connections between ideas are visible.
