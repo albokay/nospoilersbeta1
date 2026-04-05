@@ -231,6 +231,13 @@ header.site{
   font-size:15px; font-weight:800;
   margin-bottom:-3px;
 }
+/* Bridge the 1px seam between the tab's left border and the card's left line */
+.diaryTab.active::after{
+  content:''; position:absolute;
+  left:-2px; bottom:-6px;
+  width:2px; height:8px;
+  background:#fff; z-index:3;
+}
 /* front card */
 .diaryCardWrap{
   position:relative; z-index:1;
