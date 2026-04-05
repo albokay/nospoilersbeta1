@@ -244,9 +244,9 @@ export default function ProfilePage({
                   </div>
                 </div>
                 <div className="diaryOuter">
-                  {/* Background pages — visual depth only, upper-left cascade */}
+                  {/* Background pages — visual depth only, lower-left cascade */}
                   {[48, 32, 16].map(offset => (
-                    <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, -${offset}px)` }} />
+                    <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)` }} />
                   ))}
                   {/* Folder tab row — sits flush on top of the front card */}
                   <div className="diaryTabRow">

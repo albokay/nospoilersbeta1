@@ -204,7 +204,7 @@ header.site{
   margin-top:16px; margin-left:-56px; margin-bottom:24px;
   width: calc(100% + 116px);
 }
-/* background pages — visual depth only, upper-left cascade */
+/* background pages — visual depth only, lower-left cascade */
 .diaryBackPage{
   position:absolute; inset:0;
   border-left:3px solid rgba(255,255,255,0.55);
@@ -217,7 +217,7 @@ header.site{
 .diaryTab{
   padding:5px 16px;
   background:rgba(0,0,0,0.18);
-  border:2px solid rgba(255,255,255,0.85); border-bottom:2px solid rgba(255,255,255,0.85);
+  border:2px solid rgba(255,255,255,0.85); border-bottom:none;
   border-radius:8px 8px 0 0;
   color:#fff; font-size:13px; font-weight:500;
   cursor:pointer; white-space:nowrap; position:relative;
