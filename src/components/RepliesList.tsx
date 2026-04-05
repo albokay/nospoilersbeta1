@@ -300,6 +300,8 @@ export default function RepliesList({
   const [editReplyBody, setEditReplyBody] = useState("");
   const [editReplySubmitting, setEditReplySubmitting] = useState(false);
   const [editReplyError, setEditReplyError] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const byId = useMemo(() => {
     const map: Record<string, Reply> = {};
@@ -423,14 +425,14 @@ export default function RepliesList({
   };
 
   const handleDeleteReply = async (rid: string) => {
-    if (!window.confirm("Delete this reply? It will turn into a stub.")) return;
+    setDeleteConfirmId(null);
     try {
       await dbDeleteReply(rid);
       setLocalDeleted(prev => ({ ...prev, [rid]: true }));
       setReplies(prev => prev.map(r => r.id === rid ? { ...r, isDeleted: true } : r));
       onReplyDeleted?.(rid);
     } catch {
-      alert("Failed to delete. Please try again.");
+      setDeleteError("Failed to delete. Please try again.");
     }
   };
 
@@ -509,6 +511,34 @@ export default function RepliesList({
             >
               I'll risk it.
             </button>
+          </div>
+        </Modal>
+      )}
+
+      {deleteConfirmId && (
+        <Modal onClose={() => setDeleteConfirmId(null)}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <h3 className="title" style={{ margin: 0 }}>Delete this response?</h3>
+            <button className="btn" onClick={() => setDeleteConfirmId(null)}>✕</button>
+          </div>
+          <p className="muted" style={{ marginTop: 6 }}>It will turn into a stub visible to others. This can't be undone.</p>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+            <button className="btn" onClick={() => setDeleteConfirmId(null)}>Nevermind</button>
+            <button
+              className="btn btn-danger"
+              onClick={() => handleDeleteReply(deleteConfirmId)}
+            >
+              Delete it
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {deleteError && (
+        <Modal onClose={() => setDeleteError(null)}>
+          <p style={{ marginTop: 0 }}>{deleteError}</p>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+            <button className="btn" onClick={() => setDeleteError(null)}>OK</button>
           </div>
         </Modal>
       )}
@@ -711,7 +741,7 @@ export default function RepliesList({
                   {isReplyOwn && (
                     <>
                       <button className="btn" style={{ fontSize: 13 }} onClick={() => handleStartEditReply(r)}>Edit</button>
-                      <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={() => handleDeleteReply(r.id)}>Delete</button>
+                      <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={() => setDeleteConfirmId(r.id)}>Delete</button>
                     </>
                   )}
                   <div style={{ position: "relative", display: "inline-block" }}>

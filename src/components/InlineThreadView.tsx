@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import type { Thread } from "../types";
-import { timeAgo } from "../lib/utils";
+import React, { useEffect, useState, useMemo } from "react";
+import type { Thread, Reply } from "../types";
+import { timeAgo, canView } from "../lib/utils";
 import { useAuth } from "../lib/auth";
 import { editThread as dbEditThread, deleteThread as dbDeleteThread, makeThreadPrivate as dbMakeThreadPrivate, makeThreadPublic as dbMakeThreadPublic } from "../lib/db";
 import type { CitationEntry } from "../lib/db";
@@ -10,35 +10,8 @@ import Username from "./Username";
 import ResponseComposer from "./ResponseComposer";
 import type { PendingReference } from "./ResponseComposer";
 import { useScrollHighlight } from "../hooks/useScrollHighlight";
-
-function superscriptNum(n: number): string {
-  const supers = ["¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"];
-  return supers[n - 1] ?? `(${n})`;
-}
-
-function FootnoteSups({
-  citations,
-  onScrollTo,
-}: {
-  citations: CitationEntry[];
-  onScrollTo: (id: string) => void;
-}) {
-  if (!citations.length) return null;
-  return (
-    <div className="footnote-sups">
-      {citations.map((c) => (
-        <sup key={c.citingReplyId}>
-          <button
-            onClick={() => onScrollTo(`reply-${c.citingReplyId}`)}
-            title="Jump to citing response"
-          >
-            {superscriptNum(c.index)}
-          </button>
-        </sup>
-      ))}
-    </div>
-  );
-}
+import { annotateTextWithSups, UnmatchedSups } from "../lib/citationUtils";
+import type { SupEntry } from "../lib/citationUtils";
 
 export default function InlineThreadView({
   thread, show, onBack, progressForShow, onMountAlignTop,
@@ -99,6 +72,27 @@ export default function InlineThreadView({
 
   // Track loaded replies count to show "Write a response" on entry when >= 5
   const [loadedRepliesCount, setLoadedRepliesCount] = useState(0);
+  // Store full loaded replies so we can build inline sups for the thread entry body
+  const [loadedReplies, setLoadedReplies] = useState<Reply[]>([]);
+
+  // Build inline citation sups for the original thread entry body
+  const threadQuoteSups: SupEntry[] = useMemo(() => {
+    if (!threadCitations || !loadedReplies.length) return [];
+    const byId: Record<string, Reply> = {};
+    for (const r of loadedReplies) byId[r.id] = r;
+    return threadCitations
+      .filter(c => {
+        const cr = byId[c.citingReplyId];
+        return cr && !cr.isDeleted && cr.referenceType === 'quote' && !!cr.quotedText &&
+          (!progressForShow || canView({ season: cr.season, episode: cr.episode }, progressForShow));
+      })
+      .map((c, i) => ({
+        index: i + 1,
+        citedText: (byId[c.citingReplyId].quotedText ?? "").replace(/…$/, "").trim(),
+        onScrollTo: () => scrollHighlight(`reply-${c.citingReplyId}`),
+      }))
+      .filter(s => s.citedText.length >= 4);
+  }, [threadCitations, loadedReplies, progressForShow]);
 
   // Increment to force RepliesList to re-fetch after a new reply is submitted
   const [repliesKey, setRepliesKey] = useState(0);
@@ -281,13 +275,17 @@ export default function InlineThreadView({
               </div>
             ) : (
               <div style={{ marginTop: 12 }}>
-                <div style={{ whiteSpace: "pre-wrap" }}>{thread.body}</div>
+                {(() => {
+                  const { nodes, matchedIndices } = annotateTextWithSups(thread.body, threadQuoteSups);
+                  const unmatched = threadQuoteSups.filter(s => !matchedIndices.has(s.index));
+                  return (
+                    <div style={{ whiteSpace: "pre-wrap" }}>
+                      {nodes}
+                      <UnmatchedSups sups={unmatched} />
+                    </div>
+                  );
+                })()}
               </div>
-            )}
-
-            {/* Footnote superscripts for original entry */}
-            {threadCitations && threadCitations.length > 0 && (
-              <FootnoteSups citations={threadCitations} onScrollTo={scrollHighlight} />
             )}
 
             {!thread.isDeleted && (
@@ -352,6 +350,7 @@ export default function InlineThreadView({
           refreshKey={repliesKey}
           onRepliesLoaded={(replies) => {
             setLoadedRepliesCount(replies.filter(r => !r.isDeleted).length);
+            setLoadedReplies(replies);
             onRepliesLoaded?.(replies.map(r => r.id));
           }}
         />
