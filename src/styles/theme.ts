@@ -234,8 +234,8 @@ header.site{
 /* Bridge the 1px seam between the tab's left border and the card's left line */
 .diaryTab.active::after{
   content:''; position:absolute;
-  left:-2px; bottom:-6px;
-  width:2px; height:8px;
+  left:-2px; bottom:-3px;
+  width:2px; height:3px;
   background:#fff; z-index:3;
 }
 /* front card */
