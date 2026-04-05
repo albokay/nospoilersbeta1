@@ -23,9 +23,8 @@ export default function LikeBadge({
   const handleClick = (e: React.MouseEvent) => {
     if (!clickable) return;
     onClick?.(e);
-    if (!localStorage.getItem("ns_star_hint_seen")) {
-      setShowHint(true);
-    }
+    // TODO before shipping: wrap in `if (!localStorage.getItem("ns_star_hint_seen"))`
+    setShowHint(true);
   };
 
   return (
