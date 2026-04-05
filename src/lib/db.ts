@@ -275,17 +275,25 @@ export async function fetchRepliesToUserThreads(userId: string): Promise<{ reply
 export async function fetchUserReplies(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
   const { data, error } = await supabase
     .from("replies")
-    .select("*, threads!thread_id(*)")
+    .select("*")
     .eq("author_id", userId)
     .eq("is_deleted", false)
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) throw error;
-  return (data ?? [])
-    .map((row: any) => {
-      const t = row.threads;
-      if (!t || t.is_deleted) return null;
-      return { reply: rowToReply(row), thread: rowToThread(t) };
+  const replies = (data ?? []).map(rowToReply);
+  const threadIds = [...new Set(replies.map(r => r.threadId))];
+  if (!threadIds.length) return [];
+  const { data: tData, error: tErr } = await supabase
+    .from("threads").select("*").in("id", threadIds);
+  if (tErr) throw tErr;
+  const threadById: Record<string, Thread> = {};
+  for (const t of (tData ?? []).map(rowToThread)) threadById[t.id] = t;
+  return replies
+    .map(r => {
+      const t = threadById[r.threadId];
+      if (!t || t.isDeleted) return null;
+      return { reply: r, thread: t };
     })
     .filter(Boolean) as { reply: Reply; thread: Thread }[];
 }
@@ -306,14 +314,25 @@ export async function fetchLikedThreads(userId: string): Promise<Thread[]> {
 export async function fetchLikedReplies(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
   const { data, error } = await supabase
     .from("likes_replies")
-    .select("replies(*, threads(*))")
+    .select("replies(*)")
     .eq("user_id", userId);
   if (error) throw error;
-  return (data ?? [])
-    .map((row: any) => {
-      const r = row.replies;
-      if (!r || !r.threads || r.is_deleted || r.threads.is_deleted) return null;
-      return { reply: rowToReply(r), thread: rowToThread(r.threads) };
+  const replies = (data ?? [])
+    .map((row: any) => row.replies)
+    .filter((r: any) => r && !r.is_deleted)
+    .map(rowToReply);
+  const threadIds = [...new Set(replies.map((r: Reply) => r.threadId))];
+  if (!threadIds.length) return [];
+  const { data: tData, error: tErr } = await supabase
+    .from("threads").select("*").in("id", threadIds);
+  if (tErr) throw tErr;
+  const threadById: Record<string, Thread> = {};
+  for (const t of (tData ?? []).map(rowToThread)) threadById[t.id] = t;
+  return replies
+    .map((r: Reply) => {
+      const t = threadById[r.threadId];
+      if (!t || t.isDeleted) return null;
+      return { reply: r, thread: t };
     })
     .filter(Boolean)
     .sort((a: any, b: any) => b.reply.updatedAt - a.reply.updatedAt) as { reply: Reply; thread: Thread }[];
@@ -461,21 +480,29 @@ export async function fetchPublicThreadsForUser(userId: string): Promise<Thread[
   return (data ?? []).map(rowToThread);
 }
 
-/** Public replies by a user — excludes deleted replies and replies in deleted threads. */
+/** Public replies by a user — excludes deleted replies and replies in deleted/private threads. */
 export async function fetchPublicRepliesForUser(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
   const { data, error } = await supabase
     .from("replies")
-    .select("*, threads!thread_id(*)")
+    .select("*")
     .eq("author_id", userId)
     .eq("is_deleted", false)
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) throw error;
-  return (data ?? [])
-    .map((row: any) => {
-      const t = row.threads;
-      if (!t || t.is_deleted || t.is_private) return null;
-      return { reply: rowToReply(row), thread: rowToThread(t) };
+  const replies = (data ?? []).map(rowToReply);
+  const threadIds = [...new Set(replies.map(r => r.threadId))];
+  if (!threadIds.length) return [];
+  const { data: tData, error: tErr } = await supabase
+    .from("threads").select("*").in("id", threadIds);
+  if (tErr) throw tErr;
+  const threadById: Record<string, Thread> = {};
+  for (const t of (tData ?? []).map(rowToThread)) threadById[t.id] = t;
+  return replies
+    .map(r => {
+      const t = threadById[r.threadId];
+      if (!t || t.isDeleted || t.isPrivate) return null;
+      return { reply: r, thread: t };
     })
     .filter(Boolean) as { reply: Reply; thread: Thread }[];
 }
