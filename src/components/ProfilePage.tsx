@@ -221,7 +221,7 @@ export default function ProfilePage({
               {/* Your Watch Diary */}
               <section style={{ marginTop: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, marginBottom: 16, minHeight: 28 }}>
-                  <div className="title" style={{ fontSize: 18 }}>Your Journal</div>
+                  <div className="title" style={{ fontSize: 22, marginLeft: -42 }}>Your Journal</div>
                   <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
                     {(["all", "private"] as const).map(opt => (
                       <button
@@ -248,7 +248,7 @@ export default function ProfilePage({
                       top = tabRowHeight - offset so that after translate(Y+offset)
                       the visual top of each line lands exactly at the card top. */}
                   {[48, 32, 16].map(offset => (
-                    <div key={offset} className="diaryBackPage" style={{ top: 91 - 2 * offset, transform: `translate(-${offset}px, ${offset}px)` }} />
+                    <div key={offset} className="diaryBackPage" style={{ top: 27, transform: `translate(-${offset}px, ${offset}px)` }} />
                   ))}
                   {/* Folder tab row — sits flush on top of the front card */}
                   <div className="diaryTabRow">
