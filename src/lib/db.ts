@@ -275,7 +275,7 @@ export async function fetchRepliesToUserThreads(userId: string): Promise<{ reply
 export async function fetchUserReplies(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
   const { data, error } = await supabase
     .from("replies")
-    .select("*, threads(*)")
+    .select("*, threads!thread_id(*)")
     .eq("author_id", userId)
     .eq("is_deleted", false)
     .order("created_at", { ascending: false })
@@ -465,7 +465,7 @@ export async function fetchPublicThreadsForUser(userId: string): Promise<Thread[
 export async function fetchPublicRepliesForUser(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
   const { data, error } = await supabase
     .from("replies")
-    .select("*, threads(*)")
+    .select("*, threads!thread_id(*)")
     .eq("author_id", userId)
     .eq("is_deleted", false)
     .order("created_at", { ascending: false })
