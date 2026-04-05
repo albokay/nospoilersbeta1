@@ -467,13 +467,22 @@ export default function RepliesList({
 
   useEffect(() => {
     if (!focusReplyId) return;
-    const run = () => {
+    // Poll until the element exists in the DOM (replies may still be loading).
+    // Retries every 80ms for up to ~3 seconds before giving up.
+    let attempts = 0;
+    const MAX = 38;
+    let timerId: ReturnType<typeof setTimeout>;
+    const tryScroll = () => {
       const el = document.getElementById(`reply-${focusReplyId}`) ?? document.getElementById(`c-${focusReplyId}`);
-      if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      afterScroll().then(() => flashEl(el));
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        afterScroll().then(() => flashEl(el));
+        return;
+      }
+      if (++attempts < MAX) timerId = setTimeout(tryScroll, 80);
     };
-    setTimeout(run, 80);
+    timerId = setTimeout(tryScroll, 80);
+    return () => clearTimeout(timerId);
   }, [focusReplyId]);
 
   return (
