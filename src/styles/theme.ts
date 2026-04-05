@@ -202,11 +202,11 @@ header.site{
 .diaryOuter{
   position:relative; z-index:0;
   margin-top:33px; margin-left:-56px; margin-bottom:64px;
-  width: calc(100% + 136px);
+  width: calc(100% + 116px);
 }
 .diaryOuter::before{
   content:""; position:absolute; inset:0;
-  border-left:1px solid #fff; border-radius:0;
+  border-left:3px solid #fff; border-radius:0;
   background:var(--dos-bg);
   transform:translate(-48px,48px); z-index:-1;
 }
@@ -216,12 +216,12 @@ header.site{
 .diaryCardWrap::before,
 .diaryCardWrap::after{
   content:""; position:absolute; inset:0;
-  border-left:1px solid #fff; border-radius:0;
+  border-left:3px solid #fff; border-radius:0;
   background:var(--dos-bg);
 }
 .diaryCardWrap::before{ transform:translate(-32px,32px); z-index:-2; }
 .diaryCardWrap::after{  transform:translate(-16px,16px); z-index:-1; }
-.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 1px 0 0 #fff, inset 1px 0 0 0 #fff, inset -1px 0 0 0 #fff; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 3px 0 0 #fff, inset 3px 0 0 0 #fff, inset -3px 0 0 0 #fff; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
