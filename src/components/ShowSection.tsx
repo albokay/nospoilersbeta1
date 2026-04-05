@@ -809,8 +809,8 @@ export default function ShowSection({
             />
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
               <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => submitPost(false)} disabled={postSubmitting}>{postSubmitting ? "Posting…" : "send to the room"}</button>
-              <button className="btn post" onClick={() => submitPost(true)} disabled={postSubmitting}>📝 save to your journal</button>
+              <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "transparent", border: "2px solid var(--dos-user)", color: "var(--dos-user)" }}>📝 save to your journal</button>
+              <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--green)", border: "none", color: "#fff" }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
             </div>
           </div>
         </Modal>
