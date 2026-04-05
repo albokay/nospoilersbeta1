@@ -220,7 +220,7 @@ export default function ProfilePage({
             <>
               {/* Your Watch Diary */}
               <section style={{ marginTop: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, minHeight: 28 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, marginBottom: 16, minHeight: 28 }}>
                   <div className="title" style={{ fontSize: 18 }}>Your Journal</div>
                   <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
                     {(["all", "private"] as const).map(opt => (
@@ -326,7 +326,7 @@ export default function ProfilePage({
               </section>
 
               {/* Responses to you — moved above "your responses" */}
-              <section style={{ marginTop: 24 }}>
+              <section style={{ marginTop: 99 }}>
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No responses yet.</div>}
