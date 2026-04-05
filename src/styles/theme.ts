@@ -382,21 +382,21 @@ body { -webkit-font-smoothing: antialiased; }
   cursor: pointer;
 }
 
-/* Quote hint popup — appears below the Quote button when no text is selected */
+/* Quote hint popup — appears above the Quote button when no text is selected */
 .quote-hint-popup {
   position: absolute;
   bottom: calc(100% + 8px);
   right: 0;
   width: 280px;
-  background: var(--dos-fg);
-  color: var(--dos-bg);
+  background: var(--dos-bg);
+  color: var(--dos-fg);
   border: 2px solid var(--dos-border);
   border-radius: 14px;
   padding: 12px 14px 10px;
   font-size: 13px;
   line-height: 1.5;
   z-index: 100;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
 }
 .quote-hint-popup p { margin: 0 0 8px; }
 .quote-hint-popup p:last-child { margin-bottom: 0; }
@@ -407,7 +407,7 @@ body { -webkit-font-smoothing: antialiased; }
   border: none;
   cursor: pointer;
   font-size: 13px;
-  color: var(--dos-bg);
+  color: var(--dos-fg);
   opacity: 0.6;
   padding: 0 2px;
   line-height: 1;

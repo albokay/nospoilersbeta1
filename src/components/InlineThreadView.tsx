@@ -106,6 +106,9 @@ export default function InlineThreadView({
   // Composer is hidden until the user explicitly opens it
   const [composerOpen, setComposerOpen] = useState(false);
 
+  // Quote hint popup on the thread entry Quote button
+  const [threadQuoteHint, setThreadQuoteHint] = useState(false);
+
   // Open the composer then scroll to it (needs one RAF to let the DOM render first)
   const openComposer = () => {
     setComposerOpen(true);
@@ -130,17 +133,17 @@ export default function InlineThreadView({
   const handleQuoteThread = () => {
     if (!user) { onAuthRequired(); return; }
     const sel = window.getSelection();
-    let quotedText = "";
-    if (sel && sel.toString().trim()) {
-      quotedText = sel.toString().trim();
-    } else {
-      quotedText = thread.body.slice(0, 300) + (thread.body.length > 300 ? "…" : "");
+    const selectedText = sel?.toString().trim() ?? "";
+    if (!selectedText) {
+      setThreadQuoteHint(h => !h);
+      return;
     }
+    setThreadQuoteHint(false);
     onSetPendingReference?.({
       type: "quote",
       threadId: thread.id,
       authorName: thread.author,
-      quotedText,
+      quotedText: selectedText,
     });
     openComposer();
   };
@@ -301,7 +304,19 @@ export default function InlineThreadView({
                     )}
                   </>
                 )}
-                <button className="btn" style={{ fontSize: 13 }} onClick={handleQuoteThread}>Quote</button>
+                <div style={{ position: "relative", display: "inline-block" }}>
+                  <button className="btn" style={{ fontSize: 13 }} onClick={handleQuoteThread}>Quote</button>
+                  {threadQuoteHint && (
+                    <>
+                      <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setThreadQuoteHint(false)} />
+                      <div className="quote-hint-popup">
+                        <button className="quote-hint-close" onClick={() => setThreadQuoteHint(false)} aria-label="Close">✕</button>
+                        <p>Highlight the portion of this entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.</p>
+                        <p>This might feel confusing, but try it out — you can always edit your response after you post it!</p>
+                      </div>
+                    </>
+                  )}
+                </div>
                 {/* Show "Write a response" on original entry when >= 5 replies */}
                 {loadedRepliesCount >= 5 && (
                   <button className="btn" onClick={openComposer}>Write a response</button>
