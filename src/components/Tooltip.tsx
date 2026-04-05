@@ -14,6 +14,8 @@ export default function Tooltip({
   style,
   gap = GAP,
   useAbsolute = false,
+  width = TW,
+  tooltipStyle,
 }: {
   text: string;
   children: React.ReactNode;
@@ -22,6 +24,8 @@ export default function Tooltip({
   style?: React.CSSProperties;
   gap?: number;
   useAbsolute?: boolean;
+  width?: number;
+  tooltipStyle?: React.CSSProperties;
 }) {
   const [show, setShow] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -48,7 +52,7 @@ export default function Tooltip({
     if (direction === "left") return {
       position: "fixed",
       top: rect.top + rect.height / 2,
-      left: rect.left - TW - gap,
+      left: rect.left - width - gap,
       transform: "translateY(-50%)",
     };
     if (direction === "right") return {
@@ -86,10 +90,11 @@ export default function Tooltip({
           fontWeight: 500,
           lineHeight: 1.4,
           boxShadow: "0 4px 20px rgba(0,0,0,0.32)",
-          width: TW,
+          width,
           zIndex: 9999,
           pointerEvents: "none",
           textAlign: "center",
+          ...tooltipStyle,
         }}>
           {text}
         </div>

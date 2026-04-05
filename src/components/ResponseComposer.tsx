@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useAuth } from "../lib/auth";
 import { insertReply } from "../lib/db";
+import Tooltip from "./Tooltip";
 
 export interface PendingReference {
   type: "quote" | "link";
@@ -160,23 +161,38 @@ export default function ResponseComposer({
         >
           Cancel
         </button>
-        <button
-          className="btn"
-          onClick={() => handleSubmit(true)}
-          disabled={submitting || !body.trim()}
-          title="Save privately to your journal"
-          style={{ background: "transparent", border: "2px solid var(--dos-user)", color: "var(--dos-user)" }}
+        <Tooltip
+          text="Post privately. Your entry will live in your journal alongside everything else you've written — a record of your watching life, whether or not you share it. (If you want, you can swap it to public later.)"
+          direction="above"
+          align="right"
+          width={280}
+          tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
         >
-          {submitting ? "Saving…" : "📝 Save to your journal"}
-        </button>
-        <button
-          className="btn"
-          onClick={() => handleSubmit(false)}
-          disabled={submitting || !body.trim()}
-          style={{ background: "var(--green)", border: "none", color: "#fff" }}
+          <button
+            className="btn"
+            onClick={() => handleSubmit(true)}
+            disabled={submitting || !body.trim()}
+            style={{ background: "transparent", border: "2px solid var(--dos-user)", color: "var(--dos-user)" }}
+          >
+            {submitting ? "Saving…" : "📝 Save to your journal"}
+          </button>
+        </Tooltip>
+        <Tooltip
+          text="Post publicly. Visible to anyone in this show room who has watched at least as far as you. They won't see spoilers from ahead of your progress, and neither will you see theirs."
+          direction="above"
+          align="right"
+          width={280}
+          tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
         >
-          {submitting ? "Posting…" : "Send to the room"}
-        </button>
+          <button
+            className="btn"
+            onClick={() => handleSubmit(false)}
+            disabled={submitting || !body.trim()}
+            style={{ background: "var(--green)", border: "none", color: "#fff" }}
+          >
+            {submitting ? "Posting…" : "Send to the room"}
+          </button>
+        </Tooltip>
       </div>
     </div>
   );
