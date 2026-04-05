@@ -213,6 +213,25 @@ export default function InlineThreadView({
 
   return (
     <section className="container" style={{ padding: "16px 0 24px" }}>
+      {threadQuoteHint && (
+        <Modal onClose={() => setThreadQuoteHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
+          <div style={{ padding: "16px 10px 10px" }}>
+            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+              🗣️ Highlight the portion of this entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
+            </p>
+            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+              The thread stays linear, but the connections between ideas are visible.
+            </p>
+            <p style={{ margin: "0 0 36px", fontSize: 19, lineHeight: 1.7, opacity: 0.65, fontStyle: "italic" }}>
+              This might feel confusing, but try it out! You can always edit your response after you post it.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button className="btn" style={{ fontSize: 16, padding: "10px 24px" }} onClick={() => setThreadQuoteHint(false)}>Got it</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {showThreadIntro && (
         <Modal
           onClose={dismissThreadIntro}
@@ -331,19 +350,7 @@ export default function InlineThreadView({
                     )}
                   </>
                 )}
-                <div style={{ position: "relative", display: "inline-block" }}>
-                  <button className="btn" style={{ fontSize: 13 }} onClick={handleQuoteThread}>Quote</button>
-                  {threadQuoteHint && (
-                    <>
-                      <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setThreadQuoteHint(false)} />
-                      <div className="quote-hint-popup">
-                        <button className="quote-hint-close" onClick={() => setThreadQuoteHint(false)} aria-label="Close">✕</button>
-                        <p>Highlight the portion of this entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.</p>
-                        <p>This might feel confusing, but try it out — you can always edit your response after you post it!</p>
-                      </div>
-                    </>
-                  )}
-                </div>
+                <button className="btn" style={{ fontSize: 13 }} onClick={handleQuoteThread}>Quote</button>
                 <button className="btn" onClick={openComposer}>Write a response</button>
               </div>
             )}
