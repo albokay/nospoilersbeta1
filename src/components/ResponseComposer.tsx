@@ -16,6 +16,7 @@ interface ResponseComposerProps {
   viewerSeason: number;
   viewerEpisode: number;
   onSubmitted: () => void;
+  onCancel: () => void;
   pendingReference: PendingReference | null;
   onClearReference: () => void;
   composerRef: React.RefObject<HTMLDivElement>;
@@ -30,6 +31,7 @@ export default function ResponseComposer({
   viewerSeason,
   viewerEpisode,
   onSubmitted,
+  onCancel,
   pendingReference,
   onClearReference,
   composerRef,
@@ -151,6 +153,13 @@ export default function ResponseComposer({
       )}
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+        <button
+          className="btn"
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          Cancel
+        </button>
         <button
           className="btn"
           onClick={() => handleSubmit(true)}

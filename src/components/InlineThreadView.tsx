@@ -395,6 +395,7 @@ export default function InlineThreadView({
         viewerSeason={progressForShow?.s ?? thread.season}
         viewerEpisode={progressForShow?.e ?? thread.episode}
         onSubmitted={handleComposerSubmitted}
+        onCancel={() => setComposerOpen(false)}
         pendingReference={pendingReference ?? null}
         onClearReference={() => onSetPendingReference?.(null)}
         composerRef={composerRef ?? { current: null }}
