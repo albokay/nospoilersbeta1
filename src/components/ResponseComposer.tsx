@@ -162,18 +162,20 @@ export default function ResponseComposer({
         </button>
         <button
           className="btn"
+          onClick={() => handleSubmit(false)}
+          disabled={submitting || !body.trim()}
+          style={{ background: "var(--green)", border: "none", color: "#fff" }}
+        >
+          {submitting ? "Posting…" : "Send to the room"}
+        </button>
+        <button
+          className="btn"
           onClick={() => handleSubmit(true)}
           disabled={submitting || !body.trim()}
           title="Save privately to your journal"
+          style={{ background: "transparent", border: "2px solid var(--dos-user)", color: "var(--dos-user)" }}
         >
           {submitting ? "Saving…" : "📝 Save to your journal"}
-        </button>
-        <button
-          className="btn primary"
-          onClick={() => handleSubmit(false)}
-          disabled={submitting || !body.trim()}
-        >
-          {submitting ? "Posting…" : "Send to the room"}
         </button>
       </div>
     </div>
