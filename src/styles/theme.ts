@@ -208,6 +208,7 @@ header.site{
 .diaryBackPage{
   position:absolute; inset:0;
   border:3px solid rgba(255,255,255,0.55);
+  background:var(--dos-bg);
 }
 /* folder tab row sits directly above the front card */
 .diaryTabRow{
