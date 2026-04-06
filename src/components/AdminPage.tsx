@@ -537,6 +537,13 @@ export default function AdminPage({
               {seedMsg}
             </span>
           )}
+          <button
+            className="btn"
+            onClick={() => setPrompts(prev => [...prev].sort((a, b) => Number(b.is_active) - Number(a.is_active)))}
+            style={{ fontSize: 12, padding: "3px 10px" }}
+          >
+            inactive to bottom
+          </button>
           <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
             {(["all", "fragment", "lighthearted-fragment", "prompt"] as const).map(f => (
               <button
