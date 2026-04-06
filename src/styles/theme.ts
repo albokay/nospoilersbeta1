@@ -142,7 +142,7 @@ header.site{
   width:288px; max-width:90vw; margin:20px auto;
   height:40px; border:3px solid #bdd4de; border-radius:9999px;
   padding:0 16px;
-  background:#fffaf0; border-color:#fffaf0; color:#c39431;
+  background:#fef8ea; border-color:#fef8ea; color:#c39431;
 }
 .splashSearch{
   background:transparent; border:none !important; border-radius:0 !important; outline:none;

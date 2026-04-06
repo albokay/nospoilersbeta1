@@ -484,7 +484,7 @@ export default function App() {
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
                     style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
                   >
-                    review your journal
+                    read your journal
                   </button>
                 )}
                 {user && (
@@ -543,7 +543,7 @@ export default function App() {
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
                     style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
                   >
-                    review your journal
+                    read your journal
                   </button>
                 )}
                 {user && (
