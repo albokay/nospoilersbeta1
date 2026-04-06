@@ -475,10 +475,11 @@ export default function ShowSection({
     if (ta) {
       const pos = ta.selectionStart ?? postBody.length;
       const before = postBody.slice(0, pos).trimEnd();
-      const after = postBody.slice(pos);
-      const separator = before.length ? "\n" : "";
-      const newBody = before + separator + token + after;
-      const newPos = before.length + separator.length + token.length;
+      const after = postBody.slice(pos).trimStart();
+      const prefix = before.length ? "\n" : "";
+      const suffix = "\n";
+      const newBody = before + prefix + token + suffix + after;
+      const newPos = before.length + prefix.length + token.length + suffix.length;
       setPostBody(newBody);
       requestAnimationFrame(() => {
         ta.selectionStart = newPos;
@@ -486,7 +487,7 @@ export default function ShowSection({
         ta.focus();
       });
     } else {
-      setPostBody(prev => prev.trimEnd() + (prev.trim() ? "\n" : "") + token);
+      setPostBody(prev => prev.trimEnd() + (prev.trim() ? "\n" : "") + token + "\n");
     }
     setInsertedPromptIds(prev => [...prev, activePrompt.id]);
     setActivePrompt(null);

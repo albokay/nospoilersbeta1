@@ -35,7 +35,7 @@ function parsePromptTokensInline(text: string): React.ReactNode[] {
     );
     last = match.index + match[0].length;
   }
-  if (last < text.length) parts.push(text.slice(last));
+  if (last < text.length) parts.push(text.slice(last).trimStart());
   return parts;
 }
 
