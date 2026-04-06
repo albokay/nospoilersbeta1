@@ -132,6 +132,7 @@ export default function InlineThreadView({
   const [showThreadIntro, setShowThreadIntro] = useState(
     () => !localStorage.getItem("ns_thread_intro_seen")
   );
+  const [showTurnPrivateTooltip] = useState(() => !localStorage.getItem("ns_turn_private_seen"));
   const dismissThreadIntro = () => {
     localStorage.setItem("ns_thread_intro_seen", "1");
     setShowThreadIntro(false);
@@ -387,8 +388,14 @@ export default function InlineThreadView({
                         align="center"
                         width={240}
                         tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
+                        disabled={!showTurnPrivateTooltip}
                       >
-                        <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePrivate}>Turn Private</button>
+                        <button
+                          className="btn"
+                          style={{ fontSize: 13 }}
+                          onClick={handleMakePrivate}
+                          onMouseEnter={() => localStorage.setItem("ns_turn_private_seen", "1")}
+                        >Turn Private</button>
                       </Tooltip>
                     )}
                     {thread.isPrivate && (
