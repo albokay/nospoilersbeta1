@@ -45,7 +45,7 @@ export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
       localStorage.setItem("ns_fb_last", String(Date.now()));
       setPhase("sent");
       setMessage("");
-      setTimeout(() => { setPhase("idle"); setOpen(false); }, 900);
+      setTimeout(() => { setPhase("idle"); setOpen(false); }, 1200);
     } catch {
       setPhase("idle");
     }
