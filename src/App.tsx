@@ -596,7 +596,7 @@ export default function App() {
                   display: "inline-flex",
                   alignItems: "center",
                   borderRadius: 999,
-                  boxShadow: "0 0 0 1.5px rgba(255,255,255,0.45)",
+                  boxShadow: "0 0 0 2px #fff",
                   border: "none",
                   overflow: "hidden",
                   background: "transparent",
