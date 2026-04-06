@@ -328,7 +328,7 @@ export default function ProfilePage({
                       onClick={() => openThreadWithFocus(t.showId, t.id)}>
                       {shouldShowIndicator(t.id) && (
                         <Tooltip
-                          text={`${invisibleCountByThreadId[t.id] ?? ""} people ahead of you have written you back! You can read these once you catch up. And you can get rid of this indicator by clicking the X. Sidebar will still let you know if you get new responses, but you can always turn the indicator off.`}
+                          text={<>{invisibleCountByThreadId[t.id] ?? ""} people ahead of you have written you back! You can read these once you catch up. And you can get rid of this indicator by clicking the X.<br /><br />Sidebar will still let you know if you get new responses, but you can always turn the indicator off.</>}
                           direction="right"
                           gap={14}
                           style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}

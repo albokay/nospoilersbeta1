@@ -18,7 +18,7 @@ export default function Tooltip({
   tooltipStyle,
   disabled = false,
 }: {
-  text: string;
+  text: React.ReactNode;
   children: React.ReactNode;
   direction?: Direction;
   align?: Align;
