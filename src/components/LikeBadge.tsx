@@ -31,20 +31,20 @@ export default function LikeBadge({
     <>
       {showHint && (
         <Modal onClose={() => setShowHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
-          <div style={{ padding: "16px 10px 10px" }}>
-            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+          <div style={{ padding: "16px 12px 12px" }}>
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               ⭐ Starring a post saves it to your private profile page.
             </p>
-            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               Entries never get public "like counts." In fact, there is no quantifying of relationships or conversations anywhere on the site.
             </p>
-            <p style={{ margin: "0 0 36px", fontSize: 19, lineHeight: 1.7, opacity: 0.65, fontStyle: "italic" }}>
+            <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
               Starring is just for you.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
                 className="btn"
-                style={{ fontSize: 16, padding: "10px 24px" }}
+                style={{ fontSize: 15, padding: "8px 24px" }}
                 onClick={() => {
                   localStorage.setItem("ns_star_hint_seen", "1");
                   setShowHint(false);

@@ -558,18 +558,18 @@ export default function ShowSection({
     <section className="container" style={{ paddingBottom: 140 }}>
       {showBBPopup && (
         <Modal onClose={dismissBBPopup} width="min(520px,92vw)" cardClassName="explanation-card">
-          <div style={{ padding: "16px 10px 10px" }}>
-            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+          <div style={{ padding: "16px 12px 12px" }}>
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               🧪 This Breaking Bad DEMO room is seeded with AI-generated entries so you can see how the forum works before real users fill it. The posts are illustrative, not real opinions.
             </p>
-            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               Try updating your watch progress using the dropdown in the top right of the room to see how the spoiler filter works in practice. All other features are functional here too.
             </p>
-            <p style={{ margin: "0 0 36px", fontSize: 19, lineHeight: 1.7, opacity: 0.65, fontStyle: "italic" }}>
+            <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
               Hope you're caught up on the show…if not, get out of here! Join the real Breaking Bad room by using the "find a show" search field.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn" style={{ fontSize: 16, padding: "10px 24px" }} onClick={dismissBBPopup}>Got it</button>
+              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={dismissBBPopup}>Got it</button>
             </div>
           </div>
         </Modal>

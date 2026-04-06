@@ -540,18 +540,18 @@ export default function RepliesList({
     <>
       {quoteHintId && (
         <Modal onClose={() => setQuoteHintId(null)} width="min(520px,92vw)" cardClassName="explanation-card">
-          <div style={{ padding: "16px 10px 10px" }}>
-            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+          <div style={{ padding: "16px 12px 12px" }}>
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               🗣️ Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
             </p>
-            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               The thread stays linear, but the connections between ideas are visible.
             </p>
-            <p style={{ margin: "0 0 36px", fontSize: 19, lineHeight: 1.7, opacity: 0.65, fontStyle: "italic" }}>
+            <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
               This might feel confusing, but try it out! You can always edit your response after you post it.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn" style={{ fontSize: 16, padding: "10px 24px" }} onClick={() => setQuoteHintId(null)}>Got it</button>
+              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={() => setQuoteHintId(null)}>Got it</button>
             </div>
           </div>
         </Modal>
@@ -559,14 +559,14 @@ export default function RepliesList({
 
       {linkHintPending && (
         <Modal onClose={() => setLinkHintPending(false)} width="min(520px,92vw)" cardClassName="explanation-card">
-          <div style={{ padding: "16px 10px 10px" }}>
-            <p style={{ margin: "0 0 36px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+          <div style={{ padding: "16px 12px 12px" }}>
+            <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               🔗 Linking connects your response back to this entry. Your post will link back here and vice versa.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
                 className="btn"
-                style={{ fontSize: 16, padding: "10px 24px" }}
+                style={{ fontSize: 15, padding: "8px 24px" }}
                 onClick={() => {
                   localStorage.setItem("ns_link_hint_seen", "1");
                   setLinkHintPending(false);

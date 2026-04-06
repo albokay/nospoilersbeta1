@@ -242,18 +242,18 @@ export default function InlineThreadView({
     <section className="container" style={{ padding: "16px 0 24px" }}>
       {threadQuoteHint && (
         <Modal onClose={() => setThreadQuoteHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
-          <div style={{ padding: "16px 10px 10px" }}>
-            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+          <div style={{ padding: "16px 12px 12px" }}>
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               🗣️ Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
             </p>
-            <p style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               The thread stays linear, but the connections between ideas are visible.
             </p>
-            <p style={{ margin: "0 0 36px", fontSize: 19, lineHeight: 1.7, opacity: 0.65, fontStyle: "italic" }}>
+            <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
               This might feel confusing, but try it out! You can always edit your response after you post it.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn" style={{ fontSize: 16, padding: "10px 24px" }} onClick={() => setThreadQuoteHint(false)}>Got it</button>
+              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={() => setThreadQuoteHint(false)}>Got it</button>
             </div>
           </div>
         </Modal>
@@ -265,15 +265,15 @@ export default function InlineThreadView({
           width="min(520px,92vw)"
           cardClassName="explanation-card"
         >
-          <div style={{ padding: "16px 10px 10px" }}>
-            <p style={{ margin: "0 0 28px", fontSize: 22, lineHeight: 1.7, fontWeight: 500 }}>
+          <div style={{ padding: "16px 12px 12px" }}>
+            <p style={{ margin: "0 0 24px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               👋 Sidebar's response threads are deliberately different from typical forums. Every response goes to the bottom of the thread in the order it was written. This encourages you to react to each thread as a cohesive conversation. No indentation. No branching comment trees. No sub-heads. One conversation.
             </p>
-            <p style={{ margin: "0 0 36px", fontSize: 19, lineHeight: 1.7, opacity: 0.65, fontStyle: "italic" }}>
+            <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
               (But you'll see a couple unexpected ways to interact when you look around…)
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn" style={{ fontSize: 16, padding: "10px 24px" }} onClick={dismissThreadIntro}>
+              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={dismissThreadIntro}>
                 Got it
               </button>
             </div>
