@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { Show, FeedbackRow, PromptRow } from "../lib/db";
-import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback, fetchAllPrompts, togglePromptActive, deletePrompt, updatePrompt, createPrompt, seedPrompts } from "../lib/db";
-import { PROMPT_DATA } from "../lib/promptData";
+import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback, fetchAllPrompts, togglePromptActive, deletePrompt, updatePrompt, createPrompt } from "../lib/db";
 import { timeAgo } from "../lib/utils";
 
 type FeedbackStatus = "will-do" | "consider" | "done" | "ignore";
@@ -84,8 +83,6 @@ export default function AdminPage({
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [promptsLoading, setPromptsLoading] = useState(true);
   const [promptFilter, setPromptFilter] = useState<"all" | "fragment" | "lighthearted-fragment" | "prompt">("all");
-  const [seedingPrompts, setSeedingPrompts] = useState(false);
-  const [seedMsg, setSeedMsg] = useState<string | null>(null);
   const [deletingPromptId, setDeletingPromptId] = useState<number | null>(null);
 
   // ── Prompt edit state ─────────────────────────────────────────────────────
@@ -157,20 +154,6 @@ export default function AdminPage({
       .finally(() => setPromptsLoading(false));
   }, []);
 
-  const handleSeedPrompts = async () => {
-    setSeedingPrompts(true);
-    setSeedMsg(null);
-    try {
-      await seedPrompts(PROMPT_DATA);
-      const rows = await fetchAllPrompts();
-      setPrompts(rows);
-      setSeedMsg(`Seeded ${rows.length} prompts.`);
-    } catch (e: any) {
-      setSeedMsg(`Error: ${e?.message ?? "Failed to seed"}`);
-    } finally {
-      setSeedingPrompts(false);
-    }
-  };
 
   const handleToggleActive = async (id: number, current: boolean) => {
     try {
@@ -526,19 +509,6 @@ export default function AdminPage({
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
           <button
             className="btn"
-            onClick={handleSeedPrompts}
-            disabled={seedingPrompts}
-            style={{ fontSize: 13 }}
-          >
-            {seedingPrompts ? "Seeding…" : "Seed / Re-seed prompts"}
-          </button>
-          {seedMsg && (
-            <span style={{ fontSize: 13, color: seedMsg.startsWith("Error") ? "var(--danger)" : "var(--green)" }}>
-              {seedMsg}
-            </span>
-          )}
-          <button
-            className="btn"
             onClick={() => setPrompts(prev => [...prev].sort((a, b) => Number(b.is_active) - Number(a.is_active)))}
             style={{ fontSize: 12, padding: "3px 10px" }}
           >
@@ -566,7 +536,7 @@ export default function AdminPage({
 
         {!promptsLoading && prompts.length === 0 && (
           <div className="muted" style={{ fontSize: 14 }}>
-            No prompts in database. Click "Seed / Re-seed prompts" to populate from the built-in library.
+            No prompts in database.
           </div>
         )}
 
