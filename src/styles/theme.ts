@@ -219,7 +219,10 @@ header.site{
    padding-bottom:4px gives room for the overlap; margin-bottom:-4px
    cancels the extra space so the card sits flush. */
 .diaryTabScroller{
-  overflow-x:auto; overflow-y:visible;
+  overflow-x:auto; overflow-y:clip;
+  /* overflow-y:clip (unlike visible) does NOT trigger the CSS spec's
+     visible→auto promotion, so the active tab's -3px bottom overlap
+     renders through while horizontal scrolling still works. */
   padding-bottom:4px; margin-bottom:-4px;
   scrollbar-width:none; -webkit-overflow-scrolling:touch;
 }
@@ -292,10 +295,6 @@ header.site{
   .diaryTabRow{ padding-left:12px; }
   /* Balance the diary card padding — 48px right was desktop-only breathing room */
   .diaryCardWrap > .card{ padding:16px 16px 24px !important; }
-  /* Remove top inset shadow — the -3px active-tab overlap trick doesn't work inside
-     the scroll container on mobile, so the white line would show. Since the back-pages
-     are also hidden, just drop the top border and let the tab sit flush. */
-  .diaryCardWrap > .card{ box-shadow:inset 2px 0 0 0 #fff, inset -2px 0 0 0 #fff, inset 0 -2px 0 0 #fff !important; }
 
   /* Forum banner: smaller title so it doesn't wrap awkwardly */
   .bannerTitle{ font-size:20px !important; letter-spacing:0.01em !important; }
