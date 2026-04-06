@@ -513,7 +513,7 @@ export default function App() {
                   style={{ margin: 0 }}
                 />
               </div>
-              <div style={{ textAlign: "center", marginTop: 60, opacity: 0.6 }}>
+              <div style={{ textAlign: "center", marginTop: 60 }}>
                 <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
                   demo forum:
                 </div>
@@ -573,7 +573,7 @@ export default function App() {
                 />
               </div>
 
-              <div style={{ textAlign: "center", marginTop: 130, opacity: 0.6 }}>
+              <div style={{ textAlign: "center", marginTop: 130 }}>
                 <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
                   trial forum:
                 </div>
@@ -603,7 +603,6 @@ export default function App() {
                   padding: 0,
                   cursor: "pointer",
                   gap: 0,
-                  opacity: 0.65,
                 }}
               >
                 <span style={{
