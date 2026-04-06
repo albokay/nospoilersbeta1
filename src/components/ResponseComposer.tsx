@@ -104,15 +104,19 @@ export default function ResponseComposer({
     const token = `[PROMPT: ${text}]`;
     if (ta) {
       const pos = ta.selectionStart ?? body.length;
-      const newBody = body.slice(0, pos) + token + body.slice(pos);
+      const before = body.slice(0, pos).trimEnd();
+      const after = body.slice(pos);
+      const separator = before.length ? "\n" : "";
+      const newBody = before + separator + token + after;
+      const newPos = before.length + separator.length + token.length;
       setBody(newBody);
       requestAnimationFrame(() => {
-        ta.selectionStart = pos + token.length;
-        ta.selectionEnd = pos + token.length;
+        ta.selectionStart = newPos;
+        ta.selectionEnd = newPos;
         ta.focus();
       });
     } else {
-      setBody((prev) => prev + (prev ? "\n" : "") + token);
+      setBody((prev) => prev.trimEnd() + (prev.trim() ? "\n" : "") + token);
     }
     setInsertedPromptIds((prev) => [...prev, activePrompt.id]);
     setActivePrompt(null);

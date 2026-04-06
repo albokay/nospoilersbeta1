@@ -25,7 +25,7 @@ function parsePromptTokensInline(text: string): React.ReactNode[] {
   let keyIdx = 0;
   while ((match = re.exec(text)) !== null) {
     if (match.index > last) {
-      parts.push(text.slice(last, match.index));
+      parts.push(text.slice(last, match.index).trimEnd());
     }
     const promptText = match[1].trim();
     parts.push(
