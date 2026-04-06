@@ -614,6 +614,15 @@ export default function AdminPage({
                           >
                             {editingId === p.id ? "cancel" : "edit"}
                           </button>
+                          {editingId === p.id && (
+                            <button
+                              onClick={() => handleSaveEdit(p.id)}
+                              disabled={editSaving}
+                              style={{ fontSize: 11, cursor: "pointer", background: "#2256c9", color: "#fff", border: "none", borderRadius: 3, padding: "1px 7px", fontWeight: 600 }}
+                            >
+                              {editSaving ? "Saving…" : "save"}
+                            </button>
+                          )}
                           {deletingPromptId === p.id ? (
                             <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
                               <span style={{ color: "#c00" }}>sure?</span>
@@ -697,14 +706,6 @@ export default function AdminPage({
                               </>); })()}
                             </div>
                           </div>
-                          {/* Save */}
-                          <button
-                            onClick={() => handleSaveEdit(p.id)}
-                            disabled={editSaving}
-                            style={{ fontSize: 12, cursor: "pointer", background: "#2256c9", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
-                          >
-                            {editSaving ? "Saving…" : "Save changes"}
-                          </button>
                         </td>
                       </tr>
                     )}
