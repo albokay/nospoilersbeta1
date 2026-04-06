@@ -396,7 +396,7 @@ export default function App() {
               className="profileChip"
               onClick={() => {
                 navigate("/profile");
-                requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+                requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
               }}
             >
               <span className="avatar">{username[0].toUpperCase()}</span>
