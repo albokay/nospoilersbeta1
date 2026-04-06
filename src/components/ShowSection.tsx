@@ -623,8 +623,8 @@ export default function ShowSection({
           {thread && isMobile ? (
             /* ── Thread · mobile: two rows so nothing bleeds off-screen ── */
             <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: `${ROW_PAD_Y}px 0` }}>
-              {/* Row 1: navigation */}
-              <div style={{ display: "flex", gap: 6 }}>
+              {/* Row 1: navigation — left and right justified */}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
                 <button
                   className="btn"
                   onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
@@ -640,8 +640,8 @@ export default function ShowSection({
                   + make an entry
                 </button>
               </div>
-              {/* Row 2: spoiler controls — right-aligned */}
-              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+              {/* Row 2: spoiler controls — left and right justified */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                 <ModeToggle
                   value={mode}
                   onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
