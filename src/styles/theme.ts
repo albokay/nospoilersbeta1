@@ -291,10 +291,12 @@ header.site{
   .diaryBackPage{ display:none; }
   .diaryTab{ font-size:12px; padding:4px 10px; }
   .diaryTab.active{ font-size:12px; padding:6px 12px; }
-  /* Align tabs with card content edge (not desktop's -56px offset) */
-  .diaryTabRow{ padding-left:12px; }
+  /* Flush first tab with the card's left border line */
+  .diaryTabRow{ padding-left:0; }
   /* Balance the diary card padding — 48px right was desktop-only breathing room */
   .diaryCardWrap > .card{ padding:16px 16px 24px !important; }
+  /* Entry cards: remove the desktop left-margin offset so they're centred in the box */
+  .diaryCardWrap .threadCard{ margin-left:0 !important; margin-right:0 !important; }
 
   /* Forum banner: smaller title so it doesn't wrap awkwardly */
   .bannerTitle{ font-size:20px !important; letter-spacing:0.01em !important; }
