@@ -513,7 +513,7 @@ export default function App() {
                   style={{ margin: 0 }}
                 />
               </div>
-              <div style={{ textAlign: "center", marginTop: 110 }}>
+              <div style={{ textAlign: "center", marginTop: 112 }}>
                 <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
                   demo forum:
                 </div>
@@ -588,7 +588,7 @@ export default function App() {
           )}
 
           {!expandedShowId && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 50 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 48 }}>
               {/* Beta message pill toggle */}
               <button
                 onClick={() => setBetaOpen(o => !o)}

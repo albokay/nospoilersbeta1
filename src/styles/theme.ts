@@ -42,7 +42,7 @@ hr{ display:none; }
 /* controls */
 .badge{
   background:transparent; color:var(--dos-fg); border:3px solid var(--dos-border);
-  border-radius:9999px; padding:10px 13px; outline:none; font-weight:500;
+  border-radius:9999px; padding:8px 12px; outline:none; font-weight:500;
 }
 .badge:focus{ border-color:var(--dos-cyan); }
 .btn{
@@ -95,22 +95,22 @@ header.site{
   font-size:var(--t2);
   font-weight:600;
   letter-spacing:0.02em;
-  margin:3px 0 10px;
+  margin:4px 0 8px;
 }
 
 /* On wider screens, visually tuck the tagline up toward the header bar */
 @media (min-width: 901px){
   .siteTagline{
-    margin-top:-39px;   /* pulls it up closer under NO-SPOILERS */
+    margin-top:-40px;
   }
 }
 
 /* On narrower screens, let it sit clearly below and be a bit smaller */
 @media (max-width: 1130px){
   .siteTagline{
-    font-size:18px;
+    font-size:var(--t2);
     padding:0 16px;
-    margin-top:-6px;     /* no negative margin = "pops down" */
+    margin-top:-8px;
   }
 }
 
@@ -127,9 +127,9 @@ header.site{
   gap:12px; padding:20px 0 8px;
 }
 /* subtle "hang left" headers */
-.hangL{ transform: translateX(-45px); }
-/* Profile page folder content — extends border line 45px left to align with hangL headers */
-.hangLContent{ margin-left:-45px; padding-left:45px; }
+.hangL{ transform: translateX(-48px); }
+/* Profile page folder content — extends border line 48px left to align with hangL headers */
+.hangLContent{ margin-left:-48px; padding-left:48px; }
 
 @media (max-width: 768px){
   .bannerRow1{
@@ -199,7 +199,7 @@ header.site{
 .flash-cover{ position:absolute; inset:0; background:rgba(222,168,56,0.55); pointer-events:none; border-radius:inherit; animation:flash-blink 1.2s ease forwards; }
 
 /* like badge */
-.likeWrap{ display:inline-flex; align-items:baseline; gap:3px; user-select:none; }
+.likeWrap{ display:inline-flex; align-items:baseline; gap:4px; user-select:none; }
 .likeThis{ font-style:italic; font-weight:700; }
 
 /* watch diary — folder-tab row attached to front page, background pages for depth */
@@ -221,19 +221,19 @@ header.site{
   padding-left:32px;
 }
 .diaryTab{
-  padding:5px 14px;
+  padding:4px 12px;
   background:rgba(0,0,0,0.22);
   border:2px solid rgba(255,255,255,0.85); border-bottom:none;
-  border-radius:10px 10px 0 0;
-  color:#fff; font-size:13px; font-weight:500;
+  border-radius:8px 8px 0 0;
+  color:#fff; font-size:var(--t4); font-weight:500;
   cursor:pointer; white-space:nowrap; position:relative;
 }
 .diaryTab.active{
-  padding:9px 22px;
+  padding:8px 24px;
   background:var(--dos-bg);
   border-color:#fff;
   border-bottom:2px solid var(--dos-bg);
-  font-size:15px; font-weight:800;
+  font-size:var(--t3); font-weight:800;
   text-decoration:underline;
   margin-bottom:-3px;
 }
@@ -241,7 +241,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
 }
-.diaryCardWrap > .card{ border:none; border-radius:0; padding:23px 46px 32px 16px; box-shadow:inset 0 2px 0 0 #fff, inset 2px 0 0 0 #fff, inset -2px 0 0 0 #fff, inset 0 -2px 0 0 #fff; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:none; border-radius:0; padding:24px 48px 32px 16px; box-shadow:inset 0 2px 0 0 #fff, inset 2px 0 0 0 #fff, inset -2px 0 0 0 #fff, inset 0 -2px 0 0 #fff; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
@@ -252,7 +252,7 @@ header.site{
   background: var(--dos-user);
 }
 .avatar{
-  width:22px; height:22px; border:none; border-radius:50%;
+  width:24px; height:24px; border:none; border-radius:50%;
   display:inline-grid; place-items:center; font-size:12px; line-height:1;
   background:#fff; color:var(--dos-user); font-weight:700;
 }
@@ -353,7 +353,7 @@ body { -webkit-font-smoothing: antialiased; }
   background: rgba(0,0,0,0.07);
   padding: 8px 12px;
   margin: 8px 0;
-  border-radius: 6px;
+  border-radius: 8px;
   font-style: italic;
 }
 .blockquote-ref .blockquote-author {
@@ -449,7 +449,7 @@ body { -webkit-font-smoothing: antialiased; }
   background: var(--dos-bg);
   color: var(--dos-fg);
   border: 2px solid var(--dos-border);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 12px 14px 10px;
   font-size: 13px;
   line-height: 1.5;
