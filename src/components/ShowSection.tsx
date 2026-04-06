@@ -17,7 +17,8 @@ function threadDotActive(threadId: string, hasDot: boolean): boolean {
 import type { Thread } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt } from "../lib/db";
+import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import type { ReplyMeta } from "../lib/db";
 import { useAuth } from "../lib/auth";
@@ -30,6 +31,9 @@ import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
 import Username from "./Username";
 import type { PendingReference } from "./ResponseComposer";
+import PromptCard from "./PromptCard";
+import type { PromptEntry } from "../lib/promptData";
+import { getFragment, getPromptSuggestion } from "../lib/prompts";
 
 const GLOBAL_HEADER_H = 56;
 const ROW_PAD_Y = 8;
@@ -99,6 +103,16 @@ export default function ShowSection({
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const topRef = bannerRef;
 
+  // ── Prompt system state ───────────────────────────────────
+  const [promptEntries, setPromptEntries] = useState<PromptEntry[]>([]);
+  const [activePrompt, setActivePrompt] = useState<PromptEntry | null>(null);
+  const [shownPromptIds, setShownPromptIds] = useState<number[]>([]);
+  const [insertedPromptIds, setInsertedPromptIds] = useState<number[]>([]);
+  const [composePlaceholder, setComposePlaceholder] = useState<string>(
+    "Food for thought: did that last episode remind you of something from earlier in the show...or even from your own life?"
+  );
+  const postBodyRef = useRef<HTMLTextAreaElement | null>(null);
+
   // ── Reference system state ────────────────────────────────
   const [pendingReference, setPendingReference] = useState<PendingReference | null>(null);
   const composerRef = useRef<HTMLDivElement>(null);
@@ -136,6 +150,38 @@ export default function ShowSection({
       console.warn("Failed to fetch reply citations:", e);
     }
   };
+
+  // ── Prompt fetch (once per session) ──────────────────────
+  useEffect(() => {
+    fetchPrompts()
+      .then((rows: PromptRow[]) => {
+        const entries: PromptEntry[] = rows.map((r) => ({
+          id: r.id,
+          text: r.text,
+          displayType: r.display_type,
+          tvmazeTypes: r.tvmaze_types,
+          genres: r.genres,
+          progressTags: r.progress_tags,
+          themes: r.themes,
+        }));
+        setPromptEntries(entries);
+      })
+      .catch(() => {
+        // Graceful degradation: prompts just won't appear
+      });
+  }, []);
+
+  // Update placeholder when compose opens or prompts load
+  useEffect(() => {
+    if (composeOpen && promptEntries.length > 0) {
+      const currentShow = allShows.find(s => s.id === showId) || { id: showId, name: showId, seasons: [10] };
+      setComposePlaceholder(getFragment(currentShow as Show, promptEntries));
+      // Reset prompt state for fresh compose session
+      setActivePrompt(null);
+      setShownPromptIds([]);
+      setInsertedPromptIds([]);
+    }
+  }, [composeOpen, promptEntries.length]);
 
   // ── DB state ──────────────────────────────────────────────
   const [dbThreads, setDbThreads] = useState<Thread[]>([]);
@@ -401,6 +447,47 @@ export default function ShowSection({
     setLikedByUserReplies((u: any) => { const n = { ...u }; delete n[rid]; return n; });
   };
 
+  // ── Prompt handlers ───────────────────────────────────────
+  const handlePromptBtn = () => {
+    const currentShow = allShows.find(s => s.id === showId) || { id: showId, name: showId, seasons: [10] };
+    const prog = progress[showId] || { s: 1, e: 1 };
+    const next = getPromptSuggestion(currentShow as Show, prog, shownPromptIds, promptEntries);
+    if (next) {
+      setShownPromptIds(prev => [...prev, next.id]);
+      setActivePrompt(next);
+    }
+  };
+
+  const handlePromptShuffle = () => {
+    const currentShow = allShows.find(s => s.id === showId) || { id: showId, name: showId, seasons: [10] };
+    const prog = progress[showId] || { s: 1, e: 1 };
+    const next = getPromptSuggestion(currentShow as Show, prog, shownPromptIds, promptEntries);
+    if (next) {
+      setShownPromptIds(prev => [...prev, next.id]);
+      setActivePrompt(next);
+    }
+  };
+
+  const handlePromptInsert = (text: string) => {
+    if (!activePrompt) return;
+    const token = `[PROMPT: ${text}]`;
+    const ta = postBodyRef.current;
+    if (ta) {
+      const pos = ta.selectionStart ?? postBody.length;
+      const newBody = postBody.slice(0, pos) + token + postBody.slice(pos);
+      setPostBody(newBody);
+      requestAnimationFrame(() => {
+        ta.selectionStart = pos + token.length;
+        ta.selectionEnd = pos + token.length;
+        ta.focus();
+      });
+    } else {
+      setPostBody(prev => prev + (prev ? "\n" : "") + token);
+    }
+    setInsertedPromptIds(prev => [...prev, activePrompt.id]);
+    setActivePrompt(null);
+  };
+
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
   const postProgress = progress[showId] || { s: 1, e: 1 };
@@ -423,6 +510,11 @@ export default function ShowSection({
       });
       setDbThreads(prev => [t, ...prev]);
       setReplyCounts(rc => ({ ...rc, [t.id]: 0 }));
+      // Log prompt usage (best-effort)
+      for (const pid of insertedPromptIds) {
+        logThreadPrompt(t.id, pid).catch(() => {});
+      }
+      setInsertedPromptIds([]);
       // Anchor hiddenBaseAt at creation time so future hidden replies are correctly flagged
       const now = Date.now();
       setHiddenBaseAt(prev => {
@@ -799,13 +891,35 @@ export default function ShowSection({
             <div className="muted" style={{ fontSize: 13 }}>
               Your post is automatically marked to <b>S{String(postProgress.s).padStart(2, "0")}E{String(postProgress.e).padStart(2, "0")}</b> and will only show to people who've watched at least that far.
             </div>
-            <textarea
-              className="card"
-              placeholder="Food for thought: did that last episode remind you of something from earlier in the show...or even from your own life?"
-              value={postBody}
-              onChange={(e) => setPostBody(e.target.value)}
-              style={{ width: "100%", height: 260, resize: "vertical" }}
-            />
+            {activePrompt && (
+              <PromptCard
+                prompt={activePrompt}
+                onClose={() => setActivePrompt(null)}
+                onShuffle={handlePromptShuffle}
+                onInsert={handlePromptInsert}
+              />
+            )}
+            <div style={{ position: "relative" }}>
+              <textarea
+                ref={postBodyRef}
+                className="card"
+                placeholder={composePlaceholder}
+                value={postBody}
+                onChange={(e) => setPostBody(e.target.value)}
+                style={{ width: "100%", height: 260, resize: "vertical" }}
+              />
+              {promptEntries.length > 0 && (
+                <button
+                  className="prompt-btn"
+                  type="button"
+                  onClick={handlePromptBtn}
+                  style={{ position: "absolute", bottom: 8, left: 10 }}
+                  title="Get a writing prompt"
+                >
+                  ✦ prompt?
+                </button>
+              )}
+            </div>
             <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
               <Tooltip

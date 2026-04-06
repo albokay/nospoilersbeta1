@@ -40,6 +40,8 @@ import { useScrollHighlight } from "../hooks/useScrollHighlight";
 
 // Matches [QUOTE: any text including newlines]
 const QUOTE_TOKEN_RE = /\[QUOTE:([\s\S]*?)\]/;
+// Matches [PROMPT: any text including newlines]
+const PROMPT_TOKEN_RE = /\[PROMPT:([\s\S]*?)\]/g;
 
 function superscriptNum(n: number): string {
   const supers = ["¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"];
@@ -142,6 +144,33 @@ function UnmatchedSups({ sups }: { sups: Array<{ index: number; onScrollTo: () =
   );
 }
 
+/**
+ * Split text on [PROMPT: text] tokens and return an array of React nodes,
+ * rendering each prompt token as a right-justified blockquote (.prompt-ref).
+ * Any remaining plain segments are returned as-is (strings) for further processing.
+ */
+function parsePromptTokens(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let match: RegExpExecArray | null;
+  const re = new RegExp(PROMPT_TOKEN_RE.source, "g");
+  let keyIdx = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) {
+      parts.push(text.slice(last, match.index));
+    }
+    const promptText = match[1].trim();
+    parts.push(
+      <blockquote key={`prompt-${keyIdx++}`} className="prompt-ref">
+        {promptText}
+      </blockquote>
+    );
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 /** Render a reply body, splitting on [QUOTE: text] or legacy [QUOTE] token,
  *  and injecting inline citation superscripts next to matched quoted passages. */
 function ReplyBody({
@@ -215,12 +244,25 @@ function ReplyBody({
       );
     }
   }
-  // Plain text — annotate with inline quote sups
-  const { nodes, matchedIndices } = annotateTextWithSups(body, quoteSups);
-  const unmatched = quoteSups.filter(s => !matchedIndices.has(s.index));
+  // Plain text — first split on PROMPT tokens, then annotate remaining text with sups
+  const promptParts = parsePromptTokens(body);
+  const renderedParts: React.ReactNode[] = [];
+  let unmatchedSups: SupEntry[] = [...quoteSups];
+  let partKeyIdx = 0;
+  for (const part of promptParts) {
+    if (typeof part === "string") {
+      const { nodes, matchedIndices } = annotateTextWithSups(part, unmatchedSups);
+      unmatchedSups = unmatchedSups.filter(s => !matchedIndices.has(s.index));
+      renderedParts.push(...nodes.map((n, i) => <React.Fragment key={`pp-${partKeyIdx}-${i}`}>{n}</React.Fragment>));
+    } else {
+      renderedParts.push(<React.Fragment key={`pf-${partKeyIdx}`}>{part}</React.Fragment>);
+    }
+    partKeyIdx++;
+  }
+  const unmatched = unmatchedSups;
   return (
     <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
-      {nodes}
+      {renderedParts}
       <UnmatchedSups sups={unmatched} />
     </div>
   );

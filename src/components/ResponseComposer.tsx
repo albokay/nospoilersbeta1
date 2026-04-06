@@ -1,7 +1,12 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useAuth } from "../lib/auth";
-import { insertReply } from "../lib/db";
+import { insertReply, fetchPrompts, logThreadPrompt } from "../lib/db";
+import type { PromptRow } from "../lib/db";
 import Tooltip from "./Tooltip";
+import PromptCard from "./PromptCard";
+import type { PromptEntry } from "../lib/promptData";
+import { getPromptSuggestion } from "../lib/prompts";
+import type { Show } from "../lib/db";
 
 export interface PendingReference {
   type: "quote" | "link";
@@ -24,6 +29,8 @@ interface ResponseComposerProps {
   onAuthRequired: () => void;
   threadAuthor: string;
   onExternalReplyAdded?: () => void;
+  show?: Show;
+  progress?: { s: number; e: number };
 }
 
 export default function ResponseComposer({
@@ -39,6 +46,8 @@ export default function ResponseComposer({
   onAuthRequired,
   threadAuthor,
   onExternalReplyAdded,
+  show,
+  progress,
 }: ResponseComposerProps) {
   const { user, profile } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -46,6 +55,68 @@ export default function ResponseComposer({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quoteInserted, setQuoteInserted] = useState(false);
+
+  // ── Prompt state ─────────────────────────────────────────
+  const [promptEntries, setPromptEntries] = useState<PromptEntry[]>([]);
+  const [activePrompt, setActivePrompt] = useState<PromptEntry | null>(null);
+  const [shownPromptIds, setShownPromptIds] = useState<number[]>([]);
+  const [insertedPromptIds, setInsertedPromptIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    fetchPrompts()
+      .then((rows: PromptRow[]) => {
+        setPromptEntries(
+          rows.map((r) => ({
+            id: r.id,
+            text: r.text,
+            displayType: r.display_type,
+            tvmazeTypes: r.tvmaze_types,
+            genres: r.genres,
+            progressTags: r.progress_tags,
+            themes: r.themes,
+          }))
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  const handlePromptBtn = () => {
+    if (!show || !progress) return;
+    const next = getPromptSuggestion(show, progress, shownPromptIds, promptEntries);
+    if (next) {
+      setShownPromptIds((prev) => [...prev, next.id]);
+      setActivePrompt(next);
+    }
+  };
+
+  const handlePromptShuffle = () => {
+    if (!show || !progress) return;
+    const next = getPromptSuggestion(show, progress, shownPromptIds, promptEntries);
+    if (next) {
+      setShownPromptIds((prev) => [...prev, next.id]);
+      setActivePrompt(next);
+    }
+  };
+
+  const handlePromptInsert = (text: string) => {
+    if (!activePrompt) return;
+    const ta = textareaRef.current;
+    const token = `[PROMPT: ${text}]`;
+    if (ta) {
+      const pos = ta.selectionStart ?? body.length;
+      const newBody = body.slice(0, pos) + token + body.slice(pos);
+      setBody(newBody);
+      requestAnimationFrame(() => {
+        ta.selectionStart = pos + token.length;
+        ta.selectionEnd = pos + token.length;
+        ta.focus();
+      });
+    } else {
+      setBody((prev) => prev + (prev ? "\n" : "") + token);
+    }
+    setInsertedPromptIds((prev) => [...prev, activePrompt.id]);
+    setActivePrompt(null);
+  };
 
   // Reset quoteInserted when pendingReference changes
   React.useEffect(() => {
@@ -75,7 +146,7 @@ export default function ResponseComposer({
     setSubmitting(true);
     setError(null);
     try {
-      await insertReply({
+      const reply = await insertReply({
         threadId,
         showId,
         season: viewerSeason,
@@ -88,8 +159,14 @@ export default function ResponseComposer({
         referencedThreadId: pendingReference?.threadId ?? null,
         quotedText: (pendingReference?.type === "quote" ? pendingReference.quotedText : null) ?? null,
       });
+      // Log prompt usage (best-effort)
+      for (const pid of insertedPromptIds) {
+        logThreadPrompt(reply.id, pid).catch(() => {});
+      }
+      setInsertedPromptIds([]);
       setBody("");
       setQuoteInserted(false);
+      setActivePrompt(null);
       onClearReference();
       if (profile.username !== threadAuthor) onExternalReplyAdded?.();
       onSubmitted();
@@ -129,25 +206,48 @@ export default function ResponseComposer({
         </div>
       )}
 
-      <textarea
-        ref={textareaRef}
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder="Write your response…"
-        rows={8}
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          background: "#fff",
-          color: "#000",
-          border: "1px solid var(--dos-border)",
-          borderRadius: 4,
-          padding: "8px 10px",
-          fontSize: 14,
-          resize: "vertical",
-          fontFamily: "inherit",
-        }}
-      />
+      {activePrompt && (
+        <div style={{ marginBottom: 8 }}>
+          <PromptCard
+            prompt={activePrompt}
+            onClose={() => setActivePrompt(null)}
+            onShuffle={handlePromptShuffle}
+            onInsert={handlePromptInsert}
+          />
+        </div>
+      )}
+      <div style={{ position: "relative" }}>
+        <textarea
+          ref={textareaRef}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Write your response…"
+          rows={8}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            background: "#fff",
+            color: "#000",
+            border: "1px solid var(--dos-border)",
+            borderRadius: 4,
+            padding: "8px 10px",
+            fontSize: 14,
+            resize: "vertical",
+            fontFamily: "inherit",
+          }}
+        />
+        {show && progress && promptEntries.length > 0 && (
+          <button
+            className="prompt-btn"
+            type="button"
+            onClick={handlePromptBtn}
+            style={{ position: "absolute", bottom: 8, left: 10, color: "var(--dos-bg)" }}
+            title="Get a writing prompt"
+          >
+            ✦ prompt?
+          </button>
+        )}
+      </div>
 
       {error && (
         <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{error}</div>

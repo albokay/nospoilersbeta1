@@ -14,6 +14,31 @@ import { useScrollHighlight } from "../hooks/useScrollHighlight";
 import { annotateTextWithSups, UnmatchedSups } from "../lib/citationUtils";
 import type { SupEntry } from "../lib/citationUtils";
 
+// Matches [PROMPT: any text including newlines]
+const PROMPT_TOKEN_RE_INLINE = /\[PROMPT:([\s\S]*?)\]/g;
+
+function parsePromptTokensInline(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let match: RegExpExecArray | null;
+  const re = new RegExp(PROMPT_TOKEN_RE_INLINE.source, "g");
+  let keyIdx = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) {
+      parts.push(text.slice(last, match.index));
+    }
+    const promptText = match[1].trim();
+    parts.push(
+      <blockquote key={`prompt-${keyIdx++}`} className="prompt-ref">
+        {promptText}
+      </blockquote>
+    );
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 export default function InlineThreadView({
   thread, show, onBack, progressForShow, onMountAlignTop,
   likeThread, likedByUser, likesCount,
@@ -324,12 +349,24 @@ export default function InlineThreadView({
             ) : (
               <div style={{ marginTop: 12 }} className="thread-entry-body">
                 {(() => {
-                  const { nodes, matchedIndices } = annotateTextWithSups(thread.body, threadQuoteSups);
-                  const unmatched = threadQuoteSups.filter(s => !matchedIndices.has(s.index));
+                  const promptParts = parsePromptTokensInline(thread.body);
+                  const renderedParts: React.ReactNode[] = [];
+                  let remainingSups: SupEntry[] = [...threadQuoteSups];
+                  let pkIdx = 0;
+                  for (const part of promptParts) {
+                    if (typeof part === "string") {
+                      const { nodes, matchedIndices } = annotateTextWithSups(part, remainingSups);
+                      remainingSups = remainingSups.filter(s => !matchedIndices.has(s.index));
+                      renderedParts.push(...nodes.map((n, i) => <React.Fragment key={`tp-${pkIdx}-${i}`}>{n}</React.Fragment>));
+                    } else {
+                      renderedParts.push(<React.Fragment key={`tf-${pkIdx}`}>{part}</React.Fragment>);
+                    }
+                    pkIdx++;
+                  }
                   return (
                     <div style={{ whiteSpace: "pre-wrap" }}>
-                      {nodes}
-                      <UnmatchedSups sups={unmatched} />
+                      {renderedParts}
+                      <UnmatchedSups sups={remainingSups} />
                     </div>
                   );
                 })()}
@@ -402,6 +439,8 @@ export default function InlineThreadView({
         onAuthRequired={onAuthRequired}
         threadAuthor={thread.author}
         onExternalReplyAdded={onExternalReplyAdded ? () => onExternalReplyAdded(thread.id) : undefined}
+        show={show}
+        progress={progressForShow}
       />}
     </section>
   );

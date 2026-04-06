@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import type { Show, FeedbackRow } from "../lib/db";
-import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback } from "../lib/db";
+import type { Show, FeedbackRow, PromptRow } from "../lib/db";
+import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback, fetchAllPrompts, togglePromptActive, deletePrompt, seedPrompts } from "../lib/db";
+import { PROMPT_DATA } from "../lib/promptData";
 import { timeAgo } from "../lib/utils";
 
 type FeedbackStatus = "will-do" | "consider" | "done" | "ignore";
@@ -78,6 +79,61 @@ export default function AdminPage({
       .catch(() => {})
       .finally(() => setFeedbackLoading(false));
   }, []);
+
+  // ── Prompt Library state ──────────────────────────────────────────────────
+  const [prompts, setPrompts] = useState<PromptRow[]>([]);
+  const [promptsLoading, setPromptsLoading] = useState(true);
+  const [promptFilter, setPromptFilter] = useState<"all" | "fragment" | "lighthearted-fragment" | "prompt">("all");
+  const [seedingPrompts, setSeedingPrompts] = useState(false);
+  const [seedMsg, setSeedMsg] = useState<string | null>(null);
+  const [deletingPromptId, setDeletingPromptId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetchAllPrompts()
+      .then(rows => setPrompts(rows))
+      .catch(() => {})
+      .finally(() => setPromptsLoading(false));
+  }, []);
+
+  const handleSeedPrompts = async () => {
+    setSeedingPrompts(true);
+    setSeedMsg(null);
+    try {
+      await seedPrompts(PROMPT_DATA);
+      const rows = await fetchAllPrompts();
+      setPrompts(rows);
+      setSeedMsg(`Seeded ${rows.length} prompts.`);
+    } catch (e: any) {
+      setSeedMsg(`Error: ${e?.message ?? "Failed to seed"}`);
+    } finally {
+      setSeedingPrompts(false);
+    }
+  };
+
+  const handleToggleActive = async (id: number, current: boolean) => {
+    try {
+      await togglePromptActive(id, !current);
+      setPrompts(prev => prev.map(p => p.id === id ? { ...p, is_active: !current } : p));
+    } catch (e: any) {
+      alert(`Failed to toggle: ${e?.message}`);
+    }
+  };
+
+  const handleDeletePrompt = async (id: number) => {
+    try {
+      await deletePrompt(id);
+      setPrompts(prev => prev.filter(p => p.id !== id));
+      setDeletingPromptId(null);
+    } catch (e: any) {
+      alert(`Failed to delete: ${e?.message}`);
+    }
+  };
+
+  const filteredPrompts = promptFilter === "all"
+    ? prompts
+    : prompts.filter(p => p.display_type === promptFilter);
+
+  const activeCount = prompts.filter(p => p.is_active).length;
 
   const handleFeedbackStatus = async (id: string, status: FeedbackStatus | null) => {
     await updateFeedbackStatus(id, status).catch(() => {});
@@ -250,6 +306,125 @@ export default function AdminPage({
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Prompt Library section ── */}
+      <div style={{ marginTop: 48 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+          Prompt Library {!promptsLoading && `(${activeCount} active / ${prompts.length} total)`}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+          <button
+            className="btn"
+            onClick={handleSeedPrompts}
+            disabled={seedingPrompts}
+            style={{ fontSize: 13 }}
+          >
+            {seedingPrompts ? "Seeding…" : "Seed / Re-seed prompts"}
+          </button>
+          {seedMsg && (
+            <span style={{ fontSize: 13, color: seedMsg.startsWith("Error") ? "var(--danger)" : "var(--green)" }}>
+              {seedMsg}
+            </span>
+          )}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+            {(["all", "fragment", "lighthearted-fragment", "prompt"] as const).map(f => (
+              <button
+                key={f}
+                className="btn"
+                onClick={() => setPromptFilter(f)}
+                style={{
+                  fontSize: 12, padding: "3px 10px",
+                  background: promptFilter === f ? "rgba(255,255,255,0.3)" : "transparent",
+                  fontWeight: promptFilter === f ? 700 : 400,
+                }}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {promptsLoading && <div className="muted">Loading…</div>}
+
+        {!promptsLoading && prompts.length === 0 && (
+          <div className="muted" style={{ fontSize: 14 }}>
+            No prompts in database. Click "Seed / Re-seed prompts" to populate from the built-in library.
+          </div>
+        )}
+
+        {!promptsLoading && filteredPrompts.length > 0 && (
+          <div style={{ overflowX: "auto", maxHeight: 520, overflowY: "auto" }}>
+            <table style={{
+              width: "100%", borderCollapse: "collapse",
+              fontSize: 12, fontFamily: "monospace",
+              background: "#fff", color: "#000",
+            }}>
+              <thead style={{ position: "sticky", top: 0, background: "#fff", zIndex: 1 }}>
+                <tr style={{ borderBottom: "2px solid #999", textAlign: "left" }}>
+                  <th style={{ padding: "5px 8px", fontWeight: 700 }}>ID</th>
+                  <th style={{ padding: "5px 8px", fontWeight: 700 }}>text</th>
+                  <th style={{ padding: "5px 8px", fontWeight: 700, whiteSpace: "nowrap" }}>type</th>
+                  <th style={{ padding: "5px 8px", fontWeight: 700, whiteSpace: "nowrap" }}>active</th>
+                  <th style={{ padding: "5px 8px" }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPrompts.map((p, i) => (
+                  <tr
+                    key={p.id}
+                    style={{
+                      borderBottom: "1px solid #eee",
+                      background: !p.is_active ? "#fafafa" : i % 2 === 0 ? "#fff" : "#f9f9f9",
+                      opacity: p.is_active ? 1 : 0.55,
+                      verticalAlign: "top",
+                    }}
+                  >
+                    <td style={{ padding: "5px 8px", color: "#888", whiteSpace: "nowrap" }}>{p.id}</td>
+                    <td style={{ padding: "5px 8px", maxWidth: 480, whiteSpace: "normal", lineHeight: 1.4 }}>
+                      {p.text.length > 100 ? p.text.slice(0, 100) + "…" : p.text}
+                    </td>
+                    <td style={{ padding: "5px 8px", whiteSpace: "nowrap", color: "#666" }}>{p.display_type}</td>
+                    <td style={{ padding: "5px 8px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={p.is_active}
+                          onChange={() => handleToggleActive(p.id, p.is_active)}
+                          style={{ cursor: "pointer" }}
+                        />
+                        {p.is_active ? "on" : "off"}
+                      </label>
+                    </td>
+                    <td style={{ padding: "5px 8px", whiteSpace: "nowrap" }}>
+                      {deletingPromptId === p.id ? (
+                        <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                          <span style={{ color: "#c00" }}>sure?</span>
+                          <button
+                            onClick={() => handleDeletePrompt(p.id)}
+                            style={{ fontSize: 11, cursor: "pointer", color: "#c00", background: "none", border: "1px solid #c00", borderRadius: 3, padding: "1px 5px" }}
+                          >yes</button>
+                          <button
+                            onClick={() => setDeletingPromptId(null)}
+                            style={{ fontSize: 11, cursor: "pointer", background: "none", border: "1px solid #999", borderRadius: 3, padding: "1px 5px" }}
+                          >no</button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setDeletingPromptId(p.id)}
+                          style={{ fontSize: 11, cursor: "pointer", color: "#c00", background: "none", border: "none", padding: 0, textDecoration: "underline" }}
+                        >
+                          delete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

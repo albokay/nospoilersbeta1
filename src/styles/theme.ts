@@ -556,6 +556,77 @@ body { -webkit-font-smoothing: antialiased; }
 }
 .pending-ref-chip button:hover { opacity: 1; }
 
+/* ── Prompt reference (rendered in thread body) ─────────────────────────────
+   Right-justified blockquote with blue right border.
+   Mirrors .blockquote-ref but mirrored to the right side.                   */
+.prompt-ref {
+  border-right: 3px solid var(--dos-user);
+  background: rgba(34,86,201,0.07);
+  padding: 8px 12px 8px 20px;
+  margin: 8px 0;
+  border-radius: 6px;
+  font-style: italic;
+  text-align: right;
+}
+
+/* ── Prompt card (the floating suggestion card) ─────────────────────────── */
+.prompt-card {
+  background: #bdd4de;
+  border: none;
+  border-radius: 16px;
+  padding: 16px 18px 14px;
+  color: #000;
+  margin-bottom: 12px;
+}
+
+/* Buttons inside the prompt card */
+.prompt-card-btn {
+  background: transparent;
+  border: 1.5px solid rgba(0,0,0,0.3);
+  border-radius: 9999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #000;
+  font-family: inherit;
+  transition: background 120ms;
+}
+.prompt-card-btn:hover {
+  background: rgba(0,0,0,0.08);
+}
+.prompt-card-btn--use {
+  background: #2256c9;
+  color: #fff;
+  border-color: #2256c9;
+}
+.prompt-card-btn--use:hover {
+  background: #1a44a8;
+  border-color: #1a44a8;
+}
+
+/* ── Prompt trigger button (inside compose / response area) ─────────────── */
+.prompt-btn {
+  background: transparent;
+  border: none;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--dos-fg);
+  opacity: 0.65;
+  font-family: inherit;
+  border-radius: 6px;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.prompt-btn:hover {
+  opacity: 1;
+  background: rgba(255,255,255,0.12);
+}
+
 `;
 
   const el = document.createElement("style"); el.id = id; el.textContent = css; document.head.appendChild(el);

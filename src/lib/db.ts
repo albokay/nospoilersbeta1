@@ -4,6 +4,7 @@
  */
 import { supabase } from "./supabaseClient";
 import type { Thread, Reply } from "../types";
+import type { PromptEntry } from "./promptData";
 
 // ── Shows ────────────────────────────────────────────────────────────────────
 
@@ -15,12 +16,14 @@ export type Show = {
   status?: string;
   isHidden?: boolean;
   lastSyncedAt?: string;
+  genres?: string[];
+  tvmazeType?: string;
 };
 
 export async function fetchShows(): Promise<Show[]> {
   const { data, error } = await supabase
     .from("shows")
-    .select("id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at")
+    .select("id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at, genres, tvmaze_type")
     .order("name");
   if (error) throw error;
   return (data ?? []).map((row: any) => ({
@@ -31,6 +34,8 @@ export async function fetchShows(): Promise<Show[]> {
     status: row.status ?? "Ended",
     isHidden: row.is_hidden ?? false,
     lastSyncedAt: row.last_synced_at ?? undefined,
+    genres: row.genres ?? [],
+    tvmazeType: row.tvmaze_type ?? undefined,
   }));
 }
 
@@ -377,10 +382,14 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
   const lastSync = show.lastSyncedAt ? new Date(show.lastSyncedAt).getTime() : 0;
   if (Date.now() - lastSync < SEVEN_DAYS) return null;
 
-  // Fetch latest episodes from TVmaze
-  const res = await fetch(`https://api.tvmaze.com/shows/${show.tvmazeId}/episodes`);
-  if (!res.ok) return null;
-  const episodes: any[] = await res.json();
+  // Fetch show metadata (genres, type) and episodes from TVmaze in parallel
+  const [showRes, epRes] = await Promise.all([
+    fetch(`https://api.tvmaze.com/shows/${show.tvmazeId}`),
+    fetch(`https://api.tvmaze.com/shows/${show.tvmazeId}/episodes`),
+  ]);
+  if (!epRes.ok) return null;
+
+  const episodes: any[] = await epRes.json();
   const bySeason: Record<number, number> = {};
   for (const ep of episodes) {
     if (ep.type === "regular" || !ep.type) {
@@ -392,14 +401,22 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
   for (let i = 1; i <= maxSeason; i++) seasons.push(bySeason[i] ?? 1);
   if (!seasons.length) return null;
 
+  let genres: string[] = show.genres ?? [];
+  let tvmazeType: string | undefined = show.tvmazeType;
+  if (showRes.ok) {
+    const showData = await showRes.json();
+    if (Array.isArray(showData.genres)) genres = showData.genres;
+    if (showData.type) tvmazeType = showData.type;
+  }
+
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("shows")
-    .update({ seasons, last_synced_at: now })
+    .update({ seasons, last_synced_at: now, genres, tvmaze_type: tvmazeType ?? null })
     .eq("id", show.id);
   if (error) return null;
 
-  return { ...show, seasons, lastSyncedAt: now };
+  return { ...show, seasons, lastSyncedAt: now, genres, tvmazeType };
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
@@ -697,4 +714,74 @@ export async function fetchUnreadFeedbackCount(): Promise<number> {
     .is("read_at", null);
   if (error) return 0;
   return count ?? 0;
+}
+
+// ── Prompts ───────────────────────────────────────────────────────────────────
+
+export type PromptRow = {
+  id: number;
+  text: string;
+  display_type: "fragment" | "lighthearted-fragment" | "prompt";
+  tvmaze_types: string[];
+  genres: string[];
+  progress_tags: string[];
+  themes: string[];
+  is_active: boolean;
+};
+
+export async function fetchPrompts(): Promise<PromptRow[]> {
+  const { data, error } = await supabase
+    .from("prompts")
+    .select("id, text, display_type, tvmaze_types, genres, progress_tags, themes, is_active")
+    .eq("is_active", true)
+    .order("id");
+  if (error) throw error;
+  return (data ?? []) as PromptRow[];
+}
+
+export async function fetchAllPrompts(): Promise<PromptRow[]> {
+  const { data, error } = await supabase
+    .from("prompts")
+    .select("id, text, display_type, tvmaze_types, genres, progress_tags, themes, is_active")
+    .order("id");
+  if (error) throw error;
+  return (data ?? []) as PromptRow[];
+}
+
+export async function togglePromptActive(id: number, isActive: boolean): Promise<void> {
+  const { error } = await supabase
+    .from("prompts")
+    .update({ is_active: isActive })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deletePrompt(id: number): Promise<void> {
+  const { error } = await supabase.from("prompts").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function seedPrompts(prompts: PromptEntry[]): Promise<void> {
+  const rows = prompts.map((p) => ({
+    id: p.id,
+    text: p.text,
+    display_type: p.displayType,
+    tvmaze_types: p.tvmazeTypes,
+    genres: p.genres,
+    progress_tags: p.progressTags,
+    themes: p.themes,
+    is_active: true,
+  }));
+  const { error } = await supabase
+    .from("prompts")
+    .upsert(rows, { onConflict: "id" });
+  if (error) throw error;
+}
+
+export async function logThreadPrompt(threadId: string, promptId: number): Promise<void> {
+  const { error } = await supabase
+    .from("thread_prompts")
+    .insert({ thread_id: threadId, prompt_id: promptId });
+  // Best-effort: don't throw if insert fails (e.g. table not yet created)
+  if (error) console.warn("logThreadPrompt failed:", error.message);
 }
