@@ -129,7 +129,6 @@ export default function ProfilePage({
   useEffect(() => { setExpandedIds(new Set()); }, [activeTab]);
 
   const [diaryFilter, setDiaryFilter] = useState<"all" | "private">("all");
-  const [tabsScrolled, setTabsScrolled] = useState(false);
   const toggleExpand = (id: string) =>
     setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
@@ -281,10 +280,7 @@ export default function ProfilePage({
                     <div key={offset} className="diaryBackPage" style={{ top: 27, transform: `translate(-${offset}px, ${offset}px)` }} />
                   ))}
                   {/* Folder tab row — sits flush on top of the front card */}
-                  <div
-                    className={`diaryTabScroller${tabsScrolled ? " scrolled" : ""}`}
-                    onScroll={e => setTabsScrolled((e.currentTarget as HTMLElement).scrollLeft > 0)}
-                  >
+                  <div className="diaryTabScroller">
                   <div className="diaryTabRow">
                     {showTabOrder.map(sid => {
                       const active = sid === activeTab;

@@ -88,7 +88,6 @@ export default function PublicProfilePage({
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   useEffect(() => { setExpandedIds(new Set()); }, [activeTab]);
-  const [tabsScrolled, setTabsScrolled] = useState(false);
   const [viewedTabIds, setViewedTabIds] = useState<Set<string>>(new Set());
   const toggleExpand = (id: string) =>
     setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -143,10 +142,7 @@ export default function PublicProfilePage({
                   {[48, 32, 16].map(offset => (
                     <div key={offset} className="diaryBackPage" style={{ top: 27, transform: `translate(-${offset}px, ${offset}px)` }} />
                   ))}
-                  <div
-                    className={`diaryTabScroller${tabsScrolled ? " scrolled" : ""}`}
-                    onScroll={e => setTabsScrolled((e.currentTarget as HTMLElement).scrollLeft > 0)}
-                  >
+                  <div className="diaryTabScroller">
                   <div className="diaryTabRow">
                     {showTabOrder.map(sid => {
                       const active = sid === activeTab;

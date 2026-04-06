@@ -225,9 +225,6 @@ header.site{
      renders through while horizontal scrolling still works. */
   padding-bottom:4px; margin-bottom:-4px;
   scrollbar-width:none; -webkit-overflow-scrolling:touch;
-  /* Permanent left border — aligns with the card's left inset shadow below,
-     creating a continuous vertical line regardless of scroll position. */
-  border-left:2px solid #fff;
 }
 .diaryTabScroller::-webkit-scrollbar{ display:none; }
 
