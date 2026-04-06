@@ -16,7 +16,7 @@ const PROMPT_LINES = [
 function canSubmit(): boolean {
   const last = localStorage.getItem("ns_fb_last");
   if (!last) return true;
-  return Date.now() - parseInt(last, 10) > 60_000;
+  return Date.now() - parseInt(last, 10) > 20_000;
 }
 
 export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
@@ -45,7 +45,7 @@ export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
       localStorage.setItem("ns_fb_last", String(Date.now()));
       setPhase("sent");
       setMessage("");
-      setTimeout(() => { setPhase("idle"); setOpen(false); }, 2400);
+      setTimeout(() => { setPhase("idle"); setOpen(false); }, 900);
     } catch {
       setPhase("idle");
     }
