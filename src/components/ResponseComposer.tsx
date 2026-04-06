@@ -230,24 +230,6 @@ export default function ResponseComposer({
           fontFamily: "inherit",
         }}
       />
-      {show && progress && promptEntries.length > 0 && (
-        <button
-          className="prompt-btn"
-          type="button"
-          onClick={handlePromptBtn}
-          title="Get a writing prompt"
-        >
-          ✦ want a prompt?
-        </button>
-      )}
-      {activePrompt && (
-        <PromptCard
-          prompt={activePrompt}
-          onClose={() => setActivePrompt(null)}
-          onShuffle={handlePromptShuffle}
-          onInsert={handlePromptInsert}
-        />
-      )}
 
       {error && (
         <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{error}</div>
