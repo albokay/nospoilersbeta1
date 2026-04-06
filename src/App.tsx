@@ -513,13 +513,13 @@ export default function App() {
                   style={{ margin: 0 }}
                 />
               </div>
-              <div style={{ textAlign: "center", marginTop: 60 }}>
-                <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
+              <div style={{ textAlign: "center", marginTop: 60, opacity: 0.6 }}>
+                <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
                   demo forum:
                 </div>
                 <button
                   onClick={() => handlePickFromSearch("bb")}
-                  style={{ background: "var(--dos-bg)", color: "#fff", border: "2px solid #fff", borderRadius: 9999, padding: "8px 24px", fontSize: 18, fontWeight: 700, cursor: "pointer", letterSpacing: 0.3 }}
+                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2 }}
                 >
                   Breaking Bad (DEMO)
                 </button>
@@ -573,13 +573,13 @@ export default function App() {
                 />
               </div>
 
-              <div style={{ textAlign: "center", marginTop: 130 }}>
-                <div className="popularHeading" style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, marginBottom: 12 }}>
+              <div style={{ textAlign: "center", marginTop: 130, opacity: 0.6 }}>
+                <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
                   trial forum:
                 </div>
                 <button
                   onClick={() => handlePickFromSearch("bb")}
-                  style={{ background: "var(--dos-bg)", color: "#fff", border: "2px solid #fff", borderRadius: 9999, padding: "8px 24px", fontSize: 18, fontWeight: 700, cursor: "pointer", letterSpacing: 0.3 }}
+                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2 }}
                 >
                   Breaking Bad (DEMO)
                 </button>
@@ -596,18 +596,19 @@ export default function App() {
                   display: "inline-flex",
                   alignItems: "center",
                   borderRadius: 999,
-                  boxShadow: "0 0 0 2px var(--dos-border)",
+                  boxShadow: "0 0 0 1.5px rgba(255,255,255,0.45)",
                   border: "none",
                   overflow: "hidden",
                   background: "transparent",
                   padding: 0,
                   cursor: "pointer",
                   gap: 0,
+                  opacity: 0.65,
                 }}
               >
                 <span style={{
-                  padding: "5px 14px",
-                  fontSize: 14,
+                  padding: "4px 12px",
+                  fontSize: 12,
                   fontWeight: !betaOpen ? 700 : 400,
                   background: !betaOpen ? "var(--dos-border)" : "transparent",
                   color: !betaOpen ? "var(--dos-bg)" : "transparent",
@@ -616,8 +617,8 @@ export default function App() {
                   *click here beta tester!
                 </span>
                 <span style={{
-                  padding: "5px 14px",
-                  fontSize: 14,
+                  padding: "4px 12px",
+                  fontSize: 12,
                   fontWeight: betaOpen ? 700 : 400,
                   background: betaOpen ? "var(--dos-border)" : "transparent",
                   color: betaOpen ? "var(--dos-bg)" : "transparent",
