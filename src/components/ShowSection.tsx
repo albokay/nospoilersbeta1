@@ -104,11 +104,11 @@ export default function ShowSection({
   const [showComposeTooltips, setShowComposeTooltips] = useState(() => !localStorage.getItem("ns_compose_seen"));
   const openCompose = () => {
     localStorage.setItem("ns_compose_seen", "1");
-    openCompose();
+    setComposeOpen(true);
   };
   const closeCompose = () => {
     setShowComposeTooltips(false);
-    closeCompose();
+    setComposeOpen(false);
   };
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const topRef = bannerRef;

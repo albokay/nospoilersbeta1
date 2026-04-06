@@ -148,6 +148,17 @@ export default function ProfilePage({
   const tabLikedReplies = useMemo(() =>
     visibleLikedReplies.filter(p => p.thread.showId === activeTab), [visibleLikedReplies, activeTab]);
 
+  // Dismissed indicators: threadId → timestamp when dismissed
+  const [dismissedIndicators, setDismissedIndicators] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("ns_dismissed_indicators") || "{}"); }
+    catch { return {}; }
+  });
+  const dismissIndicator = (threadId: string) => {
+    const updated = { ...dismissedIndicators, [threadId]: Date.now() };
+    setDismissedIndicators(updated);
+    localStorage.setItem("ns_dismissed_indicators", JSON.stringify(updated));
+  };
+
   // Which threads have invisible replies, and how many
   const invisibleByThreadId = useMemo(() => {
     const r: Record<string, true> = {};
@@ -165,6 +176,24 @@ export default function ProfilePage({
     }
     return r;
   }, [repliesToUser, progress]);
+
+  // Latest invisible reply timestamp per thread (to detect new replies after dismissal)
+  const latestInvisibleAtByThreadId = useMemo(() => {
+    const r: Record<string, number> = {};
+    for (const { reply, thread: t } of repliesToUser) {
+      if (!canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) {
+        if (!r[t.id] || reply.updatedAt > r[t.id]) r[t.id] = reply.updatedAt;
+      }
+    }
+    return r;
+  }, [repliesToUser, progress]);
+
+  const shouldShowIndicator = (threadId: string) => {
+    if (!invisibleByThreadId[threadId]) return false;
+    const dismissedAt = dismissedIndicators[threadId];
+    if (!dismissedAt) return true;
+    return (latestInvisibleAtByThreadId[threadId] ?? 0) > dismissedAt;
+  };
 
   // Which reply IDs are newly visible (unread since profile was opened)
   const newVisibleReplyIds = useMemo(() => {
@@ -297,15 +326,21 @@ export default function ProfilePage({
                     <div key={t.id} className="card threadCard"
                       style={{ margin: "10px 0 10px 20px", cursor: "pointer", position: "relative" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id)}>
-                      {invisibleByThreadId[t.id] && (
+                      {shouldShowIndicator(t.id) && (
                         <Tooltip
-                          text={`${invisibleCountByThreadId[t.id] ?? ""} people ahead of you have written back! You can read these once you catch up.`}
-                          direction="below"
-                          align="left"
-                          gap={48}
+                          text={`${invisibleCountByThreadId[t.id] ?? ""} people ahead of you have written you back! You can read these once you catch up. And you can get rid of this indicator by clicking the X. Sidebar will still let you know if you get new responses, but you can always turn the indicator off.`}
+                          direction="right"
+                          gap={14}
                           style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
+                          tooltipStyle={{ background: "#cce8f4", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
+                          width={260}
                         >
-                          <div style={{ width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+                          <div
+                            style={{ width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                            onClick={(e) => { e.stopPropagation(); dismissIndicator(t.id); }}
+                          >
+                            <span style={{ color: "#fff", fontSize: 10, fontWeight: 800, lineHeight: 1, userSelect: "none" }}>✕</span>
+                          </div>
                         </Tooltip>
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
