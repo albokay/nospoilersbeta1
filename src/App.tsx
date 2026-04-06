@@ -466,7 +466,7 @@ export default function App() {
         <>
           {/* ── Mobile homepage (no diary pages) ── */}
           {isHomepage && isMobile && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95, paddingTop: 64 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95, paddingTop: 32 }}>
               <SidebarLogo />
               <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
@@ -477,7 +477,7 @@ export default function App() {
           )}
           {!expandedShowId && isHomepage && isMobile && (
             <>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 80 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 20 }}>
                 {user && (
                   <button
                     className="btn"
@@ -513,7 +513,7 @@ export default function App() {
                   style={{ margin: 0 }}
                 />
               </div>
-              <div style={{ textAlign: "center", marginTop: 112 }}>
+              <div style={{ textAlign: "center", marginTop: 36 }}>
                 <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
                   demo forum:
                 </div>
@@ -528,7 +528,7 @@ export default function App() {
           )}
 
           {!expandedShowId && isHomepage && !isMobile && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 120, paddingBottom: 20, zIndex: 95, position: "relative" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 56, paddingBottom: 20, zIndex: 95, position: "relative" }}>
               <SidebarLogo />
               <div style={{ marginTop: 12 }}>
                 <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
@@ -536,7 +536,7 @@ export default function App() {
                 </span>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 40, width: "100%" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 24, width: "100%" }}>
                 {user && (
                   <button
                     className="btn"
@@ -573,7 +573,7 @@ export default function App() {
                 />
               </div>
 
-              <div style={{ textAlign: "center", marginTop: 180 }}>
+              <div style={{ textAlign: "center", marginTop: 48 }}>
                 <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
                   trial forum:
                 </div>
