@@ -200,7 +200,7 @@ export default function PublicProfilePage({
               </section>
 
               {/* Their responses */}
-              <section style={{ marginTop: 104 }}>
+              <section className="profile-public-responses" style={{ marginTop: 104 }}>
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabReplies.length === 0 && (

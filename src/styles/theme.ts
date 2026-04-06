@@ -273,17 +273,29 @@ header.site{
   .diaryOuter{ margin-top:8px; margin-left:0; margin-right:0; margin-bottom:12px; width:100%; }
   .diaryTab{ font-size:12px; padding:4px 10px; }
   .diaryTab.active{ font-size:12px; padding:6px 12px; }
+  /* Align tabs with card content edge (not desktop's -56px offset) */
+  .diaryTabRow{ padding-left:12px; }
+  /* Balance the diary card padding — 48px right was desktop-only breathing room */
+  .diaryCardWrap > .card{ padding:16px 16px 24px !important; }
 
-  /* Forum banner: show title, all buttons/dropdowns bigger on mobile */
-  .bannerTitle{ font-size:26px !important; letter-spacing:0.01em !important; }
-  .stickybar .badge{ font-size:17px !important; padding:11px 18px !important; }
-  .stickybar .btn{ font-size:17px !important; padding:10px 18px !important; height:auto !important; }
+  /* Forum banner: smaller title so it doesn't wrap awkwardly */
+  .bannerTitle{ font-size:20px !important; letter-spacing:0.01em !important; }
+  .stickybar .badge{ font-size:15px !important; padding:9px 14px !important; }
+  .stickybar .btn{ font-size:15px !important; padding:8px 14px !important; height:auto !important; }
 
   /* Thread cards: tighten horizontal padding so content has more room */
   .card.threadCard{ padding-left:10px; padding-right:10px; }
 
-  /* Homepage hero: scale down "Popular Right Now" header */
-  .popularHeading{ font-size:20px !important; }
+  /* Homepage hero */
+  .popularHeading{ font-size:16px !important; }
+
+  /* Explanation modals: smaller text so tall modals fit on screen */
+  .explanation-card p{ font-size:14px !important; line-height:1.5 !important; margin-bottom:12px !important; }
+
+  /* Profile page: neutralise desktop-only negative margins */
+  .profile-journal-heading{ margin-left:0 !important; }
+  .profile-responses-section{ margin-top:48px !important; }
+  .profile-public-responses{ margin-top:48px !important; }
 }
 @media(min-width:601px){
   .signOutX{ display:none; }

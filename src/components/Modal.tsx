@@ -31,6 +31,8 @@ export default function Modal({ children, onClose, topContent, width, cardStyle,
           width: "100%", background: "var(--dos-bg)",
           backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
           padding: "16px 20px",
+          overflowY: "auto",
+          maxHeight: "calc(90vh - 32px)",
           ...cardStyle,
         }}>
           {children}

@@ -250,7 +250,7 @@ export default function ProfilePage({
               {/* Your Watch Diary */}
               <section style={{ marginTop: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, marginBottom: 16, minHeight: 28 }}>
-                  <div className="title" style={{ fontSize: 22, marginLeft: -42 }}>Your Journal</div>
+                  <div className="title profile-journal-heading" style={{ fontSize: 22, marginLeft: -42 }}>Your Journal</div>
                   <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
                     {(["all", "private"] as const).map(opt => (
                       <button
@@ -377,7 +377,7 @@ export default function ProfilePage({
               </section>
 
               {/* Responses to you — moved above "your responses" */}
-              <section style={{ marginTop: 144 }}>
+              <section className="profile-responses-section" style={{ marginTop: 144 }}>
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No responses yet.</div>}
