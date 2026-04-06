@@ -503,7 +503,8 @@ export default function ShowSection({
     if (!user || !profile) { onAuthRequired(); return; }
     const title = (postTitle || "").trim();
     const body = (postBody || "").trim();
-    if (!title && !body) { alert("Write something first."); return; }
+    if (!title) { alert("Please add a title before posting."); return; }
+    if (!body) { alert("Write something first."); return; }
     setPostSubmitting(true);
     try {
       const t = await insertThread({
@@ -904,16 +905,6 @@ export default function ShowSection({
               onChange={(e) => setPostBody(e.target.value)}
               style={{ width: "100%", height: 260, resize: "vertical" }}
             />
-            {promptEntries.length > 0 && (
-              <button
-                className="prompt-btn"
-                type="button"
-                onClick={handlePromptBtn}
-                title="Get a writing prompt"
-              >
-                ✦ want a prompt?
-              </button>
-            )}
             {activePrompt && (
               <PromptCard
                 prompt={activePrompt}
@@ -922,28 +913,40 @@ export default function ShowSection({
                 onInsert={handlePromptInsert}
               />
             )}
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
-              <Tooltip
-                text="Post privately. Your entry will live in your journal alongside everything else you've written — a record of your watching life, whether or not you share it. (If you want, you can swap it to public later.)"
-                direction="above"
-                align="right"
-                useAbsolute={true}
-                width={280}
-                tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
-              >
-                <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--dos-bg)", border: "2px solid #fff", color: "#fff" }}>📝 save to your journal</button>
-              </Tooltip>
-              <Tooltip
-                text="Post publicly. Visible to anyone in this show room who has watched at least as far as you. They won't see spoilers from ahead of your progress, and neither will you see theirs."
-                direction="above"
-                align="right"
-                useAbsolute={true}
-                width={280}
-                tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
-              >
-                <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff" }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
-              </Tooltip>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              {promptEntries.length > 0 ? (
+                <button
+                  className="prompt-btn"
+                  type="button"
+                  onClick={handlePromptBtn}
+                  title="Get a writing prompt"
+                >
+                  ✦ want a prompt?
+                </button>
+              ) : <span />}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
+                <Tooltip
+                  text="Post privately. Your entry will live in your journal alongside everything else you've written — a record of your watching life, whether or not you share it. (If you want, you can swap it to public later.)"
+                  direction="above"
+                  align="right"
+                  useAbsolute={true}
+                  width={280}
+                  tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
+                >
+                  <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--dos-bg)", border: "2px solid #fff", color: "#fff" }}>📝 save to your journal</button>
+                </Tooltip>
+                <Tooltip
+                  text="Post publicly. Visible to anyone in this show room who has watched at least as far as you. They won't see spoilers from ahead of your progress, and neither will you see theirs."
+                  direction="above"
+                  align="right"
+                  useAbsolute={true}
+                  width={280}
+                  tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
+                >
+                  <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff" }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
+                </Tooltip>
+              </div>
             </div>
           </div>
         </Modal>
