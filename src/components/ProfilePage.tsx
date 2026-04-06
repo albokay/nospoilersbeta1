@@ -278,8 +278,19 @@ export default function ProfilePage({
                   {(() => {
                     const filtered = diaryFilter === "private" ? tabThreads.filter(t => t.isPrivate) : tabThreads;
                     if (filtered.length === 0) {
-                      if (diaryFilter === "private") return <div className="muted">No private posts yet.</div>;
-                      // True empty journal — show the welcome experience
+                      if (diaryFilter === "private" && tabThreads.length > 0) {
+                        // Has public entries but no private ones
+                        return (
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "150px 0 48px" }}>
+                            <div style={{ width: "min(400px, 100%)" }}>
+                              <p style={{ margin: 0, fontSize: 16, fontWeight: 400, lineHeight: 1.6, color: "var(--dos-fg)", opacity: 0.65, fontStyle: "italic", textAlign: "left" }}>
+                                You don't have any private entries yet. Save something just for yourself from any show's room.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      // No entries at all (including new users on private filter) — show welcome
                       return <EmptyProfileWelcome />;
                     }
                     return filtered.map(t => (
