@@ -214,6 +214,7 @@ header.site{
 .diaryTabRow{
   display:flex; align-items:flex-end; gap:4px;
   position:relative; z-index:2; overflow:visible;
+  padding-left:32px;
 }
 .diaryTab{
   padding:5px 14px;
