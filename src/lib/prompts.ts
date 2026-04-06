@@ -80,6 +80,16 @@ function matchesProgress(p: PromptEntry, progressTags: string[]): boolean {
 }
 
 /**
+ * Returns true if the prompt has a specific (non-any-progress) tag that matches the viewer's tags.
+ * Used to prefer specifically-tagged prompts before falling back to any-progress.
+ */
+function matchesProgressSpecific(p: PromptEntry, progressTags: string[]): boolean {
+  const specificViewerTags = progressTags.filter((t) => t !== "any-progress");
+  if (!specificViewerTags.length) return false;
+  return p.progressTags.some((tag) => tag !== "any-progress" && specificViewerTags.includes(tag));
+}
+
+/**
  * Pick a random fragment to use as the textarea placeholder.
  * Fragments with displayType "fragment" or "lighthearted-fragment" are considered.
  * If the show has no tvmazeType, only generic fragments (tvmazeTypes=["all"]) are used.
@@ -134,26 +144,26 @@ export function getPromptSuggestion(
 
   const excludeSet = new Set(excludeIds);
 
-  // Primary: match show type+genre AND progress, exclude already shown
+  // Tier A: show match + specific progress tag (not any-progress)
   let eligible = fullPrompts.filter(
     (p) =>
       !excludeSet.has(p.id) &&
       matchesShow(p, show) &&
-      matchesProgress(p, progressTags)
+      matchesProgressSpecific(p, progressTags)
   );
 
-  // Fallback 1: relax show filter, keep progress
+  // Tier B: generic (all/all-genre) + specific progress tag
   if (!eligible.length) {
     eligible = fullPrompts.filter(
       (p) =>
         !excludeSet.has(p.id) &&
         p.tvmazeTypes.includes("all") &&
         p.genres.includes("all-genre") &&
-        matchesProgress(p, progressTags)
+        matchesProgressSpecific(p, progressTags)
     );
   }
 
-  // Fallback 2: relax progress filter, keep show
+  // Tier C: show match + any-progress
   if (!eligible.length) {
     eligible = fullPrompts.filter(
       (p) =>
@@ -163,7 +173,7 @@ export function getPromptSuggestion(
     );
   }
 
-  // Fallback 3: fully generic, any-progress, not yet shown
+  // Tier D: fully generic + any-progress, not yet shown
   if (!eligible.length) {
     eligible = fullPrompts.filter(
       (p) =>
@@ -174,7 +184,7 @@ export function getPromptSuggestion(
     );
   }
 
-  // Fallback 4: fully generic any-progress, ignoring exclusions
+  // Tier E: fully generic any-progress, ignoring exclusions
   if (!eligible.length) {
     eligible = fullPrompts.filter(
       (p) =>
