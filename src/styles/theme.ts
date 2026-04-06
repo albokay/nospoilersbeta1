@@ -33,7 +33,7 @@ body{
 .bleed-line{ display:none; }
 
 /* layout primitives */
-.container{ width:min(768px, 92vw); margin:0 auto; background:transparent; }
+.container{ width:min(744px, 92vw); margin:0 auto; background:transparent; }
 hr{ display:none; }
 .title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; font-size:var(--t2); }
 .muted{ color:var(--dos-gray); font-size:var(--t4); }
