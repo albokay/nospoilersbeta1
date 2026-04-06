@@ -761,6 +761,14 @@ export async function deletePrompt(id: number): Promise<void> {
   if (error) throw error;
 }
 
+export async function updatePrompt(
+  id: number,
+  updates: { text?: string; tvmaze_types?: string[]; genres?: string[] }
+): Promise<void> {
+  const { error } = await supabase.from("prompts").update(updates).eq("id", id);
+  if (error) throw error;
+}
+
 export async function seedPrompts(prompts: PromptEntry[]): Promise<void> {
   const rows = prompts.map((p) => ({
     id: p.id,

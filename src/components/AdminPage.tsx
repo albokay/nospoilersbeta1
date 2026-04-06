@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { Show, FeedbackRow, PromptRow } from "../lib/db";
-import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback, fetchAllPrompts, togglePromptActive, deletePrompt, seedPrompts } from "../lib/db";
+import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback, fetchAllPrompts, togglePromptActive, deletePrompt, updatePrompt, seedPrompts } from "../lib/db";
 import { PROMPT_DATA } from "../lib/promptData";
 import { timeAgo } from "../lib/utils";
 
@@ -87,6 +87,51 @@ export default function AdminPage({
   const [seedingPrompts, setSeedingPrompts] = useState(false);
   const [seedMsg, setSeedMsg] = useState<string | null>(null);
   const [deletingPromptId, setDeletingPromptId] = useState<number | null>(null);
+
+  // ── Prompt edit state ─────────────────────────────────────────────────────
+  const TVMAZE_TYPES = ["all", "Scripted", "Animation", "Reality", "Documentary", "Game Show", "Panel Show", "Talk Show", "Variety"];
+  const TVMAZE_GENRES = [
+    "all-genre",
+    "Action", "Adventure", "Anime", "Children", "Comedy", "Crime",
+    "DIY", "Drama", "Espionage", "Family", "Fantasy", "Food",
+    "History", "Horror", "Legal", "Medical", "Music", "Mystery",
+    "Nature", "Romance", "Science-Fiction", "Sports", "Supernatural",
+    "Thriller", "Travel", "War", "Western",
+  ];
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editTypes, setEditTypes] = useState<string[]>([]);
+  const [editGenres, setEditGenres] = useState<string[]>([]);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEdit = (p: PromptRow) => {
+    setEditingId(p.id);
+    setEditText(p.text);
+    setEditTypes(p.tvmaze_types ?? []);
+    setEditGenres(p.genres ?? []);
+  };
+
+  const closeEdit = () => setEditingId(null);
+
+  const toggleTag = (tag: string, list: string[], setList: (v: string[]) => void) => {
+    setList(list.includes(tag) ? list.filter(t => t !== tag) : [...list, tag]);
+  };
+
+  const handleSaveEdit = async (id: number) => {
+    setEditSaving(true);
+    try {
+      await updatePrompt(id, { text: editText.trim(), tvmaze_types: editTypes, genres: editGenres });
+      setPrompts(prev => prev.map(p => p.id === id
+        ? { ...p, text: editText.trim(), tvmaze_types: editTypes, genres: editGenres }
+        : p
+      ));
+      setEditingId(null);
+    } catch (e: any) {
+      alert(`Failed to save: ${e?.message}`);
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   useEffect(() => {
     fetchAllPrompts()
@@ -376,54 +421,122 @@ export default function AdminPage({
               </thead>
               <tbody>
                 {filteredPrompts.map((p, i) => (
-                  <tr
-                    key={p.id}
-                    style={{
-                      borderBottom: "1px solid #eee",
-                      background: !p.is_active ? "#fafafa" : i % 2 === 0 ? "#fff" : "#f9f9f9",
-                      opacity: p.is_active ? 1 : 0.55,
-                      verticalAlign: "top",
-                    }}
-                  >
-                    <td style={{ padding: "5px 8px", color: "#888", whiteSpace: "nowrap" }}>{p.id}</td>
-                    <td style={{ padding: "5px 8px", maxWidth: 480, whiteSpace: "normal", lineHeight: 1.4 }}>
-                      {p.text.length > 100 ? p.text.slice(0, 100) + "…" : p.text}
-                    </td>
-                    <td style={{ padding: "5px 8px", whiteSpace: "nowrap", color: "#666" }}>{p.display_type}</td>
-                    <td style={{ padding: "5px 8px" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
-                        <input
-                          type="checkbox"
-                          checked={p.is_active}
-                          onChange={() => handleToggleActive(p.id, p.is_active)}
-                          style={{ cursor: "pointer" }}
-                        />
-                        {p.is_active ? "on" : "off"}
-                      </label>
-                    </td>
-                    <td style={{ padding: "5px 8px", whiteSpace: "nowrap" }}>
-                      {deletingPromptId === p.id ? (
-                        <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                          <span style={{ color: "#c00" }}>sure?</span>
+                  <React.Fragment key={p.id}>
+                    <tr
+                      style={{
+                        borderBottom: editingId === p.id ? "none" : "1px solid #eee",
+                        background: !p.is_active ? "#fafafa" : i % 2 === 0 ? "#fff" : "#f9f9f9",
+                        opacity: p.is_active ? 1 : 0.55,
+                        verticalAlign: "top",
+                      }}
+                    >
+                      <td style={{ padding: "5px 8px", color: "#888", whiteSpace: "nowrap" }}>{p.id}</td>
+                      <td style={{ padding: "5px 8px", maxWidth: 480, whiteSpace: "normal", lineHeight: 1.4 }}>
+                        {p.text.length > 100 ? p.text.slice(0, 100) + "…" : p.text}
+                      </td>
+                      <td style={{ padding: "5px 8px", whiteSpace: "nowrap", color: "#666" }}>{p.display_type}</td>
+                      <td style={{ padding: "5px 8px" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={p.is_active}
+                            onChange={() => handleToggleActive(p.id, p.is_active)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          {p.is_active ? "on" : "off"}
+                        </label>
+                      </td>
+                      <td style={{ padding: "5px 8px", whiteSpace: "nowrap" }}>
+                        <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <button
-                            onClick={() => handleDeletePrompt(p.id)}
-                            style={{ fontSize: 11, cursor: "pointer", color: "#c00", background: "none", border: "1px solid #c00", borderRadius: 3, padding: "1px 5px" }}
-                          >yes</button>
-                          <button
-                            onClick={() => setDeletingPromptId(null)}
-                            style={{ fontSize: 11, cursor: "pointer", background: "none", border: "1px solid #999", borderRadius: 3, padding: "1px 5px" }}
-                          >no</button>
+                            onClick={() => editingId === p.id ? closeEdit() : openEdit(p)}
+                            style={{ fontSize: 11, cursor: "pointer", color: "#2256c9", background: "none", border: "none", padding: 0, textDecoration: "underline" }}
+                          >
+                            {editingId === p.id ? "cancel" : "edit"}
+                          </button>
+                          {deletingPromptId === p.id ? (
+                            <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                              <span style={{ color: "#c00" }}>sure?</span>
+                              <button
+                                onClick={() => handleDeletePrompt(p.id)}
+                                style={{ fontSize: 11, cursor: "pointer", color: "#c00", background: "none", border: "1px solid #c00", borderRadius: 3, padding: "1px 5px" }}
+                              >yes</button>
+                              <button
+                                onClick={() => setDeletingPromptId(null)}
+                                style={{ fontSize: 11, cursor: "pointer", background: "none", border: "1px solid #999", borderRadius: 3, padding: "1px 5px" }}
+                              >no</button>
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setDeletingPromptId(p.id)}
+                              style={{ fontSize: 11, cursor: "pointer", color: "#c00", background: "none", border: "none", padding: 0, textDecoration: "underline" }}
+                            >
+                              delete
+                            </button>
+                          )}
                         </span>
-                      ) : (
-                        <button
-                          onClick={() => setDeletingPromptId(p.id)}
-                          style={{ fontSize: 11, cursor: "pointer", color: "#c00", background: "none", border: "none", padding: 0, textDecoration: "underline" }}
-                        >
-                          delete
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    {editingId === p.id && (
+                      <tr style={{ background: "#f0f4f8", borderBottom: "2px solid #c0d0e0" }}>
+                        <td colSpan={5} style={{ padding: "12px 16px" }}>
+                          {/* Text */}
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Prompt text</div>
+                            <textarea
+                              value={editText}
+                              onChange={e => setEditText(e.target.value)}
+                              rows={3}
+                              style={{ width: "100%", boxSizing: "border-box", fontSize: 13, padding: "6px 8px", borderRadius: 4, border: "1px solid #bbb", fontFamily: "inherit", resize: "vertical" }}
+                            />
+                          </div>
+                          {/* Tags: two sections side by side */}
+                          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 12 }}>
+                            {/* Types */}
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>TVMaze type</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                {TVMAZE_TYPES.map(t => (
+                                  <label key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={editTypes.includes(t)}
+                                      onChange={() => toggleTag(t, editTypes, setEditTypes)}
+                                    />
+                                    {t}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Genres */}
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>TVMaze genre</div>
+                              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 140px)", gap: "3px 12px" }}>
+                                {TVMAZE_GENRES.map(g => (
+                                  <label key={g} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={editGenres.includes(g)}
+                                      onChange={() => toggleTag(g, editGenres, setEditGenres)}
+                                    />
+                                    {g}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          {/* Save */}
+                          <button
+                            onClick={() => handleSaveEdit(p.id)}
+                            disabled={editSaving}
+                            style={{ fontSize: 12, cursor: "pointer", background: "#2256c9", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
+                          >
+                            {editSaving ? "Saving…" : "Save changes"}
+                          </button>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
