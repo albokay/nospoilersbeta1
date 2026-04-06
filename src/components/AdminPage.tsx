@@ -119,6 +119,21 @@ export default function AdminPage({
     setList(list.includes(tag) ? list.filter(t => t !== tag) : [...list, tag]);
   };
 
+  const selectAll = (items: string[], list: string[], setList: (v: string[]) => void) => {
+    const allSelected = items.every(item => list.includes(item));
+    setList(allSelected ? [] : items);
+  };
+
+  const selectAllLink = (items: string[], list: string[], setList: (v: string[]) => void) => (
+    <button
+      type="button"
+      onClick={() => selectAll(items, list, setList)}
+      style={{ fontSize: 10, cursor: "pointer", background: "none", border: "none", color: "#2256c9", padding: 0, textDecoration: "underline", marginLeft: 8, fontFamily: "inherit" }}
+    >
+      {items.every(item => list.includes(item)) ? "deselect all" : "select all"}
+    </button>
+  );
+
   const handleSaveEdit = async (id: number) => {
     setEditSaving(true);
     try {
@@ -446,15 +461,13 @@ export default function AdminPage({
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 12 }}>
               {/* TVMaze type */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>TVMaze type</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>
+                  TVMaze type {selectAllLink(TVMAZE_TYPES, newTypes, setNewTypes)}
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                   {TVMAZE_TYPES.map(t => (
                     <label key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={newTypes.includes(t)}
-                        onChange={() => toggleTag(t, newTypes, setNewTypes)}
-                      />
+                      <input type="checkbox" checked={newTypes.includes(t)} onChange={() => toggleTag(t, newTypes, setNewTypes)} />
                       {t}
                     </label>
                   ))}
@@ -462,15 +475,13 @@ export default function AdminPage({
               </div>
               {/* TVMaze genre */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>TVMaze genre</div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>
+                  TVMaze genre {selectAllLink(TVMAZE_GENRES, newGenres, setNewGenres)}
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 140px)", gap: "3px 12px" }}>
                   {TVMAZE_GENRES.map(g => (
                     <label key={g} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={newGenres.includes(g)}
-                        onChange={() => toggleTag(g, newGenres, setNewGenres)}
-                      />
+                      <input type="checkbox" checked={newGenres.includes(g)} onChange={() => toggleTag(g, newGenres, setNewGenres)} />
                       {g}
                     </label>
                   ))}
@@ -478,19 +489,19 @@ export default function AdminPage({
               </div>
               {/* Progress */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>Progress</div>
+                {(() => { const PROGRESS_TAGS = ["any-progress", "start-of-show", "season-start", "show-arc", "season-ending", "approaching-end", "end"]; return (<>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>
+                  Progress {selectAllLink(PROGRESS_TAGS, newProgressTags, setNewProgressTags)}
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  {["any-progress", "start-of-show", "season-start", "show-arc", "season-ending", "approaching-end", "end"].map(tag => (
+                  {PROGRESS_TAGS.map(tag => (
                     <label key={tag} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={newProgressTags.includes(tag)}
-                        onChange={() => toggleTag(tag, newProgressTags, setNewProgressTags)}
-                      />
+                      <input type="checkbox" checked={newProgressTags.includes(tag)} onChange={() => toggleTag(tag, newProgressTags, setNewProgressTags)} />
                       {tag}
                     </label>
                   ))}
                 </div>
+                </>); })()}
               </div>
             </div>
             {/* Actions */}
@@ -643,15 +654,13 @@ export default function AdminPage({
                           <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 12 }}>
                             {/* Types */}
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>TVMaze type</div>
+                              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>
+                                TVMaze type {selectAllLink(TVMAZE_TYPES, editTypes, setEditTypes)}
+                              </div>
                               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                                 {TVMAZE_TYPES.map(t => (
                                   <label key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={editTypes.includes(t)}
-                                      onChange={() => toggleTag(t, editTypes, setEditTypes)}
-                                    />
+                                    <input type="checkbox" checked={editTypes.includes(t)} onChange={() => toggleTag(t, editTypes, setEditTypes)} />
                                     {t}
                                   </label>
                                 ))}
@@ -659,15 +668,13 @@ export default function AdminPage({
                             </div>
                             {/* Genres */}
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>TVMaze genre</div>
+                              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>
+                                TVMaze genre {selectAllLink(TVMAZE_GENRES, editGenres, setEditGenres)}
+                              </div>
                               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 140px)", gap: "3px 12px" }}>
                                 {TVMAZE_GENRES.map(g => (
                                   <label key={g} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={editGenres.includes(g)}
-                                      onChange={() => toggleTag(g, editGenres, setEditGenres)}
-                                    />
+                                    <input type="checkbox" checked={editGenres.includes(g)} onChange={() => toggleTag(g, editGenres, setEditGenres)} />
                                     {g}
                                   </label>
                                 ))}
@@ -675,19 +682,19 @@ export default function AdminPage({
                             </div>
                             {/* Progress */}
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>Progress</div>
+                              {(() => { const PROGRESS_TAGS = ["any-progress", "start-of-show", "season-start", "show-arc", "season-ending", "approaching-end", "end"]; return (<>
+                              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>
+                                Progress {selectAllLink(PROGRESS_TAGS, editProgressTags, setEditProgressTags)}
+                              </div>
                               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                                {["any-progress", "start-of-show", "season-start", "show-arc", "season-ending", "approaching-end", "end"].map(tag => (
+                                {PROGRESS_TAGS.map(tag => (
                                   <label key={tag} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={editProgressTags.includes(tag)}
-                                      onChange={() => toggleTag(tag, editProgressTags, setEditProgressTags)}
-                                    />
+                                    <input type="checkbox" checked={editProgressTags.includes(tag)} onChange={() => toggleTag(tag, editProgressTags, setEditProgressTags)} />
                                     {tag}
                                   </label>
                                 ))}
                               </div>
+                              </>); })()}
                             </div>
                           </div>
                           {/* Save */}
