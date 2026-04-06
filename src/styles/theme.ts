@@ -37,16 +37,16 @@ body{
 hr{ display:none; }
 .title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; font-size:var(--t2); }
 .muted{ color:var(--dos-gray); font-size:var(--t4); }
-.card{ background:transparent; border:3px solid var(--dos-border); padding:12px; border-radius:24px; }
+.card{ background:transparent; border:2px solid var(--dos-border); padding:12px; border-radius:24px; }
 
 /* controls */
 .badge{
-  background:transparent; color:var(--dos-fg); border:3px solid var(--dos-border);
+  background:transparent; color:var(--dos-fg); border:2px solid var(--dos-border);
   border-radius:9999px; padding:8px 12px; outline:none; font-weight:500;
 }
 .badge:focus{ border-color:var(--dos-cyan); }
 .btn{
-  background:transparent; color:var(--dos-fg); border:3px solid var(--dos-border);
+  background:transparent; color:var(--dos-fg); border:2px solid var(--dos-border);
   border-radius:9999px; padding:6px 12px; cursor:pointer; font-weight:500;
 }
 .btn.primary{ border-color:var(--dos-cyan); color:var(--dos-cyan); }
@@ -144,7 +144,7 @@ header.site{
 .splashSearchWrap{
   position:relative; display:flex; align-items:center;
   width:288px; max-width:90vw; margin:20px auto;
-  height:40px; border:3px solid #bdd4de; border-radius:9999px;
+  height:40px; border:2px solid #bdd4de; border-radius:9999px;
   padding:0 16px;
   background:#fef8ea; border-color:#fef8ea; color:#c39431;
 }
@@ -160,7 +160,7 @@ header.site{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
   max-height:300px; overflow:auto; background:rgba(222,168,56,0.97);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
-  border:3px solid var(--dos-border); border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
+  border:2px solid var(--dos-border); border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
   color:var(--dos-fg);
 }
 
@@ -168,7 +168,7 @@ header.site{
 .listPill{
   width:288px; max-width:90vw; height:40px; border-radius:9999px; padding:0 23px;
   font-size:15px; font-weight:600; letter-spacing:0.01em;
-  display:inline-flex; align-items:center; justify-content:center; border:3px solid var(--dos-border);
+  display:inline-flex; align-items:center; justify-content:center; border:2px solid var(--dos-border);
   text-align:left; text-align-last:left; justify-content:flex-start;
 }
 
@@ -183,7 +183,7 @@ header.site{
 .threadCard{ border-color:var(--dos-border); }
 .replyBarNew{ background:var(--green); height:6px; }
 .clamp3{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
-.redacted{ background:#e8e4dc; color:#888; border:3px solid #ccc; border-radius:23px; }
+.redacted{ background:#e8e4dc; color:#888; border:2px solid #ccc; border-radius:23px; }
 
 /* mode toggle */
 .modeToggle{ width:240px; height:38px; }
@@ -211,7 +211,7 @@ header.site{
 /* background pages — visual depth only, lower-left cascade */
 .diaryBackPage{
   position:absolute; inset:0;
-  border:3px solid rgba(255,255,255,0.55);
+  border:2px solid rgba(255,255,255,0.55);
   background:var(--dos-bg);
 }
 /* folder tab row sits directly above the front card */
@@ -349,7 +349,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* Blockquote reference rendered inline in body */
 .blockquote-ref {
-  border-left: 3px solid var(--dos-border);
+  border-left: 2px solid var(--dos-border);
   background: rgba(0,0,0,0.07);
   padding: 8px 12px;
   margin: 8px 0;
@@ -561,7 +561,7 @@ body { -webkit-font-smoothing: antialiased; }
    Right-justified blockquote with blue right border.
    Mirrors .blockquote-ref but mirrored to the right side.                   */
 .prompt-ref {
-  border-right: 3px solid var(--dos-user);
+  border-right: 2px solid var(--dos-user);
   background: rgba(34,86,201,0.07);
   padding: 8px 12px 8px 20px;
   margin: 8px 0;
@@ -609,7 +609,7 @@ body { -webkit-font-smoothing: antialiased; }
 /* ── Prompt trigger button (inside compose / response area) ─────────────── */
 .prompt-btn {
   background: var(--dos-bg);
-  border: 3px solid #fff;
+  border: 2px solid #fff;
   padding: 6px 12px;
   font-size: 14px;
   font-weight: 500;

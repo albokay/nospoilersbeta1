@@ -8,7 +8,7 @@ export default function ExtensionDock() {
         style={{
           width: "100%",
           maxWidth: 460,
-          border: "3px solid #fff",
+          border: "2px solid #fff",
           padding: "14px 16px",
         }}
       >

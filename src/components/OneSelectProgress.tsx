@@ -59,7 +59,7 @@ export default function OneSelectProgress({
   if (compactLabel) {
     return (
       <>
-        <button className="btn" style={{ whiteSpace: "nowrap", background: "#bdd4de", color: "#2256c9", border: "3px solid #bdd4de", fontSize: 12, padding: "5px 9px", lineHeight: 1.2 }} onClick={() => setMobileOpen(true)}>
+        <button className="btn" style={{ whiteSpace: "nowrap", background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontSize: 12, padding: "5px 9px", lineHeight: 1.2 }} onClick={() => setMobileOpen(true)}>
           {compactLabel} ▾
         </button>
         {mobileOpen && (
@@ -72,7 +72,7 @@ export default function OneSelectProgress({
               className="badge"
               value={selectedId}
               onChange={(e) => { onSelect(e); setMobileOpen(false); }}
-              style={{ background: "#bdd4de", color: "#2256c9", border: "3px solid #bdd4de", width: "100%", height: 40 }}
+              style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", width: "100%", height: 40 }}
               size={1}
             >
               {opts.map((o) => (
@@ -116,7 +116,7 @@ export default function OneSelectProgress({
           className="badge h40"
           value={selectedId}
           onChange={onSelect}
-          style={{ background: "#bdd4de", color: "#2256c9", border: "3px solid #bdd4de", fontWeight: 700, fontSize: 12 }}
+          style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontWeight: 700, fontSize: 12 }}
         >
           {opts.map((o) => (
             <option key={o.id} value={o.id}>

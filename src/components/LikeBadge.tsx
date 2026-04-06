@@ -62,7 +62,7 @@ export default function LikeBadge({
         onClick={handleClick}
         title={clickable ? (userLiked ? "Un-star" : title) : undefined}
         style={{
-          border: "3px solid var(--dos-border)",
+          border: "2px solid var(--dos-border)",
           borderRadius: 9999,
           padding: "4px 11px",
           background: "transparent",
