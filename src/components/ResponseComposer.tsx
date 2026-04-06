@@ -133,13 +133,16 @@ export default function ResponseComposer({
     const ta = textareaRef.current;
     const pos = ta.selectionStart ?? body.length;
     const token = `[QUOTE: ${pendingReference.quotedText}]`;
-    const newBody = body.slice(0, pos) + token + body.slice(pos);
+    const before = body.slice(0, pos).trimEnd();
+    const after = body.slice(pos).trimStart();
+    const newBody = before + (before ? "\n" : "") + token + "\n" + after;
     setBody(newBody);
     setQuoteInserted(true);
-    // Restore cursor after the token
+    // Restore cursor after the token + newline
+    const cursorPos = before.length + (before ? 1 : 0) + token.length + 1;
     requestAnimationFrame(() => {
-      ta.selectionStart = pos + token.length;
-      ta.selectionEnd = pos + token.length;
+      ta.selectionStart = cursorPos;
+      ta.selectionEnd = cursorPos;
       ta.focus();
     });
   };

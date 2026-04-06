@@ -156,6 +156,11 @@ export default function ShowSection({
     try {
       const cits = await fetchCitationsForReplies(replyIds);
       setCitations(cits);
+      // Also refresh thread-level citations so sup links on the original entry stay current
+      if (activeThreadId) {
+        const threadCits = await fetchCitationsForThread(activeThreadId);
+        setThreadCitations(threadCits);
+      }
     } catch (e) {
       console.warn("Failed to fetch reply citations:", e);
     }

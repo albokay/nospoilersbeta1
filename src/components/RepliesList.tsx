@@ -177,6 +177,7 @@ function ReplyBody({
   body,
   quotedText,
   authorName,
+  currentUsername,
   referenceType,
   onScrollToRef,
   quoteSups = [],
@@ -184,11 +185,17 @@ function ReplyBody({
   body: string;
   quotedText?: string | null;
   authorName?: string | null;
+  currentUsername?: string | null;
   referenceType?: string | null;
   onScrollToRef?: () => void;
   quoteSups?: SupEntry[];
 }) {
   if (referenceType === "quote") {
+    // Determine display name: "I" for self-quotes, else author name or "Unknown"
+    const displayAuthor = authorName && currentUsername && authorName === currentUsername
+      ? "I"
+      : (authorName ?? "Unknown");
+
     // New inline format: [QUOTE: text]
     const match = QUOTE_TOKEN_RE.exec(body);
     if (match) {
@@ -209,7 +216,7 @@ function ReplyBody({
             style={onScrollToRef ? { cursor: "pointer" } : undefined}
             title={onScrollToRef ? "Click to jump to cited response" : undefined}
           >
-            <div className="blockquote-author">{authorName ?? "Unknown"} wrote:</div>
+            <div className="blockquote-author">{displayAuthor} wrote:</div>
             <div className="blockquote-text">"{inlineText}"</div>
           </blockquote>
           {afterNodes}
@@ -235,7 +242,7 @@ function ReplyBody({
             style={onScrollToRef ? { cursor: "pointer" } : undefined}
             title={onScrollToRef ? "Click to jump to cited response" : undefined}
           >
-            <div className="blockquote-author">{authorName ?? "Unknown"} wrote:</div>
+            <div className="blockquote-author">{displayAuthor} wrote:</div>
             <div className="blockquote-text">"{stripSupChars(quotedText ?? "")}"</div>
           </blockquote>
           {afterNodes}
@@ -807,7 +814,8 @@ export default function RepliesList({
                 <ReplyBody
                   body={r.body}
                   quotedText={r.quotedText}
-                  authorName={referencedReply?.author ?? null}
+                  authorName={referencedReply?.author ?? (r.referencedThreadId ? thread.author : null)}
+                  currentUsername={profile?.username ?? null}
                   referenceType={r.referenceType}
                   onScrollToRef={
                     r.referencedReplyId
