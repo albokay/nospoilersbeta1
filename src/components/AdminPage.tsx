@@ -614,15 +614,6 @@ export default function AdminPage({
                           >
                             {editingId === p.id ? "cancel" : "edit"}
                           </button>
-                          {editingId === p.id && (
-                            <button
-                              onClick={() => handleSaveEdit(p.id)}
-                              disabled={editSaving}
-                              style={{ fontSize: 11, cursor: "pointer", background: "#2256c9", color: "#fff", border: "none", borderRadius: 3, padding: "1px 7px", fontWeight: 600 }}
-                            >
-                              {editSaving ? "Saving…" : "save"}
-                            </button>
-                          )}
                           {deletingPromptId === p.id ? (
                             <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
                               <span style={{ color: "#c00" }}>sure?</span>
@@ -648,7 +639,15 @@ export default function AdminPage({
                     </tr>
                     {editingId === p.id && (
                       <tr style={{ background: "#f0f4f8", borderBottom: "2px solid #c0d0e0" }}>
-                        <td colSpan={5} style={{ padding: "12px 16px" }}>
+                        <td colSpan={5} style={{ padding: "12px 16px", position: "relative" }}>
+                          {/* Save button — top right */}
+                          <button
+                            onClick={() => handleSaveEdit(p.id)}
+                            disabled={editSaving}
+                            style={{ position: "absolute", top: 12, right: 16, fontSize: 12, cursor: "pointer", background: "#2256c9", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
+                          >
+                            {editSaving ? "Saving…" : "Save changes"}
+                          </button>
                           {/* Text */}
                           <div style={{ marginBottom: 12 }}>
                             <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Prompt text</div>
