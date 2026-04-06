@@ -207,8 +207,7 @@ header.site{
 /* background pages — visual depth only, lower-left cascade */
 .diaryBackPage{
   position:absolute; inset:0;
-  border-left:3px solid rgba(255,255,255,0.55);
-  border-bottom:3px solid rgba(255,255,255,0.55);
+  border:3px solid rgba(255,255,255,0.55);
 }
 /* folder tab row sits directly above the front card */
 .diaryTabRow{
