@@ -342,7 +342,7 @@ export default function ProfilePage({
               </section>
 
               {/* Responses to you — moved above "your responses" */}
-              <section style={{ marginTop: 99 }}>
+              <section style={{ marginTop: 144 }}>
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No responses yet.</div>}
@@ -417,7 +417,7 @@ export default function ProfilePage({
 
               {/* Starred posts */}
               <section style={{ marginTop: 24 }}>
-                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>Your starred posts</div>
+                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your starred posts</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabLikedThreads.length === 0 && <div className="muted">No starred posts yet.</div>}
                   {tabLikedThreads.map(t => (
@@ -454,7 +454,7 @@ export default function ProfilePage({
 
               {/* Starred replies */}
               <section style={{ marginTop: 24 }}>
-                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>Your starred responses</div>
+                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your starred responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabLikedReplies.length === 0 && <div className="muted">No starred responses yet.</div>}
                   {tabLikedReplies.map(({ reply: r, thread: t }) => (

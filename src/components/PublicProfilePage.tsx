@@ -88,6 +88,7 @@ export default function PublicProfilePage({
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   useEffect(() => { setExpandedIds(new Set()); }, [activeTab]);
+  const [viewedTabIds, setViewedTabIds] = useState<Set<string>>(new Set());
   const toggleExpand = (id: string) =>
     setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
@@ -107,12 +108,12 @@ export default function PublicProfilePage({
       activeTab,
       onTabClick: (sid: string) => {
         if (sid === activeTab) openShow(sid);
-        else setActiveTab(sid);
+        else { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
       },
       tabActivity: {},
-      viewedTabIds: new Set(),
+      viewedTabIds,
     });
-  }, [loading, showTabOrder, activeTab]);
+  }, [loading, showTabOrder, activeTab, viewedTabIds]);
   useEffect(() => { return () => { onTabsChangeRef.current?.(null); }; }, []);
 
   return (
@@ -134,8 +135,30 @@ export default function PublicProfilePage({
             <>
               {/* Their posts — diary look */}
               <section style={{ marginTop: 0 }}>
-                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>{username}'s {showName(activeTab).toUpperCase()} journal</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, marginBottom: 16, minHeight: 28 }}>
+                  <div className="title" style={{ fontSize: 22, marginLeft: -42 }}>{username}'s {showName(activeTab).toUpperCase()} journal</div>
+                </div>
                 <div className="diaryOuter">
+                  {[48, 32, 16].map(offset => (
+                    <div key={offset} className="diaryBackPage" style={{ top: 27, transform: `translate(-${offset}px, ${offset}px)` }} />
+                  ))}
+                  <div className="diaryTabRow">
+                    {showTabOrder.map(sid => {
+                      const active = sid === activeTab;
+                      return (
+                        <button
+                          key={sid}
+                          className={`diaryTab${active ? " active" : ""}`}
+                          onClick={() => {
+                            if (sid === activeTab) { openShow(sid); }
+                            else { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
+                          }}
+                        >
+                          {showName(sid)}
+                        </button>
+                      );
+                    })}
+                  </div>
                 <div className="diaryCardWrap">
                 <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
                   {tabThreads.length === 0 && (
@@ -178,7 +201,7 @@ export default function PublicProfilePage({
 
               {/* Their responses */}
               <section style={{ marginTop: 24 }}>
-                <div className="title hangL" style={{ fontSize: 18, marginBottom: 8 }}>Responses</div>
+                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>Responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabReplies.length === 0 && (
                     <div className="muted">No responses visible to you yet.</div>
