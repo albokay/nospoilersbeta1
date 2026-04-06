@@ -899,27 +899,24 @@ export default function ShowSection({
                 onInsert={handlePromptInsert}
               />
             )}
-            <div style={{ position: "relative" }}>
-              <textarea
-                ref={postBodyRef}
-                className="card"
-                placeholder={composePlaceholder}
-                value={postBody}
-                onChange={(e) => setPostBody(e.target.value)}
-                style={{ width: "100%", height: 260, resize: "vertical" }}
-              />
-              {promptEntries.length > 0 && (
-                <button
-                  className="prompt-btn"
-                  type="button"
-                  onClick={handlePromptBtn}
-                  style={{ position: "absolute", bottom: 8, left: 10 }}
-                  title="Get a writing prompt"
-                >
-                  ✦ prompt?
-                </button>
-              )}
-            </div>
+            <textarea
+              ref={postBodyRef}
+              className="card"
+              placeholder={composePlaceholder}
+              value={postBody}
+              onChange={(e) => setPostBody(e.target.value)}
+              style={{ width: "100%", height: 260, resize: "vertical" }}
+            />
+            {promptEntries.length > 0 && (
+              <button
+                className="prompt-btn"
+                type="button"
+                onClick={handlePromptBtn}
+                title="Get a writing prompt"
+              >
+                ✦ prompt?
+              </button>
+            )}
             <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
               <Tooltip

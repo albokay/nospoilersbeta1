@@ -216,38 +216,35 @@ export default function ResponseComposer({
           />
         </div>
       )}
-      <div style={{ position: "relative" }}>
-        <textarea
-          ref={textareaRef}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Write your response…"
-          rows={8}
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            background: "#fff",
-            color: "#000",
-            border: "1px solid var(--dos-border)",
-            borderRadius: 4,
-            padding: "8px 10px",
-            fontSize: 14,
-            resize: "vertical",
-            fontFamily: "inherit",
-          }}
-        />
-        {show && progress && promptEntries.length > 0 && (
-          <button
-            className="prompt-btn"
-            type="button"
-            onClick={handlePromptBtn}
-            style={{ position: "absolute", bottom: 8, left: 10, color: "var(--dos-bg)" }}
-            title="Get a writing prompt"
-          >
-            ✦ prompt?
-          </button>
-        )}
-      </div>
+      <textarea
+        ref={textareaRef}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Write your response…"
+        rows={8}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          background: "#fff",
+          color: "#000",
+          border: "1px solid var(--dos-border)",
+          borderRadius: 4,
+          padding: "8px 10px",
+          fontSize: 14,
+          resize: "vertical",
+          fontFamily: "inherit",
+        }}
+      />
+      {show && progress && promptEntries.length > 0 && (
+        <button
+          className="prompt-btn"
+          type="button"
+          onClick={handlePromptBtn}
+          title="Get a writing prompt"
+        >
+          ✦ prompt?
+        </button>
+      )}
 
       {error && (
         <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{error}</div>
