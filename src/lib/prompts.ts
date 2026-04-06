@@ -16,6 +16,8 @@ export function getProgressTags(
   const isRunning = show.status === "Running";
   const tags: string[] = ["any-progress"];
 
+  // ── Old tags (kept for backward compat with existing prompts) ────────────
+
   if (s === 1 && e === 1) {
     // Very first episode
     tags.push("first-episode", "early");
@@ -24,11 +26,11 @@ export function getProgressTags(
     tags.push("early");
   } else if (isFinalSeason && isRunning) {
     // In the final season of a still-running show — heading toward the finale
-    tags.push("pre-finale", "season-ending", "comparing-seasons");
+    tags.push("pre-finale", "comparing-seasons");
     if (totalSeasons >= 3) tags.push("mid-series");
   } else if (isFinalSeason && !isRunning) {
     // In or past the final season of an ended show
-    tags.push("season-ending", "post-show", "comparing-seasons");
+    tags.push("post-show", "comparing-seasons");
     if (totalSeasons >= 3) tags.push("mid-series");
   } else {
     // s > 1 and not the final season
@@ -40,6 +42,42 @@ export function getProgressTags(
     }
     if (totalSeasons >= 3) tags.push("mid-series");
     tags.push("comparing-seasons");
+  }
+
+  // ── New tags ─────────────────────────────────────────────────────────────
+
+  const seasonLen = show.seasons[s - 1] ?? 0;
+  const isLastSeason = s === show.seasons.length;
+  const showEnded = show.status !== "Running";
+
+  // start-of-show: first 3 episodes of season 1
+  if (s === 1 && e <= 3) {
+    tags.push("start-of-show");
+  }
+
+  // season-start: first 3 episodes of any season after season 1
+  if (s > 1 && e <= 3) {
+    tags.push("season-start");
+  }
+
+  // show-arc: viewer has passed the first 3 episodes of the series (S01E04 onward)
+  if (!(s === 1 && e <= 3)) {
+    tags.push("show-arc");
+  }
+
+  // season-ending: within last 3 episodes of current season (only when season length is known)
+  if (seasonLen > 0 && e >= seasonLen - 2) {
+    tags.push("season-ending");
+  }
+
+  // approaching-end: last 3 episodes of final season of an ended show
+  if (isLastSeason && showEnded && seasonLen > 0 && e >= seasonLen - 2) {
+    tags.push("approaching-end");
+  }
+
+  // end: very last episode of final season of an ended show
+  if (isLastSeason && showEnded && seasonLen > 0 && e === seasonLen) {
+    tags.push("end");
   }
 
   return tags;

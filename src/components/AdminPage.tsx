@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { Show, FeedbackRow, PromptRow } from "../lib/db";
-import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback, fetchAllPrompts, togglePromptActive, deletePrompt, updatePrompt, seedPrompts } from "../lib/db";
+import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback, fetchAllPrompts, togglePromptActive, deletePrompt, updatePrompt, createPrompt, seedPrompts } from "../lib/db";
 import { PROMPT_DATA } from "../lib/promptData";
 import { timeAgo } from "../lib/utils";
 
@@ -102,6 +102,7 @@ export default function AdminPage({
   const [editText, setEditText] = useState("");
   const [editTypes, setEditTypes] = useState<string[]>([]);
   const [editGenres, setEditGenres] = useState<string[]>([]);
+  const [editProgressTags, setEditProgressTags] = useState<string[]>([]);
   const [editSaving, setEditSaving] = useState(false);
 
   const openEdit = (p: PromptRow) => {
@@ -109,6 +110,7 @@ export default function AdminPage({
     setEditText(p.text);
     setEditTypes(p.tvmaze_types ?? []);
     setEditGenres(p.genres ?? []);
+    setEditProgressTags(p.progress_tags ?? []);
   };
 
   const closeEdit = () => setEditingId(null);
@@ -120,9 +122,9 @@ export default function AdminPage({
   const handleSaveEdit = async (id: number) => {
     setEditSaving(true);
     try {
-      await updatePrompt(id, { text: editText.trim(), tvmaze_types: editTypes, genres: editGenres });
+      await updatePrompt(id, { text: editText.trim(), tvmaze_types: editTypes, genres: editGenres, progress_tags: editProgressTags });
       setPrompts(prev => prev.map(p => p.id === id
-        ? { ...p, text: editText.trim(), tvmaze_types: editTypes, genres: editGenres }
+        ? { ...p, text: editText.trim(), tvmaze_types: editTypes, genres: editGenres, progress_tags: editProgressTags }
         : p
       ));
       setEditingId(null);
@@ -171,6 +173,41 @@ export default function AdminPage({
       setDeletingPromptId(null);
     } catch (e: any) {
       alert(`Failed to delete: ${e?.message}`);
+    }
+  };
+
+  // ── Add new prompt state ──────────────────────────────────────────────────
+  const [addingPrompt, setAddingPrompt] = useState(false);
+  const [newText, setNewText] = useState("");
+  const [newDisplayType, setNewDisplayType] = useState<"fragment" | "lighthearted-fragment" | "prompt">("prompt");
+  const [newTypes, setNewTypes] = useState<string[]>([]);
+  const [newGenres, setNewGenres] = useState<string[]>([]);
+  const [newProgressTags, setNewProgressTags] = useState<string[]>([]);
+  const [newSaving, setNewSaving] = useState(false);
+
+  const handleCreatePrompt = async () => {
+    if (!newText.trim()) return;
+    setNewSaving(true);
+    try {
+      const created = await createPrompt({
+        text: newText.trim(),
+        display_type: newDisplayType,
+        tvmaze_types: newTypes,
+        genres: newGenres,
+        progress_tags: newProgressTags,
+        themes: [],
+      });
+      setPrompts(prev => [created, ...prev]);
+      setNewText("");
+      setNewDisplayType("prompt");
+      setNewTypes([]);
+      setNewGenres([]);
+      setNewProgressTags([]);
+      setAddingPrompt(false);
+    } catch (e: any) {
+      alert(`Failed to create: ${e?.message}`);
+    } finally {
+      setNewSaving(false);
     }
   };
 
@@ -363,6 +400,118 @@ export default function AdminPage({
           Prompt Library {!promptsLoading && `(${activeCount} active / ${prompts.length} total)`}
         </div>
 
+        {/* ＋ Add new prompt toggle */}
+        <div style={{ marginBottom: 12 }}>
+          <button
+            className="btn"
+            onClick={() => setAddingPrompt(v => !v)}
+            style={{ fontSize: 13 }}
+          >
+            {addingPrompt ? "▲ Cancel" : "＋ Add new prompt"}
+          </button>
+        </div>
+
+        {addingPrompt && (
+          <div style={{ background: "#f0f4f8", border: "1px solid #c0d0e0", borderRadius: 6, padding: "16px", marginBottom: 16, fontFamily: "monospace", fontSize: 12 }}>
+            {/* Text */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 4 }}>Prompt text</div>
+              <textarea
+                value={newText}
+                onChange={e => setNewText(e.target.value)}
+                rows={3}
+                style={{ width: "100%", boxSizing: "border-box", fontSize: 13, padding: "6px 8px", borderRadius: 4, border: "1px solid #bbb", fontFamily: "inherit", resize: "vertical" }}
+                placeholder="Enter prompt text…"
+              />
+            </div>
+            {/* Display type */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>Display type</div>
+              <div style={{ display: "flex", gap: 16 }}>
+                {(["fragment", "lighthearted-fragment", "prompt"] as const).map(dt => (
+                  <label key={dt} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                    <input
+                      type="radio"
+                      name="newDisplayType"
+                      value={dt}
+                      checked={newDisplayType === dt}
+                      onChange={() => setNewDisplayType(dt)}
+                    />
+                    {dt}
+                  </label>
+                ))}
+              </div>
+            </div>
+            {/* Tags: three columns */}
+            <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 12 }}>
+              {/* TVMaze type */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>TVMaze type</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {TVMAZE_TYPES.map(t => (
+                    <label key={t} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={newTypes.includes(t)}
+                        onChange={() => toggleTag(t, newTypes, setNewTypes)}
+                      />
+                      {t}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              {/* TVMaze genre */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>TVMaze genre</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 140px)", gap: "3px 12px" }}>
+                  {TVMAZE_GENRES.map(g => (
+                    <label key={g} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={newGenres.includes(g)}
+                        onChange={() => toggleTag(g, newGenres, setNewGenres)}
+                      />
+                      {g}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              {/* Progress */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>Progress</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {["any-progress", "start-of-show", "season-start", "show-arc", "season-ending", "approaching-end", "end"].map(tag => (
+                    <label key={tag} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={newProgressTags.includes(tag)}
+                        onChange={() => toggleTag(tag, newProgressTags, setNewProgressTags)}
+                      />
+                      {tag}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={handleCreatePrompt}
+                disabled={newSaving || !newText.trim()}
+                style={{ fontSize: 12, cursor: "pointer", background: "#2256c9", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
+              >
+                {newSaving ? "Adding…" : "Add prompt"}
+              </button>
+              <button
+                onClick={() => { setAddingPrompt(false); setNewText(""); setNewTypes([]); setNewGenres([]); setNewProgressTags([]); }}
+                style={{ fontSize: 12, cursor: "pointer", background: "transparent", color: "#555", border: "1px solid #bbb", borderRadius: 4, padding: "5px 14px" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
           <button
             className="btn"
@@ -520,6 +669,22 @@ export default function AdminPage({
                                       onChange={() => toggleTag(g, editGenres, setEditGenres)}
                                     />
                                     {g}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Progress */}
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#555", marginBottom: 6 }}>Progress</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                {["any-progress", "start-of-show", "season-start", "show-arc", "season-ending", "approaching-end", "end"].map(tag => (
+                                  <label key={tag} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={editProgressTags.includes(tag)}
+                                      onChange={() => toggleTag(tag, editProgressTags, setEditProgressTags)}
+                                    />
+                                    {tag}
                                   </label>
                                 ))}
                               </div>

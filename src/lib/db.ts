@@ -763,10 +763,31 @@ export async function deletePrompt(id: number): Promise<void> {
 
 export async function updatePrompt(
   id: number,
-  updates: { text?: string; tvmaze_types?: string[]; genres?: string[] }
+  updates: { text?: string; tvmaze_types?: string[]; genres?: string[]; progress_tags?: string[] }
 ): Promise<void> {
   const { error } = await supabase.from("prompts").update(updates).eq("id", id);
   if (error) throw error;
+}
+
+export async function createPrompt(
+  prompt: Pick<PromptRow, "text" | "display_type" | "tvmaze_types" | "genres" | "progress_tags" | "themes">
+): Promise<PromptRow> {
+  // Get next available ID (max existing + 1)
+  const { data: maxRow } = await supabase
+    .from("prompts")
+    .select("id")
+    .order("id", { ascending: false })
+    .limit(1)
+    .single();
+  const nextId = ((maxRow as any)?.id ?? 0) + 1;
+
+  const { data, error } = await supabase
+    .from("prompts")
+    .insert({ ...prompt, id: nextId, is_active: true })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as PromptRow;
 }
 
 export async function seedPrompts(prompts: PromptEntry[]): Promise<void> {
