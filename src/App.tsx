@@ -411,7 +411,7 @@ export default function App() {
           </div>
         );
         return pillTooltipText
-          ? <Tooltip text={pillTooltipText} direction="below" align="right" tooltipStyle={{ background: "#cce8f4", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
+          ? <Tooltip text={pillTooltipText} direction="below" align="right" tooltipStyle={{ background: "#bdd4de", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
           : pillContent;
       })()}
       {!authLoading && user && username && (

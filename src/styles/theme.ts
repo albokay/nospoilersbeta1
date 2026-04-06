@@ -6,6 +6,10 @@ export function injectDOSStyles() {
   --dos-bg:#dea838; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
   --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#2256c9; --dos-border:#ffffff;
+  /* canonical accent blue */
+  --blue-light:#bdd4de;
+  /* type scale */
+  --t1:22px; --t2:17px; --t3:15px; --t4:13px;
 }
 
 .brandLink{ cursor:pointer; }
@@ -17,7 +21,7 @@ body{
   margin:0;
   background:var(--dos-bg);
   color:var(--dos-fg);
-  font-size:16px;
+  font-size:var(--t3);
   line-height:1.5;
   letter-spacing:0.01em;
   font-family: "Inter","Nunito",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -29,11 +33,11 @@ body{
 .bleed-line{ display:none; }
 
 /* layout primitives */
-.container{ width:min(1040px, 92vw); margin:0 auto; background:transparent; }
+.container{ width:min(896px, 92vw); margin:0 auto; background:transparent; }
 hr{ display:none; }
-.title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; }
-.muted{ color:var(--dos-gray); }
-.card{ background:transparent; border:3px solid var(--dos-border); padding:12px; border-radius:23px; }
+.title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; font-size:var(--t2); }
+.muted{ color:var(--dos-gray); font-size:var(--t4); }
+.card{ background:transparent; border:3px solid var(--dos-border); padding:12px; border-radius:24px; }
 
 /* controls */
 .badge{
@@ -88,7 +92,7 @@ header.site{
 
 .siteTagline{
   text-align:center;
-  font-size:18px;
+  font-size:var(--t2);
   font-weight:600;
   letter-spacing:0.02em;
   margin:3px 0 10px;
@@ -329,10 +333,6 @@ header.site{
   opacity: 1 !important; /* neutralize dimming if present */
 }
 
-/* Global mock zoom (Chrome/Chromium only) */
-html, body {
-  zoom: .9;
-}
 body { -webkit-font-smoothing: antialiased; }
 
 /* ── Response reference system ───────────────────────────────────────────── */

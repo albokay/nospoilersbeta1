@@ -339,7 +339,7 @@ export default function AdminPage({
                   return (
                     <tr key={row.id} style={{
                       borderBottom: "1px solid #ddd",
-                      background: row.status === "done" ? "#dea838" : row.status === "will-do" ? "#cce8f4" : isNew ? "#fffbe6" : i % 2 === 0 ? "#fff" : "#f9f9f9",
+                      background: row.status === "done" ? "#dea838" : row.status === "will-do" ? "#bdd4de" : isNew ? "#fffbe6" : i % 2 === 0 ? "#fff" : "#f9f9f9",
                       verticalAlign: "top",
                     }}>
                       <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
