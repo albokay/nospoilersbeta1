@@ -16,6 +16,7 @@ export default function Tooltip({
   useAbsolute = false,
   width = TW,
   tooltipStyle,
+  disabled = false,
 }: {
   text: string;
   children: React.ReactNode;
@@ -26,7 +27,10 @@ export default function Tooltip({
   useAbsolute?: boolean;
   width?: number;
   tooltipStyle?: React.CSSProperties;
+  disabled?: boolean;
 }) {
+  if (disabled) return <>{children}</>;
+
   const [show, setShow] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const wrapperRef = useRef<HTMLSpanElement>(null);

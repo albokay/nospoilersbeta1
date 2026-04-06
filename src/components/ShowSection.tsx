@@ -100,6 +100,16 @@ export default function ShowSection({
   };
 
   const [composeOpen, setComposeOpen] = useState(false);
+  // Show private/public tooltips only on the very first compose session ever
+  const [showComposeTooltips, setShowComposeTooltips] = useState(() => !localStorage.getItem("ns_compose_seen"));
+  const openCompose = () => {
+    localStorage.setItem("ns_compose_seen", "1");
+    openCompose();
+  };
+  const closeCompose = () => {
+    setShowComposeTooltips(false);
+    closeCompose();
+  };
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const topRef = bannerRef;
 
@@ -533,7 +543,7 @@ export default function ShowSection({
         localStorage.setItem("ns_last_opened", JSON.stringify(next));
         return next;
       });
-      setComposeOpen(false);
+      closeCompose();
       setPostTitle(""); setPostBody("");
       setActiveThreadId(t.id);
       setTimeout(() => scrollToShowTop(), 0);
@@ -617,7 +627,7 @@ export default function ShowSection({
               </button>
               <button
                 className="btn post"
-                onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
+                onClick={() => user ? openCompose() : onAuthRequired()}
                 style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
               >
                 + make an entry
@@ -645,7 +655,7 @@ export default function ShowSection({
               {!thread ? (
                 <button
                   className="btn post h40"
-                  onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
+                  onClick={() => user ? openCompose() : onAuthRequired()}
                   title="Start a new post"
                   style={{ lineHeight: 1.2 }}
                 >
@@ -662,7 +672,7 @@ export default function ShowSection({
                   </button>
                   <button
                     className="btn post h40"
-                    onClick={() => user ? setComposeOpen(true) : onAuthRequired()}
+                    onClick={() => user ? openCompose() : onAuthRequired()}
                     title="Start a new post"
                     style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
                   >
@@ -880,10 +890,10 @@ export default function ShowSection({
 
       {/* Compose modal */}
       {composeOpen && (
-        <Modal onClose={() => setComposeOpen(false)}>
+        <Modal onClose={() => closeCompose()}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <h3 className="title" style={{ margin: 0 }}>make an entry</h3>
-            <button className="btn" onClick={() => setComposeOpen(false)}>✕</button>
+            <button className="btn" onClick={() => closeCompose()}>✕</button>
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -925,7 +935,7 @@ export default function ShowSection({
                 </button>
               ) : <span />}
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
+                <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
                 <Tooltip
                   text="Post privately. Your entry will live in your journal alongside everything else you've written — a record of your watching life, whether or not you share it. (If you want, you can swap it to public later.)"
                   direction="above"
@@ -933,6 +943,7 @@ export default function ShowSection({
                   useAbsolute={true}
                   width={280}
                   tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
+                  disabled={!showComposeTooltips}
                 >
                   <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--dos-bg)", border: "2px solid #fff", color: "#fff" }}>📝 save to your journal</button>
                 </Tooltip>
@@ -943,6 +954,7 @@ export default function ShowSection({
                   useAbsolute={true}
                   width={280}
                   tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
+                  disabled={!showComposeTooltips}
                 >
                   <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff" }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
                 </Tooltip>

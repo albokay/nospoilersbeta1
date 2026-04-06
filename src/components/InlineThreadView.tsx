@@ -11,6 +11,7 @@ import Username from "./Username";
 import ResponseComposer from "./ResponseComposer";
 import type { PendingReference } from "./ResponseComposer";
 import { useScrollHighlight } from "../hooks/useScrollHighlight";
+import Tooltip from "./Tooltip";
 import { annotateTextWithSups, UnmatchedSups } from "../lib/citationUtils";
 import type { SupEntry } from "../lib/citationUtils";
 
@@ -380,7 +381,15 @@ export default function InlineThreadView({
                     <button className="btn" style={{ fontSize: 13 }} onClick={handleStartEdit}>Edit</button>
                     <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={handleDelete}>Delete</button>
                     {!thread.isPrivate && !hasExternalReplies && (
-                      <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePrivate}>Turn Private</button>
+                      <Tooltip
+                        text="As long as no one has responded to your entry yet, you can move it to your private journal."
+                        direction="above"
+                        align="center"
+                        width={240}
+                        tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
+                      >
+                        <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePrivate}>Turn Private</button>
+                      </Tooltip>
                     )}
                     {thread.isPrivate && (
                       <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePublic}>Turn Public</button>
