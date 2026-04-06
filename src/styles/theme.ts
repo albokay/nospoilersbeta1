@@ -607,26 +607,23 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* ── Prompt trigger button (inside compose / response area) ─────────────── */
 .prompt-btn {
-  background: transparent;
-  border: none;
-  padding: 2px 6px;
-  font-size: 12px;
-  font-weight: 600;
+  background: var(--dos-bg);
+  border: 3px solid #fff;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  color: var(--dos-fg);
-  opacity: 0.65;
+  color: #fff;
+  opacity: 0.75;
   font-family: inherit;
-  border-radius: 6px;
+  border-radius: 9999px;
   letter-spacing: 0.01em;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  position: relative;
-  z-index: 2;
 }
 .prompt-btn:hover {
   opacity: 1;
-  background: rgba(255,255,255,0.12);
 }
 
 `;

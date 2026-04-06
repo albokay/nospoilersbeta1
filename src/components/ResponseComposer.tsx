@@ -211,16 +211,6 @@ export default function ResponseComposer({
         </div>
       )}
 
-      {activePrompt && (
-        <div style={{ marginBottom: 8 }}>
-          <PromptCard
-            prompt={activePrompt}
-            onClose={() => setActivePrompt(null)}
-            onShuffle={handlePromptShuffle}
-            onInsert={handlePromptInsert}
-          />
-        </div>
-      )}
       <textarea
         ref={textareaRef}
         value={body}
@@ -247,8 +237,16 @@ export default function ResponseComposer({
           onClick={handlePromptBtn}
           title="Get a writing prompt"
         >
-          ✦ prompt?
+          ✦ want a prompt?
         </button>
+      )}
+      {activePrompt && (
+        <PromptCard
+          prompt={activePrompt}
+          onClose={() => setActivePrompt(null)}
+          onShuffle={handlePromptShuffle}
+          onInsert={handlePromptInsert}
+        />
       )}
 
       {error && (

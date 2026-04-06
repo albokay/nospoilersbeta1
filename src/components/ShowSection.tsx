@@ -896,14 +896,6 @@ export default function ShowSection({
             <div className="muted" style={{ fontSize: 13 }}>
               Your post is automatically marked to <b>S{String(postProgress.s).padStart(2, "0")}E{String(postProgress.e).padStart(2, "0")}</b> and will only show to people who've watched at least that far.
             </div>
-            {activePrompt && (
-              <PromptCard
-                prompt={activePrompt}
-                onClose={() => setActivePrompt(null)}
-                onShuffle={handlePromptShuffle}
-                onInsert={handlePromptInsert}
-              />
-            )}
             <textarea
               ref={postBodyRef}
               className="card"
@@ -919,8 +911,16 @@ export default function ShowSection({
                 onClick={handlePromptBtn}
                 title="Get a writing prompt"
               >
-                ✦ prompt?
+                ✦ want a prompt?
               </button>
+            )}
+            {activePrompt && (
+              <PromptCard
+                prompt={activePrompt}
+                onClose={() => setActivePrompt(null)}
+                onShuffle={handlePromptShuffle}
+                onInsert={handlePromptInsert}
+              />
             )}
             <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <button className="btn" onClick={() => setComposeOpen(false)} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>

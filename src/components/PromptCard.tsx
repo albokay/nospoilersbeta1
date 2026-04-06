@@ -15,50 +15,47 @@ export default function PromptCard({
   onInsert,
 }: PromptCardProps) {
   return (
-    <div className="prompt-card">
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          opacity: 0.55,
-          marginBottom: 10,
-        }}
-      >
-        writing prompt
+    <div className="prompt-card" style={{ display: "flex", gap: 16, alignItems: "stretch" }}>
+      {/* Left: label + prompt text */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            opacity: 0.55,
+            marginBottom: 10,
+          }}
+        >
+          writing prompt
+        </div>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 16,
+            fontWeight: 500,
+            lineHeight: 1.6,
+            color: "#000",
+          }}
+        >
+          {prompt.text}
+        </p>
       </div>
-      <p
-        style={{
-          margin: "0 0 16px",
-          fontSize: 18,
-          fontWeight: 500,
-          lineHeight: 1.6,
-          color: "#000",
-        }}
-      >
-        {prompt.text}
-      </p>
+      {/* Right: buttons stacked vertically */}
       <div
         style={{
           display: "flex",
-          alignItems: "center",
+          flexDirection: "column",
           justifyContent: "space-between",
-          gap: 8,
+          gap: 6,
+          flexShrink: 0,
         }}
       >
-        <button
-          className="prompt-card-btn"
-          onClick={onClose}
-          title="Close"
-        >
+        <button className="prompt-card-btn" onClick={onClose} title="Close">
           ✕ close
         </button>
-        <button
-          className="prompt-card-btn"
-          onClick={onShuffle}
-          title="Try another prompt"
-        >
+        <button className="prompt-card-btn" onClick={onShuffle} title="Try another prompt">
           ↻ another
         </button>
         <button
