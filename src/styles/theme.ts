@@ -621,6 +621,8 @@ body { -webkit-font-smoothing: antialiased; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  position: relative;
+  z-index: 2;
 }
 .prompt-btn:hover {
   opacity: 1;
