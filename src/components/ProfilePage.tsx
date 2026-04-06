@@ -280,6 +280,7 @@ export default function ProfilePage({
                     <div key={offset} className="diaryBackPage" style={{ top: 27, transform: `translate(-${offset}px, ${offset}px)` }} />
                   ))}
                   {/* Folder tab row — sits flush on top of the front card */}
+                  <div className="diaryTabScroller">
                   <div className="diaryTabRow">
                     {showTabOrder.map(sid => {
                       const active = sid === activeTab;
@@ -301,6 +302,7 @@ export default function ProfilePage({
                         </button>
                       );
                     })}
+                  </div>
                   </div>
                 <div className="diaryCardWrap">
                 <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>

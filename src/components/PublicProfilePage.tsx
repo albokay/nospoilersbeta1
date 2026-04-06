@@ -142,6 +142,7 @@ export default function PublicProfilePage({
                   {[48, 32, 16].map(offset => (
                     <div key={offset} className="diaryBackPage" style={{ top: 27, transform: `translate(-${offset}px, ${offset}px)` }} />
                   ))}
+                  <div className="diaryTabScroller">
                   <div className="diaryTabRow">
                     {showTabOrder.map(sid => {
                       const active = sid === activeTab;
@@ -159,6 +160,7 @@ export default function PublicProfilePage({
                       );
                     })}
                   </div>
+                  </div>{/* /diaryTabScroller */}
                 <div className="diaryCardWrap">
                 <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
                   {tabThreads.length === 0 && (

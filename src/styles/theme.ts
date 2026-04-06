@@ -214,11 +214,24 @@ header.site{
   border:2px solid rgba(255,255,255,0.55);
   background:var(--dos-bg);
 }
+/* Scroll wrapper around the tab row — lets tabs scroll horizontally while
+   preserving the 3px active-tab visual overlap with the card below.
+   padding-bottom:4px gives room for the overlap; margin-bottom:-4px
+   cancels the extra space so the card sits flush. */
+.diaryTabScroller{
+  overflow-x:auto; overflow-y:visible;
+  padding-bottom:4px; margin-bottom:-4px;
+  scrollbar-width:none; -webkit-overflow-scrolling:touch;
+}
+.diaryTabScroller::-webkit-scrollbar{ display:none; }
+
 /* folder tab row sits directly above the front card */
 .diaryTabRow{
   display:flex; align-items:flex-end; gap:4px;
   position:relative; z-index:2; overflow:visible;
   padding-left:36px;
+  /* min-width keeps the row wider than the scroller so tabs don't wrap */
+  min-width:max-content;
 }
 .diaryTab{
   padding:4px 12px;
@@ -271,6 +284,8 @@ header.site{
 
   /* Diary: tighten on mobile */
   .diaryOuter{ margin-top:8px; margin-left:0; margin-right:0; margin-bottom:12px; width:100%; }
+  /* Remove the background depth pages — just show the single front card on mobile */
+  .diaryBackPage{ display:none; }
   .diaryTab{ font-size:12px; padding:4px 10px; }
   .diaryTab.active{ font-size:12px; padding:6px 12px; }
   /* Align tabs with card content edge (not desktop's -56px offset) */

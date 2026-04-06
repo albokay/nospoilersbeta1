@@ -621,38 +621,41 @@ export default function ShowSection({
 
           {/* Row 2 */}
           {thread && isMobile ? (
-            /* ── Thread · mobile: single row, compact ── */
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: `${ROW_PAD_Y}px 0` }}>
-              <button
-                className="btn"
-                onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
-                style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
-              >
-                ← to forum
-              </button>
-              <button
-                className="btn post"
-                onClick={() => user ? openCompose() : onAuthRequired()}
-                style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
-              >
-                + make an entry
-              </button>
-              <div style={{ flex: 1 }} />
-              <div style={{ transform: "translateX(-10px)" }}>
+            /* ── Thread · mobile: two rows so nothing bleeds off-screen ── */
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: `${ROW_PAD_Y}px 0` }}>
+              {/* Row 1: navigation */}
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  className="btn"
+                  onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
+                  style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
+                >
+                  ← to forum
+                </button>
+                <button
+                  className="btn post"
+                  onClick={() => user ? openCompose() : onAuthRequired()}
+                  style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
+                >
+                  + make an entry
+                </button>
+              </div>
+              {/* Row 2: spoiler controls — right-aligned */}
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
                 <ModeToggle
                   value={mode}
                   onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
                   hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
                   compact={true}
                 />
+                <OneSelectProgress
+                  show={allShows.find(s => s.id === showId) || { seasons: [10] }}
+                  value={progress[showId] || { s: 1, e: 1 }}
+                  onConfirm={handleProgressConfirm}
+                  requireConfirm={true}
+                  compactLabel="progress"
+                />
               </div>
-              <OneSelectProgress
-                show={allShows.find(s => s.id === showId) || { seasons: [10] }}
-                value={progress[showId] || { s: 1, e: 1 }}
-                onConfirm={handleProgressConfirm}
-                requireConfirm={true}
-                compactLabel="progress"
-              />
             </div>
           ) : (
             /* ── Thread · desktop  OR  Forum (any width) ── */
