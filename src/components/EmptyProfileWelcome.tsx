@@ -17,13 +17,13 @@ export default function EmptyProfileWelcome() {
           Welcome to your journal.
         </p>
         <p style={bodyStyle}>
-          This is your personal record of everything you've written on Sidebar — private entries saved just for you, and public entries you've sent to the rooms you're part of. Both live here together.
+          This is your personal record of everything you've written on Sidebar — private entries saved just for you, and public entries you've sent to the rooms you're part of. They both live here together.
         </p>
         <p style={bodyStyle}>
-          Your journal is yours alone. No one sees your private entries. Public entries appear here alongside what others see in the room.
+          You can use private entries however you want. They can be drafts that you switch to public later, or just private thoughts that no one else ever sees.
         </p>
         <p style={{ ...bodyStyle, margin: 0, opacity: 0.65, fontStyle: "italic" }}>
-          Start by making an entry in a show's room. Or just write something and save it privately — no one needs to see it but you.
+          Start your journal by clicking "make an entry" in a show's room.
         </p>
       </div>
     </div>
