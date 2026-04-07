@@ -444,8 +444,7 @@ export default function ShowSection({
   const clearSearch = () => { setSearchInput(""); setSearchQuery(""); };
 
   const scrollToShowTop = () => {
-    const y = (topRef.current?.getBoundingClientRect().top || 0) + window.scrollY;
-    window.scrollTo({ top: y - GLOBAL_HEADER_H, behavior: "auto" });
+    window.scrollTo({ top: 0, behavior: "auto" });
   };
 
   const likeThread = (tid: string) => {
@@ -848,7 +847,7 @@ export default function ShowSection({
                 className="card threadCard"
                 style={{
                   margin: 0,
-                  opacity: (isRead && !isOwn) ? 0.41 : 1,
+                  opacity: (isRead && !isOwn) ? 0.65 : 1,
                   cursor: "pointer",
                   position: "relative",
                   paddingTop: 12,
@@ -946,7 +945,7 @@ export default function ShowSection({
                 onInsert={handlePromptInsert}
               />
             )}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               {promptEntries.length > 0 ? (
                 <button
                   className="prompt-btn"
@@ -957,7 +956,7 @@ export default function ShowSection({
                   ✦ want a prompt?
                 </button>
               ) : <span />}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
                 <Tooltip
                   text="Post privately. Your entry will live in your journal alongside everything else you've written — a record of your watching life, whether or not you share it. (If you want, you can swap it to public later.)"

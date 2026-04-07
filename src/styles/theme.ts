@@ -606,6 +606,7 @@ body { -webkit-font-smoothing: antialiased; }
   font-size: 14px;
   line-height: 1.6;
   color: #4b8f6c;
+  opacity: 1;
 }
 .prompt-ref::before {
   content: "PROMPT:";

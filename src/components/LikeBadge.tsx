@@ -32,14 +32,14 @@ export default function LikeBadge({
       {showHint && (
         <Modal onClose={() => setShowHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
-            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              ⭐ Starring a post saves it to your private profile page.
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 700 }}>
+              ⭐ Starring is just for you.
             </p>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              Entries never get public "like counts." In fact, there is no quantifying of relationships or conversations anywhere on the site.
+              Starring a post saves it to your private profile page. Entries never get public "like counts."
             </p>
-            <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
-              Starring is just for you.
+            <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+              In fact, Sidebar will never quantify relationship or conversations anywhere on the site.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
