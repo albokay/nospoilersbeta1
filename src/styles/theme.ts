@@ -601,7 +601,6 @@ body { -webkit-font-smoothing: antialiased; }
   font-size: 14px;
   line-height: 1.6;
   color: #4b8f6c;
-  opacity: 0.85;
 }
 .prompt-ref::before {
   content: "PROMPT:";
@@ -612,7 +611,6 @@ body { -webkit-font-smoothing: antialiased; }
   font-weight: 700;
   letter-spacing: 0.12em;
   color: #4b8f6c;
-  opacity: 0.7;
   margin-bottom: 3px;
 }
 
