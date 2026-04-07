@@ -43,7 +43,8 @@ export default function ShowSection({
   visitedThreads, setVisitedThreads, activeThreadId, setActiveThreadId, onHomepage,
   likesThreads, setLikesThreads, likedByUserThreads, setLikedByUserThreads,
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
-  focusReplyId, onAuthRequired, onClickProfile, navLeft, navRight
+  focusReplyId, onAuthRequired, onClickProfile, navLeft, navRight,
+  showStaleNudge, onDismissStaleNudge
 }: any) {
   const { user, profile } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
@@ -724,6 +725,31 @@ export default function ShowSection({
           )}
         </div>
       </div>
+
+      {/* Stale-progress nudge — shown once per session after a 12hr gap, only if user has progress set */}
+      {showStaleNudge && progress[showId] && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, padding: "10px 16px", marginBottom: 8,
+          background: "var(--dos-bg)", border: "1px solid var(--dos-border)",
+          borderRadius: 6, fontSize: 13,
+        }}>
+          <span>
+            <span style={{ fontWeight: 700 }}>You watched more — </span>
+            everyone's looking forward to your new thoughts!{" "}
+            <span style={{ opacity: 0.7 }}>
+              Update your progress above if you have.
+            </span>
+          </span>
+          <button
+            className="btn"
+            onClick={onDismissStaleNudge}
+            style={{ flexShrink: 0, fontSize: 12, padding: "3px 8px" }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* CONTENT */}
       {thread ? (

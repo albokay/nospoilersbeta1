@@ -103,6 +103,19 @@ export default function App() {
 
   const [progress, setProgress] = useState<{ [sid: string]: { s: number; e: number } }>({});
 
+  // Stale-progress nudge: show once per session if user returns after 12+ hour gap
+  const [showStaleNudge, setShowStaleNudge] = useState(false);
+  const [staleNudgeDismissed, setStaleNudgeDismissed] = useState(false);
+  useEffect(() => {
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+    const last = localStorage.getItem("ns_last_visit");
+    const now = Date.now();
+    if (last && now - parseInt(last, 10) > TWELVE_HOURS) {
+      setShowStaleNudge(true);
+    }
+    localStorage.setItem("ns_last_visit", String(now));
+  }, []);
+
   // Load progress from DB when user logs in; clear it when they log out
   useEffect(() => {
     if (!user) { setProgress({}); return; }
@@ -740,6 +753,8 @@ export default function App() {
             focusReplyId={focusReplyId}
             onAuthRequired={() => setShowAuthModal(true)}
             onClickProfile={handleClickProfile}
+            showStaleNudge={showStaleNudge && !staleNudgeDismissed}
+            onDismissStaleNudge={() => setStaleNudgeDismissed(true)}
           />
         </div>
       )}
