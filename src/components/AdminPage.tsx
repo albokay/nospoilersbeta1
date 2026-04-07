@@ -82,6 +82,17 @@ export default function AdminPage({
   // ── Prompt Library state ──────────────────────────────────────────────────
   const [prompts, setPrompts] = useState<PromptRow[]>([]);
   const [promptsLoading, setPromptsLoading] = useState(true);
+  const [addressedIds, setAddressedIds] = useState<Set<number>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("ns_admin_addressed_prompts") || "[]")); } catch { return new Set(); }
+  });
+  const toggleAddressed = (id: number) => {
+    setAddressedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      localStorage.setItem("ns_admin_addressed_prompts", JSON.stringify([...next]));
+      return next;
+    });
+  };
   const [promptFilter, setPromptFilter] = useState<"all" | "fragment" | "lighthearted-fragment" | "prompt">("all");
   const [deletingPromptId, setDeletingPromptId] = useState<number | null>(null);
 
@@ -209,9 +220,14 @@ export default function AdminPage({
     }
   };
 
-  const filteredPrompts = promptFilter === "all"
+  const filteredPrompts = (promptFilter === "all"
     ? prompts
-    : prompts.filter(p => p.display_type === promptFilter);
+    : prompts.filter(p => p.display_type === promptFilter)
+  ).slice().sort((a, b) => {
+    const aAddr = addressedIds.has(a.id) ? 1 : 0;
+    const bAddr = addressedIds.has(b.id) ? 1 : 0;
+    return aAddr - bAddr;
+  });
 
   const activeCount = prompts.filter(p => p.is_active).length;
 
@@ -553,17 +569,20 @@ export default function AdminPage({
                   <th style={{ padding: "5px 8px", fontWeight: 700 }}>text</th>
                   <th style={{ padding: "5px 8px", fontWeight: 700, whiteSpace: "nowrap" }}>type</th>
                   <th style={{ padding: "5px 8px", fontWeight: 700, whiteSpace: "nowrap" }}>active</th>
+                  <th style={{ padding: "5px 8px", fontWeight: 700, whiteSpace: "nowrap" }}>done</th>
                   <th style={{ padding: "5px 8px" }}></th>
                 </tr>
               </thead>
               <tbody>
-                {filteredPrompts.map((p, i) => (
+                {filteredPrompts.map((p, i) => {
+                  const isAddressed = addressedIds.has(p.id);
+                  return (
                   <React.Fragment key={p.id}>
                     <tr
                       style={{
                         borderBottom: editingId === p.id ? "none" : "1px solid #eee",
-                        background: !p.is_active ? "#fafafa" : i % 2 === 0 ? "#fff" : "#f9f9f9",
-                        opacity: p.is_active ? 1 : 0.55,
+                        background: isAddressed ? "#e8e8e8" : !p.is_active ? "#fafafa" : i % 2 === 0 ? "#fff" : "#f9f9f9",
+                        opacity: isAddressed ? 0.5 : p.is_active ? 1 : 0.55,
                         verticalAlign: "top",
                       }}
                     >
@@ -581,6 +600,17 @@ export default function AdminPage({
                             style={{ cursor: "pointer" }}
                           />
                           {p.is_active ? "on" : "off"}
+                        </label>
+                      </td>
+                      <td style={{ padding: "5px 8px", whiteSpace: "nowrap" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, cursor: "pointer", color: "#555" }}>
+                          <input
+                            type="checkbox"
+                            checked={isAddressed}
+                            onChange={() => toggleAddressed(p.id)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          done
                         </label>
                       </td>
                       <td style={{ padding: "5px 8px", whiteSpace: "nowrap" }}>
@@ -686,7 +716,7 @@ export default function AdminPage({
                       </tr>
                     )}
                   </React.Fragment>
-                ))}
+                ); })}
               </tbody>
             </table>
           </div>
