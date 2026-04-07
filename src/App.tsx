@@ -439,13 +439,10 @@ export default function App() {
         <SearchShows
           shows={shows}
           onPick={handlePickFromSearch}
-          onShowCreated={(newShow) => {
+          onShowCreated={(newShow, entry) => {
             setShows(prev => [...prev, newShow]);
-            // Don't pre-set progress — questionnaire will handle it via setWatchStatusFor.
-            // Store the new show so pickShow memo resolves before `shows` state settles.
-            setPendingNewShow(newShow);
-            setPickShowMode("set");
-            setPickShowId(newShow.id);
+            setWatchStatusFor(newShow.id, entry);
+            openShow(newShow.id);
           }}
           onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
           style={{ width: 220, margin: 0, height: 34 }}

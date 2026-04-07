@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Show } from "../lib/db";
 import { createShow } from "../lib/db";
 import { useAuth } from "../lib/auth";
+import type { ProgressEntry } from "../types";
 
 // ── TVmaze helpers ─────────────────────────────────────────────────────────
 
@@ -49,12 +50,59 @@ function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 32) || `show${Date.now()}`;
 }
 
+// ── Inline episode selector ────────────────────────────────────────────────
+
+function EpisodeSelectInline({
+  seasons,
+  value,
+  onChange,
+}: {
+  seasons: number[];
+  value: { s: number; e: number };
+  onChange: (v: { s: number; e: number }) => void;
+}) {
+  const options: { s: number; e: number; label: string }[] = [];
+  seasons.forEach((epCount, idx) => {
+    const s = idx + 1;
+    for (let e = 1; e <= epCount; e++) {
+      options.push({ s, e, label: `S${s} E${e}` });
+    }
+  });
+  const val = `s${value.s}e${value.e}`;
+  return (
+    <select
+      value={val}
+      onChange={(ev) => {
+        const m = ev.target.value.match(/^s(\d+)e(\d+)$/);
+        if (m) onChange({ s: Number(m[1]), e: Number(m[2]) });
+      }}
+      style={{
+        background: "#fff", color: "#000",
+        border: "1px solid var(--dos-border)", borderRadius: 6,
+        padding: "4px 8px", fontSize: 13, width: "100%",
+      }}
+    >
+      {seasons.map((epCount, idx) => {
+        const s = idx + 1;
+        const eps = Array.from({ length: epCount }, (_, i) => i + 1);
+        return (
+          <optgroup key={s} label={`Season ${s}`}>
+            {eps.map(e => (
+              <option key={e} value={`s${s}e${e}`}>S{s} E{e}</option>
+            ))}
+          </optgroup>
+        );
+      })}
+    </select>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequired, style, placeholder }: {
   shows: Show[];
   onPick: (showId: string) => void;
-  onShowCreated?: (show: Show) => void;
+  onShowCreated?: (show: Show, entry: ProgressEntry) => void;
   onAuthRequired?: () => void;
   style?: React.CSSProperties;
   placeholder?: string;
@@ -72,8 +120,16 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
 
   // Confirmation modal state
   const [confirming, setConfirming] = useState<TVmazeShow | null>(null);
+  const [confirmingSeasons, setConfirmingSeasons] = useState<number[] | null>(null);
+  const [seasonsLoading, setSeasonsLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Watch-status questionnaire state (lives inside the combined modal)
+  const [watchChoice, setWatchChoice] = useState<"first" | "rewatch" | null>(null);
+  const [highestSel, setHighestSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
+  const [rewatchSel, setRewatchSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
+  const [firstTimeSel, setFirstTimeSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
 
   // Tier 1: existing shows on Sidebar (not hidden)
   const localMatches = useMemo(() => {
@@ -109,29 +165,54 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
+  const resetModal = () => {
+    setConfirming(null);
+    setConfirmingSeasons(null);
+    setCreateError(null);
+    setWatchChoice(null);
+    setHighestSel({ s: 1, e: 1 });
+    setRewatchSel({ s: 1, e: 1 });
+    setFirstTimeSel({ s: 1, e: 1 });
+  };
+
   const handlePickLocal = (show: Show) => {
     onPick(show.id);
     setQuery(show.name);
     setOpen(false);
   };
 
-  const handlePickTVmaze = (tv: TVmazeShow) => {
+  const handlePickTVmaze = async (tv: TVmazeShow) => {
     if (!user) {
       setOpen(false);
       onAuthRequired?.();
       return;
     }
     setConfirming(tv);
+    setConfirmingSeasons(null);
     setOpen(false);
     setCreateError(null);
+    setWatchChoice(null);
+    setHighestSel({ s: 1, e: 1 });
+    setRewatchSel({ s: 1, e: 1 });
+    setFirstTimeSel({ s: 1, e: 1 });
+    // Fetch episode data immediately so the selects are ready when the user needs them
+    setSeasonsLoading(true);
+    try {
+      const seasons = await tvmazeEpisodes(tv.id);
+      setConfirmingSeasons(seasons);
+    } catch {
+      setConfirmingSeasons([1]);
+    } finally {
+      setSeasonsLoading(false);
+    }
   };
 
   const handleConfirmCreate = async () => {
-    if (!confirming) return;
+    if (!confirming || !watchChoice) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const seasons = await tvmazeEpisodes(confirming.id);
+      const seasons = confirmingSeasons ?? [1];
       const id = slugify(confirming.name);
       const newShow = await createShow({
         id,
@@ -140,12 +221,27 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
         tvmazeId: String(confirming.id),
         status: confirming.status === "Running" ? "Running" : "Ended",
       });
-      onShowCreated?.(newShow);
+
+      // Build the ProgressEntry from the questionnaire answers
+      let entry: ProgressEntry;
+      if (watchChoice === "rewatch") {
+        entry = {
+          s: rewatchSel.s, e: rewatchSel.e,
+          isRewatching: true,
+          rewatchS: rewatchSel.s, rewatchE: rewatchSel.e,
+          highestS: highestSel.s, highestE: highestSel.e,
+        };
+      } else {
+        entry = { s: firstTimeSel.s, e: firstTimeSel.e, isRewatching: false };
+      }
+
       setQuery(newShow.name);
-      setConfirming(null);
-      // onShowCreated handles opening the questionnaire modal directly;
-      // only fall back to onPick if onShowCreated is absent.
-      if (!onShowCreated) onPick(newShow.id);
+      resetModal();
+      if (onShowCreated) {
+        onShowCreated(newShow, entry);
+      } else {
+        onPick(newShow.id);
+      }
     } catch (e: any) {
       setCreateError(e?.message ?? "Failed to create forum. Try again.");
     } finally {
@@ -154,6 +250,7 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
   };
 
   const totalItems = localMatches.length + tvMatches.length;
+  const canSubmit = !!watchChoice && !seasonsLoading && !creating;
 
   return (
     <>
@@ -235,33 +332,89 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
         )}
       </div>
 
-      {/* Confirmation modal */}
+      {/* Combined create-forum + watch-status modal */}
       {confirming && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
           zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center",
         }}
-          onMouseDown={(e) => { if (e.target === e.currentTarget) { setConfirming(null); setCreateError(null); } }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) resetModal(); }}
         >
           <div className="card" style={{
             background: "var(--dos-bg)", border: "2px solid #fff",
-            borderRadius: 24, padding: "24px 28px", maxWidth: 380, width: "92vw",
+            borderRadius: 24, padding: "24px 28px", maxWidth: 400, width: "92vw",
+            display: "flex", flexDirection: "column", gap: 16,
           }}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>{confirming.name}</div>
-            <div className="muted" style={{ fontSize: 13, marginBottom: 16 }}>
-              {[confirming.network?.name || confirming.webChannel?.name, confirming.premiered?.slice(0, 4), confirming.status].filter(Boolean).join(" · ")}
+            {/* Header */}
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 2 }}>{confirming.name}</div>
+              <div className="muted" style={{ fontSize: 13 }}>
+                {[confirming.network?.name || confirming.webChannel?.name, confirming.premiered?.slice(0, 4), confirming.status].filter(Boolean).join(" · ")}
+              </div>
             </div>
-            <div style={{ marginBottom: 20, fontSize: 14 }}>
-              Create a new forum for <b>{confirming.name}</b> on Sidebar?
+
+            {/* Watch-status questionnaire */}
+            <div>
+              <p className="muted" style={{ fontSize: 14, margin: "0 0 10px" }}>
+                Are you rewatching <strong>{confirming.name}</strong>, or is this your first time through?
+              </p>
+              <div style={{ display: "flex", gap: 16 }}>
+                {(["first", "rewatch"] as const).map(choice => (
+                  <label key={choice} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14 }}>
+                    <input
+                      type="radio"
+                      name="newForumWatchStatus"
+                      value={choice}
+                      checked={watchChoice === choice}
+                      onChange={() => setWatchChoice(choice)}
+                    />
+                    {choice === "first" ? "First time" : "Rewatching"}
+                  </label>
+                ))}
+              </div>
             </div>
-            {createError && (
-              <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>{createError}</div>
+
+            {/* Episode selects — shown once seasons are loaded */}
+            {seasonsLoading && (
+              <div className="muted" style={{ fontSize: 13 }}>Loading episode data…</div>
             )}
+
+            {!seasonsLoading && confirmingSeasons && watchChoice === "rewatch" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
+                    What's the furthest you watched last time?
+                  </label>
+                  <EpisodeSelectInline seasons={confirmingSeasons} value={highestSel} onChange={setHighestSel} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
+                    How far are you on your rewatch?
+                  </label>
+                  <EpisodeSelectInline seasons={confirmingSeasons} value={rewatchSel} onChange={setRewatchSel} />
+                </div>
+              </div>
+            )}
+
+            {!seasonsLoading && confirmingSeasons && watchChoice === "first" && (
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
+                  How far have you watched?
+                </label>
+                <EpisodeSelectInline seasons={confirmingSeasons} value={firstTimeSel} onChange={setFirstTimeSel} />
+              </div>
+            )}
+
+            {createError && (
+              <div style={{ color: "var(--danger)", fontSize: 13 }}>{createError}</div>
+            )}
+
+            {/* Actions */}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn" onClick={() => { setConfirming(null); setCreateError(null); }}>
+              <button className="btn" onClick={resetModal} disabled={creating}>
                 Cancel
               </button>
-              <button className="btn post" onClick={handleConfirmCreate} disabled={creating}>
+              <button className="btn post" onClick={handleConfirmCreate} disabled={!canSubmit}>
                 {creating ? "Creating…" : "Create forum"}
               </button>
             </div>
