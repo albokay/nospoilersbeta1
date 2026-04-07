@@ -655,8 +655,11 @@ export default function App() {
                     lineHeight: 1.6,
                     fontWeight: 700,
                   }}>
-                    The BREAKING BAD (DEMO) forum is populated with posts (a.i. generated) that discuss the actual show. Feel free to use it as a playground to test things out. But don't post anything you care about in there as it will regularly get purged and reset. If you actually want to start a diary or conversation about Breaking Bad, use the "join a new show" field…<br /><br />
-                    "Join a new show" is how you either: 1) join an existing forum, or 2) create the official public forum for your show (that everyone else can join).<br /><br />
+                    The BREAKING BAD (DEMO) forum is populated with posts (a.i. generated) that discuss the actual show. Feel free to use it as a playground to test things out.<br /><br />
+                    But don't post anything you care about in there as it will regularly get purged and reset. If you actually want to start a diary or conversation about Breaking Bad, use the "join a new show" field…<br /><br />
+                    "Join a new show" is how you either:<br /><br />
+                    1) join an existing forum, or<br />
+                    2) create the official public forum for your show (that everyone else can join).<br /><br />
                     Hope you enjoy using the site. And THANK YOU.<br /><br />
                     — Alborz<br /><br />
                     🕓 <b>FUTURE FEATURES:</b> there are a lot in the works. What would you like?? ⏳
