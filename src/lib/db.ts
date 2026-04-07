@@ -5,6 +5,7 @@
 import { supabase } from "./supabaseClient";
 import type { Thread, Reply } from "../types";
 import type { PromptEntry } from "./promptData";
+import { repliesByThread } from "./mockData";
 
 // ── Shows ────────────────────────────────────────────────────────────────────
 
@@ -207,6 +208,8 @@ function rowToReply(row: any): Reply {
 }
 
 export async function fetchRepliesForThread(threadId: string): Promise<Reply[]> {
+  // Seed threads live in memory — return them directly without hitting Supabase
+  if (repliesByThread[threadId]) return repliesByThread[threadId];
   const { data, error } = await supabase
     .from("replies")
     .select("*")

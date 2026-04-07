@@ -15,7 +15,7 @@ function threadDotActive(threadId: string, hasDot: boolean): boolean {
   return true;
 }
 import type { Thread } from "../types";
-import { seedShows } from "../lib/mockData";
+import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
 import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt } from "../lib/db";
 import type { PromptRow } from "../lib/db";
@@ -256,8 +256,18 @@ export default function ShowSection({
     fetchThreadsForShow(showId).then(async ({ threads, replyCounts: rc, replyMeta: rm, hasExternalReplies: her }) => {
       if (cancelled) return;
       setDbThreads(threads);
-      setReplyCounts(rc);
-      setReplyMeta(rm);
+      // Merge seed reply counts/meta so reply badges show on seed threads
+      const seedRc: Record<string, number> = {};
+      const seedRm: Record<string, any[]> = {};
+      for (const [tid, replies] of Object.entries(repliesByThread)) {
+        const isSeedForShow = seedThreads.some(t => t.id === tid && t.showId === showId);
+        if (isSeedForShow) {
+          seedRc[tid] = replies.length;
+          seedRm[tid] = replies.map((r: any) => ({ id: r.id, season: r.season, episode: r.episode, createdAt: r.updatedAt ?? Date.now(), authorId: r.author }));
+        }
+      }
+      setReplyCounts({ ...seedRc, ...rc });
+      setReplyMeta({ ...seedRm, ...rm });
       setHasExternalReplies(her);
       // Initialize both timestamps for threads encountered for the first time
       const now = Date.now();
@@ -321,9 +331,14 @@ export default function ShowSection({
     return score;
   };
 
+  const allThreads = useMemo(() =>
+    [...dbThreads, ...seedThreads.filter(t => t.showId === showId)],
+    [dbThreads, showId]
+  );
+
   const baseVisible = useMemo(() => {
     const prog = progress[showId];
-    let list = dbThreads.filter(t => canView(t, prog));
+    let list = allThreads.filter(t => canView(t, prog));
 
     if (searchQuery.trim()) {
       const withScores = list
@@ -363,16 +378,16 @@ export default function ShowSection({
       });
     }
     return list;
-  }, [dbThreads, progress, searchQuery, sortBy, likesThreads, newHighlights, showId]);
+  }, [allThreads, progress, searchQuery, sortBy, likesThreads, newHighlights, showId]);
 
-  // ── Green-tab: compute newly visible threads from real dbThreads ──
+  // ── Green-tab: compute newly visible threads ──
   const prevProgRef = useRef<{ s: number; e: number } | undefined>(undefined);
   useEffect(() => {
     const cur = progress[showId];
     const prev = prevProgRef.current;
-    if (prev && cur && dbThreads.length > 0 && (prev.s !== cur.s || prev.e !== cur.e)) {
+    if (prev && cur && allThreads.length > 0 && (prev.s !== cur.s || prev.e !== cur.e)) {
       const newly: Record<string, true> = {};
-      for (const t of dbThreads) {
+      for (const t of allThreads) {
         if (!canView(t, prev) && canView(t, cur)) newly[t.id] = true;
       }
       if (Object.keys(newly).length > 0) {
@@ -394,10 +409,10 @@ export default function ShowSection({
       }
     }
     prevProgRef.current = cur;
-  }, [progress[showId]?.s, progress[showId]?.e, dbThreads]);
+  }, [progress[showId]?.s, progress[showId]?.e, allThreads]);
 
   const displayed = baseVisible;
-  const thread = activeThreadId ? dbThreads.find(t => t.id === activeThreadId && t.showId === showId) : null;
+  const thread = activeThreadId ? allThreads.find(t => t.id === activeThreadId && t.showId === showId) : null;
 
   // Shared progress-confirm handler: updates progress, then navigates back to
   // the forum if the currently-open thread is no longer visible at the new progress.
