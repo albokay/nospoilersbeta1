@@ -771,7 +771,7 @@ export default function ShowSection({
                     />
                   </div>
                 )}
-                <div style={{ position: "relative" }}>
+                <div style={{ position: "relative", display: "inline-block" }}>
                   <OneSelectProgress
                     show={allShows.find(s => s.id === showId) || { seasons: [10] }}
                     value={progress[showId] || { s: 1, e: 1 }}
@@ -779,17 +779,21 @@ export default function ShowSection({
                     requireConfirm={true}
                     compactLabel={undefined}
                   />
-                  <Tooltip text="Did you make a mistake setting your progress? Click here." direction="below" disabled={helpOpen}>
+                  <Tooltip
+                    text="Did you make a mistake setting your progress? Click here."
+                    direction="below"
+                    disabled={helpOpen}
+                    useAbsolute
+                    style={{ position: "absolute", top: 0, right: 0, transform: "translate(50%, -50%)", zIndex: 10 }}
+                  >
                     <button
                       onClick={() => setHelpOpen(v => !v)}
                       style={{
-                        position: "absolute", top: 0, right: 0,
-                        transform: "translate(50%, -50%)",
                         width: 20, height: 20, padding: 0,
                         borderRadius: "50%", border: "none",
                         background: "var(--dos-user)", color: "#fff",
                         fontSize: 12, fontWeight: 800, lineHeight: 1,
-                        cursor: "pointer", zIndex: 10,
+                        cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
                       }}
