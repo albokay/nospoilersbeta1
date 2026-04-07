@@ -490,7 +490,7 @@ export default function App() {
                   </button>
                 )}
                 {user && (
-                  <div style={{ position: "relative", width: 288, maxWidth: "90vw" }} onMouseEnter={() => setShowsEmojiHover(true)} onMouseLeave={() => setShowsEmojiHover(false)}>
+                  <div style={{ position: "relative", width: 288, maxWidth: "90vw" }}>
                     <YourShowsSelect
                       shows={shows}
                       progress={progress}
@@ -502,6 +502,8 @@ export default function App() {
                       }}
                       placeholder="go to your shows"
                       wrapperStyle={{ width: "100%" }}
+                      onMouseEnter={() => setShowsEmojiHover(true)}
+                      onMouseLeave={() => setShowsEmojiHover(false)}
                     />
                     <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? "🐵" : "🙈"}</span>
                   </div>
