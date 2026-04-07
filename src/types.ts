@@ -5,6 +5,7 @@ export type Thread = {
   isPrivate?: boolean;
   isDeleted?: boolean;
   isEdited?: boolean;
+  isRewatch?: boolean;
 };
 
 export type Reply = {
@@ -13,9 +14,21 @@ export type Reply = {
   likes: number;
   isDeleted?: boolean;
   isEdited?: boolean;
+  isRewatch?: boolean;
   // Reference system fields
   referenceType?: 'quote' | 'link' | null;
   referencedReplyId?: string | null;
   referencedThreadId?: string | null;
   quotedText?: string | null;
+};
+
+// Extended progress entry — carries rewatch metadata alongside the feed-filter position
+export type ProgressEntry = {
+  s: number;
+  e: number;
+  isRewatching?: boolean;
+  rewatchS?: number;
+  rewatchE?: number;
+  highestS?: number;
+  highestE?: number;
 };

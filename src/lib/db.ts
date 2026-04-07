@@ -57,6 +57,7 @@ function rowToThread(row: any): Thread {
     isPrivate:  row.is_private ?? false,
     isDeleted:  row.is_deleted ?? false,
     isEdited:   row.is_edited ?? false,
+    isRewatch:  row.is_rewatch ?? false,
   };
 }
 
@@ -99,6 +100,7 @@ export async function insertThread(data: {
   showId: string; season: number; episode: number;
   authorId: string; authorName: string;
   title: string; preview: string; body: string; isPrivate: boolean;
+  isRewatch?: boolean;
 }): Promise<Thread> {
   const row = {
     id: crypto.randomUUID(),
@@ -106,6 +108,7 @@ export async function insertThread(data: {
     author_id: data.authorId, author_name: data.authorName,
     title: data.title, preview: data.preview, body: data.body,
     is_private: data.isPrivate, likes_count: 0,
+    is_rewatch: data.isRewatch ?? false,
   };
   const { data: inserted, error } = await supabase
     .from("threads").insert(row).select().single();
@@ -200,6 +203,7 @@ function rowToReply(row: any): Reply {
     replyToId:          row.reply_to_id ?? undefined,
     isDeleted:          row.is_deleted ?? false,
     isEdited:           row.is_edited ?? false,
+    isRewatch:          row.is_rewatch ?? false,
     referenceType:      row.reference_type ?? null,
     referencedReplyId:  row.referenced_reply_id ?? null,
     referencedThreadId: row.referenced_thread_id ?? null,
@@ -452,15 +456,23 @@ export async function adminToggleHidden(showId: string, isHidden: boolean): Prom
 
 // ── Progress ──────────────────────────────────────────────────────────────────
 
-export async function fetchProgress(userId: string): Promise<Record<string, { s: number; e: number }>> {
+export async function fetchProgress(userId: string): Promise<Record<string, import("../types").ProgressEntry>> {
   const { data, error } = await supabase
     .from("progress")
-    .select("show_id, season, episode")
+    .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode")
     .eq("user_id", userId);
   if (error) throw error;
-  const result: Record<string, { s: number; e: number }> = {};
+  const result: Record<string, import("../types").ProgressEntry> = {};
   for (const row of data ?? []) {
-    result[row.show_id] = { s: row.season, e: row.episode };
+    result[row.show_id] = {
+      s: row.season,
+      e: row.episode,
+      isRewatching:  row.is_rewatching  ?? false,
+      rewatchS:      row.rewatch_season  ?? undefined,
+      rewatchE:      row.rewatch_episode ?? undefined,
+      highestS:      row.highest_season  ?? undefined,
+      highestE:      row.highest_episode ?? undefined,
+    };
   }
   return result;
 }
@@ -469,6 +481,36 @@ export async function upsertProgress(userId: string, showId: string, s: number, 
   const { error } = await supabase
     .from("progress")
     .upsert({ user_id: userId, show_id: showId, season: s, episode: e }, { onConflict: "user_id,show_id" });
+  if (error) throw error;
+}
+
+export async function upsertRewatchStatus(
+  userId: string,
+  showId: string,
+  entry: import("../types").ProgressEntry
+): Promise<void> {
+  const { error } = await supabase
+    .from("progress")
+    .upsert({
+      user_id: userId,
+      show_id: showId,
+      season:          entry.s,
+      episode:         entry.e,
+      is_rewatching:   entry.isRewatching  ?? false,
+      rewatch_season:  entry.rewatchS      ?? null,
+      rewatch_episode: entry.rewatchE      ?? null,
+      highest_season:  entry.highestS      ?? null,
+      highest_episode: entry.highestE      ?? null,
+    }, { onConflict: "user_id,show_id" });
+  if (error) throw error;
+}
+
+export async function clearRewatchMode(userId: string, showId: string): Promise<void> {
+  const { error } = await supabase
+    .from("progress")
+    .update({ is_rewatching: false, rewatch_season: null, rewatch_episode: null, highest_season: null, highest_episode: null })
+    .eq("user_id", userId)
+    .eq("show_id", showId);
   if (error) throw error;
 }
 
@@ -552,6 +594,7 @@ export async function insertReply(data: {
   referencedReplyId?: string | null;
   referencedThreadId?: string | null;
   quotedText?: string | null;
+  isRewatch?: boolean;
 }): Promise<Reply> {
   const row = {
     id: crypto.randomUUID(),
@@ -563,6 +606,7 @@ export async function insertReply(data: {
     referenced_reply_id: data.referencedReplyId ?? null,
     referenced_thread_id: data.referencedThreadId ?? null,
     quoted_text: data.quotedText ?? null,
+    is_rewatch: data.isRewatch ?? false,
   };
   const { data: inserted, error } = await supabase
     .from("replies").insert(row).select().single();

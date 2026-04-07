@@ -35,6 +35,7 @@ import { canView, timeAgo } from "../lib/utils";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
 import Username from "./Username";
+import Tooltip from "./Tooltip";
 import type { PendingReference } from "./ResponseComposer";
 import { useScrollHighlight } from "../hooks/useScrollHighlight";
 
@@ -755,6 +756,11 @@ export default function RepliesList({
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "2px 6px" }}>
                 <div style={{ fontSize: 14, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" }}>
                   <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold />
+                  {r.isRewatch && (
+                    <Tooltip text={`This viewer is also rewatching ${thread.showId}.`} direction="above">
+                      <span style={{ cursor: "default" }}>😍</span>
+                    </Tooltip>
+                  )}
                   {thread.showId !== "simshow" && (
                     <span style={{ color: "var(--dos-cyan)", fontWeight: 700 }}>
                       S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}

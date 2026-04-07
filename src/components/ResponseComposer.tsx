@@ -21,6 +21,10 @@ interface ResponseComposerProps {
   showId: string;
   viewerSeason: number;
   viewerEpisode: number;
+  // Override tag applied to new replies (for re-watchers, this is their highest prior progress)
+  postTagSeason?: number;
+  postTagEpisode?: number;
+  isRewatch?: boolean;
   onSubmitted: () => void;
   onCancel: () => void;
   pendingReference: PendingReference | null;
@@ -38,6 +42,9 @@ export default function ResponseComposer({
   showId,
   viewerSeason,
   viewerEpisode,
+  postTagSeason,
+  postTagEpisode,
+  isRewatch,
   onSubmitted,
   onCancel,
   pendingReference,
@@ -49,6 +56,9 @@ export default function ResponseComposer({
   show,
   progress,
 }: ResponseComposerProps) {
+  // Re-watchers tag replies at their highest prior progress; others use viewerSeason/Episode
+  const replyTagS = postTagSeason ?? viewerSeason;
+  const replyTagE = postTagEpisode ?? viewerEpisode;
   const { user, profile } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [body, setBody] = useState("");
@@ -157,8 +167,8 @@ export default function ResponseComposer({
       const reply = await insertReply({
         threadId,
         showId,
-        season: viewerSeason,
-        episode: viewerEpisode,
+        season: replyTagS,
+        episode: replyTagE,
         authorId: user.id,
         authorName: profile.username,
         body: trimmed,
@@ -166,6 +176,7 @@ export default function ResponseComposer({
         referencedReplyId: pendingReference?.replyId ?? null,
         referencedThreadId: pendingReference?.threadId ?? null,
         quotedText: (pendingReference?.type === "quote" ? pendingReference.quotedText : null) ?? null,
+        isRewatch: isRewatch ?? false,
       });
       // Log prompt usage (best-effort)
       for (const pid of insertedPromptIds) {

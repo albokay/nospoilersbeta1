@@ -44,7 +44,8 @@ export default function ShowSection({
   likesThreads, setLikesThreads, likedByUserThreads, setLikedByUserThreads,
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
   focusReplyId, onAuthRequired, onClickProfile, navLeft, navRight,
-  showStaleNudge, onDismissStaleNudge
+  showStaleNudge, onDismissStaleNudge,
+  clearRewatchFor,
 }: any) {
   const { user, profile } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
@@ -101,6 +102,8 @@ export default function ShowSection({
   };
 
   const [showProgressCelebration, setShowProgressCelebration] = useState(false);
+  const [showAutoFlipMsg, setShowAutoFlipMsg] = useState(false);
+  const [reWatchOnly, setReWatchOnly] = useState(false);
 
   // Dismiss both banners on any click anywhere.
   // Delay registering the listener so the click that triggered the banner
@@ -398,8 +401,9 @@ export default function ShowSection({
         return b.updatedAt - a.updatedAt;
       });
     }
+    if (reWatchOnly) list = list.filter(t => t.isRewatch);
     return list;
-  }, [allThreads, progress, searchQuery, sortBy, likesThreads, newHighlights, showId]);
+  }, [allThreads, progress, searchQuery, sortBy, likesThreads, newHighlights, showId, reWatchOnly]);
 
   // ── Green-tab: compute newly visible threads ──
   const prevProgRef = useRef<{ s: number; e: number } | undefined>(undefined);
@@ -438,6 +442,25 @@ export default function ShowSection({
   // Shared progress-confirm handler: updates progress, then navigates back to
   // the forum if the currently-open thread is no longer visible at the new progress.
   const handleProgressConfirm = (val: { s: number; e: number }) => {
+    const prog = progress[showId];
+
+    // Auto-flip: if re-watcher reaches or passes their highest prior progress, revert to regular mode
+    if (prog?.isRewatching && prog.highestS != null && prog.highestE != null) {
+      const reachedHighest =
+        val.s > prog.highestS ||
+        (val.s === prog.highestS && val.e >= prog.highestE);
+      if (reachedHighest) {
+        updateProgressFor(showId, val);
+        clearRewatchFor?.(showId);
+        if (thread && !canView({ season: thread.season, episode: thread.episode }, val)) {
+          setActiveThreadId(null);
+        }
+        setShowAutoFlipMsg(true);
+        if (showStaleNudge) onDismissStaleNudge?.();
+        return;
+      }
+    }
+
     updateProgressFor(showId, val);
     if (thread && !canView({ season: thread.season, episode: thread.episode }, val)) {
       setActiveThreadId(null);
@@ -548,6 +571,9 @@ export default function ShowSection({
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
   const postProgress = progress[showId] || { s: 1, e: 1 };
+  // Re-watchers tag posts at their highest prior progress so first-timers can't see them
+  const postTagS = postProgress.isRewatching && postProgress.highestS ? postProgress.highestS : postProgress.s;
+  const postTagE = postProgress.isRewatching && postProgress.highestE ? postProgress.highestE : postProgress.e;
 
   const [postSubmitting, setPostSubmitting] = useState(false);
 
@@ -560,11 +586,12 @@ export default function ShowSection({
     setPostSubmitting(true);
     try {
       const t = await insertThread({
-        showId, season: postProgress.s, episode: postProgress.e,
+        showId, season: postTagS, episode: postTagE,
         authorId: user.id, authorName: profile.username,
         title: title || "Untitled note",
         preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
         body: body || "(blank)", isPrivate,
+        isRewatch: postProgress.isRewatching ?? false,
       });
       setDbThreads(prev => [t, ...prev]);
       setReplyCounts(rc => ({ ...rc, [t.id]: 0 }));
@@ -650,6 +677,14 @@ export default function ShowSection({
                   <option value="episode">Episode order</option>
                   <option value="hot">Hot</option>
                 </select>
+                <button
+                  className="btn"
+                  onClick={() => setReWatchOnly(v => !v)}
+                  style={{ fontSize: 12, padding: "4px 10px", background: reWatchOnly ? "var(--dos-user)" : "transparent", color: reWatchOnly ? "#fff" : "inherit", border: "2px solid var(--dos-border)", whiteSpace: "nowrap" }}
+                  title="Show only re-watcher posts"
+                >
+                  😍 re-watchers
+                </button>
               </div>
             )}
           </div>
@@ -763,6 +798,27 @@ export default function ShowSection({
           <button
             className="btn"
             onClick={onDismissStaleNudge}
+            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Auto-flip congratulatory message — shown when re-watcher catches up to prior progress */}
+      {showAutoFlipMsg && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, padding: "10px 16px", marginBottom: 8,
+          background: "#fff", border: "none",
+          borderRadius: 24, fontSize: 13, color: "var(--danger)",
+        }}>
+          <span>
+            Congratulations, you've reached your previous watch progress! From now on your activity on the site will be sorted just like someone watching episodes for the first time — because you are!
+          </span>
+          <button
+            className="btn"
+            onClick={() => setShowAutoFlipMsg(false)}
             style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
           >
             ✕
@@ -950,8 +1006,14 @@ export default function ShowSection({
                   </div>
                 </div>
 
-                <div className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-                  Started by <Username name={t.author} onClickProfile={onClickProfile} /> • {timeAgo(t.updatedAt)}
+                <div className="muted" style={{ marginTop: 4, fontSize: 14, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  Started by <Username name={t.author} onClickProfile={onClickProfile} />
+                  {t.isRewatch && (
+                    <Tooltip text={`This viewer is also rewatching ${show.name}.`} direction="above">
+                      <span style={{ cursor: "default" }}>😍</span>
+                    </Tooltip>
+                  )}
+                  {" "}• {timeAgo(t.updatedAt)}
                 </div>
 
                 <div style={{ marginTop: 6 }}>
@@ -993,7 +1055,8 @@ export default function ShowSection({
               style={{ width: "100%", height: 40, fontWeight: 700 }}
             />
             <div className="muted" style={{ fontSize: 13 }}>
-              Your post is automatically marked to <b>S{String(postProgress.s).padStart(2, "0")}E{String(postProgress.e).padStart(2, "0")}</b> and will only show to people who've watched at least that far.
+              Your post is automatically marked to <b>S{String(postTagS).padStart(2, "0")}E{String(postTagE).padStart(2, "0")}</b> and will only show to people who've watched at least that far.
+              {postProgress.isRewatching && <span> (tagged at your highest prior progress as a re-watcher)</span>}
             </div>
             <textarea
               ref={postBodyRef}

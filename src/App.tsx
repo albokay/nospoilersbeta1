@@ -3,10 +3,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
-import { fetchProgress, upsertProgress, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount } from "./lib/db";
+import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount } from "./lib/db";
 import { supabase } from "./lib/supabaseClient";
 import type { Show } from "./lib/db";
-import type { Reply, Thread } from "./types";
+import type { Reply, Thread, ProgressEntry } from "./types";
 import { useAuth } from "./lib/auth";
 import ExtensionDock from "./extensions/ExtensionDock";
 import SearchShows from "./components/SearchShows";
@@ -26,6 +26,38 @@ const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
 
 const SINGLE_PAGE = true;
 const GLOBAL_HEADER_H = 56;
+
+// Reusable grouped episode select (used in the watch-status first-join modal)
+function EpisodeSelect({ show, value, onChange }: { show: any; value: { s: number; e: number }; onChange: (v: { s: number; e: number }) => void }) {
+  const toId = (s: number, e: number) => `s${s}e${e}`;
+  return (
+    <select
+      className="badge"
+      value={toId(value.s, value.e)}
+      onChange={ev => {
+        const [, sp, ep] = ev.target.value.match(/^s(\d+)e(\d+)$/) || [];
+        if (sp && ep) onChange({ s: parseInt(sp), e: parseInt(ep) });
+      }}
+      style={{ width: "100%" }}
+    >
+      {(show.seasons || []).map((count: number, idx: number) => {
+        const s = idx + 1;
+        return (
+          <optgroup key={s} label={`Season ${s}`}>
+            {Array.from({ length: count }, (_, j) => {
+              const ep = j + 1;
+              return (
+                <option key={ep} value={toId(s, ep)}>
+                  {`S${String(s).padStart(2, "0")} E${String(ep).padStart(2, "0")}`}
+                </option>
+              );
+            })}
+          </optgroup>
+        );
+      })}
+    </select>
+  );
+}
 
 export default function App() {
   useEffect(injectDOSStyles, []);
@@ -101,7 +133,7 @@ export default function App() {
   // navigating from a notification, and cleared by RepliesList after scrolling.
   const [focusReplyId, setFocusReplyId] = useState<string | null>(null);
 
-  const [progress, setProgress] = useState<{ [sid: string]: { s: number; e: number } }>({});
+  const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
 
   // Stale-progress nudge: show once per session if user returns after 12+ hour gap
   const [showStaleNudge, setShowStaleNudge] = useState(false);
@@ -220,12 +252,23 @@ export default function App() {
   const [firstSel, setFirstSel] = useState<{ s: number; e: number } | null>(null);
   const [pickShowMode, setPickShowMode] = useState<"set" | "confirm">("set");
 
+  // Watch-status questionnaire state (for first-time join modal)
+  const [watchStatusChoice, setWatchStatusChoice] = useState<"first" | "rewatch" | null>(null);
+  const [highestSel, setHighestSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
+  const [rewatchSel, setRewatchSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
+  const [firstTimeSel, setFirstTimeSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
+
   useEffect(() => {
     if (pickShowId) {
       const init = progress[pickShowId] || { s: 1, e: 1 };
       setFirstSel(init);
+      // Reset questionnaire each time a new show is opened
+      setWatchStatusChoice(null);
+      setHighestSel({ s: 1, e: 1 });
+      setRewatchSel({ s: 1, e: 1 });
+      setFirstTimeSel({ s: 1, e: 1 });
     }
-  }, [pickShowId, progress]);
+  }, [pickShowId]);
 
   const [betaOpen, setBetaOpen] = useState(false);
   const [showsEmojiHover, setShowsEmojiHover] = useState(false);
@@ -265,11 +308,35 @@ export default function App() {
     setLikesThreads(lt); setLikesReplies(lr);
   }, []);
 
+  // Lightweight progress update — merges into existing entry, preserving rewatch metadata
   const updateProgressFor = (sid: string, next: { s: number; e: number }) => {
-    setProgress(prev => ({ ...prev, [sid]: next }));
+    setProgress(prev => ({ ...prev, [sid]: { ...(prev[sid] || {}), ...next } }));
     if (user) {
       upsertProgress(user.id, sid, next.s, next.e).catch(err =>
         console.error("Failed to save progress:", err)
+      );
+    }
+  };
+
+  // Full entry setter — used on first join and rewatch status changes
+  const setWatchStatusFor = (sid: string, entry: ProgressEntry) => {
+    setProgress(prev => ({ ...prev, [sid]: entry }));
+    if (user) {
+      upsertRewatchStatus(user.id, sid, entry).catch(err =>
+        console.error("Failed to save watch status:", err)
+      );
+    }
+  };
+
+  // Clear rewatch mode — called on auto-flip after re-watcher catches up
+  const clearRewatchFor = (sid: string) => {
+    setProgress(prev => {
+      const cur = prev[sid] || { s: 1, e: 1 };
+      return { ...prev, [sid]: { s: cur.s, e: cur.e, isRewatching: false } };
+    });
+    if (user) {
+      clearRewatchMode(user.id, sid).catch(err =>
+        console.error("Failed to clear rewatch mode:", err)
       );
     }
   };
@@ -722,16 +789,8 @@ export default function App() {
             username={username ?? ""}
             showId={expandedShowId}
             progress={progress}
-            updateProgressFor={(sid: string, next: { s: number; e: number }) => {
-              setProgress(prev => ({ ...prev, [sid]: next }));
-              // Thread-visibility check is handled inside ShowSection's handleProgressConfirm,
-              // which has access to the real dbThreads.
-              if (user) {
-                upsertProgress(user.id, sid, next.s, next.e).catch(err =>
-                  console.error("Failed to save progress:", err)
-                );
-              }
-            }}
+            updateProgressFor={updateProgressFor}
+            clearRewatchFor={clearRewatchFor}
             newHighlights={newHighlights}
             setNewHighlights={setNewHighlights}
             visitedThreads={visitedThreads}
@@ -776,50 +835,128 @@ export default function App() {
         <Modal onClose={() => { setPickShowId(null); setPickShowMode("set"); }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <h3 className="title" style={{ fontSize: 20, margin: 0 }}>
-              {pickShowMode === "confirm" ? "Confirm or update your progress" : "Set your progress"}
+              {pickShowMode === "confirm" ? "Confirm or update your progress" : "Set your watch status"}
             </h3>
             <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); }}>✕</button>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <OneSelectProgress
-              show={pickShow}
-              value={progress[pickShow.id] || { s: 1, e: 1 }}
-              onConfirm={(val) => {
-                setFirstSel(val);
-                updateProgressFor(pickShow.id, val);
-                setHasPendingChange(false);
-                setPickShowId(null);
-                setPickShowMode("set");
-                openShow(pickShow.id);
-              }}
-              onPendingChange={setHasPendingChange}
-              requireConfirm={false}
-              onChangeSelected={(val) => setFirstSel(val)}
-            />
-            <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-              <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); }}>Cancel</button>
-              <button
-                className="btn primary"
-                onClick={() => {
-                  const chosen = firstSel || (progress[pickShow.id] || { s: 1, e: 1 });
-                  if (pickShow.id === "bb") {
-                    window.dispatchEvent(new CustomEvent("dock:progress", { detail: { showId: "bb", s: chosen.s, e: chosen.e } }));
-                  }
-                  updateProgressFor(pickShow.id, chosen);
-                  setPickShowId(null);
-                  setPickShowMode("set");
-                  openShow(pickShow.id);
-                }}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
+          {pickShowMode === "set" ? (
+            /* ── First-time join: watch status questionnaire ── */
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <p className="muted" style={{ fontSize: 14, marginTop: 0, marginBottom: 10 }}>
+                  Are you rewatching <strong>{pickShow.name}</strong>, or is this your first time through?
+                </p>
+                <div style={{ display: "flex", gap: 12 }}>
+                  {(["first", "rewatch"] as const).map(choice => (
+                    <label key={choice} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14 }}>
+                      <input
+                        type="radio"
+                        name="watchStatus"
+                        value={choice}
+                        checked={watchStatusChoice === choice}
+                        onChange={() => setWatchStatusChoice(choice)}
+                      />
+                      {choice === "first" ? "First time" : "Rewatching"}
+                    </label>
+                  ))}
+                </div>
+              </div>
 
-          <p className="muted" style={{ fontSize: 14, marginTop: 8 }}>
-            Your feed will only show posts up to your selected episode.
-          </p>
+              {watchStatusChoice === "rewatch" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>What's the furthest you watched last time?</label>
+                    <EpisodeSelect show={pickShow} value={highestSel} onChange={setHighestSel} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>How far are you on your rewatch?</label>
+                    <EpisodeSelect show={pickShow} value={rewatchSel} onChange={setRewatchSel} />
+                  </div>
+                </div>
+              )}
+
+              {watchStatusChoice === "first" && (
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>How far have you watched?</label>
+                  <EpisodeSelect show={pickShow} value={firstTimeSel} onChange={setFirstTimeSel} />
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+                <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); }}>Cancel</button>
+                <button
+                  className="btn primary"
+                  disabled={!watchStatusChoice}
+                  onClick={() => {
+                    if (!watchStatusChoice) return;
+                    let entry: ProgressEntry;
+                    if (watchStatusChoice === "rewatch") {
+                      entry = {
+                        s: rewatchSel.s, e: rewatchSel.e,
+                        isRewatching: true,
+                        rewatchS: rewatchSel.s, rewatchE: rewatchSel.e,
+                        highestS: highestSel.s, highestE: highestSel.e,
+                      };
+                    } else {
+                      entry = { s: firstTimeSel.s, e: firstTimeSel.e, isRewatching: false };
+                    }
+                    if (pickShow.id === "bb") {
+                      window.dispatchEvent(new CustomEvent("dock:progress", { detail: { showId: "bb", s: entry.s, e: entry.e } }));
+                    }
+                    setWatchStatusFor(pickShow.id, entry);
+                    setPickShowId(null);
+                    setPickShowMode("set");
+                    openShow(pickShow.id);
+                  }}
+                >
+                  {pickShow.isHidden === false && !progress[pickShow.id] ? "Create forum" : "Confirm"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── Confirm / update progress (returning user) ── */
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <OneSelectProgress
+                  show={pickShow}
+                  value={progress[pickShow.id] || { s: 1, e: 1 }}
+                  onConfirm={(val) => {
+                    setFirstSel(val);
+                    updateProgressFor(pickShow.id, val);
+                    setHasPendingChange(false);
+                    setPickShowId(null);
+                    setPickShowMode("set");
+                    openShow(pickShow.id);
+                  }}
+                  onPendingChange={setHasPendingChange}
+                  requireConfirm={false}
+                  onChangeSelected={(val) => setFirstSel(val)}
+                />
+                <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                  <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); }}>Cancel</button>
+                  <button
+                    className="btn primary"
+                    onClick={() => {
+                      const chosen = firstSel || (progress[pickShow.id] || { s: 1, e: 1 });
+                      if (pickShow.id === "bb") {
+                        window.dispatchEvent(new CustomEvent("dock:progress", { detail: { showId: "bb", s: chosen.s, e: chosen.e } }));
+                      }
+                      updateProgressFor(pickShow.id, chosen);
+                      setPickShowId(null);
+                      setPickShowMode("set");
+                      openShow(pickShow.id);
+                    }}
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+              <p className="muted" style={{ fontSize: 14, marginTop: 8 }}>
+                Your feed will only show posts up to your selected episode.
+              </p>
+            </div>
+          )}
         </Modal>
       )}
     </section>

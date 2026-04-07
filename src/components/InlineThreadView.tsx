@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import type { Thread, Reply } from "../types";
+import type { Thread, Reply, ProgressEntry } from "../types";
 import { timeAgo, canView } from "../lib/utils";
 import { useAuth } from "../lib/auth";
 import { editThread as dbEditThread, deleteThread as dbDeleteThread, makeThreadPrivate as dbMakeThreadPrivate, makeThreadPublic as dbMakeThreadPublic } from "../lib/db";
@@ -54,7 +54,7 @@ export default function InlineThreadView({
   thread: Thread;
   show: any;
   onBack: () => void;
-  progressForShow?: { s: number; e: number };
+  progressForShow?: ProgressEntry;
   onMountAlignTop?: () => void;
   likeThread: () => void;
   likedByUser: boolean;
@@ -481,6 +481,9 @@ export default function InlineThreadView({
         showId={thread.showId}
         viewerSeason={progressForShow?.s ?? thread.season}
         viewerEpisode={progressForShow?.e ?? thread.episode}
+        postTagSeason={progressForShow?.isRewatching && progressForShow.highestS ? progressForShow.highestS : (progressForShow?.s ?? thread.season)}
+        postTagEpisode={progressForShow?.isRewatching && progressForShow.highestE ? progressForShow.highestE : (progressForShow?.e ?? thread.episode)}
+        isRewatch={progressForShow?.isRewatching ?? false}
         onSubmitted={handleComposerSubmitted}
         onCancel={() => setComposerOpen(false)}
         pendingReference={pendingReference ?? null}
