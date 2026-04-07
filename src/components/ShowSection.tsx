@@ -100,6 +100,8 @@ export default function ShowSection({
     setShowBBPopup(false);
   };
 
+  const [showProgressCelebration, setShowProgressCelebration] = useState(false);
+
   const [composeOpen, setComposeOpen] = useState(false);
   // Show private/public tooltips only on the very first compose session ever
   const [showComposeTooltips, setShowComposeTooltips] = useState(() => !localStorage.getItem("ns_compose_seen"));
@@ -422,6 +424,8 @@ export default function ShowSection({
     if (thread && !canView({ season: thread.season, episode: thread.episode }, val)) {
       setActiveThreadId(null);
     }
+    setShowProgressCelebration(true);
+    if (showStaleNudge) onDismissStaleNudge?.();
   };
 
   useEffect(() => {
@@ -726,7 +730,7 @@ export default function ShowSection({
         </div>
       </div>
 
-      {/* Stale-progress nudge — shown once per session after a 12hr gap, only if user has progress set */}
+      {/* Stale-progress nudge — shown once per session after a 12hr gap */}
       {showStaleNudge && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -735,15 +739,35 @@ export default function ShowSection({
           borderRadius: 6, fontSize: 13,
         }}>
           <span>
-            <span style={{ fontWeight: 700 }}>You watched more — </span>
-            everyone's looking forward to your new thoughts!{" "}
-            <span style={{ opacity: 0.7 }}>
-              Update your progress above if you have.
+            Have you watched more of <strong>{show.name}</strong>?{" "}
+            <span style={{ opacity: 0.8 }}>
+              If so, update your progress above so you don't leave any accidental spoilers!
             </span>
           </span>
           <button
             className="btn"
             onClick={onDismissStaleNudge}
+            style={{ flexShrink: 0, fontSize: 12, padding: "3px 8px" }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Progress update celebration — shown after every progress update */}
+      {showProgressCelebration && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 12, padding: "10px 16px", marginBottom: 8,
+          background: "var(--dos-bg)", border: "1px solid var(--dos-border)",
+          borderRadius: 6, fontSize: 13,
+        }}>
+          <span>
+            Everyone's looking forward to your new thoughts — thanks for updating your progress!
+          </span>
+          <button
+            className="btn"
+            onClick={() => setShowProgressCelebration(false)}
             style={{ flexShrink: 0, fontSize: 12, padding: "3px 8px" }}
           >
             ✕
