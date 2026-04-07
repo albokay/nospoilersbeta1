@@ -779,11 +779,11 @@ export default function ShowSection({
                     requireConfirm={true}
                     compactLabel={undefined}
                   />
-                  <Tooltip text="Did you make a mistake setting your progress? Click here." direction="below">
+                  <Tooltip text="Did you make a mistake setting your progress? Click here." direction="below" disabled={helpOpen}>
                     <button
                       onClick={() => setHelpOpen(v => !v)}
                       style={{
-                        position: "absolute", top: -8, right: -8,
+                        position: "absolute", top: -7, right: -7,
                         width: 20, height: 20, padding: 0,
                         borderRadius: "50%", border: "none",
                         background: "var(--dos-user)", color: "#fff",

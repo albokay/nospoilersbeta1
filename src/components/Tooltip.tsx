@@ -29,7 +29,7 @@ export default function Tooltip({
   tooltipStyle?: React.CSSProperties;
   disabled?: boolean;
 }) {
-  if (disabled) return <>{children}</>;
+  if (disabled) return <span style={{ position: "relative", display: "inline-block", ...style }}>{children}</span>;
 
   const [show, setShow] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
