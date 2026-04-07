@@ -579,7 +579,7 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => handlePickFromSearch("bb")}
-                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2, width: 240 }}
+                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2, width: 288, maxWidth: "90%" }}
                 >
                   Breaking Bad (DEMO)
                 </button>
