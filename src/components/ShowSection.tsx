@@ -727,7 +727,7 @@ export default function ShowSection({
       </div>
 
       {/* Stale-progress nudge — shown once per session after a 12hr gap, only if user has progress set */}
-      {showStaleNudge && progress[showId] && (
+      {showStaleNudge && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, padding: "10px 16px", marginBottom: 8,
