@@ -129,7 +129,7 @@ header.site{
 /* banner row 1: title + sort — stacks on mobile */
 .bannerRow1{
   display:flex; align-items:center; justify-content:space-between;
-  gap:12px; padding:20px 0 8px;
+  gap:12px; padding:8px 0;
 }
 /* subtle "hang left" headers */
 .hangL{ transform: translateX(-48px); }
@@ -139,7 +139,7 @@ header.site{
 @media (max-width: 768px){
   .bannerRow1{
     flex-direction:column; align-items:center; justify-content:center;
-    gap:8px; padding:16px 0 8px; text-align:center;
+    gap:8px; padding:8px 0; text-align:center;
   }
   .hangL{ transform:none; }
   .hangLContent{ margin-left:0; padding-left:0; }
@@ -304,7 +304,7 @@ header.site{
   .diaryCardWrap .threadCard{ margin-left:0 !important; margin-right:0 !important; }
 
   /* Forum banner: smaller title so it doesn't wrap awkwardly */
-  .bannerTitle{ font-size:20px !important; letter-spacing:0.01em !important; }
+  .bannerTitle{ font-size:17px !important; letter-spacing:0.01em !important; }
   .stickybar .badge{ font-size:15px !important; padding:9px 14px !important; }
   .stickybar .btn{ font-size:15px !important; padding:8px 14px !important; height:auto !important; }
 

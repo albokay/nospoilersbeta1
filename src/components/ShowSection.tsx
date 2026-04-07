@@ -611,7 +611,7 @@ export default function ShowSection({
               title={thread ? "Back to room" : "Room"}
               onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
               style={{
-                fontSize: 28, fontWeight: 800, letterSpacing: .5,
+                fontSize: 22, fontWeight: 800, letterSpacing: .5,
                 color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
                 flex: "0 0 auto",
               }}
