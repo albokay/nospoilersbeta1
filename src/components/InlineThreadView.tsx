@@ -96,6 +96,8 @@ export default function InlineThreadView({
   const [editBody, setEditBody] = useState(thread.body);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  // Retag warning: shown when user's progress has advanced beyond the post's original tag
+  const [showRetagWarning, setShowRetagWarning] = useState(false);
 
   // Store full loaded replies so we can build inline sups for the thread entry body
   const [loadedReplies, setLoadedReplies] = useState<Reply[]>([]);
@@ -184,15 +186,29 @@ export default function InlineThreadView({
     setEditing(true);
   };
 
+  // The season/episode this edit will be tagged with (always writer's current progress)
+  const editTagS = progressForShow?.s ?? thread.season;
+  const editTagE = progressForShow?.e ?? thread.episode;
+  const progressHasAdvanced =
+    progressForShow != null &&
+    (progressForShow.s > thread.season ||
+      (progressForShow.s === thread.season && progressForShow.e > thread.episode));
+
   const handleSaveEdit = async () => {
+    // If progress has advanced, show confirmation before saving
+    if (progressHasAdvanced && !showRetagWarning) {
+      setShowRetagWarning(true);
+      return;
+    }
+    setShowRetagWarning(false);
     const title = editTitle.trim() || "Untitled note";
     const body = editBody.trim() || "(blank)";
     setEditSubmitting(true);
     setEditError(null);
     try {
-      await dbEditThread(thread.id, title, body);
+      await dbEditThread(thread.id, title, body, editTagS, editTagE);
       const preview = body.slice(0, 240) + (body.length > 240 ? "…" : "");
-      onThreadUpdate?.({ ...thread, titleBase: title, body, preview, isEdited: true });
+      onThreadUpdate?.({ ...thread, titleBase: title, body, preview, season: editTagS, episode: editTagE, isEdited: true });
       setEditing(false);
     } catch (e: any) {
       setEditError(e?.message ?? "Failed to save. Please try again.");
@@ -303,16 +319,34 @@ export default function InlineThreadView({
             {editError && (
               <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{editError}</div>
             )}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
-              <button className="btn" onClick={() => setEditing(false)} disabled={editSubmitting}>Cancel</button>
-              <button
-                className="btn primary"
-                onClick={handleSaveEdit}
-                disabled={editSubmitting || !editTitle.trim()}
-              >
-                {editSubmitting ? "Saving…" : "Save"}
-              </button>
-            </div>
+            {showRetagWarning && (
+              <div style={{ background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 6, padding: "12px 14px", marginTop: 10, fontSize: 13 }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Heads up — this post will be retagged</div>
+                <div style={{ opacity: 0.85, marginBottom: 10 }}>
+                  Your progress has moved to{" "}
+                  <strong>S{String(editTagS).padStart(2,"0")} E{String(editTagE).padStart(2,"0")}</strong>.
+                  {" "}Saving will retag this post to your current progress — readers below that point who could see it before will no longer see it.
+                </div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button className="btn" onClick={() => setShowRetagWarning(false)} disabled={editSubmitting}>Go back</button>
+                  <button className="btn primary" onClick={handleSaveEdit} disabled={editSubmitting}>
+                    {editSubmitting ? "Saving…" : "Save & retag"}
+                  </button>
+                </div>
+              </div>
+            )}
+            {!showRetagWarning && (
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
+                <button className="btn" onClick={() => setEditing(false)} disabled={editSubmitting}>Cancel</button>
+                <button
+                  className="btn primary"
+                  onClick={handleSaveEdit}
+                  disabled={editSubmitting || !editTitle.trim()}
+                >
+                  {editSubmitting ? "Saving…" : "Save"}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           /* ── Normal view ── */

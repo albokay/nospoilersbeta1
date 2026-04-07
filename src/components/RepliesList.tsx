@@ -351,6 +351,8 @@ export default function RepliesList({
   const [editReplyBody, setEditReplyBody] = useState("");
   const [editReplySubmitting, setEditReplySubmitting] = useState(false);
   const [editReplyError, setEditReplyError] = useState<string | null>(null);
+  // Retag warning state: replyId that is pending confirmation
+  const [retagWarningReplyId, setRetagWarningReplyId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -458,15 +460,28 @@ export default function RepliesList({
     setEditReplyError(null);
   };
 
-  const handleSaveEditReply = async (rid: string) => {
+  const handleSaveEditReply = async (rid: string, confirmed = false) => {
     const body = editReplyBody.trim();
     if (!body) return;
+    const original = byId[rid];
+    // Determine the tag this edit will use (writer's current progress)
+    const tagS = progressForShow?.s ?? original?.season ?? 1;
+    const tagE = progressForShow?.e ?? original?.episode ?? 1;
+    const advanced = original && progressForShow != null &&
+      (progressForShow.s > original.season ||
+        (progressForShow.s === original.season && progressForShow.e > original.episode));
+    // If progress has advanced, show warning first (unless already confirmed)
+    if (advanced && !confirmed) {
+      setRetagWarningReplyId(rid);
+      return;
+    }
+    setRetagWarningReplyId(null);
     setEditReplySubmitting(true);
     setEditReplyError(null);
     try {
-      await dbEditReply(rid, body);
+      await dbEditReply(rid, body, tagS, tagE);
       setLocalEditedBody(prev => ({ ...prev, [rid]: body }));
-      setReplies(prev => prev.map(r => r.id === rid ? { ...r, body, isEdited: true } : r));
+      setReplies(prev => prev.map(r => r.id === rid ? { ...r, body, season: tagS, episode: tagE, isEdited: true } : r));
       setEditingReplyId(null);
     } catch (e: any) {
       setEditReplyError(e?.message ?? "Failed to save. Please try again.");
@@ -799,16 +814,33 @@ export default function RepliesList({
                   {editReplyError && (
                     <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{editReplyError}</div>
                   )}
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
-                    <button className="btn" onClick={handleCancelEditReply} disabled={editReplySubmitting}>Cancel</button>
-                    <button
-                      className="btn primary"
-                      onClick={() => handleSaveEditReply(r.id)}
-                      disabled={editReplySubmitting || !editReplyBody.trim()}
-                    >
-                      {editReplySubmitting ? "Saving…" : "Save"}
-                    </button>
-                  </div>
+                  {retagWarningReplyId === r.id ? (
+                    <div style={{ background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 6, padding: "12px 14px", marginTop: 8, fontSize: 13 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 6 }}>Heads up — this reply will be retagged</div>
+                      <div style={{ opacity: 0.85, marginBottom: 10 }}>
+                        Your progress has moved to{" "}
+                        <strong>S{String(progressForShow?.s ?? r.season).padStart(2,"0")} E{String(progressForShow?.e ?? r.episode).padStart(2,"0")}</strong>.
+                        {" "}Saving will retag this reply to your current progress — readers below that point who could see it before will no longer see it.
+                      </div>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button className="btn" onClick={() => setRetagWarningReplyId(null)} disabled={editReplySubmitting}>Go back</button>
+                        <button className="btn primary" onClick={() => handleSaveEditReply(r.id, true)} disabled={editReplySubmitting}>
+                          {editReplySubmitting ? "Saving…" : "Save & retag"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+                      <button className="btn" onClick={handleCancelEditReply} disabled={editReplySubmitting}>Cancel</button>
+                      <button
+                        className="btn primary"
+                        onClick={() => handleSaveEditReply(r.id)}
+                        disabled={editReplySubmitting || !editReplyBody.trim()}
+                      >
+                        {editReplySubmitting ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <ReplyBody

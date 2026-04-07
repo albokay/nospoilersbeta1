@@ -113,11 +113,11 @@ export async function insertThread(data: {
   return rowToThread(inserted);
 }
 
-export async function editThread(threadId: string, title: string, body: string): Promise<void> {
+export async function editThread(threadId: string, title: string, body: string, season: number, episode: number): Promise<void> {
   const preview = body.slice(0, 240) + (body.length > 240 ? "…" : "");
   const { error } = await supabase
     .from("threads")
-    .update({ title, body, preview, is_edited: true, updated_at: new Date().toISOString() })
+    .update({ title, body, preview, season, episode, is_edited: true, updated_at: new Date().toISOString() })
     .eq("id", threadId);
   if (error) throw error;
 }
@@ -219,10 +219,10 @@ export async function fetchRepliesForThread(threadId: string): Promise<Reply[]> 
   return (data ?? []).map(rowToReply);
 }
 
-export async function editReply(replyId: string, body: string): Promise<void> {
+export async function editReply(replyId: string, body: string, season: number, episode: number): Promise<void> {
   const { error } = await supabase
     .from("replies")
-    .update({ body, is_edited: true, updated_at: new Date().toISOString() })
+    .update({ body, season, episode, is_edited: true, updated_at: new Date().toISOString() })
     .eq("id", replyId);
   if (error) throw error;
 }
