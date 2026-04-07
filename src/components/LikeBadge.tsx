@@ -39,7 +39,7 @@ export default function LikeBadge({
               Starring a post saves it to your private profile page. Entries never get public "like counts."
             </p>
             <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              In fact, Sidebar will never quantify relationship or conversations anywhere on the site.
+              In fact, Sidebar will never quantify relationships or conversations anywhere on the site.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
