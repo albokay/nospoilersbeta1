@@ -600,7 +600,7 @@ body { -webkit-font-smoothing: antialiased; }
   font-family: Georgia, 'Palatino Linotype', Palatino, serif;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--dos-fg);
+  color: #4b8f6c;
   opacity: 0.85;
 }
 .prompt-ref::before {
@@ -611,8 +611,8 @@ body { -webkit-font-smoothing: antialiased; }
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: var(--dos-fg);
-  opacity: 0.5;
+  color: #4b8f6c;
+  opacity: 0.7;
   margin-bottom: 3px;
 }
 

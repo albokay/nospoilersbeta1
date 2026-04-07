@@ -774,7 +774,7 @@ export default function ShowSection({
           {!threadsLoading && displayed.map((t) => {
             const isNew = !!newHighlights[showId]?.[t.id];
             const isRead = !!visitedThreads[t.id];
-            const isOwn = !!profile && t.author === profile.username;
+            const isOwn = !!username && t.author === username;
             const likeCt = likesThreads[t.id] ?? t.likes;
             const { visibleNew, hiddenNew, totalVisible } = getNewCounts(t.id);
             const hasExternal = hasExternalReplies[t.id] ?? false;
@@ -871,7 +871,7 @@ export default function ShowSection({
                 </div>
 
                 <div className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-                  Started by <Username name={t.author} onClickProfile={onClickProfile} isOwn={isOwn} /> • {timeAgo(t.updatedAt)}
+                  Started by <Username name={t.author} onClickProfile={onClickProfile} /> • {timeAgo(t.updatedAt)}
                 </div>
 
                 <div style={{ marginTop: 6 }}>

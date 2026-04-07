@@ -739,7 +739,7 @@ export default function RepliesList({
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "2px 6px" }}>
                 <div style={{ fontSize: 14, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" }}>
-                  <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold isOwn={isReplyOwn} />
+                  <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold />
                   {thread.showId !== "simshow" && (
                     <span style={{ color: "var(--dos-cyan)", fontWeight: 700 }}>
                       S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
