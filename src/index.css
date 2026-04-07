@@ -3,4 +3,3 @@
 @tailwind utilities;
 
 :root { color-scheme: light dark; }
-body { @apply bg-mist text-ink antialiased; }
