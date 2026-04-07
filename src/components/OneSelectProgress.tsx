@@ -71,11 +71,15 @@ export default function OneSelectProgress({
 
   // Compact (mobile) button that opens a picker modal
   if (compactLabel) {
+    const shortEp = `S${String(value?.s || 1).padStart(2, "0")} E${String(value?.e || 1).padStart(2, "0")}`;
     return (
       <>
-        <button className="btn" style={{ whiteSpace: "nowrap", background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontSize: 12, padding: "5px 9px", lineHeight: 1.2 }} onClick={() => setMobileOpen(true)}>
-          {compactLabel} ▾
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#2256c9" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, fontStyle: "normal", whiteSpace: "nowrap" }}>you've watched:</span>
+          <button className="btn" style={{ whiteSpace: "nowrap", background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }} onClick={() => setMobileOpen(true)}>
+            {shortEp} ▾
+          </button>
+        </div>
         {mobileOpen && (
           <Modal onClose={() => setMobileOpen(false)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
