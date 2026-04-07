@@ -482,24 +482,28 @@ export default function App() {
                   <button
                     className="btn"
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
+                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em", position: "relative" }}
                   >
+                    <span style={{ position: "absolute", left: "14%", top: "50%", transform: "translateY(-50%)", fontSize: 16, lineHeight: 1 }}>📓</span>
                     read your journal
                   </button>
                 )}
                 {user && (
-                  <YourShowsSelect
-                    shows={shows}
-                    progress={progress}
-                    value={""}
-                    onChange={(id) => {
-                      if (!id) return;
-                      setPickShowMode("confirm");
-                      setPickShowId(id);
-                    }}
-                    placeholder="go to your shows"
-                    wrapperStyle={{ width: 288, maxWidth: "90vw" }}
-                  />
+                  <div style={{ position: "relative", width: 288, maxWidth: "90vw" }}>
+                    <YourShowsSelect
+                      shows={shows}
+                      progress={progress}
+                      value={""}
+                      onChange={(id) => {
+                        if (!id) return;
+                        setPickShowMode("confirm");
+                        setPickShowId(id);
+                      }}
+                      placeholder="go to your shows"
+                      wrapperStyle={{ width: "100%" }}
+                    />
+                    <span style={{ position: "absolute", right: "14%", top: "50%", transform: "translateY(-50%)", fontSize: 16, lineHeight: 1, pointerEvents: "none" }}>🚪</span>
+                  </div>
                 )}
                 <SearchShows
                   shows={shows}
@@ -541,24 +545,28 @@ export default function App() {
                   <button
                     className="btn"
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em" }}
+                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em", position: "relative" }}
                   >
+                    <span style={{ position: "absolute", left: "14%", top: "50%", transform: "translateY(-50%)", fontSize: 16, lineHeight: 1 }}>📓</span>
                     read your journal
                   </button>
                 )}
                 {user && (
-                  <YourShowsSelect
-                    shows={shows}
-                    progress={progress}
-                    value={""}
-                    onChange={(id) => {
-                      if (!id) return;
-                      setPickShowMode("confirm");
-                      setPickShowId(id);
-                    }}
-                    placeholder="go to your shows"
-                    wrapperStyle={{ width: 288, maxWidth: "90%" }}
-                  />
+                  <div style={{ position: "relative", width: 288, maxWidth: "90%" }}>
+                    <YourShowsSelect
+                      shows={shows}
+                      progress={progress}
+                      value={""}
+                      onChange={(id) => {
+                        if (!id) return;
+                        setPickShowMode("confirm");
+                        setPickShowId(id);
+                      }}
+                      placeholder="go to your shows"
+                      wrapperStyle={{ width: "100%" }}
+                    />
+                    <span style={{ position: "absolute", right: "14%", top: "50%", transform: "translateY(-50%)", fontSize: 16, lineHeight: 1, pointerEvents: "none" }}>🚪</span>
+                  </div>
                 )}
                 <SearchShows
                   shows={shows}
