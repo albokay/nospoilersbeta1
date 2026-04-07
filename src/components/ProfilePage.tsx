@@ -315,7 +315,7 @@ export default function ProfilePage({
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "150px 0 48px" }}>
                             <div style={{ width: "min(400px, 100%)" }}>
                               <p style={{ margin: 0, fontSize: 16, fontWeight: 400, lineHeight: 1.6, color: "var(--dos-fg)", opacity: 0.65, fontStyle: "italic", textAlign: "left" }}>
-                                You don't have any private entries yet. Save something just for yourself from any show's room.
+                                You don't have any private entries yet.
                               </p>
                             </div>
                           </div>

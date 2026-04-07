@@ -327,8 +327,8 @@ export default function AdminPage({
                 <tr style={{ borderBottom: "2px solid #999", textAlign: "left" }}>
                   <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>user</th>
                   <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>when</th>
-                  <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap", width: 120 }}>page</th>
-                  <th style={{ padding: "6px 10px", fontWeight: 700, width: "100%" }}>message</th>
+                  <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap", width: 80 }}>page</th>
+                  <th style={{ padding: "6px 10px", fontWeight: 700, minWidth: 320, width: "100%" }}>message</th>
                   <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>status</th>
                   <th style={{ padding: "6px 10px" }}></th>
                 </tr>
@@ -349,7 +349,7 @@ export default function AdminPage({
                       <td style={{ padding: "6px 10px", whiteSpace: "nowrap", color: "#555" }}>
                         {timeAgo(row.createdAt)}
                       </td>
-                      <td style={{ padding: "6px 10px", color: "#555", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "6px 10px", color: "#555", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {row.pageUrl ?? "—"}
                       </td>
                       <td style={{ padding: "6px 10px", whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 13 }}>
