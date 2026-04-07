@@ -780,9 +780,9 @@ export default function ShowSection({
                     compactLabel={undefined}
                   />
                   <Tooltip
+                    key={String(helpOpen)}
                     text="Did you make a mistake setting your progress? Click here."
                     direction="below"
-                    disabled={helpOpen}
                     useAbsolute
                     style={{ position: "absolute", top: 0, right: 0, transform: "translate(50%, -50%)", zIndex: 10 }}
                   >
