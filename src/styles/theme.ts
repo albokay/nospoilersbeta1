@@ -19,7 +19,11 @@ export function injectDOSStyles() {
 html,body,#root{ height:100%; }
 body{
   margin:0;
-  background: linear-gradient(to bottom, #fff1ba 0px, var(--dos-bg) 250px) fixed, var(--dos-bg);
+  background: linear-gradient(to bottom, #c8e4b0 0px, var(--dos-bg) 250px) fixed, var(--dos-bg);
+  background-attachment: fixed;
+}
+body.has-header{
+  background: linear-gradient(to bottom, var(--dos-bg) 0px, #c8e4b0 56px, var(--dos-bg) 306px) fixed, var(--dos-bg);
   background-attachment: fixed;
   color:var(--dos-fg);
   font-size:var(--t3);

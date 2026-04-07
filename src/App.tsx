@@ -307,6 +307,9 @@ export default function App() {
   };
 
   const isHomepage = !expandedShowId && !showProfile && !publicProfileUsername;
+  useEffect(() => {
+    document.body.classList.toggle("has-header", !isHomepage);
+  }, [isHomepage]);
   const isProfilePage = showProfile || !!publicProfileUsername;
   const showAdmin = location.search.includes("admin");
   const isAdmin = user?.id === ADMIN_USER_ID;
