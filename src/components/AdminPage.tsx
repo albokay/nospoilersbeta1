@@ -226,7 +226,11 @@ export default function AdminPage({
   ).slice().sort((a, b) => {
     const aAddr = addressedIds.has(a.id) ? 1 : 0;
     const bAddr = addressedIds.has(b.id) ? 1 : 0;
-    return aAddr - bAddr;
+    if (aAddr !== bAddr) return aAddr - bAddr;
+    // Within each group: active (on) before inactive (off)
+    const aActive = a.is_active ? 0 : 1;
+    const bActive = b.is_active ? 0 : 1;
+    return aActive - bActive;
   });
 
   const activeCount = prompts.filter(p => p.is_active).length;
