@@ -466,7 +466,7 @@ export default function App() {
         <>
           {/* ── Mobile homepage (no diary pages) ── */}
           {isHomepage && isMobile && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", zIndex: 95, paddingTop: 64 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95, paddingTop: 64 }}>
               <SidebarLogo />
               <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
@@ -477,7 +477,7 @@ export default function App() {
           )}
           {!expandedShowId && isHomepage && isMobile && (
             <>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 24 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 16 }}>
                 {user && (
                   <button
                     className="btn"
@@ -515,11 +515,11 @@ export default function App() {
               </div>
               <div style={{ textAlign: "center", marginTop: 24 }}>
                 <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
-                  trial forum:
+                  demo forum:
                 </div>
                 <button
                   onClick={() => handlePickFromSearch("bb")}
-                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", height: 40, fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2, width: 288, maxWidth: "90vw" }}
+                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2 }}
                 >
                   Breaking Bad (DEMO)
                 </button>
@@ -557,7 +557,7 @@ export default function App() {
                       setPickShowId(id);
                     }}
                     placeholder="go to your shows"
-                    wrapperStyle={{ width: 288, maxWidth: "90vw" }}
+                    wrapperStyle={{ width: 288, maxWidth: "90%" }}
                   />
                 )}
                 <SearchShows
@@ -579,7 +579,7 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => handlePickFromSearch("bb")}
-                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", height: 40, fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2, width: 288, maxWidth: "90vw" }}
+                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2 }}
                 >
                   Breaking Bad (DEMO)
                 </button>
@@ -588,7 +588,7 @@ export default function App() {
           )}
 
           {!expandedShowId && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 48 }}>
               {/* Beta message pill toggle */}
               <button
                 onClick={() => setBetaOpen(o => !o)}
