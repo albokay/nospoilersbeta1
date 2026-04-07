@@ -130,46 +130,28 @@ export default function OneSelectProgress({
   }
 
   const groups = buildGroupedOptions(show);
-  const shortLabel = `S${String(value?.s || 1).padStart(2, "0")} E${String(value?.e || 1).padStart(2, "0")}`;
 
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#2256c9" }}>
         <span style={{ fontSize: 12, fontWeight: 700, fontStyle: "normal" }}>you've watched:</span>
-        <button
+        <select
           className="badge h40"
-          onClick={() => setMobileOpen(true)}
-          style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}
+          value={selectedId}
+          onChange={onSelect}
+          style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontWeight: 700, fontSize: 12 }}
         >
-          {shortLabel} ▾
-        </button>
+          {groups.map((g) => (
+            <optgroup key={g.season} label={`Season ${g.season}`}>
+              {g.episodes.map((ep) => (
+                <option key={ep.id} value={ep.id}>
+                  {`S${String(ep.s).padStart(2, "0")} E${String(ep.e).padStart(2, "0")}`}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
       </div>
-
-      {mobileOpen && (
-        <Modal onClose={() => setMobileOpen(false)}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-            <h3 className="title" style={{ fontSize: 20, margin: 0 }}>Set your progress</h3>
-            <button className="btn" onClick={() => setMobileOpen(false)}>✕</button>
-          </div>
-          <select
-            className="badge"
-            value={selectedId}
-            onChange={(e) => { onSelect(e); setMobileOpen(false); }}
-            style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", width: "100%", height: 40 }}
-            size={1}
-          >
-            {groups.map((g) => (
-              <optgroup key={g.season} label={`Season ${g.season}`}>
-                {g.episodes.map((ep) => (
-                  <option key={ep.id} value={ep.id}>
-                    {`S${String(ep.s).padStart(2, "0")} E${String(ep.e).padStart(2, "0")}`}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </Modal>
-      )}
 
       {requireConfirm && confirmOpen && (
         <Modal onClose={cancelSelection}>
