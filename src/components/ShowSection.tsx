@@ -857,7 +857,7 @@ export default function ShowSection({
                     {t.isPrivate && <span style={{ marginRight: 4 }}>📝</span>}
                     {t.titleBase}
                     {t.showId !== "simshow" && (
-                      <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7 }}>
+                      <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
                         {`(S${String(t.season).padStart(2, "0")} E${String(t.episode).padStart(2, "0")})`}
                       </span>
                     )}

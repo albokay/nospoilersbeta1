@@ -352,7 +352,7 @@ export default function AdminPage({
                       <td style={{ padding: "6px 10px", color: "#555", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {row.pageUrl ?? "—"}
                       </td>
-                      <td style={{ padding: "6px 10px", whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 13 }}>
+                      <td style={{ padding: "6px 10px", whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 11 }}>
                         {row.message}
                       </td>
                       <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
