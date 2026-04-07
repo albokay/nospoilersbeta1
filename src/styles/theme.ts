@@ -154,7 +154,7 @@ header.site{
   text-align:center; padding:0 36px;
   font-size:15px; font-weight:600; letter-spacing:0.01em; color:inherit;
 }
-.splashSearch::placeholder{ color:inherit; opacity:1; }
+.splashSearch::placeholder{ color:#f45028; opacity:1; }
 .splashSearchIcon{ font-size:18px; opacity:.85; flex-shrink:0; line-height:1; position:relative; z-index:1; }
 .dropdownPanel{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
