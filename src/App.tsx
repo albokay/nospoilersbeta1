@@ -483,7 +483,7 @@ export default function App() {
                   <button
                     className="btn"
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                    style={{ background: "#4b8f6c", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em", position: "relative" }}
+                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em", position: "relative" }}
                   >
                     <span style={{ position: "absolute", left: "14%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}>📓</span>
                     read your journal
@@ -548,7 +548,7 @@ export default function App() {
                   <button
                     className="btn"
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                    style={{ background: "#4b8f6c", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em", position: "relative" }}
+                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em", position: "relative" }}
                   >
                     <span style={{ position: "absolute", left: "14%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}>📓</span>
                     read your journal
