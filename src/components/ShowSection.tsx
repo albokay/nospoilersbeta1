@@ -718,7 +718,7 @@ export default function ShowSection({
                   value={progress[showId] || { s: 1, e: 1 }}
                   onConfirm={handleProgressConfirm}
                   requireConfirm={true}
-                  compactLabel={isMobile ? "progress" : undefined}
+                  compactLabel={undefined}
                 />
               </div>
             </div>
