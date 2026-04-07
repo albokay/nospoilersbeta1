@@ -880,7 +880,7 @@ export default function ShowSection({
 
                 <div className="replyCount">
                   <span style={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? {
-                    background: "#7abd8e", color: "#fff", borderRadius: 9999,
+                    background: "#dea838", color: "#fff", borderRadius: 9999,
                     padding: "2px 7px", fontWeight: 700,
                   } : {}}>
                     💬 {totalVisible}
