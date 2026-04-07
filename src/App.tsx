@@ -216,6 +216,18 @@ export default function App() {
 
   const [betaOpen, setBetaOpen] = useState(false);
   const [showsEmojiHover, setShowsEmojiHover] = useState(false);
+  const [floatPos] = useState(() => {
+    const zones = [
+      { topMin: 12, topMax: 30, leftMin: 3,  leftMax: 18 },   // top-left
+      { topMin: 12, topMax: 30, leftMin: 63, leftMax: 75 },   // top-right
+      { topMin: 58, topMax: 72, leftMin: 35, leftMax: 52 },   // bottom-center
+    ];
+    return zones.map(z => ({
+      top:  z.topMin  + Math.random() * (z.topMax  - z.topMin),
+      left: z.leftMin + Math.random() * (z.leftMax - z.leftMin),
+      rot:  (Math.random() - 0.5) * 14,
+    }));
+  });
   const [newHighlights, setNewHighlights] = useState<{ [sid: string]: { [tid: string]: true } }>({});
   const [visitedThreads, setVisitedThreads] = useState<{ [tid: string]: true }>({});
 
@@ -535,27 +547,52 @@ export default function App() {
           )}
 
           {!expandedShowId && isHomepage && !isMobile && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 56, paddingBottom: 20, zIndex: 95, position: "relative" }}>
-              <SidebarLogo />
-              <div style={{ marginTop: 12 }}>
-                <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
-                  watch. together. whenever.
-                </span>
+            <div style={{
+              position: "relative",
+              width: "100vw",
+              marginLeft: "calc(50% - 50vw)",
+              height: `calc(100vh - ${GLOBAL_HEADER_H}px)`,
+              zIndex: 95,
+              overflow: "visible",
+            }}>
+              {/* Logo + tagline — centered */}
+              <div style={{ position: "absolute", top: "42%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", zIndex: 2 }}>
+                <SidebarLogo />
+                <div style={{ marginTop: 12 }}>
+                  <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
+                    watch. together. whenever.
+                  </span>
+                </div>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 24, width: "100%" }}>
-                {user && (
-                  <button
-                    className="btn"
-                    onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em", position: "relative" }}
-                  >
-                    <span style={{ position: "absolute", left: "14%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}>📓</span>
-                    read your journal
-                  </button>
-                )}
-                {user && (
-                  <div style={{ position: "relative", width: 288, maxWidth: "90%" }}>
+              {/* Floating: read your journal */}
+              {user && (
+                <button
+                  className="btn"
+                  onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
+                  style={{
+                    position: "absolute",
+                    top: `${floatPos[0].top}%`, left: `${floatPos[0].left}%`,
+                    transform: `rotate(${floatPos[0].rot}deg)`,
+                    background: "var(--dos-user)", color: "#fff", border: "none",
+                    borderRadius: 9999, height: 40, width: 288,
+                    fontSize: 15, fontWeight: 700, letterSpacing: "0.01em",
+                  }}
+                >
+                  <span style={{ position: "absolute", left: "14%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}>📓</span>
+                  read your journal
+                </button>
+              )}
+
+              {/* Floating: go to your shows */}
+              {user && (
+                <div style={{
+                  position: "absolute",
+                  top: `${floatPos[1].top}%`, left: `${floatPos[1].left}%`,
+                  transform: `rotate(${floatPos[1].rot}deg)`,
+                  width: 288,
+                }}>
+                  <div style={{ position: "relative" }}>
                     <YourShowsSelect
                       shows={shows}
                       progress={progress}
@@ -572,7 +609,15 @@ export default function App() {
                     />
                     <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? "🐵" : "🙈"}</span>
                   </div>
-                )}
+                </div>
+              )}
+
+              {/* Floating: join a new show */}
+              <div style={{
+                position: "absolute",
+                top: `${floatPos[2].top}%`, left: `${floatPos[2].left}%`,
+                transform: `rotate(${floatPos[2].rot}deg)`,
+              }}>
                 <SearchShows
                   shows={shows}
                   onPick={handlePickFromSearch}
@@ -586,13 +631,14 @@ export default function App() {
                 />
               </div>
 
-              <div style={{ textAlign: "center", marginTop: 48 }}>
+              {/* Trial forum — bottom center */}
+              <div style={{ position: "absolute", bottom: "10%", left: "50%", transform: "translateX(-50%)", textAlign: "center" }}>
                 <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
                   trial forum:
                 </div>
                 <button
                   onClick={() => handlePickFromSearch("bb")}
-                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2 }}
+                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", height: 40, fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2, width: 288 }}
                 >
                   Breaking Bad (DEMO)
                 </button>
