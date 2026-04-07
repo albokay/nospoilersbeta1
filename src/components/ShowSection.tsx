@@ -753,8 +753,8 @@ export default function ShowSection({
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, padding: "10px 16px", marginBottom: 8,
-          background: "#fff", border: "1px solid #f45028",
-          borderRadius: 0, fontSize: 13, color: "#f45028",
+          background: "#fff", border: "none",
+          borderRadius: 24, fontSize: 13, color: "var(--danger)",
         }}>
           <span>
             Have you watched more of <strong>{show.name}</strong>?{" "}
@@ -763,7 +763,7 @@ export default function ShowSection({
           <button
             className="btn"
             onClick={onDismissStaleNudge}
-            style={{ flexShrink: 0, fontSize: 12, padding: "3px 8px", background: "#c8e4b0", border: "none", color: "#1a1a1a", borderRadius: 0 }}
+            style={{ flexShrink: 0, fontSize: 12, padding: "3px 10px", background: "transparent", border: "2px solid #c8e4b0", color: "var(--dos-fg)" }}
           >
             ✕
           </button>
@@ -775,8 +775,8 @@ export default function ShowSection({
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, padding: "10px 16px", marginBottom: 8,
-          background: "#fff", border: "1px solid #f45028",
-          borderRadius: 0, fontSize: 13, color: "#f45028",
+          background: "#fff", border: "none",
+          borderRadius: 24, fontSize: 13, color: "var(--danger)",
         }}>
           <span>
             Thanks for updating your progress — everyone's looking forward to your new thoughts!
@@ -784,7 +784,7 @@ export default function ShowSection({
           <button
             className="btn"
             onClick={() => setShowProgressCelebration(false)}
-            style={{ flexShrink: 0, fontSize: 12, padding: "3px 8px", background: "#c8e4b0", border: "none", color: "#1a1a1a", borderRadius: 0 }}
+            style={{ flexShrink: 0, fontSize: 12, padding: "3px 10px", background: "transparent", border: "2px solid #c8e4b0", color: "var(--dos-fg)" }}
           >
             ✕
           </button>
