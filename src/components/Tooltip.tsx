@@ -29,8 +29,7 @@ export default function Tooltip({
   tooltipStyle?: React.CSSProperties;
   disabled?: boolean;
 }) {
-  if (disabled) return <span style={{ position: "relative", display: "inline-block", ...style }}>{children}</span>;
-
+  // Hooks must always be called unconditionally — early return comes after
   const [show, setShow] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const wrapperRef = useRef<HTMLSpanElement>(null);
@@ -39,6 +38,8 @@ export default function Tooltip({
     if (wrapperRef.current) setRect(wrapperRef.current.getBoundingClientRect());
     setShow(true);
   };
+
+  if (disabled) return <span style={{ position: "relative", display: "inline-block", ...style }}>{children}</span>;
 
   const getAbsoluteStyle = (): React.CSSProperties => {
     const vert: React.CSSProperties = direction === "above"

@@ -783,7 +783,8 @@ export default function ShowSection({
                     <button
                       onClick={() => setHelpOpen(v => !v)}
                       style={{
-                        position: "absolute", top: -7, right: -7,
+                        position: "absolute", top: 0, right: 0,
+                        transform: "translate(50%, -50%)",
                         width: 20, height: 20, padding: 0,
                         borderRadius: "50%", border: "none",
                         background: "var(--dos-user)", color: "#fff",
