@@ -215,6 +215,7 @@ export default function App() {
   }, [pickShowId, progress]);
 
   const [betaOpen, setBetaOpen] = useState(false);
+  const [showsEmojiHover, setShowsEmojiHover] = useState(false);
   const [newHighlights, setNewHighlights] = useState<{ [sid: string]: { [tid: string]: true } }>({});
   const [visitedThreads, setVisitedThreads] = useState<{ [tid: string]: true }>({});
 
@@ -489,7 +490,7 @@ export default function App() {
                   </button>
                 )}
                 {user && (
-                  <div style={{ position: "relative", width: 288, maxWidth: "90vw" }}>
+                  <div style={{ position: "relative", width: 288, maxWidth: "90vw" }} onMouseEnter={() => setShowsEmojiHover(true)} onMouseLeave={() => setShowsEmojiHover(false)}>
                     <YourShowsSelect
                       shows={shows}
                       progress={progress}
@@ -502,7 +503,7 @@ export default function App() {
                       placeholder="go to your shows"
                       wrapperStyle={{ width: "100%" }}
                     />
-                    <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>🚪</span>
+                    <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? "🐵" : "🙈"}</span>
                   </div>
                 )}
                 <SearchShows
@@ -565,7 +566,7 @@ export default function App() {
                       placeholder="go to your shows"
                       wrapperStyle={{ width: "100%" }}
                     />
-                    <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>🚪</span>
+                    <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? "🐵" : "🙈"}</span>
                   </div>
                 )}
                 <SearchShows
