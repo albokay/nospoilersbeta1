@@ -9,21 +9,24 @@ export default function Username({
   name,
   onClickProfile,
   bold = false,
+  isOwn = false,
 }: {
   name: string;
   onClickProfile: (username: string) => void;
   bold?: boolean;
+  isOwn?: boolean;
 }) {
   const Tag = bold ? "b" : "span";
+  const ownStyle: React.CSSProperties = isOwn ? { color: "var(--dos-user)" } : {};
 
   if (SEED_AUTHORS.has(name)) {
-    return <Tag className="username">@{name}</Tag>;
+    return <Tag className="username" style={ownStyle}>@{name}</Tag>;
   }
 
   return (
     <Tag
       className="username"
-      style={{ cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}
+      style={{ cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2, ...ownStyle }}
       onClick={(e) => { e.stopPropagation(); onClickProfile(name); }}
       title={`View ${name}'s profile`}
     >
