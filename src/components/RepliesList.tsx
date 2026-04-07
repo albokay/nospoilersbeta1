@@ -724,7 +724,8 @@ export default function RepliesList({
               id={`reply-${r.id}`}
               className="card reply-card"
               style={{
-                borderLeft: (progressReveal[r.id] ? "4px solid var(--green)" : "4px solid var(--dos-border)"),
+                borderLeft: "4px solid var(--dos-border)",
+                borderTop: progressReveal[r.id] ? "4px solid #4b8f6c" : undefined,
                 marginLeft: 8,
                 position: "relative",
                 color: "var(--dos-bg)",
