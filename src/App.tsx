@@ -588,7 +588,7 @@ export default function App() {
           )}
 
           {!expandedShowId && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 8 }}>
               {/* Beta message pill toggle */}
               <button
                 onClick={() => setBetaOpen(o => !o)}
