@@ -646,7 +646,7 @@ export default function AdminPage({
                     </tr>
                     {editingId === p.id && (
                       <tr style={{ background: "#f0f4f8", borderBottom: "2px solid #c0d0e0" }}>
-                        <td colSpan={5} style={{ padding: "12px 16px", position: "relative" }}>
+                        <td colSpan={6} style={{ padding: "12px 16px", position: "relative" }}>
                           {/* Save button — top right */}
                           <button
                             onClick={() => handleSaveEdit(p.id)}
