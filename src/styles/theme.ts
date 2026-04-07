@@ -590,16 +590,29 @@ body { -webkit-font-smoothing: antialiased; }
 .pending-ref-chip button:hover { opacity: 1; }
 
 /* ── Prompt reference (rendered in thread body) ─────────────────────────────
-   Right-justified blockquote with blue right border.
-   Mirrors .blockquote-ref but mirrored to the right side.                   */
+   Editorial blockquote — no border, serif font, PROMPT: label via ::before  */
 .prompt-ref {
-  border-right: 2px solid var(--dos-user);
-  background: rgba(34,86,201,0.07);
-  padding: 8px 12px 8px 20px;
-  margin: 8px 0;
-  border-radius: 6px;
+  background: transparent;
+  padding: 6px 0 6px 0;
+  margin: 10px 0;
+  border: none;
   font-style: italic;
-  text-align: right;
+  font-family: Georgia, 'Palatino Linotype', Palatino, serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--dos-bg);
+  opacity: 0.85;
+}
+.prompt-ref::before {
+  content: "PROMPT:";
+  display: block;
+  font-family: Georgia, 'Palatino Linotype', Palatino, serif;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.5;
+  margin-bottom: 3px;
 }
 
 /* ── Prompt card (the floating suggestion card) ─────────────────────────── */
