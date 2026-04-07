@@ -763,7 +763,7 @@ export default function ShowSection({
           <button
             className="btn"
             onClick={onDismissStaleNudge}
-            style={{ flexShrink: 0, fontSize: 12, padding: "3px 10px", background: "transparent", border: "2px solid #c8e4b0", color: "var(--dos-fg)" }}
+            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
           >
             ✕
           </button>
@@ -784,7 +784,7 @@ export default function ShowSection({
           <button
             className="btn"
             onClick={() => setShowProgressCelebration(false)}
-            style={{ flexShrink: 0, fontSize: 12, padding: "3px 10px", background: "transparent", border: "2px solid #c8e4b0", color: "var(--dos-fg)" }}
+            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
           >
             ✕
           </button>
