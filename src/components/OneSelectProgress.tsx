@@ -16,6 +16,10 @@ function buildGroupedOptions(show: { seasons?: number[] }) {
   return groups;
 }
 
+function epLabel(s: number, e: number) {
+  return `S${String(s).padStart(2, "0")} E${String(e).padStart(2, "0")}`;
+}
+
 export default function OneSelectProgress({
   show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel
 }: {
@@ -69,17 +73,20 @@ export default function OneSelectProgress({
     setConfirmOpen(false);
   }
 
+  const groups = buildGroupedOptions(show);
+  const shortEp = epLabel(value?.s || 1, value?.e || 1);
+
   // Compact (mobile) button that opens a picker modal
   if (compactLabel) {
-    const shortEp = `S${String(value?.s || 1).padStart(2, "0")} E${String(value?.e || 1).padStart(2, "0")}`;
     return (
       <>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#2256c9" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, fontStyle: "normal", whiteSpace: "nowrap" }}>you've watched:</span>
-          <button className="btn" style={{ whiteSpace: "nowrap", background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }} onClick={() => setMobileOpen(true)}>
-            {shortEp} ▾
-          </button>
-        </div>
+        <button
+          className="btn"
+          style={{ whiteSpace: "nowrap", background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
+          onClick={() => setMobileOpen(true)}
+        >
+          you've watched: {shortEp} ▾
+        </button>
         {mobileOpen && (
           <Modal onClose={() => setMobileOpen(false)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
@@ -93,11 +100,11 @@ export default function OneSelectProgress({
               style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", width: "100%", height: 40 }}
               size={1}
             >
-              {buildGroupedOptions(show).map((g) => (
+              {groups.map((g) => (
                 <optgroup key={g.season} label={`Season ${g.season}`}>
                   {g.episodes.map((ep) => (
                     <option key={ep.id} value={ep.id}>
-                      {`S${String(ep.s).padStart(2, "0")} E${String(ep.e).padStart(2, "0")}`}
+                      {epLabel(ep.s, ep.e)}
                     </option>
                   ))}
                 </optgroup>
@@ -133,29 +140,24 @@ export default function OneSelectProgress({
     );
   }
 
-  const groups = buildGroupedOptions(show);
-
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#2256c9" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, fontStyle: "normal" }}>you've watched:</span>
-        <select
-          className="badge h40"
-          value={selectedId}
-          onChange={onSelect}
-          style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }}
-        >
-          {groups.map((g) => (
-            <optgroup key={g.season} label={`Season ${g.season}`}>
-              {g.episodes.map((ep) => (
-                <option key={ep.id} value={ep.id}>
-                  {`S${String(ep.s).padStart(2, "0")} E${String(ep.e).padStart(2, "0")}`}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </div>
+      <select
+        className="badge h40"
+        value={selectedId}
+        onChange={onSelect}
+        style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }}
+      >
+        {groups.map((g) => (
+          <optgroup key={g.season} label={`Season ${g.season}`}>
+            {g.episodes.map((ep) => (
+              <option key={ep.id} value={ep.id}>
+                {`you've watched: ${epLabel(ep.s, ep.e)}`}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
 
       {requireConfirm && confirmOpen && (
         <Modal onClose={cancelSelection}>
