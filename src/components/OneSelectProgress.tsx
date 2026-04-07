@@ -134,8 +134,8 @@ export default function OneSelectProgress({
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, fontStyle: "italic", fontWeight: 700, color: "#2256c9" }}>
-        <span>you've watched</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#2256c9" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, fontStyle: "normal" }}>you've watched:</span>
         <button
           className="badge h40"
           onClick={() => setMobileOpen(true)}
