@@ -16,10 +16,11 @@ export function injectDOSStyles() {
 .brandLink:focus-visible{ outline:2px dashed var(--dos-cyan); outline-offset:2px; }
 
 *{ box-sizing:border-box; }
-html,body,#root{ height:100%; background:var(--dos-bg); }
+html,body,#root{ height:100%; }
 body{
   margin:0;
-  background:var(--dos-bg);
+  background: linear-gradient(to bottom, #fff1ba 0px, var(--dos-bg) 250px) fixed, var(--dos-bg);
+  background-attachment: fixed;
   color:var(--dos-fg);
   font-size:var(--t3);
   line-height:1.5;
