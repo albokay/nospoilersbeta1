@@ -247,7 +247,12 @@ export default function App() {
   }, [showProfile]);
 
   const [pickShowId, setPickShowId] = useState<string | null>(null);
-  const pickShow = useMemo(() => shows.find(s => s.id === pickShowId) || null, [pickShowId, shows]);
+  // Stores a just-created show so the modal can render before `shows` state updates settle
+  const [pendingNewShow, setPendingNewShow] = useState<Show | null>(null);
+  const pickShow = useMemo(() =>
+    (pendingNewShow?.id === pickShowId ? pendingNewShow : null) || shows.find(s => s.id === pickShowId) || null,
+    [pickShowId, shows, pendingNewShow]
+  );
   const [hasPendingChange, setHasPendingChange] = useState(false);
   const [firstSel, setFirstSel] = useState<{ s: number; e: number } | null>(null);
   const [pickShowMode, setPickShowMode] = useState<"set" | "confirm">("set");
@@ -436,7 +441,11 @@ export default function App() {
           onPick={handlePickFromSearch}
           onShowCreated={(newShow) => {
             setShows(prev => [...prev, newShow]);
-            setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+            // Don't pre-set progress — questionnaire will handle it via setWatchStatusFor.
+            // Store the new show so pickShow memo resolves before `shows` state settles.
+            setPendingNewShow(newShow);
+            setPickShowMode("set");
+            setPickShowId(newShow.id);
           }}
           onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
           style={{ width: 220, margin: 0, height: 34 }}
@@ -832,12 +841,12 @@ export default function App() {
       )}
 
       {pickShow && (
-        <Modal onClose={() => { setPickShowId(null); setPickShowMode("set"); }}>
+        <Modal onClose={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <h3 className="title" style={{ fontSize: 20, margin: 0 }}>
               {pickShowMode === "confirm" ? "Confirm or update your progress" : "Set your watch status"}
             </h3>
-            <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); }}>✕</button>
+            <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}>✕</button>
           </div>
 
           {pickShowMode === "set" ? (
@@ -884,7 +893,7 @@ export default function App() {
               )}
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
-                <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); }}>Cancel</button>
+                <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}>Cancel</button>
                 <button
                   className="btn primary"
                   disabled={!watchStatusChoice}
@@ -907,6 +916,7 @@ export default function App() {
                     setWatchStatusFor(pickShow.id, entry);
                     setPickShowId(null);
                     setPickShowMode("set");
+                    setPendingNewShow(null);
                     openShow(pickShow.id);
                   }}
                 >
@@ -927,6 +937,7 @@ export default function App() {
                     setHasPendingChange(false);
                     setPickShowId(null);
                     setPickShowMode("set");
+                    setPendingNewShow(null);
                     openShow(pickShow.id);
                   }}
                   onPendingChange={setHasPendingChange}
@@ -934,7 +945,7 @@ export default function App() {
                   onChangeSelected={(val) => setFirstSel(val)}
                 />
                 <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-                  <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); }}>Cancel</button>
+                  <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}>Cancel</button>
                   <button
                     className="btn primary"
                     onClick={() => {
@@ -945,6 +956,7 @@ export default function App() {
                       updateProgressFor(pickShow.id, chosen);
                       setPickShowId(null);
                       setPickShowMode("set");
+                      setPendingNewShow(null);
                       openShow(pickShow.id);
                     }}
                   >

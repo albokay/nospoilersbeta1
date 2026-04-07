@@ -143,7 +143,9 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
       onShowCreated?.(newShow);
       setQuery(newShow.name);
       setConfirming(null);
-      onPick(newShow.id);
+      // onShowCreated handles opening the questionnaire modal directly;
+      // only fall back to onPick if onShowCreated is absent.
+      if (!onShowCreated) onPick(newShow.id);
     } catch (e: any) {
       setCreateError(e?.message ?? "Failed to create forum. Try again.");
     } finally {
