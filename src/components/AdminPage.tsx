@@ -345,11 +345,11 @@ export default function AdminPage({
             }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid #999", textAlign: "left" }}>
+                  <th style={{ padding: "6px 10px", fontWeight: 700, minWidth: 320, width: "100%" }}>message</th>
+                  <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>status</th>
                   <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>user</th>
                   <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>when</th>
                   <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap", width: 80 }}>page</th>
-                  <th style={{ padding: "6px 10px", fontWeight: 700, minWidth: 320, width: "100%" }}>message</th>
-                  <th style={{ padding: "6px 10px", fontWeight: 700, whiteSpace: "nowrap" }}>status</th>
                   <th style={{ padding: "6px 10px" }}></th>
                 </tr>
               </thead>
@@ -362,17 +362,8 @@ export default function AdminPage({
                       background: row.status === "done" ? "#7abd8e" : row.status === "will-do" ? "#bdd4de" : isNew ? "#fffbe6" : i % 2 === 0 ? "#fff" : "#f9f9f9",
                       verticalAlign: "top",
                     }}>
-                      <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
-                        {isNew && <span style={{ color: "green", marginRight: 4 }}>●</span>}
-                        @{row.username ?? "—"}
-                      </td>
-                      <td style={{ padding: "6px 10px", whiteSpace: "nowrap", color: "#555" }}>
-                        {timeAgo(row.createdAt)}
-                      </td>
-                      <td style={{ padding: "6px 10px", color: "#555", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {row.pageUrl ?? "—"}
-                      </td>
                       <td style={{ padding: "6px 10px", whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 11 }}>
+                        {isNew && <span style={{ color: "green", marginRight: 4 }}>●</span>}
                         {row.message}
                       </td>
                       <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
@@ -389,6 +380,15 @@ export default function AdminPage({
                             </label>
                           ))}
                         </div>
+                      </td>
+                      <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
+                        @{row.username ?? "—"}
+                      </td>
+                      <td style={{ padding: "6px 10px", whiteSpace: "nowrap", color: "#555" }}>
+                        {timeAgo(row.createdAt)}
+                      </td>
+                      <td style={{ padding: "6px 10px", color: "#555", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {row.pageUrl ?? "—"}
                       </td>
                       <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
                         {deletingId === row.id ? (
