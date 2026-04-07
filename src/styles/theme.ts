@@ -21,16 +21,16 @@ body{
   margin:0;
   background: linear-gradient(to bottom, #c8e4b0 0px, var(--dos-bg) 250px) fixed, var(--dos-bg);
   background-attachment: fixed;
-}
-body.has-header{
-  background: linear-gradient(to bottom, var(--dos-bg) 0px, #c8e4b0 56px, var(--dos-bg) 306px) fixed, var(--dos-bg);
-  background-attachment: fixed;
   color:var(--dos-fg);
   font-size:var(--t3);
   line-height:1.5;
   letter-spacing:0.01em;
   font-family: "Inter","Nunito",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   font-weight:400;
+}
+body.has-header{
+  background: linear-gradient(to top, #c8e4b0 0px, var(--dos-bg) 250px) fixed, var(--dos-bg);
+  background-attachment: fixed;
 }
 
 /* full-bleed helpers */
