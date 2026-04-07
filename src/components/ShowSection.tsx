@@ -735,19 +735,17 @@ export default function ShowSection({
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, padding: "10px 16px", marginBottom: 8,
-          background: "var(--dos-bg)", border: "1px solid var(--dos-border)",
-          borderRadius: 6, fontSize: 13,
+          background: "#fff", border: "1px solid #f45028",
+          borderRadius: 0, fontSize: 13, color: "#f45028",
         }}>
           <span>
             Have you watched more of <strong>{show.name}</strong>?{" "}
-            <span style={{ opacity: 0.8 }}>
-              If so, update your progress above so you don't leave any accidental spoilers!
-            </span>
+            If so, update your progress above so you don't leave any accidental spoilers!
           </span>
           <button
             className="btn"
             onClick={onDismissStaleNudge}
-            style={{ flexShrink: 0, fontSize: 12, padding: "3px 8px" }}
+            style={{ flexShrink: 0, fontSize: 12, padding: "3px 8px", background: "#c8e4b0", border: "none", color: "#1a1a1a", borderRadius: 0 }}
           >
             ✕
           </button>
@@ -759,16 +757,16 @@ export default function ShowSection({
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, padding: "10px 16px", marginBottom: 8,
-          background: "var(--dos-bg)", border: "1px solid var(--dos-border)",
-          borderRadius: 6, fontSize: 13,
+          background: "#fff", border: "1px solid #f45028",
+          borderRadius: 0, fontSize: 13, color: "#f45028",
         }}>
           <span>
-            Everyone's looking forward to your new thoughts — thanks for updating your progress!
+            Thanks for updating your progress — everyone's looking forward to your new thoughts!
           </span>
           <button
             className="btn"
             onClick={() => setShowProgressCelebration(false)}
-            style={{ flexShrink: 0, fontSize: 12, padding: "3px 8px" }}
+            style={{ flexShrink: 0, fontSize: 12, padding: "3px 8px", background: "#c8e4b0", border: "none", color: "#1a1a1a", borderRadius: 0 }}
           >
             ✕
           </button>
