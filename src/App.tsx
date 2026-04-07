@@ -601,9 +601,10 @@ export default function App() {
                 <SearchShows
                   shows={shows}
                   onPick={handlePickFromSearch}
-                  onShowCreated={(newShow) => {
+                  onShowCreated={(newShow, entry) => {
                     setShows(prev => [...prev, newShow]);
-                    setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+                    setWatchStatusFor(newShow.id, entry);
+                    openShow(newShow.id);
                   }}
                   onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
                   placeholder="join a new show"
@@ -666,9 +667,10 @@ export default function App() {
                 <SearchShows
                   shows={shows}
                   onPick={handlePickFromSearch}
-                  onShowCreated={(newShow) => {
+                  onShowCreated={(newShow, entry) => {
                     setShows(prev => [...prev, newShow]);
-                    setProgress(p => ({ ...p, [newShow.id]: { s: 1, e: 1 } }));
+                    setWatchStatusFor(newShow.id, entry);
+                    openShow(newShow.id);
                   }}
                   onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
                   placeholder="join a new show"
