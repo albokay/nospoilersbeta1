@@ -778,14 +778,15 @@ export default function ShowSection({
                   requireConfirm={true}
                   compactLabel={undefined}
                 />
-                <button
-                  className="btn"
-                  onClick={() => setHelpOpen(v => !v)}
-                  title="Help"
-                  style={{ width: 28, height: 28, padding: 0, borderRadius: "50%", fontSize: 14, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
-                >
-                  ?
-                </button>
+                <Tooltip text="Did you make a mistake setting your progress? Click here." direction="below">
+                  <button
+                    className="btn"
+                    onClick={() => setHelpOpen(v => !v)}
+                    style={{ width: 28, height: 28, padding: 0, borderRadius: "50%", fontSize: 14, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
+                  >
+                    !
+                  </button>
+                </Tooltip>
               </div>
             </div>
           )}
