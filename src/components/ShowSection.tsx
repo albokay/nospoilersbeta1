@@ -102,6 +102,17 @@ export default function ShowSection({
 
   const [showProgressCelebration, setShowProgressCelebration] = useState(false);
 
+  // Dismiss both banners on any click anywhere
+  useEffect(() => {
+    if (!showStaleNudge && !showProgressCelebration) return;
+    const handler = () => {
+      onDismissStaleNudge?.();
+      setShowProgressCelebration(false);
+    };
+    document.addEventListener("click", handler, { once: true });
+    return () => document.removeEventListener("click", handler);
+  }, [showStaleNudge, showProgressCelebration]);
+
   const [composeOpen, setComposeOpen] = useState(false);
   // Show private/public tooltips only on the very first compose session ever
   const [showComposeTooltips, setShowComposeTooltips] = useState(() => !localStorage.getItem("ns_compose_seen"));
