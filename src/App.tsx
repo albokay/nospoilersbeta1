@@ -500,7 +500,7 @@ export default function App() {
                         setPickShowMode("confirm");
                         setPickShowId(id);
                       }}
-                      placeholder="go to your shows"
+                      placeholder="your shows"
                       wrapperStyle={{ width: "100%" }}
                       onMouseEnter={() => setShowsEmojiHover(true)}
                       onMouseLeave={() => setShowsEmojiHover(false)}
@@ -565,7 +565,7 @@ export default function App() {
                         setPickShowMode("confirm");
                         setPickShowId(id);
                       }}
-                      placeholder="go to your shows"
+                      placeholder="your shows"
                       wrapperStyle={{ width: "100%" }}
                       onMouseEnter={() => setShowsEmojiHover(true)}
                       onMouseLeave={() => setShowsEmojiHover(false)}
