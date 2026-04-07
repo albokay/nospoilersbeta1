@@ -847,7 +847,7 @@ export default function ShowSection({
                 className="card threadCard"
                 style={{
                   margin: 0,
-                  opacity: (isRead && !isOwn) ? 0.55 : 1,
+                  opacity: (isRead && !isOwn) ? 0.5 : 1,
                   cursor: "pointer",
                   position: "relative",
                   paddingTop: 12,
