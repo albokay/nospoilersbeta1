@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
-import { fetchProgress, upsertProgress, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount } from "./lib/db";
+import { fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount } from "./lib/db";
 import { supabase } from "./lib/supabaseClient";
 import type { Show } from "./lib/db";
 import type { Reply, Thread } from "./types";
@@ -103,12 +103,9 @@ export default function App() {
 
   const [progress, setProgress] = useState<{ [sid: string]: { s: number; e: number } }>({});
 
-  // Load progress from DB when user logs in; clear it when they log out
+  // Progress is session-only: clear on sign-out, do not persist to DB
   useEffect(() => {
-    if (!user) { setProgress({}); return; }
-    fetchProgress(user.id).then(saved => {
-      setProgress(saved);
-    }).catch(err => console.error("Failed to load progress:", err));
+    if (!user) { setProgress({}); }
   }, [user?.id]);
 
   // Replies-to-user for profile pill badge
@@ -254,11 +251,6 @@ export default function App() {
 
   const updateProgressFor = (sid: string, next: { s: number; e: number }) => {
     setProgress(prev => ({ ...prev, [sid]: next }));
-    if (user) {
-      upsertProgress(user.id, sid, next.s, next.e).catch(err =>
-        console.error("Failed to save progress:", err)
-      );
-    }
   };
 
   const openShow = (id: string) => {
@@ -711,13 +703,6 @@ export default function App() {
             progress={progress}
             updateProgressFor={(sid: string, next: { s: number; e: number }) => {
               setProgress(prev => ({ ...prev, [sid]: next }));
-              // Thread-visibility check is handled inside ShowSection's handleProgressConfirm,
-              // which has access to the real dbThreads.
-              if (user) {
-                upsertProgress(user.id, sid, next.s, next.e).catch(err =>
-                  console.error("Failed to save progress:", err)
-                );
-              }
             }}
             newHighlights={newHighlights}
             setNewHighlights={setNewHighlights}
