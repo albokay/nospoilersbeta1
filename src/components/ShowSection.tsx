@@ -839,7 +839,7 @@ export default function ShowSection({
                   paddingTop: 12,
                   paddingBottom: 36,
                   borderLeft: isOwn ? "4px solid var(--dos-user)" : "4px solid var(--dos-border)",
-                  borderTop: isNew ? "4px solid #3d7a5a" : undefined
+                  borderTop: isNew ? "4px solid #539f78" : undefined
                 }}
                 onClick={() => {
                   markThreadVisited(t.id);
