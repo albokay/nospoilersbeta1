@@ -891,11 +891,11 @@ export default function ShowSection({
           {[
             {
               label: "I set my rewatch status incorrectly",
-              prefill: `Hi — I set my rewatch status wrong for ${show.name} and need help correcting it. My username is @${progress[showId] ? "" : ""}`,
+              prefill: `Dear beta tester, you can't reach admin through the site yet. Just reach out to Alborz! Or leave your name here and what you need fixed. Thanks!`,
             },
             {
               label: "I accidentally set the wrong episode",
-              prefill: `Hi — I accidentally set the wrong episode for ${show.name} and need help correcting it. My username is @`,
+              prefill: `Dear beta tester, you can't reach admin through the site yet. Just reach out to Alborz! Or leave your name here and what you need fixed. Thanks!`,
             },
           ].map(({ label, prefill }) => (
             <button
