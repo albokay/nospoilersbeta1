@@ -93,7 +93,7 @@ export default function OneSelectProgress({
                 <optgroup key={g.season} label={`Season ${g.season}`}>
                   {g.episodes.map((ep) => (
                     <option key={ep.id} value={ep.id}>
-                      {`S${String(ep.s).padStart(2, "0")} E${String(ep.e).padStart(2, "0")}`}
+                      {`episode ${ep.e}`}
                     </option>
                   ))}
                 </optgroup>
@@ -145,7 +145,7 @@ export default function OneSelectProgress({
             <optgroup key={g.season} label={`Season ${g.season}`}>
               {g.episodes.map((ep) => (
                 <option key={ep.id} value={ep.id}>
-                  {`S${String(ep.s).padStart(2, "0")} E${String(ep.e).padStart(2, "0")}`}
+                  {`episode ${ep.e}`}
                 </option>
               ))}
             </optgroup>
