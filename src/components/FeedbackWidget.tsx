@@ -19,17 +19,38 @@ function canSubmit(): boolean {
   return Date.now() - parseInt(last, 10) > 8_000;
 }
 
-export default function FeedbackWidget({ isMobile }: { isMobile: boolean }) {
+export default function FeedbackWidget({
+  isMobile,
+  forcedOpen,
+  prefillMessage,
+  onForcedClose,
+}: {
+  isMobile: boolean;
+  forcedOpen?: boolean;
+  prefillMessage?: string;
+  onForcedClose?: () => void;
+}) {
   const { user, profile } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [phase, setPhase] = useState<"idle" | "sending" | "sent" | "rate-limited">("idle");
 
+  // Sync externally-triggered open/prefill
+  const prevForcedOpen = React.useRef(false);
+  React.useEffect(() => {
+    if (forcedOpen && !prevForcedOpen.current) {
+      setMessage(prefillMessage ?? "");
+      setPhase("idle");
+      setOpen(true);
+    }
+    prevForcedOpen.current = !!forcedOpen;
+  }, [forcedOpen, prefillMessage]);
+
   if (!user) return null;
 
   const handleOpen = () => { setOpen(true); setPhase("idle"); };
-  const handleClose = () => { setOpen(false); };
+  const handleClose = () => { setOpen(false); onForcedClose?.(); };
 
   const handleSend = async () => {
     if (!message.trim() || phase === "sending") return;

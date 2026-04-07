@@ -45,7 +45,7 @@ export default function ShowSection({
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
   focusReplyId, onAuthRequired, onClickProfile, navLeft, navRight,
   showStaleNudge, onDismissStaleNudge,
-  clearRewatchFor,
+  clearRewatchFor, onOpenFeedback,
 }: any) {
   const { user, profile } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
@@ -123,6 +123,7 @@ export default function ShowSection({
     };
   }, [showStaleNudge, showProgressCelebration]);
 
+  const [helpOpen, setHelpOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   // Show private/public tooltips only on the very first compose session ever
   const [showComposeTooltips, setShowComposeTooltips] = useState(() => !localStorage.getItem("ns_compose_seen"));
@@ -777,6 +778,14 @@ export default function ShowSection({
                   requireConfirm={true}
                   compactLabel={undefined}
                 />
+                <button
+                  className="btn"
+                  onClick={() => setHelpOpen(v => !v)}
+                  title="Help"
+                  style={{ width: 28, height: 28, padding: 0, borderRadius: "50%", fontSize: 14, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
+                >
+                  ?
+                </button>
               </div>
             </div>
           )}
@@ -844,6 +853,53 @@ export default function ShowSection({
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* ? Help panel */}
+      {helpOpen && (
+        <div style={{
+          background: "#fff", borderRadius: 20, padding: "16px 20px",
+          marginBottom: 10, display: "flex", flexDirection: "column", gap: 10,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: "var(--dos-bg)" }}>Need help?</span>
+            <button
+              className="btn"
+              onClick={() => setHelpOpen(false)}
+              style={{ width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
+            >
+              ✕
+            </button>
+          </div>
+          {[
+            {
+              label: "I set my rewatch status incorrectly",
+              prefill: `Hi — I set my rewatch status wrong for ${show.name} and need help correcting it. My username is @${progress[showId] ? "" : ""}`,
+            },
+            {
+              label: "I accidentally set the wrong episode",
+              prefill: `Hi — I accidentally set the wrong episode for ${show.name} and need help correcting it. My username is @`,
+            },
+          ].map(({ label, prefill }) => (
+            <button
+              key={label}
+              onClick={() => {
+                setHelpOpen(false);
+                onOpenFeedback?.(prefill);
+              }}
+              style={{
+                textAlign: "left", background: "transparent",
+                border: "1.5px solid var(--dos-border)", borderRadius: 12,
+                padding: "10px 14px", cursor: "pointer", fontSize: 13,
+                color: "var(--dos-bg)", fontWeight: 500, lineHeight: 1.4,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+            >
+              {label} →
+            </button>
+          ))}
         </div>
       )}
 

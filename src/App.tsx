@@ -111,6 +111,8 @@ export default function App() {
   const username = profile?.username ?? null;
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authHint, setAuthHint] = useState<string | null>(null);
+  const [feedbackForcedOpen, setFeedbackForcedOpen] = useState(false);
+  const [feedbackPrefill, setFeedbackPrefill] = useState("");
 
   // ── URL-driven navigation (React Router) ─────────────────────
   const navigate = useNavigate();
@@ -551,7 +553,12 @@ export default function App() {
       {fixedAuth}
       {fixedProfileTabs}
       {!isHomepage && header}
-      <FeedbackWidget isMobile={isMobile} />
+      <FeedbackWidget
+        isMobile={isMobile}
+        forcedOpen={feedbackForcedOpen}
+        prefillMessage={feedbackPrefill}
+        onForcedClose={() => setFeedbackForcedOpen(false)}
+      />
       {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); }} hint={authHint ?? undefined} />}
       {!showProfile && !publicProfileUsername && (
         <>
@@ -799,6 +806,10 @@ export default function App() {
             progress={progress}
             updateProgressFor={updateProgressFor}
             clearRewatchFor={clearRewatchFor}
+            onOpenFeedback={(prefill: string) => {
+              setFeedbackPrefill(prefill);
+              setFeedbackForcedOpen(true);
+            }}
             newHighlights={newHighlights}
             setNewHighlights={setNewHighlights}
             visitedThreads={visitedThreads}
