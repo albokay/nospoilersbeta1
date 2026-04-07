@@ -912,7 +912,7 @@ export default function ShowSection({
 
       {/* Compose modal */}
       {composeOpen && (
-        <Modal onClose={() => closeCompose()}>
+        <Modal onClose={() => closeCompose()} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <h3 className="title" style={{ margin: 0 }}>make an entry</h3>
             <button className="btn" onClick={() => closeCompose()}>✕</button>
@@ -957,7 +957,7 @@ export default function ShowSection({
                 </button>
               ) : <span />}
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
+                <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
                 <Tooltip
                   text="Post privately. Your entry will live in your journal alongside everything else you've written — a record of your watching life, whether or not you share it. (If you want, you can swap it to public later.)"
                   direction="above"
@@ -967,7 +967,7 @@ export default function ShowSection({
                   tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
                   disabled={!showComposeTooltips}
                 >
-                  <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--dos-bg)", border: "2px solid #fff", color: "#fff" }}>📝 save to your journal</button>
+                  <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--dos-bg)", border: "2px solid #fff", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>📝 save to your journal</button>
                 </Tooltip>
                 <Tooltip
                   text="Post publicly. Visible to anyone in this show room who has watched at least as far as you. They won't see spoilers from ahead of your progress, and neither will you see theirs."
@@ -978,7 +978,7 @@ export default function ShowSection({
                   tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
                   disabled={!showComposeTooltips}
                 >
-                  <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff" }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
+                  <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
                 </Tooltip>
               </div>
             </div>

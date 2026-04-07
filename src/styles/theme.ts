@@ -660,8 +660,9 @@ body { -webkit-font-smoothing: antialiased; }
 .prompt-btn {
   background: var(--dos-bg);
   border: 2px solid #fff;
-  padding: 6px 12px;
-  font-size: 14px;
+  padding: 5px 10px;
+  font-size: 13px;
+  white-space: nowrap;
   font-weight: 500;
   cursor: pointer;
   color: #fff;
