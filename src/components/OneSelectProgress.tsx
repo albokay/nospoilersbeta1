@@ -2,6 +2,20 @@ import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { buildProgressOptions } from "../lib/utils";
 
+function buildGroupedOptions(show: { seasons?: number[] }) {
+  const seasons = show?.seasons || [];
+  const groups: { season: number; episodes: { id: string; s: number; e: number }[] }[] = [];
+  for (let s = 1; s <= seasons.length; s++) {
+    const eMax = seasons[s - 1] || 1;
+    const episodes = [];
+    for (let e = 1; e <= eMax; e++) {
+      episodes.push({ id: `${s}-${e}`, s, e });
+    }
+    groups.push({ season: s, episodes });
+  }
+  return groups;
+}
+
 export default function OneSelectProgress({
   show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel
 }: {
@@ -75,8 +89,14 @@ export default function OneSelectProgress({
               style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", width: "100%", height: 40 }}
               size={1}
             >
-              {opts.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
+              {buildGroupedOptions(show).map((g) => (
+                <optgroup key={g.season} label={`Season ${g.season}`}>
+                  {g.episodes.map((ep) => (
+                    <option key={ep.id} value={ep.id}>
+                      {`S${String(ep.s).padStart(2, "0")} E${String(ep.e).padStart(2, "0")}`}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </Modal>
@@ -109,22 +129,46 @@ export default function OneSelectProgress({
     );
   }
 
+  const groups = buildGroupedOptions(show);
+  const currentLabel = `you've watched S${String(value?.s || 1).padStart(2, "0")} E${String(value?.e || 1).padStart(2, "0")}`;
+
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 8, fontStyle: "italic", fontWeight: 700, color: "#2256c9" }}>
-        <select
+        <button
           className="badge h40"
-          value={selectedId}
-          onChange={onSelect}
-          style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontWeight: 700, fontSize: 12 }}
+          onClick={() => setMobileOpen(true)}
+          style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}
         >
-          {opts.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+          {currentLabel} ▾
+        </button>
       </div>
+
+      {mobileOpen && (
+        <Modal onClose={() => setMobileOpen(false)}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <h3 className="title" style={{ fontSize: 20, margin: 0 }}>Set your progress</h3>
+            <button className="btn" onClick={() => setMobileOpen(false)}>✕</button>
+          </div>
+          <select
+            className="badge"
+            value={selectedId}
+            onChange={(e) => { onSelect(e); setMobileOpen(false); }}
+            style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", width: "100%", height: 40 }}
+            size={1}
+          >
+            {groups.map((g) => (
+              <optgroup key={g.season} label={`Season ${g.season}`}>
+                {g.episodes.map((ep) => (
+                  <option key={ep.id} value={ep.id}>
+                    {`S${String(ep.s).padStart(2, "0")} E${String(ep.e).padStart(2, "0")}`}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </Modal>
+      )}
 
       {requireConfirm && confirmOpen && (
         <Modal onClose={cancelSelection}>
