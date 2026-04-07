@@ -3,9 +3,9 @@ export function injectDOSStyles() {
   if (document.getElementById(id)) return;
   const css = `
 :root{
-  --dos-bg:#7abd8e; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
+  --dos-bg:#dea838; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
-  --dos-accent:#FFFFFF; --danger:#f45028; --green:#dea838; --dos-user:#2256c9; --dos-border:#ffffff;
+  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#2256c9; --dos-border:#ffffff;
   /* canonical accent blue */
   --blue-light:#bdd4de;
   /* type scale */
@@ -55,7 +55,7 @@ hr{ display:none; }
 .btn-danger:hover{ background:var(--danger); color:#fff; border-color:var(--danger); }
 /* Green styling for +Post */
 .btn.post{ background: var(--green); color: #fff; border-color: var(--green); }
-.btn.post:hover{ background: #c4912a; border-color: #c4912a; color: #fff; }
+.btn.post:hover{ background: #5fa878; border-color: #5fa878; color: #fff; }
 /* Fix dark inputs/textareas */
 select {
   color: var(--dos-fg);
@@ -82,7 +82,7 @@ input.badge::placeholder, textarea::placeholder { color: #aaa !important; }
 
 /* sticky bars */
 header.site{
-  position:sticky; top:0; z-index:90; background:rgba(122,189,142,0.98);
+  position:sticky; top:0; z-index:90; background:rgba(222,168,56,0.98);
 }
 .brand{
   line-height:0; font-size:0;
@@ -118,7 +118,7 @@ header.site{
 
 
 .stickybar{
-  position:sticky; top:0; z-index:70; background:rgba(122,189,142,0.98);
+  position:sticky; top:0; z-index:70; background:rgba(222,168,56,0.98);
 }
 
 /* banner row 1: title + sort — stacks on mobile */
@@ -158,7 +158,7 @@ header.site{
 .splashSearchIcon{ font-size:18px; opacity:.85; flex-shrink:0; line-height:1; position:relative; z-index:1; }
 .dropdownPanel{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
-  max-height:300px; overflow:auto; background:rgba(122,189,142,0.97);
+  max-height:300px; overflow:auto; background:rgba(222,168,56,0.97);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   border:2px solid var(--dos-border); border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
   color:var(--dos-fg);
@@ -196,7 +196,7 @@ header.site{
   52%  { opacity:0.82; }
   100% { opacity:0; }
 }
-.flash-cover{ position:absolute; inset:0; background:rgba(122,189,142,0.55); pointer-events:none; border-radius:inherit; animation:flash-blink 1.2s ease forwards; }
+.flash-cover{ position:absolute; inset:0; background:rgba(222,168,56,0.55); pointer-events:none; border-radius:inherit; animation:flash-blink 1.2s ease forwards; }
 
 /* like badge */
 .likeWrap{ display:inline-flex; align-items:baseline; gap:4px; user-select:none; }
@@ -425,7 +425,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* Shared citation superscript button — used inline in body, in headers, and in thread heading */
 .cite-sup-btn {
-  color: #7abd8e;
+  color: #dea838;
   font-weight: 700;
   background: none;
   border: none;
@@ -439,7 +439,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* Subtle dotted underline on the quoted passage that carries a citation sup */
 .quoted-passage {
-  text-decoration: underline dotted rgba(122,189,142,0.55);
+  text-decoration: underline dotted rgba(222,168,56,0.55);
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
   cursor: pointer;

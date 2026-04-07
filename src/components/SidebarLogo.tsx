@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 const BLOCK = 52;
 
 const BLOCKS = [
-  { id: "green",     color: "#dea838", z: 1, blend: "color-burn" },
+  { id: "green",     color: "#7abd8e", z: 1, blend: "color-burn" },
   { id: "white",     color: "#fffaf0", z: 2, blend: "color-burn" },
   { id: "lightBlue", color: "#bdd4de", z: 3, blend: "color-burn" },
   { id: "orange",    color: "#f45028", z: 4, blend: "multiply"   },
