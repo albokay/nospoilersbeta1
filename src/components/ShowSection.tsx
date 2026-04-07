@@ -774,7 +774,7 @@ export default function ShowSection({
           {!threadsLoading && displayed.map((t) => {
             const isNew = !!newHighlights[showId]?.[t.id];
             const isRead = !!visitedThreads[t.id];
-            const isOwn = !!username && t.author === username;
+            const isOwn = !!profile && t.author === profile.username;
             const likeCt = likesThreads[t.id] ?? t.likes;
             const { visibleNew, hiddenNew, totalVisible } = getNewCounts(t.id);
             const hasExternal = hasExternalReplies[t.id] ?? false;
