@@ -93,7 +93,7 @@ export default function OneSelectProgress({
                 <optgroup key={g.season} label={`Season ${g.season}`}>
                   {g.episodes.map((ep) => (
                     <option key={ep.id} value={ep.id}>
-                      {`episode ${ep.e}`}
+                      {`S${String(ep.s).padStart(2, "0")} E${String(ep.e).padStart(2, "0")}`}
                     </option>
                   ))}
                 </optgroup>
@@ -139,13 +139,13 @@ export default function OneSelectProgress({
           className="badge h40"
           value={selectedId}
           onChange={onSelect}
-          style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontWeight: 700, fontSize: 12 }}
+          style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }}
         >
           {groups.map((g) => (
             <optgroup key={g.season} label={`Season ${g.season}`}>
               {g.episodes.map((ep) => (
                 <option key={ep.id} value={ep.id}>
-                  {`episode ${ep.e}`}
+                  {`S${String(ep.s).padStart(2, "0")} E${String(ep.e).padStart(2, "0")}`}
                 </option>
               ))}
             </optgroup>
