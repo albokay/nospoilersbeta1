@@ -102,15 +102,22 @@ export default function ShowSection({
 
   const [showProgressCelebration, setShowProgressCelebration] = useState(false);
 
-  // Dismiss both banners on any click anywhere
+  // Dismiss both banners on any click anywhere.
+  // Delay registering the listener so the click that triggered the banner
+  // (e.g. "Confirm" in the portal modal) doesn't immediately dismiss it.
   useEffect(() => {
     if (!showStaleNudge && !showProgressCelebration) return;
     const handler = () => {
       onDismissStaleNudge?.();
       setShowProgressCelebration(false);
     };
-    document.addEventListener("click", handler, { once: true });
-    return () => document.removeEventListener("click", handler);
+    const timer = setTimeout(() => {
+      document.addEventListener("click", handler, { once: true });
+    }, 150);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("click", handler);
+    };
   }, [showStaleNudge, showProgressCelebration]);
 
   const [composeOpen, setComposeOpen] = useState(false);
