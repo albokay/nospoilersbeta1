@@ -771,22 +771,32 @@ export default function ShowSection({
                     />
                   </div>
                 )}
-                <OneSelectProgress
-                  show={allShows.find(s => s.id === showId) || { seasons: [10] }}
-                  value={progress[showId] || { s: 1, e: 1 }}
-                  onConfirm={handleProgressConfirm}
-                  requireConfirm={true}
-                  compactLabel={undefined}
-                />
-                <Tooltip text="Did you make a mistake setting your progress? Click here." direction="below">
-                  <button
-                    className="btn"
-                    onClick={() => setHelpOpen(v => !v)}
-                    style={{ width: 28, height: 28, padding: 0, borderRadius: "50%", fontSize: 14, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
-                  >
-                    !
-                  </button>
-                </Tooltip>
+                <div style={{ position: "relative" }}>
+                  <OneSelectProgress
+                    show={allShows.find(s => s.id === showId) || { seasons: [10] }}
+                    value={progress[showId] || { s: 1, e: 1 }}
+                    onConfirm={handleProgressConfirm}
+                    requireConfirm={true}
+                    compactLabel={undefined}
+                  />
+                  <Tooltip text="Did you make a mistake setting your progress? Click here." direction="below">
+                    <button
+                      onClick={() => setHelpOpen(v => !v)}
+                      style={{
+                        position: "absolute", top: -8, right: -8,
+                        width: 20, height: 20, padding: 0,
+                        borderRadius: "50%", border: "none",
+                        background: "var(--dos-user)", color: "#fff",
+                        fontSize: 12, fontWeight: 800, lineHeight: 1,
+                        cursor: "pointer", zIndex: 10,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                      }}
+                    >
+                      !
+                    </button>
+                  </Tooltip>
+                </div>
               </div>
             </div>
           )}
