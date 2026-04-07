@@ -130,17 +130,18 @@ export default function OneSelectProgress({
   }
 
   const groups = buildGroupedOptions(show);
-  const currentLabel = `you've watched S${String(value?.s || 1).padStart(2, "0")} E${String(value?.e || 1).padStart(2, "0")}`;
+  const shortLabel = `S${String(value?.s || 1).padStart(2, "0")} E${String(value?.e || 1).padStart(2, "0")}`;
 
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 8, fontStyle: "italic", fontWeight: 700, color: "#2256c9" }}>
+        <span>you've watched</span>
         <button
           className="badge h40"
           onClick={() => setMobileOpen(true)}
           style={{ background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontWeight: 700, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}
         >
-          {currentLabel} ▾
+          {shortLabel} ▾
         </button>
       </div>
 
