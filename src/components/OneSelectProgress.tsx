@@ -85,7 +85,7 @@ export default function OneSelectProgress({
           style={{ whiteSpace: "nowrap", background: "#bdd4de", color: "#2256c9", border: "2px solid #bdd4de", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
           onClick={() => setMobileOpen(true)}
         >
-          you've watched: {shortEp} ▾
+          {compactLabel} ▾
         </button>
         {mobileOpen && (
           <Modal onClose={() => setMobileOpen(false)}>
