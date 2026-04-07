@@ -90,7 +90,7 @@ export default function OneSelectProgress({
         {mobileOpen && (
           <Modal onClose={() => setMobileOpen(false)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>Set your progress</h3>
+              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>you've watched: {pending ? epLabel(pending.s, pending.e) : ""}</h3>
               <button className="btn" onClick={() => setMobileOpen(false)}>✕</button>
             </div>
             <select
@@ -115,7 +115,7 @@ export default function OneSelectProgress({
         {requireConfirm && confirmOpen && (
           <Modal onClose={cancelSelection}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>Set your progress</h3>
+              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>you've watched: {pending ? epLabel(pending.s, pending.e) : ""}</h3>
               <button className="btn" onClick={cancelSelection}>✕</button>
             </div>
             <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>
