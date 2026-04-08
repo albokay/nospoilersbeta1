@@ -562,7 +562,7 @@ export default function App() {
               {/* Hero headline */}
               <p style={{
                 maxWidth: 880, textAlign: "center",
-                margin: "32px 16px",
+                margin: "48px 16px",
                 fontSize: isMobile ? 20 : 32, fontWeight: 800,
                 color: "#fff", lineHeight: 1.3,
               }}>
