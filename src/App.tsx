@@ -414,16 +414,7 @@ export default function App() {
     if (showAdmin && isAdmin) setFeedbackUnread(0);
   }, [showAdmin, isAdmin]);
 
-  // ── Fixed ? button (homepage only) ──────────────────────────
-  const fixedHelp = isHomepage ? (
-    <div style={{ position: "fixed", top: 14, left: 14, zIndex: 1000 }}>
-      <Tooltip text="A spoiler-safe TV forum built around your watch progress — no spoilers guaranteed." direction="below" align="left">
-        <button className="btn" style={{ width: 30, height: 30, borderRadius: "50%", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800, lineHeight: 1, background: "#fff", border: "none", outline: "none", color: "var(--dos-bg)" }}>
-          ?
-        </button>
-      </Tooltip>
-    </div>
-  ) : null;
+  const fixedHelp = null;
 
   // ── Fixed sidebar logo + "find a show" (non-homepage, top-left) ─
   const fixedLogo = !isHomepage ? (
