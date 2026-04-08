@@ -565,7 +565,7 @@ export default function App() {
         <>
           {/* ── Homepage ── */}
           {isHomepage && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: isMobile ? 48 : 56, paddingBottom: 24, zIndex: 95, position: "relative" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: isMobile ? 48 : 56, paddingBottom: 24, zIndex: 95, position: "relative", width: "100vw", marginLeft: "calc(-50vw + 50%)" }}>
               <SidebarLogo />
 
               {/* Hero headline */}
