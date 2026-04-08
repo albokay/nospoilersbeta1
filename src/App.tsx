@@ -563,7 +563,7 @@ export default function App() {
               <p style={{
                 maxWidth: 880, textAlign: "center",
                 margin: "32px 16px",
-                fontSize: isMobile ? 20 : 36, fontWeight: 800,
+                fontSize: isMobile ? 20 : 32, fontWeight: 800,
                 color: "#fff", lineHeight: 1.3,
               }}>
                 <span style={{ whiteSpace: "nowrap" }}>The internet</span>{isMobile ? <br /> : " "}<span style={{ whiteSpace: "nowrap" }}>is full of spoilers.</span> <span style={{ whiteSpace: "nowrap" }}>Sidebar isn't.</span><br />
