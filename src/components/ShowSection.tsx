@@ -923,11 +923,11 @@ export default function ShowSection({
           {[
             {
               label: "I set my rewatch status incorrectly",
-              prefill: `Dear beta tester, you can't reach admin through the site just yet. Just reach out to Alborz! Or leave your name here and mention what you need fixed. Thanks!`,
+              prefill: `Dear beta tester, you can't reach admin through the site yet. Just reach out to Alborz! Or leave your name here and mention what you need fixed. Thanks!`,
             },
             {
               label: "I accidentally set the wrong episode",
-              prefill: `Dear beta tester, you can't reach admin through the site just yet. Just reach out to Alborz! Or leave your name here and mention what you need fixed. Thanks!`,
+              prefill: `Dear beta tester, you can't reach admin through the site yet. Just reach out to Alborz! Or leave your name here and mention what you need fixed. Thanks!`,
             },
           ].map(({ label, prefill }) => (
             <button
