@@ -270,7 +270,7 @@ header.site{
 .profileChip{
   display:inline-flex; align-items:center; gap:8px; cursor:pointer;
   border:none; padding:6px 10px; border-radius:9999px;
-  background: var(--dos-user);
+  background: var(--dos-user); height:34px; box-sizing:border-box;
 }
 .avatar{
   width:24px; height:24px; border:none; border-radius:50%;

@@ -439,7 +439,7 @@ export default function App() {
             openShow(newShow.id);
           }}
           onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-          style={{ width: 220, margin: 0, height: 34 }}
+          style={{ width: 176, margin: 0, height: 34 }}
         />
       </span>
     </div>
