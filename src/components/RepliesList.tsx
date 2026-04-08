@@ -771,21 +771,6 @@ export default function RepliesList({
                       S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
                     </span>
                   )}
-                  {/* Link citation superscripts in the heading — wrapped in one span to avoid flex gap blowout */}
-                  {linkSups.length > 0 && (
-                    <span style={{ letterSpacing: 0 }}>
-                      {linkSups.map((s, i) => (
-                        <React.Fragment key={`lsup-${s.index}`}>
-                          {i > 0 && <sup className="cite-sup"><span className="cite-sup-btn" style={{ cursor: "default" }}>,</span></sup>}
-                          <sup className="cite-sup">
-                            <button className="cite-sup-btn" onClick={s.onScrollTo} title="Jump to citing response">
-                              {superscriptNum(s.index)}
-                            </button>
-                          </sup>
-                        </React.Fragment>
-                      ))}
-                    </span>
-                  )}
                   {isReplyEdited && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7 }}>(edited)</span>
                   )}
@@ -867,7 +852,6 @@ export default function RepliesList({
                         ? () => scrollHighlight("thread-entry")
                         : undefined
                   }
-                  quoteSups={quoteSups}
                 />
               )}
 

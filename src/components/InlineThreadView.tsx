@@ -387,7 +387,7 @@ export default function InlineThreadView({
                 {(() => {
                   const promptParts = parsePromptTokensInline(thread.body);
                   const renderedParts: React.ReactNode[] = [];
-                  let remainingSups: SupEntry[] = [...threadQuoteSups];
+                  let remainingSups: SupEntry[] = [];
                   let pkIdx = 0;
                   for (const part of promptParts) {
                     if (typeof part === "string") {
