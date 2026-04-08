@@ -585,8 +585,9 @@ export default function App() {
                 flexDirection: isMobile ? "column" : "row",
                 alignItems: "stretch",
                 gap: 8,
-                width: "100%", maxWidth: 960,
-                padding: "0 16px",
+                width: isMobile ? "min(288px, 90vw)" : "100%",
+                maxWidth: isMobile ? undefined : 960,
+                padding: isMobile ? 0 : "0 16px",
                 boxSizing: "border-box",
               }}>
                 {user && (
@@ -644,9 +645,11 @@ export default function App() {
                 fontSize: isMobile ? 15 : 16, fontWeight: 500,
                 color: "#fff", lineHeight: 1.6,
               }}>
-                Log the last episode you've watched.<br />
-                Everyone else does the same — so you only ever read what's safe.<br />
-                The more you watch, the more the conversation opens up.
+                <span style={{ whiteSpace: "nowrap" }}>Log the last episode you've watched.</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>Everyone else does the same —</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>so you only ever read what's safe.</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>The more you watch, the more</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>the conversation opens up.</span>
               </p>
             </div>
           )}
