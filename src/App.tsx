@@ -566,7 +566,7 @@ export default function App() {
                 fontSize: isMobile ? 20 : 32, fontWeight: 800,
                 color: "#fff", lineHeight: 1.3,
               }}>
-                <span style={{ whiteSpace: "nowrap" }}>The internet is</span>{" "}<span style={{ whiteSpace: "nowrap" }}>full of spoilers.</span>{" "}<span style={{ whiteSpace: "nowrap" }}>Sidebar isn't.</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>The internet is</span>{isMobile ? <br /> : " "}<span style={{ whiteSpace: "nowrap" }}>full of spoilers. Sidebar isn't.</span><br />
                 Watch TV at your own pace. <span style={{ whiteSpace: "nowrap" }}>Stay in the conversation.</span>
               </p>
 
