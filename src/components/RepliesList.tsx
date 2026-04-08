@@ -205,9 +205,11 @@ function ReplyBody({
       const before = parts[0] ?? "";
       const after = parts.slice(2).join("") ?? "";
       const { nodes: beforeNodes, matchedIndices: bm } = annotateTextWithSups(before, quoteSups);
-      const remainingSups = quoteSups.filter(s => !bm.has(s.index));
-      const { nodes: afterNodes, matchedIndices: am } = annotateTextWithSups(after, remainingSups);
-      const unmatched = quoteSups.filter(s => !bm.has(s.index) && !am.has(s.index));
+      const afterBefore = quoteSups.filter(s => !bm.has(s.index));
+      const { nodes: quoteNodes, matchedIndices: qm } = annotateTextWithSups(inlineText, afterBefore);
+      const afterQuote = afterBefore.filter(s => !qm.has(s.index));
+      const { nodes: afterNodes, matchedIndices: am } = annotateTextWithSups(after, afterQuote);
+      const unmatched = afterQuote.filter(s => !am.has(s.index));
       return (
         <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
           {beforeNodes}
@@ -218,7 +220,7 @@ function ReplyBody({
             title={onScrollToRef ? "Click to jump to cited response" : undefined}
           >
             <div className="blockquote-author">{displayAuthor} wrote:</div>
-            <div className="blockquote-text">"{inlineText}"</div>
+            <div className="blockquote-text">"{quoteNodes}"</div>
           </blockquote>
           {afterNodes}
           <UnmatchedSups sups={unmatched} />
@@ -227,13 +229,16 @@ function ReplyBody({
     }
     // Legacy format: [QUOTE] token with separate quotedText field
     if (quotedText && body.includes("[QUOTE]")) {
+      const strippedQuote = stripSupChars(quotedText ?? "");
       const parts = body.split("[QUOTE]");
       const before = parts[0] ?? "";
       const after = parts.slice(1).join("[QUOTE]");
       const { nodes: beforeNodes, matchedIndices: bm } = annotateTextWithSups(before, quoteSups);
-      const remainingSups = quoteSups.filter(s => !bm.has(s.index));
-      const { nodes: afterNodes, matchedIndices: am } = annotateTextWithSups(after, remainingSups);
-      const unmatched = quoteSups.filter(s => !bm.has(s.index) && !am.has(s.index));
+      const afterBefore = quoteSups.filter(s => !bm.has(s.index));
+      const { nodes: quoteNodes, matchedIndices: qm } = annotateTextWithSups(strippedQuote, afterBefore);
+      const afterQuote = afterBefore.filter(s => !qm.has(s.index));
+      const { nodes: afterNodes, matchedIndices: am } = annotateTextWithSups(after, afterQuote);
+      const unmatched = afterQuote.filter(s => !am.has(s.index));
       return (
         <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
           {beforeNodes}
@@ -244,7 +249,7 @@ function ReplyBody({
             title={onScrollToRef ? "Click to jump to cited response" : undefined}
           >
             <div className="blockquote-author">{displayAuthor} wrote:</div>
-            <div className="blockquote-text">"{stripSupChars(quotedText ?? "")}"</div>
+            <div className="blockquote-text">"{quoteNodes}"</div>
           </blockquote>
           {afterNodes}
           <UnmatchedSups sups={unmatched} />
