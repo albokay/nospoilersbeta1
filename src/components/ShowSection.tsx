@@ -907,8 +907,8 @@ export default function ShowSection({
       {/* ? Help panel */}
       {helpOpen && (
         <div style={{
-          background: "#fff", borderRadius: 20, padding: "12px 16px",
-          marginBottom: 10, display: "flex", flexDirection: "column", gap: 6,
+          background: "#fff", borderRadius: 20, padding: "8px 12px",
+          marginBottom: 10, display: "flex", flexDirection: "column", gap: 4,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 700, fontSize: 14, color: "var(--dos-bg)" }}>Need help?</span>
@@ -939,7 +939,7 @@ export default function ShowSection({
               style={{
                 textAlign: "left", background: "transparent",
                 border: "1.5px solid var(--dos-border)", borderRadius: 12,
-                padding: "10px 14px", cursor: "pointer", fontSize: 13,
+                padding: "6px 10px", cursor: "pointer", fontSize: 13,
                 color: "var(--dos-bg)", fontWeight: 500, lineHeight: 1.4,
               }}
               onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.05)")}
