@@ -106,7 +106,7 @@ Option 2: Install and provide the "ws" package:
 html,body,#root{ height:100%; }
 body{
   margin:0;
-  background: linear-gradient(to bottom, #c8e4b0 0px, var(--dos-bg) 250px) fixed, var(--dos-bg);
+  background: linear-gradient(to top, #c8e4b0 0px, var(--dos-bg) 250px) fixed, var(--dos-bg);
   background-attachment: fixed;
   color:var(--dos-fg);
   font-size:var(--t3);
