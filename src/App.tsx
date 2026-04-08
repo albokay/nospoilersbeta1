@@ -637,9 +637,9 @@ export default function App() {
                 color: "#fff", lineHeight: 1.6,
               }}>
                 <span style={{ whiteSpace: "nowrap" }}>Log the last episode you've watched.</span><br />
-                <span style={{ whiteSpace: "nowrap" }}>Everyone else does the same —</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>Everyone else does the same —</span>{" "}
                 <span style={{ whiteSpace: "nowrap" }}>so you only ever read what's safe.</span><br />
-                <span style={{ whiteSpace: "nowrap" }}>The more you watch, the more</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>The more you watch, the more</span>{" "}
                 <span style={{ whiteSpace: "nowrap" }}>the conversation opens up.</span>
               </p>
             </div>
