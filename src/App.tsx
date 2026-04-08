@@ -702,8 +702,7 @@ export default function App() {
                     Hopefully everything on this beta version of the site is functional, even if not in its final form. Use the 'feedback' tab on the right to send your thoughts (large or small). Don't overthink it — your gut reactions are as important as your more considered thoughts. Just fire messages off as they occur to you.<br /><br />
                     The 'Breaking Bad (DEMO FORUM)' is where you can begin to get a sense of how things work. Have at it. You can't break anything and if you post anything that gives you deep existential regrets, I can remove / reset / delete it.<br /><br />
                     I'm excited to see how you use the site.<br /><br />
-                    — Alborz<br /><br />
-                    *Does everything make sense?
+                    — Alborz
                   </div>
                 </div>
               )}
