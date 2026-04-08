@@ -586,8 +586,8 @@ export default function App() {
                     className="btn"
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
                     style={{
-                      flex: 1, background: "var(--dos-user)", color: "#fff", border: "none",
-                      borderRadius: 9999, height: 40,
+                      flex: isMobile ? undefined : 1, background: "var(--dos-user)", color: "#fff", border: "none",
+                      borderRadius: 9999, height: 40, boxSizing: "border-box",
                       fontSize: 15, fontWeight: 700, letterSpacing: "0.01em",
                       position: "relative", whiteSpace: "nowrap",
                     }}
@@ -597,7 +597,7 @@ export default function App() {
                   </button>
                 )}
                 {user && (
-                  <div style={{ flex: 1, position: "relative" }}>
+                  <div style={{ flex: isMobile ? undefined : 1, position: "relative", height: 40, boxSizing: "border-box" }}>
                     <YourShowsSelect
                       shows={shows}
                       progress={progress}
@@ -608,7 +608,7 @@ export default function App() {
                         setPickShowId(id);
                       }}
                       placeholder="START HERE"
-                      wrapperStyle={{ width: "100%" }}
+                      wrapperStyle={{ width: "100%", height: "100%" }}
                       onMouseEnter={() => setShowsEmojiHover(true)}
                       onMouseLeave={() => setShowsEmojiHover(false)}
                     />
@@ -625,7 +625,7 @@ export default function App() {
                   }}
                   onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
                   placeholder="join a new show"
-                  style={{ flex: 1, width: "auto", minWidth: 0, margin: 0 }}
+                  style={{ flex: isMobile ? undefined : 1, width: "auto", minWidth: 0, margin: 0, height: 40, boxSizing: "border-box" }}
                 />
               </div>
 
