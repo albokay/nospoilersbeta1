@@ -575,8 +575,8 @@ export default function App() {
                 fontSize: isMobile ? 22 : 32, fontWeight: 800,
                 color: "#fff", lineHeight: 1.3,
               }}>
-                The internet is full of spoilers. Sidebar isn't.<br />
-                Watch TV at your own pace. Stay in the conversation.
+                The internet is full of spoilers. <span style={{ whiteSpace: "nowrap" }}>Sidebar isn't.</span><br />
+                Watch TV at your own pace. <span style={{ whiteSpace: "nowrap" }}>Stay in the conversation.</span>
               </p>
 
               {/* Three buttons row */}
