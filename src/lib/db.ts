@@ -108,7 +108,6 @@ export async function insertThread(data: {
     author_id: data.authorId, author_name: data.authorName,
     title: data.title, preview: data.preview, body: data.body,
     is_private: data.isPrivate, likes_count: 0,
-    is_rewatch: data.isRewatch ?? false,
   };
   const { data: inserted, error } = await supabase
     .from("threads").insert(row).select().single();
@@ -606,7 +605,6 @@ export async function insertReply(data: {
     referenced_reply_id: data.referencedReplyId ?? null,
     referenced_thread_id: data.referencedThreadId ?? null,
     quoted_text: data.quotedText ?? null,
-    is_rewatch: data.isRewatch ?? false,
   };
   const { data: inserted, error } = await supabase
     .from("replies").insert(row).select().single();
