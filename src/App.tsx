@@ -566,7 +566,7 @@ export default function App() {
                 fontSize: isMobile ? 20 : 32, fontWeight: 800,
                 color: "#fff", lineHeight: 1.3,
               }}>
-                <span style={{ whiteSpace: "nowrap" }}>The internet is</span>{isMobile ? <br /> : " "}<span style={{ whiteSpace: "nowrap" }}>full of spoilers. Sidebar isn't.</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>The internet is</span>{isMobile ? <br /> : " "}<span style={{ whiteSpace: "nowrap" }}>full of spoilers. Sidebar forums aren't.</span><br />
                 Watch TV at your own pace. <span style={{ whiteSpace: "nowrap" }}>Stay in the conversation.</span>
               </p>
 
@@ -624,7 +624,7 @@ export default function App() {
                     openShow(newShow.id);
                   }}
                   onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-                  placeholder="join a new show"
+                  placeholder="find a show"
                   style={{ flex: isMobile ? undefined : 1, width: "auto", minWidth: 0, margin: 0, height: 40, boxSizing: "border-box" }}
                 />
               </div>
@@ -637,8 +637,8 @@ export default function App() {
                 color: "#fff", lineHeight: 1.6,
               }}>
                 <span style={{ whiteSpace: "nowrap" }}>Log the last episode you've watched.</span><br />
-                <span style={{ whiteSpace: "nowrap" }}>Everyone else does the same —</span>{" "}
-                <span style={{ whiteSpace: "nowrap" }}>so you only ever read what's safe.</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>Everyone else does the same.</span>{" "}
+                <span style={{ whiteSpace: "nowrap" }}>You'll only see what's spoiler-safe.</span><br />
                 <span style={{ whiteSpace: "nowrap" }}>The more you watch, the more</span>{" "}
                 <span style={{ whiteSpace: "nowrap" }}>the conversation opens up.</span>
               </p>
@@ -696,14 +696,14 @@ export default function App() {
                     lineHeight: 1.6,
                     fontWeight: 700,
                   }}>
-                    The BREAKING BAD (DEMO) forum is populated with posts (a.i. generated) that discuss the actual show. Feel free to use it as a playground to test things out.<br /><br />
-                    But don't post anything you care about in there as it will regularly get purged and reset. If you actually want to start a diary or conversation about Breaking Bad, use the "join a new show" field…<br /><br />
-                    "Join a new show" is how you either:<br /><br />
-                    1) join an existing forum, or<br />
-                    2) create the official public forum for your show (that everyone else can join).<br /><br />
-                    Hope you enjoy using the site. And THANK YOU.<br /><br />
+                    Thank you for your time and mind.<br /><br />
+                    I'm making this site because I love stories and I love thinking about them. If you're reading this right now, you are probably the same way and I probably love talking to you about said stories. That's the whole point here: to make it easier to have ongoing conversations about the TV shows that we love (or love to hate).<br /><br />
+                    Considering how easy it is these days to watch shows new or old at different paces, I'm frankly surprised why something like Sidebar doesn't already exist. I hope you agree.<br /><br />
+                    Hopefully everything on this beta version of the site is functional, even if not in its final form. Use the 'feedback' tab on the right to send your thoughts (large or small). Don't overthink it — your gut reactions are as important as your more considered thoughts. Just fire messages off as they occur to you.<br /><br />
+                    The 'Breaking Bad (DEMO FORUM)' is where you can begin to get a sense of how things work. Have at it. You can't break anything and if you post anything that gives you deep existential regrets, I can remove / reset / delete it.<br /><br />
+                    I'm excited to see how you use the site.<br /><br />
                     — Alborz<br /><br />
-                    🕓 <b>FUTURE FEATURES:</b> there are a lot in the works. What would you like?? ⏳
+                    *Does everything make sense?
                   </div>
                 </div>
               )}

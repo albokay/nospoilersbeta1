@@ -350,6 +350,7 @@ export default function RepliesList({
   const [quoteHintId, setQuoteHintId] = useState<string | null>(null);
   // Link hint: show once on first-ever click; user must click again to use it
   const [linkHintPending, setLinkHintPending] = useState(false);
+  const [linkPendingReply, setLinkPendingReply] = useState<Reply | null>(null);
 
   const [localEditedBody, setLocalEditedBody] = useState<Record<string, string>>({});
   const [localDeleted, setLocalDeleted] = useState<Record<string, boolean>>({});
@@ -531,8 +532,9 @@ export default function RepliesList({
   // Handle Link action on a reply
   const handleLink = (r: Reply) => {
     if (!user) { onAuthRequired(); return; }
-    // Show one-time explanation on first-ever click; user must click again to proceed
+    // Show one-time explanation on first-ever click; store reply to execute after "Got it"
     if (!localStorage.getItem("ns_link_hint_seen")) {
+      setLinkPendingReply(r);
       setLinkHintPending(true);
       return;
     }
@@ -598,6 +600,15 @@ export default function RepliesList({
                 onClick={() => {
                   localStorage.setItem("ns_link_hint_seen", "1");
                   setLinkHintPending(false);
+                  if (linkPendingReply) {
+                    onSetPendingReference?.({
+                      type: "link",
+                      replyId: linkPendingReply.id,
+                      authorName: linkPendingReply.author,
+                    });
+                    onScrollToComposer?.();
+                    setLinkPendingReply(null);
+                  }
                 }}
               >
                 Got it

@@ -104,6 +104,16 @@ export default function ShowSection({
   const [showProgressCelebration, setShowProgressCelebration] = useState(false);
   const [showAutoFlipMsg, setShowAutoFlipMsg] = useState(false);
   const [reWatchOnly, setReWatchOnly] = useState(false);
+  const [riskyHintPending, setRiskyHintPending] = useState(false);
+
+  const handleModeToggle = () => {
+    const next = mode === "risky" ? "standard" : "risky";
+    if (next === "risky" && !localStorage.getItem("ns_risky_hint_seen")) {
+      setRiskyHintPending(true);
+      return;
+    }
+    setMode(next);
+  };
 
   // Dismiss both banners on any click anywhere.
   // Delay registering the listener so the click that triggered the banner
@@ -401,8 +411,13 @@ export default function ShowSection({
         if (lb !== la) return lb - la;
         return b.updatedAt - a.updatedAt;
       });
+    } else if (sortBy === "rewatchers") {
+      list = list.filter(t => t.isRewatch).sort((a, b) => {
+        if (a.season !== b.season) return b.season - a.season;
+        if (a.episode !== b.episode) return b.episode - a.episode;
+        return b.updatedAt - a.updatedAt;
+      });
     }
-    if (reWatchOnly) list = list.filter(t => t.isRewatch);
     return list;
   }, [allThreads, progress, searchQuery, sortBy, likesThreads, newHighlights, showId, reWatchOnly]);
 
@@ -677,15 +692,8 @@ export default function ShowSection({
                   <option value="post">Post date</option>
                   <option value="episode">Episode order</option>
                   <option value="hot">Hot</option>
+                  <option value="rewatchers">Rewatchers</option>
                 </select>
-                <button
-                  className="btn"
-                  onClick={() => setReWatchOnly(v => !v)}
-                  style={{ fontSize: 12, padding: "4px 10px", background: reWatchOnly ? "var(--dos-user)" : "transparent", color: reWatchOnly ? "#fff" : "inherit", border: "2px solid var(--dos-border)", whiteSpace: "nowrap" }}
-                  title="Show only re-watcher posts"
-                >
-                  😍 re-watchers
-                </button>
               </div>
             )}
           </div>
@@ -707,7 +715,7 @@ export default function ShowSection({
                 </button>
                 <ModeToggle
                   value={mode}
-                  onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
+                  onToggle={handleModeToggle}
                   hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
                   compact={true}
                 />
@@ -766,7 +774,7 @@ export default function ShowSection({
                   <div style={{ transform: "translateX(-10px)" }}>
                     <ModeToggle
                       value={mode}
-                      onToggle={() => setMode(m => (m === "risky" ? "standard" : "risky"))}
+                      onToggle={handleModeToggle}
                       hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
                     />
                   </div>
@@ -851,6 +859,30 @@ export default function ShowSection({
         </div>
       )}
 
+      {/* Risky mode first-time explanation modal */}
+      {riskyHintPending && (
+        <Modal onClose={() => setRiskyHintPending(false)} width="min(520px,92vw)" cardClassName="explanation-card">
+          <div style={{ padding: "16px 12px 12px" }}>
+            <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+              ⚠️ People who have watched further may have responded to a thread that's inside your watch progress. Sidebar can't promise they didn't leave spoilers, but you can take the risk if you like.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button
+                className="btn"
+                style={{ fontSize: 15, padding: "8px 24px" }}
+                onClick={() => {
+                  localStorage.setItem("ns_risky_hint_seen", "1");
+                  setRiskyHintPending(false);
+                  setMode("risky");
+                }}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* Progress update celebration — shown after every progress update */}
       {showProgressCelebration && (
         <div style={{
@@ -875,15 +907,15 @@ export default function ShowSection({
       {/* ? Help panel */}
       {helpOpen && (
         <div style={{
-          background: "#fff", borderRadius: 20, padding: "16px 20px",
-          marginBottom: 10, display: "flex", flexDirection: "column", gap: 10,
+          background: "#fff", borderRadius: 20, padding: "12px 16px",
+          marginBottom: 10, display: "flex", flexDirection: "column", gap: 6,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 700, fontSize: 14, color: "var(--dos-bg)" }}>Need help?</span>
             <button
               className="btn"
               onClick={() => setHelpOpen(false)}
-              style={{ width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
+              style={{ width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #7abd8e", borderRadius: "50%", color: "#7abd8e", fontSize: 13, lineHeight: 1 }}
             >
               ✕
             </button>
@@ -891,11 +923,11 @@ export default function ShowSection({
           {[
             {
               label: "I set my rewatch status incorrectly",
-              prefill: `Dear beta tester, you can't reach admin through the site yet. Just reach out to Alborz! Or leave your name here and what you need fixed. Thanks!`,
+              prefill: `Dear beta tester, you can't reach admin through the site just yet. Just reach out to Alborz! Or leave your name here and mention what you need fixed. Thanks!`,
             },
             {
               label: "I accidentally set the wrong episode",
-              prefill: `Dear beta tester, you can't reach admin through the site yet. Just reach out to Alborz! Or leave your name here and what you need fixed. Thanks!`,
+              prefill: `Dear beta tester, you can't reach admin through the site just yet. Just reach out to Alborz! Or leave your name here and mention what you need fixed. Thanks!`,
             },
           ].map(({ label, prefill }) => (
             <button

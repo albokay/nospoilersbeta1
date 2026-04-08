@@ -367,6 +367,7 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
                       value={choice}
                       checked={watchChoice === choice}
                       onChange={() => setWatchChoice(choice)}
+                      style={{ accentColor: "var(--green)", cursor: "pointer" }}
                     />
                     {choice === "first" ? "First time" : "Rewatching"}
                   </label>
