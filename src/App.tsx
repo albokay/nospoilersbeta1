@@ -563,32 +563,49 @@ export default function App() {
       {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); }} hint={authHint ?? undefined} />}
       {!showProfile && !publicProfileUsername && (
         <>
-          {/* ── Mobile homepage (no diary pages) ── */}
-          {isHomepage && isMobile && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", margin: "0 0 32px", position: "relative", zIndex: 95, paddingTop: 64 }}>
+          {/* ── Homepage ── */}
+          {isHomepage && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: isMobile ? 48 : 56, paddingBottom: 24, zIndex: 95, position: "relative" }}>
               <SidebarLogo />
-              <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
-                  watch. together. whenever.
-                </span>
-              </div>
-            </div>
-          )}
-          {!expandedShowId && isHomepage && isMobile && (
-            <>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 16 }}>
+
+              {/* Hero headline */}
+              <p style={{
+                maxWidth: 760, textAlign: "center",
+                margin: "32px 16px",
+                fontSize: isMobile ? 22 : 32, fontWeight: 800,
+                color: "#fff", lineHeight: 1.3,
+              }}>
+                The internet is full of spoilers. Sidebar isn't.<br />
+                Watch TV at your own pace. Stay in the conversation.
+              </p>
+
+              {/* Three buttons row */}
+              <div style={{
+                display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                alignItems: "stretch",
+                gap: 8,
+                width: "100%", maxWidth: 960,
+                padding: "0 16px",
+                boxSizing: "border-box",
+              }}>
                 {user && (
                   <button
                     className="btn"
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90vw", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em", position: "relative" }}
+                    style={{
+                      flex: 1, background: "var(--dos-user)", color: "#fff", border: "none",
+                      borderRadius: 9999, height: 48,
+                      fontSize: 15, fontWeight: 700, letterSpacing: "0.01em",
+                      position: "relative", whiteSpace: "nowrap",
+                    }}
                   >
-                    <span style={{ position: "absolute", left: "14%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}>📓</span>
+                    <span style={{ position: "absolute", left: "12%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}>📓</span>
                     read your journal
                   </button>
                 )}
                 {user && (
-                  <div style={{ position: "relative", width: 288, maxWidth: "90vw" }}>
+                  <div style={{ flex: 1, position: "relative" }}>
                     <YourShowsSelect
                       shows={shows}
                       progress={progress}
@@ -616,65 +633,21 @@ export default function App() {
                   }}
                   onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
                   placeholder="join a new show"
-                  style={{ margin: 0 }}
-                />
-              </div>
-            </>
-          )}
-
-          {!expandedShowId && isHomepage && !isMobile && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 56, paddingBottom: 20, zIndex: 95, position: "relative" }}>
-              <SidebarLogo />
-              <div style={{ marginTop: 12 }}>
-                <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "0.02em", color: "var(--dos-fg)" }}>
-                  watch. together. whenever.
-                </span>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 24, width: "100%" }}>
-                {user && (
-                  <button
-                    className="btn"
-                    onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                    style={{ background: "var(--dos-user)", color: "#fff", border: "none", borderRadius: 9999, height: 40, width: 288, maxWidth: "90%", fontSize: 15, fontWeight: 700, letterSpacing: "0.01em", position: "relative" }}
-                  >
-                    <span style={{ position: "absolute", left: "14%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}>📓</span>
-                    read your journal
-                  </button>
-                )}
-                {user && (
-                  <div style={{ position: "relative", width: 288, maxWidth: "90%" }}>
-                    <YourShowsSelect
-                      shows={shows}
-                      progress={progress}
-                      value={""}
-                      onChange={(id) => {
-                        if (!id) return;
-                        setPickShowMode("confirm");
-                        setPickShowId(id);
-                      }}
-                      placeholder="START HERE"
-                      wrapperStyle={{ width: "100%" }}
-                      onMouseEnter={() => setShowsEmojiHover(true)}
-                      onMouseLeave={() => setShowsEmojiHover(false)}
-                    />
-                    <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? "🐵" : "🙈"}</span>
-                  </div>
-                )}
-                <SearchShows
-                  shows={shows}
-                  onPick={handlePickFromSearch}
-                  onShowCreated={(newShow, entry) => {
-                    setShows(prev => [...prev, newShow]);
-                    setWatchStatusFor(newShow.id, entry);
-                    openShow(newShow.id);
-                  }}
-                  onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-                  placeholder="join a new show"
-                  style={{ margin: 0 }}
+                  style={{ flex: 1, margin: 0 }}
                 />
               </div>
 
+              {/* Subhead */}
+              <p style={{
+                maxWidth: 600, textAlign: "center",
+                margin: "32px 16px 0",
+                fontSize: isMobile ? 15 : 16, fontWeight: 500,
+                color: "#fff", lineHeight: 1.6,
+              }}>
+                Log the last episode you've watched.<br />
+                Everyone else does the same — so you only ever read what's safe.<br />
+                The more you watch, the more the conversation opens up.
+              </p>
             </div>
           )}
 
