@@ -563,7 +563,7 @@ export default function App() {
               <p style={{
                 maxWidth: 880, textAlign: "center",
                 margin: "32px 16px",
-                fontSize: isMobile ? 22 : 32, fontWeight: 800,
+                fontSize: isMobile ? 20 : 40, fontWeight: 800,
                 color: "#fff", lineHeight: 1.3,
               }}>
                 <span style={{ whiteSpace: "nowrap" }}>The internet</span>{isMobile ? <br /> : " "}<span style={{ whiteSpace: "nowrap" }}>is full of spoilers.</span> <span style={{ whiteSpace: "nowrap" }}>Sidebar isn't.</span><br />
@@ -588,7 +588,7 @@ export default function App() {
                     style={{
                       flex: isMobile ? undefined : 1, background: "var(--dos-user)", color: "#fff", border: "none",
                       borderRadius: 9999, height: 40, boxSizing: "border-box",
-                      fontSize: 15, fontWeight: 700, letterSpacing: "0.01em",
+                      fontSize: 16, fontWeight: 700, letterSpacing: "0.01em",
                       position: "relative", whiteSpace: "nowrap",
                     }}
                   >
