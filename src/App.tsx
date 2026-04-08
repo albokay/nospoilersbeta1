@@ -570,7 +570,7 @@ export default function App() {
 
               {/* Hero headline */}
               <p style={{
-                maxWidth: 760, textAlign: "center",
+                maxWidth: 880, textAlign: "center",
                 margin: "32px 16px",
                 fontSize: isMobile ? 22 : 32, fontWeight: 800,
                 color: "#fff", lineHeight: 1.3,
@@ -595,7 +595,7 @@ export default function App() {
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
                     style={{
                       flex: 1, background: "var(--dos-user)", color: "#fff", border: "none",
-                      borderRadius: 9999, height: 48,
+                      borderRadius: 9999, height: 40,
                       fontSize: 15, fontWeight: 700, letterSpacing: "0.01em",
                       position: "relative", whiteSpace: "nowrap",
                     }}
@@ -633,7 +633,7 @@ export default function App() {
                   }}
                   onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
                   placeholder="join a new show"
-                  style={{ flex: 1, margin: 0 }}
+                  style={{ flex: 1, width: "auto", minWidth: 0, margin: 0 }}
                 />
               </div>
 
