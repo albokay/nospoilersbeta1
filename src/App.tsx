@@ -135,7 +135,7 @@ export default function App() {
   // navigating from a notification, and cleared by RepliesList after scrolling.
   const [focusReplyId, setFocusReplyId] = useState<string | null>(null);
 
-  const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
+  const [progress, setProgress] = useState<Record<string, ProgressEntry>>({ bb: { s: 1, e: 1 } });
 
   // Stale-progress nudge: show once per session if user returns after 12+ hour gap
   const [showStaleNudge, setShowStaleNudge] = useState(false);
@@ -154,7 +154,8 @@ export default function App() {
   useEffect(() => {
     if (!user) { setProgress({}); return; }
     fetchProgress(user.id).then(saved => {
-      setProgress(saved);
+      // Always keep BB in the dropdown as the demo entry
+      setProgress({ bb: { s: 1, e: 1 }, ...saved });
     }).catch(err => console.error("Failed to load progress:", err));
   }, [user?.id]);
 
@@ -597,7 +598,7 @@ export default function App() {
                         setPickShowMode("confirm");
                         setPickShowId(id);
                       }}
-                      placeholder="your shows"
+                      placeholder="START HERE"
                       wrapperStyle={{ width: "100%" }}
                       onMouseEnter={() => setShowsEmojiHover(true)}
                       onMouseLeave={() => setShowsEmojiHover(false)}
@@ -617,17 +618,6 @@ export default function App() {
                   placeholder="join a new show"
                   style={{ margin: 0 }}
                 />
-              </div>
-              <div style={{ textAlign: "center", marginTop: 24 }}>
-                <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
-                  trial forum:
-                </div>
-                <button
-                  onClick={() => handlePickFromSearch("bb")}
-                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2 }}
-                >
-                  Breaking Bad (DEMO)
-                </button>
               </div>
             </>
           )}
@@ -663,7 +653,7 @@ export default function App() {
                         setPickShowMode("confirm");
                         setPickShowId(id);
                       }}
-                      placeholder="your shows"
+                      placeholder="START HERE"
                       wrapperStyle={{ width: "100%" }}
                       onMouseEnter={() => setShowsEmojiHover(true)}
                       onMouseLeave={() => setShowsEmojiHover(false)}
@@ -685,17 +675,6 @@ export default function App() {
                 />
               </div>
 
-              <div style={{ textAlign: "center", marginTop: 48 }}>
-                <div className="popularHeading" style={{ fontSize: 16, fontWeight: 600, letterSpacing: 0.3, marginBottom: 10 }}>
-                  trial forum:
-                </div>
-                <button
-                  onClick={() => handlePickFromSearch("bb")}
-                  style={{ background: "var(--dos-bg)", color: "#fff", border: "1.5px solid rgba(255,255,255,0.7)", borderRadius: 9999, padding: "6px 20px", fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: 0.2 }}
-                >
-                  Breaking Bad (DEMO)
-                </button>
-              </div>
             </div>
           )}
 

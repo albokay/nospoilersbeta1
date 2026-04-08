@@ -18,7 +18,7 @@ export default function YourShowsSelect({
         <option value="" disabled>{placeholder ?? "switch shows"}</option>
         {keys.map((id) => {
           const s = shows.find(x => x.id === id);
-          const label = (s?.name || id) + (id === "bb" ? " (DEMO)" : "");
+          const label = (s?.name || id) + (id === "bb" ? " (DEMO FORUM)" : "");
           return <option key={id} value={id}>{label}</option>;
         })}
       </select>
