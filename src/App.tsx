@@ -557,7 +557,7 @@ export default function App() {
           {/* ── Homepage ── */}
           {isHomepage && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: isMobile ? 48 : 56, paddingBottom: 24, zIndex: 95, position: "relative", width: "100vw", marginLeft: "calc(-50vw + 50%)" }}>
-              <div style={{ transform: `translateX(${isMobile ? 8 : 13}px)` }}><SidebarLogo scale={isMobile ? 0.6 : 1} /></div>
+              <div style={{ transform: `translateX(${isMobile ? 8 : 13}px)` }}><SidebarLogo scale={isMobile ? 0.75 : 1} /></div>
 
               {/* Hero headline */}
               <p style={{
