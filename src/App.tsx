@@ -18,7 +18,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight } from "lucide-react";
+import { Tv, EyeClosed, Eye, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight, MoveDown } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -673,19 +673,27 @@ export default function App() {
                         borderRadius: 16,
                         padding: isMobile ? "12px 14px" : "16px 18px",
                         display: "flex",
-                        flexDirection: "column",
+                        flexDirection: isMobile ? "row" : "column",
                         alignItems: "center",
-                        gap: 8,
+                        gap: isMobile ? 14 : 8,
                         background: "rgba(255,255,255,0.18)",
                       }}>
-                        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <IconA size={isMobile ? 18 : 22} color="#fff" strokeWidth={1.5} />
-                          {!(isMobile && idx === 0) && <>
-                            <MoveRight size={isMobile ? 11 : 13} color="#fff" strokeWidth={2} />
-                            <IconB size={isMobile ? 18 : 22} color="#fff" strokeWidth={1.5} />
-                          </>}
-                        </div>
-                        <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4, textAlign: "center" }}>{text}</span>
+                        {isMobile ? (
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                            <IconA size={18} color="#fff" strokeWidth={1.5} />
+                            {idx !== 0 && <>
+                              <MoveDown size={11} color="#fff" strokeWidth={2} />
+                              <IconB size={18} color="#fff" strokeWidth={1.5} />
+                            </>}
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <IconA size={22} color="#fff" strokeWidth={1.5} />
+                            <MoveRight size={13} color="#fff" strokeWidth={2} />
+                            <IconB size={22} color="#fff" strokeWidth={1.5} />
+                          </div>
+                        )}
+                        <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4, textAlign: isMobile ? "left" : "center" }}>{text}</span>
                       </div>
                     ))}
                   </div>
