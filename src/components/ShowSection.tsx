@@ -1010,7 +1010,7 @@ export default function ShowSection({
           onRepliesLoaded={handleRepliesLoaded}
         />
       ) : (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 8 }}>
           {threadsLoading && (
             <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading…</div>
           )}
