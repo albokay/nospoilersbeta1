@@ -18,7 +18,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, UsersRound, Globe } from "lucide-react";
+import { Tv, EyeClosed, Eye, UsersRound, ListCheck, Globe, Search, Rocket, ArrowRight } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -651,11 +651,11 @@ export default function App() {
 
               {/* Feature grid */}
               {(() => {
-                const items: { Icon: React.ElementType; text: string }[] = [
-                  { Icon: Tv,             text: "Find your show — search for any TV show and join its room." },
-                  { Icon: UsersRound,     text: "Invite your friends and mark your progress — share the room with the people you love to talk to. Everyone notes the last episode they watched each time they join in." },
-                  { Icon: EyeClosed,      text: "Talk freely, spoiler-free — Sidebar filters the room to your watch progress, so nothing you read is ahead of where you are. Behind or ahead, everyone's entries wait until you're ready." },
-                  { Icon: Globe,          text: "Venture further — the room is public so others can read and respond too. Filter to your friends only, or let your conversation expand." },
+                const items: { IconA: React.ElementType; IconB: React.ElementType; text: string }[] = [
+                  { IconA: Search,     IconB: Tv,         text: "Find your show — search for any TV show and join its room." },
+                  { IconA: UsersRound, IconB: ListCheck,  text: "Invite your friends and mark your progress — share the room with the people you love to talk to. Everyone notes the last episode they watched each time they join in." },
+                  { IconA: EyeClosed,  IconB: Eye,        text: "Talk freely, spoiler-free — Sidebar filters the room to your watch progress, so nothing you read is ahead of where you are. Behind or ahead, everyone's entries wait until you're ready." },
+                  { IconA: Globe,      IconB: Rocket,     text: "Venture further — the room is public so others can read and respond too. Filter to your friends only, or let your conversation expand." },
                 ];
                 return (
                   <div style={{
@@ -668,7 +668,7 @@ export default function App() {
                     padding: isMobile ? 0 : "0 16px",
                     boxSizing: "border-box",
                   }}>
-                    {items.map(({ Icon, text }) => (
+                    {items.map(({ IconA, IconB, text }) => (
                       <div key={text} style={{
                         border: "none",
                         borderRadius: 16,
@@ -679,7 +679,11 @@ export default function App() {
                         gap: 8,
                         background: "#fff",
                       }}>
-                        <Icon size={isMobile ? 20 : 24} color="var(--dos-bg)" strokeWidth={1.5} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <IconA size={isMobile ? 20 : 24} color="var(--dos-bg)" strokeWidth={1.5} />
+                          <ArrowRight size={isMobile ? 12 : 14} color="var(--dos-bg)" strokeWidth={2} />
+                          <IconB size={isMobile ? 20 : 24} color="var(--dos-bg)" strokeWidth={1.5} />
+                        </div>
                         <span style={{ fontSize: isMobile ? 12 : 13, color: "var(--dos-bg)", fontWeight: 500, lineHeight: 1.4, textAlign: "center" }}>{text}</span>
                       </div>
                     ))}
