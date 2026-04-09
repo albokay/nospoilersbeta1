@@ -667,7 +667,7 @@ export default function App() {
                     display: "grid",
                     gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr",
                     gap: 8,
-                    maxWidth: 760,
+                    maxWidth: 920,
                     width: "100%",
                     margin: "32px 16px 0",
                     padding: "0 16px",
@@ -675,17 +675,17 @@ export default function App() {
                   }}>
                     {items.map(({ Icon, text }) => (
                       <div key={text} style={{
-                        border: "2px solid rgba(255,255,255,0.6)",
+                        border: "none",
                         borderRadius: 16,
-                        padding: isMobile ? "10px 10px" : "14px 16px",
+                        padding: isMobile ? "12px 12px" : "16px 18px",
                         display: "flex",
-                        flexDirection: "row",
-                        alignItems: "flex-start",
-                        gap: 10,
-                        background: "rgba(255,255,255,0.12)",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 8,
+                        background: "#fff",
                       }}>
-                        <Icon size={isMobile ? 18 : 20} color="#fff" strokeWidth={1.5} style={{ flexShrink: 0, marginTop: 1 }} />
-                        <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4 }}>{text}</span>
+                        <Icon size={isMobile ? 20 : 24} color="var(--dos-bg)" strokeWidth={1.5} />
+                        <span style={{ fontSize: isMobile ? 12 : 13, color: "var(--dos-bg)", fontWeight: 500, lineHeight: 1.4, textAlign: "center" }}>{text}</span>
                       </div>
                     ))}
                   </div>
