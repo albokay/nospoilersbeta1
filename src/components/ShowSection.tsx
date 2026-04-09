@@ -242,7 +242,9 @@ export default function ShowSection({
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
   const [replyMeta, setReplyMeta] = useState<Record<string, ReplyMeta[]>>({});
   const [hasExternalReplies, setHasExternalReplies] = useState<Record<string, boolean>>({});
-  const [threadsLoading, setThreadsLoading] = useState(false);
+  // Start true so the thread-URL guard fires on the very first render,
+  // before the fetch useEffect has a chance to run.
+  const [threadsLoading, setThreadsLoading] = useState(true);
 
   // ── New-reply tracking (persisted to localStorage) ────────
   // lastOpenedAt: updated every time user opens a thread → clears the green (visible-new) bubble
