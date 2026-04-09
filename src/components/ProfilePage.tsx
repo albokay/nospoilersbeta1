@@ -249,7 +249,7 @@ export default function ProfilePage({
             <>
               {/* Your Watch Diary */}
               <section style={{ marginTop: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, marginBottom: 16, minHeight: 28 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, marginBottom: 16, minHeight: 28 }}>
                   <div className="title profile-journal-heading" style={{ fontSize: 22, marginLeft: -42 }}>Your Journal</div>
                   <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
                     {(["all", "private"] as const).map(opt => (

@@ -33,6 +33,7 @@ import Username from "./Username";
 import type { PendingReference } from "./ResponseComposer";
 import PromptCard from "./PromptCard";
 import type { PromptEntry } from "../lib/promptData";
+import YourShowsSelect from "./YourShowsSelect";
 import { getFragment, getPromptSuggestion } from "../lib/prompts";
 
 const GLOBAL_HEADER_H = 56;
@@ -45,7 +46,7 @@ export default function ShowSection({
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
   focusReplyId, onAuthRequired, onClickProfile, navLeft, navRight,
   showStaleNudge, onDismissStaleNudge,
-  clearRewatchFor, onOpenFeedback,
+  clearRewatchFor, onOpenFeedback, onSwitchShow,
 }: any) {
   const { user, profile } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
@@ -688,15 +689,15 @@ export default function ShowSection({
                 ? "the BREAKING BAD (DEMO) room"
                 : `the ${String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()} room`}
             </span>
-            {!thread && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto" }}>
-                <select className="badge" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
-                  <option value="relevance">Relevance</option>
-                  <option value="post">Post date</option>
-                  <option value="episode">Episode order</option>
-                  <option value="hot">Hot</option>
-                  <option value="rewatchers">Rewatchers</option>
-                </select>
+            {user && onSwitchShow && (
+              <div style={{ flex: "0 0 auto" }}>
+                <YourShowsSelect
+                  shows={allShows}
+                  progress={progress}
+                  value={""}
+                  onChange={(id: string) => { if (id) onSwitchShow(id); }}
+                  compact
+                />
               </div>
             )}
           </div>
@@ -773,6 +774,15 @@ export default function ShowSection({
                 </div>
               )}
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {!thread && (
+                  <select className="badge h40" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+                    <option value="relevance">Relevance</option>
+                    <option value="post">Post date</option>
+                    <option value="episode">Episode order</option>
+                    <option value="hot">Hot</option>
+                    <option value="rewatchers">Rewatchers</option>
+                  </select>
+                )}
                 {thread && (
                   <div style={{ transform: "translateX(-10px)" }}>
                     <ModeToggle

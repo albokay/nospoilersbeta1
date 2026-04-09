@@ -448,7 +448,7 @@ export default function App() {
   // ── Fixed auth / profile / admin controls (top-right, all pages) ─
   const fixedAuth = (
     <div className="fixedAuthWrap" style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
-      {!isHomepage && !authLoading && user && (
+      {!isHomepage && !expandedShowId && !authLoading && user && (
         <span className="mobileHide" style={{ display: "inline-flex" }}>
           <YourShowsSelect
             shows={shows}
@@ -806,6 +806,7 @@ export default function App() {
             onClickProfile={handleClickProfile}
             showStaleNudge={showStaleNudge && !staleNudgeDismissed}
             onDismissStaleNudge={() => setStaleNudgeDismissed(true)}
+            onSwitchShow={(id: string) => { setPickShowMode("confirm"); setPickShowId(id); }}
           />
         </div>
       )}
