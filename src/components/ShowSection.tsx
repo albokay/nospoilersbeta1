@@ -823,7 +823,7 @@ export default function ShowSection({
       {showStaleNudge && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          gap: 12, padding: "10px 16px", marginBottom: 8,
+          gap: 12, padding: "8px 16px", marginBottom: 0,
           background: "#fff", border: "none",
           borderRadius: 24, fontSize: 13, color: "var(--danger)",
         }}>
@@ -890,7 +890,7 @@ export default function ShowSection({
       {showProgressCelebration && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          gap: 12, padding: "10px 16px", marginBottom: 8,
+          gap: 12, padding: "8px 16px", marginBottom: 0,
           background: "#fff", border: "none",
           borderRadius: 24, fontSize: 13, color: "var(--danger)",
         }}>
