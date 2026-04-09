@@ -1031,7 +1031,7 @@ export default function ShowSection({
             if (t.isDeleted) {
               if (!hasExternal) return null;
               return (
-                <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
+                <div key={t.id} style={{ position: "relative", margin: "0 0 12px 0" }}>
                   <div
                     className="card threadCard"
                     style={{ margin: 0, opacity: 0.72, cursor: "pointer", position: "relative" }}
@@ -1052,7 +1052,7 @@ export default function ShowSection({
             }
 
             return (
-              <div key={t.id} style={{ position: "relative", margin: "12px 0" }}>
+              <div key={t.id} style={{ position: "relative", margin: "0 0 12px 0" }}>
                 {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
                   <Tooltip
                     text="People (who are ahead of you) have written you back!"
