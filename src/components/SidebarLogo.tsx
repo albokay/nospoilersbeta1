@@ -1,20 +1,26 @@
 import React, { useEffect, useState } from "react";
 
-const BLOCK = 16;
+const BLOCK = 52;
 
 const BLOCKS = [
-  { id: "green",     color: "#dea838", z: 1, blend: "exclusion" },
-  { id: "white",     color: "#fffaf0", z: 2, blend: "screen" },
+  { id: "green",     color: "#dea838", z: 1, blend: "color-burn" },
+  { id: "white",     color: "#fffaf0", z: 2, blend: "color-burn" },
   { id: "lightBlue", color: "#bdd4de", z: 3, blend: "color-burn" },
-  { id: "orange",    color: "#f45028", z: 4, blend: "exclusion" },
-  { id: "blue",      color: "#2256c9", z: 5, blend: "exclusion" },
+  { id: "orange",    color: "#f45028", z: 4, blend: "multiply"   },
+  { id: "blue",      color: "#2256c9", z: 5, blend: "color-burn" },
 ] as const;
 
 type BlockId = (typeof BLOCKS)[number]["id"];
 type Pos = { x: number; y: number };
 type Layout = Record<BlockId, Pos>;
 
+// Four arrangements matched to reference screenshots.
+// Canvas: 280×148px. Block: 52×52px. Logo: left=45, bottom=0.
+// Z-order: green(1) < white(2) < lightBlue(3) < orange(4) < blue(5)
 const ARRANGEMENTS: Layout[] = [
+  // 1 · white upper-left of cluster, orange overlapping below-right of white,
+  //     lightBlue to the right of white/orange, blue isolated far upper-right,
+  //     green isolated lower-left
   {
     white:     { x: 65,  y: 8  },
     orange:    { x: 105, y: 44 },
@@ -22,6 +28,8 @@ const ARRANGEMENTS: Layout[] = [
     blue:      { x: 220, y: 5  },
     green:     { x: -8,  y: 90 },
   },
+  // 2 · lightBlue→blue→white staircase climbing upper-right,
+  //     orange isolated lower-left at text level, green isolated lower-center
   {
     lightBlue: { x: 97,  y: 40  },
     blue:      { x: 125, y: 16  },
@@ -29,6 +37,9 @@ const ARRANGEMENTS: Layout[] = [
     orange:    { x: -3,  y: 76  },
     green:     { x: 58,  y: 100 },
   },
+  // 3 · white upper-left, green overlapping white lower-right,
+  //     orange overlapping green lower-left (at text level),
+  //     lightBlue upper-right cluster, blue overlapping lightBlue lower-right
   {
     white:     { x: 5,   y: 13 },
     green:     { x: 26,  y: 44 },
@@ -36,6 +47,8 @@ const ARRANGEMENTS: Layout[] = [
     lightBlue: { x: 174, y: 36 },
     blue:      { x: 204, y: 61 },
   },
+  // 4 · lightBlue upper-left, blue overlapping lightBlue lower-left,
+  //     white upper-center, orange center, green isolated lower-right (behind "bar")
   {
     lightBlue: { x: -8,  y: 4   },
     blue:      { x: -24, y: 29  },
@@ -48,39 +61,9 @@ const ARRANGEMENTS: Layout[] = [
 const SCATTER_X: [number, number] = [-45, 193];
 const SCATTER_Y: [number, number] = [30, 150];
 
-// 3 circles out of 6 = favoring circles
-const SHAPES = ["circle", "circle", "circle", "square", "triangle", "pentagon"];
-
 function randInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function shapeStyle(shape: string): React.CSSProperties {
-  switch (shape) {
-    case "circle":
-      return { borderRadius: "50%" };
-    case "square":
-      return { borderRadius: "3px" };
-    case "triangle":
-      // Paths offset by +8 to center within 16×16 element box
-      return { clipPath: "path('M 6.9 2.2 Q 8 0 9.1 2.2 L 14.9 13.8 Q 16 16 13.5 16 L 2.5 16 Q 0 16 1.1 13.8 Z')" };
-    case "pentagon":
-      return { clipPath: "path('M 6.4 1.2 Q 8 0 9.6 1.2 L 14.4 4.9 Q 16 6.1 15.4 8 L 13.7 14.1 Q 13.1 16 11.1 16 L 4.9 16 Q 2.9 16 2.3 14.1 L 0.6 8 Q 0 6.1 1.6 4.9 Z')" };
-    default:
-      return {};
-  }
-}
-
-type Dot = { color: string; z: number; blend: string; shape: string; rotation: number; x: number; y: number };
 
 export interface SidebarLogoProps {
   scale?: number;
@@ -93,40 +76,24 @@ export default function SidebarLogo({
   duration = 750,
   stagger = 40,
 }: SidebarLogoProps) {
-  const [dots, setDots] = useState<Dot[] | null>(null);
+  const [layout, setLayout] = useState<Layout | null>(null);
   const [settled, setSettled] = useState(false);
 
   useEffect(() => {
-    // Pick two distinct arrangements
-    const i1 = Math.floor(Math.random() * ARRANGEMENTS.length);
-    let i2 = Math.floor(Math.random() * (ARRANGEMENTS.length - 1));
-    if (i2 >= i1) i2++;
-    const arr1 = ARRANGEMENTS[i1];
-    const arr2 = ARRANGEMENTS[i2];
+    const target =
+      ARRANGEMENTS[Math.floor(Math.random() * ARRANGEMENTS.length)];
 
-    const picked = shuffle(SHAPES).slice(0, 5);
-    const shapeMap = Object.fromEntries(BLOCKS.map((b, i) => [b.id, picked[i]]));
-
-    const scattered: Dot[] = BLOCKS.flatMap(b => [
-      { color: b.color, z: b.z, blend: b.blend, shape: shapeMap[b.id], rotation: randInt(-180, 180), x: randInt(...SCATTER_X), y: randInt(...SCATTER_Y) },
-      { color: b.color, z: b.z, blend: b.blend, shape: shapeMap[b.id], rotation: randInt(-180, 180), x: randInt(...SCATTER_X), y: randInt(...SCATTER_Y) },
-    ]);
-    setDots(scattered);
+    const scatter = {} as Layout;
+    for (const b of BLOCKS) {
+      scatter[b.id] = { x: randInt(...SCATTER_X), y: randInt(...SCATTER_Y) };
+    }
+    setLayout(scatter);
     setSettled(false);
-
-    const spread = 0.827;
-    const ox1 = randInt(-60, 60), oy1 = randInt(-10, 10);
-    const ox2 = randInt(-60, 60), oy2 = randInt(-10, 10);
-
-    const target: Dot[] = BLOCKS.flatMap(b => [
-      { color: b.color, z: b.z, blend: b.blend, shape: shapeMap[b.id], rotation: randInt(-150, 150), x: arr1[b.id].x * spread + ox1 + 50, y: arr1[b.id].y * spread + oy1 + 30 },
-      { color: b.color, z: b.z, blend: b.blend, shape: shapeMap[b.id], rotation: randInt(-150, 150), x: arr2[b.id].x * spread + ox2 + 50, y: arr2[b.id].y * spread + oy2 + 30 },
-    ]);
 
     let raf2: number;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        setDots(target);
+        setLayout(target);
         setSettled(true);
       });
     });
@@ -154,26 +121,28 @@ export default function SidebarLogo({
       <div
         style={{
           position: "absolute",
-          top: 0, left: 0,
-          width: W, height: H,
+          top: 0,
+          left: 0,
+          width: W,
+          height: H,
           transform: scale !== 1 ? `scale(${scale})` : undefined,
           transformOrigin: "top left",
           isolation: "isolate",
         }}
       >
-        {dots &&
-          dots.map((dot, i) => (
+        {layout &&
+          BLOCKS.map((block, i) => (
             <div
-              key={i}
+              key={block.id}
               style={{
                 position: "absolute",
                 width: BLOCK,
                 height: BLOCK,
-                ...shapeStyle(dot.shape),
-                background: dot.color,
-                zIndex: dot.z,
-                mixBlendMode: dot.blend as React.CSSProperties["mixBlendMode"],
-                transform: `translate(${dot.x}px, ${dot.y}px) rotate(${dot.rotation}deg)`,
+                borderRadius: 15,
+                background: block.color,
+                zIndex: block.z,
+                mixBlendMode: block.blend as React.CSSProperties["mixBlendMode"],
+                transform: `translate(${layout[block.id].x}px, ${layout[block.id].y}px)`,
                 transition: settled
                   ? `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) ${i * stagger}ms`
                   : "none",
@@ -186,8 +155,10 @@ export default function SidebarLogo({
           alt="sidebar"
           style={{
             position: "absolute",
-            left: 45, bottom: 0,
-            height: 52, width: "auto",
+            left: 45,
+            bottom: 0,
+            height: 52,
+            width: "auto",
             display: "block",
             zIndex: 6,
             mixBlendMode: "normal",
