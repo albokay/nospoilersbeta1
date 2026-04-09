@@ -18,6 +18,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
+import { Tv, BookMarked, EyeOff, Users, MessageCircle, Globe } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -653,13 +654,13 @@ export default function App() {
 
               {/* Feature grid */}
               {(() => {
-                const items = [
-                  { icon: "📺", text: "Find your show — search for any TV show and join the room." },
-                  { icon: "📍", text: "Mark your progress — note the last episode you've watched, each time you join in. Everyone else does the same." },
-                  { icon: "🙈", text: "Only see what's safe — Sidebar filters the room to your watch progress. No spoilers." },
-                  { icon: "👯", text: "Invite your friends — share the room with the people you already love talking to." },
-                  { icon: "💬", text: "Talk freely — If you're behind, your friends' entries will wait for you. If you're ahead, friends will see your writing when they catch up. Everyone at their own pace, together." },
-                  { icon: "🌍", text: "Venture further — the room is open to the public. Others can read and respond to you. Filter the forum by your friends only, or let your conversation expand." },
+                const items: { Icon: React.ElementType; text: string }[] = [
+                  { Icon: Tv,            text: "Find your show — search for any TV show and join the room." },
+                  { Icon: BookMarked,    text: "Mark your progress — note the last episode you've watched, each time you join in. Everyone else does the same." },
+                  { Icon: EyeOff,        text: "Only see what's safe — Sidebar filters the room to your watch progress. No spoilers." },
+                  { Icon: Users,         text: "Invite your friends — share the room with the people you already love talking to." },
+                  { Icon: MessageCircle, text: "Talk freely — If you're behind, your friends' entries will wait for you. If you're ahead, friends will see your writing when they catch up. Everyone at their own pace, together." },
+                  { Icon: Globe,         text: "Venture further — the room is open to the public. Others can read and respond to you. Filter the forum by your friends only, or let your conversation expand." },
                 ];
                 return (
                   <div style={{
@@ -672,17 +673,17 @@ export default function App() {
                     padding: "0 16px",
                     boxSizing: "border-box",
                   }}>
-                    {items.map(({ icon, text }) => (
+                    {items.map(({ Icon, text }) => (
                       <div key={text} style={{
                         border: "2px solid rgba(255,255,255,0.6)",
                         borderRadius: 16,
                         padding: isMobile ? "10px 10px" : "14px 16px",
                         display: "flex",
                         flexDirection: "column",
-                        gap: 6,
+                        gap: 8,
                         background: "rgba(255,255,255,0.12)",
                       }}>
-                        <span style={{ fontSize: isMobile ? 20 : 24, lineHeight: 1 }}>{icon}</span>
+                        <Icon size={isMobile ? 20 : 24} color="#fff" strokeWidth={1.5} />
                         <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4 }}>{text}</span>
                       </div>
                     ))}
