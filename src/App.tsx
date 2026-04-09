@@ -573,7 +573,7 @@ export default function App() {
                     means spoilers or silence.<br />
                     <em>Sidebar fixes that.</em><br />
                     <span style={{ fontSize: 16, lineHeight: 1.3, display: "inline-block", marginTop: 16 }}>
-                      Watch at your own pace and still talk about it freely. Nobody gets spoiled, ever.<br />
+                      Watch at your own pace and still talk about things freely. Nobody gets spoiled, ever.<br />
                       When you're ready, the conversation can grow wider.
                     </span>
                   </>
@@ -583,7 +583,7 @@ export default function App() {
                     <span style={{ whiteSpace: "nowrap" }}>means spoilers or silence.</span><br />
                     <em>Sidebar fixes that.</em><br />
                     <span style={{ fontSize: 20, lineHeight: 1.3, display: "inline-block", marginTop: 20 }}>
-                      <span style={{ whiteSpace: "nowrap" }}>Watch at your own pace and still talk about it freely. Nobody gets spoiled, ever.</span><br />
+                      <span style={{ whiteSpace: "nowrap" }}>Watch at your own pace and still talk about things freely. Nobody gets spoiled, ever.</span><br />
                       <span style={{ whiteSpace: "nowrap" }}>When you're ready, the conversation can grow wider.</span>
                     </span>
                   </>
