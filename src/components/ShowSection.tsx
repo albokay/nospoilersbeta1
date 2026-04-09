@@ -370,10 +370,10 @@ export default function ShowSection({
     return score;
   };
 
-  const allThreads = useMemo(() =>
-    [...dbThreads, ...seedThreads.filter(t => t.showId === showId)],
-    [dbThreads, showId]
-  );
+  const allThreads = useMemo(() => {
+    const dbIds = new Set(dbThreads.map(t => t.id));
+    return [...dbThreads, ...seedThreads.filter(t => t.showId === showId && !dbIds.has(t.id))];
+  }, [dbThreads, showId]);
 
   const baseVisible = useMemo(() => {
     const prog = progress[showId];
@@ -965,7 +965,10 @@ export default function ShowSection({
       )}
 
       {/* CONTENT */}
-      {thread ? (
+      {/* If a thread ID is in the URL but threads haven't loaded yet, wait — don't flash the room */}
+      {activeThreadId && !thread && threadsLoading ? (
+        <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading…</div>
+      ) : thread ? (
         <InlineThreadView
           thread={{ ...thread, likes: likesThreads[thread.id] ?? thread.likes }}
           show={allShows.find(s => s.id === showId) || { name: showId }}
