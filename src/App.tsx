@@ -654,12 +654,12 @@ export default function App() {
               {/* Feature grid */}
               {(() => {
                 const items = [
-                  { icon: "📺", text: "Find a show's room — search for any TV show and join its forum." },
-                  { icon: "📍", text: "Mark your progress — note the last episode you've watched, each time you join in." },
+                  { icon: "📺", text: "Find your show — search for any TV show and join the room." },
+                  { icon: "📍", text: "Mark your progress — note the last episode you've watched, each time you join in. Everyone else does the same." },
                   { icon: "🙈", text: "Only see what's safe — Sidebar filters the room to your watch progress. No spoilers." },
-                  { icon: "👯", text: "Invite your friends — share the room with people watching the same show." },
-                  { icon: "💬", text: "Talk freely — everyone's at their own pace, but the conversation never stops." },
-                  { icon: "🌍", text: "Venture further — the room is open to all viewers. Go deeper when you're ready." },
+                  { icon: "👯", text: "Invite your friends — share the room with the people you love talking to." },
+                  { icon: "💬", text: "Talk freely — If you're behind, your friends' entries will wait for you. If you're ahead, friends will see your writing when they catch up. It's like a time machine: everyone watching at their own pace but together." },
+                  { icon: "🌍", text: "Venture further — the room is open to the public. Filter by your friends only, or venture out." },
                 ];
                 return (
                   <div style={{
