@@ -18,7 +18,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight } from "lucide-react";
+import { Tv, EyeClosed, Eye, UsersRound, ListCheck, Globe, Search, Rocket, MoveDown } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -673,17 +673,17 @@ export default function App() {
                         borderRadius: 16,
                         padding: isMobile ? "12px 14px" : "16px 18px",
                         display: "flex",
-                        flexDirection: "column",
+                        flexDirection: "row",
                         alignItems: "center",
-                        gap: 8,
+                        gap: 14,
                         background: "rgba(255,255,255,0.18)",
                       }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <IconA size={isMobile ? 18 : 24} color="#fff" strokeWidth={1.5} />
-                          <MoveRight size={isMobile ? 11 : 14} color="#fff" strokeWidth={2} />
-                          <IconB size={isMobile ? 18 : 24} color="#fff" strokeWidth={1.5} />
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                          <IconA size={isMobile ? 18 : 22} color="#fff" strokeWidth={1.5} />
+                          <MoveDown size={isMobile ? 11 : 13} color="#fff" strokeWidth={2} />
+                          <IconB size={isMobile ? 18 : 22} color="#fff" strokeWidth={1.5} />
                         </div>
-                        <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4, textAlign: "center" }}>{text}</span>
+                        <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4, textAlign: "left" }}>{text}</span>
                       </div>
                     ))}
                   </div>
