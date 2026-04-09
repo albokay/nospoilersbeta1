@@ -668,7 +668,7 @@ export default function App() {
                     padding: isMobile ? 0 : "0 16px",
                     boxSizing: "border-box",
                   }}>
-                    {items.map(({ IconA, IconB, text }) => (
+                    {items.map(({ IconA, IconB, text }, idx) => (
                       <div key={text} style={{
                         borderRadius: 16,
                         padding: isMobile ? "12px 14px" : "16px 18px",
@@ -680,8 +680,10 @@ export default function App() {
                       }}>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
                           <IconA size={isMobile ? 18 : 22} color="#fff" strokeWidth={1.5} />
-                          <MoveDown size={isMobile ? 11 : 13} color="#fff" strokeWidth={2} />
-                          <IconB size={isMobile ? 18 : 22} color="#fff" strokeWidth={1.5} />
+                          {!(isMobile && idx === 0) && <>
+                            <MoveDown size={isMobile ? 11 : 13} color="#fff" strokeWidth={2} />
+                            <IconB size={isMobile ? 18 : 22} color="#fff" strokeWidth={1.5} />
+                          </>}
                         </div>
                         <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4, textAlign: "left" }}>{text}</span>
                       </div>
