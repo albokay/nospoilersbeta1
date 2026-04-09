@@ -18,7 +18,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, UsersRound, ListCheck, Globe, Search, Rocket, ArrowRight } from "lucide-react";
+import { Tv, EyeClosed, Eye, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -680,7 +680,7 @@ export default function App() {
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                           <IconA size={isMobile ? 18 : 24} color="#fff" strokeWidth={1.5} />
-                          <ArrowRight size={isMobile ? 11 : 14} color="#fff" strokeWidth={2} />
+                          <MoveRight size={isMobile ? 11 : 14} color="#fff" strokeWidth={2} />
                           <IconB size={isMobile ? 18 : 24} color="#fff" strokeWidth={1.5} />
                         </div>
                         <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4, textAlign: isMobile ? "left" : "center" }}>{text}</span>
