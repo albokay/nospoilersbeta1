@@ -581,7 +581,9 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    <span style={{ whiteSpace: "nowrap" }}>Watching TV with friends usually means</span>{" "}<span style={{ whiteSpace: "nowrap" }}>spoilers or silence.</span>{" "}<em>Sidebar fixes that.</em><br />
+                    <span style={{ whiteSpace: "nowrap" }}>Watching TV with friends</span><br />
+                    <span style={{ whiteSpace: "nowrap" }}>usually means spoilers or silence.</span><br />
+                    <em>Sidebar fixes that.</em><br />
                     <span style={{ fontSize: 20 }}>
                       <span style={{ whiteSpace: "nowrap" }}>Watch at your own pace and still talk about it freely.</span>{" "}<span style={{ whiteSpace: "nowrap" }}>Nobody gets spoiled, ever.</span><br />
                       <span style={{ whiteSpace: "nowrap" }}>When you're ready,</span>{" "}<span style={{ whiteSpace: "nowrap" }}>the conversation can grow wider.</span>
