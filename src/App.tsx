@@ -568,16 +568,20 @@ export default function App() {
               }}>
                 {isMobile ? (
                   <>
-                    The internet<br />
-                    is full of spoilers.<br />
-                    Sidebar forums aren't.<br />
-                    Watch TV at your own pace.<br />
-                    Stay in the conversation.
+                    Watching TV with friends<br />
+                    usually means spoilers or silence.<br />
+                    Sidebar fixes that.<br />
+                    Watch at your own pace<br />
+                    and still talk about it freely.<br />
+                    Nobody gets spoiled, ever.<br />
+                    When you're ready,<br />
+                    the conversation can grow wider.
                   </>
                 ) : (
                   <>
-                    <span style={{ whiteSpace: "nowrap" }}>The internet is</span>{" "}<span style={{ whiteSpace: "nowrap" }}>full of spoilers. Sidebar forums aren't.</span><br />
-                    Watch TV at your own pace. <span style={{ whiteSpace: "nowrap" }}>Stay in the conversation.</span>
+                    <span style={{ whiteSpace: "nowrap" }}>Watching TV with friends usually means</span>{" "}<span style={{ whiteSpace: "nowrap" }}>spoilers or silence. Sidebar fixes that.</span><br />
+                    <span style={{ whiteSpace: "nowrap" }}>Watch at your own pace and still talk about it freely.</span>{" "}<span style={{ whiteSpace: "nowrap" }}>Nobody gets spoiled, ever.</span><br />
+                    <span style={{ whiteSpace: "nowrap" }}>When you're ready,</span>{" "}<span style={{ whiteSpace: "nowrap" }}>the conversation can grow wider.</span>
                   </>
                 )}
               </p>
@@ -648,11 +652,14 @@ export default function App() {
                 fontSize: isMobile ? 15 : 16, fontWeight: 500,
                 color: "#fff", lineHeight: 1.6,
               }}>
-                <span style={{ whiteSpace: "nowrap" }}>Log the last episode you've watched.</span><br />
-                <span style={{ whiteSpace: "nowrap" }}>Everyone else does the same.</span>{" "}
-                <span style={{ whiteSpace: "nowrap" }}>You'll only see what's spoiler-safe.</span><br />
-                <span style={{ whiteSpace: "nowrap" }}>The more you watch, the more</span>{" "}
-                <span style={{ whiteSpace: "nowrap" }}>the conversation opens up.</span>
+                <span style={{ whiteSpace: "nowrap" }}>Invite your friends to a show's room.</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>Everyone marks the last episode they watched</span>{" "}
+                <span style={{ whiteSpace: "nowrap" }}>each time they join in.</span>{" "}
+                <span style={{ whiteSpace: "nowrap" }}>Sidebar only shows you posts</span>{" "}
+                <span style={{ whiteSpace: "nowrap" }}>up to your watch progress.</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>The room is open to other viewers too.</span><br />
+                <span style={{ whiteSpace: "nowrap" }}>Keep talking among your friends,</span>{" "}
+                <span style={{ whiteSpace: "nowrap" }}>or venture further.</span>
               </p>
 
               {/* BB demo entry — only shown to logged-out users */}
