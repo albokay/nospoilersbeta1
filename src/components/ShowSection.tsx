@@ -67,6 +67,9 @@ export default function ShowSection({
   const [freshReplyIds, setFreshReplyIds] = useState<Record<string, true>>({});
 
   // Clear risky reveals only when the thread changes, not on mode toggle
+  // Scroll to top whenever the show changes (reliable on mobile)
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [showId]);
+
   useEffect(() => { setRiskyRevealedIds(new Set()); }, [activeThreadId]);
 
   // When toggling FROM standard TO risky: scroll to + flash first redacted stub

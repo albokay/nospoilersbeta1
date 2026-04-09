@@ -658,13 +658,13 @@ export default function App() {
               {/* BB demo entry — only shown to logged-out users */}
               {!user && (
                 <div style={{ marginTop: 36, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 12, color: "var(--dos-user)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  <span style={{ fontSize: 12, color: "#fff", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
                     Breaking Bad (Demo Forum)
                   </span>
                   <button
                     className="btn"
                     onClick={() => openShow("bb")}
-                    style={{ fontSize: 15, padding: "8px 28px", borderRadius: 9999, whiteSpace: "nowrap", color: "var(--dos-user)", borderColor: "var(--dos-user)" }}
+                    style={{ fontSize: 15, padding: "8px 28px", borderRadius: 9999, whiteSpace: "nowrap", background: "#fff", color: "var(--dos-bg)", borderColor: "#fff" }}
                   >
                     Enter the demo →
                   </button>
