@@ -569,25 +569,22 @@ export default function App() {
               }}>
                 {isMobile ? (
                   <>
-                    Watching TV with friends<br />
-                    usually means spoilers or silence.<br />
+                    Watching TV with friends usually<br />
+                    means spoilers or silence.<br />
                     <em>Sidebar fixes that.</em><br />
-                    <span style={{ fontSize: 16, lineHeight: 1.1, display: "inline-block", marginTop: 4 }}>
-                      Watch at your own pace<br />
-                      and still talk about it freely.<br />
-                      Nobody gets spoiled, ever.<br />
-                      When you're ready,<br />
-                      the conversation can grow wider.
+                    <span style={{ fontSize: 16, lineHeight: 1.3, display: "inline-block", marginTop: 16 }}>
+                      Watch at your own pace and still talk about it freely. Nobody gets spoiled, ever.<br />
+                      When you're ready, the conversation can grow wider.
                     </span>
                   </>
                 ) : (
                   <>
-                    <span style={{ whiteSpace: "nowrap" }}>Watching TV with friends</span><br />
-                    <span style={{ whiteSpace: "nowrap" }}>usually means spoilers or silence.</span><br />
+                    <span style={{ whiteSpace: "nowrap" }}>Watching TV with friends usually</span><br />
+                    <span style={{ whiteSpace: "nowrap" }}>means spoilers or silence.</span><br />
                     <em>Sidebar fixes that.</em><br />
-                    <span style={{ fontSize: 20, lineHeight: 1.1, display: "inline-block", marginTop: 4 }}>
-                      <span style={{ whiteSpace: "nowrap" }}>Watch at your own pace and still talk about it freely.</span>{" "}<span style={{ whiteSpace: "nowrap" }}>Nobody gets spoiled, ever.</span><br />
-                      <span style={{ whiteSpace: "nowrap" }}>When you're ready,</span>{" "}<span style={{ whiteSpace: "nowrap" }}>the conversation can grow wider.</span>
+                    <span style={{ fontSize: 20, lineHeight: 1.3, display: "inline-block", marginTop: 20 }}>
+                      <span style={{ whiteSpace: "nowrap" }}>Watch at your own pace and still talk about it freely. Nobody gets spoiled, ever.</span><br />
+                      <span style={{ whiteSpace: "nowrap" }}>When you're ready, the conversation can grow wider.</span>
                     </span>
                   </>
                 )}
@@ -667,10 +664,10 @@ export default function App() {
                     display: "grid",
                     gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr",
                     gap: 8,
-                    maxWidth: 920,
-                    width: "100%",
-                    margin: "32px 16px 0",
-                    padding: "0 16px",
+                    maxWidth: isMobile ? undefined : 960,
+                    width: isMobile ? "min(288px, 90vw)" : "100%",
+                    margin: "32px 0 0",
+                    padding: isMobile ? 0 : "0 16px",
                     boxSizing: "border-box",
                   }}>
                     {items.map(({ Icon, text }) => (
