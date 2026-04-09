@@ -566,8 +566,20 @@ export default function App() {
                 fontSize: isMobile ? 20 : 32, fontWeight: 800,
                 color: "#fff", lineHeight: 1.3,
               }}>
-                <span style={{ whiteSpace: "nowrap" }}>The internet is</span>{isMobile ? <br /> : " "}<span style={{ whiteSpace: "nowrap" }}>full of spoilers. Sidebar forums aren't.</span><br />
-                Watch TV at your own pace. <span style={{ whiteSpace: "nowrap" }}>Stay in the conversation.</span>
+                {isMobile ? (
+                  <>
+                    The internet<br />
+                    is full of spoilers.<br />
+                    Sidebar forums aren't.<br />
+                    Watch TV at your own pace.<br />
+                    Stay in the conversation.
+                  </>
+                ) : (
+                  <>
+                    <span style={{ whiteSpace: "nowrap" }}>The internet is</span>{" "}<span style={{ whiteSpace: "nowrap" }}>full of spoilers. Sidebar forums aren't.</span><br />
+                    Watch TV at your own pace. <span style={{ whiteSpace: "nowrap" }}>Stay in the conversation.</span>
+                  </>
+                )}
               </p>
 
               {/* Three buttons row */}
@@ -642,6 +654,22 @@ export default function App() {
                 <span style={{ whiteSpace: "nowrap" }}>The more you watch, the more</span>{" "}
                 <span style={{ whiteSpace: "nowrap" }}>the conversation opens up.</span>
               </p>
+
+              {/* BB demo entry — only shown to logged-out users */}
+              {!user && (
+                <div style={{ marginTop: 36, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                    Breaking Bad (Demo Forum)
+                  </span>
+                  <button
+                    className="btn"
+                    onClick={() => openShow("bb")}
+                    style={{ fontSize: 15, padding: "8px 28px", borderRadius: 9999, whiteSpace: "nowrap" }}
+                  >
+                    Enter the demo →
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
