@@ -135,7 +135,7 @@ export default function App() {
   // navigating from a notification, and cleared by RepliesList after scrolling.
   const [focusReplyId, setFocusReplyId] = useState<string | null>(null);
 
-  const [progress, setProgress] = useState<Record<string, ProgressEntry>>({ bb: { s: 1, e: 1 } });
+  const [progress, setProgress] = useState<Record<string, ProgressEntry>>({ bb: { s: 99, e: 99 } });
 
   // Stale-progress nudge: show once per session if user returns after 12+ hour gap
   const [showStaleNudge, setShowStaleNudge] = useState(false);
@@ -152,10 +152,10 @@ export default function App() {
 
   // Load progress from DB when user logs in; clear it when they log out
   useEffect(() => {
-    if (!user) { setProgress({}); return; }
+    if (!user) { setProgress({ bb: { s: 99, e: 99 } }); return; }
     fetchProgress(user.id).then(saved => {
-      // Always keep BB in the dropdown as the demo entry
-      setProgress({ bb: { s: 1, e: 1 }, ...saved });
+      // Always keep BB visible; use s:99,e:99 as default so all demo threads show
+      setProgress({ bb: { s: 99, e: 99 }, ...saved });
     }).catch(err => console.error("Failed to load progress:", err));
   }, [user?.id]);
 
