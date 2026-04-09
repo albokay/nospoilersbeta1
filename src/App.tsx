@@ -655,12 +655,12 @@ export default function App() {
               {/* Feature grid */}
               {(() => {
                 const items: { Icon: React.ElementType; text: string }[] = [
-                  { Icon: Tv,             text: "Find your show — search for any TV show and join the room." },
-                  { Icon: ListCheck,      text: "Mark your progress — note the last episode you've watched, each time you join in. Everyone else does the same." },
-                  { Icon: EyeClosed,      text: "Only see what's safe — Sidebar filters the room to your watch progress. No spoilers." },
-                  { Icon: UsersRound,     text: "Invite your friends — share the room with the people you already love talking to." },
-                  { Icon: MessagesSquare, text: "Talk freely — If you're behind, your friends' entries will wait for you. If you're ahead, friends will see your writing when they catch up. Everyone at their own pace, together." },
-                  { Icon: Globe,          text: "Venture further — the room is open to the public. Others can read and respond to you. Filter the forum by your friends only, or let your conversation expand." },
+                  { Icon: Tv,             text: "Find your show — search for any TV show and join its room." },
+                  { Icon: ListCheck,      text: "Mark your progress — note the last episode you watched each time you join in. Everyone else does the same." },
+                  { Icon: EyeClosed,      text: "Only see what's safe — Sidebar filters the room to your watch progress. No spoilers, ever." },
+                  { Icon: UsersRound,     text: "Invite your friends — share the room with the people you want to watch with." },
+                  { Icon: MessagesSquare, text: "Talk freely — write for your friends, read what they wrote. Behind or ahead, everyone's entries wait until you're ready." },
+                  { Icon: Globe,          text: "Venture further — the room is public. Others can read and respond. Filter to your friends only and keep things close, or let the conversation expand." },
                 ];
                 return (
                   <div style={{
