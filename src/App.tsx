@@ -658,11 +658,11 @@ export default function App() {
               {/* BB demo entry — only shown to logged-out users */}
               {!user && (
                 <div style={{ marginTop: 36, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  <span style={{ fontSize: 12, color: "var(--danger)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
                     Breaking Bad (Demo Forum)
                   </span>
                   <button
-                    className="btn"
+                    className="btn btn-danger"
                     onClick={() => openShow("bb")}
                     style={{ fontSize: 15, padding: "8px 28px", borderRadius: 9999, whiteSpace: "nowrap" }}
                   >
