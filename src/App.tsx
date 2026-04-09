@@ -18,7 +18,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, ListCheck, EyeClosed, UsersRound, MessagesSquare, Globe } from "lucide-react";
+import { Tv, EyeClosed, UsersRound, Globe } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
