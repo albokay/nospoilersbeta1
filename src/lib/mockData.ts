@@ -1,5 +1,8 @@
 import type { Thread, Reply } from '../types';
 
+// Stable base time so seed thread updatedAt values don't change on every refresh
+const SEED_EPOCH = 1_700_000_000_000; // fixed: ~Nov 2023
+
 /* ------------------------------ Catalog ------------------------------ */
 export const seedShows = [
   { id: "bb", name: "Breaking Bad", seasons: [7, 13, 13, 13, 16] },
@@ -184,7 +187,7 @@ function makeThreads(showId: string, count: number): Thread[] {
     const body = composeLongBody(showId);
     return {
       id: `${showId}-t${i + 1}`, showId, season, episode, author, titleBase, preview, body,
-      updatedAt: Date.now() - randBetween(1, 144) * 3600000,
+      updatedAt: SEED_EPOCH - (i + 1) * 3600000,
       likes: randBetween(0, 60)
     };
   });
@@ -200,11 +203,11 @@ function pushPost({
   showId?: string; season: number; episode: number; author: string; title: string; body: string;
   updatedAtOffsetH?: number; likes?: number; isPrivate?: boolean;
 }) {
-  const id = `${showId}-${author}-${season}-${episode}-${Math.random().toString(36).slice(2, 8)}`;
+  const id = `${showId}-${author}-${season}-${episode}-${seedThreads.length}`;
   seedThreads.push({
     id, showId, season, episode, author, titleBase: title,
     preview: body.length > 240 ? body.slice(0, 240) + "…" : body,
-    body, updatedAt: Date.now() - updatedAtOffsetH * 3_600_000, likes, isPrivate
+    body, updatedAt: SEED_EPOCH - updatedAtOffsetH * 3_600_000, likes, isPrivate
   });
 }
 
@@ -215,11 +218,11 @@ function pushPostSev({
   showId?: string; season: number; episode: number; author: string; title: string; body: string;
   updatedAtOffsetH?: number; likes?: number; isPrivate?: boolean;
 }) {
-  const id = `${showId}-${author}-${season}-${episode}-${Math.random().toString(36).slice(2, 8)}`;
+  const id = `${showId}-${author}-${season}-${episode}-${seedThreads.length}`;
   seedThreads.push({
     id, showId, season, episode, author, titleBase: title,
     preview: body.length > 240 ? body.slice(0, 240) + "…" : body,
-    body, updatedAt: Date.now() - updatedAtOffsetH * 3_600_000, likes, isPrivate
+    body, updatedAt: SEED_EPOCH - updatedAtOffsetH * 3_600_000, likes, isPrivate
   });
 }
 
