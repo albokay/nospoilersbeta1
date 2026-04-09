@@ -660,7 +660,7 @@ export default function App() {
                 return (
                   <div style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
                     gap: 8,
                     maxWidth: isMobile ? undefined : 840,
                     width: isMobile ? "min(288px, 90vw)" : "100%",
@@ -670,21 +670,20 @@ export default function App() {
                   }}>
                     {items.map(({ IconA, IconB, text }) => (
                       <div key={text} style={{
-                        border: "none",
                         borderRadius: 16,
-                        padding: isMobile ? "12px 12px" : "16px 18px",
+                        padding: isMobile ? "12px 14px" : "16px 18px",
                         display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 8,
-                        background: "#fff",
+                        flexDirection: isMobile ? "row" : "column",
+                        alignItems: isMobile ? "flex-start" : "center",
+                        gap: isMobile ? 12 : 8,
+                        background: "rgba(255,255,255,0.18)",
                       }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <IconA size={isMobile ? 20 : 24} color="var(--dos-bg)" strokeWidth={1.5} />
-                          <ArrowRight size={isMobile ? 12 : 14} color="var(--dos-bg)" strokeWidth={2} />
-                          <IconB size={isMobile ? 20 : 24} color="var(--dos-bg)" strokeWidth={1.5} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                          <IconA size={isMobile ? 18 : 24} color="#fff" strokeWidth={1.5} />
+                          <ArrowRight size={isMobile ? 11 : 14} color="#fff" strokeWidth={2} />
+                          <IconB size={isMobile ? 18 : 24} color="#fff" strokeWidth={1.5} />
                         </div>
-                        <span style={{ fontSize: isMobile ? 12 : 13, color: "var(--dos-bg)", fontWeight: 500, lineHeight: 1.4, textAlign: "center" }}>{text}</span>
+                        <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4, textAlign: isMobile ? "left" : "center" }}>{text}</span>
                       </div>
                     ))}
                   </div>
