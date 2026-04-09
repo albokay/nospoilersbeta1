@@ -651,22 +651,44 @@ export default function App() {
                 />
               </div>
 
-              {/* Subhead */}
-              <p style={{
-                maxWidth: 600, textAlign: "center",
-                margin: "32px 16px 0",
-                fontSize: isMobile ? 15 : 16, fontWeight: 500,
-                color: "#fff", lineHeight: 1.6,
-              }}>
-                <span style={{ whiteSpace: "nowrap" }}>Invite your friends to a show's room.</span><br />
-                <span style={{ whiteSpace: "nowrap" }}>Everyone marks the last episode they watched</span>{" "}
-                <span style={{ whiteSpace: "nowrap" }}>each time they join in.</span>{" "}
-                <span style={{ whiteSpace: "nowrap" }}>Sidebar only shows you posts</span>{" "}
-                <span style={{ whiteSpace: "nowrap" }}>up to your watch progress.</span><br />
-                <span style={{ whiteSpace: "nowrap" }}>The room is open to other viewers too.</span><br />
-                <span style={{ whiteSpace: "nowrap" }}>Keep talking among your friends,</span>{" "}
-                <span style={{ whiteSpace: "nowrap" }}>or venture further.</span>
-              </p>
+              {/* Feature grid */}
+              {(() => {
+                const items = [
+                  { icon: "📺", text: "Find a show's room — search for any TV show and join its forum." },
+                  { icon: "📍", text: "Mark your progress — note the last episode you've watched, each time you join in." },
+                  { icon: "🙈", text: "Only see what's safe — Sidebar filters the room to your watch progress. No spoilers." },
+                  { icon: "👯", text: "Invite your friends — share the room with people watching the same show." },
+                  { icon: "💬", text: "Talk freely — everyone's at their own pace, but the conversation never stops." },
+                  { icon: "🌍", text: "Venture further — the room is open to all viewers. Go deeper when you're ready." },
+                ];
+                return (
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr",
+                    gap: 8,
+                    maxWidth: 760,
+                    width: "100%",
+                    margin: "32px 16px 0",
+                    padding: "0 16px",
+                    boxSizing: "border-box",
+                  }}>
+                    {items.map(({ icon, text }) => (
+                      <div key={text} style={{
+                        border: "2px solid rgba(255,255,255,0.6)",
+                        borderRadius: 16,
+                        padding: isMobile ? "10px 10px" : "14px 16px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                        background: "rgba(255,255,255,0.12)",
+                      }}>
+                        <span style={{ fontSize: isMobile ? 20 : 24, lineHeight: 1 }}>{icon}</span>
+                        <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4 }}>{text}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* BB demo entry — only shown to logged-out users */}
               {!user && (
