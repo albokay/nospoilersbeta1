@@ -570,18 +570,22 @@ export default function App() {
                   <>
                     Watching TV with friends<br />
                     usually means spoilers or silence.<br />
-                    Sidebar fixes that.<br />
-                    Watch at your own pace<br />
-                    and still talk about it freely.<br />
-                    Nobody gets spoiled, ever.<br />
-                    When you're ready,<br />
-                    the conversation can grow wider.
+                    <em>Sidebar fixes that.</em><br />
+                    <span style={{ fontSize: 16 }}>
+                      Watch at your own pace<br />
+                      and still talk about it freely.<br />
+                      Nobody gets spoiled, ever.<br />
+                      When you're ready,<br />
+                      the conversation can grow wider.
+                    </span>
                   </>
                 ) : (
                   <>
-                    <span style={{ whiteSpace: "nowrap" }}>Watching TV with friends usually means</span>{" "}<span style={{ whiteSpace: "nowrap" }}>spoilers or silence. Sidebar fixes that.</span><br />
-                    <span style={{ whiteSpace: "nowrap" }}>Watch at your own pace and still talk about it freely.</span>{" "}<span style={{ whiteSpace: "nowrap" }}>Nobody gets spoiled, ever.</span><br />
-                    <span style={{ whiteSpace: "nowrap" }}>When you're ready,</span>{" "}<span style={{ whiteSpace: "nowrap" }}>the conversation can grow wider.</span>
+                    <span style={{ whiteSpace: "nowrap" }}>Watching TV with friends usually means</span>{" "}<span style={{ whiteSpace: "nowrap" }}>spoilers or silence.</span>{" "}<em>Sidebar fixes that.</em><br />
+                    <span style={{ fontSize: 20 }}>
+                      <span style={{ whiteSpace: "nowrap" }}>Watch at your own pace and still talk about it freely.</span>{" "}<span style={{ whiteSpace: "nowrap" }}>Nobody gets spoiled, ever.</span><br />
+                      <span style={{ whiteSpace: "nowrap" }}>When you're ready,</span>{" "}<span style={{ whiteSpace: "nowrap" }}>the conversation can grow wider.</span>
+                    </span>
                   </>
                 )}
               </p>
