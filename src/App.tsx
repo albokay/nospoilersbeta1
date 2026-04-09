@@ -135,7 +135,7 @@ export default function App() {
   // navigating from a notification, and cleared by RepliesList after scrolling.
   const [focusReplyId, setFocusReplyId] = useState<string | null>(null);
 
-  const [progress, setProgress] = useState<Record<string, ProgressEntry>>({ bb: { s: 99, e: 99 } });
+  const [progress, setProgress] = useState<Record<string, ProgressEntry>>({ bb: { s: 1, e: 1 } });
 
   // Stale-progress nudge: show once per session if user returns after 12+ hour gap
   const [showStaleNudge, setShowStaleNudge] = useState(false);
@@ -152,10 +152,10 @@ export default function App() {
 
   // Load progress from DB when user logs in; clear it when they log out
   useEffect(() => {
-    if (!user) { setProgress({ bb: { s: 99, e: 99 } }); return; }
+    if (!user) { setProgress({ bb: { s: 1, e: 1 } }); return; }
     fetchProgress(user.id).then(saved => {
-      // Always keep BB visible; use s:99,e:99 as default so all demo threads show
-      setProgress({ bb: { s: 99, e: 99 }, ...saved });
+      // Always keep BB in the dropdown as the demo entry
+      setProgress({ bb: { s: 1, e: 1 }, ...saved });
     }).catch(err => console.error("Failed to load progress:", err));
   }, [user?.id]);
 
@@ -663,10 +663,10 @@ export default function App() {
                   </span>
                   <button
                     className="btn"
-                    onClick={() => openShow("bb")}
+                    onClick={() => { setPickShowMode("set"); setPickShowId("bb"); }}
                     style={{ fontSize: 15, padding: "8px 28px", borderRadius: 9999, whiteSpace: "nowrap", background: "#fff", color: "var(--dos-bg)", borderColor: "#fff" }}
                   >
-                    Enter the demo →
+                    Enter the demo
                   </button>
                 </div>
               )}
