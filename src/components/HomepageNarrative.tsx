@@ -164,40 +164,41 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
         <Copy>Another friend is two episodes behind you.</Copy>
       </section>
 
-      {/* 5 — Cloud: 14 absolutely-positioned bubbles scattered around the copy */}
-      <section style={{ position: "relative", height: "95vh", boxSizing: "border-box" }}>
+      {/* 5 — Cloud: 14 bubbles, high parallax rates for z-depth, wide space around copy */}
+      <section style={{ position: "relative", height: "110vh", boxSizing: "border-box" }}>
 
-        {/* Copy anchored at ~44% from top */}
+        {/* Copy anchored at 46% — more breathing room above and below */}
         <div style={{
-          position: "absolute", top: "44%", left: "50%",
+          position: "absolute", top: "46%", left: "50%",
           transform: "translate(-50%, -50%)",
           width: "min(520px, 80vw)", zIndex: 10,
+          padding: "0 0 40px",
         }}>
           <Copy>You're all dying to talk about your favorite show right now.</Copy>
         </div>
 
-        {/* Above copy */}
-        <CloudBubble src="/ns-friend.svg" top="3%"  left="4vw"  width="26vw" rate={0.05} />
-        <CloudBubble src="/ns-you.svg"    top="1%"  left="54vw" width="30vw" rate={0.04} />
-        <CloudBubble src="/ns-friend.svg" top="12%" left="30vw" width="22vw" rate={0.06} />
-        <CloudBubble src="/ns-you.svg"    top="9%"  left="64vw" width="24vw" rate={0.05} />
-        <CloudBubble src="/ns-friend.svg" top="22%" left="8vw"  width="28vw" rate={0.04} />
-        <CloudBubble src="/ns-you.svg"    top="20%" left="58vw" width="20vw" rate={0.06} />
-        <CloudBubble src="/ns-friend.svg" top="33%" left="22vw" width="24vw" rate={0.05} />
-        <CloudBubble src="/ns-you.svg"    top="30%" left="50vw" width="26vw" rate={0.04} />
+        {/* Above copy — bubbles stay in top 34%, high & varied parallax */}
+        <CloudBubble src="/ns-friend.svg" top="2%"  left="4vw"  width="26vw" rate={0.22} />
+        <CloudBubble src="/ns-you.svg"    top="0%"  left="54vw" width="30vw" rate={0.14} />
+        <CloudBubble src="/ns-friend.svg" top="10%" left="30vw" width="22vw" rate={0.28} />
+        <CloudBubble src="/ns-you.svg"    top="8%"  left="64vw" width="24vw" rate={0.18} />
+        <CloudBubble src="/ns-friend.svg" top="20%" left="8vw"  width="28vw" rate={0.12} />
+        <CloudBubble src="/ns-you.svg"    top="18%" left="58vw" width="20vw" rate={0.24} />
+        <CloudBubble src="/ns-friend.svg" top="30%" left="22vw" width="24vw" rate={0.20} />
+        <CloudBubble src="/ns-you.svg"    top="28%" left="50vw" width="26vw" rate={0.16} />
 
-        {/* Below copy */}
-        <CloudBubble src="/ns-you.svg"    top="54%" left="48vw" width="28vw" rate={0.05} />
-        <CloudBubble src="/ns-friend.svg" top="56%" left="6vw"  width="26vw" rate={0.04} />
-        <CloudBubble src="/ns-you.svg"    top="65%" left="62vw" width="22vw" rate={0.06} />
-        <CloudBubble src="/ns-friend.svg" top="64%" left="18vw" width="30vw" rate={0.05} />
-        <CloudBubble src="/ns-you.svg"    top="76%" left="40vw" width="24vw" rate={0.04} />
-        <CloudBubble src="/ns-friend.svg" top="78%" left="5vw"  width="28vw" rate={0.06} />
+        {/* Below copy — bubbles start at 58%, high & varied parallax */}
+        <CloudBubble src="/ns-you.svg"    top="58%" left="48vw" width="28vw" rate={0.18} />
+        <CloudBubble src="/ns-friend.svg" top="60%" left="6vw"  width="26vw" rate={0.26} />
+        <CloudBubble src="/ns-you.svg"    top="68%" left="62vw" width="22vw" rate={0.14} />
+        <CloudBubble src="/ns-friend.svg" top="67%" left="18vw" width="30vw" rate={0.22} />
+        <CloudBubble src="/ns-you.svg"    top="78%" left="40vw" width="24vw" rate={0.20} />
+        <CloudBubble src="/ns-friend.svg" top="80%" left="5vw"  width="28vw" rate={0.16} />
       </section>
 
-      {/* 6 — Finale: copy and logo at bottom, logo 450px below copy */}
+      {/* 6 — Finale: whole unit pushed 250px lower via extra section height */}
       <section style={{
-        minHeight: "100svh", display: "flex", flexDirection: "column",
+        minHeight: "calc(100svh + 250px)", display: "flex", flexDirection: "column",
         padding: "48px 32px 64px", boxSizing: "border-box",
         justifyContent: "flex-end",
       }}>
