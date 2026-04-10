@@ -670,14 +670,14 @@ export default function App() {
                 How?
               </p>
 
-              {/* Feature grid — 5 steps, boxes 3 & 4 visually highlighted */}
+              {/* Feature grid — 5 steps, single icon + number, boxes 3 & 4 highlighted */}
               {(() => {
-                const items: { IconA: React.ElementType; IconB: React.ElementType; text: string; highlight: boolean }[] = [
-                  { IconA: Search,     IconB: Tv,        text: "Find your show and join its room.", highlight: false },
-                  { IconA: UsersRound, IconB: ListCheck, text: "Invite your friends. Share the room with the people you love to talk to.", highlight: false },
-                  { IconA: ListCheck,  IconB: EyeClosed, text: "All of you log the last episode you watched each time you sign in. Sidebar filters the room to everyone's unique watch progress.", highlight: true },
-                  { IconA: EyeClosed,  IconB: Eye,       text: "Nothing you read is ahead of where you are. Whether behind or ahead, everyone's entries wait until they're ready.", highlight: true },
-                  { IconA: Globe,      IconB: Rocket,    text: "Venture further — you can decide if you want a public or private room. Friends only, or let your conversation expand?", highlight: false },
+                const items: { Icon: React.ElementType; text: string; highlight: boolean }[] = [
+                  { Icon: Search,     text: "Find your show and join its room.", highlight: false },
+                  { Icon: UsersRound, text: "Invite your friends. Share the room with the people you love to talk to.", highlight: false },
+                  { Icon: ListCheck,  text: "All of you log the last episode you watched each time you sign in. Sidebar filters the room to everyone's unique watch progress.", highlight: true },
+                  { Icon: Eye,        text: "Nothing you read is ahead of where you are. Whether behind or ahead, everyone's entries wait until they're ready.", highlight: true },
+                  { Icon: Rocket,     text: "Venture further — you can decide if you want a public or private room. Friends only, or let your conversation expand?", highlight: false },
                 ];
                 return (
                   <div style={{
@@ -690,9 +690,10 @@ export default function App() {
                     padding: isMobile ? 0 : "0 16px",
                     boxSizing: "border-box",
                   }}>
-                    {items.map(({ IconA, IconB, text, highlight }, idx) => {
+                    {items.map(({ Icon, text, highlight }, idx) => {
                       const isLast = idx === items.length - 1;
                       const iconColor = highlight ? "var(--dos-bg)" : "#fff";
+                      const numColor = highlight ? "var(--dos-bg)" : "rgba(255,255,255,0.6)";
                       return (
                         <div key={text} style={{
                           borderRadius: 16,
@@ -704,21 +705,13 @@ export default function App() {
                           background: highlight ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.18)",
                           gridColumn: (!isMobile && isLast) ? "1 / -1" : undefined,
                         }}>
-                          {isMobile ? (
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                              <IconA size={18} color={iconColor} strokeWidth={1.5} />
-                              {idx !== 0 && <>
-                                <MoveDown size={11} color={iconColor} strokeWidth={2} />
-                                <IconB size={18} color={iconColor} strokeWidth={1.5} />
-                              </>}
-                            </div>
-                          ) : (
-                            <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
-                              <IconA size={22} color={iconColor} strokeWidth={1.5} />
-                              <MoveRight size={13} color={iconColor} strokeWidth={2} />
-                              <IconB size={22} color={iconColor} strokeWidth={1.5} />
-                            </div>
-                          )}
+                          {/* Number + icon, always stacked and centered */}
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: numColor, lineHeight: 1 }}>
+                              {idx + 1}
+                            </span>
+                            <Icon size={isMobile ? 18 : 22} color={iconColor} strokeWidth={1.5} />
+                          </div>
                           <span style={{
                             fontSize: isMobile ? 12 : 13,
                             color: highlight ? "var(--dos-bg)" : "#fff",
@@ -758,7 +751,7 @@ export default function App() {
                 padding: isMobile ? "0 16px" : 0,
               }}>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 500, lineHeight: 1.6 }}>
-                  The site is in early beta so there's not much to see yet. Eventually there would be public show rooms to explore with the same no-spoiler mechanics as your private rooms.
+                  The site is in early beta so there's not much to see yet in public spaces. Eventually you can explore public show rooms with the same no-spoiler mechanics as a friends-only room.
                 </span>
                 {user ? (
                   <SearchShows
@@ -791,7 +784,7 @@ export default function App() {
           )}
 
           {!expandedShowId && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 48 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 48, paddingBottom: 96 }}>
               {/* Beta message pill toggle */}
               <button
                 onClick={() => setBetaOpen(o => !o)}
