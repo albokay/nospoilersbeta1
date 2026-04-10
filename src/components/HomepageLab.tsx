@@ -146,17 +146,17 @@ export default function HomepageLab() {
         <Copy>Another is two episodes behind you.</Copy>
       </Screen>
 
-      {/* 5 — Jumble: all bubbles + copy in one tightly packed section */}
-      <section style={{ padding: "0 32px", boxSizing: "border-box", overflow: "clip" }}>
-        <Bubble src="/ns-friend.svg" align="left"  offset="42%" rate={0.13} />
-        <Bubble src="/ns-you.svg"    align="right" offset="38%" rate={0.09} />
-        <Bubble src="/ns-friend.svg" align="left"  offset="36%" rate={0.16} />
+      {/* 5 — Jumble: all bubbles + copy in one tightly packed section, no parallax */}
+      <section style={{ padding: "0 32px", boxSizing: "border-box" }}>
+        <Bubble src="/ns-friend.svg" align="left"  offset="42%" rate={0} />
+        <Bubble src="/ns-you.svg"    align="right" offset="38%" rate={0} />
+        <Bubble src="/ns-friend.svg" align="left"  offset="36%" rate={0} />
         <div style={{ padding: "72px 0", display: "flex", justifyContent: "center" }}>
           <Copy>You're all dying to talk about your favorite show.</Copy>
         </div>
-        <Bubble src="/ns-you.svg"    align="right" offset="42%" rate={0.11} />
-        <Bubble src="/ns-friend.svg" align="left"  offset="40%" rate={0.14} />
-        <Bubble src="/ns-you.svg"    align="right" offset="34%" rate={0.10} />
+        <Bubble src="/ns-you.svg"    align="right" offset="42%" rate={0} />
+        <Bubble src="/ns-friend.svg" align="left"  offset="40%" rate={0} />
+        <Bubble src="/ns-you.svg"    align="right" offset="34%" rate={0} />
       </section>
 
       {/* 6 — Finale: copy higher on page, logo+tagline centered */}
