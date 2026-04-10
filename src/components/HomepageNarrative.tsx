@@ -64,11 +64,12 @@ function Screen({
 }
 
 // ── Bubble ────────────────────────────────────────────────────────────────────
-function Bubble({ src, rate = 0.1, align = "center", offset: inset = "0%" }: {
+function Bubble({ src, rate = 0.1, align = "center", offset: inset = "0%", scale = 1 }: {
   src: string;
   rate?: number;
   align?: "left" | "center" | "right";
   offset?: string;
+  scale?: number;
 }) {
   const { ref: parallaxRef, offset } = useParallax(rate);
   const { ref: revealRef, visible } = useReveal(0.1);
@@ -84,7 +85,7 @@ function Bubble({ src, rate = 0.1, align = "center", offset: inset = "0%" }: {
     }}>
       <div ref={parallaxRef} style={{ transform: `translateY(${offset}px)` }}>
         <img src={src} alt=""
-          style={{ width: `min(${BUBBLE_MAX}px, 90vw)`, height: "auto", display: "block" }} />
+          style={{ width: `min(${Math.round(BUBBLE_MAX * scale)}px, 90vw)`, height: "auto", display: "block" }} />
       </div>
     </div>
   );
@@ -142,35 +143,39 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
         <Bubble src="/ns-you.svg" align="center" rate={0.08} />
       </Screen>
 
-      {/* 2 — Copy */}
-      <Screen>
+      {/* 2 — Copy (75svh — pulled closer to bubble above) */}
+      <section style={{ minHeight: "75svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
         <Copy>You're an episode behind your friend.</Copy>
-      </Screen>
+      </section>
 
       {/* 3 — Friend white bubble, left half */}
       <Screen>
         <Bubble src="/ns-friend.svg" align="left" offset="50%" rate={0.12} />
       </Screen>
 
-      {/* 4 — Copy */}
-      <Screen>
+      {/* 4 — Copy (75svh — pulled up toward bubble) */}
+      <section style={{ minHeight: "75svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
         <Copy>Another is two episodes behind you.</Copy>
-      </Screen>
+      </section>
 
-      {/* 5 — Jumble: tightly packed, no parallax to avoid clipping */}
+      {/* 5 — Jumble: 10 bubbles, varied sizes ±20%, tightly packed */}
       <section style={{ padding: "0 32px", boxSizing: "border-box" }}>
-        <Bubble src="/ns-friend.svg" align="left"  offset="42%" rate={0.13} />
-        <Bubble src="/ns-you.svg"    align="right" offset="38%" rate={0.09} />
-        <Bubble src="/ns-friend.svg" align="left"  offset="36%" rate={0.16} />
+        <Bubble src="/ns-friend.svg" align="left"  offset="42%" rate={0.13} scale={0.90} />
+        <Bubble src="/ns-you.svg"    align="right" offset="38%" rate={0.09} scale={1.15} />
+        <Bubble src="/ns-friend.svg" align="left"  offset="33%" rate={0.14} scale={0.85} />
+        <Bubble src="/ns-you.svg"    align="right" offset="45%" rate={0.11} scale={1.10} />
+        <Bubble src="/ns-friend.svg" align="left"  offset="36%" rate={0.16} scale={1.20} />
         <div style={{ padding: "72px 0", display: "flex", justifyContent: "center" }}>
           <Copy>You're all dying to talk about your favorite show.</Copy>
         </div>
-        <Bubble src="/ns-you.svg"    align="right" offset="42%" rate={0.11} />
-        <Bubble src="/ns-friend.svg" align="left"  offset="40%" rate={0.14} />
-        <Bubble src="/ns-you.svg"    align="right" offset="34%" rate={0.10} />
+        <Bubble src="/ns-you.svg"    align="right" offset="42%" rate={0.11} scale={0.95} />
+        <Bubble src="/ns-friend.svg" align="left"  offset="44%" rate={0.13} scale={1.05} />
+        <Bubble src="/ns-you.svg"    align="right" offset="34%" rate={0.10} scale={0.85} />
+        <Bubble src="/ns-friend.svg" align="left"  offset="40%" rate={0.14} scale={1.10} />
+        <Bubble src="/ns-you.svg"    align="right" offset="37%" rate={0.09} scale={1.00} />
       </section>
 
-      {/* 6 — Finale: copy high, logo+tagline centered */}
+      {/* 6 — Finale: copy high, logo+tagline 200px lower than center */}
       <section style={{
         minHeight: "100svh", display: "flex", flexDirection: "column",
         padding: "48px 32px", boxSizing: "border-box",
@@ -179,7 +184,9 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
           <Copy size={38}>Sidebar is where you can talk freely.</Copy>
         </div>
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <RevealUnit />
+          <div style={{ marginTop: 200 }}>
+            <RevealUnit />
+          </div>
         </div>
       </section>
     </>
