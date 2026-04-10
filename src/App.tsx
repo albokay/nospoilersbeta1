@@ -22,6 +22,7 @@ import { Tv, EyeClosed, Eye, UsersRound, ListCheck, Globe, Search, Rocket, MoveR
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
+import HomepageLab from "./components/HomepageLab";
 
 const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
 
@@ -127,6 +128,7 @@ export default function App() {
   //   /profile                  → own profile
   //   /user/:username           → public profile
   const pathParts = location.pathname.split("/").filter(Boolean);
+  if (pathParts[0] === "lab") return <HomepageLab />;
   const expandedShowId   = pathParts[0] === "show" ? (pathParts[1] ?? null) : null;
   const activeThreadId   = pathParts[0] === "show" && pathParts[2] === "thread" ? (pathParts[3] ?? null) : null;
   const showProfile      = location.pathname === "/profile";
