@@ -412,7 +412,9 @@ export default function App() {
     function onScroll() {
       const el = narrativeRef.current;
       if (!el) return;
-      const progress = Math.min(Math.max(window.scrollY / el.offsetHeight, 0), 1);
+      const raw = Math.min(Math.max(window.scrollY / el.offsetHeight, 0), 1);
+      // Start at 0, begin fading in at 50% scroll, fully visible at 100%
+      const progress = Math.min(Math.max((raw - 0.5) / 0.5, 0), 1);
       setGradientOpacity(progress);
     }
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -583,7 +585,7 @@ export default function App() {
                 background: "linear-gradient(to bottom, #c8e4b0 0px, transparent 180px)",
                 opacity: gradientOpacity,
                 pointerEvents: "none",
-                zIndex: 94,
+                zIndex: 0,
               }} />
 
               {/* ── Scrolling narrative ── */}
@@ -605,7 +607,7 @@ export default function App() {
                   <>
                     Watching TV with friends usually<br />
                     means spoilers or keeping quiet.<br />
-                    <em>Sidebar fixes that.</em><br />
+                    <em>Not on Sidebar.</em><br />
                     <span style={{ fontSize: 16, lineHeight: 1.3, display: "inline-block", marginTop: 16 }}>
                       Watch at your own pace and still talk about things freely. Nobody gets spoiled, ever.<br />
                       When you're ready, the conversation can grow wider.
@@ -615,7 +617,7 @@ export default function App() {
                   <>
                     <span style={{ whiteSpace: "nowrap" }}>Watching TV with friends usually</span><br />
                     <span style={{ whiteSpace: "nowrap" }}>means spoilers or keeping quiet.</span><br />
-                    <em>Sidebar fixes that.</em><br />
+                    <em>Not on Sidebar.</em><br />
                     <span style={{ fontSize: 20, lineHeight: 1.3, display: "inline-block", marginTop: 20 }}>
                       <span style={{ whiteSpace: "nowrap" }}>Watch at your own pace and still talk about things freely. Nobody gets spoiled, ever.</span><br />
                       <span style={{ whiteSpace: "nowrap" }}>When you're ready, the conversation can grow wider.</span>
