@@ -142,9 +142,9 @@ function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight;
       const centerY = rect.top + UNIT_H / 2;
-      // Start when logo center is in top 38% — longer run = more gradual feel
-      const startY = vh * 0.38;
-      const endY = 4 + (LOGO_H * 0.5) / 2;
+      // Start only when logo is in the top ~12% of viewport — stays full-size until near top
+      const startY = vh * 0.12;
+      const endY = 4 + (LOGO_H * 0.6) / 2;
       const rawProgress = (startY - centerY) / (startY - endY);
       const progress = Math.min(Math.max(rawProgress, 0), 1);
       setAnim({ progress, left: rect.left, top: rect.top, measured: true });
@@ -155,10 +155,10 @@ function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
   }, [headerHeight]);
 
   const { progress, left: natLeft, top: natTop, measured } = anim;
-  // Ease-out: starts moving quickly, decelerates smoothly into corner
-  const eased = 1 - Math.pow(1 - progress, 2);
+  // Ease-in: barely moves at first, then snaps quickly into corner
+  const eased = progress * progress;
 
-  const TARGET_SCALE = 0.5;
+  const TARGET_SCALE = 0.6;
   const TARGET_LEFT = 32;
   const TARGET_TOP = Math.max(4, (headerHeight - LOGO_H * TARGET_SCALE) / 2) + 16;
 
