@@ -142,9 +142,9 @@ function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight;
       const centerY = rect.top + UNIT_H / 2;
-      // Start only when logo center is in the top 25% of the screen (much later)
-      const startY = vh * 0.25;
-      const endY = 4 + (LOGO_H * 0.5) / 2; // near header top
+      // Start when logo center is in top 38% — longer run = more gradual feel
+      const startY = vh * 0.38;
+      const endY = 4 + (LOGO_H * 0.5) / 2;
       const rawProgress = (startY - centerY) / (startY - endY);
       const progress = Math.min(Math.max(rawProgress, 0), 1);
       setAnim({ progress, left: rect.left, top: rect.top, measured: true });
@@ -155,27 +155,21 @@ function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
   }, [headerHeight]);
 
   const { progress, left: natLeft, top: natTop, measured } = anim;
-  const eased = progress < 0.5
-    ? 2 * progress * progress
-    : -1 + (4 - 2 * progress) * progress;
+  // Ease-out: starts moving quickly, decelerates smoothly into corner
+  const eased = 1 - Math.pow(1 - progress, 2);
 
   const TARGET_SCALE = 0.5;
-  // Resting position: 16px right & 16px lower than header-centered default
   const TARGET_LEFT = 32;
   const TARGET_TOP = Math.max(4, (headerHeight - LOGO_H * TARGET_SCALE) / 2) + 16;
 
   const scale = 1 + (TARGET_SCALE - 1) * eased;
   const taglineOpacity = (1 - eased) * 0.85;
 
-  const natCX = natLeft + LOGO_W / 2;
-  const natCY = natTop + UNIT_H / 2;
-  const tgtCX = TARGET_LEFT + (LOGO_W * TARGET_SCALE) / 2;
-  const tgtCY = TARGET_TOP + (LOGO_H * TARGET_SCALE) / 2;
-  const visCX = natCX + (tgtCX - natCX) * eased;
-  const visCY = natCY + (tgtCY - natCY) * eased;
-
-  const fixedLeft = measured ? visCX - LOGO_W / 2 : -9999;
-  const fixedTop  = measured ? visCY - UNIT_H / 2  : -9999;
+  // GPU-composited positioning: fixed at origin, transform handles all movement.
+  // translate(x,y) positions the top-left; scale(s) shrinks from that corner.
+  // No left/top updates = no layout recalc = no jank/float feeling.
+  const tx = measured ? natLeft + (TARGET_LEFT - natLeft) * eased : -9999;
+  const ty = measured ? natTop  + (TARGET_TOP  - natTop)  * eased : -9999;
   const animating = progress > 0;
 
   return (
@@ -187,15 +181,16 @@ function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
 
       {/* Single SidebarLogo — always mounted, never conditionally unmounted.
           Runs its scatter animation silently on page load (off-screen / opacity 0).
-          Fades in via visible, then moves to corner via scroll progress. */}
+          Uses GPU-composited transform for positioning to eliminate scroll jank. */}
       <div style={{
         position: "fixed",
-        left: fixedLeft,
-        top: fixedTop,
+        left: 0,
+        top: 0,
         width: LOGO_W,
         height: UNIT_H,
-        transform: `scale(${scale})`,
-        transformOrigin: "center center",
+        transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
+        transformOrigin: "0 0",
+        willChange: "transform",
         zIndex: 96,
         pointerEvents: "none",
         display: "flex", flexDirection: "column", alignItems: "center", gap: LOGO_GAP,
@@ -242,9 +237,9 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
       {/* 5 — Cloud: 14 bubbles, high parallax rates for z-depth, wide space around copy */}
       <section style={{ position: "relative", height: "110vh", boxSizing: "border-box" }}>
 
-        {/* Copy anchored at 46% — more breathing room above and below */}
+        {/* Copy anchored at 46% + 25px lower */}
         <div style={{
-          position: "absolute", top: "46%", left: "50%",
+          position: "absolute", top: "calc(46% + 25px)", left: "50%",
           transform: "translate(-50%, -50%)",
           width: "min(520px, 80vw)", zIndex: 10,
           padding: "0 0 40px",
