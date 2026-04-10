@@ -177,23 +177,23 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
           <Copy>You're all dying to talk about your favorite show right now.</Copy>
         </div>
 
-        {/* Above copy — bubbles stay in top 34%, high & varied parallax */}
-        <CloudBubble src="/ns-friend.svg" top="2%"  left="4vw"  width="26vw" rate={0.22} />
-        <CloudBubble src="/ns-you.svg"    top="0%"  left="54vw" width="30vw" rate={0.14} />
-        <CloudBubble src="/ns-friend.svg" top="10%" left="30vw" width="22vw" rate={0.28} />
-        <CloudBubble src="/ns-you.svg"    top="8%"  left="64vw" width="24vw" rate={0.18} />
-        <CloudBubble src="/ns-friend.svg" top="20%" left="8vw"  width="28vw" rate={0.12} />
-        <CloudBubble src="/ns-you.svg"    top="18%" left="58vw" width="20vw" rate={0.24} />
-        <CloudBubble src="/ns-friend.svg" top="30%" left="22vw" width="24vw" rate={0.20} />
-        <CloudBubble src="/ns-you.svg"    top="28%" left="50vw" width="26vw" rate={0.16} />
+        {/* Above copy — spread evenly across full width, no right-side clustering */}
+        <CloudBubble src="/ns-friend.svg" top="1%"  left="4vw"  width="24vw" rate={0.22} />
+        <CloudBubble src="/ns-you.svg"    top="2%"  left="66vw" width="26vw" rate={0.14} />
+        <CloudBubble src="/ns-friend.svg" top="11%" left="34vw" width="22vw" rate={0.28} />
+        <CloudBubble src="/ns-you.svg"    top="10%" left="62vw" width="20vw" rate={0.18} />
+        <CloudBubble src="/ns-friend.svg" top="20%" left="8vw"  width="26vw" rate={0.24} />
+        <CloudBubble src="/ns-you.svg"    top="19%" left="46vw" width="24vw" rate={0.20} />
+        <CloudBubble src="/ns-friend.svg" top="29%" left="24vw" width="22vw" rate={0.16} />
+        <CloudBubble src="/ns-you.svg"    top="28%" left="60vw" width="26vw" rate={0.26} />
 
-        {/* Below copy — bubbles start at 58%, high & varied parallax */}
-        <CloudBubble src="/ns-you.svg"    top="58%" left="48vw" width="28vw" rate={0.18} />
-        <CloudBubble src="/ns-friend.svg" top="60%" left="6vw"  width="26vw" rate={0.26} />
-        <CloudBubble src="/ns-you.svg"    top="68%" left="62vw" width="22vw" rate={0.14} />
-        <CloudBubble src="/ns-friend.svg" top="67%" left="18vw" width="30vw" rate={0.22} />
-        <CloudBubble src="/ns-you.svg"    top="78%" left="40vw" width="24vw" rate={0.20} />
-        <CloudBubble src="/ns-friend.svg" top="80%" left="5vw"  width="28vw" rate={0.16} />
+        {/* Below copy — evenly spread, no overlapping columns */}
+        <CloudBubble src="/ns-friend.svg" top="58%" left="5vw"  width="26vw" rate={0.26} />
+        <CloudBubble src="/ns-you.svg"    top="59%" left="52vw" width="24vw" rate={0.18} />
+        <CloudBubble src="/ns-friend.svg" top="68%" left="30vw" width="24vw" rate={0.22} />
+        <CloudBubble src="/ns-you.svg"    top="67%" left="64vw" width="22vw" rate={0.14} />
+        <CloudBubble src="/ns-friend.svg" top="78%" left="10vw" width="28vw" rate={0.20} />
+        <CloudBubble src="/ns-you.svg"    top="77%" left="44vw" width="26vw" rate={0.24} />
       </section>
 
       {/* 6 — Finale: whole unit pushed 250px lower via extra section height */}
