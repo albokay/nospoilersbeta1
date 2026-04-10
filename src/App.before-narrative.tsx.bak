@@ -23,7 +23,6 @@ import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
 import HomepageLab from "./components/HomepageLab";
-import HomepageNarrative from "./components/HomepageNarrative";
 
 const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
 
@@ -284,8 +283,6 @@ export default function App() {
 
   const [betaOpen, setBetaOpen] = useState(false);
   const [showsEmojiHover, setShowsEmojiHover] = useState(false);
-  const narrativeRef = useRef<HTMLDivElement>(null);
-  const [gradientOpacity, setGradientOpacity] = useState(0);
   const [newHighlights, setNewHighlights] = useState<{ [sid: string]: { [tid: string]: true } }>({});
   const [visitedThreads, setVisitedThreads] = useState<{ [tid: string]: true }>({});
 
@@ -404,20 +401,6 @@ export default function App() {
   const isHomepage = !expandedShowId && !showProfile && !publicProfileUsername;
   useEffect(() => {
     document.body.classList.toggle("has-header", !isHomepage);
-  }, [isHomepage]);
-
-  // Gradient fade-in tied to scroll progress through the narrative
-  useEffect(() => {
-    if (!isHomepage) { setGradientOpacity(0); return; }
-    function onScroll() {
-      const el = narrativeRef.current;
-      if (!el) return;
-      const progress = Math.min(Math.max(window.scrollY / el.offsetHeight, 0), 1);
-      setGradientOpacity(progress);
-    }
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
   }, [isHomepage]);
   const isProfilePage = showProfile || !!publicProfileUsername;
   const showAdmin = location.search.includes("admin");
@@ -576,28 +559,13 @@ export default function App() {
         <>
           {/* ── Homepage ── */}
           {isHomepage && (
-            <>
-              {/* ── Gradient fade-in overlay (fixed, tracks narrative scroll) ── */}
-              <div style={{
-                position: "fixed", top: 0, left: 0, right: 0, height: 220,
-                background: "linear-gradient(to bottom, #c8e4b0 0px, transparent 180px)",
-                opacity: gradientOpacity,
-                pointerEvents: "none",
-                zIndex: 94,
-              }} />
-
-              {/* ── Scrolling narrative ── */}
-              <div ref={narrativeRef} style={{ width: "100vw", marginLeft: "calc(-50vw + 50%)" }}>
-                <HomepageNarrative headerHeight={GLOBAL_HEADER_H} />
-              </div>
-
-              {/* ── Existing homepage content (logo now lives in narrative) ── */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 0, paddingBottom: 24, zIndex: 95, position: "relative", width: "100vw", marginLeft: "calc(-50vw + 50%)" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: isMobile ? 48 : 56, paddingBottom: 24, zIndex: 95, position: "relative", width: "100vw", marginLeft: "calc(-50vw + 50%)" }}>
+              <div style={{ transform: isMobile ? "translateX(8px) translateY(8px)" : "translateX(13px)" }}><SidebarLogo scale={isMobile ? 0.75 : 1} /></div>
 
               {/* Hero headline */}
               <p style={{
                 maxWidth: 880, textAlign: "center",
-                margin: "80px 16px 56px",
+                margin: "56px 16px",
                 fontSize: isMobile ? 20 : 32, fontWeight: 800,
                 color: "#fff", lineHeight: 1.3,
               }}>
@@ -750,7 +718,6 @@ export default function App() {
                 </div>
               )}
             </div>
-            </>
           )}
 
           {!expandedShowId && (
