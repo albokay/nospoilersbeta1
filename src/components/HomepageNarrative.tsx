@@ -143,8 +143,8 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
         <Bubble src="/ns-you.svg" align="center" rate={0.08} />
       </Screen>
 
-      {/* 2 — Copy (75svh — pulled closer to bubble above) */}
-      <section style={{ minHeight: "75svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
+      {/* 2 — Copy (38svh) */}
+      <section style={{ minHeight: "38svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
         <Copy>You're an episode behind your friend.</Copy>
       </section>
 
@@ -153,29 +153,34 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
         <Bubble src="/ns-friend.svg" align="left" offset="50%" rate={0.12} />
       </Screen>
 
-      {/* 4 — Copy (75svh — pulled up toward bubble) */}
-      <section style={{ minHeight: "75svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
+      {/* 4 — Copy (38svh) */}
+      <section style={{ minHeight: "38svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
         <Copy>Another is two episodes behind you.</Copy>
       </section>
 
-      {/* 5 — Jumble: 10 bubbles, varied sizes ±20%, tightly packed */}
-      <section style={{ padding: "0 32px", boxSizing: "border-box" }}>
-        <Bubble src="/ns-friend.svg" align="left"  offset="42%" rate={0.13} scale={0.90} />
-        <Bubble src="/ns-you.svg"    align="right" offset="38%" rate={0.09} scale={1.15} />
-        <Bubble src="/ns-friend.svg" align="left"  offset="33%" rate={0.14} scale={0.85} />
-        <Bubble src="/ns-you.svg"    align="right" offset="45%" rate={0.11} scale={1.10} />
-        <Bubble src="/ns-friend.svg" align="left"  offset="36%" rate={0.16} scale={1.20} />
-        <div style={{ padding: "72px 0", display: "flex", justifyContent: "center" }}>
+      {/* 5 — Cloud of bubbles: 40% smaller, dense overlap, copy at center */}
+      <section style={{ padding: "60px 32px", boxSizing: "border-box" }}>
+        {/* 5 bubbles above copy, overlapping tightly */}
+        <div><Bubble src="/ns-friend.svg" align="left"  offset="38%" rate={0.10} scale={0.6} /></div>
+        <div style={{ marginTop: -38 }}><Bubble src="/ns-you.svg"    align="right" offset="32%" rate={0.08} scale={0.6} /></div>
+        <div style={{ marginTop: -38 }}><Bubble src="/ns-friend.svg" align="left"  offset="44%" rate={0.12} scale={0.6} /></div>
+        <div style={{ marginTop: -38 }}><Bubble src="/ns-you.svg"    align="right" offset="40%" rate={0.09} scale={0.6} /></div>
+        <div style={{ marginTop: -38 }}><Bubble src="/ns-friend.svg" align="left"  offset="36%" rate={0.11} scale={0.6} /></div>
+
+        {/* Copy floating in the middle of the cloud */}
+        <div style={{ position: "relative", zIndex: 10, padding: "52px 0", display: "flex", justifyContent: "center" }}>
           <Copy>You're all dying to talk about your favorite show.</Copy>
         </div>
-        <Bubble src="/ns-you.svg"    align="right" offset="42%" rate={0.11} scale={0.95} />
-        <Bubble src="/ns-friend.svg" align="left"  offset="44%" rate={0.13} scale={1.05} />
-        <Bubble src="/ns-you.svg"    align="right" offset="34%" rate={0.10} scale={0.85} />
-        <Bubble src="/ns-friend.svg" align="left"  offset="40%" rate={0.14} scale={1.10} />
-        <Bubble src="/ns-you.svg"    align="right" offset="37%" rate={0.09} scale={1.00} />
+
+        {/* 5 bubbles below copy, overlapping tightly */}
+        <div style={{ marginTop: -38 }}><Bubble src="/ns-you.svg"    align="right" offset="42%" rate={0.10} scale={0.6} /></div>
+        <div style={{ marginTop: -38 }}><Bubble src="/ns-friend.svg" align="left"  offset="34%" rate={0.13} scale={0.6} /></div>
+        <div style={{ marginTop: -38 }}><Bubble src="/ns-you.svg"    align="right" offset="38%" rate={0.08} scale={0.6} /></div>
+        <div style={{ marginTop: -38 }}><Bubble src="/ns-friend.svg" align="left"  offset="44%" rate={0.11} scale={0.6} /></div>
+        <div style={{ marginTop: -38 }}><Bubble src="/ns-you.svg"    align="right" offset="30%" rate={0.09} scale={0.6} /></div>
       </section>
 
-      {/* 6 — Finale: copy high, logo+tagline 200px lower than center */}
+      {/* 6 — Finale: copy high, logo+tagline pushed low toward marquee */}
       <section style={{
         minHeight: "100svh", display: "flex", flexDirection: "column",
         padding: "48px 32px", boxSizing: "border-box",
@@ -183,10 +188,8 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
         <div style={{ paddingTop: "8svh", display: "flex", justifyContent: "center" }}>
           <Copy size={38}>Sidebar is where you can talk freely.</Copy>
         </div>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ marginTop: 200 }}>
-            <RevealUnit />
-          </div>
+        <div style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 48 }}>
+          <RevealUnit />
         </div>
       </section>
     </>
