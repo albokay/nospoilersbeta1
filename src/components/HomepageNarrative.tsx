@@ -142,8 +142,8 @@ function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight;
       const centerY = rect.top + UNIT_H / 2;
-      // Start only when logo is in the top ~12% of viewport — stays full-size until near top
-      const startY = vh * 0.12;
+      // Start when logo center is at top ~22% — snaps before logo can escape the top edge
+      const startY = vh * 0.22;
       const endY = 4 + (LOGO_H * 0.6) / 2;
       const rawProgress = (startY - centerY) / (startY - endY);
       const progress = Math.min(Math.max(rawProgress, 0), 1);
