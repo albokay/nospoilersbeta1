@@ -39,15 +39,18 @@ function useParallax(rate = 0.12) {
   return { ref, offset };
 }
 
-// ── Full-screen section — every element gets its own ─────────────────────────
-function Screen({ children }: { children: React.ReactNode }) {
+// ── Full-screen section ───────────────────────────────────────────────────────
+function Screen({ children, justify = "center" }: {
+  children: React.ReactNode;
+  justify?: React.CSSProperties["justifyContent"];
+}) {
   return (
     <section style={{
       minHeight: "100svh",
       display: "flex",
       flexDirection: "column",
       alignItems: "stretch",
-      justifyContent: "center",
+      justifyContent: justify,
       padding: "48px 32px",
       boxSizing: "border-box",
     }}>
@@ -57,7 +60,6 @@ function Screen({ children }: { children: React.ReactNode }) {
 }
 
 // ── Bubble ────────────────────────────────────────────────────────────────────
-// pl / pr: left/right padding as % strings to nudge bubble toward a side
 function Bubble({ src, rate = 0.1, pl = "0%", pr = "0%" }: {
   src: string;
   rate?: number;
@@ -66,7 +68,6 @@ function Bubble({ src, rate = 0.1, pl = "0%", pr = "0%" }: {
 }) {
   const { ref: parallaxRef, offset } = useParallax(rate);
   const { ref: revealRef, visible } = useReveal(0.1);
-
   return (
     <div ref={revealRef} style={{
       width: "100%",
@@ -115,9 +116,9 @@ export default function HomepageLab() {
   return (
     <div style={{ background: GREEN, minHeight: "100vh", overflowX: "hidden" }}>
 
-      {/* 1 — Opening blue bubble, pushed right */}
+      {/* 1 — Opening blue bubble, centered */}
       <Screen>
-        <Bubble src="/ns-you.svg" pl="35%" rate={0.08} />
+        <Bubble src="/ns-you.svg" rate={0.08} />
       </Screen>
 
       {/* 2 — Copy */}
@@ -125,7 +126,7 @@ export default function HomepageLab() {
         <Copy>You're an episode behind your friend.</Copy>
       </Screen>
 
-      {/* 3 — Friend white bubble, pushed to left half */}
+      {/* 3 — Friend white bubble, left half */}
       <Screen>
         <Bubble src="/ns-friend.svg" pr="50%" rate={0.12} />
       </Screen>
@@ -135,55 +136,37 @@ export default function HomepageLab() {
         <Copy>Another is two episodes behind you.</Copy>
       </Screen>
 
-      {/* 5–11 — Jumble: each bubble its own Screen, copy woven in */}
-
-      {/* white → left */}
-      <Screen>
+      {/* 5 — Jumble: all bubbles + copy in one tightly packed section */}
+      <section style={{ padding: "0 32px", boxSizing: "border-box", overflowX: "hidden" }}>
         <Bubble src="/ns-friend.svg" pr="42%" rate={0.13} />
-      </Screen>
-
-      {/* blue → right */}
-      <Screen>
-        <Bubble src="/ns-you.svg" pl="38%" rate={0.09} />
-      </Screen>
-
-      {/* white → left, slight variation */}
-      <Screen>
+        <Bubble src="/ns-you.svg"    pl="38%" rate={0.09} />
         <Bubble src="/ns-friend.svg" pr="36%" rate={0.16} />
-      </Screen>
-
-      {/* copy woven into the mess */}
-      <Screen>
-        <Copy>You're all dying to talk about your favorite show.</Copy>
-      </Screen>
-
-      {/* blue → right, variation */}
-      <Screen>
-        <Bubble src="/ns-you.svg" pl="42%" rate={0.11} />
-      </Screen>
-
-      {/* white → left */}
-      <Screen>
+        <div style={{ padding: "72px 0", display: "flex", justifyContent: "center" }}>
+          <Copy>You're all dying to talk about your favorite show.</Copy>
+        </div>
+        <Bubble src="/ns-you.svg"    pl="42%" rate={0.11} />
         <Bubble src="/ns-friend.svg" pr="40%" rate={0.14} />
-      </Screen>
+        <Bubble src="/ns-you.svg"    pl="34%" rate={0.10} />
+      </section>
 
-      {/* blue → right */}
-      <Screen>
-        <Bubble src="/ns-you.svg" pl="34%" rate={0.10} />
-      </Screen>
-
-      {/* 12 — Finale: copy + logo + tagline as a centered unit */}
-      <Screen>
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 64,
-        }}>
+      {/* 6 — Finale: copy higher on page, logo+tagline centered */}
+      <section style={{
+        minHeight: "100svh",
+        display: "flex",
+        flexDirection: "column",
+        padding: "48px 32px",
+        boxSizing: "border-box",
+      }}>
+        {/* Copy sits in the upper portion */}
+        <div style={{ paddingTop: "8svh", display: "flex", justifyContent: "center" }}>
           <Copy size={38}>Sidebar is where you can talk freely.</Copy>
+        </div>
+
+        {/* Logo + tagline centered in remaining space */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <RevealUnit />
         </div>
-      </Screen>
+      </section>
 
     </div>
   );
@@ -199,7 +182,7 @@ function RevealUnit() {
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      gap: 16,
+      gap: 8,
     }}>
       <SidebarLogo scale={1} />
       <p style={{
