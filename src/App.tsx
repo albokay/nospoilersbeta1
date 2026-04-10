@@ -945,6 +945,40 @@ export default function App() {
 
           {pickShowMode === "set" ? (
             /* ── First-time join: watch status questionnaire ── */
+            pickShow.id === "bb" ? (
+              /* ── BB Demo: explanatory text + direct episode select ── */
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ fontSize: 14, lineHeight: 1.65, color: "inherit", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <p style={{ margin: 0 }}>You're about to enter a demo room for the show Breaking Bad. The posts inside are not from real users.</p>
+                  <p style={{ margin: 0 }}>Once inside, you can make posts, change your watch progress, leave responses, and everything else you can do in a real forum. You'll get assigned an anonymous username while you're in there. Once you leave the room, everything you've done there will be reset and deleted. Think of it as a play pen.</p>
+                  <p style={{ margin: 0 }}>The most important thing is to get a sense of how the no-spoiler mechanics work.</p>
+                  <p style={{ margin: 0 }}>Once you get the hang of it, you can sign up and invite some friends to start a real functioning room.</p>
+                  <p style={{ margin: 0 }}>Now time to set your initial progress for the room.</p>
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>What is the last episode of Breaking Bad you have watched?</label>
+                  <EpisodeSelect show={pickShow} value={firstTimeSel} onChange={setFirstTimeSel} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+                  <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}>Cancel</button>
+                  <button
+                    className="btn primary"
+                    onClick={() => {
+                      const entry: ProgressEntry = { s: firstTimeSel.s, e: firstTimeSel.e, isRewatching: false };
+                      window.dispatchEvent(new CustomEvent("dock:progress", { detail: { showId: "bb", s: entry.s, e: entry.e } }));
+                      setWatchStatusFor(pickShow.id, entry);
+                      setPickShowId(null);
+                      setPickShowMode("set");
+                      setPendingNewShow(null);
+                      openShow(pickShow.id);
+                    }}
+                  >
+                    Enter demo
+                  </button>
+                </div>
+              </div>
+            ) : (
+            /* ── Regular show: first-time / rewatch questionnaire ── */
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <p className="muted" style={{ fontSize: 14, marginTop: 0, marginBottom: 10 }}>
@@ -1004,9 +1038,6 @@ export default function App() {
                     } else {
                       entry = { s: firstTimeSel.s, e: firstTimeSel.e, isRewatching: false };
                     }
-                    if (pickShow.id === "bb") {
-                      window.dispatchEvent(new CustomEvent("dock:progress", { detail: { showId: "bb", s: entry.s, e: entry.e } }));
-                    }
                     setWatchStatusFor(pickShow.id, entry);
                     setPickShowId(null);
                     setPickShowMode("set");
@@ -1018,6 +1049,7 @@ export default function App() {
                 </button>
               </div>
             </div>
+            )
           ) : (
             /* ── Confirm / update progress (returning user) ── */
             <div>
