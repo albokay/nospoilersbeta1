@@ -39,44 +39,32 @@ function useParallax(rate = 0.12) {
 }
 
 // ── Full-screen section ───────────────────────────────────────────────────────
-function Screen({
-  children,
-  justify = "center",
-  extraTop = 0,
-}: {
+function Screen({ children, justify = "center", extraTop = 0 }: {
   children: React.ReactNode;
   justify?: React.CSSProperties["justifyContent"];
   extraTop?: number;
 }) {
   return (
     <section style={{
-      minHeight: "100svh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "stretch",
-      justifyContent: justify,
-      padding: `${48 + extraTop}px 32px 48px`,
-      boxSizing: "border-box",
+      minHeight: "100svh", display: "flex", flexDirection: "column",
+      alignItems: "stretch", justifyContent: justify,
+      padding: `${48 + extraTop}px 32px 48px`, boxSizing: "border-box",
     }}>
       {children}
     </section>
   );
 }
 
-// ── Bubble ────────────────────────────────────────────────────────────────────
+// ── Flow bubble (for solo screens) ───────────────────────────────────────────
 function Bubble({ src, rate = 0.1, align = "center", offset: inset = "0%", scale = 1 }: {
-  src: string;
-  rate?: number;
-  align?: "left" | "center" | "right";
-  offset?: string;
-  scale?: number;
+  src: string; rate?: number;
+  align?: "left" | "center" | "right"; offset?: string; scale?: number;
 }) {
   const { ref: parallaxRef, offset } = useParallax(rate);
   const { ref: revealRef, visible } = useReveal(0.1);
   const justifyMap = { left: "flex-start", center: "center", right: "flex-end" } as const;
   const padding = align === "right" ? { paddingLeft: inset }
     : align === "left" ? { paddingRight: inset } : {};
-
   return (
     <div ref={revealRef} style={{
       width: "100%", display: "flex", justifyContent: justifyMap[align],
@@ -91,11 +79,29 @@ function Bubble({ src, rate = 0.1, align = "center", offset: inset = "0%", scale
   );
 }
 
+// ── Cloud bubble (absolutely positioned, vw-based) ────────────────────────────
+// left / top / width are CSS strings (e.g. "12vw", "18%")
+function CloudBubble({ src, top, left, width, rate = 0 }: {
+  src: string; top: string; left: string; width: string; rate?: number;
+}) {
+  const { ref: parallaxRef, offset } = useParallax(rate);
+  const { ref: revealRef, visible } = useReveal(0.05);
+  return (
+    <div ref={revealRef} style={{
+      position: "absolute", top, left, width,
+      opacity: visible ? 1 : 0, transition: "opacity 0.9s ease",
+      pointerEvents: "none",
+    }}>
+      <div ref={parallaxRef} style={{ transform: `translateY(${offset}px)` }}>
+        <img src={src} alt="" style={{ width: "100%", height: "auto", display: "block" }} />
+      </div>
+    </div>
+  );
+}
+
 // ── Copy ──────────────────────────────────────────────────────────────────────
 function Copy({ children, size = 32, delay = 0 }: {
-  children: React.ReactNode;
-  size?: number;
-  delay?: number;
+  children: React.ReactNode; size?: number; delay?: number;
 }) {
   const { ref, visible } = useReveal(0.3);
   return (
@@ -112,7 +118,7 @@ function Copy({ children, size = 32, delay = 0 }: {
   );
 }
 
-// ── Logo + tagline reveal ─────────────────────────────────────────────────────
+// ── Logo + tagline ────────────────────────────────────────────────────────────
 function RevealUnit() {
   const { ref, visible } = useReveal(0.2);
   return (
@@ -148,7 +154,7 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
         <Copy>You're an episode behind your friend.</Copy>
       </section>
 
-      {/* 3 — Friend white bubble, left half — extra top padding to push further from copy */}
+      {/* 3 — Friend white bubble, pushed well below copy */}
       <Screen extraTop={120}>
         <Bubble src="/ns-friend.svg" align="left" offset="50%" rate={0.12} />
       </Screen>
@@ -158,37 +164,44 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
         <Copy>Another friend is two episodes behind you.</Copy>
       </section>
 
-      {/* 5 — Cloud: irregular sizes, gaps, and overlaps */}
-      <section style={{ padding: "60px 32px", boxSizing: "border-box" }}>
-        {/* Above copy — chaotic */}
-        <div>                          <Bubble src="/ns-friend.svg" align="left"  offset="38%" rate={0.10} scale={0.50} /></div>
-        <div style={{ marginTop: -52 }}><Bubble src="/ns-you.svg"   align="right" offset="18%" rate={0.08} scale={0.72} /></div>
-        <div style={{ marginTop:  12 }}><Bubble src="/ns-friend.svg" align="left"  offset="55%" rate={0.11} scale={0.44} /></div>
-        <div style={{ marginTop: -28 }}><Bubble src="/ns-you.svg"   align="right" offset="44%" rate={0.09} scale={0.65} /></div>
-        <div style={{ marginTop: -44 }}><Bubble src="/ns-friend.svg" align="left"  offset="22%" rate={0.13} scale={0.58} /></div>
-        <div style={{ marginTop:   8 }}><Bubble src="/ns-you.svg"   align="right" offset="30%" rate={0.07} scale={0.48} /></div>
+      {/* 5 — Cloud: 14 absolutely-positioned bubbles scattered around the copy */}
+      <section style={{ position: "relative", height: "95vh", boxSizing: "border-box" }}>
 
-        {/* Copy in the middle */}
-        <div style={{ position: "relative", zIndex: 10, padding: "56px 0", display: "flex", justifyContent: "center" }}>
-          <Copy>You're all dying to talk about your favorite show.</Copy>
+        {/* Copy anchored at ~44% from top */}
+        <div style={{
+          position: "absolute", top: "44%", left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "min(520px, 80vw)", zIndex: 10,
+        }}>
+          <Copy>You're all dying to talk about your favorite show right now.</Copy>
         </div>
 
-        {/* Below copy — chaotic */}
-        <div style={{ marginTop: -18 }}><Bubble src="/ns-friend.svg" align="left"  offset="46%" rate={0.12} scale={0.62} /></div>
-        <div style={{ marginTop: -40 }}><Bubble src="/ns-you.svg"   align="right" offset="22%" rate={0.09} scale={0.55} /></div>
-        <div style={{ marginTop:   6 }}><Bubble src="/ns-friend.svg" align="left"  offset="30%" rate={0.11} scale={0.70} /></div>
-        <div style={{ marginTop: -48 }}><Bubble src="/ns-you.svg"   align="right" offset="50%" rate={0.08} scale={0.46} /></div>
-        <div style={{ marginTop: -22 }}><Bubble src="/ns-friend.svg" align="left"  offset="18%" rate={0.10} scale={0.60} /></div>
-        <div style={{ marginTop: -34 }}><Bubble src="/ns-you.svg"   align="right" offset="36%" rate={0.13} scale={0.52} /></div>
+        {/* Above copy */}
+        <CloudBubble src="/ns-friend.svg" top="3%"  left="4vw"  width="26vw" rate={0.05} />
+        <CloudBubble src="/ns-you.svg"    top="1%"  left="54vw" width="30vw" rate={0.04} />
+        <CloudBubble src="/ns-friend.svg" top="12%" left="30vw" width="22vw" rate={0.06} />
+        <CloudBubble src="/ns-you.svg"    top="9%"  left="64vw" width="24vw" rate={0.05} />
+        <CloudBubble src="/ns-friend.svg" top="22%" left="8vw"  width="28vw" rate={0.04} />
+        <CloudBubble src="/ns-you.svg"    top="20%" left="58vw" width="20vw" rate={0.06} />
+        <CloudBubble src="/ns-friend.svg" top="33%" left="22vw" width="24vw" rate={0.05} />
+        <CloudBubble src="/ns-you.svg"    top="30%" left="50vw" width="26vw" rate={0.04} />
+
+        {/* Below copy */}
+        <CloudBubble src="/ns-you.svg"    top="54%" left="48vw" width="28vw" rate={0.05} />
+        <CloudBubble src="/ns-friend.svg" top="56%" left="6vw"  width="26vw" rate={0.04} />
+        <CloudBubble src="/ns-you.svg"    top="65%" left="62vw" width="22vw" rate={0.06} />
+        <CloudBubble src="/ns-friend.svg" top="64%" left="18vw" width="30vw" rate={0.05} />
+        <CloudBubble src="/ns-you.svg"    top="76%" left="40vw" width="24vw" rate={0.04} />
+        <CloudBubble src="/ns-friend.svg" top="78%" left="5vw"  width="28vw" rate={0.06} />
       </section>
 
-      {/* 6 — Finale: copy much lower, logo at very bottom */}
+      {/* 6 — Finale: copy and logo at bottom, logo 450px below copy */}
       <section style={{
         minHeight: "100svh", display: "flex", flexDirection: "column",
         padding: "48px 32px 64px", boxSizing: "border-box",
         justifyContent: "flex-end",
       }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 64 }}>
+        <div style={{ marginBottom: 450, display: "flex", justifyContent: "center" }}>
           <Copy size={38}>Sidebar is where you can talk freely.</Copy>
         </div>
         <div style={{ display: "flex", justifyContent: "center" }}>
