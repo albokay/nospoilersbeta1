@@ -414,8 +414,8 @@ export default function App() {
       const el = narrativeRef.current;
       if (!el) return;
       const raw = Math.min(Math.max(window.scrollY / el.offsetHeight, 0), 1);
-      // Start at 0, begin fading in at 50% scroll, fully visible at 100%
-      const progress = Math.min(Math.max((raw - 0.5) / 0.5, 0), 1);
+      // Invisible for first 20% of scroll, then linearly fades to full by 100%
+      const progress = Math.min(Math.max((raw - 0.2) / 0.8, 0), 1);
       setGradientOpacity(progress);
     }
     window.addEventListener("scroll", onScroll, { passive: true });

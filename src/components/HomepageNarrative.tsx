@@ -118,25 +118,115 @@ function Copy({ children, size = 32, delay = 0 }: {
   );
 }
 
-// ── Logo + tagline ────────────────────────────────────────────────────────────
-function RevealUnit() {
-  const { ref, visible } = useReveal(0.2);
+// ── Animated logo: scrolls from finale center → top-left corner ──────────────
+function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
+  const placeholderRef = useRef<HTMLDivElement>(null);
+  const [anim, setAnim] = useState({ progress: 0, left: 0, top: 0, w: 0, h: 0 });
+  const { ref: revealRef, visible } = useReveal(0.2);
+
+  useEffect(() => {
+    function onScroll() {
+      const el = placeholderRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const vh = window.innerHeight;
+      const centerY = rect.top + rect.height / 2;
+      // Animation starts when logo center crosses 2/3 down the viewport
+      const startY = vh * 2 / 3;
+      // Animation ends when logo is at rest near top of page
+      const endY = 4 + (rect.height * 0.5) / 2;
+      const rawProgress = (startY - centerY) / (startY - endY);
+      const progress = Math.min(Math.max(rawProgress, 0), 1);
+
+      setAnim({ progress, left: rect.left, top: rect.top, w: rect.width, h: rect.height });
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [headerHeight]);
+
+  const { progress, left: natLeft, top: natTop, w, h } = anim;
+
+  // Ease in-out
+  const eased = progress < 0.5
+    ? 2 * progress * progress
+    : -1 + (4 - 2 * progress) * progress;
+
+  const TARGET_SCALE = 0.5;
+  const TARGET_LEFT = 16;
+  // Vertically center the scaled logo inside the header
+  const TARGET_TOP = h > 0 ? Math.max(4, (headerHeight - h * TARGET_SCALE) / 2) : 8;
+
+  const scale = 1 + (TARGET_SCALE - 1) * eased;
+  const taglineOpacity = (1 - eased) * 0.85;
+
+  // Interpolate visual center from natural position → target corner
+  const natCX = natLeft + w / 2;
+  const natCY = natTop + h / 2;
+  const tgtCX = TARGET_LEFT + (w * TARGET_SCALE) / 2;
+  const tgtCY = TARGET_TOP + (h * TARGET_SCALE) / 2;
+  const visCX = natCX + (tgtCX - natCX) * eased;
+  const visCY = natCY + (tgtCY - natCY) * eased;
+
+  // CSS position for fixed element (transform-origin: center, so visual center = CSS center)
+  const fixedLeft = visCX - w / 2;
+  const fixedTop = visCY - h / 2;
+
+  const animating = progress > 0;
+
+  function logoContent(tagOpacity: number) {
+    return (
+      <>
+        <SidebarLogo scale={1} />
+        <p style={{
+          margin: 0, fontSize: 13, fontWeight: 700,
+          letterSpacing: "0.12em", textTransform: "lowercase",
+          color: "#fff", opacity: tagOpacity,
+        }}>
+          talk. together. whenever.
+        </p>
+      </>
+    );
+  }
+
   return (
-    <div ref={ref} style={{
-      opacity: visible ? 1 : 0,
-      transform: visible ? "translateY(0)" : "translateY(24px)",
-      transition: "opacity 0.9s ease 0.2s, transform 0.9s ease 0.2s",
-      display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-    }}>
-      <SidebarLogo scale={1} />
-      <p style={{
-        margin: 0, fontSize: 13, fontWeight: 700,
-        letterSpacing: "0.12em", textTransform: "lowercase",
-        color: "#fff", opacity: 0.85,
+    <>
+      {/* In-flow placeholder — keeps layout space, invisible when animating */}
+      <div ref={placeholderRef} style={{
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+        opacity: animating ? 0 : 1,
       }}>
-        talk. together. whenever.
-      </p>
-    </div>
+        <div ref={revealRef} style={{
+          opacity: visible ? 1 : 0,
+          transform: visible ? "translateY(0)" : "translateY(24px)",
+          transition: "opacity 0.9s ease 0.2s, transform 0.9s ease 0.2s",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+        }}>
+          {logoContent(0.85)}
+        </div>
+      </div>
+
+      {/* Fixed animated clone */}
+      {animating && w > 0 && (
+        <div style={{
+          position: "fixed",
+          left: fixedLeft,
+          top: fixedTop,
+          width: w,
+          height: h,
+          transform: `scale(${scale})`,
+          transformOrigin: "center center",
+          zIndex: 96,
+          pointerEvents: "none",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+        }}>
+          {logoContent(taglineOpacity)}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -206,7 +296,7 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
           <Copy size={38}>Sidebar is where you can talk freely.</Copy>
         </div>
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <RevealUnit />
+          <AnimatedLogo headerHeight={headerHeight} />
         </div>
       </section>
     </>
