@@ -597,10 +597,10 @@ export default function App() {
               {/* ── Existing homepage content (logo now lives in narrative) ── */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 0, paddingBottom: 24, zIndex: 95, position: "relative", width: "100vw", marginLeft: "calc(-50vw + 50%)" }}>
 
-              {/* Hero headline */}
+              {/* Hero headline — no subtext */}
               <p style={{
                 maxWidth: 880, textAlign: "center",
-                margin: "80px 16px 56px",
+                margin: "80px 16px 40px",
                 fontSize: isMobile ? 20 : 32, fontWeight: 800,
                 color: "#fff", lineHeight: 1.3,
               }}>
@@ -608,37 +608,27 @@ export default function App() {
                   <>
                     Watching TV with friends usually<br />
                     means spoilers or keeping quiet.<br />
-                    <em>Not on Sidebar.</em><br />
-                    <span style={{ fontSize: 16, lineHeight: 1.3, display: "inline-block", marginTop: 16 }}>
-                      Watch at your own pace and still talk about things freely. Nobody gets spoiled, ever.<br />
-                      When you're ready, the conversation can grow wider.
-                    </span>
+                    <em>Not on Sidebar.</em>
                   </>
                 ) : (
                   <>
                     <span style={{ whiteSpace: "nowrap" }}>Watching TV with friends usually</span><br />
                     <span style={{ whiteSpace: "nowrap" }}>means spoilers or keeping quiet.</span><br />
-                    <em>Not on Sidebar.</em><br />
-                    <span style={{ fontSize: 20, lineHeight: 1.3, display: "inline-block", marginTop: 20 }}>
-                      <span style={{ whiteSpace: "nowrap" }}>Watch at your own pace and still talk about things freely. Nobody gets spoiled, ever.</span><br />
-                      <span style={{ whiteSpace: "nowrap" }}>When you're ready, the conversation can grow wider.</span>
-                    </span>
+                    <em>Not on Sidebar.</em>
                   </>
                 )}
               </p>
 
-              {/* Three buttons row */}
-              <div style={{
-                display: "flex",
-                flexDirection: isMobile ? "column" : "row",
-                alignItems: "stretch",
-                gap: 8,
-                width: isMobile ? "min(288px, 90vw)" : "100%",
-                maxWidth: isMobile ? undefined : 960,
-                padding: isMobile ? 0 : "0 16px",
-                boxSizing: "border-box",
-              }}>
-                {user && (
+              {/* Logged-in shortcuts — journal + shows, no SearchShows */}
+              {user && (
+                <div style={{
+                  display: "flex", flexDirection: isMobile ? "column" : "row",
+                  alignItems: "stretch", gap: 8,
+                  width: isMobile ? "min(288px, 90vw)" : "100%",
+                  maxWidth: isMobile ? undefined : 960,
+                  padding: isMobile ? 0 : "0 16px",
+                  boxSizing: "border-box", marginBottom: 16,
+                }}>
                   <button
                     className="btn"
                     onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
@@ -652,8 +642,6 @@ export default function App() {
                     <span style={{ position: "absolute", left: "12%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}>📓</span>
                     read your journal
                   </button>
-                )}
-                {user && (
                   <div style={{ flex: isMobile ? undefined : 1, position: "relative", height: 40, boxSizing: "border-box" }}>
                     <YourShowsSelect
                       shows={shows}
@@ -671,28 +659,25 @@ export default function App() {
                     />
                     <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? "🐵" : "🙈"}</span>
                   </div>
-                )}
-                <SearchShows
-                  shows={shows}
-                  onPick={handlePickFromSearch}
-                  onShowCreated={(newShow, entry) => {
-                    setShows(prev => [...prev, newShow]);
-                    setWatchStatusFor(newShow.id, entry);
-                    openShow(newShow.id);
-                  }}
-                  onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-                  placeholder="find a show"
-                  style={{ flex: isMobile ? undefined : 1, width: "auto", minWidth: 0, margin: 0, height: 40, boxSizing: "border-box" }}
-                />
-              </div>
+                </div>
+              )}
 
-              {/* Feature grid */}
+              {/* "How?" */}
+              <p style={{
+                fontSize: isMobile ? 20 : 26, fontWeight: 800,
+                color: "#fff", margin: "8px 16px 16px", textAlign: "center",
+              }}>
+                How?
+              </p>
+
+              {/* Feature grid — 5 steps, boxes 3 & 4 visually highlighted */}
               {(() => {
-                const items: { IconA: React.ElementType; IconB: React.ElementType; text: string }[] = [
-                  { IconA: Search,     IconB: Tv,         text: "Find your show — search for any TV show and join its room." },
-                  { IconA: UsersRound, IconB: ListCheck,  text: "Invite your friends and mark your progress — share the room with the people you love to talk to. Everyone notes the last episode they watched each time they join in." },
-                  { IconA: EyeClosed,  IconB: Eye,        text: "Talk freely, spoiler-free — Sidebar filters the room to your watch progress, so nothing you read is ahead of where you are. Behind or ahead, everyone's entries wait until you're ready." },
-                  { IconA: Globe,      IconB: Rocket,     text: "Venture further — the room is public so others can read and respond too. Filter to your friends only, or let your conversation expand." },
+                const items: { IconA: React.ElementType; IconB: React.ElementType; text: string; highlight: boolean }[] = [
+                  { IconA: Search,     IconB: Tv,        text: "Find your show and join its room.", highlight: false },
+                  { IconA: UsersRound, IconB: ListCheck, text: "Invite your friends. Share the room with the people you love to talk to.", highlight: false },
+                  { IconA: ListCheck,  IconB: EyeClosed, text: "All of you log the last episode you watched each time you sign in. Sidebar filters the room to everyone's unique watch progress.", highlight: true },
+                  { IconA: EyeClosed,  IconB: Eye,       text: "Nothing you read is ahead of where you are. Whether behind or ahead, everyone's entries wait until they're ready.", highlight: true },
+                  { IconA: Globe,      IconB: Rocket,    text: "Venture further — you can decide if you want a public or private room. Friends only, or let your conversation expand?", highlight: false },
                 ];
                 return (
                   <div style={{
@@ -701,57 +686,106 @@ export default function App() {
                     gap: 8,
                     maxWidth: isMobile ? undefined : 840,
                     width: isMobile ? "min(288px, 90vw)" : "100%",
-                    margin: "32px 0 0",
+                    margin: "0 0 0",
                     padding: isMobile ? 0 : "0 16px",
                     boxSizing: "border-box",
                   }}>
-                    {items.map(({ IconA, IconB, text }, idx) => (
-                      <div key={text} style={{
-                        borderRadius: 16,
-                        padding: isMobile ? "12px 14px" : "16px 18px",
-                        display: "flex",
-                        flexDirection: isMobile ? "row" : "column",
-                        alignItems: "center",
-                        gap: isMobile ? 14 : 8,
-                        background: "rgba(255,255,255,0.18)",
-                      }}>
-                        {isMobile ? (
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                            <IconA size={18} color="#fff" strokeWidth={1.5} />
-                            {idx !== 0 && <>
-                              <MoveDown size={11} color="#fff" strokeWidth={2} />
-                              <IconB size={18} color="#fff" strokeWidth={1.5} />
-                            </>}
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
-                            <IconA size={22} color="#fff" strokeWidth={1.5} />
-                            <MoveRight size={13} color="#fff" strokeWidth={2} />
-                            <IconB size={22} color="#fff" strokeWidth={1.5} />
-                          </div>
-                        )}
-                        <span style={{ fontSize: isMobile ? 12 : 13, color: "#fff", fontWeight: 500, lineHeight: 1.4, textAlign: isMobile ? "left" : "center" }}>{text}</span>
-                      </div>
-                    ))}
+                    {items.map(({ IconA, IconB, text, highlight }, idx) => {
+                      const isLast = idx === items.length - 1;
+                      const iconColor = highlight ? "var(--dos-bg)" : "#fff";
+                      return (
+                        <div key={text} style={{
+                          borderRadius: 16,
+                          padding: isMobile ? "12px 14px" : "16px 18px",
+                          display: "flex",
+                          flexDirection: isMobile ? "row" : "column",
+                          alignItems: "center",
+                          gap: isMobile ? 14 : 8,
+                          background: highlight ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.18)",
+                          gridColumn: (!isMobile && isLast) ? "1 / -1" : undefined,
+                        }}>
+                          {isMobile ? (
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                              <IconA size={18} color={iconColor} strokeWidth={1.5} />
+                              {idx !== 0 && <>
+                                <MoveDown size={11} color={iconColor} strokeWidth={2} />
+                                <IconB size={18} color={iconColor} strokeWidth={1.5} />
+                              </>}
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
+                              <IconA size={22} color={iconColor} strokeWidth={1.5} />
+                              <MoveRight size={13} color={iconColor} strokeWidth={2} />
+                              <IconB size={22} color={iconColor} strokeWidth={1.5} />
+                            </div>
+                          )}
+                          <span style={{
+                            fontSize: isMobile ? 12 : 13,
+                            color: highlight ? "var(--dos-bg)" : "#fff",
+                            fontWeight: highlight ? 600 : 500,
+                            lineHeight: 1.4,
+                            textAlign: isMobile ? "left" : "center",
+                          }}>{text}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })()}
 
-              {/* BB demo entry — only shown to logged-out users */}
+              {/* BB demo — only shown to logged-out users */}
               {!user && (
-                <div style={{ marginTop: 36, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 12, color: "#fff", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                    Breaking Bad (Demo Forum)
+                <div style={{ marginTop: 40, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 14, color: "#fff", fontWeight: 600, lineHeight: 1.5 }}>
+                    See how it works in a mock room:
                   </span>
                   <button
                     className="btn"
                     onClick={() => { setPickShowMode("set"); setPickShowId("bb"); }}
-                    style={{ fontSize: 15, padding: "8px 28px", borderRadius: 9999, whiteSpace: "nowrap", background: "#fff", color: "var(--dos-bg)", borderColor: "#fff" }}
+                    style={{ fontSize: 15, padding: "8px 28px", borderRadius: 9999, whiteSpace: "nowrap", background: "#fff", color: "var(--dos-bg)", borderColor: "#fff", letterSpacing: "0.04em", fontWeight: 700 }}
                   >
-                    Enter the demo
+                    LET WALTER WHITE BE YOUR GUIDE
                   </button>
                 </div>
               )}
+
+              {/* Find a show — non-functional teaser for logged-out, functional for logged-in */}
+              <div style={{
+                marginTop: 36, marginBottom: 8,
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+                maxWidth: isMobile ? "min(288px, 90vw)" : 480,
+                width: "100%", textAlign: "center",
+                padding: isMobile ? "0 16px" : 0,
+              }}>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 500, lineHeight: 1.6 }}>
+                  The site is in early beta so there's not much to see yet. Eventually there would be public show rooms to explore with the same no-spoiler mechanics as your private rooms.
+                </span>
+                {user ? (
+                  <SearchShows
+                    shows={shows}
+                    onPick={handlePickFromSearch}
+                    onShowCreated={(newShow, entry) => {
+                      setShows(prev => [...prev, newShow]);
+                      setWatchStatusFor(newShow.id, entry);
+                      openShow(newShow.id);
+                    }}
+                    onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
+                    placeholder="find a show"
+                    style={{ width: "100%", minWidth: 0, margin: 0, height: 40, boxSizing: "border-box" }}
+                  />
+                ) : (
+                  <button disabled style={{
+                    padding: "8px 32px", borderRadius: 9999,
+                    border: "2px dotted rgba(255,255,255,0.45)",
+                    background: "transparent",
+                    color: "rgba(255,255,255,0.3)",
+                    fontSize: 15, fontWeight: 700,
+                    letterSpacing: "0.05em", cursor: "not-allowed",
+                  }}>
+                    find a show
+                  </button>
+                )}
+              </div>
             </div>
             </>
           )}
