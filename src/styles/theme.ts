@@ -21,6 +21,10 @@ body{
   margin:0;
   background: linear-gradient(to bottom, #c8e4b0 0px, var(--dos-bg) 180px) fixed, var(--dos-bg);
   background-attachment: fixed;
+}
+/* On the homepage the narrative controls the gradient via a React overlay — kill the CSS one */
+body.homepage{
+  background: var(--dos-bg);
   color:var(--dos-fg);
   font-size:var(--t3);
   line-height:1.5;

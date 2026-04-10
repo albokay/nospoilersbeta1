@@ -404,6 +404,7 @@ export default function App() {
   const isHomepage = !expandedShowId && !showProfile && !publicProfileUsername;
   useEffect(() => {
     document.body.classList.toggle("has-header", !isHomepage);
+    document.body.classList.toggle("homepage", isHomepage);
   }, [isHomepage]);
 
   // Gradient fade-in tied to scroll progress through the narrative
