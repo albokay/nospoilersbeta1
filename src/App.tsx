@@ -707,8 +707,8 @@ export default function App() {
                         }}>
                           {/* Number + icon, always stacked and centered */}
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: numColor, lineHeight: 1 }}>
-                              {idx + 1}
+                            <span style={{ fontSize: 16, fontWeight: 800, color: numColor, lineHeight: 1 }}>
+                              {idx + 1}.
                             </span>
                             <Icon size={isMobile ? 18 : 22} color={iconColor} strokeWidth={1.5} />
                           </div>
