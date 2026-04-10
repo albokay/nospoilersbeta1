@@ -118,114 +118,99 @@ function Copy({ children, size = 32, delay = 0 }: {
   );
 }
 
+// SidebarLogo intrinsic size at scale=1 (from component source: W=280, H=148)
+const LOGO_W = 280;
+const LOGO_H = 148;
+const TAGLINE_H = 28;  // fontSize 13 + line spacing
+const LOGO_GAP = 8;
+const UNIT_H = LOGO_H + LOGO_GAP + TAGLINE_H;
+
 // ── Animated logo: scrolls from finale center → top-left corner ──────────────
+// Key design: ONE SidebarLogo instance, always mounted in a fixed container.
+// It runs its scatter animation silently on page load (off-screen / opacity 0)
+// so by the time the user scrolls to the finale, blocks are already settled.
+// The in-flow placeholder is an empty invisible div — layout space + reveal hook only.
 function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
   const placeholderRef = useRef<HTMLDivElement>(null);
-  const [anim, setAnim] = useState({ progress: 0, left: 0, top: 0, w: 0, h: 0 });
-  const { ref: revealRef, visible } = useReveal(0.2);
+  const [anim, setAnim] = useState({ progress: 0, left: 0, top: 0, measured: false });
+  const { ref: revealRef, visible } = useReveal(0.15);
 
   useEffect(() => {
     function onScroll() {
       const el = placeholderRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-
       const vh = window.innerHeight;
-      const centerY = rect.top + rect.height / 2;
-      // Animation starts when logo center crosses 2/3 down the viewport
-      const startY = vh * 2 / 3;
-      // Animation ends when logo is at rest near top of page
-      const endY = 4 + (rect.height * 0.5) / 2;
+      const centerY = rect.top + UNIT_H / 2;
+      // Start only when logo center is in the top 25% of the screen (much later)
+      const startY = vh * 0.25;
+      const endY = 4 + (LOGO_H * 0.5) / 2; // near header top
       const rawProgress = (startY - centerY) / (startY - endY);
       const progress = Math.min(Math.max(rawProgress, 0), 1);
-
-      setAnim({ progress, left: rect.left, top: rect.top, w: rect.width, h: rect.height });
+      setAnim({ progress, left: rect.left, top: rect.top, measured: true });
     }
-
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, [headerHeight]);
 
-  const { progress, left: natLeft, top: natTop, w, h } = anim;
-
-  // Ease in-out
+  const { progress, left: natLeft, top: natTop, measured } = anim;
   const eased = progress < 0.5
     ? 2 * progress * progress
     : -1 + (4 - 2 * progress) * progress;
 
   const TARGET_SCALE = 0.5;
-  const TARGET_LEFT = 16;
-  // Vertically center the scaled logo inside the header
-  const TARGET_TOP = h > 0 ? Math.max(4, (headerHeight - h * TARGET_SCALE) / 2) : 8;
+  // Resting position: 16px right & 16px lower than header-centered default
+  const TARGET_LEFT = 32;
+  const TARGET_TOP = Math.max(4, (headerHeight - LOGO_H * TARGET_SCALE) / 2) + 16;
 
   const scale = 1 + (TARGET_SCALE - 1) * eased;
   const taglineOpacity = (1 - eased) * 0.85;
 
-  // Interpolate visual center from natural position → target corner
-  const natCX = natLeft + w / 2;
-  const natCY = natTop + h / 2;
-  const tgtCX = TARGET_LEFT + (w * TARGET_SCALE) / 2;
-  const tgtCY = TARGET_TOP + (h * TARGET_SCALE) / 2;
+  const natCX = natLeft + LOGO_W / 2;
+  const natCY = natTop + UNIT_H / 2;
+  const tgtCX = TARGET_LEFT + (LOGO_W * TARGET_SCALE) / 2;
+  const tgtCY = TARGET_TOP + (LOGO_H * TARGET_SCALE) / 2;
   const visCX = natCX + (tgtCX - natCX) * eased;
   const visCY = natCY + (tgtCY - natCY) * eased;
 
-  // CSS position for fixed element (transform-origin: center, so visual center = CSS center)
-  const fixedLeft = visCX - w / 2;
-  const fixedTop = visCY - h / 2;
-
+  const fixedLeft = measured ? visCX - LOGO_W / 2 : -9999;
+  const fixedTop  = measured ? visCY - UNIT_H / 2  : -9999;
   const animating = progress > 0;
 
-  function logoContent(tagOpacity: number) {
-    return (
-      <>
+  return (
+    <>
+      {/* Empty in-flow placeholder — reserves layout space, hosts reveal detector */}
+      <div ref={placeholderRef} style={{ width: LOGO_W, height: UNIT_H, visibility: "hidden", flexShrink: 0 }}>
+        <div ref={revealRef} style={{ width: "100%", height: "100%" }} />
+      </div>
+
+      {/* Single SidebarLogo — always mounted, never conditionally unmounted.
+          Runs its scatter animation silently on page load (off-screen / opacity 0).
+          Fades in via visible, then moves to corner via scroll progress. */}
+      <div style={{
+        position: "fixed",
+        left: fixedLeft,
+        top: fixedTop,
+        width: LOGO_W,
+        height: UNIT_H,
+        transform: `scale(${scale})`,
+        transformOrigin: "center center",
+        zIndex: 96,
+        pointerEvents: "none",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: LOGO_GAP,
+        opacity: visible ? 1 : 0,
+        transition: (!animating && visible) ? "opacity 0.9s ease 0.2s" : "none",
+      }}>
         <SidebarLogo scale={1} />
         <p style={{
           margin: 0, fontSize: 13, fontWeight: 700,
           letterSpacing: "0.12em", textTransform: "lowercase",
-          color: "#fff", opacity: tagOpacity,
+          color: "#fff", opacity: taglineOpacity, flexShrink: 0,
         }}>
           talk. together. whenever.
         </p>
-      </>
-    );
-  }
-
-  return (
-    <>
-      {/* In-flow placeholder — keeps layout space, invisible when animating */}
-      <div ref={placeholderRef} style={{
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-        opacity: animating ? 0 : 1,
-      }}>
-        <div ref={revealRef} style={{
-          opacity: visible ? 1 : 0,
-          transform: visible ? "translateY(0)" : "translateY(24px)",
-          transition: "opacity 0.9s ease 0.2s, transform 0.9s ease 0.2s",
-          display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-        }}>
-          {logoContent(0.85)}
-        </div>
       </div>
-
-      {/* Fixed animated clone */}
-      {animating && w > 0 && (
-        <div style={{
-          position: "fixed",
-          left: fixedLeft,
-          top: fixedTop,
-          width: w,
-          height: h,
-          transform: `scale(${scale})`,
-          transformOrigin: "center center",
-          zIndex: 96,
-          pointerEvents: "none",
-          display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-        }}>
-          {logoContent(taglineOpacity)}
-        </div>
-      )}
     </>
   );
 }
