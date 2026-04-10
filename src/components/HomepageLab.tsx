@@ -60,20 +60,30 @@ function Screen({ children, justify = "center" }: {
 }
 
 // ── Bubble ────────────────────────────────────────────────────────────────────
-function Bubble({ src, rate = 0.1, pl = "0%", pr = "0%" }: {
+// align: where the bubble sits; offset: how far it's inset from that edge
+function Bubble({ src, rate = 0.1, align = "center", offset: inset = "0%" }: {
   src: string;
   rate?: number;
-  pl?: string;
-  pr?: string;
+  align?: "left" | "center" | "right";
+  offset?: string;
 }) {
   const { ref: parallaxRef, offset } = useParallax(rate);
   const { ref: revealRef, visible } = useReveal(0.1);
+
+  const justifyMap = { left: "flex-start", center: "center", right: "flex-end" } as const;
+  const padding = align === "right"
+    ? { paddingLeft: inset }
+    : align === "left"
+    ? { paddingRight: inset }
+    : {};
+
   return (
     <div ref={revealRef} style={{
       width: "100%",
-      paddingLeft: pl,
-      paddingRight: pr,
+      display: "flex",
+      justifyContent: justifyMap[align],
       boxSizing: "border-box",
+      ...padding,
       opacity: visible ? 1 : 0,
       transition: "opacity 0.8s ease",
     }}>
@@ -118,7 +128,7 @@ export default function HomepageLab() {
 
       {/* 1 — Opening blue bubble, centered */}
       <Screen>
-        <Bubble src="/ns-you.svg" rate={0.08} />
+        <Bubble src="/ns-you.svg" align="center" rate={0.08} />
       </Screen>
 
       {/* 2 — Copy */}
@@ -128,7 +138,7 @@ export default function HomepageLab() {
 
       {/* 3 — Friend white bubble, left half */}
       <Screen>
-        <Bubble src="/ns-friend.svg" pr="50%" rate={0.12} />
+        <Bubble src="/ns-friend.svg" align="left" offset="50%" rate={0.12} />
       </Screen>
 
       {/* 4 — Copy */}
@@ -137,16 +147,16 @@ export default function HomepageLab() {
       </Screen>
 
       {/* 5 — Jumble: all bubbles + copy in one tightly packed section */}
-      <section style={{ padding: "0 32px", boxSizing: "border-box", overflowX: "hidden" }}>
-        <Bubble src="/ns-friend.svg" pr="42%" rate={0.13} />
-        <Bubble src="/ns-you.svg"    pl="38%" rate={0.09} />
-        <Bubble src="/ns-friend.svg" pr="36%" rate={0.16} />
+      <section style={{ padding: "0 32px", boxSizing: "border-box", overflow: "clip" }}>
+        <Bubble src="/ns-friend.svg" align="left"  offset="42%" rate={0.13} />
+        <Bubble src="/ns-you.svg"    align="right" offset="38%" rate={0.09} />
+        <Bubble src="/ns-friend.svg" align="left"  offset="36%" rate={0.16} />
         <div style={{ padding: "72px 0", display: "flex", justifyContent: "center" }}>
           <Copy>You're all dying to talk about your favorite show.</Copy>
         </div>
-        <Bubble src="/ns-you.svg"    pl="42%" rate={0.11} />
-        <Bubble src="/ns-friend.svg" pr="40%" rate={0.14} />
-        <Bubble src="/ns-you.svg"    pl="34%" rate={0.10} />
+        <Bubble src="/ns-you.svg"    align="right" offset="42%" rate={0.11} />
+        <Bubble src="/ns-friend.svg" align="left"  offset="40%" rate={0.14} />
+        <Bubble src="/ns-you.svg"    align="right" offset="34%" rate={0.10} />
       </section>
 
       {/* 6 — Finale: copy higher on page, logo+tagline centered */}
