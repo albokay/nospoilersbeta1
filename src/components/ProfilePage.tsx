@@ -352,7 +352,14 @@ export default function ProfilePage({
                 <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
                   {/* Sticky action bar — make entry + progress */}
                   {activeTab && (
-                    <div className="profileActionBar">
+                    <div style={{
+                      position: "sticky", top: 0, zIndex: 10,
+                      background: "var(--dos-bg)",
+                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                      padding: "10px 0 10px",
+                      marginBottom: 8,
+                      boxShadow: "0 2px 0 0 rgba(255,255,255,0.2)",
+                    }}>
                       <button
                         className="btn post h40"
                         onClick={() => setComposeOpen(true)}
