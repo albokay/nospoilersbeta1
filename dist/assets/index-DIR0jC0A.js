@@ -361,7 +361,7 @@ header.site{
    so entries never bleed through above it. Card becomes a flex column. */
 .profileActionBar{
   flex-shrink:0;
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  display:flex; align-items:center; justify-content:flex-end; gap:8px;
   background:var(--dos-bg);
   padding:14px 48px 10px 16px;
   border-bottom:none;
