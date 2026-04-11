@@ -2,13 +2,17 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Reply, Thread } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts } from "../lib/db";
+import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Tooltip from "./Tooltip";
 import EmptyProfileWelcome from "./EmptyProfileWelcome";
 import Modal from "./Modal";
 import OneSelectProgress from "./OneSelectProgress";
+import PromptCard from "./PromptCard";
+import type { PromptEntry } from "../lib/promptData";
+import { getFragment, getPromptSuggestion } from "../lib/prompts";
 
 const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
@@ -139,6 +143,67 @@ export default function ProfilePage({
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
   const [postSubmitting, setPostSubmitting] = useState(false);
+  const postBodyRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Prompt system
+  const [promptEntries, setPromptEntries] = useState<PromptEntry[]>([]);
+  const [activePrompt, setActivePrompt] = useState<PromptEntry | null>(null);
+  const [shownPromptIds, setShownPromptIds] = useState<number[]>([]);
+  const [insertedPromptIds, setInsertedPromptIds] = useState<number[]>([]);
+  const [composePlaceholder, setComposePlaceholder] = useState<string>(
+    "Food for thought: did that last episode remind you of something from earlier in the show...or even from your own life?"
+  );
+
+  useEffect(() => {
+    fetchPrompts()
+      .then((rows: PromptRow[]) => {
+        setPromptEntries(rows.map(r => ({
+          id: r.id, text: r.text, displayType: r.display_type,
+          tvmazeTypes: r.tvmaze_types, genres: r.genres,
+          progressTags: r.progress_tags, themes: r.themes,
+        })));
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (composeOpen && promptEntries.length > 0 && activeShow) {
+      setComposePlaceholder(getFragment(activeShow as Show, promptEntries));
+      setActivePrompt(null);
+      setShownPromptIds([]);
+      setInsertedPromptIds([]);
+    }
+  }, [composeOpen, promptEntries.length]);
+
+  const handlePromptBtn = () => {
+    if (!activeShow) return;
+    const next = getPromptSuggestion(activeShow as Show, postProgress, shownPromptIds, promptEntries);
+    if (next) { setShownPromptIds(prev => [...prev, next.id]); setActivePrompt(next); }
+  };
+
+  const handlePromptShuffle = () => {
+    if (!activeShow) return;
+    const next = getPromptSuggestion(activeShow as Show, postProgress, shownPromptIds, promptEntries);
+    if (next) { setShownPromptIds(prev => [...prev, next.id]); setActivePrompt(next); }
+  };
+
+  const handlePromptInsert = (text: string) => {
+    if (!activePrompt) return;
+    const token = `[PROMPT: ${text}]`;
+    const ta = postBodyRef.current;
+    if (ta) {
+      const pos = ta.selectionStart ?? postBody.length;
+      const before = postBody.slice(0, pos).trimEnd();
+      const after = postBody.slice(pos).trimStart();
+      const newBody = before + (before.length ? "\n" : "") + token + "\n" + after;
+      setPostBody(newBody);
+      requestAnimationFrame(() => { ta.focus(); });
+    } else {
+      setPostBody(prev => prev.trimEnd() + (prev.trim() ? "\n" : "") + token + "\n");
+    }
+    setInsertedPromptIds(prev => [...prev, activePrompt.id]);
+    setActivePrompt(null);
+  };
 
   const activeShow = useMemo(() => allShows.find(s => s.id === activeTab), [allShows, activeTab]);
   const postProgress = progress[activeTab] || { s: 1, e: 1 };
@@ -165,6 +230,7 @@ export default function ProfilePage({
       });
       setMyThreads(prev => [t, ...prev]);
       setPostTitle(""); setPostBody("");
+      setActivePrompt(null); setShownPromptIds([]); setInsertedPromptIds([]);
       setComposeOpen(false);
     } catch {
       alert("Failed to post. Please try again.");
@@ -615,12 +681,33 @@ export default function ProfilePage({
               </div>
             )}
             <textarea
+              ref={postBodyRef}
               className="card"
-              placeholder="Food for thought: did that last episode remind you of something from earlier in the show...or even from your own life?"
+              placeholder={composePlaceholder}
               value={postBody}
               onChange={(e) => setPostBody(e.target.value)}
               style={{ width: "100%", height: 260, resize: "vertical" }}
             />
+            {activePrompt && (
+              <PromptCard
+                prompt={activePrompt}
+                onClose={() => setActivePrompt(null)}
+                onShuffle={handlePromptShuffle}
+                onInsert={handlePromptInsert}
+              />
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              {promptEntries.length > 0 ? (
+                <button
+                  className="prompt-btn"
+                  type="button"
+                  onClick={handlePromptBtn}
+                  title="Get a writing prompt"
+                >
+                  ✦ want a prompt?
+                </button>
+              ) : <span />}
+            </div>
             <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
               <button
                 className="btn"
