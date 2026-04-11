@@ -353,7 +353,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
 }
-.diaryCardWrap > .card{ border:none; border-radius:0; padding:24px 48px 32px 16px; box-shadow:inset 0 2px 0 0 #fff, inset 2px 0 0 0 #fff, inset -2px 0 0 0 #fff, inset 0 -2px 0 0 #fff; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:2px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
@@ -364,7 +364,6 @@ header.site{
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   background:var(--dos-bg);
   padding:14px 48px 10px 16px;
-  border-top:2px solid #fff;
   border-bottom:2px solid rgba(255,255,255,0.7);
 }
 /* Scrollable entries region that fills the remaining card height */
@@ -405,8 +404,8 @@ header.site{
   .diaryTab.active{ font-size:12px; padding:6px 12px; }
   /* Flush first tab with the card's left border line */
   .diaryTabRow{ padding-left:0; }
-  /* Balance the diary card padding — 48px right was desktop-only breathing room */
-  .diaryCardWrap > .card{ padding:16px 16px 24px !important; }
+  /* Keep border, zero padding — action bar + scroll area handle their own padding */
+  .diaryCardWrap > .card{ border:2px solid #fff !important; padding:0 !important; }
   .profileActionBar{ padding:10px 16px; }
   .diaryScrollArea{ padding:8px 16px 24px 16px; }
   /* Entry cards: remove the desktop left-margin offset so they're centred in the box */
