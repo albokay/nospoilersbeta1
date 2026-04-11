@@ -422,7 +422,7 @@ export default function ProfilePage({
                       <button
                         className="btn post h40"
                         onClick={() => setComposeOpen(true)}
-                        style={{ lineHeight: 1.2 }}
+                        style={{ lineHeight: 1.2, marginLeft: 20 }}
                       >
                         + make an entry
                       </button>
