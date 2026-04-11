@@ -707,32 +707,32 @@ export default function ProfilePage({
                   ✦ want a prompt?
                 </button>
               ) : <span />}
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
-              <button
-                className="btn"
-                onClick={() => setComposeOpen(false)}
-                disabled={postSubmitting}
-                style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn"
-                onClick={() => submitPost(true)}
-                disabled={postSubmitting}
-                style={{ whiteSpace: "nowrap", fontSize: 13 }}
-              >
-                {postSubmitting ? "Saving…" : "Save privately"}
-              </button>
-              <button
-                className="btn post"
-                onClick={() => submitPost(false)}
-                disabled={postSubmitting}
-                style={{ whiteSpace: "nowrap", fontSize: 13 }}
-              >
-                {postSubmitting ? "Posting…" : "Post to room"}
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  className="btn"
+                  onClick={() => setComposeOpen(false)}
+                  disabled={postSubmitting}
+                  style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => submitPost(true)}
+                  disabled={postSubmitting}
+                  style={{ whiteSpace: "nowrap", fontSize: 13 }}
+                >
+                  {postSubmitting ? "Saving…" : "Save privately"}
+                </button>
+                <button
+                  className="btn post"
+                  onClick={() => submitPost(false)}
+                  disabled={postSubmitting}
+                  style={{ whiteSpace: "nowrap", fontSize: 13 }}
+                >
+                  {postSubmitting ? "Posting…" : "Post to room"}
+                </button>
+              </div>
             </div>
           </div>
         </Modal>
