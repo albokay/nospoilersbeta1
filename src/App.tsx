@@ -864,6 +864,7 @@ export default function App() {
           repliesToUser={repliesToUser}
           openedAtSeenAt={openedAtSeenAt}
           onTabsChange={setProfileTabData}
+          updateProgressFor={updateProgressFor}
         />
       )}
 

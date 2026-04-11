@@ -2,11 +2,13 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Reply, Thread } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import Tooltip from "./Tooltip";
 import EmptyProfileWelcome from "./EmptyProfileWelcome";
+import Modal from "./Modal";
+import OneSelectProgress from "./OneSelectProgress";
 
 const GLOBAL_HEADER_H = 72;
 const ROW_PAD_Y = 8;
@@ -27,10 +29,11 @@ export default function ProfilePage({
   repliesToUser = [],
   openedAtSeenAt = 0,
   onTabsChange,
+  updateProgressFor,
 }: {
   shows: Show[];
   username: string;
-  progress: Record<string, { s: number; e: number }>;
+  progress: Record<string, any>;
   likesThreads: Record<string, number>;
   likesReplies: Record<string, number>;
   likedByUserThreads: Record<string, boolean>;
@@ -38,11 +41,12 @@ export default function ProfilePage({
   openThreadWithFocus: (showId: string, threadId: string, replyId?: string) => void;
   openShow: (showId: string) => void;
   onClose: () => void;
+  updateProgressFor?: (showId: string, val: { s: number; e: number }) => void;
   repliesToUser?: { reply: Reply; thread: Thread }[];
   openedAtSeenAt?: number;
   onTabsChange?: (data: ProfileTabData | null) => void;
 }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const showName = (showId: string) => showId === "bb" ? "Breaking Bad (DEMO)" : allShows.find(s => s.id === showId)?.name || showId;
 
@@ -129,6 +133,46 @@ export default function ProfilePage({
   useEffect(() => { setExpandedIds(new Set()); }, [activeTab]);
 
   const [diaryFilter, setDiaryFilter] = useState<"all" | "private">("all");
+
+  // Compose state
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [postTitle, setPostTitle] = useState("");
+  const [postBody, setPostBody] = useState("");
+  const [postSubmitting, setPostSubmitting] = useState(false);
+
+  const activeShow = useMemo(() => allShows.find(s => s.id === activeTab), [allShows, activeTab]);
+  const postProgress = progress[activeTab] || { s: 1, e: 1 };
+  const postTagS = postProgress.isRewatching && postProgress.highestS ? postProgress.highestS : postProgress.s;
+  const postTagE = postProgress.isRewatching && postProgress.highestE ? postProgress.highestE : postProgress.e;
+
+  const submitPost = async (isPrivate = false) => {
+    if (!user || !profile) return;
+    const title = (postTitle || "").trim();
+    const body = (postBody || "").trim();
+    if (!title) { alert("Please add a title before posting."); return; }
+    if (!body) { alert("Write something first."); return; }
+    setPostSubmitting(true);
+    try {
+      const t = await insertThread({
+        showId: activeTab,
+        season: postTagS, episode: postTagE,
+        authorId: user.id, authorName: profile.username,
+        title,
+        preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
+        body,
+        isPrivate,
+        isRewatch: postProgress.isRewatching ?? false,
+      });
+      setMyThreads(prev => [t, ...prev]);
+      setPostTitle(""); setPostBody("");
+      setComposeOpen(false);
+    } catch {
+      alert("Failed to post. Please try again.");
+    } finally {
+      setPostSubmitting(false);
+    }
+  };
+
   const toggleExpand = (id: string) =>
     setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
@@ -306,6 +350,33 @@ export default function ProfilePage({
                   </div>
                 <div className="diaryCardWrap">
                 <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
+                  {/* Sticky action bar — make entry + progress */}
+                  {activeTab && (
+                    <div style={{
+                      position: "sticky", top: 0, zIndex: 10,
+                      background: "var(--dos-bg)",
+                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                      padding: "10px 0 10px",
+                      marginBottom: 8,
+                      boxShadow: "0 2px 0 0 rgba(255,255,255,0.2)",
+                    }}>
+                      <button
+                        className="btn post h40"
+                        onClick={() => setComposeOpen(true)}
+                        style={{ lineHeight: 1.2 }}
+                      >
+                        + make an entry
+                      </button>
+                      {activeShow && (
+                        <OneSelectProgress
+                          show={activeShow}
+                          value={postProgress}
+                          onConfirm={(val) => updateProgressFor?.(activeTab, val)}
+                          requireConfirm={true}
+                        />
+                      )}
+                    </div>
+                  )}
                   {(() => {
                     const filtered = diaryFilter === "private" ? tabThreads.filter(t => t.isPrivate) : tabThreads;
                     if (filtered.length === 0) {
@@ -527,6 +598,62 @@ export default function ProfilePage({
             </div>
           )}
         </div>
+      )}
+      {/* Compose modal */}
+      {composeOpen && (
+        <Modal onClose={() => setComposeOpen(false)} width="min(720px,92vw)">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+            <h3 className="title" style={{ margin: 0 }}>make an entry</h3>
+            <button className="btn" onClick={() => setComposeOpen(false)}>✕</button>
+          </div>
+          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            <input
+              className="badge"
+              placeholder="Title"
+              value={postTitle}
+              onChange={(e) => setPostTitle(e.target.value)}
+              style={{ width: "100%", height: 40, fontWeight: 700 }}
+            />
+            {activeShow && (
+              <div className="muted" style={{ fontSize: 13 }}>
+                Your post is automatically marked to <b>S{String(postTagS).padStart(2, "0")}E{String(postTagE).padStart(2, "0")}</b> and will only show to people who've watched at least that far.
+              </div>
+            )}
+            <textarea
+              className="card"
+              placeholder="Food for thought: did that last episode remind you of something from earlier in the show...or even from your own life?"
+              value={postBody}
+              onChange={(e) => setPostBody(e.target.value)}
+              style={{ width: "100%", height: 260, resize: "vertical" }}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+              <button
+                className="btn"
+                onClick={() => setComposeOpen(false)}
+                disabled={postSubmitting}
+                style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn"
+                onClick={() => submitPost(true)}
+                disabled={postSubmitting}
+                style={{ whiteSpace: "nowrap", fontSize: 13 }}
+              >
+                {postSubmitting ? "Saving…" : "Save privately"}
+              </button>
+              <button
+                className="btn post"
+                onClick={() => submitPost(false)}
+                disabled={postSubmitting}
+                style={{ whiteSpace: "nowrap", fontSize: 13 }}
+              >
+                {postSubmitting ? "Posting…" : "Post to room"}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </section>
   );
