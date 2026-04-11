@@ -364,7 +364,7 @@ header.site{
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   background:var(--dos-bg);
   padding:14px 48px 10px 16px;
-  border-bottom:2px solid rgba(255,255,255,0.7);
+  border-bottom:none;
 }
 /* Scrollable entries region that fills the remaining card height */
 .diaryScrollArea{
