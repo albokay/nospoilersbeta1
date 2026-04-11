@@ -349,8 +349,8 @@ export default function ProfilePage({
                   </div>
                   </div>
                 <div className="diaryCardWrap">
-                <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
-                  {/* Sticky action bar — make entry + progress */}
+                <div className="card" style={{ height: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
+                  {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
                     <div className="profileActionBar">
                       <button
@@ -370,6 +370,7 @@ export default function ProfilePage({
                       )}
                     </div>
                   )}
+                  <div className="diaryScrollArea">
                   {(() => {
                     const filtered = diaryFilter === "private" ? tabThreads.filter(t => t.isPrivate) : tabThreads;
                     if (filtered.length === 0) {
@@ -437,6 +438,7 @@ export default function ProfilePage({
                   ));
                   })()}
                   <div style={{ height: 32, flexShrink: 0 }} aria-hidden />
+                  </div>{/* /diaryScrollArea */}
                 </div>
                 </div>{/* /diaryCardWrap */}
                 </div>{/* /diaryOuter */}
