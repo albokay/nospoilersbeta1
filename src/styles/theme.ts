@@ -270,6 +270,20 @@ header.site{
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
+/* Sticky action bar inside diary card.
+   margin-top:-24px pulls it flush with the card's top edge (cancels card's padding-top),
+   padding-top:14px gives buttons comfortable breathing room from the top. */
+.profileActionBar{
+  position:sticky; top:0; z-index:10;
+  background:var(--dos-bg);
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  margin-top:-24px;
+  padding-top:14px;
+  padding-bottom:10px;
+  margin-bottom:8px;
+  border-bottom:2px solid rgba(255,255,255,0.7);
+}
+
 /* profile chip */
 .profileChip{
   display:inline-flex; align-items:center; gap:8px; cursor:pointer;
@@ -304,6 +318,7 @@ header.site{
   .diaryTabRow{ padding-left:0; }
   /* Balance the diary card padding — 48px right was desktop-only breathing room */
   .diaryCardWrap > .card{ padding:16px 16px 24px !important; }
+  .profileActionBar{ margin-top:-16px; padding-top:10px; }
   /* Entry cards: remove the desktop left-margin offset so they're centred in the box */
   .diaryCardWrap .threadCard{ margin-left:0 !important; margin-right:0 !important; }
 
