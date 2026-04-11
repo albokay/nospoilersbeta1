@@ -47,6 +47,12 @@ export default function ProfilePage({
   onTabsChange?: (data: ProfileTabData | null) => void;
 }) {
   const { user, profile } = useAuth();
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const showName = (showId: string) => showId === "bb" ? "Breaking Bad (DEMO)" : allShows.find(s => s.id === showId)?.name || showId;
 
@@ -356,9 +362,16 @@ export default function ProfilePage({
                       position: "sticky", top: 0, zIndex: 10,
                       background: "var(--dos-bg)",
                       display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-                      padding: "10px 0 10px",
+                      // Pull bar up to cover the card's top padding so entries don't bleed through
+                      marginTop: isMobile ? -16 : -24,
+                      paddingTop: isMobile ? 22 : 30,
+                      paddingBottom: 10,
+                      marginLeft: isMobile ? -16 : -16,
+                      paddingLeft: isMobile ? 16 : 16,
+                      marginRight: isMobile ? -16 : -48,
+                      paddingRight: isMobile ? 16 : 48,
                       marginBottom: 8,
-                      boxShadow: "0 2px 0 0 rgba(255,255,255,0.2)",
+                      borderBottom: "2px solid rgba(255,255,255,0.7)",
                     }}>
                       <button
                         className="btn post h40"
