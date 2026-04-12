@@ -61,6 +61,14 @@ export default function ShowSection({
   });
   const [showGuestPicker, setShowGuestPicker] = useState(() => !user);
 
+  // For logged-in users: show progress prompt if progress is unset (e === 0 sentinel)
+  const [showLoggedInPicker, setShowLoggedInPicker] = useState(() =>
+    !!(user && progress[showId]?.e === 0)
+  );
+  useEffect(() => {
+    if (user && progress[showId]?.e === 0) setShowLoggedInPicker(true);
+  }, [showId, user, progress[showId]?.e]);
+
   // Sync guest progress state when showId changes (user navigates to a different show)
   useEffect(() => {
     if (user) return;
@@ -973,6 +981,37 @@ export default function ShowSection({
             <p style={{ margin: "20px 0 0", fontSize: 13, opacity: 0.5, textAlign: "center" }}>
               <a href="/auth" style={{ color: "inherit", textDecoration: "underline" }}>Sign up or log in</a> to save your progress permanently.
             </p>
+          </div>
+        </Modal>
+      )}
+      {user && showLoggedInPicker && (
+        <Modal
+          onClose={() => {
+            // Default to S1E1 if closed without picking
+            updateProgressFor?.(showId, { s: 1, e: 1 });
+            setShowLoggedInPicker(false);
+          }}
+          width="min(440px,92vw)"
+        >
+          <div style={{ padding: "20px 16px 20px" }}>
+            <p style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 700, lineHeight: 1.3 }}>
+              Where are you in {(allShows.find(s => s.id === showId)?.name) || showId}?
+            </p>
+            <p style={{ margin: "0 0 20px", fontSize: 15, lineHeight: 1.5, opacity: 0.75 }}>
+              Set your watch progress so we only show you entries written by people who were at your level or earlier — no spoilers from further ahead.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-start" }}>
+              <OneSelectProgress
+                show={allShows.find(s => s.id === showId) || { seasons: [10] }}
+                value={{ s: 1, e: 1 }}
+                onConfirm={(val) => {
+                  updateProgressFor?.(showId, val);
+                  setShowLoggedInPicker(false);
+                  setShowProgressCelebration(true);
+                }}
+                requireConfirm={true}
+              />
+            </div>
           </div>
         </Modal>
       )}
