@@ -57,11 +57,9 @@ export default function InviteAcceptPage({ token }: { token: string }) {
     }
 
     setStatus("done");
-    // Navigate to the show after a short delay so the user sees the success state
-    setTimeout(() => {
-      const showId = (data as any).show_id;
-      navigate(showId ? `/show/${showId}` : "/");
-    }, 1800);
+    // Navigate home after a short delay — let the user find the show themselves
+    // since they may not have set up progress for it yet
+    setTimeout(() => navigate("/"), 1800);
   }
 
   // If the user just signed in / signed up via the auth modal, auto-accept
