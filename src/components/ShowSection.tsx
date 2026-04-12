@@ -1521,15 +1521,12 @@ export default function ShowSection({
           hiddenNewReplies={getNewCounts(thread.id).hiddenNew}
           onRiskyReveal={(rid: string) => setRiskyRevealedIds(prev => new Set([...prev, rid]))}
           onThreadUpdate={(updated: Thread) => setDbThreads(prev => prev.map(t => t.id === updated.id ? updated : t))}
-          onThreadDelete={(loadedReplyCount) => {
+          onThreadDelete={() => {
             const tid = activeThreadId!;
-            // Use the count InlineThreadView actually loaded (fresh from DB) — more
-            // reliable than ShowSection's potentially-stale replyCounts state.
-            if (loadedReplyCount > 0) {
-              setDbThreads(prev => prev.map(t => t.id === tid ? { ...t, isDeleted: true } : t));
-            } else {
-              setDbThreads(prev => prev.filter(t => t.id !== tid));
-            }
+            // Always mark deleted — the thread list decides at render time whether
+            // to show a stub (has replies) or hide entirely (no replies) using replyMeta,
+            // which is kept fresh by the realtime subscription.
+            setDbThreads(prev => prev.map(t => t.id === tid ? { ...t, isDeleted: true } : t));
             setActiveThreadId(null);
             setTimeout(() => scrollToShowTop(), 0);
           }}
@@ -1597,8 +1594,11 @@ export default function ShowSection({
             // Deleted:
             //   - no replies at all → completely gone
             //   - has any replies → show clickable stub so responses remain accessible
+            // Use replyMeta (kept fresh by realtime) rather than displayReplyCount,
+            // because groupReplyCounts is not updated by the realtime subscription.
+            const anyReplies = (replyMeta[t.id] ?? []).length > 0;
             if (t.isDeleted) {
-              if (displayReplyCount === 0) return null;
+              if (!anyReplies) return null;
               return (
                 <div key={t.id} style={{ position: "relative", margin: "0 0 12px 0" }}>
                   <div
