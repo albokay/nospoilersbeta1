@@ -177,7 +177,6 @@ export async function cloneThreadToPublic(threadId: string): Promise<Thread> {
       preview:          orig.preview,
       body:             orig.body,
       is_public:        true,
-      is_rewatch:       orig.is_rewatch ?? false,
       likes_count:      0,
       source_thread_id: threadId,
     })
