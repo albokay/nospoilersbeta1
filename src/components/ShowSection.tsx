@@ -52,6 +52,31 @@ export default function ShowSection({
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const show = allShows.find((s) => s.id === showId) || { id: showId, name: showId, seasons: [10] };
 
+  // ── Guest progress (logged-out users — stored in localStorage) ───────────
+  const guestProgressKey = `ns_guest_prog_${showId}`;
+  const [guestProgress, setGuestProgress] = useState<{ s: number; e: number } | null>(() => {
+    if (user) return null;
+    try { return JSON.parse(localStorage.getItem(`ns_guest_prog_${showId}`) || "null"); } catch { return null; }
+  });
+  const [showGuestPicker, setShowGuestPicker] = useState(() => !user);
+
+  // Sync guest progress state when showId changes (user navigates to a different show)
+  useEffect(() => {
+    if (user) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem(`ns_guest_prog_${showId}`) || "null");
+      setGuestProgress(stored);
+      setShowGuestPicker(!stored);
+    } catch {
+      setGuestProgress(null);
+      setShowGuestPicker(true);
+    }
+  }, [showId]);
+
+  // Effective progress: saved progress for logged-in users, guest progress for logged-out
+  const effectiveProgress: { s: number; e: number } | undefined =
+    user ? progress[showId] : guestProgress ?? undefined;
+
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
   useEffect(() => {
     const fn = () => setIsMobile(window.innerWidth <= 768);
@@ -267,7 +292,7 @@ export default function ShowSection({
 
   const getNewCounts = (threadId: string) => {
     const meta = replyMeta[threadId] ?? [];
-    const prog = progress[showId];
+    const prog = effectiveProgress;
     const openedAt = lastOpenedAt[threadId] ?? Date.now();
     const baseAt = hiddenBaseAt[threadId] ?? Date.now();
     let visibleNew = 0, hiddenNew = 0, totalVisible = 0;
@@ -377,9 +402,12 @@ export default function ShowSection({
     return [...dbThreads, ...seedThreads.filter(t => t.showId === showId && !dbIds.has(t.id))];
   }, [dbThreads, showId]);
 
+  // Also update green-tab tracking to use effectiveProgress
   const baseVisible = useMemo(() => {
-    const prog = progress[showId];
-    let list = allThreads.filter(t => canView(t, prog));
+    const prog = effectiveProgress;
+    let list = allThreads
+      .filter(t => canView(t, prog))
+      .filter(t => t.isPublic);  // show page is public-only; private entries live in the journal
 
     if (searchQuery.trim()) {
       const withScores = list
@@ -430,7 +458,7 @@ export default function ShowSection({
   // ── Green-tab: compute newly visible threads ──
   const prevProgRef = useRef<{ s: number; e: number } | undefined>(undefined);
   useEffect(() => {
-    const cur = progress[showId];
+    const cur = effectiveProgress;
     const prev = prevProgRef.current;
     if (prev && cur && allThreads.length > 0 && (prev.s !== cur.s || prev.e !== cur.e)) {
       const newly: Record<string, true> = {};
@@ -440,7 +468,6 @@ export default function ShowSection({
       if (Object.keys(newly).length > 0) {
         setNewHighlights((nh: any) => ({ ...nh, [showId]: { ...(nh[showId] || {}), ...newly } }));
       }
-      // Track replies newly revealed by progress advancement
       const newReplyThreads: Record<string, true> = {};
       const newReplyIds: Record<string, true> = {};
       for (const [tid, meta] of Object.entries(replyMeta)) {
@@ -456,7 +483,7 @@ export default function ShowSection({
       }
     }
     prevProgRef.current = cur;
-  }, [progress[showId]?.s, progress[showId]?.e, allThreads]);
+  }, [effectiveProgress?.s, effectiveProgress?.e, allThreads]);
 
   const displayed = baseVisible;
   const thread = activeThreadId ? allThreads.find(t => t.id === activeThreadId && t.showId === showId) : null;
@@ -464,6 +491,16 @@ export default function ShowSection({
   // Shared progress-confirm handler: updates progress, then navigates back to
   // the forum if the currently-open thread is no longer visible at the new progress.
   const handleProgressConfirm = (val: { s: number; e: number }) => {
+    if (!user) {
+      // Guest: persist to localStorage, update local state
+      setGuestProgress(val);
+      localStorage.setItem(guestProgressKey, JSON.stringify(val));
+      if (thread && !canView({ season: thread.season, episode: thread.episode }, val)) {
+        setActiveThreadId(null);
+      }
+      setShowProgressCelebration(true);
+      return;
+    }
     const prog = progress[showId];
 
     // Auto-flip: if re-watcher reaches or passes their highest prior progress, revert to regular mode
@@ -547,7 +584,7 @@ export default function ShowSection({
   // ── Prompt handlers ───────────────────────────────────────
   const handlePromptBtn = () => {
     const currentShow = allShows.find(s => s.id === showId) || { id: showId, name: showId, seasons: [10] };
-    const prog = progress[showId] || { s: 1, e: 1 };
+    const prog = effectiveProgress || { s: 1, e: 1 };
     const next = getPromptSuggestion(currentShow as Show, prog, shownPromptIds, promptEntries);
     if (next) {
       setShownPromptIds(prev => [...prev, next.id]);
@@ -557,7 +594,7 @@ export default function ShowSection({
 
   const handlePromptShuffle = () => {
     const currentShow = allShows.find(s => s.id === showId) || { id: showId, name: showId, seasons: [10] };
-    const prog = progress[showId] || { s: 1, e: 1 };
+    const prog = effectiveProgress || { s: 1, e: 1 };
     const next = getPromptSuggestion(currentShow as Show, prog, shownPromptIds, promptEntries);
     if (next) {
       setShownPromptIds(prev => [...prev, next.id]);
@@ -592,7 +629,7 @@ export default function ShowSection({
 
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
-  const postProgress = progress[showId] || { s: 1, e: 1 };
+  const postProgress = effectiveProgress || { s: 1, e: 1 };
   // Re-watchers tag posts at their highest prior progress so first-timers can't see them
   const postTagS = postProgress.isRewatching && postProgress.highestS ? postProgress.highestS : postProgress.s;
   const postTagE = postProgress.isRewatching && postProgress.highestE ? postProgress.highestE : postProgress.e;
@@ -647,6 +684,46 @@ export default function ShowSection({
 
   return (
     <section className="container" style={{ paddingBottom: 140 }}>
+      {/* ── Guest progress picker ── shown to logged-out users who haven't set progress yet */}
+      {!user && showGuestPicker && (
+        <Modal
+          onClose={() => {
+            // Default to S1E1 if closed without picking so they see at least some content
+            if (!guestProgress) {
+              const fallback = { s: 1, e: 1 };
+              setGuestProgress(fallback);
+              localStorage.setItem(guestProgressKey, JSON.stringify(fallback));
+            }
+            setShowGuestPicker(false);
+          }}
+          width="min(440px,92vw)"
+        >
+          <div style={{ padding: "20px 16px 20px" }}>
+            <p style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 700, lineHeight: 1.3 }}>
+              Where are you in {(allShows.find(s => s.id === showId)?.name) || showId}?
+            </p>
+            <p style={{ margin: "0 0 20px", fontSize: 15, lineHeight: 1.5, opacity: 0.75 }}>
+              Set your watch progress so we only show you entries written by people who were at your level or earlier — no spoilers from further ahead.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-start" }}>
+              <OneSelectProgress
+                show={allShows.find(s => s.id === showId) || { seasons: [10] }}
+                value={guestProgress || { s: 1, e: 1 }}
+                onConfirm={(val) => {
+                  setGuestProgress(val);
+                  localStorage.setItem(guestProgressKey, JSON.stringify(val));
+                  setShowGuestPicker(false);
+                  setShowProgressCelebration(true);
+                }}
+                requireConfirm={true}
+              />
+            </div>
+            <p style={{ margin: "20px 0 0", fontSize: 13, opacity: 0.5, textAlign: "center" }}>
+              <a href="/auth" style={{ color: "inherit", textDecoration: "underline" }}>Sign up or log in</a> to save your progress permanently.
+            </p>
+          </div>
+        </Modal>
+      )}
       {showBBPopup && (
         <Modal onClose={dismissBBPopup} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
@@ -688,8 +765,8 @@ export default function ShowSection({
               }}
             >
               {showId === "bb"
-                ? "the BREAKING BAD (DEMO) room"
-                : `the ${String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()} room`}
+                ? "BREAKING BAD (DEMO)"
+                : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()}
             </span>
             {user && onSwitchShow && (
               <div style={{ flex: "0 0 auto" }}>
@@ -737,7 +814,7 @@ export default function ShowSection({
                 </button>
                 <OneSelectProgress
                   show={allShows.find(s => s.id === showId) || { seasons: [10] }}
-                  value={progress[showId] || { s: 1, e: 1 }}
+                  value={effectiveProgress || { s: 1, e: 1 }}
                   onConfirm={handleProgressConfirm}
                   requireConfirm={true}
                   compactLabel="progress"
@@ -797,7 +874,7 @@ export default function ShowSection({
                 <div style={{ position: "relative", display: "inline-block" }}>
                   <OneSelectProgress
                     show={allShows.find(s => s.id === showId) || { seasons: [10] }}
-                    value={progress[showId] || { s: 1, e: 1 }}
+                    value={effectiveProgress || { s: 1, e: 1 }}
                     onConfirm={handleProgressConfirm}
                     requireConfirm={true}
                     compactLabel={undefined}
@@ -975,7 +1052,7 @@ export default function ShowSection({
           thread={{ ...thread, likes: likesThreads[thread.id] ?? thread.likes }}
           show={allShows.find(s => s.id === showId) || { name: showId }}
           onBack={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
-          progressForShow={progress[showId] || { s: 1, e: 1 }}
+          progressForShow={effectiveProgress || { s: 1, e: 1 }}
           onMountAlignTop={() => scrollToShowTop()}
           likeThread={() => likeThread(thread.id)}
           likedByUser={!!likedByUserThreads[thread.id]}
@@ -1037,8 +1114,8 @@ export default function ShowSection({
             const { visibleNew, hiddenNew, totalVisible } = getNewCounts(t.id);
             const hasExternal = hasExternalReplies[t.id] ?? false;
 
-            // Not public: owner sees normally (with 📝 in title); others see nothing
-            if (!t.isPublic && !isOwn) return null;
+            // Show page is public-only — private entries live exclusively in the journal
+            if (!t.isPublic) return null;
 
             // Deleted:
             //   - no external replies → completely gone for everyone
@@ -1229,7 +1306,7 @@ export default function ShowSection({
                   tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
                   disabled={!showComposeTooltips}
                 >
-                  <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
+                  <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>{postSubmitting ? "Posting…" : "post publicly"}</button>
                 </Tooltip>
               </div>
             </div>
