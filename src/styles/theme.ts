@@ -18,7 +18,7 @@ export function injectDOSStyles() {
 body.group-context{
   --dos-bg:#bdd4de; --dos-fg:#1a3a4a; --dos-cyan:#1a3a4a;
   --dos-gray:rgba(26,58,74,0.65); --dos-light:#1a3a4a;
-  --dos-accent:#1a3a4a; --dos-border:rgba(255,255,255,0.85);
+  --dos-accent:#1a3a4a; --dos-border:rgba(26,58,74,0.3);
   --dos-blue:rgba(26,58,74,0.08);
   --progress-bg:#7abd8e; --progress-fg:#fff;
   background: linear-gradient(to bottom,#d4e8f0 0px,#bdd4de 180px) fixed,#bdd4de;
