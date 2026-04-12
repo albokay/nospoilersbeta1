@@ -224,6 +224,16 @@ export default function ShowSection({
     prevShowIdRef.current = showId;
   }, [showId]);
 
+  // Apply light-blue theme when inside a friend room
+  useEffect(() => {
+    if (activeGroupId) {
+      document.body.classList.add("group-context");
+    } else {
+      document.body.classList.remove("group-context");
+    }
+    return () => { document.body.classList.remove("group-context"); };
+  }, [activeGroupId]);
+
   // Keep sessionStorage in sync with activeGroupId so refreshing restores the room context
   useEffect(() => {
     if (activeGroupId) {
