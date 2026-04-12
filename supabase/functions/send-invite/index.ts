@@ -47,9 +47,7 @@ serve(async (req) => {
 
     // Verify the JWT using the admin client (most reliable in Edge Functions)
     const jwt = authHeader.replace("Bearer ", "");
-    console.log("auth header prefix:", authHeader.slice(0, 20), "jwt length:", jwt.length);
     const { data: { user }, error: authErr } = await admin.auth.getUser(jwt);
-    console.log("getUser - user:", user?.id ?? "null", "error:", authErr?.message ?? "none");
     if (authErr || !user) return jsonError("unauthorized", 401, authErr?.message);
 
     // ── Parse + validate input ───────────────────────────────────────────────
