@@ -250,8 +250,8 @@ export default function InlineThreadView({
         await dbSetThreadPublic(thread.id, true);
         onThreadMakePublic?.();
       }
-    } catch {
-      alert("Failed. Please try again.");
+    } catch (err: any) {
+      alert("Failed: " + (err?.message ?? JSON.stringify(err)));
     }
   };
 
