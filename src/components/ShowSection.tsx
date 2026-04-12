@@ -237,7 +237,7 @@ export default function ShowSection({
     if (!user || !newGroupName.trim()) return;
     setCreateGroupSubmitting(true);
     try {
-      // Diagnostic: log session token presence before insert
+      // Diagnostic: log session token and what Postgres actually sees
       const { data: { session } } = await supabase.auth.getSession();
       console.log("[RLS diag] user.id:", user.id);
       console.log("[RLS diag] session?.user?.id:", session?.user?.id);
@@ -248,6 +248,9 @@ export default function ShowSection({
           console.log("[RLS diag] JWT role:", payload.role, "sub:", payload.sub, "exp:", new Date(payload.exp * 1000).toISOString());
         } catch {}
       }
+      // Call the server-side diagnostic to see what PostgREST passes to Postgres
+      const { data: authCtx, error: rpcErr } = await supabase.rpc("debug_auth_context");
+      console.log("[RLS diag] server auth context:", authCtx, rpcErr?.message);
       const g = await createFriendGroup({ showId, name: newGroupName.trim(), createdBy: user.id });
       setUserGroups(prev => [...prev, g]);
       setActiveGroupId(g.id);
