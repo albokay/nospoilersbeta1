@@ -456,7 +456,7 @@ export default function InlineThreadView({
                       inGroupContext ? (
                         <button
                           className="btn"
-                          style={{ fontSize: 13, opacity: sharedToPublic ? 0.55 : 1, cursor: sharedToPublic ? "default" : "pointer" }}
+                          style={{ fontSize: 13, opacity: sharedToPublic ? 0.55 : 1, cursor: sharedToPublic ? "default" : "pointer", pointerEvents: sharedToPublic ? "none" : "auto" }}
                           onClick={sharedToPublic ? undefined : handleMakePublic}
                           disabled={sharedToPublic}
                         >
