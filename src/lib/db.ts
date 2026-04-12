@@ -3,7 +3,7 @@
  * All reads are public (no auth required).
  */
 import { supabase } from "./supabaseClient";
-import type { Thread, Reply } from "../types";
+import type { Thread, Reply, FriendGroup, FriendGroupMember, Invitation } from "../types";
 import type { PromptEntry } from "./promptData";
 import { repliesByThread } from "./mockData";
 
@@ -54,7 +54,7 @@ function rowToThread(row: any): Thread {
     body:       row.body ?? "",
     updatedAt:  new Date(row.updated_at).getTime(),
     likes:      row.likes_count ?? 0,
-    isPrivate:  row.is_private ?? false,
+    isPublic:   row.is_public ?? false,
     isDeleted:  row.is_deleted ?? false,
     isEdited:   row.is_edited ?? false,
     isRewatch:  row.is_rewatch ?? false,
@@ -99,7 +99,9 @@ export async function fetchThreadsForShow(showId: string): Promise<{
 export async function insertThread(data: {
   showId: string; season: number; episode: number;
   authorId: string; authorName: string;
-  title: string; preview: string; body: string; isPrivate: boolean;
+  title: string; preview: string; body: string;
+  isPublic: boolean;      // true = visible on aggregated show page
+  groupIds?: string[];    // friend groups to share to immediately (Phase 4)
   isRewatch?: boolean;
 }): Promise<Thread> {
   const row = {
@@ -107,7 +109,7 @@ export async function insertThread(data: {
     show_id: data.showId, season: data.season, episode: data.episode,
     author_id: data.authorId, author_name: data.authorName,
     title: data.title, preview: data.preview, body: data.body,
-    is_private: data.isPrivate, likes_count: 0,
+    is_public: data.isPublic, likes_count: 0,
   };
   const { data: inserted, error } = await supabase
     .from("threads").insert(row).select().single();
@@ -132,21 +134,19 @@ export async function deleteThread(threadId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function makeThreadPrivate(threadId: string): Promise<void> {
+/** Set a thread's public visibility. false = journal-only; true = visible on aggregated show page. */
+export async function setThreadPublic(threadId: string, isPublic: boolean): Promise<void> {
   const { error } = await supabase
     .from("threads")
-    .update({ is_private: true })
+    .update({ is_public: isPublic })
     .eq("id", threadId);
   if (error) throw error;
 }
 
-export async function makeThreadPublic(threadId: string): Promise<void> {
-  const { error } = await supabase
-    .from("threads")
-    .update({ is_private: false })
-    .eq("id", threadId);
-  if (error) throw error;
-}
+/** @deprecated Use setThreadPublic(id, false) */
+export const makeThreadPrivate = (id: string) => setThreadPublic(id, false);
+/** @deprecated Use setThreadPublic(id, true) */
+export const makeThreadPublic  = (id: string) => setThreadPublic(id, true);
 
 // ── Likes ─────────────────────────────────────────────────────────────────────
 
@@ -528,17 +528,40 @@ export async function fetchPublicProfileByUsername(username: string): Promise<Pu
   return { id: data.id, username: data.username };
 }
 
-/** Public threads by a user — excludes deleted and private posts. */
+/** Public threads by a user — only those marked is_public=true. */
 export async function fetchPublicThreadsForUser(userId: string): Promise<Thread[]> {
   const { data, error } = await supabase
     .from("threads")
     .select("*")
     .eq("author_id", userId)
     .eq("is_deleted", false)
-    .eq("is_private", false)
+    .eq("is_public", true)
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(rowToThread);
+}
+
+/**
+ * Aggregated show page query — all public threads for a show, progress-filtered.
+ * maxS/maxE: the viewer's current progress. Seed threads are excluded (is_seed check
+ * is done client-side via author field for now; a future author_is_seed column would be cleaner).
+ */
+export async function fetchPublicThreadsForShow(
+  showId: string,
+  maxS: number,
+  maxE: number
+): Promise<Thread[]> {
+  const { data, error } = await supabase
+    .from("threads")
+    .select("*")
+    .eq("show_id", showId)
+    .eq("is_deleted", false)
+    .eq("is_public", true)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? [])
+    .map(rowToThread)
+    .filter(t => t.season < maxS || (t.season === maxS && t.episode <= maxE));
 }
 
 /** Public replies by a user — excludes deleted replies and replies in deleted/private threads. */
@@ -562,7 +585,7 @@ export async function fetchPublicRepliesForUser(userId: string): Promise<{ reply
   return replies
     .map(r => {
       const t = threadById[r.threadId];
-      if (!t || t.isDeleted || t.isPrivate) return null;
+      if (!t || t.isDeleted || !t.isPublic) return null;
       return { reply: r, thread: t };
     })
     .filter(Boolean) as { reply: Reply; thread: Thread }[];
@@ -858,4 +881,223 @@ export async function logThreadPrompt(threadId: string, promptId: number): Promi
     .insert({ thread_id: threadId, prompt_id: promptId });
   // Best-effort: don't throw if insert fails (e.g. table not yet created)
   if (error) console.warn("logThreadPrompt failed:", error.message);
+}
+
+// ── Friend groups ─────────────────────────────────────────────────────────────
+
+function rowToFriendGroup(row: any): FriendGroup {
+  return {
+    id:        row.id,
+    showId:    row.show_id,
+    name:      row.name,
+    createdBy: row.created_by,
+    createdAt: new Date(row.created_at).getTime(),
+  };
+}
+
+/** Create a new friend group for a show and add the creator as first member. */
+export async function createFriendGroup(data: {
+  showId: string;
+  name: string;
+  createdBy: string;
+}): Promise<FriendGroup> {
+  const { data: inserted, error } = await supabase
+    .from("friend_groups")
+    .insert({ show_id: data.showId, name: data.name, created_by: data.createdBy })
+    .select()
+    .single();
+  if (error) throw error;
+  // Add creator as first member
+  await supabase
+    .from("friend_group_members")
+    .insert({ group_id: inserted.id, user_id: data.createdBy });
+  return rowToFriendGroup(inserted);
+}
+
+/** All friend groups the user is a member of, optionally filtered by show. */
+export async function fetchFriendGroupsForUser(
+  userId: string,
+  showId?: string
+): Promise<FriendGroup[]> {
+  // First get all group IDs the user belongs to
+  const { data: memberRows, error: mErr } = await supabase
+    .from("friend_group_members")
+    .select("group_id")
+    .eq("user_id", userId);
+  if (mErr) throw mErr;
+  const groupIds = (memberRows ?? []).map((r: any) => r.group_id);
+  if (!groupIds.length) return [];
+
+  let query = supabase.from("friend_groups").select("*").in("id", groupIds);
+  if (showId) query = query.eq("show_id", showId);
+  const { data, error } = await query.order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToFriendGroup);
+}
+
+/** All members of a friend group with their usernames. */
+export async function fetchFriendGroupMembers(
+  groupId: string
+): Promise<FriendGroupMember[]> {
+  const { data, error } = await supabase
+    .from("friend_group_members")
+    .select("group_id, user_id, joined_at, profiles(username)")
+    .eq("group_id", groupId)
+    .order("joined_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    groupId:  row.group_id,
+    userId:   row.user_id,
+    username: row.profiles?.username ?? "unknown",
+    joinedAt: new Date(row.joined_at).getTime(),
+  }));
+}
+
+/** Share a thread to a friend group (creates group_threads row). */
+export async function addThreadToGroup(threadId: string, groupId: string): Promise<void> {
+  const { error } = await supabase
+    .from("group_threads")
+    .insert({ group_id: groupId, thread_id: threadId });
+  if (error) throw error;
+}
+
+/** Remove a thread from a friend group (leaves tombstone in original thread). */
+export async function removeThreadFromGroup(threadId: string, groupId: string): Promise<void> {
+  const { error } = await supabase
+    .from("group_threads")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("thread_id", threadId);
+  if (error) throw error;
+}
+
+/** Fetch all threads shared to a group, progress-filtered for the viewer. */
+export async function fetchGroupThreads(
+  groupId: string,
+  maxS: number,
+  maxE: number
+): Promise<{ threads: Thread[]; replyCounts: Record<string, number> }> {
+  const { data, error } = await supabase
+    .from("group_threads")
+    .select("threads(*, replies!thread_id(id))")
+    .eq("group_id", groupId)
+    .order("shared_at", { ascending: false });
+  if (error) throw error;
+
+  const threads: Thread[] = [];
+  const replyCounts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    const t = (row as any).threads;
+    if (!t || t.is_deleted) continue;
+    const thread = rowToThread(t);
+    if (thread.season > maxS || (thread.season === maxS && thread.episode > maxE)) continue;
+    threads.push(thread);
+    replyCounts[thread.id] = ((t.replies as any[]) ?? []).filter(
+      (r: any) => r.group_id === groupId
+    ).length;
+  }
+  return { threads, replyCounts };
+}
+
+/** Rename a friend group. */
+export async function renameFriendGroup(groupId: string, name: string): Promise<void> {
+  const { error } = await supabase
+    .from("friend_groups")
+    .update({ name })
+    .eq("id", groupId);
+  if (error) throw error;
+}
+
+// ── Invitations ───────────────────────────────────────────────────────────────
+
+/** Create a single-use, time-limited invitation for an email address to join a group. */
+export async function createInvitation(data: {
+  groupId: string;
+  createdBy: string;
+  inviteeEmail: string;
+  expiresInHours?: number;
+}): Promise<Invitation> {
+  const token = crypto.randomUUID();
+  const expiresAt = new Date(
+    Date.now() + (data.expiresInHours ?? 48) * 60 * 60 * 1000
+  ).toISOString();
+
+  const { data: inserted, error } = await supabase
+    .from("invitations")
+    .insert({
+      group_id:      data.groupId,
+      created_by:    data.createdBy,
+      invitee_email: data.inviteeEmail,
+      token,
+      expires_at:    expiresAt,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToInvitation(inserted);
+}
+
+function rowToInvitation(row: any): Invitation {
+  return {
+    id:           row.id,
+    groupId:      row.group_id,
+    createdBy:    row.created_by,
+    inviteeEmail: row.invitee_email,
+    token:        row.token,
+    expiresAt:    new Date(row.expires_at).getTime(),
+    acceptedAt:   row.accepted_at ? new Date(row.accepted_at).getTime() : null,
+    createdAt:    new Date(row.created_at).getTime(),
+  };
+}
+
+/** Fetch all pending (unused, unexpired) invitations the current user has sent. */
+export async function fetchSentInvitations(userId: string): Promise<Invitation[]> {
+  const { data, error } = await supabase
+    .from("invitations")
+    .select("*")
+    .eq("created_by", userId)
+    .is("accepted_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToInvitation);
+}
+
+/**
+ * Look up an invitation by token (for the accept page).
+ * Returns null if token is invalid, expired, or already used.
+ */
+export async function fetchInvitationByToken(token: string): Promise<Invitation | null> {
+  const { data, error } = await supabase
+    .from("invitations")
+    .select("*")
+    .eq("token", token)
+    .single();
+  if (error || !data) return null;
+  const inv = rowToInvitation(data);
+  if (inv.acceptedAt !== null) return null;           // already used
+  if (inv.expiresAt < Date.now()) return null;        // expired
+  return inv;
+}
+
+/**
+ * Mark an invitation as accepted and add the user to the group.
+ * Called after the user authenticates on the invite accept page.
+ * Note: friend_group_members INSERT for the invitee bypasses the
+ * "creator only" RLS via a Supabase Edge Function (service role).
+ * This client-side function just marks the invite accepted.
+ */
+export async function acceptInvitation(token: string, userId: string): Promise<string | null> {
+  const inv = await fetchInvitationByToken(token);
+  if (!inv) return null;
+  // Mark accepted
+  await supabase
+    .from("invitations")
+    .update({ accepted_at: new Date().toISOString() })
+    .eq("token", token);
+  // Add member (requires service-role or relaxed RLS — see Edge Function)
+  await supabase
+    .from("friend_group_members")
+    .insert({ group_id: inv.groupId, user_id: userId });
+  return inv.groupId;
 }

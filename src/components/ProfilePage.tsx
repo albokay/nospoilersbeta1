@@ -210,7 +210,7 @@ export default function ProfilePage({
   const postTagS = postProgress.isRewatching && postProgress.highestS ? postProgress.highestS : postProgress.s;
   const postTagE = postProgress.isRewatching && postProgress.highestE ? postProgress.highestE : postProgress.e;
 
-  const submitPost = async (isPrivate = false) => {
+  const submitPost = async (isPublic = false) => {
     if (!user || !profile) return;
     const title = (postTitle || "").trim();
     const body = (postBody || "").trim();
@@ -225,7 +225,7 @@ export default function ProfilePage({
         title,
         preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
         body,
-        isPrivate,
+        isPublic,
         isRewatch: postProgress.isRewatching ?? false,
       });
       setMyThreads(prev => [t, ...prev]);
@@ -438,7 +438,7 @@ export default function ProfilePage({
                   )}
                   <div className="diaryScrollArea">
                   {(() => {
-                    const filtered = diaryFilter === "private" ? tabThreads.filter(t => t.isPrivate) : tabThreads;
+                    const filtered = diaryFilter === "private" ? tabThreads.filter(t => !t.isPublic) : tabThreads;
                     if (filtered.length === 0) {
                       if (diaryFilter === "private" && tabThreads.length > 0) {
                         // Has public entries but no private ones
@@ -478,7 +478,7 @@ export default function ProfilePage({
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="title" style={{ fontSize: 18 }}>
-                          {t.isPrivate && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
+                          {!t.isPublic && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
                           {t.titleBase}
                           {t.showId !== "simshow" && (
                             <span style={{ color: "var(--dos-cyan)" }}>
@@ -718,7 +718,7 @@ export default function ProfilePage({
                 </button>
                 <button
                   className="btn"
-                  onClick={() => submitPost(true)}
+                  onClick={() => submitPost(false)}
                   disabled={postSubmitting}
                   style={{ whiteSpace: "nowrap", fontSize: 13 }}
                 >
@@ -726,7 +726,7 @@ export default function ProfilePage({
                 </button>
                 <button
                   className="btn post"
-                  onClick={() => submitPost(false)}
+                  onClick={() => submitPost(true)}
                   disabled={postSubmitting}
                   style={{ whiteSpace: "nowrap", fontSize: 13 }}
                 >

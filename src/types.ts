@@ -2,10 +2,41 @@ export type Thread = {
   id: string; showId: string; season: number; episode: number;
   author: string; titleBase: string; preview: string; body: string; updatedAt: number;
   likes: number;
-  isPrivate?: boolean;
+  isPublic?: boolean;   // true = visible on aggregated show page; false = journal-only (default)
   isDeleted?: boolean;
   isEdited?: boolean;
   isRewatch?: boolean;
+  isMoved?: boolean;    // true = entry was moved to another context; tombstone shown
+};
+
+// ── Friend groups ─────────────────────────────────────────────────────────────
+
+export type FriendGroup = {
+  id: string;
+  showId: string;
+  name: string;
+  createdBy: string;
+  createdAt: number;
+};
+
+export type FriendGroupMember = {
+  groupId: string;
+  userId: string;
+  username: string;
+  joinedAt: number;
+};
+
+// ── Invitations ───────────────────────────────────────────────────────────────
+
+export type Invitation = {
+  id: string;
+  groupId: string;
+  createdBy: string;
+  inviteeEmail: string;
+  token: string;
+  expiresAt: number;
+  acceptedAt: number | null;
+  createdAt: number;
 };
 
 export type Reply = {

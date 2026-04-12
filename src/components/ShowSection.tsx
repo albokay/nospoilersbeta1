@@ -599,7 +599,7 @@ export default function ShowSection({
 
   const [postSubmitting, setPostSubmitting] = useState(false);
 
-  const submitPost = async (isPrivate = false) => {
+  const submitPost = async (isPublic = false) => {
     if (!user || !profile) { onAuthRequired(); return; }
     const title = (postTitle || "").trim();
     const body = (postBody || "").trim();
@@ -612,7 +612,7 @@ export default function ShowSection({
         authorId: user.id, authorName: profile.username,
         title: title || "Untitled note",
         preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
-        body: body || "(blank)", isPrivate,
+        body: body || "(blank)", isPublic,
         isRewatch: postProgress.isRewatching ?? false,
       });
       setDbThreads(prev => [t, ...prev]);
@@ -1002,11 +1002,11 @@ export default function ShowSection({
             setTimeout(() => scrollToShowTop(), 0);
           }}
           onThreadMakePrivate={() => {
-            // Mark private in state — owner still sees it with 📝, others see nothing
-            setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPrivate: true } : t));
+            // Mark not-public in state — owner still sees it with 📝, others see nothing
+            setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPublic: false } : t));
           }}
           onThreadMakePublic={() => {
-            setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPrivate: false } : t));
+            setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPublic: true } : t));
           }}
           hasExternalReplies={(replyCounts[thread.id] ?? 0) > 0}
           onExternalReplyAdded={(tid: string) => setHasExternalReplies(prev => ({ ...prev, [tid]: true }))}
@@ -1037,8 +1037,8 @@ export default function ShowSection({
             const { visibleNew, hiddenNew, totalVisible } = getNewCounts(t.id);
             const hasExternal = hasExternalReplies[t.id] ?? false;
 
-            // Private: owner sees normally (with 📝 in title); others see nothing
-            if (t.isPrivate && !isOwn) return null;
+            // Not public: owner sees normally (with 📝 in title); others see nothing
+            if (!t.isPublic && !isOwn) return null;
 
             // Deleted:
             //   - no external replies → completely gone for everyone
@@ -1112,7 +1112,7 @@ export default function ShowSection({
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h2 style={{ margin: 0, fontSize: 22 }} className="title">
-                    {t.isPrivate && <span style={{ marginRight: 4 }}>📝</span>}
+                    {!t.isPublic && <span style={{ marginRight: 4 }}>📝</span>}
                     {t.titleBase}
                     {t.showId !== "simshow" && (
                       <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
@@ -1218,7 +1218,7 @@ export default function ShowSection({
                   tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
                   disabled={!showComposeTooltips}
                 >
-                  <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--dos-bg)", border: "2px solid #fff", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>📝 save to your journal</button>
+                  <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--dos-bg)", border: "2px solid #fff", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>📝 save to your journal</button>
                 </Tooltip>
                 <Tooltip
                   text="Post publicly. Visible to anyone in this show room who has watched at least as far as you. They won't see spoilers from ahead of your progress, and neither will you see theirs."
@@ -1229,7 +1229,7 @@ export default function ShowSection({
                   tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
                   disabled={!showComposeTooltips}
                 >
-                  <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
+                  <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>{postSubmitting ? "Posting…" : "send to the room"}</button>
                 </Tooltip>
               </div>
             </div>

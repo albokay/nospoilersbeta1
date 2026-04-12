@@ -198,31 +198,31 @@ export const seedThreads: Thread[] = [];
 
 function pushPost({
   showId = "bb", season, episode, author, title, body,
-  updatedAtOffsetH = 0, likes = randBetween(0, 15), isPrivate = false
+  updatedAtOffsetH = 0, likes = randBetween(0, 15), isPublic = true
 }: {
   showId?: string; season: number; episode: number; author: string; title: string; body: string;
-  updatedAtOffsetH?: number; likes?: number; isPrivate?: boolean;
+  updatedAtOffsetH?: number; likes?: number; isPublic?: boolean;
 }) {
   const id = `${showId}-${author}-${season}-${episode}-${seedThreads.length}`;
   seedThreads.push({
     id, showId, season, episode, author, titleBase: title,
     preview: body.length > 240 ? body.slice(0, 240) + "…" : body,
-    body, updatedAt: SEED_EPOCH - updatedAtOffsetH * 3_600_000, likes, isPrivate
+    body, updatedAt: SEED_EPOCH - updatedAtOffsetH * 3_600_000, likes, isPublic
   });
 }
 
 function pushPostSev({
   showId = "severance", season, episode, author, title, body,
-  updatedAtOffsetH = 0, likes = 0, isPrivate = false
+  updatedAtOffsetH = 0, likes = 0, isPublic = true
 }: {
   showId?: string; season: number; episode: number; author: string; title: string; body: string;
-  updatedAtOffsetH?: number; likes?: number; isPrivate?: boolean;
+  updatedAtOffsetH?: number; likes?: number; isPublic?: boolean;
 }) {
   const id = `${showId}-${author}-${season}-${episode}-${seedThreads.length}`;
   seedThreads.push({
     id, showId, season, episode, author, titleBase: title,
     preview: body.length > 240 ? body.slice(0, 240) + "…" : body,
-    body, updatedAt: SEED_EPOCH - updatedAtOffsetH * 3_600_000, likes, isPrivate
+    body, updatedAt: SEED_EPOCH - updatedAtOffsetH * 3_600_000, likes, isPublic
   });
 }
 

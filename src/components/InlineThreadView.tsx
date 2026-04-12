@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import { timeAgo, canView } from "../lib/utils";
 import { useAuth } from "../lib/auth";
-import { editThread as dbEditThread, deleteThread as dbDeleteThread, makeThreadPrivate as dbMakeThreadPrivate, makeThreadPublic as dbMakeThreadPublic } from "../lib/db";
+import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic } from "../lib/db";
 import type { CitationEntry } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import Modal from "./Modal";
@@ -229,7 +229,7 @@ export default function InlineThreadView({
 
   const handleMakePrivate = async () => {
     try {
-      await dbMakeThreadPrivate(thread.id);
+      await dbSetThreadPublic(thread.id, false);
       onThreadMakePrivate?.();
     } catch {
       alert("Failed. Please try again.");
@@ -238,7 +238,7 @@ export default function InlineThreadView({
 
   const handleMakePublic = async () => {
     try {
-      await dbMakeThreadPublic(thread.id);
+      await dbSetThreadPublic(thread.id, true);
       onThreadMakePublic?.();
     } catch {
       alert("Failed. Please try again.");
@@ -353,7 +353,7 @@ export default function InlineThreadView({
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: 22, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }} className="title">
-                {thread.isPrivate && <span>📝</span>}
+                {!thread.isPublic && <span>📝</span>}
                 <span>{thread.titleBase}</span>
                 {thread.showId !== "simshow" && (
                   <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7 }}>
@@ -415,7 +415,7 @@ export default function InlineThreadView({
                   <>
                     <button className="btn" style={{ fontSize: 13 }} onClick={handleStartEdit}>Edit</button>
                     <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={handleDelete}>Delete</button>
-                    {!thread.isPrivate && !hasExternalReplies && (
+                    {thread.isPublic && !hasExternalReplies && (
                       <Tooltip
                         text="As long as no one has responded to your entry yet, you can move it to your private journal."
                         direction="above"
@@ -432,7 +432,7 @@ export default function InlineThreadView({
                         >Turn Private</button>
                       </Tooltip>
                     )}
-                    {thread.isPrivate && (
+                    {!thread.isPublic && (
                       <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePublic}>Turn Public</button>
                     )}
                   </>
