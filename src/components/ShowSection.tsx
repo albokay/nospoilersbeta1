@@ -242,8 +242,9 @@ export default function ShowSection({
       setActiveGroupId(g.id);
       setShowCreateGroupModal(false);
       setNewGroupName("");
-    } catch {
-      alert("Failed to create room. Please try again.");
+    } catch (e: any) {
+      console.error("createFriendGroup error:", e);
+      alert("Failed to create room: " + (e?.message ?? String(e)));
     } finally {
       setCreateGroupSubmitting(false);
     }

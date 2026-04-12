@@ -908,9 +908,10 @@ export async function createFriendGroup(data: {
     .single();
   if (error) throw error;
   // Add creator as first member
-  await supabase
+  const { error: memberErr } = await supabase
     .from("friend_group_members")
     .insert({ group_id: inserted.id, user_id: data.createdBy });
+  if (memberErr) throw memberErr;
   return rowToFriendGroup(inserted);
 }
 
