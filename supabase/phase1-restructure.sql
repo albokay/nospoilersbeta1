@@ -49,7 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_friend_group_members_group_id ON friend_group_mem
 
 CREATE TABLE IF NOT EXISTS group_threads (
   group_id  uuid NOT NULL REFERENCES friend_groups(id) ON DELETE CASCADE,
-  thread_id uuid NOT NULL REFERENCES threads(id)       ON DELETE CASCADE,
+  thread_id text NOT NULL REFERENCES threads(id)       ON DELETE CASCADE,
   shared_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (group_id, thread_id)
 );
