@@ -30,6 +30,7 @@ export const seedShows = [
   { id: "thelastofus", name: "The Last of Us", seasons: [9,7] },
   { id: "andor", name: "Andor", seasons: [12,12] },
   { id: "simshow", name: "Simulated Show", seasons: [8,8,8,8,8] },
+  { id: "tsp", name: "The Sidebar Protocol", seasons: [6] },
 ];
 
 export const USERNAMES = [
