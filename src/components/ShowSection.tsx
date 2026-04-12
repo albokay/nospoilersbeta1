@@ -1523,8 +1523,11 @@ export default function ShowSection({
           onThreadUpdate={(updated: Thread) => setDbThreads(prev => prev.map(t => t.id === updated.id ? updated : t))}
           onThreadDelete={() => {
             const tid = activeThreadId!;
-            const hadExternal = hasExternalReplies[tid] ?? false;
-            if (hadExternal) {
+            // Keep a stub whenever there are ANY replies (in whichever context we're in)
+            const replyCount = activeGroupId
+              ? (groupReplyCounts[tid] ?? 0)
+              : (replyCounts[tid] ?? 0);
+            if (replyCount > 0) {
               setDbThreads(prev => prev.map(t => t.id === tid ? { ...t, isDeleted: true } : t));
             } else {
               setDbThreads(prev => prev.filter(t => t.id !== tid));
@@ -1594,10 +1597,10 @@ export default function ShowSection({
             }
 
             // Deleted:
-            //   - no external replies → completely gone for everyone
-            //   - has external replies → show clickable stub so others can still see replies
+            //   - no replies at all → completely gone
+            //   - has any replies → show clickable stub so responses remain accessible
             if (t.isDeleted) {
-              if (!hasExternal) return null;
+              if (displayReplyCount === 0) return null;
               return (
                 <div key={t.id} style={{ position: "relative", margin: "0 0 12px 0" }}>
                   <div
