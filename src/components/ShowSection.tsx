@@ -237,6 +237,17 @@ export default function ShowSection({
     if (!user || !newGroupName.trim()) return;
     setCreateGroupSubmitting(true);
     try {
+      // Diagnostic: log session token presence before insert
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("[RLS diag] user.id:", user.id);
+      console.log("[RLS diag] session?.user?.id:", session?.user?.id);
+      console.log("[RLS diag] access_token present:", !!session?.access_token);
+      if (session?.access_token) {
+        try {
+          const payload = JSON.parse(atob(session.access_token.split(".")[1]));
+          console.log("[RLS diag] JWT role:", payload.role, "sub:", payload.sub, "exp:", new Date(payload.exp * 1000).toISOString());
+        } catch {}
+      }
       const g = await createFriendGroup({ showId, name: newGroupName.trim(), createdBy: user.id });
       setUserGroups(prev => [...prev, g]);
       setActiveGroupId(g.id);
