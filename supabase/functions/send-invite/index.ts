@@ -25,7 +25,7 @@ const CORS_HEADERS = {
 };
 
 const RATE_LIMIT_PER_DAY = 10;
-const FROM_ADDRESS       = "No Spoilers <invites@nospoilers.app>";
+const FROM_ADDRESS       = "No Spoilers <invites@send.sidebar.watch>";
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -47,8 +47,10 @@ serve(async (req) => {
 
     // Verify the JWT using the admin client (most reliable in Edge Functions)
     const jwt = authHeader.replace("Bearer ", "");
+    console.log("auth header prefix:", authHeader.slice(0, 20), "jwt length:", jwt.length);
     const { data: { user }, error: authErr } = await admin.auth.getUser(jwt);
-    if (authErr || !user) return jsonError("unauthorized", 401);
+    console.log("getUser - user:", user?.id ?? "null", "error:", authErr?.message ?? "none");
+    if (authErr || !user) return jsonError("unauthorized", 401, authErr?.message);
 
     // ── Parse + validate input ───────────────────────────────────────────────
     const body = await req.json().catch(() => null);
