@@ -212,11 +212,16 @@ export default function ShowSection({
       .finally(() => setGroupsLoading(false));
   }, [user?.id, showId]);
 
-  // Reset group view when switching shows
+  // Reset group view when switching shows (skip on initial mount so sessionStorage
+  // restoration of activeGroupId isn't immediately overwritten by this effect)
+  const prevShowIdRef = useRef<string | null>(null);
   useEffect(() => {
-    setActiveGroupId(null);
-    setGroupThreadsData([]);
-    setGroupReplyCounts({});
+    if (prevShowIdRef.current !== null && prevShowIdRef.current !== showId) {
+      setActiveGroupId(null);
+      setGroupThreadsData([]);
+      setGroupReplyCounts({});
+    }
+    prevShowIdRef.current = showId;
   }, [showId]);
 
   // Keep sessionStorage in sync with activeGroupId so refreshing restores the room context
