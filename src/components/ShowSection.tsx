@@ -174,7 +174,12 @@ export default function ShowSection({
   const [groupsLoading, setGroupsLoading] = useState(false);
 
   // ── Friend group view state (Phase 4) ────────────────────────────────────
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  // Persist the active group in sessionStorage so a page refresh restores the
+  // correct room context (and shows the right "Share to Public" button label).
+  const activeGroupSessionKey = `ns_active_group_${showId}`;
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(() =>
+    sessionStorage.getItem(`ns_active_group_${showId}`) ?? null
+  );
   const [groupThreadsData, setGroupThreadsData] = useState<Thread[]>([]);
   const [groupReplyCounts, setGroupReplyCounts] = useState<Record<string, number>>({});
   const [groupThreadsLoading, setGroupThreadsLoading] = useState(false);
@@ -213,6 +218,15 @@ export default function ShowSection({
     setGroupThreadsData([]);
     setGroupReplyCounts({});
   }, [showId]);
+
+  // Keep sessionStorage in sync with activeGroupId so refreshing restores the room context
+  useEffect(() => {
+    if (activeGroupId) {
+      sessionStorage.setItem(activeGroupSessionKey, activeGroupId);
+    } else {
+      sessionStorage.removeItem(activeGroupSessionKey);
+    }
+  }, [activeGroupId, activeGroupSessionKey]);
 
   // Fetch group threads when the active group changes or progress changes
   useEffect(() => {
