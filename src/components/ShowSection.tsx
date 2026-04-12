@@ -1521,13 +1521,11 @@ export default function ShowSection({
           hiddenNewReplies={getNewCounts(thread.id).hiddenNew}
           onRiskyReveal={(rid: string) => setRiskyRevealedIds(prev => new Set([...prev, rid]))}
           onThreadUpdate={(updated: Thread) => setDbThreads(prev => prev.map(t => t.id === updated.id ? updated : t))}
-          onThreadDelete={() => {
+          onThreadDelete={(loadedReplyCount) => {
             const tid = activeThreadId!;
-            // Keep a stub whenever there are ANY replies (in whichever context we're in)
-            const replyCount = activeGroupId
-              ? (groupReplyCounts[tid] ?? 0)
-              : (replyCounts[tid] ?? 0);
-            if (replyCount > 0) {
+            // Use the count InlineThreadView actually loaded (fresh from DB) — more
+            // reliable than ShowSection's potentially-stale replyCounts state.
+            if (loadedReplyCount > 0) {
               setDbThreads(prev => prev.map(t => t.id === tid ? { ...t, isDeleted: true } : t));
             } else {
               setDbThreads(prev => prev.filter(t => t.id !== tid));

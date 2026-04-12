@@ -71,7 +71,7 @@ export default function InlineThreadView({
   hiddenNewReplies?: number;
   onRiskyReveal?: (rid: string) => void;
   onThreadUpdate?: (updated: Thread) => void;
-  onThreadDelete?: () => void;
+  onThreadDelete?: (loadedReplyCount: number) => void;
   onThreadMakePrivate?: () => void;
   onThreadMakePublic?: () => void;
   onThreadSharedToPublic?: (clone: Thread) => void;
@@ -234,7 +234,9 @@ export default function InlineThreadView({
     if (!window.confirm("Delete this post? It will turn into a stub visible to others.")) return;
     try {
       await dbDeleteThread(thread.id);
-      onThreadDelete?.();
+      // Pass the count of replies InlineThreadView actually loaded — more reliable
+      // than ShowSection's potentially-stale replyCounts state.
+      onThreadDelete?.(loadedReplies.length);
     } catch {
       alert("Failed to delete. Please try again.");
     }
