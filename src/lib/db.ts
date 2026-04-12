@@ -1099,27 +1099,11 @@ export async function sendInvite(data: {
   inviteeEmail: string;
   inviterName: string;
 }): Promise<SendInviteResult> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { ok: false, error: "not_authenticated" };
-
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invite`,
-    {
-      method:  "POST",
-      headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${session.access_token}`,
-        "apikey":        import.meta.env.VITE_SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({
-        ...data,
-        appUrl: window.location.origin,
-      }),
-    }
-  );
-
-  const json = await res.json().catch(() => ({ ok: false, error: "parse_error" }));
-  return json as SendInviteResult;
+  const { data: result, error } = await supabase.functions.invoke("send-invite", {
+    body: { ...data, appUrl: window.location.origin },
+  });
+  if (error) return { ok: false, error: "edge_function_error", message: error.message };
+  return result as SendInviteResult;
 }
 
 // ── Accept invite via SECURITY DEFINER RPC ─────────────────────────────────────
