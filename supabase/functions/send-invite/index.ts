@@ -38,21 +38,17 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return jsonError("missing_auth", 401);
 
-    // Verify the JWT and extract the user
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const { data: { user }, error: authErr } = await userClient.auth.getUser();
-    if (authErr || !user) return jsonError("unauthorized", 401);
-
     // Service-role client for all DB writes (bypasses RLS)
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
+
+    // Verify the JWT using the admin client (most reliable in Edge Functions)
+    const jwt = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authErr } = await admin.auth.getUser(jwt);
+    if (authErr || !user) return jsonError("unauthorized", 401);
 
     // ── Parse + validate input ───────────────────────────────────────────────
     const body = await req.json().catch(() => null);
