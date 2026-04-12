@@ -304,7 +304,9 @@ export async function deleteReply(replyId: string): Promise<void> {
 
 // ── Profile page queries ──────────────────────────────────────────────────────
 
-export async function fetchUserThreads(userId: string): Promise<Thread[]> {
+export async function fetchUserThreads(
+  userId: string
+): Promise<{ thread: Thread; groupId?: string; groupName?: string }[]> {
   const { data, error } = await supabase
     .from("threads")
     .select("*")
@@ -312,7 +314,25 @@ export async function fetchUserThreads(userId: string): Promise<Thread[]> {
     .eq("is_deleted", false)
     .order("updated_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(rowToThread);
+  const threads = (data ?? []).map(rowToThread);
+  if (!threads.length) return [];
+
+  // Enrich with group context (same pattern as fetchRepliesToUserThreads)
+  const threadIds = threads.map(t => t.id);
+  const groupByThreadId: Record<string, { groupId: string; groupName: string }> = {};
+  const { data: gtData } = await supabase
+    .from("group_threads")
+    .select("thread_id, friend_groups(id, name)")
+    .in("thread_id", threadIds);
+  for (const row of gtData ?? []) {
+    const g = (row as any).friend_groups;
+    if (g) groupByThreadId[row.thread_id] = { groupId: g.id, groupName: g.name };
+  }
+
+  return threads.map(thread => {
+    const group = groupByThreadId[thread.id];
+    return { thread, groupId: group?.groupId, groupName: group?.groupName };
+  });
 }
 
 // Replies in threads the user started, not written by the user themselves

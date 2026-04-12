@@ -54,7 +54,7 @@ export default function ProfilePage({
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const showName = (showId: string) => showId === "bb" ? "Breaking Bad (DEMO)" : allShows.find(s => s.id === showId)?.name || showId;
 
-  const [myThreads, setMyThreads] = useState<Thread[]>([]);
+  const [myThreads, setMyThreads] = useState<{ thread: Thread; groupId?: string; groupName?: string }[]>([]);
   const [myReplies, setMyReplies] = useState<{ reply: Reply; thread: Thread }[]>([]);
   const [repliesToMe, setRepliesToMe] = useState<{ reply: Reply; thread: Thread; groupId?: string; groupName?: string }[]>([]);
   const [likedThreadsList, setLikedThreadsList] = useState<Thread[]>([]);
@@ -85,7 +85,7 @@ export default function ProfilePage({
 
   // Spoiler-filter
   const visibleThreads = useMemo(() =>
-    myThreads.filter(t => canView({ season: t.season, episode: t.episode }, progress[t.showId])),
+    myThreads.filter(({ thread: t }) => canView({ season: t.season, episode: t.episode }, progress[t.showId])),
     [myThreads, progress]);
 
   const visibleMyReplies = useMemo(() =>
@@ -113,7 +113,7 @@ export default function ProfilePage({
     const bump = (sid: string, ts: number) => {
       if (!latest[sid] || ts > latest[sid]) latest[sid] = ts;
     };
-    myThreads.forEach(t => bump(t.showId, t.updatedAt));
+    myThreads.forEach(({ thread: t }) => bump(t.showId, t.updatedAt));
     myReplies.forEach(({ reply: r, thread: t }) => bump(t.showId, r.updatedAt));
     repliesToMe.forEach(({ reply: r, thread: t }) => bump(t.showId, r.updatedAt));
     likedThreadsList.forEach(t => bump(t.showId, t.updatedAt));
@@ -228,7 +228,7 @@ export default function ProfilePage({
         isPublic,
         isRewatch: postProgress.isRewatching ?? false,
       });
-      setMyThreads(prev => [t, ...prev]);
+      setMyThreads(prev => [{ thread: t }, ...prev]);
       setPostTitle(""); setPostBody("");
       setActivePrompt(null); setShownPromptIds([]); setInsertedPromptIds([]);
       setComposeOpen(false);
@@ -244,7 +244,7 @@ export default function ProfilePage({
 
   // All content filtered to active tab
   const tabThreads = useMemo(() =>
-    visibleThreads.filter(t => t.showId === activeTab), [visibleThreads, activeTab]);
+    visibleThreads.filter(({ thread: t }) => t.showId === activeTab), [visibleThreads, activeTab]);
 
   const tabMyReplies = useMemo(() =>
     visibleMyReplies.filter(p => p.thread.showId === activeTab), [visibleMyReplies, activeTab]);
@@ -438,7 +438,7 @@ export default function ProfilePage({
                   )}
                   <div className="diaryScrollArea">
                   {(() => {
-                    const filtered = diaryFilter === "private" ? tabThreads.filter(t => !t.isPublic) : tabThreads;
+                    const filtered = diaryFilter === "private" ? tabThreads.filter(({ thread: t }) => !t.isPublic) : tabThreads;
                     if (filtered.length === 0) {
                       if (diaryFilter === "private" && tabThreads.length > 0) {
                         // Has public entries but no private ones
@@ -455,10 +455,13 @@ export default function ProfilePage({
                       // No entries at all (including new users on private filter) — show welcome
                       return <EmptyProfileWelcome />;
                     }
-                    return filtered.map(t => (
+                    return filtered.map(({ thread: t, groupId, groupName }) => (
                     <div key={t.id} className="card threadCard"
-                      style={{ margin: "10px 0 10px 20px", cursor: "pointer", position: "relative" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id)}>
+                      style={{
+                        margin: "10px 0 10px 20px", cursor: "pointer", position: "relative",
+                        ...(groupId ? { background: "#bdd4de", color: "#1a3a4a", borderColor: "rgba(26,58,74,0.2)" } : {}),
+                      }}
+                      onClick={() => openThreadWithFocus(t.showId, t.id, undefined, groupId)}>
                       {shouldShowIndicator(t.id) && (
                         <Tooltip
                           text={<>{invisibleCountByThreadId[t.id] ?? ""} people ahead of you have written you back! You can read these once you catch up. And you can get rid of this indicator by clicking the X.<br /><br />Sidebar will still let you know if you get new responses, but you can always turn the indicator off.</>}
@@ -477,26 +480,27 @@ export default function ProfilePage({
                         </Tooltip>
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div className="title" style={{ fontSize: 18 }}>
-                          {!t.isPublic && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
+                        <div className="title" style={{ fontSize: 18, ...(groupId ? { color: "#1a3a4a" } : {}) }}>
+                          {!t.isPublic && !groupId && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
+                          {groupId && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8 }}>👥</span>}
                           {t.titleBase}
                           {t.showId !== "simshow" && (
-                            <span style={{ color: "var(--dos-cyan)" }}>
+                            <span style={{ color: groupId ? "#1a3a4a" : "var(--dos-cyan)" }}>
                               {` — S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")}`}
                             </span>
                           )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {t.body !== t.preview && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: groupId ? "#1a3a4a" : "#fff", color: groupId ? "#bdd4de" : "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
                               {expandedIds.has(t.id) ? "▴ less" : "▾ expand"}
                             </div>
                           )}
-                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(t.updatedAt)}</div>
+                          <div className="muted" style={{ fontSize: 13, ...(groupId ? { color: "rgba(26,58,74,0.65)" } : {}) }}>{timeAgo(t.updatedAt)}</div>
                         </div>
                       </div>
-                      <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined }}
+                      <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined, ...(groupId ? { color: "#1a3a4a" } : {}) }}
                         className={expandedIds.has(t.id) ? undefined : "clamp3"}>
                         {expandedIds.has(t.id) ? t.body : t.preview}
                       </div>
