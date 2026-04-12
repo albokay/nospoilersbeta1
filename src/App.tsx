@@ -363,8 +363,14 @@ export default function App() {
     requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
   };
 
-  const openThreadWithFocus = (showId: string, threadId: string, replyId?: string) => {
+  const openThreadWithFocus = (showId: string, threadId: string, replyId?: string, groupId?: string) => {
     setFocusReplyId(replyId || null);
+    // Restore group context in sessionStorage so ShowSection opens the correct room
+    if (groupId) {
+      sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
+    } else {
+      sessionStorage.removeItem(`ns_active_group_${showId}`);
+    }
     navigate(`/show/${showId}/thread/${threadId}`);
     requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
   };

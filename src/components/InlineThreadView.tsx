@@ -433,7 +433,19 @@ export default function InlineThreadView({
               <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
                 {isOwn && (
                   <>
-                    <button className="btn" style={{ fontSize: 13 }} onClick={handleStartEdit}>Edit</button>
+                    {loadedReplies.length > 0 ? (
+                      <Tooltip
+                        text="This entry can't be edited because others have responded to it."
+                        direction="above"
+                        align="right"
+                        useAbsolute={true}
+                        width={220}
+                      >
+                        <button className="btn" style={{ fontSize: 13, opacity: 0.45, pointerEvents: "none" }} disabled>Edit</button>
+                      </Tooltip>
+                    ) : (
+                      <button className="btn" style={{ fontSize: 13 }} onClick={handleStartEdit}>Edit</button>
+                    )}
                     <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={handleDelete}>Delete</button>
                     {thread.isPublic && !hasExternalReplies && (
                       <Tooltip

@@ -316,7 +316,9 @@ export async function fetchUserThreads(userId: string): Promise<Thread[]> {
 }
 
 // Replies in threads the user started, not written by the user themselves
-export async function fetchRepliesToUserThreads(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
+export async function fetchRepliesToUserThreads(
+  userId: string
+): Promise<{ reply: Reply; thread: Thread; groupId?: string; groupName?: string }[]> {
   const { data: threadData, error: tErr } = await supabase
     .from("threads")
     .select("*")
@@ -330,6 +332,17 @@ export async function fetchRepliesToUserThreads(userId: string): Promise<{ reply
   const threadById: Record<string, Thread> = {};
   for (const t of threads) threadById[t.id] = t;
 
+  // Fetch group context for each thread so notifications can show "in [Group Name]"
+  const groupByThreadId: Record<string, { groupId: string; groupName: string }> = {};
+  const { data: gtData } = await supabase
+    .from("group_threads")
+    .select("thread_id, friend_groups(id, name)")
+    .in("thread_id", threadIds);
+  for (const row of gtData ?? []) {
+    const g = (row as any).friend_groups;
+    if (g) groupByThreadId[row.thread_id] = { groupId: g.id, groupName: g.name };
+  }
+
   const { data: replyData, error: rErr } = await supabase
     .from("replies")
     .select("*")
@@ -340,10 +353,11 @@ export async function fetchRepliesToUserThreads(userId: string): Promise<{ reply
     .limit(200);
   if (rErr) throw rErr;
 
-  return (replyData ?? []).map((row: any) => ({
-    reply: rowToReply(row),
-    thread: threadById[row.thread_id],
-  })).filter(x => x.thread);
+  return (replyData ?? []).map((row: any) => {
+    const thread = threadById[row.thread_id];
+    const group = groupByThreadId[row.thread_id];
+    return { reply: rowToReply(row), thread, groupId: group?.groupId, groupName: group?.groupName };
+  }).filter(x => x.thread);
 }
 
 /** Replies written BY the user, with their parent thread for context. */

@@ -42,7 +42,7 @@ export default function ProfilePage({
   likesReplies: Record<string, number>;
   likedByUserThreads: Record<string, boolean>;
   likedByUserReplies: Record<string, boolean>;
-  openThreadWithFocus: (showId: string, threadId: string, replyId?: string) => void;
+  openThreadWithFocus: (showId: string, threadId: string, replyId?: string, groupId?: string) => void;
   openShow: (showId: string) => void;
   onClose: () => void;
   updateProgressFor?: (showId: string, val: { s: number; e: number }) => void;
@@ -56,7 +56,7 @@ export default function ProfilePage({
 
   const [myThreads, setMyThreads] = useState<Thread[]>([]);
   const [myReplies, setMyReplies] = useState<{ reply: Reply; thread: Thread }[]>([]);
-  const [repliesToMe, setRepliesToMe] = useState<{ reply: Reply; thread: Thread }[]>([]);
+  const [repliesToMe, setRepliesToMe] = useState<{ reply: Reply; thread: Thread; groupId?: string; groupName?: string }[]>([]);
   const [likedThreadsList, setLikedThreadsList] = useState<Thread[]>([]);
   const [likedRepliesList, setLikedRepliesList] = useState<{ reply: Reply; thread: Thread }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -515,9 +515,9 @@ export default function ProfilePage({
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No responses yet.</div>}
-                  {tabRepliesToMe.map(({ reply: r, thread: t }) => (
+                  {tabRepliesToMe.map(({ reply: r, thread: t, groupId, groupName }) => (
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", position: "relative", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
+                      onClick={() => openThreadWithFocus(t.showId, t.id, r.id, groupId)}>
                       {newVisibleReplyIds[r.id] && (
                         <div style={{ position: "absolute", left: -10, top: -10, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
                       )}
@@ -527,6 +527,9 @@ export default function ProfilePage({
                           <span style={{ color: "var(--dos-cyan)" }}>
                             S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
                           </span>{" "}
+                          • {groupName
+                              ? <span style={{ fontStyle: "italic" }}>in {groupName}</span>
+                              : <span style={{ fontStyle: "italic" }}>publicly</span>}{" "}
                           • <span className="username">@{r.author}</span>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
