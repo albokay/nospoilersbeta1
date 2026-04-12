@@ -14,10 +14,10 @@ function threadDotActive(threadId: string, hasDot: boolean): boolean {
   if (now - seenAt >= THIRTY_SIX_HOURS) { localStorage.removeItem(key); return false; }
   return true;
 }
-import type { Thread } from "../types";
+import type { Thread, FriendGroup } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import type { ReplyMeta } from "../lib/db";
@@ -165,14 +165,25 @@ export default function ShowSection({
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
-  // Show private/public tooltips only on the very first compose session ever
-  const [showComposeTooltips, setShowComposeTooltips] = useState(() => !localStorage.getItem("ns_compose_seen"));
+
+  // ── Compose destination state (Phase 3) ──────────────────────────────────
+  const [composeIsPublic, setComposeIsPublic] = useState(false);
+  const [composeGroupIds, setComposeGroupIds] = useState<Set<string>>(new Set());
+  const [userGroups, setUserGroups] = useState<FriendGroup[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+
   const openCompose = () => {
-    localStorage.setItem("ns_compose_seen", "1");
     setComposeOpen(true);
+    // Fetch friend groups for this show so we can show them as destinations
+    if (user) {
+      setGroupsLoading(true);
+      fetchFriendGroupsForUser(user.id, showId)
+        .then(setUserGroups)
+        .catch(() => {})
+        .finally(() => setGroupsLoading(false));
+    }
   };
   const closeCompose = () => {
-    setShowComposeTooltips(false);
     setComposeOpen(false);
   };
   const bannerRef = useRef<HTMLDivElement | null>(null);
@@ -637,7 +648,7 @@ export default function ShowSection({
 
   const [postSubmitting, setPostSubmitting] = useState(false);
 
-  const submitPost = async (isPublic = false) => {
+  const submitPost = async () => {
     if (!user || !profile) { onAuthRequired(); return; }
     const title = (postTitle || "").trim();
     const body = (postBody || "").trim();
@@ -650,9 +661,12 @@ export default function ShowSection({
         authorId: user.id, authorName: profile.username,
         title: title || "Untitled note",
         preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
-        body: body || "(blank)", isPublic,
+        body: body || "(blank)", isPublic: composeIsPublic,
         isRewatch: postProgress.isRewatching ?? false,
       });
+      // Share to each selected friend group
+      const groupIds = [...composeGroupIds];
+      await Promise.all(groupIds.map(gid => addThreadToGroup(t.id, gid).catch(() => {})));
       setDbThreads(prev => [t, ...prev]);
       setReplyCounts(rc => ({ ...rc, [t.id]: 0 }));
       // Log prompt usage (best-effort)
@@ -672,6 +686,9 @@ export default function ShowSection({
         localStorage.setItem("ns_last_opened", JSON.stringify(next));
         return next;
       });
+      // Reset destination state for next compose session
+      setComposeIsPublic(false);
+      setComposeGroupIds(new Set());
       closeCompose();
       setPostTitle(""); setPostBody("");
       setActiveThreadId(t.id);
@@ -1274,8 +1291,9 @@ export default function ShowSection({
                 onInsert={handlePromptInsert}
               />
             )}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-              {promptEntries.length > 0 ? (
+            {/* ── Prompt button row ── */}
+            {promptEntries.length > 0 && (
+              <div>
                 <button
                   className="prompt-btn"
                   type="button"
@@ -1284,32 +1302,76 @@ export default function ShowSection({
                 >
                   ✦ want a prompt?
                 </button>
-              ) : <span />}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
-                <Tooltip
-                  text="Post privately. Your entry will live in your journal alongside everything else you've written — a record of your watching life, whether or not you share it. (If you want, you can swap it to public later.)"
-                  direction="above"
-                  align="right"
-                  useAbsolute={true}
-                  width={280}
-                  tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
-                  disabled={!showComposeTooltips}
-                >
-                  <button className="btn" onClick={() => submitPost(false)} disabled={postSubmitting} style={{ background: "var(--dos-bg)", border: "2px solid #fff", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>📝 save to your journal</button>
-                </Tooltip>
-                <Tooltip
-                  text="Post publicly. Visible to anyone in this show room who has watched at least as far as you. They won't see spoilers from ahead of your progress, and neither will you see theirs."
-                  direction="above"
-                  align="right"
-                  useAbsolute={true}
-                  width={280}
-                  tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
-                  disabled={!showComposeTooltips}
-                >
-                  <button className="btn" onClick={() => submitPost(true)} disabled={postSubmitting} style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>{postSubmitting ? "Posting…" : "post publicly"}</button>
-                </Tooltip>
               </div>
+            )}
+
+            {/* ── Destination selector ── */}
+            <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10 }}>Where to post</div>
+
+              {/* Journal — always included */}
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "default", opacity: 0.65 }}>
+                <input type="checkbox" checked readOnly style={{ accentColor: "var(--green)" }} />
+                <span style={{ fontSize: 14 }}>📝 My journal <span style={{ opacity: 0.7, fontSize: 12 }}>(always)</span></span>
+              </label>
+
+              {/* Public show room */}
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: userGroups.length ? 8 : 0, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={composeIsPublic}
+                  onChange={e => setComposeIsPublic(e.target.checked)}
+                  style={{ accentColor: "var(--green)", marginTop: 2 }}
+                />
+                <span style={{ fontSize: 14 }}>
+                  🌍 Post publicly
+                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
+                </span>
+              </label>
+
+              {/* Friend groups */}
+              {groupsLoading && (
+                <div style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>Loading groups…</div>
+              )}
+              {userGroups.map(g => (
+                <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={composeGroupIds.has(g.id)}
+                    onChange={e => {
+                      const next = new Set(composeGroupIds);
+                      if (e.target.checked) next.add(g.id); else next.delete(g.id);
+                      setComposeGroupIds(next);
+                    }}
+                    style={{ accentColor: "var(--green)" }}
+                  />
+                  <span style={{ fontSize: 14 }}>👥 {g.name}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* ── Submit row ── */}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
+              <button
+                className="btn"
+                onClick={submitPost}
+                disabled={postSubmitting}
+                style={{
+                  background: (composeIsPublic || composeGroupIds.size > 0) ? "var(--green)" : "var(--dos-bg)",
+                  border: "2px solid #fff",
+                  color: "#fff",
+                  whiteSpace: "nowrap",
+                  fontSize: 13,
+                  minWidth: 130,
+                }}
+              >
+                {postSubmitting
+                  ? "Posting…"
+                  : (composeIsPublic || composeGroupIds.size > 0)
+                    ? "Post"
+                    : "📝 Save to journal"}
+              </button>
             </div>
           </div>
         </Modal>
