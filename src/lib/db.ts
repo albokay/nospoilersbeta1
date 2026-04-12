@@ -1053,11 +1053,14 @@ export async function fetchGroupThreads(
   const replyCounts: Record<string, number> = {};
   for (const row of data ?? []) {
     const t = (row as any).threads;
-    if (!t || t.is_deleted) continue;
+    if (!t) continue;
+    // Keep deleted threads that have replies so the group can still see the stub
+    const replyCount = ((t.replies as any[]) ?? []).length;
+    if (t.is_deleted && replyCount === 0) continue;
     const thread = rowToThread(t);
     if (thread.season > maxS || (thread.season === maxS && thread.episode > maxE)) continue;
     threads.push(thread);
-    replyCounts[thread.id] = ((t.replies as any[]) ?? []).length;
+    replyCounts[thread.id] = replyCount;
   }
   return { threads, replyCounts };
 }
