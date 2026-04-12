@@ -14,10 +14,10 @@ function threadDotActive(threadId: string, hasDot: boolean): boolean {
   if (now - seenAt >= THIRTY_SIX_HOURS) { localStorage.removeItem(key); return false; }
   return true;
 }
-import type { Thread, FriendGroup } from "../types";
+import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import type { ReplyMeta } from "../lib/db";
@@ -172,15 +172,128 @@ export default function ShowSection({
   const [userGroups, setUserGroups] = useState<FriendGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
 
+  // ── Friend group view state (Phase 4) ────────────────────────────────────
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [groupThreadsData, setGroupThreadsData] = useState<Thread[]>([]);
+  const [groupReplyCounts, setGroupReplyCounts] = useState<Record<string, number>>({});
+  const [groupThreadsLoading, setGroupThreadsLoading] = useState(false);
+  // Create-group modal
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [createGroupSubmitting, setCreateGroupSubmitting] = useState(false);
+  // Group settings modal
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
+  const [groupMembers, setGroupMembers] = useState<FriendGroupMember[]>([]);
+  const [groupMembersLoading, setGroupMembersLoading] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameSubmitting, setRenameSubmitting] = useState(false);
+
+  // Fetch friend groups whenever user or show changes
+  useEffect(() => {
+    if (!user) { setUserGroups([]); setGroupsLoading(false); return; }
+    setGroupsLoading(true);
+    fetchFriendGroupsForUser(user.id, showId)
+      .then(setUserGroups)
+      .catch(() => {})
+      .finally(() => setGroupsLoading(false));
+  }, [user?.id, showId]);
+
+  // Reset group view when switching shows
+  useEffect(() => {
+    setActiveGroupId(null);
+    setGroupThreadsData([]);
+    setGroupReplyCounts({});
+  }, [showId]);
+
+  // Fetch group threads when the active group changes or progress changes
+  useEffect(() => {
+    if (!activeGroupId) return;
+    const prog = effectiveProgress || { s: 1, e: 1 };
+    setGroupThreadsLoading(true);
+    fetchGroupThreads(activeGroupId, prog.s, prog.e)
+      .then(({ threads, replyCounts }) => {
+        setGroupThreadsData(threads);
+        setGroupReplyCounts(replyCounts);
+      })
+      .catch(() => {})
+      .finally(() => setGroupThreadsLoading(false));
+  }, [activeGroupId, effectiveProgress?.s, effectiveProgress?.e]);
+
+  const openGroupSettings = (groupId: string) => {
+    setSettingsGroupId(groupId);
+    const grp = userGroups.find(g => g.id === groupId);
+    setRenameValue(grp?.name ?? "");
+    setGroupMembers([]);
+    setGroupMembersLoading(true);
+    fetchFriendGroupMembers(groupId)
+      .then(setGroupMembers)
+      .catch(() => {})
+      .finally(() => setGroupMembersLoading(false));
+    setShowGroupSettings(true);
+  };
+
+  const handleCreateGroup = async () => {
+    if (!user || !newGroupName.trim()) return;
+    setCreateGroupSubmitting(true);
+    try {
+      const g = await createFriendGroup({ showId, name: newGroupName.trim(), createdBy: user.id });
+      setUserGroups(prev => [...prev, g]);
+      setActiveGroupId(g.id);
+      setShowCreateGroupModal(false);
+      setNewGroupName("");
+    } catch {
+      alert("Failed to create room. Please try again.");
+    } finally {
+      setCreateGroupSubmitting(false);
+    }
+  };
+
+  const handleRenameGroup = async () => {
+    if (!settingsGroupId || !renameValue.trim()) return;
+    setRenameSubmitting(true);
+    try {
+      await renameFriendGroup(settingsGroupId, renameValue.trim());
+      setUserGroups(prev => prev.map(g => g.id === settingsGroupId ? { ...g, name: renameValue.trim() } : g));
+      setShowGroupSettings(false);
+    } catch {
+      alert("Failed to rename. Please try again.");
+    } finally {
+      setRenameSubmitting(false);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!settingsGroupId) return;
+    if (!window.confirm("Delete this room for everyone? This cannot be undone.")) return;
+    try {
+      await deleteFriendGroup(settingsGroupId);
+      setUserGroups(prev => prev.filter(g => g.id !== settingsGroupId));
+      if (activeGroupId === settingsGroupId) setActiveGroupId(null);
+      setShowGroupSettings(false);
+    } catch {
+      alert("Failed to delete room. Please try again.");
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!user || !settingsGroupId) return;
+    if (!window.confirm("Leave this room?")) return;
+    try {
+      await removeGroupMember(settingsGroupId, user.id);
+      setUserGroups(prev => prev.filter(g => g.id !== settingsGroupId));
+      if (activeGroupId === settingsGroupId) setActiveGroupId(null);
+      setShowGroupSettings(false);
+    } catch {
+      alert("Failed to leave room. Please try again.");
+    }
+  };
+
   const openCompose = () => {
     setComposeOpen(true);
-    // Fetch friend groups for this show so we can show them as destinations
-    if (user) {
-      setGroupsLoading(true);
-      fetchFriendGroupsForUser(user.id, showId)
-        .then(setUserGroups)
-        .catch(() => {})
-        .finally(() => setGroupsLoading(false));
+    // Pre-select active group (if viewing a group room, default to sharing there)
+    if (activeGroupId) {
+      setComposeGroupIds(new Set([activeGroupId]));
     }
   };
   const closeCompose = () => {
@@ -498,6 +611,17 @@ export default function ShowSection({
   }, [effectiveProgress?.s, effectiveProgress?.e, allThreads]);
 
   const displayed = baseVisible;
+
+  // When a group tab is active, map group thread IDs back through allThreads to pick up
+  // full metadata (replyMeta, etc.) already loaded by fetchThreadsForShow.
+  const activeList = useMemo(() => {
+    if (!activeGroupId) return displayed;
+    const groupIdSet = new Set(groupThreadsData.map(t => t.id));
+    return allThreads.filter(t => groupIdSet.has(t.id));
+  }, [activeGroupId, groupThreadsData, allThreads, displayed]);
+
+  const activeLoading = activeGroupId ? groupThreadsLoading : threadsLoading;
+
   const thread = activeThreadId ? allThreads.find(t => t.id === activeThreadId && t.showId === showId) : null;
 
   // Shared progress-confirm handler: updates progress, then navigates back to
@@ -1061,6 +1185,166 @@ export default function ShowSection({
         </div>
       )}
 
+      {/* ── Friend-room tab strip — logged-in users only, not shown inside a thread ── */}
+      {user && !thread && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "12px 0 4px", overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
+          {/* Public tab */}
+          <button
+            className="btn"
+            onClick={() => setActiveGroupId(null)}
+            style={{
+              whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+              background: !activeGroupId ? "var(--green)" : "transparent",
+              border: !activeGroupId ? "2px solid var(--green)" : "2px solid rgba(255,255,255,0.2)",
+              color: !activeGroupId ? "#fff" : "rgba(255,255,255,0.55)",
+            }}
+          >
+            🌍 Public room
+          </button>
+
+          {/* One pill per group the user belongs to */}
+          {userGroups.map(g => (
+            <div key={g.id} style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+              <button
+                className="btn"
+                onClick={() => setActiveGroupId(g.id)}
+                style={{
+                  whiteSpace: "nowrap", fontSize: 13,
+                  background: activeGroupId === g.id ? "var(--dos-user)" : "transparent",
+                  border: activeGroupId === g.id ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
+                  color: activeGroupId === g.id ? "#fff" : "rgba(255,255,255,0.55)",
+                  borderRadius: "9999px 0 0 9999px",
+                  borderRight: "none",
+                  paddingRight: 8,
+                }}
+              >
+                👥 {g.name}
+              </button>
+              <button
+                className="btn"
+                onClick={() => openGroupSettings(g.id)}
+                title="Room settings"
+                style={{
+                  fontSize: 12, padding: "5px 8px",
+                  background: activeGroupId === g.id ? "var(--dos-user)" : "transparent",
+                  border: activeGroupId === g.id ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
+                  borderLeft: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: "0 9999px 9999px 0",
+                  color: activeGroupId === g.id ? "#fff" : "rgba(255,255,255,0.55)",
+                }}
+              >
+                ⚙
+              </button>
+            </div>
+          ))}
+
+          {/* Create new friend room */}
+          <button
+            className="btn"
+            onClick={() => setShowCreateGroupModal(true)}
+            style={{
+              whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+              background: "transparent",
+              border: "2px dashed rgba(255,255,255,0.3)",
+              color: "rgba(255,255,255,0.45)",
+            }}
+          >
+            + new room
+          </button>
+        </div>
+      )}
+
+      {/* ── Create friend room modal ── */}
+      {showCreateGroupModal && (
+        <Modal onClose={() => { setShowCreateGroupModal(false); setNewGroupName(""); }} width="min(420px,92vw)">
+          <h3 className="title" style={{ margin: "0 0 12px" }}>Create a friend room</h3>
+          <p style={{ margin: "0 0 16px", fontSize: 14, opacity: 0.75, lineHeight: 1.5 }}>
+            A friend room is a private space for a group of people watching this show together. Share entries there and reply in a spoiler-safe context.
+          </p>
+          <input
+            className="badge"
+            placeholder={'Room name (e.g. "Sunday watch crew")'}
+            value={newGroupName}
+            onChange={e => setNewGroupName(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleCreateGroup(); }}
+            style={{ width: "100%", height: 40, marginBottom: 12 }}
+            autoFocus
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button className="btn" onClick={() => { setShowCreateGroupModal(false); setNewGroupName(""); }} disabled={createGroupSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
+            <button className="btn" onClick={handleCreateGroup} disabled={createGroupSubmitting || !newGroupName.trim()} style={{ background: "var(--green)", border: "none", color: "#fff" }}>
+              {createGroupSubmitting ? "Creating…" : "Create room"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Group settings modal ── */}
+      {showGroupSettings && settingsGroupId && (() => {
+        const grp = userGroups.find(g => g.id === settingsGroupId);
+        const isCreator = !!user && grp?.createdBy === user.id;
+        return (
+          <Modal onClose={() => setShowGroupSettings(false)} width="min(460px,92vw)">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+              <h3 className="title" style={{ margin: 0 }}>👥 {grp?.name ?? "Room settings"}</h3>
+              <button className="btn" onClick={() => setShowGroupSettings(false)}>✕</button>
+            </div>
+
+            {/* Members list */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, marginBottom: 8 }}>Members</div>
+              {groupMembersLoading ? (
+                <div className="muted" style={{ fontSize: 13 }}>Loading…</div>
+              ) : groupMembers.length === 0 ? (
+                <div className="muted" style={{ fontSize: 13 }}>No members yet.</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {groupMembers.map(m => (
+                    <div key={m.userId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}>
+                      <span>@{m.username}{m.userId === grp?.createdBy ? " 👑" : ""}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Rename (creator only) */}
+            {isCreator && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, marginBottom: 8 }}>Rename</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    className="badge"
+                    value={renameValue}
+                    onChange={e => setRenameValue(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") handleRenameGroup(); }}
+                    style={{ flex: 1, height: 36 }}
+                  />
+                  <button className="btn" onClick={handleRenameGroup} disabled={renameSubmitting || !renameValue.trim()} style={{ background: "var(--green)", border: "none", color: "#fff", whiteSpace: "nowrap" }}>
+                    {renameSubmitting ? "Saving…" : "Rename"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Invite note */}
+            <div style={{ padding: "10px 12px", background: "rgba(255,255,255,0.06)", borderRadius: 8, fontSize: 13, opacity: 0.7, marginBottom: 16, lineHeight: 1.5 }}>
+              💌 Email invites coming in the next update. For now, share the room name with your friends and ask them to create an account.
+            </div>
+
+            {/* Danger zone */}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              {!isCreator && (
+                <button className="btn" onClick={handleLeaveGroup} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Leave room</button>
+              )}
+              {isCreator && (
+                <button className="btn" onClick={handleDeleteGroup} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Delete room</button>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
+
       {/* CONTENT */}
       {/* If a thread ID is in the URL but threads haven't loaded yet, wait — don't flash the room */}
       {activeThreadId && !thread && threadsLoading ? (
@@ -1121,19 +1405,23 @@ export default function ShowSection({
         />
       ) : (
         <div style={{ marginTop: 8 }}>
-          {threadsLoading && (
+          {activeLoading && (
             <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading…</div>
           )}
-          {!threadsLoading && displayed.map((t) => {
+          {!activeLoading && activeList.map((t) => {
             const isNew = !!newHighlights[showId]?.[t.id];
             const isRead = !!visitedThreads[t.id];
             const isOwn = !!username && t.author === username;
             const likeCt = likesThreads[t.id] ?? t.likes;
             const { visibleNew, hiddenNew, totalVisible } = getNewCounts(t.id);
             const hasExternal = hasExternalReplies[t.id] ?? false;
+            // In group view use group-scoped reply count; in public view use totalVisible
+            const displayReplyCount = activeGroupId
+              ? (groupReplyCounts[t.id] ?? 0)
+              : totalVisible;
 
-            // Show page is public-only — private entries live exclusively in the journal
-            if (!t.isPublic) return null;
+            // Public view: only show public threads (private entries live in journal)
+            if (!activeGroupId && !t.isPublic) return null;
 
             // Deleted:
             //   - no external replies → completely gone for everyone
@@ -1154,7 +1442,7 @@ export default function ShowSection({
                       (@{t.author}) deleted their post.
                     </div>
                     <div className="replyCount">
-                      <span>💬 {totalVisible}</span>
+                      <span>💬 {displayReplyCount}</span>
                     </div>
                   </div>
                 </div>
@@ -1238,19 +1526,23 @@ export default function ShowSection({
                 </div>
 
                 <div className="replyCount">
-                  <span style={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? {
+                  <span style={(!activeGroupId && (visibleNew > 0 || freshReplyThreadIds[t.id])) ? {
                     background: "#dea838", color: "#fff", borderRadius: 9999,
                     padding: "2px 7px", fontWeight: 700,
                   } : {}}>
-                    💬 {totalVisible}
+                    💬 {displayReplyCount}
                   </span>
                 </div>
               </div>
               </div>
             );
           })}
-          {!threadsLoading && displayed.length === 0 && (
-            <div className="muted" style={{ fontSize: 14 }}>No posts match your watch progress.</div>
+          {!activeLoading && activeList.length === 0 && (
+            <div className="muted" style={{ fontSize: 14 }}>
+              {activeGroupId
+                ? "No entries shared to this room yet. Write a post and select this room as a destination in the composer."
+                : "No posts match your watch progress."}
+            </div>
           )}
         </div>
       )}

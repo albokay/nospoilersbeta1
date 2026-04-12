@@ -1008,6 +1008,25 @@ export async function renameFriendGroup(groupId: string, name: string): Promise<
   if (error) throw error;
 }
 
+/** Permanently delete a friend group. Cascades to members, shared threads, invitations. */
+export async function deleteFriendGroup(groupId: string): Promise<void> {
+  const { error } = await supabase
+    .from("friend_groups")
+    .delete()
+    .eq("id", groupId);
+  if (error) throw error;
+}
+
+/** Remove a member from a group (creator kicks member, or member leaves). */
+export async function removeGroupMember(groupId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("friend_group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
 // ── Invitations ───────────────────────────────────────────────────────────────
 
 /** Create a single-use, time-limited invitation for an email address to join a group. */
