@@ -17,7 +17,8 @@ function threadDotActive(threadId: string, hasDot: boolean): boolean {
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, sendInvite, fetchSentInvitations } from "../lib/db";
+import type { Invitation } from "../types";
 import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import type { ReplyMeta } from "../lib/db";
@@ -188,6 +189,13 @@ export default function ShowSection({
   const [groupMembersLoading, setGroupMembersLoading] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [renameSubmitting, setRenameSubmitting] = useState(false);
+  // Invite form (inside group settings modal)
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<Invitation[]>([]);
+  const [pendingInvitesLoading, setPendingInvitesLoading] = useState(false);
 
   // Fetch friend groups whenever user or show changes
   useEffect(() => {
@@ -230,6 +238,19 @@ export default function ShowSection({
       .then(setGroupMembers)
       .catch(() => {})
       .finally(() => setGroupMembersLoading(false));
+    // Reset invite form state
+    setInviteEmail("");
+    setInviteError(null);
+    setInviteSuccess(false);
+    // Load pending invitations for this group (creator only)
+    if (user) {
+      setPendingInvites([]);
+      setPendingInvitesLoading(true);
+      fetchSentInvitations(user.id)
+        .then(all => setPendingInvites(all.filter(i => i.groupId === groupId)))
+        .catch(() => {})
+        .finally(() => setPendingInvitesLoading(false));
+    }
     setShowGroupSettings(true);
   };
 
@@ -287,6 +308,43 @@ export default function ShowSection({
       setShowGroupSettings(false);
     } catch {
       alert("Failed to leave room. Please try again.");
+    }
+  };
+
+  const handleSendInvite = async () => {
+    if (!user || !settingsGroupId || !inviteEmail.trim()) return;
+    const grp = userGroups.find(g => g.id === settingsGroupId);
+    if (!grp) return;
+    setInviteError(null);
+    setInviteSuccess(false);
+    setInviteSubmitting(true);
+    try {
+      const result = await sendInvite({
+        groupId:      settingsGroupId,
+        groupName:    grp.name,
+        inviteeEmail: inviteEmail.trim(),
+        inviterName:  profile?.username ?? "Someone",
+      });
+      if (!result.ok) {
+        const msgs: Record<string, string> = {
+          rate_limit:      "You've reached the 10 invitations/day limit. Try again tomorrow.",
+          already_invited: "This email already has a pending invite to this room.",
+          not_creator:     "Only the room creator can send invitations.",
+          invalid_email:   "Please enter a valid email address.",
+        };
+        setInviteError(msgs[result.error] ?? result.message ?? "Something went wrong. Please try again.");
+      } else {
+        setInviteSuccess(true);
+        setInviteEmail("");
+        // Refresh pending invites
+        fetchSentInvitations(user.id)
+          .then(all => setPendingInvites(all.filter(i => i.groupId === settingsGroupId)))
+          .catch(() => {});
+      }
+    } catch {
+      setInviteError("Something went wrong. Please try again.");
+    } finally {
+      setInviteSubmitting(false);
     }
   };
 
@@ -1328,10 +1386,61 @@ export default function ShowSection({
               </div>
             )}
 
-            {/* Invite note */}
-            <div style={{ padding: "10px 12px", background: "rgba(255,255,255,0.06)", borderRadius: 8, fontSize: 13, opacity: 0.7, marginBottom: 16, lineHeight: 1.5 }}>
-              💌 Email invites coming in the next update. For now, share the room name with your friends and ask them to create an account.
-            </div>
+            {/* Invite by email (creator only) */}
+            {isCreator && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, marginBottom: 8 }}>Invite by email</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    className="badge"
+                    type="email"
+                    placeholder="friend@example.com"
+                    value={inviteEmail}
+                    onChange={e => { setInviteEmail(e.target.value); setInviteError(null); setInviteSuccess(false); }}
+                    onKeyDown={e => { if (e.key === "Enter") handleSendInvite(); }}
+                    style={{ flex: 1, height: 36 }}
+                    disabled={inviteSubmitting}
+                  />
+                  <button
+                    className="btn"
+                    onClick={handleSendInvite}
+                    disabled={inviteSubmitting || !inviteEmail.trim()}
+                    style={{ background: "var(--dos-user)", border: "none", color: "#fff", whiteSpace: "nowrap" }}
+                  >
+                    {inviteSubmitting ? "Sending…" : "Send invite"}
+                  </button>
+                </div>
+                {inviteSuccess && (
+                  <div style={{ fontSize: 12, color: "var(--green)", marginTop: 6 }}>
+                    ✓ Invite sent! They'll receive an email with a link.
+                  </div>
+                )}
+                {inviteError && (
+                  <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>{inviteError}</div>
+                )}
+
+                {/* Pending invitations */}
+                {(pendingInvitesLoading || pendingInvites.length > 0) && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.4, marginBottom: 6 }}>Pending invites</div>
+                    {pendingInvitesLoading ? (
+                      <div className="muted" style={{ fontSize: 12 }}>Loading…</div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {pendingInvites.map(inv => (
+                          <div key={inv.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, opacity: 0.7 }}>
+                            <span>{inv.inviteeEmail}</span>
+                            <span style={{ opacity: 0.5, fontSize: 11 }}>
+                              expires {new Date(inv.expiresAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Danger zone */}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>

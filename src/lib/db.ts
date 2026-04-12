@@ -1083,41 +1083,75 @@ export async function fetchSentInvitations(userId: string): Promise<Invitation[]
   return (data ?? []).map(rowToInvitation);
 }
 
+// ── Send invite via Edge Function ─────────────────────────────────────────────
+
+export type SendInviteResult =
+  | { ok: true }
+  | { ok: false; error: string; message?: string };
+
 /**
- * Look up an invitation by token (for the accept page).
- * Returns null if token is invalid, expired, or already used.
+ * Calls the `send-invite` Edge Function which validates the caller,
+ * rate-limits, creates the DB row, and sends the email via Resend.
+ */
+export async function sendInvite(data: {
+  groupId: string;
+  groupName: string;
+  inviteeEmail: string;
+  inviterName: string;
+}): Promise<SendInviteResult> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { ok: false, error: "not_authenticated" };
+
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invite`,
+    {
+      method:  "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        ...data,
+        appUrl: window.location.origin,
+      }),
+    }
+  );
+
+  const json = await res.json().catch(() => ({ ok: false, error: "parse_error" }));
+  return json as SendInviteResult;
+}
+
+// ── Accept invite via SECURITY DEFINER RPC ─────────────────────────────────────
+
+/**
+ * Look up an invitation by token for the accept page.
+ * Uses the `get_invitation_by_token` SECURITY DEFINER RPC so unauthenticated
+ * users can read invite metadata. Returns null for invalid/expired/used tokens.
+ * Note: the actual invitation row data is returned directly by InviteAcceptPage
+ * via supabase.rpc(); this export is kept for any other callers.
  */
 export async function fetchInvitationByToken(token: string): Promise<Invitation | null> {
-  const { data, error } = await supabase
-    .from("invitations")
-    .select("*")
-    .eq("token", token)
-    .single();
+  const { data, error } = await supabase.rpc("get_invitation_by_token", { p_token: token });
   if (error || !data) return null;
-  const inv = rowToInvitation(data);
-  if (inv.acceptedAt !== null) return null;           // already used
-  if (inv.expiresAt < Date.now()) return null;        // expired
-  return inv;
+  return {
+    id:           data.id,
+    groupId:      data.group_id,
+    createdBy:    data.created_by ?? "",
+    inviteeEmail: data.invitee_email ?? "",
+    token,
+    expiresAt:    new Date(data.expires_at).getTime(),
+    acceptedAt:   null,
+    createdAt:    new Date(data.created_at ?? data.expires_at).getTime(),
+  };
 }
 
 /**
- * Mark an invitation as accepted and add the user to the group.
- * Called after the user authenticates on the invite accept page.
- * Note: friend_group_members INSERT for the invitee bypasses the
- * "creator only" RLS via a Supabase Edge Function (service role).
- * This client-side function just marks the invite accepted.
+ * Atomically accept an invitation via the `accept_invitation` SECURITY DEFINER
+ * RPC. Marks it used, adds the caller as a group member, and returns the
+ * group_id on success (or null on failure).
  */
-export async function acceptInvitation(token: string, userId: string): Promise<string | null> {
-  const inv = await fetchInvitationByToken(token);
-  if (!inv) return null;
-  // Mark accepted
-  await supabase
-    .from("invitations")
-    .update({ accepted_at: new Date().toISOString() })
-    .eq("token", token);
-  // Add member (requires service-role or relaxed RLS — see Edge Function)
-  await supabase
-    .from("friend_group_members")
-    .insert({ group_id: inv.groupId, user_id: userId });
-  return inv.groupId;
+export async function acceptInvitation(token: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("accept_invitation", { p_token: token });
+  if (error || !data?.ok) return null;
+  return (data as any).group_id ?? null;
 }
