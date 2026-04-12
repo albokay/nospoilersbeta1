@@ -6,7 +6,8 @@ export type Thread = {
   isDeleted?: boolean;
   isEdited?: boolean;
   isRewatch?: boolean;
-  isMoved?: boolean;    // true = entry was moved to another context; tombstone shown
+  isMoved?: boolean;      // true = entry was moved to public; stub shown in friend room
+  sourceThreadId?: string; // if this IS the public clone, points to the friend-room original
 };
 
 // ── Friend groups ─────────────────────────────────────────────────────────────

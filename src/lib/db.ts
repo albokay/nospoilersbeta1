@@ -44,20 +44,22 @@ export async function fetchShows(): Promise<Show[]> {
 
 function rowToThread(row: any): Thread {
   return {
-    id:         row.id,
-    showId:     row.show_id,
-    season:     row.season,
-    episode:    row.episode,
-    author:     row.author_name,
-    titleBase:  row.title,
-    preview:    row.preview ?? "",
-    body:       row.body ?? "",
-    updatedAt:  new Date(row.updated_at).getTime(),
-    likes:      row.likes_count ?? 0,
-    isPublic:   row.is_public ?? false,
-    isDeleted:  row.is_deleted ?? false,
-    isEdited:   row.is_edited ?? false,
-    isRewatch:  row.is_rewatch ?? false,
+    id:             row.id,
+    showId:         row.show_id,
+    season:         row.season,
+    episode:        row.episode,
+    author:         row.author_name,
+    titleBase:      row.title,
+    preview:        row.preview ?? "",
+    body:           row.body ?? "",
+    updatedAt:      new Date(row.updated_at).getTime(),
+    likes:          row.likes_count ?? 0,
+    isPublic:       row.is_public ?? false,
+    isDeleted:      row.is_deleted ?? false,
+    isEdited:       row.is_edited ?? false,
+    isRewatch:      row.is_rewatch ?? false,
+    isMoved:        row.is_moved ?? false,
+    sourceThreadId: row.source_thread_id ?? undefined,
   };
 }
 
@@ -147,6 +149,55 @@ export async function setThreadPublic(threadId: string, isPublic: boolean): Prom
 export const makeThreadPrivate = (id: string) => setThreadPublic(id, false);
 /** @deprecated Use setThreadPublic(id, true) */
 export const makeThreadPublic  = (id: string) => setThreadPublic(id, true);
+
+/**
+ * Create a public clone of a friend-room thread.
+ * The clone gets is_public=true and source_thread_id pointing to the original.
+ * The original is left untouched — replies stay fully isolated.
+ */
+export async function cloneThreadToPublic(threadId: string): Promise<Thread> {
+  const { data: orig, error: origErr } = await supabase
+    .from("threads")
+    .select("*")
+    .eq("id", threadId)
+    .single();
+  if (origErr || !orig) throw origErr ?? new Error("Thread not found");
+
+  const newId = crypto.randomUUID();
+  const { data: inserted, error } = await supabase
+    .from("threads")
+    .insert({
+      id:               newId,
+      show_id:          orig.show_id,
+      season:           orig.season,
+      episode:          orig.episode,
+      author_id:        orig.author_id,
+      author_name:      orig.author_name,
+      title:            orig.title,
+      preview:          orig.preview,
+      body:             orig.body,
+      is_public:        true,
+      is_rewatch:       orig.is_rewatch ?? false,
+      source_thread_id: threadId,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToThread(inserted);
+}
+
+/**
+ * Mark a friend-room thread as "moved to public".
+ * Sets is_moved=true so the friend room shows a stub in place of the full card.
+ * Call this AFTER cloneThreadToPublic when the user wants to move (not just share).
+ */
+export async function markThreadMovedFromGroup(threadId: string): Promise<void> {
+  const { error } = await supabase
+    .from("threads")
+    .update({ is_moved: true, moved_context: "public" })
+    .eq("id", threadId);
+  if (error) throw error;
+}
 
 // ── Likes ─────────────────────────────────────────────────────────────────────
 

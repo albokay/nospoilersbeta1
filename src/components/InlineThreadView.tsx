@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import { timeAgo, canView } from "../lib/utils";
 import { useAuth } from "../lib/auth";
-import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic } from "../lib/db";
+import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, cloneThreadToPublic as dbCloneThreadToPublic } from "../lib/db";
 import type { CitationEntry } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import Modal from "./Modal";
@@ -46,6 +46,7 @@ export default function InlineThreadView({
   likeReply, unlikeReply, likesReplies, likedByUserReplies,
   mode, focusReplyId, onAuthRequired, hiddenNewReplies = 0, onRiskyReveal,
   onThreadUpdate, onThreadDelete, onThreadMakePrivate, onThreadMakePublic,
+  onThreadSharedToPublic,
   hasExternalReplies = false, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile,
   // New reference-system props
   pendingReference, onSetPendingReference, composerRef, onScrollToComposer,
@@ -73,6 +74,7 @@ export default function InlineThreadView({
   onThreadDelete?: () => void;
   onThreadMakePrivate?: () => void;
   onThreadMakePublic?: () => void;
+  onThreadSharedToPublic?: (clone: Thread) => void;
   hasExternalReplies?: boolean;
   onExternalReplyAdded?: (threadId: string) => void;
   onReplyDeleted?: (rid: string) => void;
@@ -240,8 +242,14 @@ export default function InlineThreadView({
 
   const handleMakePublic = async () => {
     try {
-      await dbSetThreadPublic(thread.id, true);
-      onThreadMakePublic?.();
+      if (inGroupContext) {
+        // Two-instance model: create a public clone; replies stay isolated
+        const clone = await dbCloneThreadToPublic(thread.id);
+        onThreadSharedToPublic?.(clone);
+      } else {
+        await dbSetThreadPublic(thread.id, true);
+        onThreadMakePublic?.();
+      }
     } catch {
       alert("Failed. Please try again.");
     }
@@ -435,7 +443,9 @@ export default function InlineThreadView({
                       </Tooltip>
                     )}
                     {!thread.isPublic && (
-                      <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePublic}>Turn Public</button>
+                      <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePublic}>
+                        {inGroupContext ? "Share to Public" : "Turn Public"}
+                      </button>
                     )}
                   </>
                 )}

@@ -17,7 +17,7 @@ function threadDotActive(threadId: string, hasDot: boolean): boolean {
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, sendInvite, fetchSentInvitations } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, sendInvite, fetchSentInvitations, cloneThreadToPublic } from "../lib/db";
 import type { Invitation } from "../types";
 import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
@@ -839,19 +839,41 @@ export default function ShowSection({
     if (!body) { alert("Write something first."); return; }
     setPostSubmitting(true);
     try {
-      const t = await insertThread({
+      const threadData = {
         showId, season: postTagS, episode: postTagE,
         authorId: user.id, authorName: profile.username,
         title: title || "Untitled note",
         preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
-        body: body || "(blank)", isPublic: composeIsPublic,
+        body: body || "(blank)",
         isRewatch: postProgress.isRewatching ?? false,
-      });
-      // Share to each selected friend group
+      };
       const groupIds = [...composeGroupIds];
-      await Promise.all(groupIds.map(gid => addThreadToGroup(t.id, gid).catch(() => {})));
-      setDbThreads(prev => [t, ...prev]);
-      setReplyCounts(rc => ({ ...rc, [t.id]: 0 }));
+      const hasBothDestinations = composeIsPublic && groupIds.length > 0;
+
+      let t: Awaited<ReturnType<typeof insertThread>>;
+      if (hasBothDestinations) {
+        // Two-instance model: create private group thread + public clone (isolated replies)
+        t = await insertThread({ ...threadData, isPublic: false });
+        await Promise.all(groupIds.map(gid => addThreadToGroup(t.id, gid).catch(() => {})));
+        const publicClone = await cloneThreadToPublic(t.id);
+        setDbThreads(prev => [publicClone, t, ...prev]);
+        setReplyCounts(rc => ({ ...rc, [t.id]: 0, [publicClone.id]: 0 }));
+        // Keep group thread in groupThreadsData so it appears in the active room list
+        if (activeGroupId && groupIds.includes(activeGroupId)) {
+          setGroupThreadsData(prev => [t, ...prev]);
+          setGroupReplyCounts(prev => ({ ...prev, [t.id]: 0 }));
+        }
+      } else {
+        // Single destination
+        t = await insertThread({ ...threadData, isPublic: composeIsPublic });
+        await Promise.all(groupIds.map(gid => addThreadToGroup(t.id, gid).catch(() => {})));
+        setDbThreads(prev => [t, ...prev]);
+        setReplyCounts(rc => ({ ...rc, [t.id]: 0 }));
+        if (activeGroupId && groupIds.includes(activeGroupId)) {
+          setGroupThreadsData(prev => [t, ...prev]);
+          setGroupReplyCounts(prev => ({ ...prev, [t.id]: 0 }));
+        }
+      }
       // Log prompt usage (best-effort)
       for (const pid of insertedPromptIds) {
         logThreadPrompt(t.id, pid).catch(() => {});
@@ -1498,6 +1520,11 @@ export default function ShowSection({
           onThreadMakePublic={() => {
             setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPublic: true } : t));
           }}
+          onThreadSharedToPublic={(clone) => {
+            // Two-instance: add the public clone to the main thread list
+            setDbThreads(prev => [clone, ...prev]);
+            setReplyCounts(rc => ({ ...rc, [clone.id]: 0 }));
+          }}
           hasExternalReplies={(replyCounts[thread.id] ?? 0) > 0}
           onExternalReplyAdded={(tid: string) => setHasExternalReplies(prev => ({ ...prev, [tid]: true }))}
           onReplyDeleted={(rid: string) => {
@@ -1533,6 +1560,19 @@ export default function ShowSection({
 
             // Public view: only show public threads (private entries live in journal)
             if (!activeGroupId && !t.isPublic) return null;
+
+            // Moved-to-public stub: show in group view so members know the entry left
+            if (activeGroupId && t.isMoved) {
+              return (
+                <div key={t.id} style={{ position: "relative", margin: "0 0 12px 0" }}>
+                  <div className="card threadCard" style={{ margin: 0, opacity: 0.65 }}>
+                    <div className="muted" style={{ fontSize: 14, padding: "2px 0", fontStyle: "italic" }}>
+                      This entry has been moved to the public room.
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             // Deleted:
             //   - no external replies → completely gone for everyone
