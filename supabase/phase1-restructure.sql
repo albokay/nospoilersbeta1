@@ -16,7 +16,7 @@ ALTER TABLE threads ADD COLUMN IF NOT EXISTS moved_context text;  -- e.g. 'publi
 
 -- Index for aggregated show page query
 CREATE INDEX IF NOT EXISTS idx_threads_is_public ON threads(show_id, is_public)
-  WHERE is_public = true AND is_deleted = false;
+  WHERE is_public = true;
 
 -- ── 2. friend_groups table ────────────────────────────────────────────────────
 
