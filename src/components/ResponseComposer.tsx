@@ -35,6 +35,7 @@ interface ResponseComposerProps {
   onExternalReplyAdded?: () => void;
   show?: Show;
   progress?: { s: number; e: number };
+  inGroupContext?: boolean;
 }
 
 export default function ResponseComposer({
@@ -55,6 +56,7 @@ export default function ResponseComposer({
   onExternalReplyAdded,
   show,
   progress,
+  inGroupContext,
 }: ResponseComposerProps) {
   // Re-watchers tag replies at their highest prior progress; others use viewerSeason/Episode
   const replyTagS = postTagSeason ?? viewerSeason;
@@ -259,7 +261,9 @@ export default function ResponseComposer({
           Cancel
         </button>
         <Tooltip
-          text="Post publicly. Visible to anyone in this show room who has watched at least as far as you. They won't see spoilers from ahead of your progress, and neither will you see theirs."
+          text={inGroupContext
+            ? "Post to this friend room. Visible only to members of this room."
+            : "Post publicly. Visible to anyone in this show room who has watched at least as far as you. They won't see spoilers from ahead of your progress, and neither will you see theirs."}
           direction="above"
           align="right"
           useAbsolute={true}

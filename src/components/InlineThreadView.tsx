@@ -50,6 +50,7 @@ export default function InlineThreadView({
   // New reference-system props
   pendingReference, onSetPendingReference, composerRef, onScrollToComposer,
   citations, threadCitations, onRepliesLoaded,
+  inGroupContext,
 }: {
   thread: Thread;
   show: any;
@@ -85,6 +86,7 @@ export default function InlineThreadView({
   citations?: Map<string, CitationEntry[]>;
   threadCitations?: CitationEntry[];
   onRepliesLoaded?: (replyIds: string[]) => void;
+  inGroupContext?: boolean;
 }) {
   const { user, profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
@@ -494,6 +496,7 @@ export default function InlineThreadView({
         onExternalReplyAdded={onExternalReplyAdded ? () => onExternalReplyAdded(thread.id) : undefined}
         show={show}
         progress={progressForShow}
+        inGroupContext={inGroupContext}
       />}
     </section>
   );

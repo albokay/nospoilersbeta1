@@ -993,9 +993,7 @@ export async function fetchGroupThreads(
     const thread = rowToThread(t);
     if (thread.season > maxS || (thread.season === maxS && thread.episode > maxE)) continue;
     threads.push(thread);
-    replyCounts[thread.id] = ((t.replies as any[]) ?? []).filter(
-      (r: any) => r.group_id === groupId
-    ).length;
+    replyCounts[thread.id] = ((t.replies as any[]) ?? []).length;
   }
   return { threads, replyCounts };
 }
