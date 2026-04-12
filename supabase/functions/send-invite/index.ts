@@ -25,7 +25,7 @@ const CORS_HEADERS = {
 };
 
 const RATE_LIMIT_PER_DAY = 10;
-const FROM_ADDRESS       = "No Spoilers <invites@send.sidebar.watch>";
+const FROM_ADDRESS       = "No Spoilers <invites@sidebar.watch>";
 
 serve(async (req) => {
   // Handle CORS preflight
