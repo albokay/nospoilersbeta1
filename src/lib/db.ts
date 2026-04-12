@@ -187,6 +187,19 @@ export async function cloneThreadToPublic(threadId: string): Promise<Thread> {
 }
 
 /**
+ * Returns true if a public clone already exists for the given friend-room thread.
+ * Used to keep the "Share to Public" button disabled after sharing.
+ */
+export async function hasPublicClone(threadId: string): Promise<boolean> {
+  const { count, error } = await supabase
+    .from("threads")
+    .select("id", { count: "exact", head: true })
+    .eq("source_thread_id", threadId);
+  if (error) return false;
+  return (count ?? 0) > 0;
+}
+
+/**
  * Mark a friend-room thread as "moved to public".
  * Sets is_moved=true so the friend room shows a stub in place of the full card.
  * Call this AFTER cloneThreadToPublic when the user wants to move (not just share).

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import { timeAgo, canView } from "../lib/utils";
 import { useAuth } from "../lib/auth";
-import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, cloneThreadToPublic as dbCloneThreadToPublic } from "../lib/db";
+import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, cloneThreadToPublic as dbCloneThreadToPublic, hasPublicClone as dbHasPublicClone } from "../lib/db";
 import type { CitationEntry } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import Modal from "./Modal";
@@ -93,6 +93,15 @@ export default function InlineThreadView({
   const { user, profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
   const { scrollTo: scrollHighlight } = useScrollHighlight();
+
+  // ── Share-to-public state ─────────────────────────────────
+  // Tracks whether a public clone already exists for this friend-room thread.
+  // Initialized from the DB so the button stays disabled even after a refresh.
+  const [sharedToPublic, setSharedToPublic] = useState(false);
+  useEffect(() => {
+    if (!inGroupContext || !isOwn) return;
+    dbHasPublicClone(thread.id).then(setSharedToPublic).catch(() => {});
+  }, [thread.id, inGroupContext, isOwn]);
 
   // ── Edit state ────────────────────────────────────────────
   const [editing, setEditing] = useState(false);
@@ -245,6 +254,7 @@ export default function InlineThreadView({
       if (inGroupContext) {
         // Two-instance model: create a public clone; replies stay isolated
         const clone = await dbCloneThreadToPublic(thread.id);
+        setSharedToPublic(true);
         onThreadSharedToPublic?.(clone);
       } else {
         await dbSetThreadPublic(thread.id, true);
@@ -443,9 +453,18 @@ export default function InlineThreadView({
                       </Tooltip>
                     )}
                     {!thread.isPublic && (
-                      <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePublic}>
-                        {inGroupContext ? "Share to Public" : "Turn Public"}
-                      </button>
+                      inGroupContext ? (
+                        <button
+                          className="btn"
+                          style={{ fontSize: 13, opacity: sharedToPublic ? 0.55 : 1, cursor: sharedToPublic ? "default" : "pointer" }}
+                          onClick={sharedToPublic ? undefined : handleMakePublic}
+                          disabled={sharedToPublic}
+                        >
+                          {sharedToPublic ? "✓ Shared to Public" : "Share to Public"}
+                        </button>
+                      ) : (
+                        <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePublic}>Turn Public</button>
+                      )
                     )}
                   </>
                 )}
