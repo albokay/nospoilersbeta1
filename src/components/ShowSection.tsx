@@ -73,9 +73,10 @@ export default function ShowSection({
     }
   }, [showId]);
 
-  // Effective progress: saved progress for logged-in users, guest progress for logged-out
-  const effectiveProgress: { s: number; e: number } | undefined =
-    user ? progress[showId] : guestProgress ?? undefined;
+  // Effective progress: saved progress for logged-in users, guest progress for logged-out.
+  // No explicit annotation — infers as `any` from the any-typed progress prop,
+  // keeping rewatch fields (isRewatching, highestS/E etc.) accessible downstream.
+  const effectiveProgress = user ? progress[showId] : guestProgress ?? undefined;
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
   useEffect(() => {
@@ -629,7 +630,7 @@ export default function ShowSection({
 
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
-  const postProgress = effectiveProgress || { s: 1, e: 1 };
+  const postProgress = progress[showId] || { s: 1, e: 1 };  // compose requires login → always progress[showId]
   // Re-watchers tag posts at their highest prior progress so first-timers can't see them
   const postTagS = postProgress.isRewatching && postProgress.highestS ? postProgress.highestS : postProgress.s;
   const postTagE = postProgress.isRewatching && postProgress.highestE ? postProgress.highestE : postProgress.e;
