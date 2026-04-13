@@ -343,7 +343,7 @@ export default function InlineThreadView({
               <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{editError}</div>
             )}
             {showRetagWarning && (
-              <div style={{ background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 6, padding: "12px 14px", marginTop: 10, fontSize: 13 }}>
+              <div className="retag-warning" style={{ background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 6, padding: "12px 14px", marginTop: 10, fontSize: 13 }}>
                 <div style={{ fontWeight: 700, marginBottom: 6 }}>Heads up — this post will be retagged</div>
                 <div style={{ opacity: 0.85, marginBottom: 10 }}>
                   Your progress has moved to{" "}
@@ -464,7 +464,7 @@ export default function InlineThreadView({
                           Move to →
                         </button>
                         {showMoveOptions && (
-                          <div style={{
+                          <div className="move-to-dropdown" style={{
                             position: "absolute", bottom: "calc(100% + 6px)", right: 0,
                             display: "flex", flexDirection: "column", gap: 6,
                             background: "var(--dos-bg)", border: "none",

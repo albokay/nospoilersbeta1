@@ -1850,7 +1850,8 @@ export default function ShowSection({
                 </div>
 
                 <div className="replyCount">
-                  <span style={(!activeGroupId && (visibleNew > 0 || freshReplyThreadIds[t.id])) ? {
+                  <span className={(!activeGroupId && (visibleNew > 0 || freshReplyThreadIds[t.id])) ? "newReplyBadge" : ""}
+                    style={(!activeGroupId && (visibleNew > 0 || freshReplyThreadIds[t.id])) ? {
                     background: "#dea838", color: "#fff", borderRadius: 9999,
                     padding: "2px 7px", fontWeight: 700,
                   } : {}}>
@@ -1928,7 +1929,7 @@ export default function ShowSection({
               {/* Private journal */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination("private")}>
                 <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {composeDestination === "private" && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                  {composeDestination === "private" && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
                 </div>
                 <span style={{ fontSize: 14 }}>📝 Private journal</span>
               </div>
@@ -1937,7 +1938,7 @@ export default function ShowSection({
               {userGroups.map(g => (
                 <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination(g.id)}>
                   <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {composeDestination === g.id && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                    {composeDestination === g.id && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
                   </div>
                   <span style={{ fontSize: 14 }}>👥 {g.name}</span>
                 </div>
@@ -1946,7 +1947,7 @@ export default function ShowSection({
               {/* Public profile */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, cursor: "pointer" }} onClick={() => setComposeDestination("public")}>
                 <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {composeDestination === "public" && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                  {composeDestination === "public" && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
                 </div>
                 <span style={{ fontSize: 14 }}>
                   🌍 Public profile
@@ -1959,7 +1960,7 @@ export default function ShowSection({
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
               <button
-                className="btn"
+                className="btn compose-submit"
                 onClick={submitPost}
                 disabled={postSubmitting}
                 style={{
