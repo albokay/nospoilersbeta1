@@ -90,7 +90,7 @@ body.has-header{
 hr{ display:none; }
 .title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; font-size:var(--t2); }
 .muted{ color:var(--dos-gray); font-size:var(--t4); }
-.card{ background:transparent; border:2px solid var(--dos-border); padding:12px; border-radius:24px; }
+.card{ background:transparent; border:none; padding:12px; border-radius:24px; }
 
 /* controls */
 .badge{
@@ -213,7 +213,7 @@ header.site{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
   max-height:300px; overflow:auto; background:rgba(122,189,142,0.97);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
-  border:2px solid var(--dos-border); border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
+  border:none; border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
   color:var(--dos-fg);
 }
 
@@ -233,7 +233,7 @@ header.site{
 }
 
 /* thread/replies */
-.threadCard{ border-color:var(--dos-border); }
+.threadCard{ border:none; }
 .replyBarNew{ background:var(--green); height:6px; }
 .clamp3{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
 .redacted{ background:#e8e4dc; color:#888; border:2px solid #ccc; border-radius:23px; }
@@ -310,7 +310,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
 }
-.diaryCardWrap > .card{ border:2px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:none; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
@@ -362,7 +362,7 @@ header.site{
   /* Flush first tab with the card's left border line */
   .diaryTabRow{ padding-left:0; }
   /* Keep border, zero padding — action bar + scroll area handle their own padding */
-  .diaryCardWrap > .card{ border:2px solid #fff !important; padding:0 !important; }
+  .diaryCardWrap > .card{ border:none !important; padding:0 !important; }
   .profileActionBar{ padding:10px 16px; }
   .diaryScrollArea{ padding:8px 16px 24px 16px; }
   /* Entry cards: remove the desktop left-margin offset so they're centred in the box */
@@ -550,7 +550,7 @@ body { -webkit-font-smoothing: antialiased; }
   width: 280px;
   background: var(--dos-bg);
   color: var(--dos-fg);
-  border: 2px solid var(--dos-border);
+  border: none;
   border-radius: 16px;
   padding: 12px 14px 10px;
   font-size: 13px;
