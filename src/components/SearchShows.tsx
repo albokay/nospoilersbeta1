@@ -250,16 +250,15 @@ export default function SearchShows({
     const seasons = confirmingSeasons ?? [1];
     const showId = slugify(confirming.name);
 
-    // Store browse progress silently
+    // Always store in sessionStorage for immediate availability on navigation
+    sessionStorage.setItem(`ns_browse_prog_${showId}`, JSON.stringify(entry));
+
+    // Also persist to DB for logged-in users (for cross-session pre-population)
     if (user) {
-      // Only upsert if the show already exists (FK constraint on browse_progress)
       const existingShow = shows.find(s => s.tvmazeId === String(confirming.id) || s.id === showId);
       if (existingShow) {
         upsertBrowseProgress(user.id, existingShow.id, entry).catch(() => {});
       }
-    } else {
-      // Non-logged-in: session-only storage
-      sessionStorage.setItem(`ns_browse_prog_${showId}`, JSON.stringify(entry));
     }
 
     // Store show metadata so ShowSection can render correctly even without a shows row

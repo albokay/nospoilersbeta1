@@ -77,9 +77,8 @@ export default function ShowSection({
     return !hasGuest && !hasBrowse;
   });
 
-  // Browse progress: sessionStorage for guests, browse_progress table for logged-in
+  // Browse progress from sessionStorage — available immediately for all users
   const [browseSessionProgress, setBrowseSessionProgress] = useState<{ s: number; e: number } | null>(() => {
-    if (user) return null;
     try { return JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null"); } catch { return null; }
   });
   const [browseProgress, setBrowseProgress] = useState<any>(null);
@@ -122,9 +121,10 @@ export default function ShowSection({
     setShowGuestPicker(!hasProgress);
   }, [showId]);
 
-  // Effective progress: committed > browse > guest > undefined
+  // Effective progress: committed > sessionStorage browse > DB browse > guest > undefined
+  // sessionStorage is checked for all users (immediate, no async delay)
   const effectiveProgress = user
-    ? (progress[showId] ?? browseProgress ?? undefined)
+    ? (progress[showId] ?? browseSessionProgress ?? browseProgress ?? undefined)
     : (guestProgress ?? browseSessionProgress ?? undefined);
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
