@@ -160,9 +160,24 @@ export default function SearchShows({
 
   // No auth gate — anyone can open the onboarding modal
   const handlePickTVmaze = async (tv: TVmazeShow) => {
+    const showId = slugify(tv.name);
+    setOpen(false);
+
+    // If browse progress already exists this session, skip the modal
+    // and go straight to the public space
+    try {
+      const existing = JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null");
+      if (existing) {
+        const storedShow = JSON.parse(sessionStorage.getItem(`ns_browse_show_${showId}`) || "null");
+        const seasons = storedShow?.seasons ?? [1];
+        setQuery(tv.name);
+        onBrowsePublic?.(showId, tv.name, existing, seasons);
+        return;
+      }
+    } catch {}
+
     setConfirming(tv);
     setConfirmingSeasons(null);
-    setOpen(false);
     setCreateError(null);
     setWatchChoice(null);
     setHighestSel({ s: 1, e: 1 });
