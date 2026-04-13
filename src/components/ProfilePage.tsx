@@ -793,45 +793,33 @@ export default function ProfilePage({
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10, color: "var(--dos-light)" }}>Where to post</div>
 
               {/* Private journal */}
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="composeDestination"
-                  checked={composeDestination === "private"}
-                  onChange={() => setComposeDestination("private")}
-                  style={{ accentColor: "var(--green)" }}
-                />
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination("private")}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: composeDestination === "private" ? "2px solid var(--dos-border)" : "2px solid rgba(255,255,255,0.45)", background: composeDestination === "private" ? "var(--dos-border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {composeDestination === "private" && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                </div>
                 <span style={{ fontSize: 14, color: "var(--dos-light)" }}>📝 Private journal</span>
-              </label>
+              </div>
 
               {/* One option per friend group */}
               {tabGroups.map(g => (
-                <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
-                  <input
-                    type="radio"
-                    name="composeDestination"
-                    checked={composeDestination === g.id}
-                    onChange={() => setComposeDestination(g.id)}
-                    style={{ accentColor: "var(--green)" }}
-                  />
+                <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination(g.id)}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: composeDestination === g.id ? "2px solid var(--dos-border)" : "2px solid rgba(255,255,255,0.45)", background: composeDestination === g.id ? "var(--dos-border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {composeDestination === g.id && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                  </div>
                   <span style={{ fontSize: 14, color: "var(--dos-light)" }}>👥 {g.name}</span>
-                </label>
+                </div>
               ))}
 
               {/* Public profile */}
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 0, cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="composeDestination"
-                  checked={composeDestination === "public"}
-                  onChange={() => setComposeDestination("public")}
-                  style={{ accentColor: "var(--green)", marginTop: 2 }}
-                />
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, cursor: "pointer" }} onClick={() => setComposeDestination("public")}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: composeDestination === "public" ? "2px solid var(--dos-border)" : "2px solid rgba(255,255,255,0.45)", background: composeDestination === "public" ? "var(--dos-border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {composeDestination === "public" && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                </div>
                 <span style={{ fontSize: 14, color: "var(--dos-light)" }}>
                   🌍 Public profile
                   <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
                 </span>
-              </label>
+              </div>
             </div>
 
             {/* ── Submit row ── */}
