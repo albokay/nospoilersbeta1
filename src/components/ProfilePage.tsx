@@ -496,7 +496,7 @@ export default function ProfilePage({
                     const isGroup = !!groupId;
                     const isPub = t.isPublic && !groupId;
                     // card bg: blue for friend room, yellow for public, transparent for private
-                    const cardBg = isGroup ? "#bdd4de" : isPub ? "#c8a030" : undefined;
+                    const cardBg = isGroup ? "#bdd4de" : isPub ? "#dea838" : undefined;
                     const cardFg = isGroup ? "#1a3a4a" : "#fff";
                     const cardMuted = isGroup ? "rgba(26,58,74,0.65)" : "rgba(255,255,255,0.65)";
                     const epColor = isGroup ? "#1a3a4a" : "var(--dos-cyan)";
