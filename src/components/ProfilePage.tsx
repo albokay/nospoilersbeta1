@@ -492,11 +492,22 @@ export default function ProfilePage({
                       // No entries at all (including new users on private filter) — show welcome
                       return <EmptyProfileWelcome />;
                     }
-                    return filtered.map(({ thread: t, groupId, groupName }) => (
+                    return filtered.map(({ thread: t, groupId, groupName }) => {
+                    const isGroup = !!groupId;
+                    const isPub = t.isPublic && !groupId;
+                    // card bg: blue for friend room, yellow for public, transparent for private
+                    const cardBg = isGroup ? "#bdd4de" : isPub ? "#c8a030" : undefined;
+                    const cardFg = isGroup ? "#1a3a4a" : "#fff";
+                    const cardMuted = isGroup ? "rgba(26,58,74,0.65)" : "rgba(255,255,255,0.65)";
+                    const epColor = isGroup ? "#1a3a4a" : "var(--dos-cyan)";
+                    // expand button: inverted chip using card accent
+                    const chipBg = isGroup ? "#1a3a4a" : isPub ? "rgba(0,0,0,0.18)" : "#fff";
+                    const chipFg = isGroup ? "#bdd4de" : isPub ? "#fff" : "var(--dos-bg)";
+                    return (
                     <div key={t.id} className="card threadCard"
                       style={{
                         margin: "10px 0 10px 20px", cursor: "pointer", position: "relative",
-                        ...(groupId ? { background: "#bdd4de", color: "#1a3a4a", borderColor: "#fff" } : {}),
+                        ...((isGroup || isPub) ? { background: cardBg, color: cardFg, borderColor: "#fff" } : {}),
                       }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, undefined, groupId)}>
                       {shouldShowIndicator(t.id) && (
@@ -517,32 +528,33 @@ export default function ProfilePage({
                         </Tooltip>
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div className="title" style={{ fontSize: 18, ...(groupId ? { color: "#1a3a4a" } : {}) }}>
+                        <div className="title" style={{ fontSize: 18, ...((isGroup || isPub) ? { color: cardFg } : {}) }}>
                           {!t.isPublic && !groupId && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
-                          {groupId && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8 }}>👥</span>}
+                          {isPub && <span title="Public" style={{ marginRight: 8 }}>🌍</span>}
+                          {isGroup && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8 }}>👥</span>}
                           {t.titleBase}
                           {t.showId !== "simshow" && (
-                            <span style={{ color: groupId ? "#1a3a4a" : "var(--dos-cyan)" }}>
+                            <span style={{ color: epColor }}>
                               {` — S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")}`}
                             </span>
                           )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {t.body !== t.preview && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: groupId ? "#1a3a4a" : "#fff", color: groupId ? "#bdd4de" : "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: chipBg, color: chipFg, borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
                               {expandedIds.has(t.id) ? "▴ less" : "▾ expand"}
                             </div>
                           )}
-                          <div className="muted" style={{ fontSize: 13, ...(groupId ? { color: "rgba(26,58,74,0.65)" } : {}) }}>{timeAgo(t.updatedAt)}</div>
+                          <div className="muted" style={{ fontSize: 13, ...((isGroup || isPub) ? { color: cardMuted } : {}) }}>{timeAgo(t.updatedAt)}</div>
                         </div>
                       </div>
-                      <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined, ...(groupId ? { color: "#1a3a4a" } : {}) }}
+                      <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined, ...((isGroup || isPub) ? { color: cardFg } : {}) }}
                         className={expandedIds.has(t.id) ? undefined : "clamp3"}>
                         {expandedIds.has(t.id) ? t.body : t.preview}
                       </div>
                     </div>
-                  ));
+                  );});
                   })()}
                   <div style={{ height: 32, flexShrink: 0 }} aria-hidden />
                   </div>{/* /diaryScrollArea */}
