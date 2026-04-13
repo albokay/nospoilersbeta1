@@ -988,37 +988,46 @@ export default function ShowSection({
           </div>
         </Modal>
       )}
-      {user && showLoggedInPicker && (
-        <Modal
-          onClose={() => {
-            // Default to S1E1 if closed without picking
-            updateProgressFor?.(showId, { s: 1, e: 1 });
-            setShowLoggedInPicker(false);
-          }}
-          width="min(440px,92vw)"
-        >
-          <div style={{ padding: "20px 16px 20px" }}>
-            <p style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 700, lineHeight: 1.3 }}>
-              Where are you in {(allShows.find(s => s.id === showId)?.name) || showId}?
-            </p>
-            <p style={{ margin: "0 0 20px", fontSize: 15, lineHeight: 1.5, opacity: 0.75 }}>
-              Set your watch progress so we only show you entries written by people who were at your level or earlier — no spoilers from further ahead.
-            </p>
-            <div style={{ display: "flex", justifyContent: "flex-start" }}>
-              <OneSelectProgress
-                show={allShows.find(s => s.id === showId) || { seasons: [10] }}
-                value={{ s: 1, e: 1 }}
-                onConfirm={(val) => {
-                  updateProgressFor?.(showId, val);
-                  setShowLoggedInPicker(false);
-                  setShowProgressCelebration(true);
-                }}
-                requireConfirm={true}
-              />
+      {user && showLoggedInPicker && (() => {
+        const confirmPicker = (val: { s: number; e: number }) => {
+          updateProgressFor?.(showId, val);
+          setShowLoggedInPicker(false);
+          setShowProgressCelebration(true);
+        };
+        // Track what's currently selected in the picker so the confirm button always works
+        let pickerSelected = { s: 1, e: 1 };
+        return (
+          <Modal
+            onClose={() => { confirmPicker({ s: 1, e: 1 }); }}
+            width="min(440px,92vw)"
+          >
+            <div style={{ padding: "20px 16px 20px" }}>
+              <p style={{ margin: "0 0 8px", fontSize: 19, fontWeight: 700, lineHeight: 1.3 }}>
+                Where are you in {(allShows.find(s => s.id === showId)?.name) || showId}?
+              </p>
+              <p style={{ margin: "0 0 20px", fontSize: 15, lineHeight: 1.5, opacity: 0.75 }}>
+                Set your watch progress so we only show you entries written by people who were at your level or earlier — no spoilers from further ahead.
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <OneSelectProgress
+                  show={allShows.find(s => s.id === showId) || { seasons: [10] }}
+                  value={{ s: 1, e: 1 }}
+                  onConfirm={confirmPicker}
+                  onChangeSelected={(val) => { pickerSelected = val; }}
+                  requireConfirm={false}
+                />
+                <button
+                  className="btn post h40"
+                  onClick={() => confirmPicker(pickerSelected)}
+                  style={{ whiteSpace: "nowrap" }}
+                >
+                  Confirm →
+                </button>
+              </div>
             </div>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        );
+      })()}
       {showBBPopup && (
         <Modal onClose={dismissBBPopup} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
