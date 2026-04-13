@@ -486,7 +486,12 @@ export default function App() {
               requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
             }
           }}
-          onBrowsePublic={(showId, _name, _entry, _seasons) => {
+          onBrowsePublic={(showId, showName, _entry, seasons) => {
+            // Add a temporary show entry to React state (not DB) so ShowSection
+            // can render the correct name and seasons without a shows table row
+            setShows(prev => prev.find(s => s.id === showId) ? prev : [...prev, {
+              id: showId, name: showName, seasons, status: "Ended", isHidden: false,
+            } as Show]);
             navigate(`/show/${showId}`);
             requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
           }}
@@ -795,7 +800,10 @@ export default function App() {
                       requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
                     }
                   }}
-                  onBrowsePublic={(showId, _name, _entry, _seasons) => {
+                  onBrowsePublic={(showId, showName, _entry, seasons) => {
+                    setShows(prev => prev.find(s => s.id === showId) ? prev : [...prev, {
+                      id: showId, name: showName, seasons, status: "Ended", isHidden: false,
+                    } as Show]);
                     navigate(`/show/${showId}`);
                     requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
                   }}
