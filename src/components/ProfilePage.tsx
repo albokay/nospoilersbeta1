@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -184,6 +184,25 @@ export default function ProfilePage({
     else sessionStorage.removeItem(`ns_active_group_${sid}`);
     openShow(sid);
     setTabDropdownOpen(null);
+  };
+
+  // Create friend room from profile
+  const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
+  const [newRoomName, setNewRoomName] = useState("");
+  const [createRoomSubmitting, setCreateRoomSubmitting] = useState(false);
+  const handleCreateRoom = async () => {
+    if (!user || !newRoomName.trim() || !tabDropdownOpen) return;
+    setCreateRoomSubmitting(true);
+    try {
+      const g = await createFriendGroup({ showId: tabDropdownOpen, name: newRoomName.trim(), createdBy: user.id });
+      setTabGroups(prev => [...prev, g]);
+      setNewRoomName("");
+      setShowCreateRoomModal(false);
+      // Navigate into the new room
+      sessionStorage.setItem(`ns_active_group_${tabDropdownOpen}`, g.id);
+      openShow(tabDropdownOpen);
+    } catch (e) { console.error(e); }
+    finally { setCreateRoomSubmitting(false); }
   };
 
   // Prompt system
@@ -845,6 +864,31 @@ export default function ProfilePage({
         </Modal>
       )}
 
+      {/* Create friend room modal */}
+      {showCreateRoomModal && (
+        <Modal onClose={() => { setShowCreateRoomModal(false); setNewRoomName(""); }} width="min(420px,92vw)">
+          <h3 className="title" style={{ margin: "0 0 12px" }}>Create a friend room</h3>
+          <p style={{ margin: "0 0 16px", fontSize: 14, opacity: 0.75, lineHeight: 1.5 }}>
+            A friend room is a private space for a group of people watching this show together. Share entries there and reply in a spoiler-safe context.
+          </p>
+          <input
+            className="badge"
+            placeholder={'Room name (e.g. "Sunday watch crew")'}
+            value={newRoomName}
+            onChange={e => setNewRoomName(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleCreateRoom(); }}
+            style={{ width: "100%", height: 40, marginBottom: 12 }}
+            autoFocus
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button className="btn" onClick={() => { setShowCreateRoomModal(false); setNewRoomName(""); }} disabled={createRoomSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
+            <button className="btn" onClick={handleCreateRoom} disabled={createRoomSubmitting || !newRoomName.trim()} style={{ background: "var(--green)", border: "none", color: "#fff" }}>
+              {createRoomSubmitting ? "Creating…" : "Create room"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {/* Tab "go to" dropdown — fixed so it escapes overflow-y:clip on .diaryTabScroller */}
       {tabDropdownOpen && tabDropdownPos && (
         <div ref={tabDropdownRef} style={{
@@ -864,6 +908,10 @@ export default function ProfilePage({
               👥 {g.name}
             </button>
           ))}
+          <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap", opacity: 0.75 }}
+            onClick={() => { setTabDropdownOpen(null); setShowCreateRoomModal(true); }}>
+            + new friend room
+          </button>
         </div>
       )}
     </section>
