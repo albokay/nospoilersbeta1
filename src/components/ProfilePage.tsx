@@ -454,60 +454,21 @@ export default function ProfilePage({
                 <div className="card" style={{ height: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
-                    <div className="profileActionBar" style={{ flexDirection: "column", alignItems: "stretch", gap: 0, padding: 0 }}>
-                      {/* Row 1: make an entry + progress */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px 8px" }}>
-                        <button
-                          className="btn post h40"
-                          onClick={() => {
-                            setComposeOpen(true);
-                            // Pre-select the active room filter when opening from within a filtered view
-                            if (journalGroupFilter) setComposeGroupIds(new Set([journalGroupFilter]));
-                          }}
-                          style={{ lineHeight: 1.2 }}
-                        >
-                          + make an entry
-                        </button>
-                        {activeShow && (
-                          <OneSelectProgress
-                            show={activeShow}
-                            value={postProgress}
-                            onConfirm={(val) => updateProgressFor?.(activeTab, val)}
-                            requireConfirm={true}
-                          />
-                        )}
-                      </div>
-                      {/* Row 2: room filter pills (only when user has friend rooms for this show) */}
-                      {tabGroups.length > 0 && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 16px 10px", overflowX: "auto", scrollbarWidth: "none" }}>
-                          <button
-                            className="btn"
-                            onClick={() => setJournalGroupFilter(null)}
-                            style={{
-                              whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                              background: journalGroupFilter === null ? "var(--dos-border)" : "transparent",
-                              border: journalGroupFilter === null ? "2px solid var(--dos-border)" : "2px solid rgba(0,0,0,0.15)",
-                              color: journalGroupFilter === null ? "var(--dos-bg)" : "var(--dos-fg)",
-                            }}
-                          >
-                            all entries
-                          </button>
-                          {tabGroups.map(g => (
-                            <button
-                              key={g.id}
-                              className="btn"
-                              onClick={() => setJournalGroupFilter(g.id)}
-                              style={{
-                                whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                                background: journalGroupFilter === g.id ? "#bdd4de" : "transparent",
-                                border: journalGroupFilter === g.id ? "2px solid #bdd4de" : "2px solid rgba(0,0,0,0.15)",
-                                color: journalGroupFilter === g.id ? "#1a3a4a" : "var(--dos-fg)",
-                              }}
-                            >
-                              👥 {g.name}
-                            </button>
-                          ))}
-                        </div>
+                    <div className="profileActionBar">
+                      <button
+                        className="btn post h40"
+                        onClick={() => setComposeOpen(true)}
+                        style={{ lineHeight: 1.2, marginLeft: 20 }}
+                      >
+                        + make an entry
+                      </button>
+                      {activeShow && (
+                        <OneSelectProgress
+                          show={activeShow}
+                          value={postProgress}
+                          onConfirm={(val) => updateProgressFor?.(activeTab, val)}
+                          requireConfirm={true}
+                        />
                       )}
                     </div>
                   )}
