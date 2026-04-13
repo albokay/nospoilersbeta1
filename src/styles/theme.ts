@@ -381,7 +381,7 @@ header.site{
   /* Diary: tighten on mobile */
   .diaryOuter{ margin-top:8px; margin-left:0; margin-right:0; margin-bottom:12px; width:100%; }
   /* Remove the background depth pages — just show the single front card on mobile */
-  .diaryBackPage{ display:none; }
+  .diaryBackPage, .diaryBackPageFull{ display:none; }
   .diaryTab{ font-size:12px; padding:4px 10px; }
   .diaryTab.active{ font-size:12px; padding:6px 12px; }
   /* Flush first tab with the card's left border line */
