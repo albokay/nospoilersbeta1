@@ -507,7 +507,7 @@ export default function ProfilePage({
                     <div key={t.id} className="card threadCard"
                       style={{
                         margin: "10px 0 10px 20px", cursor: "pointer", position: "relative",
-                        ...((isGroup || isPub) ? { background: cardBg, color: cardFg, borderColor: "#fff" } : {}),
+                        ...((isGroup || isPub) ? { background: cardBg, color: cardFg, borderColor: "transparent" } : {}),
                       }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, undefined, groupId)}>
                       {shouldShowIndicator(t.id) && (
