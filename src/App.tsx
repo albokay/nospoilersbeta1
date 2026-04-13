@@ -160,8 +160,10 @@ export default function App() {
   useEffect(() => {
     if (!user) { setProgress({ bb: { s: 1, e: 1 } }); return; }
     fetchProgress(user.id).then(saved => {
-      // Always keep BB in the dropdown as the demo entry
-      setProgress({ bb: { s: 1, e: 1 }, ...saved });
+      // For logged-in users, only use what's actually saved in the DB.
+      // BB appears only if they have a saved progress row for it.
+      // Guests always get BB injected (handled above).
+      setProgress({ ...saved });
     }).catch(err => console.error("Failed to load progress:", err));
   }, [user?.id]);
 
