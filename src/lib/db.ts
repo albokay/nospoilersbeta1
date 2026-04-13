@@ -1142,9 +1142,12 @@ export async function fetchGroupThreads(
   maxS: number,
   maxE: number
 ): Promise<{ threads: Thread[]; replyCounts: Record<string, number> }> {
+  // Fetch threads linked to this group, with reply count scoped to this group_id
+  // (shared seed threads have per-room reply copies — without the group_id filter,
+  //  counts would include replies from every user's room)
   const { data, error } = await supabase
     .from("group_threads")
-    .select("threads(*, replies!thread_id(id))")
+    .select("threads(*, replies!thread_id(id, group_id))")
     .eq("group_id", groupId)
     .order("shared_at", { ascending: false });
   if (error) throw error;
@@ -1154,8 +1157,11 @@ export async function fetchGroupThreads(
   for (const row of data ?? []) {
     const t = (row as any).threads;
     if (!t) continue;
-    // Keep deleted threads that have replies so the group can still see the stub
-    const replyCount = ((t.replies as any[]) ?? []).length;
+    // Count only replies scoped to this group (or with no group_id, for non-seeded replies)
+    const allReplies = ((t.replies as any[]) ?? []);
+    const replyCount = allReplies.filter(
+      (r: any) => !r.group_id || r.group_id === groupId
+    ).length;
     if (t.is_deleted && replyCount === 0) continue;
     const thread = rowToThread(t);
     if (thread.season > maxS || (thread.season === maxS && thread.episode > maxE)) continue;
