@@ -734,7 +734,7 @@ export default function AdminPage({
           zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <div className="card" style={{
-            background: "var(--dos-bg)", border: "2px solid #fff",
+            background: "var(--dos-bg)", border: "none",
             borderRadius: 24, padding: "24px 28px", maxWidth: 360, width: "92vw",
           }}>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>

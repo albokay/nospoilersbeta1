@@ -330,7 +330,7 @@ export default function SearchShows({
           onMouseDown={(e) => { if (e.target === e.currentTarget) resetModal(); }}
         >
           <div className="card" style={{
-            background: "var(--dos-bg)", border: "2px solid #fff",
+            background: "var(--dos-bg)", border: "none",
             borderRadius: 24, padding: "24px 28px", maxWidth: 400, width: "92vw",
             display: "flex", flexDirection: "column", gap: 16,
           }}>
@@ -397,7 +397,7 @@ export default function SearchShows({
             {/* Four action buttons */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
               <button className="btn post" onClick={handleStartJournal} disabled={!canSubmit} style={{ width: "100%" }}>
-                Start your private journal
+                Start your journal
               </button>
               <button className="btn post" onClick={handleCreateFriendRoom} disabled={!canSubmit} style={{ width: "100%" }}>
                 Create a friend room

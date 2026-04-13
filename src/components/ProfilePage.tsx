@@ -125,12 +125,43 @@ export default function ProfilePage({
     return Object.keys(latest).sort((a, b) => latest[b] - latest[a]);
   }, [myThreads, myReplies, repliesToMe, likedThreadsList, likedRepliesList, progress]);
 
+  // Hidden tabs: user can close tabs to declutter their private profile view.
+  // Entries and progress remain — purely a UI preference stored in localStorage.
+  const hiddenTabsKey = user ? `ns_hidden_tabs_${user.id}` : "";
+  const [hiddenTabs, setHiddenTabs] = useState<Set<string>>(() => {
+    if (!hiddenTabsKey) return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem(hiddenTabsKey) || "[]")); } catch { return new Set(); }
+  });
+  const hideTab = (sid: string) => {
+    setHiddenTabs(prev => {
+      const next = new Set(prev);
+      next.add(sid);
+      if (hiddenTabsKey) localStorage.setItem(hiddenTabsKey, JSON.stringify([...next]));
+      return next;
+    });
+  };
+  const unhideTab = (sid: string) => {
+    setHiddenTabs(prev => {
+      const next = new Set(prev);
+      next.delete(sid);
+      if (hiddenTabsKey) localStorage.setItem(hiddenTabsKey, JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  // Filter hidden tabs from the visible tab order
+  const visibleTabOrder = useMemo(() => showTabOrder.filter(sid => !hiddenTabs.has(sid)), [showTabOrder, hiddenTabs]);
+
   const [activeTab, setActiveTab] = useState("");
   const [viewedTabIds, setViewedTabIds] = useState<Set<string>>(new Set());
   useEffect(() => {
-    if (!loading && showTabOrder.length) {
+    if (!loading && visibleTabOrder.length) {
       const requestedTab = (location.state as any)?.activeTab;
-      const tab = (requestedTab && showTabOrder.includes(requestedTab)) ? requestedTab : showTabOrder[0];
+      // If a hidden tab is being re-opened (e.g. from "Start your journal"), unhide it
+      if (requestedTab && hiddenTabs.has(requestedTab)) {
+        unhideTab(requestedTab);
+      }
+      const tab = (requestedTab && (visibleTabOrder.includes(requestedTab) || showTabOrder.includes(requestedTab))) ? requestedTab : visibleTabOrder[0];
       setActiveTab(tab);
       setViewedTabIds(prev => new Set([...prev, tab]));
     }
@@ -406,7 +437,7 @@ export default function ProfilePage({
   useEffect(() => {
     if (loading) return;
     onTabsChangeRef.current?.({
-      showTabOrder,
+      showTabOrder: visibleTabOrder,
       activeTab,
       onTabClick: (sid: string) => {
         if (sid === activeTab) openShow(sid);
@@ -415,7 +446,7 @@ export default function ProfilePage({
       tabActivity,
       viewedTabIds,
     });
-  }, [loading, showTabOrder, activeTab, tabActivity, viewedTabIds]);
+  }, [loading, visibleTabOrder, activeTab, tabActivity, viewedTabIds]);
   useEffect(() => { return () => { onTabsChangeRef.current?.(null); }; }, []);
 
   return (
@@ -458,7 +489,7 @@ export default function ProfilePage({
                   {/* Folder tab row — sits flush on top of the front card */}
                   <div className="diaryTabScroller">
                   <div className="diaryTabRow">
-                    {showTabOrder.map(sid => {
+                    {visibleTabOrder.map(sid => {
                       const active = sid === activeTab;
                       const activity = tabActivity[sid];
                       const viewed = viewedTabIds.has(sid);
@@ -467,7 +498,14 @@ export default function ProfilePage({
                           key={sid}
                           className={`diaryTab${active ? " active" : ""}`}
                           onClick={(e) => {
-                            if (sid !== activeTab) { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
+                            if (sid !== activeTab) {
+                              // First click: just select the tab
+                              setActiveTab(sid);
+                              setViewedTabIds(prev => new Set([...prev, sid]));
+                              setTabDropdownOpen(null);
+                              return;
+                            }
+                            // Second click (tab already active): toggle dropdown
                             const rect = e.currentTarget.getBoundingClientRect();
                             const hamburger = e.currentTarget.querySelector("[data-hamburger]");
                             const anchorLeft = hamburger ? hamburger.getBoundingClientRect().left : rect.right;
@@ -915,6 +953,22 @@ export default function ProfilePage({
             onClick={() => { setTabDropdownOpen(null); setShowCreateRoomModal(true); }}>
             + new friend room
           </button>
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.2)", margin: "2px 0" }} />
+          <Tooltip text="Hides this tab from your journal view. Your entries and progress are kept. Search for the show again and choose 'Start your journal' to bring it back." direction="below">
+            <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap", opacity: 0.6, width: "100%" }}
+              onClick={() => {
+                const sid = tabDropdownOpen;
+                setTabDropdownOpen(null);
+                hideTab(sid);
+                // Switch to another tab if the hidden one was active
+                if (sid === activeTab) {
+                  const remaining = visibleTabOrder.filter(s => s !== sid);
+                  if (remaining.length) setActiveTab(remaining[0]);
+                }
+              }}>
+              Close show tab
+            </button>
+          </Tooltip>
         </div>
       )}
     </section>
