@@ -165,6 +165,16 @@ export default function App() {
     }).catch(err => console.error("Failed to load progress:", err));
   }, [user?.id]);
 
+  // Navigate to journal after login
+  const prevUserRef = useRef<typeof user>(user);
+  useEffect(() => {
+    if (prevUserRef.current === null && user !== null) {
+      navigate("/profile");
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+    }
+    prevUserRef.current = user;
+  }, [user]);
+
   // Replies-to-user for profile pill badge
   const [repliesToUser, setRepliesToUser] = useState<{ reply: Reply; thread: Thread }[]>([]);
 
@@ -454,9 +464,9 @@ export default function App() {
         className="brand brandLink"
         style={{ margin: 0 }}
         tabIndex={0}
-        aria-label="Go to homepage"
-        onClick={goHomepage}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHomepage(); } }}
+        aria-label={user ? "Go to journal" : "Go to homepage"}
+        onClick={user ? () => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } : goHomepage}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? navigate("/profile") : goHomepage(); } }}
       >
         <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
       </h1>

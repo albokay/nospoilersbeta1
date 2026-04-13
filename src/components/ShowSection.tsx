@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -50,6 +51,7 @@ export default function ShowSection({
   clearRewatchFor, onOpenFeedback, onSwitchShow,
 }: any) {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const show = allShows.find((s) => s.id === showId) || { id: showId, name: showId, seasons: [10] };
 
@@ -219,6 +221,8 @@ export default function ShowSection({
       .catch(() => {})
       .finally(() => setGroupsLoading(false));
   }, [user?.id, showId]);
+
+  const activeGroup = userGroups.find(g => g.id === activeGroupId) ?? null;
 
   // Reset group view when switching shows (skip on initial mount so sessionStorage
   // restoration of activeGroupId isn't immediately overwritten by this effect)
@@ -1055,9 +1059,11 @@ export default function ShowSection({
                 flex: "0 0 auto",
               }}
             >
-              {showId === "bb"
-                ? "BREAKING BAD (DEMO)"
-                : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()}
+              {activeGroupId && activeGroup
+                ? activeGroup.name.toUpperCase()
+                : showId === "bb"
+                  ? "BREAKING BAD (DEMO)"
+                  : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()}
             </span>
             {user && onSwitchShow && (
               <div style={{ flex: "0 0 auto" }}>
@@ -1080,13 +1086,32 @@ export default function ShowSection({
             <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: `${ROW_PAD_Y}px 0` }}>
               {/* Row 1: back + mode toggle */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
-                <button
-                  className="btn"
-                  onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
-                  style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
-                >
-                  ← to forum
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button
+                    className="btn"
+                    onClick={() => {
+                      if (!activeGroupId && thread && !thread.isPublic) {
+                        navigate("/profile", { state: { activeTab: showId } });
+                      } else {
+                        setActiveThreadId(null);
+                        setTimeout(() => scrollToShowTop(), 0);
+                      }
+                    }}
+                    style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
+                  >
+                    {activeGroupId ? "← to friend room" : thread && !thread.isPublic ? "← back to journal" : "← to forum"}
+                  </button>
+                  {(activeGroupId || (thread && !thread.isPublic)) && (
+                    <button
+                      className="btn"
+                      onClick={() => { setActiveGroupId(null); setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
+                      style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
+                      title="Go to public room"
+                    >
+                      🌍
+                    </button>
+                  )}
+                </div>
                 <ModeToggle
                   value={mode}
                   onToggle={handleModeToggle}
@@ -1116,23 +1141,113 @@ export default function ShowSection({
             /* ── Thread · desktop  OR  Forum (any width) ── */
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: `${ROW_PAD_Y}px 0` }}>
               {!thread ? (
-                <button
-                  className="btn post h40"
-                  onClick={() => user ? openCompose() : onAuthRequired()}
-                  title="Start a new post"
-                  style={{ lineHeight: 1.2 }}
-                >
-                  + make an entry
-                </button>
+                /* Forum view: make an entry + room switcher pills */
+                <div style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" as any }}>
+                  <button
+                    className="btn post h40"
+                    onClick={() => user ? openCompose() : onAuthRequired()}
+                    title="Start a new post"
+                    style={{ lineHeight: 1.2, flexShrink: 0 }}
+                  >
+                    + make an entry
+                  </button>
+                  {user && (
+                    <>
+                      {/* Public room pill */}
+                      <button
+                        className="btn"
+                        onClick={() => setActiveGroupId(null)}
+                        style={{
+                          whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                          background: !activeGroupId ? "var(--green)" : "transparent",
+                          border: !activeGroupId ? "2px solid var(--green)" : "2px solid rgba(255,255,255,0.2)",
+                          color: !activeGroupId ? "#fff" : "rgba(255,255,255,0.55)",
+                        }}
+                      >
+                        🌍 Public room
+                      </button>
+                      {/* One pill per group */}
+                      {userGroups.map(g => (
+                        <div key={g.id} style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                          <button
+                            className="btn"
+                            onClick={() => setActiveGroupId(g.id)}
+                            style={{
+                              whiteSpace: "nowrap", fontSize: 13,
+                              background: activeGroupId === g.id ? "var(--dos-user)" : "transparent",
+                              border: activeGroupId === g.id ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
+                              color: activeGroupId === g.id ? "#fff" : "rgba(255,255,255,0.55)",
+                              borderRadius: "9999px 0 0 9999px",
+                              borderRight: "none",
+                              paddingRight: 8,
+                            }}
+                          >
+                            👥 {g.name}
+                          </button>
+                          <button
+                            className="btn"
+                            onClick={() => openGroupSettings(g.id)}
+                            title="Room settings"
+                            style={{
+                              fontSize: 12, padding: "5px 8px",
+                              background: activeGroupId === g.id ? "var(--dos-user)" : "transparent",
+                              border: activeGroupId === g.id ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
+                              borderLeft: "1px solid rgba(255,255,255,0.15)",
+                              borderRadius: "0 9999px 9999px 0",
+                              color: activeGroupId === g.id ? "#fff" : "rgba(255,255,255,0.55)",
+                            }}
+                          >
+                            ⚙
+                          </button>
+                        </div>
+                      ))}
+                      {/* Create new room */}
+                      <button
+                        className="btn"
+                        onClick={() => setShowCreateGroupModal(true)}
+                        style={{
+                          whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                          background: "transparent",
+                          border: "2px dashed rgba(255,255,255,0.3)",
+                          color: "rgba(255,255,255,0.45)",
+                        }}
+                      >
+                        + new room
+                      </button>
+                    </>
+                  )}
+                </div>
               ) : (
+                /* Thread view: context-aware back button + optional 🌍 */
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <button
                     className="btn h40"
-                    onClick={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
+                    onClick={() => {
+                      if (!activeGroupId && !thread.isPublic) {
+                        navigate("/profile", { state: { activeTab: showId } });
+                      } else {
+                        setActiveThreadId(null);
+                        setTimeout(() => scrollToShowTop(), 0);
+                      }
+                    }}
                     style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
                   >
-                    ← Back to room
+                    {activeGroupId
+                      ? "← to friend room"
+                      : !thread.isPublic
+                        ? "← back to journal"
+                        : "← Back to room"}
                   </button>
+                  {(activeGroupId || !thread.isPublic) && (
+                    <button
+                      className="btn h40"
+                      onClick={() => { setActiveGroupId(null); setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
+                      title="Go to public room"
+                      style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
+                    >
+                      🌍
+                    </button>
+                  )}
                   <button
                     className="btn post h40"
                     onClick={() => user ? openCompose() : onAuthRequired()}
@@ -1331,75 +1446,6 @@ export default function ShowSection({
               {label} →
             </button>
           ))}
-        </div>
-      )}
-
-      {/* ── Friend-room tab strip — logged-in users only, not shown inside a thread ── */}
-      {user && !thread && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "12px 0 4px", overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}>
-          {/* Public tab */}
-          <button
-            className="btn"
-            onClick={() => setActiveGroupId(null)}
-            style={{
-              whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-              background: !activeGroupId ? "var(--green)" : "transparent",
-              border: !activeGroupId ? "2px solid var(--green)" : "2px solid rgba(255,255,255,0.2)",
-              color: !activeGroupId ? "#fff" : "rgba(255,255,255,0.55)",
-            }}
-          >
-            🌍 Public room
-          </button>
-
-          {/* One pill per group the user belongs to */}
-          {userGroups.map(g => (
-            <div key={g.id} style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-              <button
-                className="btn"
-                onClick={() => setActiveGroupId(g.id)}
-                style={{
-                  whiteSpace: "nowrap", fontSize: 13,
-                  background: activeGroupId === g.id ? "var(--dos-user)" : "transparent",
-                  border: activeGroupId === g.id ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
-                  color: activeGroupId === g.id ? "#fff" : "rgba(255,255,255,0.55)",
-                  borderRadius: "9999px 0 0 9999px",
-                  borderRight: "none",
-                  paddingRight: 8,
-                }}
-              >
-                👥 {g.name}
-              </button>
-              <button
-                className="btn"
-                onClick={() => openGroupSettings(g.id)}
-                title="Room settings"
-                style={{
-                  fontSize: 12, padding: "5px 8px",
-                  background: activeGroupId === g.id ? "var(--dos-user)" : "transparent",
-                  border: activeGroupId === g.id ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
-                  borderLeft: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: "0 9999px 9999px 0",
-                  color: activeGroupId === g.id ? "#fff" : "rgba(255,255,255,0.55)",
-                }}
-              >
-                ⚙
-              </button>
-            </div>
-          ))}
-
-          {/* Create new friend room */}
-          <button
-            className="btn"
-            onClick={() => setShowCreateGroupModal(true)}
-            style={{
-              whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-              background: "transparent",
-              border: "2px dashed rgba(255,255,255,0.3)",
-              color: "rgba(255,255,255,0.45)",
-            }}
-          >
-            + new room
-          </button>
         </div>
       )}
 

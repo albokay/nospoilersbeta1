@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import type { Reply, Thread } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -51,6 +52,7 @@ export default function ProfilePage({
   onTabsChange?: (data: ProfileTabData | null) => void;
 }) {
   const { user, profile } = useAuth();
+  const location = useLocation();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const showName = (showId: string) => showId === "bb" ? "Breaking Bad (DEMO)" : allShows.find(s => s.id === showId)?.name || showId;
 
@@ -127,8 +129,10 @@ export default function ProfilePage({
   const [viewedTabIds, setViewedTabIds] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (!loading && showTabOrder.length) {
-      setActiveTab(showTabOrder[0]);
-      setViewedTabIds(prev => new Set([...prev, showTabOrder[0]]));
+      const requestedTab = (location.state as any)?.activeTab;
+      const tab = (requestedTab && showTabOrder.includes(requestedTab)) ? requestedTab : showTabOrder[0];
+      setActiveTab(tab);
+      setViewedTabIds(prev => new Set([...prev, tab]));
     }
   }, [loading]);
 
