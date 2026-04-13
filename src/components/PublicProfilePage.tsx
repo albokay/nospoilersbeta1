@@ -161,7 +161,7 @@ export default function PublicProfilePage({
                   </div>
                   </div>{/* /diaryTabScroller */}
                 <div className="diaryCardWrap">
-                <div className="card" style={{ maxHeight: 600, overflowY: "auto", position: "relative", zIndex: 1 }}>
+                <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
                   {tabThreads.length === 0 && (
                     <div className="muted">No posts visible to you yet.</div>
                   )}

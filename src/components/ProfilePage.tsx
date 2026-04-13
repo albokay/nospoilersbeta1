@@ -535,7 +535,7 @@ export default function ProfilePage({
                       <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
                     );
                   })}
-                <div className="card" style={{ display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
+                <div className="card" style={{ minHeight: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
                     <div className="profileActionBar">

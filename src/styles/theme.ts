@@ -280,11 +280,11 @@ header.site{
 /* background pages — visual depth only, lower-left cascade.
    Extend below the front card and fade out at the bottom. */
 .diaryBackPage{
-  position:absolute; top:0; left:0; right:0; bottom:-80px;
+  position:absolute; top:0; left:0; right:0; bottom:-140px;
   border:2px solid rgba(255,255,255,0.55);
   background:var(--dos-bg);
-  mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
 }
 /* Scroll wrapper around the tab row — lets tabs scroll horizontally while
    preserving the 3px active-tab visual overlap with the card below.
@@ -329,7 +329,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
   overflow:visible;
-  margin-bottom:80px; /* space for back-page extension + fade */
+  margin-bottom:140px; /* space for back-page extension + fade */
 }
 .diaryCardWrap > .card{ border:2px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
