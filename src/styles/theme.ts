@@ -5,7 +5,7 @@ export function injectDOSStyles() {
 :root{
   --dos-bg:#7abd8e; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
-  --dos-accent:#FFFFFF; --danger:#f45028; --green:#dea838; --dos-user:#2256c9; --dos-border:#ffffff;
+  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#2256c9; --dos-border:#ffffff;
   /* canonical accent blue */
   --blue-light:#bdd4de;
   /* progress dropdown (overridden to green in group context) */
@@ -56,6 +56,7 @@ body.public-context .blockquote-ref .blockquote-author,
 body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
 body.public-context .responding-to-label{ color:#7abd8e; }
 body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.public-context .btn.primary{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
 
 .brandLink{ cursor:pointer; }
 .brandLink:focus-visible{ outline:2px dashed var(--dos-cyan); outline-offset:2px; }
