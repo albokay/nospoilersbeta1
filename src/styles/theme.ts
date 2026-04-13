@@ -310,7 +310,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
 }
-.diaryCardWrap > .card{ border:none; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:2px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
@@ -362,7 +362,7 @@ header.site{
   /* Flush first tab with the card's left border line */
   .diaryTabRow{ padding-left:0; }
   /* Keep border, zero padding — action bar + scroll area handle their own padding */
-  .diaryCardWrap > .card{ border:none !important; padding:0 !important; }
+  .diaryCardWrap > .card{ border:2px solid #fff !important; padding:0 !important; }
   .profileActionBar{ padding:10px 16px; }
   .diaryScrollArea{ padding:8px 16px 24px 16px; }
   /* Entry cards: remove the desktop left-margin offset so they're centred in the box */
