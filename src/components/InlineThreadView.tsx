@@ -453,9 +453,9 @@ export default function InlineThreadView({
                           <div style={{
                             position: "absolute", bottom: "calc(100% + 6px)", right: 0,
                             display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
-                            background: "var(--dos-card, #fff)", border: "1px solid var(--dos-border)",
+                            background: "var(--dos-bg)", border: "2px solid var(--dos-border)",
                             borderRadius: 10, padding: "8px 10px", zIndex: 10, whiteSpace: "nowrap",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.12)"
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
                           }}>
                             <span style={{ fontSize: 12, opacity: 0.6 }}>Move to:</span>
                             <button className="btn" style={{ fontSize: 12 }} onClick={handleMakePublic}>🌍 Public Room</button>
