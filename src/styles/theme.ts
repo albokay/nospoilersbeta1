@@ -278,13 +278,13 @@ header.site{
   width: calc(100% + 116px);
 }
 /* background pages — visual depth only, lower-left cascade.
-   Extend below the front card and fade out at the bottom.
-   No background — only borders are visible (front card provides the fill).
-   This avoids opacity stepping from overlapping solid rectangles. */
+   Extend 200px below the front card; borders fade out via mask-image.
+   Background is solid within the card area (up to 200px from bottom)
+   then transparent in the extension — avoids opacity stepping. */
 .diaryBackPage{
   position:absolute; top:0; left:0; right:0; bottom:-200px;
   border:2px solid rgba(255,255,255,0.55);
-  background:transparent;
+  background: linear-gradient(to bottom, var(--dos-bg) calc(100% - 200px), transparent calc(100% - 200px));
   mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
 }
