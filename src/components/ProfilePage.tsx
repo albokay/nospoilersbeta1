@@ -165,6 +165,27 @@ export default function ProfilePage({
   };
   const postBodyRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // Tab "go to" dropdown
+  const [tabDropdownOpen, setTabDropdownOpen] = useState<string | null>(null);
+  const [tabDropdownPos, setTabDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  const tabDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!tabDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (tabDropdownRef.current && !tabDropdownRef.current.contains(e.target as Node)) {
+        setTabDropdownOpen(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [tabDropdownOpen]);
+  const goToShowRoom = (sid: string, groupId?: string) => {
+    if (groupId) sessionStorage.setItem(`ns_active_group_${sid}`, groupId);
+    else sessionStorage.removeItem(`ns_active_group_${sid}`);
+    openShow(sid);
+    setTabDropdownOpen(null);
+  };
+
   // Prompt system
   const [promptEntries, setPromptEntries] = useState<PromptEntry[]>([]);
   const [activePrompt, setActivePrompt] = useState<PromptEntry | null>(null);
@@ -432,9 +453,11 @@ export default function ProfilePage({
                         <button
                           key={sid}
                           className={`diaryTab${active ? " active" : ""}`}
-                          onClick={() => {
-                            if (sid === activeTab) { openShow(sid); }
-                            else { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
+                          onClick={(e) => {
+                            if (sid !== activeTab) { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setTabDropdownPos({ top: rect.bottom + 6, left: rect.left });
+                            setTabDropdownOpen(prev => prev === sid ? null : sid);
                           }}
                         >
                           {showName(sid)}
@@ -474,7 +497,7 @@ export default function ProfilePage({
                   )}
                   <div className="diaryScrollArea">
                   {(() => {
-                    const byDiary = diaryFilter === "private" ? tabThreads.filter(({ thread: t }) => !t.isPublic) : tabThreads;
+                    const byDiary = diaryFilter === "private" ? tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !groupId) : tabThreads;
                     const filtered = journalGroupFilter ? byDiary.filter(({ groupId }) => groupId === journalGroupFilter) : byDiary;
                     if (filtered.length === 0) {
                       if (diaryFilter === "private" && tabThreads.length > 0) {
@@ -827,6 +850,28 @@ export default function ProfilePage({
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Tab "go to" dropdown — fixed so it escapes overflow-y:clip on .diaryTabScroller */}
+      {tabDropdownOpen && tabDropdownPos && (
+        <div ref={tabDropdownRef} style={{
+          position: "fixed", top: tabDropdownPos.top, left: tabDropdownPos.left,
+          display: "flex", flexDirection: "column", gap: 6,
+          background: "var(--dos-bg)", border: "none",
+          borderRadius: 10, padding: "8px", zIndex: 200,
+          boxShadow: "0 2px 10px rgba(0,0,0,0.18)"
+        }}>
+          <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }}
+            onClick={() => goToShowRoom(tabDropdownOpen)}>
+            🌍 Public Room
+          </button>
+          {tabGroups.map(g => (
+            <button key={g.id} className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }}
+              onClick={() => goToShowRoom(tabDropdownOpen, g.id)}>
+              👥 {g.name}
+            </button>
+          ))}
+        </div>
       )}
     </section>
   );
