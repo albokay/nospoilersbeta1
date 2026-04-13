@@ -47,6 +47,14 @@ body.public-context.has-header{
 }
 body.public-context header.site{ background:rgba(222,168,56,0.98); }
 body.public-context .stickybar{ background:rgba(222,168,56,0.98); }
+/* In the yellow public room, reply cards have white bg — swap yellow accents to canon green */
+body.public-context .reply-card .btn:not(.btn-danger){ color:#7abd8e !important; border-color:#7abd8e !important; }
+body.public-context .reply-card .btn:not(.btn-danger):hover{ background:#7abd8e !important; color:#fff !important; border-color:#7abd8e !important; }
+body.public-context .reply-card .likeWrap{ color:#7abd8e !important; border-color:#7abd8e !important; }
+body.public-context .reply-card .likeWrap:hover{ background:#7abd8e !important; color:#fff !important; border-color:#7abd8e !important; }
+body.public-context .blockquote-ref .blockquote-author,
+body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
+body.public-context .responding-to-label{ color:#7abd8e; }
 
 .brandLink{ cursor:pointer; }
 .brandLink:focus-visible{ outline:2px dashed var(--dos-cyan); outline-offset:2px; }
