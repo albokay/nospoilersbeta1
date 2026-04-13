@@ -455,12 +455,6 @@ export default function ProfilePage({
                   </div>
                 </div>
                 <div className="diaryOuter">
-                  {/* Background pages — visual depth only, lower-left cascade.
-                      top = tabRowHeight - offset so that after translate(Y+offset)
-                      the visual top of each line lands exactly at the card top. */}
-                  {[48, 32, 16].map(offset => (
-                    <div key={offset} className="diaryBackPage" style={{ top: 27, transform: `translate(-${offset}px, ${offset}px)` }} />
-                  ))}
                   {/* Folder tab row — sits flush on top of the front card */}
                   <div className="diaryTabScroller">
                   <div className="diaryTabRow">
@@ -494,6 +488,15 @@ export default function ProfilePage({
                   </div>
                   </div>
                 <div className="diaryCardWrap">
+                  {/* Background pages — positioned relative to diaryCardWrap so
+                      inset:0 matches the front card exactly; translate alone
+                      creates the even staircase (16px steps). */}
+                  {([48, 32, 16] as const).map(offset => {
+                    const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
+                    return (
+                      <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
+                    );
+                  })}
                 <div className="card" style={{ height: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
