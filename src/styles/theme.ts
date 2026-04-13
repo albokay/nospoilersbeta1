@@ -303,7 +303,7 @@ header.site{
   border-color:#fff;
   border-bottom:2px solid var(--dos-bg);
   font-size:var(--t3); font-weight:800;
-  text-decoration:underline;
+  text-decoration:none;
   margin-bottom:-3px;
 }
 /* front card */

@@ -461,6 +461,9 @@ export default function ProfilePage({
                           }}
                         >
                           {showName(sid)}
+                          {active && (
+                            <span style={{ marginLeft: 6, fontSize: 12, opacity: 0.75, letterSpacing: "0.05em" }}>☰</span>
+                          )}
                           {!viewed && activity && (
                             <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: activity === "green" ? "var(--green)" : "var(--danger)", pointerEvents: "none" }} />
                           )}
