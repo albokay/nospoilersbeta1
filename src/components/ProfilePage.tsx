@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts, fetchFriendGroupsForUser } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, cloneThreadToPublic } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -157,6 +157,14 @@ export default function ProfilePage({
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
   const [postSubmitting, setPostSubmitting] = useState(false);
+  const [composeIsPublic, setComposeIsPublic] = useState(false);
+  const [composeGroupIds, setComposeGroupIds] = useState<Set<string>>(new Set());
+
+  const closeCompose = () => {
+    setComposeOpen(false);
+    setComposeIsPublic(false);
+    setComposeGroupIds(new Set());
+  };
   const postBodyRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Prompt system
@@ -224,7 +232,7 @@ export default function ProfilePage({
   const postTagS = postProgress.isRewatching && postProgress.highestS ? postProgress.highestS : postProgress.s;
   const postTagE = postProgress.isRewatching && postProgress.highestE ? postProgress.highestE : postProgress.e;
 
-  const submitPost = async (isPublic = false) => {
+  const submitPost = async () => {
     if (!user || !profile) return;
     const title = (postTitle || "").trim();
     const body = (postBody || "").trim();
@@ -232,20 +240,34 @@ export default function ProfilePage({
     if (!body) { alert("Write something first."); return; }
     setPostSubmitting(true);
     try {
-      const t = await insertThread({
+      const threadData = {
         showId: activeTab,
         season: postTagS, episode: postTagE,
         authorId: user.id, authorName: profile.username,
         title,
         preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
         body,
-        isPublic,
         isRewatch: postProgress.isRewatching ?? false,
-      });
-      setMyThreads(prev => [{ thread: t }, ...prev]);
+      };
+      const groupIds = [...composeGroupIds];
+      const hasBothDestinations = composeIsPublic && groupIds.length > 0;
+
+      let t: Awaited<ReturnType<typeof insertThread>>;
+      if (hasBothDestinations) {
+        t = await insertThread({ ...threadData, isPublic: false });
+        await Promise.all(groupIds.map(gid => addThreadToGroup(t.id, gid).catch(() => {})));
+        await cloneThreadToPublic(t.id);
+      } else {
+        t = await insertThread({ ...threadData, isPublic: composeIsPublic });
+        await Promise.all(groupIds.map(gid => addThreadToGroup(t.id, gid).catch(() => {})));
+      }
+
+      const groupId = groupIds.length === 1 ? groupIds[0] : undefined;
+      const groupName = groupId ? tabGroups.find(g => g.id === groupId)?.name : undefined;
+      setMyThreads(prev => [{ thread: t, groupId, groupName }, ...prev]);
       setPostTitle(""); setPostBody("");
       setActivePrompt(null); setShownPromptIds([]); setInsertedPromptIds([]);
-      setComposeOpen(false);
+      closeCompose();
     } catch {
       alert("Failed to post. Please try again.");
     } finally {
@@ -437,7 +459,11 @@ export default function ProfilePage({
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px 8px" }}>
                         <button
                           className="btn post h40"
-                          onClick={() => setComposeOpen(true)}
+                          onClick={() => {
+                            setComposeOpen(true);
+                            // Pre-select the active room filter when opening from within a filtered view
+                            if (journalGroupFilter) setComposeGroupIds(new Set([journalGroupFilter]));
+                          }}
                           style={{ lineHeight: 1.2 }}
                         >
                           + make an entry
@@ -719,10 +745,10 @@ export default function ProfilePage({
       )}
       {/* Compose modal */}
       {composeOpen && (
-        <Modal onClose={() => setComposeOpen(false)} width="min(720px,92vw)">
+        <Modal onClose={closeCompose} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <h3 className="title" style={{ margin: 0 }}>make an entry</h3>
-            <button className="btn" onClick={() => setComposeOpen(false)}>✕</button>
+            <button className="btn" onClick={closeCompose}>✕</button>
           </div>
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
             <input
@@ -753,43 +779,78 @@ export default function ProfilePage({
                 onInsert={handlePromptInsert}
               />
             )}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-              {promptEntries.length > 0 ? (
-                <button
-                  className="prompt-btn"
-                  type="button"
-                  onClick={handlePromptBtn}
-                  title="Get a writing prompt"
-                >
+            {promptEntries.length > 0 && (
+              <div>
+                <button className="prompt-btn" type="button" onClick={handlePromptBtn} title="Get a writing prompt">
                   ✦ want a prompt?
                 </button>
-              ) : <span />}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  className="btn"
-                  onClick={() => setComposeOpen(false)}
-                  disabled={postSubmitting}
-                  style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="btn"
-                  onClick={() => submitPost(false)}
-                  disabled={postSubmitting}
-                  style={{ whiteSpace: "nowrap", fontSize: 13 }}
-                >
-                  {postSubmitting ? "Saving…" : "Save privately"}
-                </button>
-                <button
-                  className="btn post"
-                  onClick={() => submitPost(true)}
-                  disabled={postSubmitting}
-                  style={{ whiteSpace: "nowrap", fontSize: 13 }}
-                >
-                  {postSubmitting ? "Posting…" : "Post to room"}
-                </button>
               </div>
+            )}
+
+            {/* ── Destination selector ── */}
+            <div style={{ border: "1px solid rgba(0,0,0,0.12)", borderRadius: 8, padding: "10px 14px", background: "rgba(0,0,0,0.03)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, marginBottom: 10 }}>Where to post</div>
+
+              {/* Journal — always included */}
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "default", opacity: 0.65 }}>
+                <input type="checkbox" checked readOnly style={{ accentColor: "var(--green)" }} />
+                <span style={{ fontSize: 14, color: "var(--dos-bg)" }}>📝 My journal <span style={{ opacity: 0.7, fontSize: 12 }}>(always)</span></span>
+              </label>
+
+              {/* Public room */}
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: tabGroups.length ? 8 : 0, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={composeIsPublic}
+                  onChange={e => setComposeIsPublic(e.target.checked)}
+                  style={{ accentColor: "var(--green)", marginTop: 2 }}
+                />
+                <span style={{ fontSize: 14, color: "var(--dos-bg)" }}>
+                  🌍 Post publicly
+                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
+                </span>
+              </label>
+
+              {/* Friend groups */}
+              {tabGroups.map(g => (
+                <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={composeGroupIds.has(g.id)}
+                    onChange={e => {
+                      const next = new Set(composeGroupIds);
+                      if (e.target.checked) next.add(g.id); else next.delete(g.id);
+                      setComposeGroupIds(next);
+                    }}
+                    style={{ accentColor: "var(--green)" }}
+                  />
+                  <span style={{ fontSize: 14, color: "var(--dos-bg)" }}>👥 {g.name}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* ── Submit row ── */}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button className="btn" onClick={closeCompose} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
+              <button
+                className="btn"
+                onClick={submitPost}
+                disabled={postSubmitting}
+                style={{
+                  background: (composeIsPublic || composeGroupIds.size > 0) ? "var(--green)" : "var(--dos-bg)",
+                  border: "2px solid var(--dos-bg)",
+                  color: "#fff",
+                  whiteSpace: "nowrap",
+                  fontSize: 13,
+                  minWidth: 130,
+                }}
+              >
+                {postSubmitting
+                  ? "Posting…"
+                  : (composeIsPublic || composeGroupIds.size > 0)
+                    ? "Post"
+                    : "📝 Save to journal"}
+              </button>
             </div>
           </div>
         </Modal>
