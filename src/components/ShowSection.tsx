@@ -18,7 +18,7 @@ function threadDotActive(threadId: string, hasDot: boolean): boolean {
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, sendInvite, fetchSentInvitations, cloneThreadToPublic } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, sendInvite, fetchSentInvitations } from "../lib/db";
 import type { Invitation } from "../types";
 import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
@@ -178,8 +178,7 @@ export default function ShowSection({
   const [composeOpen, setComposeOpen] = useState(false);
 
   // ── Compose destination state (Phase 3) ──────────────────────────────────
-  const [composeIsPublic, setComposeIsPublic] = useState(false);
-  const [composeGroupIds, setComposeGroupIds] = useState<Set<string>>(new Set());
+  const [composeDestination, setComposeDestination] = useState<"private" | "public" | string>("private");
   const [userGroups, setUserGroups] = useState<FriendGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
 
@@ -391,13 +390,12 @@ export default function ShowSection({
 
   const openCompose = () => {
     setComposeOpen(true);
-    // Pre-select active group (if viewing a group room, default to sharing there)
-    if (activeGroupId) {
-      setComposeGroupIds(new Set([activeGroupId]));
-    }
+    // Default: most recent group for this show, or private if no groups
+    setComposeDestination(activeGroupId ?? (userGroups.length > 0 ? userGroups[0].id : "private"));
   };
   const closeCompose = () => {
     setComposeOpen(false);
+    setComposeDestination("private");
   };
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const topRef = bannerRef;
@@ -888,58 +886,43 @@ export default function ShowSection({
         body: body || "(blank)",
         isRewatch: postProgress.isRewatching ?? false,
       };
-      const groupIds = [...composeGroupIds];
-      const hasBothDestinations = composeIsPublic && groupIds.length > 0;
 
       let t: Awaited<ReturnType<typeof insertThread>>;
-      if (hasBothDestinations) {
-        // Two-instance model: create private group thread + public clone (isolated replies)
+      if (composeDestination === "public") {
+        t = await insertThread({ ...threadData, isPublic: true });
+      } else if (composeDestination === "private") {
         t = await insertThread({ ...threadData, isPublic: false });
-        await Promise.all(groupIds.map(gid => addThreadToGroup(t.id, gid).catch(() => {})));
-        const publicClone = await cloneThreadToPublic(t.id);
-        setDbThreads(prev => [publicClone, t, ...prev]);
-        setReplyCounts(rc => ({ ...rc, [t.id]: 0, [publicClone.id]: 0 }));
-        // Keep group thread in groupThreadsData so it appears in the active room list
-        if (activeGroupId && groupIds.includes(activeGroupId)) {
-          setGroupThreadsData(prev => [t, ...prev]);
-          setGroupReplyCounts(prev => ({ ...prev, [t.id]: 0 }));
-        }
       } else {
-        // Single destination
-        t = await insertThread({ ...threadData, isPublic: composeIsPublic });
-        await Promise.all(groupIds.map(gid => addThreadToGroup(t.id, gid).catch(() => {})));
-        setDbThreads(prev => [t, ...prev]);
-        setReplyCounts(rc => ({ ...rc, [t.id]: 0 }));
-        if (activeGroupId && groupIds.includes(activeGroupId)) {
-          setGroupThreadsData(prev => [t, ...prev]);
-          setGroupReplyCounts(prev => ({ ...prev, [t.id]: 0 }));
-        }
+        // group id
+        t = await insertThread({ ...threadData, isPublic: false });
+        await addThreadToGroup(t.id, composeDestination).catch(() => {});
       }
-      // Log prompt usage (best-effort)
+
+      // Log prompt usage
       for (const pid of insertedPromptIds) {
         logThreadPrompt(t.id, pid).catch(() => {});
       }
       setInsertedPromptIds([]);
-      // Anchor hiddenBaseAt at creation time so future hidden replies are correctly flagged
       const now = Date.now();
       setHiddenBaseAt(prev => {
         const next = { ...prev, [t.id]: now };
         localStorage.setItem("ns_hidden_base", JSON.stringify(next));
         return next;
       });
-      setLastOpenedAt(prev => {
-        const next = { ...prev, [t.id]: now };
-        localStorage.setItem("ns_last_opened", JSON.stringify(next));
-        return next;
-      });
-      // Reset destination state for next compose session
-      setComposeIsPublic(false);
-      setComposeGroupIds(new Set());
-      closeCompose();
+
+      setDbThreads(prev => [t, ...prev]);
+      setReplyCounts(rc => ({ ...rc, [t.id]: 0 }));
+      if (composeDestination !== "public" && composeDestination !== "private") {
+        if (activeGroupId === composeDestination) {
+          setGroupThreadsData(prev => [t, ...prev]);
+          setGroupReplyCounts(prev => ({ ...prev, [t.id]: 0 }));
+        }
+      }
+
       setPostTitle(""); setPostBody("");
-      setActiveThreadId(t.id);
-      setTimeout(() => scrollToShowTop(), 0);
-    } catch (e) {
+      setActivePrompt(null); setShownPromptIds([]); setInsertedPromptIds([]);
+      closeCompose();
+    } catch {
       alert("Failed to post. Please try again.");
     } finally {
       setPostSubmitting(false);
@@ -1876,45 +1859,46 @@ export default function ShowSection({
             <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10 }}>Where to post</div>
 
-              {/* Journal — always included */}
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "default", opacity: 0.65 }}>
-                <input type="checkbox" checked readOnly style={{ accentColor: "var(--green)" }} />
-                <span style={{ fontSize: 14 }}>📝 My journal <span style={{ opacity: 0.7, fontSize: 12 }}>(always)</span></span>
-              </label>
-
-              {/* Public show room */}
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: userGroups.length ? 8 : 0, cursor: "pointer" }}>
+              {/* Private journal */}
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
                 <input
-                  type="checkbox"
-                  checked={composeIsPublic}
-                  onChange={e => setComposeIsPublic(e.target.checked)}
-                  style={{ accentColor: "var(--green)", marginTop: 2 }}
+                  type="radio"
+                  name="composeDestination"
+                  checked={composeDestination === "private"}
+                  onChange={() => setComposeDestination("private")}
+                  style={{ accentColor: "var(--green)" }}
                 />
-                <span style={{ fontSize: 14 }}>
-                  🌍 Post publicly
-                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
-                </span>
+                <span style={{ fontSize: 14 }}>📝 Private journal</span>
               </label>
 
-              {/* Friend groups */}
-              {groupsLoading && (
-                <div style={{ fontSize: 12, opacity: 0.5, marginTop: 4 }}>Loading groups…</div>
-              )}
+              {/* One option per friend group */}
               {userGroups.map(g => (
-                <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, cursor: "pointer" }}>
+                <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
                   <input
-                    type="checkbox"
-                    checked={composeGroupIds.has(g.id)}
-                    onChange={e => {
-                      const next = new Set(composeGroupIds);
-                      if (e.target.checked) next.add(g.id); else next.delete(g.id);
-                      setComposeGroupIds(next);
-                    }}
+                    type="radio"
+                    name="composeDestination"
+                    checked={composeDestination === g.id}
+                    onChange={() => setComposeDestination(g.id)}
                     style={{ accentColor: "var(--green)" }}
                   />
                   <span style={{ fontSize: 14 }}>👥 {g.name}</span>
                 </label>
               ))}
+
+              {/* Public profile */}
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 0, cursor: "pointer" }}>
+                <input
+                  type="radio"
+                  name="composeDestination"
+                  checked={composeDestination === "public"}
+                  onChange={() => setComposeDestination("public")}
+                  style={{ accentColor: "var(--green)", marginTop: 2 }}
+                />
+                <span style={{ fontSize: 14 }}>
+                  🌍 Public profile
+                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
+                </span>
+              </label>
             </div>
 
             {/* ── Submit row ── */}
@@ -1925,7 +1909,7 @@ export default function ShowSection({
                 onClick={submitPost}
                 disabled={postSubmitting}
                 style={{
-                  background: (composeIsPublic || composeGroupIds.size > 0) ? "var(--green)" : "var(--dos-bg)",
+                  background: composeDestination !== "private" ? "var(--green)" : "var(--dos-bg)",
                   border: "2px solid #fff",
                   color: "#fff",
                   whiteSpace: "nowrap",
@@ -1935,9 +1919,9 @@ export default function ShowSection({
               >
                 {postSubmitting
                   ? "Posting…"
-                  : (composeIsPublic || composeGroupIds.size > 0)
-                    ? "Post"
-                    : "📝 Save to journal"}
+                  : composeDestination === "private"
+                    ? "📝 Save to journal"
+                    : "Post"}
               </button>
             </div>
           </div>

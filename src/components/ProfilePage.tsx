@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, cloneThreadToPublic } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -157,13 +157,11 @@ export default function ProfilePage({
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
   const [postSubmitting, setPostSubmitting] = useState(false);
-  const [composeIsPublic, setComposeIsPublic] = useState(false);
-  const [composeGroupIds, setComposeGroupIds] = useState<Set<string>>(new Set());
+  const [composeDestination, setComposeDestination] = useState<"private" | "public" | string>("private");
 
   const closeCompose = () => {
     setComposeOpen(false);
-    setComposeIsPublic(false);
-    setComposeGroupIds(new Set());
+    setComposeDestination("private");
   };
   const postBodyRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -249,20 +247,18 @@ export default function ProfilePage({
         body,
         isRewatch: postProgress.isRewatching ?? false,
       };
-      const groupIds = [...composeGroupIds];
-      const hasBothDestinations = composeIsPublic && groupIds.length > 0;
 
       let t: Awaited<ReturnType<typeof insertThread>>;
-      if (hasBothDestinations) {
+      if (composeDestination === "public") {
+        t = await insertThread({ ...threadData, isPublic: true });
+      } else if (composeDestination === "private") {
         t = await insertThread({ ...threadData, isPublic: false });
-        await Promise.all(groupIds.map(gid => addThreadToGroup(t.id, gid).catch(() => {})));
-        await cloneThreadToPublic(t.id);
       } else {
-        t = await insertThread({ ...threadData, isPublic: composeIsPublic });
-        await Promise.all(groupIds.map(gid => addThreadToGroup(t.id, gid).catch(() => {})));
+        t = await insertThread({ ...threadData, isPublic: false });
+        await addThreadToGroup(t.id, composeDestination).catch(() => {});
       }
 
-      const groupId = groupIds.length === 1 ? groupIds[0] : undefined;
+      const groupId = (composeDestination !== "public" && composeDestination !== "private") ? composeDestination : undefined;
       const groupName = groupId ? tabGroups.find(g => g.id === groupId)?.name : undefined;
       setMyThreads(prev => [{ thread: t, groupId, groupName }, ...prev]);
       setPostTitle(""); setPostBody("");
@@ -457,7 +453,11 @@ export default function ProfilePage({
                     <div className="profileActionBar">
                       <button
                         className="btn post h40"
-                        onClick={() => setComposeOpen(true)}
+                        onClick={() => {
+                          // Default to most recent group for this show, or private if none
+                          setComposeDestination(tabGroups.length > 0 ? tabGroups[0].id : "private");
+                          setComposeOpen(true);
+                        }}
                         style={{ lineHeight: 1.2, marginLeft: 20 }}
                       >
                         + make an entry
@@ -752,42 +752,46 @@ export default function ProfilePage({
             <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10, color: "var(--dos-light)" }}>Where to post</div>
 
-              {/* Journal — always included */}
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "default", opacity: 0.65 }}>
-                <input type="checkbox" checked readOnly style={{ accentColor: "var(--green)" }} />
-                <span style={{ fontSize: 14, color: "var(--dos-light)" }}>📝 My journal <span style={{ opacity: 0.7, fontSize: 12 }}>(always)</span></span>
-              </label>
-
-              {/* Public room */}
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: tabGroups.length ? 8 : 0, cursor: "pointer" }}>
+              {/* Private journal */}
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
                 <input
-                  type="checkbox"
-                  checked={composeIsPublic}
-                  onChange={e => setComposeIsPublic(e.target.checked)}
-                  style={{ accentColor: "var(--green)", marginTop: 2 }}
+                  type="radio"
+                  name="composeDestination"
+                  checked={composeDestination === "private"}
+                  onChange={() => setComposeDestination("private")}
+                  style={{ accentColor: "var(--green)" }}
                 />
-                <span style={{ fontSize: 14, color: "var(--dos-light)" }}>
-                  🌍 Post publicly
-                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
-                </span>
+                <span style={{ fontSize: 14, color: "var(--dos-light)" }}>📝 Private journal</span>
               </label>
 
-              {/* Friend groups */}
+              {/* One option per friend group */}
               {tabGroups.map(g => (
-                <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, cursor: "pointer" }}>
+                <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
                   <input
-                    type="checkbox"
-                    checked={composeGroupIds.has(g.id)}
-                    onChange={e => {
-                      const next = new Set(composeGroupIds);
-                      if (e.target.checked) next.add(g.id); else next.delete(g.id);
-                      setComposeGroupIds(next);
-                    }}
+                    type="radio"
+                    name="composeDestination"
+                    checked={composeDestination === g.id}
+                    onChange={() => setComposeDestination(g.id)}
                     style={{ accentColor: "var(--green)" }}
                   />
                   <span style={{ fontSize: 14, color: "var(--dos-light)" }}>👥 {g.name}</span>
                 </label>
               ))}
+
+              {/* Public profile */}
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 0, cursor: "pointer" }}>
+                <input
+                  type="radio"
+                  name="composeDestination"
+                  checked={composeDestination === "public"}
+                  onChange={() => setComposeDestination("public")}
+                  style={{ accentColor: "var(--green)", marginTop: 2 }}
+                />
+                <span style={{ fontSize: 14, color: "var(--dos-light)" }}>
+                  🌍 Public profile
+                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
+                </span>
+              </label>
             </div>
 
             {/* ── Submit row ── */}
@@ -798,7 +802,7 @@ export default function ProfilePage({
                 onClick={submitPost}
                 disabled={postSubmitting}
                 style={{
-                  background: (composeIsPublic || composeGroupIds.size > 0) ? "var(--green)" : "var(--dos-bg)",
+                  background: composeDestination !== "private" ? "var(--green)" : "var(--dos-bg)",
                   border: "2px solid rgba(255,255,255,0.3)",
                   color: "#fff",
                   whiteSpace: "nowrap",
@@ -806,11 +810,7 @@ export default function ProfilePage({
                   minWidth: 130,
                 }}
               >
-                {postSubmitting
-                  ? "Posting…"
-                  : (composeIsPublic || composeGroupIds.size > 0)
-                    ? "Post"
-                    : "📝 Save to journal"}
+                {postSubmitting ? "Posting…" : composeDestination === "private" ? "📝 Save to journal" : "Post"}
               </button>
             </div>
           </div>
