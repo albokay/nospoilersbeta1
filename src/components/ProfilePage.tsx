@@ -458,22 +458,7 @@ export default function ProfilePage({
           {showTabOrder.length === 0 && <EmptyProfileWelcome />}
 
           {activeTab && (
-            <div className="hangLContent" style={{ paddingTop: 20, position: "relative", isolation: "isolate" }}>
-            {/* Back pages B/C/D — behind all content, extend to bottom */}
-            {([48, 32, 16] as const).map(offset => {
-              const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
-              return (
-                <div key={`bp-${offset}`} className="diaryBackPageFull" style={{
-                  position: "absolute", top: 0, left: -56, right: 60, bottom: 0,
-                  transform: `translate(-${offset}px, ${offset + 90}px)`,
-                  border: `2px solid rgba(255,255,255,${opacity})`,
-                  borderRight: "none",
-                  background: "var(--dos-bg)",
-                  zIndex: -1,
-                  pointerEvents: "none",
-                }} />
-              );
-            })}
+            <div className="hangLContent" style={{ paddingTop: 20 }}>
             <>
               {/* Your Watch Diary */}
               <section style={{ marginTop: 0 }}>
@@ -541,7 +526,16 @@ export default function ProfilePage({
                   </div>
                   </div>
                 <div className="diaryCardWrap">
-                <div className="card" style={{ display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
+                  {/* Background pages — positioned relative to diaryCardWrap so
+                      inset:0 matches the front card exactly; translate alone
+                      creates the even staircase (16px steps). */}
+                  {([48, 32, 16] as const).map(offset => {
+                    const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
+                    return (
+                      <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
+                    );
+                  })}
+                <div className="card" style={{ height: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
                     <div className="profileActionBar">
@@ -663,7 +657,7 @@ export default function ProfilePage({
               </section>
 
               {/* Responses to you — moved above "your responses" */}
-              <section className="profile-responses-section" style={{ marginTop: 48 }}>
+              <section className="profile-responses-section" style={{ marginTop: 144 }}>
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No responses yet.</div>}

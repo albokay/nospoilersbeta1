@@ -276,17 +276,12 @@ header.site{
   position:relative; z-index:0;
   margin-top:16px; margin-left:-56px; margin-bottom:24px;
   width: calc(100% + 116px);
-  isolation:isolate;
 }
-/* background pages — visual depth only, lower-left cascade.
-   Extend below the front card. z-index:-1 within the isolated
-   .diaryOuter puts them behind all other page content. */
+/* background pages — visual depth only, lower-left cascade */
 .diaryBackPage{
-  position:absolute; top:0; left:0; right:0; bottom:-80px;
+  position:absolute; inset:0;
   border:2px solid rgba(255,255,255,0.55);
   background:var(--dos-bg);
-  z-index:-1;
-  pointer-events:none;
 }
 /* Scroll wrapper around the tab row — lets tabs scroll horizontally while
    preserving the 3px active-tab visual overlap with the card below.
@@ -330,8 +325,6 @@ header.site{
 /* front card */
 .diaryCardWrap{
   position:relative; z-index:1;
-  overflow:visible;
-  margin-bottom:80px; /* space for back-page extension + fade */
 }
 .diaryCardWrap > .card{ border:2px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
@@ -346,11 +339,9 @@ header.site{
   padding:14px 48px 10px 16px;
   border-bottom:none;
 }
-/* Scrollable entries region — caps at 600px so long journals still scroll,
-   but short journals let the card shrink to fit content naturally. */
+/* Scrollable entries region that fills the remaining card height */
 .diaryScrollArea{
-  overflow-y:auto;
-  max-height:600px;
+  flex:1; overflow-y:auto;
   padding:12px 48px 32px 16px;
 }
 
@@ -381,7 +372,7 @@ header.site{
   /* Diary: tighten on mobile */
   .diaryOuter{ margin-top:8px; margin-left:0; margin-right:0; margin-bottom:12px; width:100%; }
   /* Remove the background depth pages — just show the single front card on mobile */
-  .diaryBackPage, .diaryBackPageFull{ display:none; }
+  .diaryBackPage{ display:none; }
   .diaryTab{ font-size:12px; padding:4px 10px; }
   .diaryTab.active{ font-size:12px; padding:6px 12px; }
   /* Flush first tab with the card's left border line */
