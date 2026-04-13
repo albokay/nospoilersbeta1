@@ -235,10 +235,14 @@ export default function ShowSection({
     prevShowIdRef.current = showId;
   }, [showId]);
 
-  // Apply themed background: yellow for public room, blue for friend room
+  // Apply themed background: yellow for public room/posts, blue for friend room, default green for private posts
   useEffect(() => {
+    const viewingPrivate = !activeGroupId && thread !== null && thread !== undefined && !thread.isPublic;
     if (activeGroupId) {
       document.body.classList.add("group-context");
+      document.body.classList.remove("public-context");
+    } else if (viewingPrivate) {
+      document.body.classList.remove("group-context");
       document.body.classList.remove("public-context");
     } else {
       document.body.classList.remove("group-context");
@@ -248,7 +252,7 @@ export default function ShowSection({
       document.body.classList.remove("group-context");
       document.body.classList.remove("public-context");
     };
-  }, [activeGroupId]);
+  }, [activeGroupId, thread]);
 
   // Keep sessionStorage in sync with activeGroupId so refreshing restores the room context
   useEffect(() => {
