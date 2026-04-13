@@ -31,6 +31,23 @@ body.group-context.has-header{
 body.group-context header.site{ background:rgba(189,212,222,0.98); }
 body.group-context .stickybar{ background:rgba(189,212,222,0.98); }
 
+/* ── Public room context — golden-yellow theme ─────────────────────────────── */
+body.public-context{
+  --dos-bg:#c8a030; --dos-fg:#FFFFFF; --dos-cyan:#FFFFFF;
+  --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
+  --dos-accent:#FFFFFF; --dos-border:#ffffff;
+  --dos-blue:rgba(0,0,0,0.14);
+  --progress-bg:#7abd8e; --progress-fg:#fff;
+  background: linear-gradient(to bottom,#e0c060 0px,#c8a030 180px) fixed,#c8a030;
+  background-attachment:fixed;
+}
+body.public-context.has-header{
+  background: linear-gradient(to top,#e0c060 0px,#c8a030 250px) fixed,#c8a030;
+  background-attachment:fixed;
+}
+body.public-context header.site{ background:rgba(200,160,48,0.98); }
+body.public-context .stickybar{ background:rgba(200,160,48,0.98); }
+
 .brandLink{ cursor:pointer; }
 .brandLink:focus-visible{ outline:2px dashed var(--dos-cyan); outline-offset:2px; }
 

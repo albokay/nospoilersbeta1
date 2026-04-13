@@ -235,14 +235,19 @@ export default function ShowSection({
     prevShowIdRef.current = showId;
   }, [showId]);
 
-  // Apply light-blue theme when inside a friend room
+  // Apply themed background: yellow for public room, blue for friend room
   useEffect(() => {
     if (activeGroupId) {
       document.body.classList.add("group-context");
+      document.body.classList.remove("public-context");
     } else {
       document.body.classList.remove("group-context");
+      document.body.classList.add("public-context");
     }
-    return () => { document.body.classList.remove("group-context"); };
+    return () => {
+      document.body.classList.remove("group-context");
+      document.body.classList.remove("public-context");
+    };
   }, [activeGroupId]);
 
   // Keep sessionStorage in sync with activeGroupId so refreshing restores the room context
