@@ -55,6 +55,7 @@ body.public-context .reply-card .likeWrap:hover{ background:#7abd8e !important; 
 body.public-context .blockquote-ref .blockquote-author,
 body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
 body.public-context .responding-to-label{ color:#7abd8e; }
+body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
 
 .brandLink{ cursor:pointer; }
 .brandLink:focus-visible{ outline:2px dashed var(--dos-cyan); outline-offset:2px; }
