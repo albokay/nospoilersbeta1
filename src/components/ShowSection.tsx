@@ -237,7 +237,8 @@ export default function ShowSection({
 
   // Apply themed background: yellow for public room/posts, blue for friend room, default green for private posts
   useEffect(() => {
-    const viewingPrivate = !activeGroupId && thread !== null && thread !== undefined && !thread.isPublic;
+    const activeThread = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
+    const viewingPrivate = !activeGroupId && !!activeThread && !activeThread.isPublic;
     if (activeGroupId) {
       document.body.classList.add("group-context");
       document.body.classList.remove("public-context");
@@ -252,7 +253,7 @@ export default function ShowSection({
       document.body.classList.remove("group-context");
       document.body.classList.remove("public-context");
     };
-  }, [activeGroupId, thread]);
+  }, [activeGroupId, activeThreadId, dbThreads]);
 
   // Keep sessionStorage in sync with activeGroupId so refreshing restores the room context
   useEffect(() => {
