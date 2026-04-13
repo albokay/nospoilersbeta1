@@ -277,11 +277,14 @@ header.site{
   margin-top:16px; margin-left:-56px; margin-bottom:24px;
   width: calc(100% + 116px);
 }
-/* background pages — visual depth only, lower-left cascade */
+/* background pages — visual depth only, lower-left cascade.
+   Extend below the front card and fade out at the bottom. */
 .diaryBackPage{
-  position:absolute; inset:0;
+  position:absolute; top:0; left:0; right:0; bottom:-80px;
   border:2px solid rgba(255,255,255,0.55);
   background:var(--dos-bg);
+  mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
 }
 /* Scroll wrapper around the tab row — lets tabs scroll horizontally while
    preserving the 3px active-tab visual overlap with the card below.
@@ -325,6 +328,8 @@ header.site{
 /* front card */
 .diaryCardWrap{
   position:relative; z-index:1;
+  overflow:visible;
+  margin-bottom:80px; /* space for back-page extension + fade */
 }
 .diaryCardWrap > .card{ border:2px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
@@ -339,9 +344,11 @@ header.site{
   padding:14px 48px 10px 16px;
   border-bottom:none;
 }
-/* Scrollable entries region that fills the remaining card height */
+/* Scrollable entries region — caps at 600px so long journals still scroll,
+   but short journals let the card shrink to fit content naturally. */
 .diaryScrollArea{
-  flex:1; overflow-y:auto;
+  overflow-y:auto;
+  max-height:600px;
   padding:12px 48px 32px 16px;
 }
 
