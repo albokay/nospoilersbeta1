@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -18,7 +18,7 @@ function threadDotActive(threadId: string, hasDot: boolean): boolean {
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, sendInvite, fetchSentInvitations } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, sendInvite, fetchSentInvitations, fetchBrowseProgress } from "../lib/db";
 import type { Invitation } from "../types";
 import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
@@ -52,8 +52,16 @@ export default function ShowSection({
 }: any) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
-  const show = allShows.find((s) => s.id === showId) || { id: showId, name: showId, seasons: [10] };
+  const show = allShows.find((s) => s.id === showId) || (() => {
+    // Fallback: try browse metadata from sessionStorage (set by SearchShows onboarding modal)
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(`ns_browse_show_${showId}`) || "null");
+      if (stored) return { id: showId, name: stored.name, seasons: stored.seasons };
+    } catch {}
+    return { id: showId, name: showId, seasons: [10] };
+  })();
 
   // ── Guest progress (logged-out users — stored in localStorage) ───────────
   const guestProgressKey = `ns_guest_prog_${showId}`;
@@ -61,7 +69,28 @@ export default function ShowSection({
     if (user) return null;
     try { return JSON.parse(localStorage.getItem(`ns_guest_prog_${showId}`) || "null"); } catch { return null; }
   });
-  const [showGuestPicker, setShowGuestPicker] = useState(() => !user);
+  const [showGuestPicker, setShowGuestPicker] = useState(() => {
+    if (user) return false;
+    // Skip the picker if progress already exists from onboarding modal or prior visit
+    const hasGuest = !!(() => { try { return JSON.parse(localStorage.getItem(`ns_guest_prog_${showId}`) || "null"); } catch { return null; } })();
+    const hasBrowse = !!(() => { try { return JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null"); } catch { return null; } })();
+    return !hasGuest && !hasBrowse;
+  });
+
+  // Browse progress: sessionStorage for guests, browse_progress table for logged-in
+  const [browseSessionProgress, setBrowseSessionProgress] = useState<{ s: number; e: number } | null>(() => {
+    if (user) return null;
+    try { return JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null"); } catch { return null; }
+  });
+  const [browseProgress, setBrowseProgress] = useState<any>(null);
+
+  // Fetch browse_progress for logged-in users who don't have committed progress
+  useEffect(() => {
+    if (!user || progress[showId]) { setBrowseProgress(null); return; }
+    fetchBrowseProgress(user.id, showId).then(bp => {
+      if (bp) setBrowseProgress(bp);
+    }).catch(() => {});
+  }, [user?.id, showId, !!progress[showId]]);
 
   // For logged-in users: show progress prompt if progress is unset (e === 0 sentinel)
   const [showLoggedInPicker, setShowLoggedInPicker] = useState(() =>
@@ -74,20 +103,29 @@ export default function ShowSection({
   // Sync guest progress state when showId changes (user navigates to a different show)
   useEffect(() => {
     if (user) return;
+    let hasProgress = false;
     try {
       const stored = JSON.parse(localStorage.getItem(`ns_guest_prog_${showId}`) || "null");
       setGuestProgress(stored);
-      setShowGuestPicker(!stored);
+      if (stored) hasProgress = true;
     } catch {
       setGuestProgress(null);
-      setShowGuestPicker(true);
     }
+    // Also check sessionStorage for browse progress
+    try {
+      const bp = JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null");
+      setBrowseSessionProgress(bp);
+      if (bp) hasProgress = true;
+    } catch {
+      setBrowseSessionProgress(null);
+    }
+    setShowGuestPicker(!hasProgress);
   }, [showId]);
 
-  // Effective progress: saved progress for logged-in users, guest progress for logged-out.
-  // No explicit annotation — infers as `any` from the any-typed progress prop,
-  // keeping rewatch fields (isRewatching, highestS/E etc.) accessible downstream.
-  const effectiveProgress = user ? progress[showId] : guestProgress ?? undefined;
+  // Effective progress: committed > browse > guest > undefined
+  const effectiveProgress = user
+    ? (progress[showId] ?? browseProgress ?? undefined)
+    : (guestProgress ?? browseSessionProgress ?? undefined);
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
   useEffect(() => {
@@ -196,6 +234,15 @@ export default function ShowSection({
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [createGroupSubmitting, setCreateGroupSubmitting] = useState(false);
+
+  // Auto-open create group modal when navigated with openCreateGroup state
+  useEffect(() => {
+    if ((location.state as any)?.openCreateGroup) {
+      setShowCreateGroupModal(true);
+      // Clear the state so it doesn't re-trigger on navigation
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
   // Group settings modal
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);

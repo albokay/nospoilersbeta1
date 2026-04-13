@@ -475,13 +475,22 @@ export default function App() {
       <span className="mobileHide" style={{ display: "inline-flex" }}>
         <SearchShows
           shows={shows}
-          onPick={handlePickFromSearch}
-          onShowCreated={(newShow, entry) => {
-            setShows(prev => [...prev, newShow]);
+          onShowCreated={(newShow, entry, action) => {
+            setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow]);
             setWatchStatusFor(newShow.id, entry);
-            openShow(newShow.id);
+            if (action === "journal") {
+              navigate("/profile", { state: { activeTab: newShow.id } });
+              requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+            } else {
+              navigate(`/show/${newShow.id}`, { state: { openCreateGroup: true } });
+              requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+            }
           }}
-          onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
+          onBrowsePublic={(showId, _name, _entry, _seasons) => {
+            navigate(`/show/${showId}`);
+            requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+          }}
+          onAuthRequired={() => { setAuthHint("Sign in or create an account to start a journal or friend room."); setShowAuthModal(true); }}
           style={{ width: 176, margin: 0, height: 34 }}
         />
       </span>
@@ -773,31 +782,27 @@ export default function App() {
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 500, lineHeight: 1.6 }}>
                   The site is in early beta so there's not much to see yet in public spaces. Eventually you can explore public show rooms with the same no-spoiler mechanics as a friends-only room.
                 </span>
-                {user ? (
-                  <SearchShows
-                    shows={shows}
-                    onPick={handlePickFromSearch}
-                    onShowCreated={(newShow, entry) => {
-                      setShows(prev => [...prev, newShow]);
-                      setWatchStatusFor(newShow.id, entry);
-                      openShow(newShow.id);
-                    }}
-                    onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-                    placeholder="find a show"
-                    style={{ width: "100%", minWidth: 0, margin: 0, height: 40, boxSizing: "border-box" }}
-                  />
-                ) : (
-                  <button disabled style={{
-                    padding: "8px 32px", borderRadius: 9999,
-                    border: "2px dotted rgba(255,255,255,0.45)",
-                    background: "transparent",
-                    color: "rgba(255,255,255,0.3)",
-                    fontSize: 15, fontWeight: 700,
-                    letterSpacing: "0.05em", cursor: "not-allowed",
-                  }}>
-                    find a show
-                  </button>
-                )}
+                <SearchShows
+                  shows={shows}
+                  onShowCreated={(newShow, entry, action) => {
+                    setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow]);
+                    setWatchStatusFor(newShow.id, entry);
+                    if (action === "journal") {
+                      navigate("/profile", { state: { activeTab: newShow.id } });
+                      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+                    } else {
+                      navigate(`/show/${newShow.id}`, { state: { openCreateGroup: true } });
+                      requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+                    }
+                  }}
+                  onBrowsePublic={(showId, _name, _entry, _seasons) => {
+                    navigate(`/show/${showId}`);
+                    requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+                  }}
+                  onAuthRequired={() => { setAuthHint("Sign in or create an account to start a journal or friend room."); setShowAuthModal(true); }}
+                  placeholder="find a show"
+                  style={{ width: "100%", minWidth: 0, margin: 0, height: 40, boxSizing: "border-box" }}
+                />
               </div>
             </div>
             </>
@@ -1062,7 +1067,7 @@ export default function App() {
                     openShow(pickShow.id);
                   }}
                 >
-                  {pickShow.isHidden === false && !progress[pickShow.id] ? "Create forum" : "Confirm"}
+                  Confirm
                 </button>
               </div>
             </div>

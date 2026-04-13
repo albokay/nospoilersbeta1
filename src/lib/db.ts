@@ -465,9 +465,23 @@ export async function createShow(show: {
     is_hidden: false,
     last_synced_at: new Date().toISOString(),
   };
+  // Idempotent: if the show already exists, return the existing row unchanged
   const { data, error } = await supabase
-    .from("shows").insert(row).select().single();
-  if (error) throw error;
+    .from("shows").upsert(row, { onConflict: "id", ignoreDuplicates: true }).select().single();
+  if (error) {
+    // ignoreDuplicates may not return data on conflict — fall back to fetch
+    const { data: existing, error: fetchErr } = await supabase
+      .from("shows").select().eq("id", show.id).single();
+    if (fetchErr || !existing) throw error;
+    return {
+      id: existing.id,
+      name: existing.name,
+      seasons: existing.seasons,
+      tvmazeId: existing.tvmaze_id ?? undefined,
+      status: existing.status ?? "Ended",
+      isHidden: existing.is_hidden ?? false,
+    };
+  }
   return {
     id: data.id,
     name: data.name,
@@ -609,6 +623,52 @@ export async function clearRewatchMode(userId: string, showId: string): Promise<
     .eq("user_id", userId)
     .eq("show_id", showId);
   if (error) throw error;
+}
+
+// ── Browse progress (silent, non-committed progress for public browsing) ─────
+
+export async function upsertBrowseProgress(
+  userId: string,
+  showId: string,
+  entry: import("../types").ProgressEntry
+): Promise<void> {
+  const { error } = await supabase
+    .from("browse_progress")
+    .upsert({
+      user_id: userId,
+      show_id: showId,
+      season: entry.s,
+      episode: entry.e,
+      is_rewatching: entry.isRewatching ?? false,
+      rewatch_season: entry.rewatchS ?? null,
+      rewatch_episode: entry.rewatchE ?? null,
+      highest_season: entry.highestS ?? null,
+      highest_episode: entry.highestE ?? null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,show_id" });
+  if (error) console.error("Failed to upsert browse progress:", error);
+}
+
+export async function fetchBrowseProgress(
+  userId: string,
+  showId: string
+): Promise<import("../types").ProgressEntry | null> {
+  const { data, error } = await supabase
+    .from("browse_progress")
+    .select("season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode")
+    .eq("user_id", userId)
+    .eq("show_id", showId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    s: data.season,
+    e: data.episode,
+    isRewatching: data.is_rewatching ?? false,
+    rewatchS: data.rewatch_season ?? undefined,
+    rewatchE: data.rewatch_episode ?? undefined,
+    highestS: data.highest_season ?? undefined,
+    highestE: data.highest_episode ?? undefined,
+  };
 }
 
 // ── Public profile ────────────────────────────────────────────────────────────

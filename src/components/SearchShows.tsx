@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { Show } from "../lib/db";
-import { createShow } from "../lib/db";
+import { createShow, upsertBrowseProgress } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import type { ProgressEntry } from "../types";
 
@@ -61,13 +61,6 @@ function EpisodeSelectInline({
   value: { s: number; e: number };
   onChange: (v: { s: number; e: number }) => void;
 }) {
-  const options: { s: number; e: number; label: string }[] = [];
-  seasons.forEach((epCount, idx) => {
-    const s = idx + 1;
-    for (let e = 1; e <= epCount; e++) {
-      options.push({ s, e, label: `S${s} E${e}` });
-    }
-  });
   const val = `s${value.s}e${value.e}`;
   return (
     <select
@@ -99,15 +92,20 @@ function EpisodeSelectInline({
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequired, style, placeholder }: {
+export default function SearchShows({
+  shows,
+  onShowCreated,
+  onBrowsePublic,
+  onAuthRequired,
+  style,
+  placeholder,
+}: {
   shows: Show[];
-  onPick: (showId: string) => void;
-  onShowCreated?: (show: Show, entry: ProgressEntry) => void;
+  onShowCreated?: (show: Show, entry: ProgressEntry, action: "journal" | "friendRoom") => void;
+  onBrowsePublic?: (showId: string, showName: string, entry: ProgressEntry, seasons: number[]) => void;
   onAuthRequired?: () => void;
   style?: React.CSSProperties;
   placeholder?: string;
-  // legacy prop kept for compat — no longer used
-  onStartNewForum?: (query: string) => void;
 }) {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
@@ -118,36 +116,21 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
   const [tvLoading, setTvLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Confirmation modal state
+  // Onboarding modal state
   const [confirming, setConfirming] = useState<TVmazeShow | null>(null);
   const [confirmingSeasons, setConfirmingSeasons] = useState<number[] | null>(null);
   const [seasonsLoading, setSeasonsLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Watch-status questionnaire state (lives inside the combined modal)
+  // Watch-status questionnaire state
   const [watchChoice, setWatchChoice] = useState<"first" | "rewatch" | null>(null);
   const [highestSel, setHighestSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
   const [rewatchSel, setRewatchSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
   const [firstTimeSel, setFirstTimeSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
 
-  // Tier 1: existing shows on Sidebar (not hidden)
-  const localMatches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return shows.filter(s => !s.isHidden && s.name.toLowerCase().includes(q));
-  }, [query, shows]);
-
-  // IDs already on Sidebar (for dedup) — exclude the "bb" demo room so
-  // users can still create a real Breaking Bad room via find-a-show.
-  const existingTvmazeIds = useMemo(() =>
-    new Set(shows.filter(s => s.id !== "bb").map(s => s.tvmazeId).filter(Boolean) as string[]),
-    [shows]);
-
-  // Tier 2: TVmaze results, deduped
-  const tvMatches = useMemo(() =>
-    tvResults.filter(r => !existingTvmazeIds.has(String(r.id))).slice(0, 6),
-    [tvResults, existingTvmazeIds]);
+  // All results come from TVMaze — no local filtering, no "already on sidebar"
+  const tvMatches = useMemo(() => tvResults.slice(0, 8), [tvResults]);
 
   // Debounced TVmaze fetch
   useEffect(() => {
@@ -175,18 +158,8 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
     setFirstTimeSel({ s: 1, e: 1 });
   };
 
-  const handlePickLocal = (show: Show) => {
-    onPick(show.id);
-    setQuery(show.name);
-    setOpen(false);
-  };
-
+  // No auth gate — anyone can open the onboarding modal
   const handlePickTVmaze = async (tv: TVmazeShow) => {
-    if (!user) {
-      setOpen(false);
-      onAuthRequired?.();
-      return;
-    }
     setConfirming(tv);
     setConfirmingSeasons(null);
     setOpen(false);
@@ -195,7 +168,7 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
     setHighestSel({ s: 1, e: 1 });
     setRewatchSel({ s: 1, e: 1 });
     setFirstTimeSel({ s: 1, e: 1 });
-    // Fetch episode data immediately so the selects are ready when the user needs them
+    // Fetch episode data so the selects are ready
     setSeasonsLoading(true);
     try {
       const seasons = await tvmazeEpisodes(tv.id);
@@ -207,49 +180,98 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
     }
   };
 
-  const handleConfirmCreate = async () => {
-    if (!confirming || !watchChoice) return;
+  // Build ProgressEntry from the questionnaire answers
+  const buildEntry = (): ProgressEntry | null => {
+    if (!watchChoice) return null;
+    if (watchChoice === "rewatch") {
+      return {
+        s: rewatchSel.s, e: rewatchSel.e,
+        isRewatching: true,
+        rewatchS: rewatchSel.s, rewatchE: rewatchSel.e,
+        highestS: highestSel.s, highestE: highestSel.e,
+      };
+    }
+    return { s: firstTimeSel.s, e: firstTimeSel.e, isRewatching: false };
+  };
+
+  // ── Action handlers ────────────────────────────────────────────────────
+
+  const handleCreateFriendRoom = async () => {
+    if (!user) { onAuthRequired?.(); return; }
+    const entry = buildEntry();
+    if (!confirming || !entry) return;
     setCreating(true);
     setCreateError(null);
     try {
       const seasons = confirmingSeasons ?? [1];
       const id = slugify(confirming.name);
       const newShow = await createShow({
-        id,
-        name: confirming.name,
-        seasons,
+        id, name: confirming.name, seasons,
         tvmazeId: String(confirming.id),
         status: confirming.status === "Running" ? "Running" : "Ended",
       });
-
-      // Build the ProgressEntry from the questionnaire answers
-      let entry: ProgressEntry;
-      if (watchChoice === "rewatch") {
-        entry = {
-          s: rewatchSel.s, e: rewatchSel.e,
-          isRewatching: true,
-          rewatchS: rewatchSel.s, rewatchE: rewatchSel.e,
-          highestS: highestSel.s, highestE: highestSel.e,
-        };
-      } else {
-        entry = { s: firstTimeSel.s, e: firstTimeSel.e, isRewatching: false };
-      }
-
       setQuery(newShow.name);
       resetModal();
-      if (onShowCreated) {
-        onShowCreated(newShow, entry);
-      } else {
-        onPick(newShow.id);
-      }
+      onShowCreated?.(newShow, entry, "friendRoom");
     } catch (e: any) {
-      setCreateError(e?.message ?? "Failed to create forum. Try again.");
+      setCreateError(e?.message ?? "Something went wrong. Try again.");
     } finally {
       setCreating(false);
     }
   };
 
-  const totalItems = localMatches.length + tvMatches.length;
+  const handleStartJournal = async () => {
+    if (!user) { onAuthRequired?.(); return; }
+    const entry = buildEntry();
+    if (!confirming || !entry) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const seasons = confirmingSeasons ?? [1];
+      const id = slugify(confirming.name);
+      const newShow = await createShow({
+        id, name: confirming.name, seasons,
+        tvmazeId: String(confirming.id),
+        status: confirming.status === "Running" ? "Running" : "Ended",
+      });
+      setQuery(newShow.name);
+      resetModal();
+      onShowCreated?.(newShow, entry, "journal");
+    } catch (e: any) {
+      setCreateError(e?.message ?? "Something went wrong. Try again.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleSeePublic = async () => {
+    const entry = buildEntry();
+    if (!confirming || !entry) return;
+    const seasons = confirmingSeasons ?? [1];
+    const showId = slugify(confirming.name);
+
+    // Store browse progress silently
+    if (user) {
+      // Only upsert if the show already exists (FK constraint on browse_progress)
+      const existingShow = shows.find(s => s.tvmazeId === String(confirming.id) || s.id === showId);
+      if (existingShow) {
+        upsertBrowseProgress(user.id, existingShow.id, entry).catch(() => {});
+      }
+    } else {
+      // Non-logged-in: session-only storage
+      sessionStorage.setItem(`ns_browse_prog_${showId}`, JSON.stringify(entry));
+    }
+
+    // Store show metadata so ShowSection can render correctly even without a shows row
+    sessionStorage.setItem(`ns_browse_show_${showId}`, JSON.stringify({
+      name: confirming.name, seasons,
+    }));
+
+    setQuery(confirming.name);
+    resetModal();
+    onBrowsePublic?.(showId, confirming.name, entry, seasons);
+  };
+
   const canSubmit = !!watchChoice && !seasonsLoading && !creating;
 
   return (
@@ -272,39 +294,6 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
         />
         {open && !!query.trim() && (
           <div id="search-suggest" className="card dropdownPanel" role="listbox" style={{ left: 0, right: 0, width: "auto" }}>
-
-            {/* Tier 1 */}
-            {localMatches.length > 0 && (
-              <>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", opacity: 0.6, padding: "6px 8px 2px" }}>
-                  ALREADY ON SIDEBAR
-                </div>
-                {localMatches.map((m) => (
-                  <div
-                    key={m.id}
-                    role="option"
-                    style={{ padding: "6px 8px", cursor: "pointer" }}
-                    onMouseDown={(e) => { e.preventDefault(); handlePickLocal(m); }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.12)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                  >
-                    {m.name}
-                  </div>
-                ))}
-              </>
-            )}
-
-            {/* Divider between tiers */}
-            {localMatches.length > 0 && (tvMatches.length > 0 || tvLoading) && (
-              <div style={{ borderTop: "1px solid var(--dos-border)", margin: "4px 0" }} />
-            )}
-
-            {/* Tier 2 */}
-            {(tvMatches.length > 0 || tvLoading) && (
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", opacity: 0.6, padding: "6px 8px 2px" }}>
-                CREATE A NEW FORUM
-              </div>
-            )}
             {tvLoading && (
               <div className="muted" style={{ fontSize: 12, padding: "4px 8px" }}>Searching…</div>
             )}
@@ -325,14 +314,14 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
             ))}
 
             {/* Empty state */}
-            {!tvLoading && totalItems === 0 && (
+            {!tvLoading && tvMatches.length === 0 && (
               <div className="muted" style={{ padding: "8px", fontSize: 13 }}>No results found.</div>
             )}
           </div>
         )}
       </div>
 
-      {/* Combined create-forum + watch-status modal */}
+      {/* ── Onboarding modal ─────────────────────────────────────────────── */}
       {confirming && (
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
@@ -360,22 +349,17 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
               </p>
               <div style={{ display: "flex", gap: 16 }}>
                 {(["first", "rewatch"] as const).map(choice => (
-                  <label key={choice} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14 }}>
-                    <input
-                      type="radio"
-                      name="newForumWatchStatus"
-                      value={choice}
-                      checked={watchChoice === choice}
-                      onChange={() => setWatchChoice(choice)}
-                      style={{ accentColor: "var(--green)", cursor: "pointer" }}
-                    />
+                  <div key={choice} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchChoice(choice)}>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {watchChoice === choice && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                    </div>
                     {choice === "first" ? "First time" : "Rewatching"}
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
 
-            {/* Episode selects — shown once seasons are loaded */}
+            {/* Episode selects */}
             {seasonsLoading && (
               <div className="muted" style={{ fontSize: 13 }}>Loading episode data…</div>
             )}
@@ -410,13 +394,19 @@ export default function SearchShows({ shows, onPick, onShowCreated, onAuthRequir
               <div style={{ color: "var(--danger)", fontSize: 13 }}>{createError}</div>
             )}
 
-            {/* Actions */}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn" onClick={resetModal} disabled={creating}>
-                Cancel
+            {/* Four action buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+              <button className="btn post" onClick={handleStartJournal} disabled={!canSubmit} style={{ width: "100%" }}>
+                Start your private journal
               </button>
-              <button className="btn post" onClick={handleConfirmCreate} disabled={!canSubmit}>
-                {creating ? "Creating…" : "Create forum"}
+              <button className="btn post" onClick={handleCreateFriendRoom} disabled={!canSubmit} style={{ width: "100%" }}>
+                Create a friend room
+              </button>
+              <button className="btn" onClick={handleSeePublic} disabled={!canSubmit} style={{ width: "100%" }}>
+                See public conversations
+              </button>
+              <button className="btn" onClick={resetModal} disabled={creating} style={{ width: "100%", opacity: 0.7 }}>
+                Cancel
               </button>
             </div>
           </div>
