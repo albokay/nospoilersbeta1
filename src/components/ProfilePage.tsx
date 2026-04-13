@@ -165,7 +165,7 @@ export default function ProfilePage({
       setActiveTab(tab);
       setViewedTabIds(prev => new Set([...prev, tab]));
     }
-  }, [loading]);
+  }, [loading, location.key, visibleTabOrder.length]);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   // clear expanded state when switching tabs
