@@ -69,17 +69,16 @@ export default function PublicProfilePage({
       canView({ season: r.season, episode: r.episode }, viewerProgress[t.showId])),
     [replies, viewerProgress]);
 
-  // Show tab order: most recently engaged first
+  // Show tab order: only shows with public posts visible to the viewer
   const showTabOrder = useMemo(() => {
     const latest: Record<string, number> = {};
     const bump = (sid: string, ts: number) => {
       if (!latest[sid] || ts > latest[sid]) latest[sid] = ts;
     };
-    threads.forEach(t => bump(t.showId, t.updatedAt));
-    replies.forEach(({ reply: r, thread: t }) => bump(t.showId, r.updatedAt));
-    Object.keys(targetProgress).forEach(sid => { if (!latest[sid]) latest[sid] = 0; });
+    visibleThreads.forEach(t => bump(t.showId, t.updatedAt));
+    visibleReplies.forEach(({ reply: r, thread: t }) => bump(t.showId, r.updatedAt));
     return Object.keys(latest).sort((a, b) => latest[b] - latest[a]);
-  }, [threads, replies, targetProgress]);
+  }, [visibleThreads, visibleReplies]);
 
   const [activeTab, setActiveTab] = useState("");
   useEffect(() => {
