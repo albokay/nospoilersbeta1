@@ -235,25 +235,6 @@ export default function ShowSection({
     prevShowIdRef.current = showId;
   }, [showId]);
 
-  // Apply themed background: yellow for public room/posts, blue for friend room, default green for private posts
-  useEffect(() => {
-    const activeThread = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
-    const viewingPrivate = !activeGroupId && !!activeThread && !activeThread.isPublic;
-    if (activeGroupId) {
-      document.body.classList.add("group-context");
-      document.body.classList.remove("public-context");
-    } else if (viewingPrivate) {
-      document.body.classList.remove("group-context");
-      document.body.classList.remove("public-context");
-    } else {
-      document.body.classList.remove("group-context");
-      document.body.classList.add("public-context");
-    }
-    return () => {
-      document.body.classList.remove("group-context");
-      document.body.classList.remove("public-context");
-    };
-  }, [activeGroupId, activeThreadId, dbThreads]);
 
   // Keep sessionStorage in sync with activeGroupId so refreshing restores the room context
   useEffect(() => {
@@ -497,6 +478,27 @@ export default function ShowSection({
 
   // ── DB state ──────────────────────────────────────────────
   const [dbThreads, setDbThreads] = useState<Thread[]>([]);
+
+  // Apply themed background: yellow for public room/posts, blue for friend room, default green for private posts
+  useEffect(() => {
+    const activeThread = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
+    const viewingPrivate = !activeGroupId && !!activeThread && !activeThread.isPublic;
+    if (activeGroupId) {
+      document.body.classList.add("group-context");
+      document.body.classList.remove("public-context");
+    } else if (viewingPrivate) {
+      document.body.classList.remove("group-context");
+      document.body.classList.remove("public-context");
+    } else {
+      document.body.classList.remove("group-context");
+      document.body.classList.add("public-context");
+    }
+    return () => {
+      document.body.classList.remove("group-context");
+      document.body.classList.remove("public-context");
+    };
+  }, [activeGroupId, activeThreadId, dbThreads]);
+
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
   const [replyMeta, setReplyMeta] = useState<Record<string, ReplyMeta[]>>({});
   const [hasExternalReplies, setHasExternalReplies] = useState<Record<string, boolean>>({});
