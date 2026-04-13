@@ -863,7 +863,7 @@ export default function ProfilePage({
         }}>
           <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }}
             onClick={() => goToShowRoom(tabDropdownOpen)}>
-            🌍 Public Room
+            🌍 Public entries
           </button>
           {tabGroups.map(g => (
             <button key={g.id} className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }}
