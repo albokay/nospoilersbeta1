@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import type { FriendGroup } from "../types";
 import { timeAgo, canView } from "../lib/utils";
@@ -131,6 +131,17 @@ export default function InlineThreadView({
   }, [threadCitations, loadedReplies, progressForShow]);
 
   const [showMoveOptions, setShowMoveOptions] = useState(false);
+  const moveOptionsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showMoveOptions) return;
+    const handler = (e: MouseEvent) => {
+      if (moveOptionsRef.current && !moveOptionsRef.current.contains(e.target as Node)) {
+        setShowMoveOptions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMoveOptions]);
 
   // Increment to force RepliesList to re-fetch after a new reply is submitted
   const [repliesKey, setRepliesKey] = useState(0);
@@ -441,10 +452,13 @@ export default function InlineThreadView({
                     <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={handleDelete}>Delete</button>
                     {/* Private posts (non-group context) can be moved to public or a friend room */}
                     {!thread.isPublic && !inGroupContext && (
-                      <div style={{ position: "relative" }}>
+                      <div ref={moveOptionsRef} style={{ position: "relative" }}>
                         <button
                           className="btn"
-                          style={{ fontSize: 13 }}
+                          style={{
+                            fontSize: 13,
+                            ...(showMoveOptions ? { background: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.8)" } : {})
+                          }}
                           onClick={() => setShowMoveOptions(v => !v)}
                         >
                           Move to →
@@ -452,15 +466,14 @@ export default function InlineThreadView({
                         {showMoveOptions && (
                           <div style={{
                             position: "absolute", bottom: "calc(100% + 6px)", right: 0,
-                            display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
-                            background: "var(--dos-bg)", border: "2px solid var(--dos-border)",
-                            borderRadius: 10, padding: "8px 10px", zIndex: 10, whiteSpace: "nowrap",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
+                            display: "flex", flexDirection: "column", gap: 6,
+                            background: "var(--dos-bg)", border: "none",
+                            borderRadius: 10, padding: "8px", zIndex: 10,
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.18)"
                           }}>
-                            <span style={{ fontSize: 12, opacity: 0.6 }}>Move to:</span>
-                            <button className="btn" style={{ fontSize: 12 }} onClick={handleMakePublic}>🌍 Public Room</button>
+                            <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }} onClick={handleMakePublic}>🌍 Public Room</button>
                             {(userGroups ?? []).map(g => (
-                              <button key={g.id} className="btn" style={{ fontSize: 12 }} onClick={() => handleMoveToGroup(g.id)}>
+                              <button key={g.id} className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }} onClick={() => handleMoveToGroup(g.id)}>
                                 👥 {g.name}
                               </button>
                             ))}
