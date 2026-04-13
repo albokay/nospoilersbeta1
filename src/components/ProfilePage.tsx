@@ -794,7 +794,7 @@ export default function ProfilePage({
 
               {/* Private journal */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination("private")}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: composeDestination === "private" ? "2px solid var(--dos-border)" : "2px solid rgba(255,255,255,0.45)", background: composeDestination === "private" ? "var(--dos-border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {composeDestination === "private" && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
                 </div>
                 <span style={{ fontSize: 14, color: "var(--dos-light)" }}>📝 Private journal</span>
@@ -803,7 +803,7 @@ export default function ProfilePage({
               {/* One option per friend group */}
               {tabGroups.map(g => (
                 <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination(g.id)}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: composeDestination === g.id ? "2px solid var(--dos-border)" : "2px solid rgba(255,255,255,0.45)", background: composeDestination === g.id ? "var(--dos-border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {composeDestination === g.id && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
                   </div>
                   <span style={{ fontSize: 14, color: "var(--dos-light)" }}>👥 {g.name}</span>
@@ -812,7 +812,7 @@ export default function ProfilePage({
 
               {/* Public profile */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, cursor: "pointer" }} onClick={() => setComposeDestination("public")}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: composeDestination === "public" ? "2px solid var(--dos-border)" : "2px solid rgba(255,255,255,0.45)", background: composeDestination === "public" ? "var(--dos-border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {composeDestination === "public" && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
                 </div>
                 <span style={{ fontSize: 14, color: "var(--dos-light)" }}>

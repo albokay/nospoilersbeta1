@@ -1008,7 +1008,7 @@ export default function App() {
                 <div style={{ display: "flex", gap: 20 }}>
                   {(["first", "rewatch"] as const).map(choice => (
                     <div key={choice} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchStatusChoice(choice)}>
-                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: watchStatusChoice === choice ? "2px solid var(--dos-border)" : "2px solid rgba(255,255,255,0.45)", background: watchStatusChoice === choice ? "var(--dos-border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {watchStatusChoice === choice && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
                       </div>
                       {choice === "first" ? "First time" : "Rewatching"}
