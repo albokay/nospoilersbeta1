@@ -278,15 +278,12 @@ header.site{
   width: calc(100% + 116px);
 }
 /* background pages — visual depth only, lower-left cascade.
-   Extend to the bottom of the viewport behind all other content.
    No right border (front card provides it). */
 .diaryBackPage{
-  position:absolute; top:0; left:0; right:0; bottom:-200vh;
+  position:absolute; inset:0;
   border:2px solid;
   border-right:none;
   background:var(--dos-bg);
-  z-index:-1;
-  pointer-events:none;
 }
 /* Scroll wrapper around the tab row — lets tabs scroll horizontally while
    preserving the 3px active-tab visual overlap with the card below.
@@ -380,7 +377,7 @@ header.site{
   /* Diary: tighten on mobile */
   .diaryOuter{ margin-top:8px; margin-left:0; margin-right:0; margin-bottom:12px; width:100%; }
   /* Remove the background depth pages — just show the single front card on mobile */
-  .diaryBackPage{ display:none; }
+  .diaryBackPage, .diaryBackPageFull{ display:none; }
   .diaryTab{ font-size:12px; padding:4px 10px; }
   .diaryTab.active{ font-size:12px; padding:6px 12px; }
   /* Flush first tab with the card's left border line */
