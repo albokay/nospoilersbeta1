@@ -620,6 +620,11 @@ export default function ProfilePage({
                           {!t.isPublic && !groupId && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
                           {isPub && <span title="Public" style={{ marginRight: 8 }}>🌍</span>}
                           {isGroup && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8 }}>👥</span>}
+                          {isGroup && groupName && (
+                            <span style={{ fontSize: 13, opacity: 0.7, fontWeight: 400, marginRight: 6 }}>
+                              {groupName} ·{" "}
+                            </span>
+                          )}
                           {t.titleBase}
                           {t.showId !== "simshow" && (
                             <span style={{ color: epColor }}>

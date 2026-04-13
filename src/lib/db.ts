@@ -274,14 +274,20 @@ function rowToReply(row: any): Reply {
   };
 }
 
-export async function fetchRepliesForThread(threadId: string): Promise<Reply[]> {
+export async function fetchRepliesForThread(threadId: string, groupId?: string | null): Promise<Reply[]> {
   // Seed threads live in memory — return them directly without hitting Supabase
   if (repliesByThread[threadId]) return repliesByThread[threadId];
-  const { data, error } = await supabase
+  let query = supabase
     .from("replies")
     .select("*")
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true });
+  // When viewing inside a friend room, scope replies to that room's group_id
+  // (shared seed threads have per-room reply copies — without this filter, duplicates appear)
+  if (groupId) {
+    query = query.eq("group_id", groupId);
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map(rowToReply);
 }

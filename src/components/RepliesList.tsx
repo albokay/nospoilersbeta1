@@ -286,7 +286,7 @@ export default function RepliesList({
   likeReply, unlikeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
   threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile,
   onSetPendingReference, pendingReference, citations, threadCitations, composerRef, onScrollToComposer,
-  externalReplies, onRepliesLoaded, refreshKey,
+  externalReplies, onRepliesLoaded, refreshKey, groupId,
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
@@ -314,6 +314,7 @@ export default function RepliesList({
   externalReplies?: Reply[];          // externally loaded replies (from parent)
   onRepliesLoaded?: (replies: Reply[]) => void; // notify parent of loaded replies
   refreshKey?: number;               // increment to force a re-fetch
+  groupId?: string | null;           // scope replies to this friend room (prevents cross-room duplicates)
 }) {
   const { user, profile } = useAuth();
   const { scrollTo: scrollHighlight } = useScrollHighlight();
@@ -331,14 +332,14 @@ export default function RepliesList({
   useEffect(() => {
     let cancelled = false;
     setRepliesLoading(true);
-    fetchRepliesForThread(thread.id).then(async (data) => {
+    fetchRepliesForThread(thread.id, groupId).then(async (data) => {
       if (cancelled) return;
       setReplies(data);
       onRepliesLoaded?.(data);
       setRepliesLoading(false);
     }).catch(() => setRepliesLoading(false));
     return () => { cancelled = true; };
-  }, [thread.id, user, refreshKey]);
+  }, [thread.id, user, refreshKey, groupId]);
 
   // If parent provides externalReplies (e.g. after a new reply is submitted), merge them in
   useEffect(() => {

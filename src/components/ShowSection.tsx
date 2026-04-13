@@ -1651,6 +1651,7 @@ export default function ShowSection({
           thread={{ ...thread, likes: likesThreads[thread.id] ?? thread.likes }}
           show={allShows.find(s => s.id === showId) || { name: showId }}
           inGroupContext={!!activeGroupId}
+          groupId={activeGroupId}
           onBack={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
           progressForShow={effectiveProgress || { s: 1, e: 1 }}
           onMountAlignTop={() => scrollToShowTop()}

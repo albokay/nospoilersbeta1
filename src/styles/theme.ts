@@ -30,6 +30,8 @@ body.group-context.has-header{
 }
 body.group-context header.site{ background:rgba(189,212,222,0.98); }
 body.group-context .stickybar{ background:rgba(189,212,222,0.98); }
+/* In friend rooms, reply cards should use dark text matching thread entries (not washed-out blue) */
+body.group-context .reply-card{ color:#1a3a4a !important; --dos-accent:#1a3a4a; --dos-cyan:#1a3a4a; --dos-gray:rgba(26,58,74,0.65); }
 
 /* ── Public room context — golden-yellow theme ─────────────────────────────── */
 body.public-context{

@@ -53,6 +53,7 @@ export default function InlineThreadView({
   pendingReference, onSetPendingReference, composerRef, onScrollToComposer,
   citations, threadCitations, onRepliesLoaded,
   inGroupContext,
+  groupId: groupIdProp,
   userGroups,
   onThreadMovedToGroup,
 }: {
@@ -92,6 +93,7 @@ export default function InlineThreadView({
   threadCitations?: CitationEntry[];
   onRepliesLoaded?: (replyIds: string[]) => void;
   inGroupContext?: boolean;
+  groupId?: string | null;
   userGroups?: FriendGroup[];
   onThreadMovedToGroup?: (groupId: string) => void;
 }) {
@@ -494,6 +496,7 @@ export default function InlineThreadView({
       <div style={{ marginTop: 12 }}>
         <RepliesList
           thread={thread}
+          groupId={groupIdProp}
           progressForShow={progressForShow}
           riskyMode={mode === "risky"}
           likeReply={likeReply}
