@@ -749,13 +749,13 @@ export default function ProfilePage({
             )}
 
             {/* ── Destination selector ── */}
-            <div style={{ border: "1px solid rgba(0,0,0,0.12)", borderRadius: 8, padding: "10px 14px", background: "rgba(0,0,0,0.03)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, marginBottom: 10 }}>Where to post</div>
+            <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10, color: "var(--dos-light)" }}>Where to post</div>
 
               {/* Journal — always included */}
               <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "default", opacity: 0.65 }}>
                 <input type="checkbox" checked readOnly style={{ accentColor: "var(--green)" }} />
-                <span style={{ fontSize: 14, color: "var(--dos-bg)" }}>📝 My journal <span style={{ opacity: 0.7, fontSize: 12 }}>(always)</span></span>
+                <span style={{ fontSize: 14, color: "var(--dos-light)" }}>📝 My journal <span style={{ opacity: 0.7, fontSize: 12 }}>(always)</span></span>
               </label>
 
               {/* Public room */}
@@ -766,7 +766,7 @@ export default function ProfilePage({
                   onChange={e => setComposeIsPublic(e.target.checked)}
                   style={{ accentColor: "var(--green)", marginTop: 2 }}
                 />
-                <span style={{ fontSize: 14, color: "var(--dos-bg)" }}>
+                <span style={{ fontSize: 14, color: "var(--dos-light)" }}>
                   🌍 Post publicly
                   <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
                 </span>
@@ -785,7 +785,7 @@ export default function ProfilePage({
                     }}
                     style={{ accentColor: "var(--green)" }}
                   />
-                  <span style={{ fontSize: 14, color: "var(--dos-bg)" }}>👥 {g.name}</span>
+                  <span style={{ fontSize: 14, color: "var(--dos-light)" }}>👥 {g.name}</span>
                 </label>
               ))}
             </div>
@@ -799,7 +799,7 @@ export default function ProfilePage({
                 disabled={postSubmitting}
                 style={{
                   background: (composeIsPublic || composeGroupIds.size > 0) ? "var(--green)" : "var(--dos-bg)",
-                  border: "2px solid var(--dos-bg)",
+                  border: "2px solid rgba(255,255,255,0.3)",
                   color: "#fff",
                   whiteSpace: "nowrap",
                   fontSize: 13,
