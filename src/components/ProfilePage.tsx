@@ -456,13 +456,13 @@ export default function ProfilePage({
                           onClick={(e) => {
                             if (sid !== activeTab) { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
                             const rect = e.currentTarget.getBoundingClientRect();
-                            setTabDropdownPos({ top: rect.bottom + 6, left: rect.left });
+                            setTabDropdownPos({ top: rect.bottom + 6, left: rect.right });
                             setTabDropdownOpen(prev => prev === sid ? null : sid);
                           }}
                         >
                           {showName(sid)}
                           {active && (
-                            <span style={{ marginLeft: 6, fontSize: 12, opacity: 0.75, letterSpacing: "0.05em" }}>☰</span>
+                            <span style={{ marginLeft: 8, fontSize: 17, opacity: 0.8, lineHeight: 1 }}>☰</span>
                           )}
                           {!viewed && activity && (
                             <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: activity === "green" ? "var(--green)" : "var(--danger)", pointerEvents: "none" }} />
@@ -858,7 +858,7 @@ export default function ProfilePage({
       {/* Tab "go to" dropdown — fixed so it escapes overflow-y:clip on .diaryTabScroller */}
       {tabDropdownOpen && tabDropdownPos && (
         <div ref={tabDropdownRef} style={{
-          position: "fixed", top: tabDropdownPos.top, left: tabDropdownPos.left,
+          position: "fixed", top: tabDropdownPos.top, left: tabDropdownPos.left, transform: "translateX(-100%)",
           display: "flex", flexDirection: "column", gap: 6,
           background: "var(--dos-bg)", border: "none",
           borderRadius: 10, padding: "8px", zIndex: 200,
