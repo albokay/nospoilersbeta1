@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import type { Reply, Thread } from "../types";
+import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts, fetchFriendGroupsForUser } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -141,6 +141,16 @@ export default function ProfilePage({
   useEffect(() => { setExpandedIds(new Set()); }, [activeTab]);
 
   const [diaryFilter, setDiaryFilter] = useState<"all" | "private">("all");
+
+  // Friend-room filter for the journal
+  const [tabGroups, setTabGroups] = useState<FriendGroup[]>([]);
+  const [journalGroupFilter, setJournalGroupFilter] = useState<string | null>(null);
+  useEffect(() => {
+    if (!user || !activeTab) { setTabGroups([]); return; }
+    fetchFriendGroupsForUser(user.id, activeTab).then(setTabGroups).catch(() => setTabGroups([]));
+  }, [user?.id, activeTab]);
+  // Reset group filter when switching show tabs
+  useEffect(() => { setJournalGroupFilter(null); }, [activeTab]);
 
   // Compose state
   const [composeOpen, setComposeOpen] = useState(false);
@@ -422,27 +432,63 @@ export default function ProfilePage({
                 <div className="card" style={{ height: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
-                    <div className="profileActionBar">
-                      <button
-                        className="btn post h40"
-                        onClick={() => setComposeOpen(true)}
-                        style={{ lineHeight: 1.2, marginLeft: 20 }}
-                      >
-                        + make an entry
-                      </button>
-                      {activeShow && (
-                        <OneSelectProgress
-                          show={activeShow}
-                          value={postProgress}
-                          onConfirm={(val) => updateProgressFor?.(activeTab, val)}
-                          requireConfirm={true}
-                        />
+                    <div className="profileActionBar" style={{ flexDirection: "column", alignItems: "stretch", gap: 0, padding: 0 }}>
+                      {/* Row 1: make an entry + progress */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px 8px" }}>
+                        <button
+                          className="btn post h40"
+                          onClick={() => setComposeOpen(true)}
+                          style={{ lineHeight: 1.2 }}
+                        >
+                          + make an entry
+                        </button>
+                        {activeShow && (
+                          <OneSelectProgress
+                            show={activeShow}
+                            value={postProgress}
+                            onConfirm={(val) => updateProgressFor?.(activeTab, val)}
+                            requireConfirm={true}
+                          />
+                        )}
+                      </div>
+                      {/* Row 2: room filter pills (only when user has friend rooms for this show) */}
+                      {tabGroups.length > 0 && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 16px 10px", overflowX: "auto", scrollbarWidth: "none" }}>
+                          <button
+                            className="btn"
+                            onClick={() => setJournalGroupFilter(null)}
+                            style={{
+                              whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                              background: journalGroupFilter === null ? "var(--dos-border)" : "transparent",
+                              border: journalGroupFilter === null ? "2px solid var(--dos-border)" : "2px solid rgba(0,0,0,0.15)",
+                              color: journalGroupFilter === null ? "var(--dos-bg)" : "var(--dos-fg)",
+                            }}
+                          >
+                            all entries
+                          </button>
+                          {tabGroups.map(g => (
+                            <button
+                              key={g.id}
+                              className="btn"
+                              onClick={() => setJournalGroupFilter(g.id)}
+                              style={{
+                                whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                                background: journalGroupFilter === g.id ? "#bdd4de" : "transparent",
+                                border: journalGroupFilter === g.id ? "2px solid #bdd4de" : "2px solid rgba(0,0,0,0.15)",
+                                color: journalGroupFilter === g.id ? "#1a3a4a" : "var(--dos-fg)",
+                              }}
+                            >
+                              👥 {g.name}
+                            </button>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}
                   <div className="diaryScrollArea">
                   {(() => {
-                    const filtered = diaryFilter === "private" ? tabThreads.filter(({ thread: t }) => !t.isPublic) : tabThreads;
+                    const byDiary = diaryFilter === "private" ? tabThreads.filter(({ thread: t }) => !t.isPublic) : tabThreads;
+                    const filtered = journalGroupFilter ? byDiary.filter(({ groupId }) => groupId === journalGroupFilter) : byDiary;
                     if (filtered.length === 0) {
                       if (diaryFilter === "private" && tabThreads.length > 0) {
                         // Has public entries but no private ones
