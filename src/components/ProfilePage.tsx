@@ -532,7 +532,7 @@ export default function ProfilePage({
                   {([48, 32, 16] as const).map(offset => {
                     const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
                     return (
-                      <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
+                      <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})`, ...(offset !== 16 ? { borderRight: "none" } : {}) }} />
                     );
                   })}
                 <div className="card" style={{ minHeight: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
@@ -657,7 +657,7 @@ export default function ProfilePage({
               </section>
 
               {/* Responses to you — moved above "your responses" */}
-              <section className="profile-responses-section" style={{ marginTop: 48 }}>
+              <section className="profile-responses-section" style={{ marginTop: 24 }}>
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No responses yet.</div>}
