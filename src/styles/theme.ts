@@ -276,13 +276,17 @@ header.site{
   position:relative; z-index:0;
   margin-top:16px; margin-left:-56px; margin-bottom:24px;
   width: calc(100% + 116px);
+  isolation:isolate;
 }
 /* background pages — visual depth only, lower-left cascade.
-   Extend below the front card. */
+   Extend below the front card. z-index:-1 within the isolated
+   .diaryOuter puts them behind all other page content. */
 .diaryBackPage{
   position:absolute; top:0; left:0; right:0; bottom:-80px;
   border:2px solid rgba(255,255,255,0.55);
   background:var(--dos-bg);
+  z-index:-1;
+  pointer-events:none;
 }
 /* Scroll wrapper around the tab row — lets tabs scroll horizontally while
    preserving the 3px active-tab visual overlap with the card below.
