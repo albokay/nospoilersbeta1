@@ -161,7 +161,7 @@ export default function PublicProfilePage({
                 {([48, 32, 16] as const).map(offset => {
                   const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
                   return (
-                    <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})`, borderRight: "none" }} />
+                    <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})`, color: `rgba(255,255,255,${opacity})` }} />
                   );
                 })}
                 <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>

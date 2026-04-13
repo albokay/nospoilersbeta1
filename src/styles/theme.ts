@@ -278,14 +278,21 @@ header.site{
   width: calc(100% + 116px);
 }
 /* background pages — visual depth only, lower-left cascade.
-   Extend 120px below the front card; mask fades from card edge to bottom.
-   Background is solid within the card area then transparent below. */
+   Solid fill matches the card; no right border (front card provides it).
+   ::after draws a fading left-border trail below the page. */
 .diaryBackPage{
-  position:absolute; top:0; left:0; right:0; bottom:-120px;
-  border:2px solid rgba(255,255,255,0.55);
-  background: linear-gradient(to bottom, var(--dos-bg) calc(100% - 120px), transparent calc(100% - 120px));
-  mask-image: linear-gradient(to bottom, black calc(100% - 120px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 120px), transparent 100%);
+  position:absolute; inset:0;
+  border:2px solid;
+  border-right:none;
+  background:var(--dos-bg);
+}
+.diaryBackPage::after{
+  content:'';
+  position:absolute;
+  left:-2px; top:100%;
+  width:2px; height:120px;
+  background:linear-gradient(to bottom, currentColor, transparent);
+  pointer-events:none;
 }
 /* Scroll wrapper around the tab row — lets tabs scroll horizontally while
    preserving the 3px active-tab visual overlap with the card below.
@@ -330,7 +337,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
   overflow:visible;
-  margin-bottom:60px; /* space for back-page extension + fade */
+  margin-bottom:120px; /* space for back-page trail (max offset 48 + 120px fade) */
 }
 .diaryCardWrap > .card{ border:2px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
