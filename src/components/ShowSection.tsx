@@ -1644,6 +1644,13 @@ export default function ShowSection({
           citations={citations}
           threadCitations={threadCitations}
           onRepliesLoaded={handleRepliesLoaded}
+          userGroups={userGroups}
+          onThreadMovedToGroup={(groupId) => {
+            // Switch to the group view where the post now lives
+            setActiveGroupId(groupId);
+            setActiveThreadId(null);
+            setTimeout(() => scrollToShowTop(), 0);
+          }}
         />
       ) : (
         <div style={{ marginTop: 8 }}>

@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from "react";
 import type { Thread, Reply, ProgressEntry } from "../types";
+import type { FriendGroup } from "../types";
 import { timeAgo, canView } from "../lib/utils";
 import { useAuth } from "../lib/auth";
-import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic } from "../lib/db";
+import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, addThreadToGroup } from "../lib/db";
 import type { CitationEntry } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import Modal from "./Modal";
@@ -52,6 +53,8 @@ export default function InlineThreadView({
   pendingReference, onSetPendingReference, composerRef, onScrollToComposer,
   citations, threadCitations, onRepliesLoaded,
   inGroupContext,
+  userGroups,
+  onThreadMovedToGroup,
 }: {
   thread: Thread;
   show: any;
@@ -89,6 +92,8 @@ export default function InlineThreadView({
   threadCitations?: CitationEntry[];
   onRepliesLoaded?: (replyIds: string[]) => void;
   inGroupContext?: boolean;
+  userGroups?: FriendGroup[];
+  onThreadMovedToGroup?: (groupId: string) => void;
 }) {
   const { user, profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
@@ -124,6 +129,8 @@ export default function InlineThreadView({
       }))
       .filter(s => s.citedText.length >= 4);
   }, [threadCitations, loadedReplies, progressForShow]);
+
+  const [showMoveOptions, setShowMoveOptions] = useState(false);
 
   // Increment to force RepliesList to re-fetch after a new reply is submitted
   const [repliesKey, setRepliesKey] = useState(0);
@@ -233,7 +240,18 @@ export default function InlineThreadView({
   const handleMakePublic = async () => {
     try {
       await dbSetThreadPublic(thread.id, true);
+      setShowMoveOptions(false);
       onThreadMakePublic?.();
+    } catch (err: any) {
+      alert("Failed: " + (err?.message ?? JSON.stringify(err)));
+    }
+  };
+
+  const handleMoveToGroup = async (groupId: string) => {
+    try {
+      await addThreadToGroup(thread.id, groupId);
+      setShowMoveOptions(false);
+      onThreadMovedToGroup?.(groupId);
     } catch (err: any) {
       alert("Failed: " + (err?.message ?? JSON.stringify(err)));
     }
@@ -421,9 +439,28 @@ export default function InlineThreadView({
                       <button className="btn" style={{ fontSize: 13 }} onClick={handleStartEdit}>Edit</button>
                     )}
                     <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={handleDelete}>Delete</button>
-                    {/* Only private posts in non-group context can change destination */}
+                    {/* Private posts (non-group context) can be moved to public or a friend room */}
                     {!thread.isPublic && !inGroupContext && (
-                      <button className="btn" style={{ fontSize: 13 }} onClick={handleMakePublic}>Make Public</button>
+                      <>
+                        <button
+                          className="btn"
+                          style={{ fontSize: 13 }}
+                          onClick={() => setShowMoveOptions(v => !v)}
+                        >
+                          Move to →
+                        </button>
+                        {showMoveOptions && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", width: "100%", justifyContent: "flex-end", marginTop: 4 }}>
+                            <span style={{ fontSize: 12, opacity: 0.6, marginRight: 2 }}>Move to:</span>
+                            <button className="btn" style={{ fontSize: 12 }} onClick={handleMakePublic}>🌍 Public Room</button>
+                            {(userGroups ?? []).map(g => (
+                              <button key={g.id} className="btn" style={{ fontSize: 12 }} onClick={() => handleMoveToGroup(g.id)}>
+                                👥 {g.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
