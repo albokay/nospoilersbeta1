@@ -138,6 +138,9 @@ export default function PublicProfilePage({
                   <div className="title" style={{ fontSize: 22, marginLeft: -42 }}>{username}'s {showName(activeTab).toUpperCase()} journal</div>
                 </div>
                 <div className="diaryOuter">
+                  {[48, 32, 16].map(offset => (
+                    <div key={offset} className="diaryBackPage" style={{ top: 27, transform: `translate(-${offset}px, ${offset}px)` }} />
+                  ))}
                   <div className="diaryTabScroller">
                   <div className="diaryTabRow">
                     {showTabOrder.map(sid => {
@@ -158,13 +161,7 @@ export default function PublicProfilePage({
                   </div>
                   </div>{/* /diaryTabScroller */}
                 <div className="diaryCardWrap">
-                {([48, 32, 16] as const).map(offset => {
-                  const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
-                  return (
-                    <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
-                  );
-                })}
-                <div className="card" style={{ minHeight: 700, maxHeight: 700, overflowY: "auto", position: "relative", zIndex: 1 }}>
+                <div className="card" style={{ maxHeight: 600, overflowY: "auto", position: "relative", zIndex: 1 }}>
                   {tabThreads.length === 0 && (
                     <div className="muted">No posts visible to you yet.</div>
                   )}
@@ -204,7 +201,7 @@ export default function PublicProfilePage({
               </section>
 
               {/* Their responses */}
-              <section className="profile-public-responses" style={{ marginTop: 80 }}>
+              <section className="profile-public-responses" style={{ marginTop: 48 }}>
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabReplies.length === 0 && (

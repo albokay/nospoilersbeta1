@@ -278,12 +278,13 @@ header.site{
   width: calc(100% + 116px);
 }
 /* background pages — visual depth only, lower-left cascade.
-   No right border (front card provides it). */
+   Extend below the front card and fade out at the bottom. */
 .diaryBackPage{
-  position:absolute; inset:0;
-  border:2px solid;
-  border-right:none;
+  position:absolute; top:0; left:0; right:0; bottom:-80px;
+  border:2px solid rgba(255,255,255,0.55);
   background:var(--dos-bg);
+  mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
 }
 /* Scroll wrapper around the tab row — lets tabs scroll horizontally while
    preserving the 3px active-tab visual overlap with the card below.
@@ -328,6 +329,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
   overflow:visible;
+  margin-bottom:80px; /* space for back-page extension + fade */
 }
 .diaryCardWrap > .card{ border:2px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
@@ -377,7 +379,7 @@ header.site{
   /* Diary: tighten on mobile */
   .diaryOuter{ margin-top:8px; margin-left:0; margin-right:0; margin-bottom:12px; width:100%; }
   /* Remove the background depth pages — just show the single front card on mobile */
-  .diaryBackPage, .diaryBackPageFull{ display:none; }
+  .diaryBackPage{ display:none; }
   .diaryTab{ font-size:12px; padding:4px 10px; }
   .diaryTab.active{ font-size:12px; padding:6px 12px; }
   /* Flush first tab with the card's left border line */
