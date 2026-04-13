@@ -278,13 +278,11 @@ header.site{
   width: calc(100% + 116px);
 }
 /* background pages — visual depth only, lower-left cascade.
-   Extend below the front card and fade out at the bottom. */
+   Extend below the front card. */
 .diaryBackPage{
   position:absolute; top:0; left:0; right:0; bottom:-80px;
   border:2px solid rgba(255,255,255,0.55);
   background:var(--dos-bg);
-  mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
 }
 /* Scroll wrapper around the tab row — lets tabs scroll horizontally while
    preserving the 3px active-tab visual overlap with the card below.
