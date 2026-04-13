@@ -1005,18 +1005,14 @@ export default function App() {
                 <p className="muted" style={{ fontSize: 14, marginTop: 0, marginBottom: 10 }}>
                   Are you rewatching <strong>{pickShow.name}</strong>, or is this your first time through?
                 </p>
-                <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ display: "flex", gap: 20 }}>
                   {(["first", "rewatch"] as const).map(choice => (
-                    <label key={choice} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14 }}>
-                      <input
-                        type="radio"
-                        name="watchStatus"
-                        value={choice}
-                        checked={watchStatusChoice === choice}
-                        onChange={() => setWatchStatusChoice(choice)}
-                      />
+                    <div key={choice} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchStatusChoice(choice)}>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: watchStatusChoice === choice ? "2px solid var(--dos-border)" : "2px solid rgba(255,255,255,0.45)", background: watchStatusChoice === choice ? "var(--dos-border)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {watchStatusChoice === choice && <div style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                      </div>
                       {choice === "first" ? "First time" : "Rewatching"}
-                    </label>
+                    </div>
                   ))}
                 </div>
               </div>
