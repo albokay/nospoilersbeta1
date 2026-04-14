@@ -1852,7 +1852,7 @@ export default function ShowSection({
                 <div className="replyCount">
                   <span className={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? "newReplyBadge" : ""}
                     style={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? {
-                    background: "#4b8f6c", color: "#fff", borderRadius: 9999,
+                    background: "#7abd8e", color: "#fff", borderRadius: 9999,
                     padding: "2px 7px", fontWeight: 700,
                   } : {}}>
                     <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
