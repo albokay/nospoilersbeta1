@@ -5,12 +5,12 @@ export function injectDOSStyles() {
 :root{
   --dos-bg:#7abd8e; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
-  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#2256c9; --dos-border:#ffffff;
+  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#355eb8; --dos-border:#ffffff;
   --icon-color:#fff;
   /* canonical accent blue */
   --blue-light:#bdd4de;
   /* progress dropdown (overridden to green in group context) */
-  --progress-bg:#bdd4de; --progress-fg:#2256c9;
+  --progress-bg:#bdd4de; --progress-fg:#355eb8;
   /* type scale */
   --t1:22px; --t2:17px; --t3:15px; --t4:13px;
 }
@@ -741,9 +741,9 @@ body { -webkit-font-smoothing: antialiased; }
   background: rgba(0,0,0,0.08);
 }
 .prompt-card-btn--use {
-  background: #2256c9;
+  background: #355eb8;
   color: #fff;
-  border-color: #2256c9;
+  border-color: #355eb8;
 }
 .prompt-card-btn--use:hover {
   background: #1a44a8;

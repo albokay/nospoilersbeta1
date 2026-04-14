@@ -7,7 +7,7 @@ const BLOCKS = [
   { id: "white",     color: "#fffaf0", z: 2, blend: "color-burn" },
   { id: "lightBlue", color: "#bdd4de", z: 3, blend: "color-burn" },
   { id: "orange",    color: "#f45028", z: 4, blend: "multiply"   },
-  { id: "blue",      color: "#2256c9", z: 5, blend: "color-burn" },
+  { id: "blue",      color: "#355eb8", z: 5, blend: "color-burn" },
 ] as const;
 
 type BlockId = (typeof BLOCKS)[number]["id"];

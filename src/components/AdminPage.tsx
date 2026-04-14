@@ -136,7 +136,7 @@ export default function AdminPage({
     <button
       type="button"
       onClick={() => selectAll(items, list, setList)}
-      style={{ fontSize: 10, cursor: "pointer", background: "none", border: "none", color: "#2256c9", padding: 0, textDecoration: "underline", marginLeft: 8, fontFamily: "inherit" }}
+      style={{ fontSize: 10, cursor: "pointer", background: "none", border: "none", color: "#355eb8", padding: 0, textDecoration: "underline", marginLeft: 8, fontFamily: "inherit" }}
     >
       {items.every(item => list.includes(item)) ? "deselect all" : "select all"}
     </button>
@@ -512,7 +512,7 @@ export default function AdminPage({
               <button
                 onClick={handleCreatePrompt}
                 disabled={newSaving || !newText.trim()}
-                style={{ fontSize: 12, cursor: "pointer", background: "#2256c9", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
+                style={{ fontSize: 12, cursor: "pointer", background: "#355eb8", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
               >
                 {newSaving ? "Adding…" : "Add prompt"}
               </button>
@@ -621,7 +621,7 @@ export default function AdminPage({
                         <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <button
                             onClick={() => editingId === p.id ? closeEdit() : openEdit(p)}
-                            style={{ fontSize: 11, cursor: "pointer", color: "#2256c9", background: "none", border: "none", padding: 0, textDecoration: "underline" }}
+                            style={{ fontSize: 11, cursor: "pointer", color: "#355eb8", background: "none", border: "none", padding: 0, textDecoration: "underline" }}
                           >
                             {editingId === p.id ? "cancel" : "edit"}
                           </button>
@@ -655,7 +655,7 @@ export default function AdminPage({
                           <button
                             onClick={() => handleSaveEdit(p.id)}
                             disabled={editSaving}
-                            style={{ position: "absolute", top: 12, right: 16, fontSize: 12, cursor: "pointer", background: "#2256c9", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
+                            style={{ position: "absolute", top: 12, right: 16, fontSize: 12, cursor: "pointer", background: "#355eb8", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
                           >
                             {editSaving ? "Saving…" : "Save changes"}
                           </button>
