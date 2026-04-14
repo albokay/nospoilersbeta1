@@ -1177,7 +1177,7 @@ export default function ShowSection({
                   onClick={() => user ? openCompose() : onAuthRequired()}
                   style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
                 >
-                  + make an entry
+                  add to journal
                 </button>
                 <OneSelectProgress
                   show={allShows.find(s => s.id === showId) || { seasons: [10] }}
@@ -1192,7 +1192,7 @@ export default function ShowSection({
             /* ── Thread · desktop  OR  Forum (any width) ── */
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: `${ROW_PAD_Y}px 0` }}>
               {!thread ? (
-                /* Forum view: make an entry + room switcher pills */
+                /* Forum view: add to journal + room switcher pills */
                 <div style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" as any }}>
                   <button
                     className="btn post h40"
@@ -1200,7 +1200,7 @@ export default function ShowSection({
                     title="Start a new post"
                     style={{ lineHeight: 1.2, flexShrink: 0 }}
                   >
-                    + make an entry
+                    add to journal
                   </button>
                   {user && (
                     <>
@@ -1305,7 +1305,7 @@ export default function ShowSection({
                     title="Start a new post"
                     style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
                   >
-                    + make an entry
+                    add to journal
                   </button>
                 </div>
               )}
@@ -1877,7 +1877,7 @@ export default function ShowSection({
       {composeOpen && (
         <Modal onClose={() => closeCompose()} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <h3 className="title" style={{ margin: 0 }}>make an entry</h3>
+            <h3 className="title" style={{ margin: 0 }}>add to journal</h3>
             <button className="btn" onClick={() => closeCompose()}>✕</button>
           </div>
 
@@ -1945,13 +1945,13 @@ export default function ShowSection({
                 </div>
               ))}
 
-              {/* Public profile */}
+              {/* Public journal */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, cursor: "pointer" }} onClick={() => setComposeDestination("public")}>
                 <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {composeDestination === "public" && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
                 </div>
                 <span style={{ fontSize: 14 }}>
-                  🌍 Public profile
+                  🌍 Public journal
                   <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
                 </span>
               </div>

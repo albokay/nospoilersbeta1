@@ -548,7 +548,7 @@ export default function ProfilePage({
                         }}
                         style={{ lineHeight: 1.2, marginLeft: 20 }}
                       >
-                        + make an entry
+                        add to journal
                       </button>
                       {activeShow && (
                         <OneSelectProgress
@@ -813,7 +813,7 @@ export default function ProfilePage({
       {composeOpen && (
         <Modal onClose={closeCompose} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <h3 className="title" style={{ margin: 0 }}>make an entry</h3>
+            <h3 className="title" style={{ margin: 0 }}>add to journal</h3>
             <button className="btn" onClick={closeCompose}>✕</button>
           </div>
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -875,13 +875,13 @@ export default function ProfilePage({
                 </div>
               ))}
 
-              {/* Public profile */}
+              {/* Public journal */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, cursor: "pointer" }} onClick={() => setComposeDestination("public")}>
                 <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {composeDestination === "public" && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
                 </div>
                 <span style={{ fontSize: 14, color: "var(--dos-light)" }}>
-                  🌍 Public profile
+                  🌍 Public journal
                   <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
                 </span>
               </div>

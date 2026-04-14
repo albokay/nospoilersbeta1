@@ -23,7 +23,7 @@ export default function EmptyProfileWelcome() {
           You can use private entries however you want. They can be drafts that you switch to public later, or private thoughts that no one else ever sees.
         </p>
         <p style={{ ...bodyStyle, margin: 0, opacity: 0.65, fontStyle: "italic" }}>
-          Start your journal by clicking "make an entry" in a show's room.
+          Start your journal by clicking "add to journal" in a show's room.
         </p>
       </div>
     </div>
