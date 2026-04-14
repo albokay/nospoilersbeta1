@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { SquarePen } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -1175,9 +1176,9 @@ export default function ShowSection({
                 <button
                   className="btn post"
                   onClick={() => user ? openCompose() : onAuthRequired()}
-                  style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
+                  style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}
                 >
-                  add to journal
+                  <SquarePen size={13} /> journal
                 </button>
                 <OneSelectProgress
                   show={allShows.find(s => s.id === showId) || { seasons: [10] }}
@@ -1192,15 +1193,15 @@ export default function ShowSection({
             /* ── Thread · desktop  OR  Forum (any width) ── */
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: `${ROW_PAD_Y}px 0` }}>
               {!thread ? (
-                /* Forum view: add to journal + room switcher pills */
+                /* Forum view: journal button + room switcher pills */
                 <div style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" as any }}>
                   <button
                     className="btn post h40"
                     onClick={() => user ? openCompose() : onAuthRequired()}
                     title="Start a new post"
-                    style={{ lineHeight: 1.2, flexShrink: 0 }}
+                    style={{ lineHeight: 1.2, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5 }}
                   >
-                    add to journal
+                    <SquarePen size={15} /> journal
                   </button>
                   {user && (
                     <>
@@ -1303,9 +1304,9 @@ export default function ShowSection({
                     className="btn post h40"
                     onClick={() => user ? openCompose() : onAuthRequired()}
                     title="Start a new post"
-                    style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
+                    style={{ lineHeight: 1.2, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 5 }}
                   >
-                    add to journal
+                    <SquarePen size={15} /> journal
                   </button>
                 </div>
               )}
@@ -1929,8 +1930,8 @@ export default function ShowSection({
 
               {/* Private journal */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination("private")}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {composeDestination === "private" && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {composeDestination === "private" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                 </div>
                 <span style={{ fontSize: 14 }}>📝 Private journal</span>
               </div>
@@ -1938,8 +1939,8 @@ export default function ShowSection({
               {/* One option per friend group */}
               {userGroups.map(g => (
                 <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination(g.id)}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {composeDestination === g.id && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {composeDestination === g.id && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                   </div>
                   <span style={{ fontSize: 14 }}>👥 {g.name}</span>
                 </div>
@@ -1947,8 +1948,8 @@ export default function ShowSection({
 
               {/* Public journal */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, cursor: "pointer" }} onClick={() => setComposeDestination("public")}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {composeDestination === "public" && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {composeDestination === "public" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                 </div>
                 <span style={{ fontSize: 14 }}>
                   🌍 Public journal

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { SquarePen } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -546,9 +547,9 @@ export default function ProfilePage({
                           setComposeDestination(tabGroups.length > 0 ? tabGroups[0].id : "private");
                           setComposeOpen(true);
                         }}
-                        style={{ lineHeight: 1.2, marginLeft: 20 }}
+                        style={{ lineHeight: 1.2, marginLeft: 20, background: "#dea838", borderColor: "#dea838", color: "#fff", display: "inline-flex", alignItems: "center", gap: 5 }}
                       >
-                        add to journal
+                        <SquarePen size={15} /> journal
                       </button>
                       {activeShow && (
                         <OneSelectProgress
@@ -859,8 +860,8 @@ export default function ProfilePage({
 
               {/* Private journal */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination("private")}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {composeDestination === "private" && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {composeDestination === "private" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                 </div>
                 <span style={{ fontSize: 14, color: "var(--dos-light)" }}>📝 Private journal</span>
               </div>
@@ -868,8 +869,8 @@ export default function ProfilePage({
               {/* One option per friend group */}
               {tabGroups.map(g => (
                 <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination(g.id)}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {composeDestination === g.id && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {composeDestination === g.id && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                   </div>
                   <span style={{ fontSize: 14, color: "var(--dos-light)" }}>👥 {g.name}</span>
                 </div>
@@ -877,8 +878,8 @@ export default function ProfilePage({
 
               {/* Public journal */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, cursor: "pointer" }} onClick={() => setComposeDestination("public")}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "2px solid var(--dos-border)", background: "var(--dos-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {composeDestination === "public" && <div className="radio-dot" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--dos-bg)" }} />}
+                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {composeDestination === "public" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                 </div>
                 <span style={{ fontSize: 14, color: "var(--dos-light)" }}>
                   🌍 Public journal
