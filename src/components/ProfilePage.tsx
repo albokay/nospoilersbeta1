@@ -585,13 +585,13 @@ export default function ProfilePage({
                     const isGroup = !!groupId;
                     const isPub = t.isPublic && !groupId;
                     // card bg: blue for friend room, yellow for public, transparent for private
-                    const cardBg = isGroup ? "#bdd4de" : isPub ? "#dea838" : undefined;
+                    const cardBg = isGroup ? "#acc9d6" : isPub ? "#dea838" : undefined;
                     const cardFg = isGroup ? "#1a3a4a" : "#fff";
                     const cardMuted = isGroup ? "rgba(26,58,74,0.65)" : "rgba(255,255,255,0.65)";
                     const epColor = isGroup ? "#1a3a4a" : "var(--dos-cyan)";
                     // expand button: inverted chip using card accent
                     const chipBg = isGroup ? "#1a3a4a" : isPub ? "rgba(0,0,0,0.18)" : "#fff";
-                    const chipFg = isGroup ? "#bdd4de" : isPub ? "#fff" : "var(--dos-bg)";
+                    const chipFg = isGroup ? "#acc9d6" : isPub ? "#fff" : "var(--dos-bg)";
                     return (
                     <div key={t.id} className="card threadCard"
                       style={{
@@ -605,7 +605,7 @@ export default function ProfilePage({
                           direction="right"
                           gap={14}
                           style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
-                          tooltipStyle={{ background: "#bdd4de", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
+                          tooltipStyle={{ background: "#acc9d6", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
                           width={260}
                         >
                           <div
