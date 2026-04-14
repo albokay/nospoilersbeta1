@@ -815,7 +815,7 @@ export default function ProfilePage({
         <Modal onClose={closeCompose} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <h3 className="title" style={{ margin: 0 }}>add to journal</h3>
-            <button className="btn" onClick={closeCompose}><X size={14} color="currentColor" /></button>
+            <button className="close-x" onClick={closeCompose}><X size={14} /></button>
           </div>
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
             <input

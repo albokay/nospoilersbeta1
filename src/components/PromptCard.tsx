@@ -53,8 +53,8 @@ export default function PromptCard({
           flexShrink: 0,
         }}
       >
-        <button className="prompt-card-btn" onClick={onClose} title="Close">
-          <X size={14} color="currentColor" /> close
+        <button className="close-x" onClick={onClose} title="Close">
+          <X size={14} />
         </button>
         <button className="prompt-card-btn" onClick={onShuffle} title="Try another prompt">
           ↻ another

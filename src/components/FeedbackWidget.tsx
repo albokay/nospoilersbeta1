@@ -138,14 +138,8 @@ export default function FeedbackWidget({
           <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 0.3 }}>
             Send me your thoughts
           </div>
-          <button
-            onClick={handleClose}
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              fontSize: 18, color: "var(--dos-fg)", padding: 4, lineHeight: 1,
-            }}
-          >
-            <X size={14} color="currentColor" />
+          <button className="close-x" onClick={handleClose}>
+            <X size={14} />
           </button>
         </div>
 

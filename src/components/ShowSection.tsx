@@ -1378,12 +1378,8 @@ export default function ShowSection({
             Have you watched more of <strong>{show.name}</strong>?{" "}
             If so, update your progress above so you don't leave any accidental spoilers!
           </span>
-          <button
-            className="btn"
-            onClick={onDismissStaleNudge}
-            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <X size={14} color="currentColor" />
+          <button className="close-x" onClick={onDismissStaleNudge}>
+            <X size={14} />
           </button>
         </div>
       )}
@@ -1399,12 +1395,8 @@ export default function ShowSection({
           <span>
             Congratulations, you've reached your previous watch progress! From now on your activity on the site will be sorted just like someone watching episodes for the first time — because you are!
           </span>
-          <button
-            className="btn"
-            onClick={() => setShowAutoFlipMsg(false)}
-            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <X size={14} color="currentColor" />
+          <button className="close-x" onClick={() => setShowAutoFlipMsg(false)}>
+            <X size={14} />
           </button>
         </div>
       )}
@@ -1444,12 +1436,8 @@ export default function ShowSection({
           <span>
             Thanks for updating your progress — everyone's looking forward to your new thoughts!
           </span>
-          <button
-            className="btn"
-            onClick={() => setShowProgressCelebration(false)}
-            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            <X size={14} color="currentColor" />
+          <button className="close-x" onClick={() => setShowProgressCelebration(false)}>
+            <X size={14} />
           </button>
         </div>
       )}
@@ -1462,12 +1450,8 @@ export default function ShowSection({
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 700, fontSize: 14, color: "var(--dos-bg)" }}>Need help?</span>
-            <button
-              className="btn"
-              onClick={() => setHelpOpen(false)}
-              style={{ width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #7abd8e", borderRadius: "50%", color: "#7abd8e", fontSize: 13, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
-              <X size={14} color="currentColor" />
+            <button className="close-x" onClick={() => setHelpOpen(false)}>
+              <X size={14} />
             </button>
           </div>
           {[
@@ -1534,7 +1518,7 @@ export default function ShowSection({
           <Modal onClose={() => setShowGroupSettings(false)} width="min(460px,92vw)">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <h3 className="title" style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: 4 }}><Users size={14} color="var(--icon-color)" /> {grp?.name ?? "Room settings"}</h3>
-              <button className="btn" onClick={() => setShowGroupSettings(false)}><X size={14} color="currentColor" /></button>
+              <button className="close-x" onClick={() => setShowGroupSettings(false)}><X size={14} /></button>
             </div>
 
             {/* Members list */}
@@ -1879,7 +1863,7 @@ export default function ShowSection({
         <Modal onClose={() => closeCompose()} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <h3 className="title" style={{ margin: 0 }}>add to journal</h3>
-            <button className="btn" onClick={() => closeCompose()}><X size={14} color="currentColor" /></button>
+            <button className="close-x" onClick={() => closeCompose()}><X size={14} /></button>
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>

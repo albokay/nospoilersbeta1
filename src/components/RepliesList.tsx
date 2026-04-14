@@ -624,7 +624,7 @@ export default function RepliesList({
         <Modal onClose={() => setPromptFor(null)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <h3 className="title" style={{ margin: 0 }}>Are you sure?</h3>
-            <button className="btn" onClick={() => setPromptFor(null)}><X size={14} color="currentColor" /></button>
+            <button className="close-x" onClick={() => setPromptFor(null)}><X size={14} /></button>
           </div>
           <p className="muted" style={{ marginTop: 6 }}>This person is replying to an episode you've watched, BUT they're further along in the show. <br /><br />There may be spoilers ahead!</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
@@ -650,7 +650,7 @@ export default function RepliesList({
         <Modal onClose={() => setDeleteConfirmId(null)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <h3 className="title" style={{ margin: 0 }}>Delete this response?</h3>
-            <button className="btn" onClick={() => setDeleteConfirmId(null)}><X size={14} color="currentColor" /></button>
+            <button className="close-x" onClick={() => setDeleteConfirmId(null)}><X size={14} /></button>
           </div>
           <p className="muted" style={{ marginTop: 6 }}>It will turn into a stub visible to others. This can't be undone.</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>

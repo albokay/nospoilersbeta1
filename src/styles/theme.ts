@@ -120,6 +120,14 @@ hr{ display:none; }
   background:transparent; color:var(--dos-fg); border:2px solid var(--dos-border);
   border-radius:9999px; padding:6px 12px; cursor:pointer; font-weight:500;
 }
+/* Consistent close-X button: circle, white outline, white X, transparent fill */
+.close-x{
+  width:28px; height:28px; padding:0; background:transparent;
+  border:2px solid #fff; border-radius:50%; color:#fff;
+  display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer; flex-shrink:0; line-height:1;
+}
+.close-x:hover{ background:rgba(255,255,255,0.15); }
 .btn.primary{ border-color:var(--dos-cyan); color:var(--dos-cyan); }
 .btn:hover{ background:var(--dos-blue); color:white; border-color:var(--dos-light); }
 .btn-danger{ border-color:var(--danger); color:var(--danger); }

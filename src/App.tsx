@@ -557,7 +557,7 @@ export default function App() {
       {!authLoading && user && username && (
         <button className="btn signOutBtn" onClick={() => { goHomepage(); signOut(); }}>
           <span className="signOutLabel">Sign out</span>
-          <span className="signOutX"><X size={14} color="currentColor" /></span>
+          <span className="signOutX"><X size={14} /></span>
         </button>
       )}
       {!authLoading && isAdmin && (
@@ -972,7 +972,7 @@ export default function App() {
             <h3 className="title" style={{ fontSize: 20, margin: 0 }}>
               {pickShowMode === "confirm" ? "Confirm or update your progress" : "Set your watch status"}
             </h3>
-            <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}><X size={14} color="currentColor" /></button>
+            <button className="close-x" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}><X size={14} /></button>
           </div>
 
           {pickShowMode === "set" ? (

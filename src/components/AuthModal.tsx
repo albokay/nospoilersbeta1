@@ -39,7 +39,7 @@ export default function AuthModal({ onClose, hint }: { onClose: () => void; hint
         <h3 className="title" style={{ margin: 0, fontSize: 20 }}>
           {mode === "signin" ? "Sign in" : "Create account"}
         </h3>
-        <button className="btn" onClick={onClose}><X size={14} color="currentColor" /></button>
+        <button className="close-x" onClick={onClose}><X size={14} /></button>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10 }}>

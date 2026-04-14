@@ -92,7 +92,7 @@ export default function OneSelectProgress({
           <Modal onClose={() => setMobileOpen(false)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <h3 className="title" style={{ fontSize: 20, margin: 0 }}>you've watched: {pending ? epLabel(pending.s, pending.e) : ""}</h3>
-              <button className="btn" onClick={() => setMobileOpen(false)}><X size={14} color="currentColor" /></button>
+              <button className="close-x" onClick={() => setMobileOpen(false)}><X size={14} /></button>
             </div>
             <select
               className="badge"
