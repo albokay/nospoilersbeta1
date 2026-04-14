@@ -1805,7 +1805,9 @@ export default function ShowSection({
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h2 style={{ margin: 0, fontSize: 22 }} className="title">
-                    {!t.isPublic && <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}><LockKeyhole size={14} color="var(--icon-color)" /></span>}
+                    {activeGroupId
+                      ? <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}><Users size={14} color="var(--icon-color)" /></span>
+                      : !t.isPublic && <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}><LockKeyhole size={14} color="var(--icon-color)" /></span>}
                     {t.titleBase}
                     {t.showId !== "simshow" && (
                       <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
