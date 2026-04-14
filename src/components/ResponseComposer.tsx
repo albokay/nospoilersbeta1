@@ -202,7 +202,7 @@ export default function ResponseComposer({
     <div
       ref={composerRef}
       className="card"
-      style={{ marginTop: 16, borderLeft: "4px solid var(--dos-accent)" }}
+      style={{ marginTop: 16, border: "2px solid var(--dos-accent)", borderRadius: 12 }}
       id="response-composer"
     >
       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Write a response</div>
@@ -238,8 +238,8 @@ export default function ResponseComposer({
           boxSizing: "border-box",
           background: "#fff",
           color: "#000",
-          border: "1px solid var(--dos-border)",
-          borderRadius: 4,
+          border: "none",
+          borderRadius: 8,
           padding: "8px 10px",
           fontSize: 14,
           resize: "vertical",
@@ -256,7 +256,7 @@ export default function ResponseComposer({
           className="btn"
           onClick={onCancel}
           disabled={submitting}
-          style={{ background: "var(--danger)", border: "none", color: "#fff" }}
+          style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
         >
           Cancel
         </button>
@@ -274,7 +274,7 @@ export default function ResponseComposer({
             className="btn"
             onClick={() => handleSubmit(false)}
             disabled={submitting || !body.trim()}
-            style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff" }}
+            style={{ background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff" }}
           >
             {submitting ? "Posting…" : "Send to the room"}
           </button>
