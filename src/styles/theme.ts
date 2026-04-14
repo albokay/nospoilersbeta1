@@ -136,7 +136,7 @@ hr{ display:none; }
 .btn-danger{ border-color:var(--danger); color:var(--danger); }
 .btn-danger:hover{ background:var(--danger); color:#fff; border-color:var(--danger); }
 /* Green styling for +Post */
-.btn.post{ background: var(--green); color: #fff; border-color: var(--green); }
+.btn.post{ background: #dea838; color: #fff; border-color: #dea838; }
 .btn.post:hover{ background: #c4912a; border-color: #c4912a; color: #fff; }
 /* Fix dark inputs/textareas */
 select {
