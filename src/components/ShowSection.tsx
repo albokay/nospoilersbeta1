@@ -1252,7 +1252,7 @@ export default function ShowSection({
                       className="badge h40"
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value as any)}
-                      style={{ fontSize: 12, fontWeight: 700, paddingRight: 28, appearance: "none", WebkitAppearance: "none", cursor: "pointer" }}
+                      style={{ fontSize: 12, fontWeight: 700, paddingRight: 28, appearance: "none", WebkitAppearance: "none", cursor: "pointer", color: "var(--dos-border)" }}
                     >
                       <option value="relevance">Relevance</option>
                       <option value="post">Post date</option>
@@ -1260,7 +1260,7 @@ export default function ShowSection({
                       <option value="hot">Hot</option>
                       <option value="rewatchers">Rewatchers</option>
                     </select>
-                    <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
+                    <ChevronDown size={14} color="var(--dos-border)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
                   </div>
                 )}
                 {thread && (
