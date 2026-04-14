@@ -336,6 +336,8 @@ export default function ProfilePage({
       setPostTitle(""); setPostBody("");
       setActivePrompt(null); setShownPromptIds([]); setInsertedPromptIds([]);
       closeCompose();
+      // Navigate to the newly created thread in its context
+      openThreadWithFocus(activeTab, t.id, undefined, groupId);
     } catch {
       alert("Failed to post. Please try again.");
     } finally {
