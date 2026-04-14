@@ -564,7 +564,7 @@ export default function App() {
               groups={allFriendGroups}
               onNavigate={(showId, groupId) => {
                 sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
-                navigate(`/show/${showId}`);
+                navigate(`/show/${showId}`, { state: { activeGroupId: groupId } });
                 requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
               }}
             />
@@ -578,7 +578,7 @@ export default function App() {
           shows={shows}
           {...searchShowsHandlers}
           placeholder="find your new show"
-          style={{ width: 220, margin: 0, height: 34 }}
+          style={{ width: 250, margin: 0, height: 34 }}
         />
       </span>
 

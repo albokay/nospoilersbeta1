@@ -284,6 +284,17 @@ export default function ShowSection({
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state]);
+
+  // Switch active group when navigated with activeGroupId state (e.g. from header friend room buttons)
+  useEffect(() => {
+    const stateGroupId = (location.state as any)?.activeGroupId;
+    if (stateGroupId && stateGroupId !== activeGroupId) {
+      setActiveGroupId(stateGroupId);
+      sessionStorage.setItem(activeGroupSessionKey, stateGroupId);
+      // Clear the state so it doesn't re-trigger
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.key]);
   // Group settings modal
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
