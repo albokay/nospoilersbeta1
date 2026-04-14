@@ -1227,7 +1227,7 @@ export async function fetchGroupThreads(
   //  counts would include replies from every user's room)
   const { data, error } = await supabase
     .from("group_threads")
-    .select("threads(*, replies!thread_id(id, group_id))")
+    .select("threads(*, replies!thread_id(id, group_id, season, episode, is_deleted))")
     .eq("group_id", groupId)
     .order("shared_at", { ascending: false });
   if (error) throw error;
@@ -1237,10 +1237,11 @@ export async function fetchGroupThreads(
   for (const row of data ?? []) {
     const t = (row as any).threads;
     if (!t) continue;
-    // Count only replies strictly scoped to this group
+    // Count only replies scoped to this group AND visible at viewer's progress
     const allReplies = ((t.replies as any[]) ?? []);
     const replyCount = allReplies.filter(
-      (r: any) => r.group_id === groupId
+      (r: any) => r.group_id === groupId && !r.is_deleted &&
+        (r.season < maxS || (r.season === maxS && r.episode <= maxE))
     ).length;
     if (t.is_deleted && replyCount === 0) continue;
     const thread = rowToThread(t);
