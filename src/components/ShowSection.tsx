@@ -1191,88 +1191,21 @@ export default function ShowSection({
             </div>
           ) : (
             /* ── Thread · desktop  OR  Forum (any width) ── */
+            <>
+            {/* ── Row 1: journal / back button (left) + sort & progress (right) ── */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: `${ROW_PAD_Y}px 0` }}>
               {!thread ? (
-                /* Forum view: journal button + room switcher pills */
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {/* Journal button — always visible, never scrolls */}
-                  <button
-                    className="btn post h40"
-                    onClick={() => user ? openCompose() : onAuthRequired()}
-                    title="Start a new post"
-                    style={{ lineHeight: 1.2, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5 }}
-                  >
-                    <SquarePen size={15} /> journal
-                  </button>
-                  {user && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" as any }}>
-                      {/* Public room pill */}
-                      <button
-                        className="btn"
-                        onClick={() => setActiveGroupId(null)}
-                        style={{
-                          whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                          padding: "3px 12px",
-                          background: !activeGroupId ? "var(--dos-user)" : "transparent",
-                          border: !activeGroupId ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
-                          color: !activeGroupId ? "#fff" : "rgba(255,255,255,0.55)",
-                        }}
-                      >
-                        <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public room
-                      </button>
-                      {/* One pill per group */}
-                      {userGroups.map(g => {
-                        const isActive = activeGroupId === g.id;
-                        const activeBg = "#dea838";
-                        return (
-                          <button
-                            key={g.id}
-                            className="btn"
-                            onClick={() => setActiveGroupId(g.id)}
-                            style={{
-                              whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                              padding: "3px 10px",
-                              background: isActive ? activeBg : "transparent",
-                              border: isActive ? `2px solid ${activeBg}` : "2px solid rgba(255,255,255,0.2)",
-                              color: isActive ? "#fff" : "rgba(255,255,255,0.55)",
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                            }}
-                          >
-                            <Users size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {g.name}
-                            <span
-                              onClick={(e) => { e.stopPropagation(); openGroupSettings(g.id); }}
-                              title="Room settings"
-                              style={{
-                                marginLeft: 2,
-                                display: "inline-flex", alignItems: "center",
-                                cursor: "pointer",
-                                opacity: isActive ? 1 : 0.6,
-                              }}
-                            >
-                              <Settings size={14} color="var(--icon-color)" />
-                            </span>
-                          </button>
-                        );
-                      })}
-                      {/* Create new room */}
-                      <button
-                        className="btn"
-                        onClick={() => setShowCreateGroupModal(true)}
-                        style={{
-                          whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                          padding: "3px 12px",
-                          background: "transparent",
-                          border: "2px dashed rgba(255,255,255,0.3)",
-                          color: "rgba(255,255,255,0.45)",
-                        }}
-                      >
-                        + new room
-                      </button>
-                    </div>
-                  )}
-                </div>
+                /* Forum view: journal button */
+                <button
+                  className="btn post h40"
+                  onClick={() => user ? openCompose() : onAuthRequired()}
+                  title="Start a new post"
+                  style={{ lineHeight: 1.2, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5 }}
+                >
+                  <SquarePen size={15} /> journal
+                </button>
               ) : (
-                /* Thread view: context-aware back button + optional 🌍 */
+                /* Thread view: context-aware back button + optional globe + journal */
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <button
                     className="btn h40"
@@ -1312,7 +1245,7 @@ export default function ShowSection({
                   </button>
                 </div>
               )}
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                 {!thread && (
                   <select className="badge h40" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
                     <option value="relevance">Relevance</option>
@@ -1364,6 +1297,74 @@ export default function ShowSection({
                 </div>
               </div>
             </div>
+            {/* ── Row 2: room switcher pills (forum view only) ── */}
+            {!thread && user && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, paddingBottom: ROW_PAD_Y, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" as any }}>
+                {/* Public room pill */}
+                <button
+                  className="btn"
+                  onClick={() => setActiveGroupId(null)}
+                  style={{
+                    whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                    padding: "3px 12px",
+                    background: !activeGroupId ? "var(--dos-user)" : "transparent",
+                    border: !activeGroupId ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
+                    color: !activeGroupId ? "#fff" : "rgba(255,255,255,0.55)",
+                  }}
+                >
+                  <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public room
+                </button>
+                {/* One pill per group */}
+                {userGroups.map(g => {
+                  const isActive = activeGroupId === g.id;
+                  const activeBg = "#dea838";
+                  return (
+                    <button
+                      key={g.id}
+                      className="btn"
+                      onClick={() => setActiveGroupId(g.id)}
+                      style={{
+                        whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                        padding: "3px 10px",
+                        background: isActive ? activeBg : "transparent",
+                        border: isActive ? `2px solid ${activeBg}` : "2px solid rgba(255,255,255,0.2)",
+                        color: isActive ? "#fff" : "rgba(255,255,255,0.55)",
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                      }}
+                    >
+                      <Users size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {g.name}
+                      <span
+                        onClick={(e) => { e.stopPropagation(); openGroupSettings(g.id); }}
+                        title="Room settings"
+                        style={{
+                          marginLeft: 2,
+                          display: "inline-flex", alignItems: "center",
+                          cursor: "pointer",
+                          opacity: isActive ? 1 : 0.6,
+                        }}
+                      >
+                        <Settings size={14} color="var(--icon-color)" />
+                      </span>
+                    </button>
+                  );
+                })}
+                {/* Create new room */}
+                <button
+                  className="btn"
+                  onClick={() => setShowCreateGroupModal(true)}
+                  style={{
+                    whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                    padding: "3px 12px",
+                    background: "transparent",
+                    border: "2px dashed rgba(255,255,255,0.3)",
+                    color: "rgba(255,255,255,0.45)",
+                  }}
+                >
+                  + new room
+                </button>
+              </div>
+            )}
+            </>
           )}
         </div>
       </div>
