@@ -129,6 +129,7 @@ export default function SearchShows({
   const [highestSel, setHighestSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
   const [rewatchSel, setRewatchSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
   const [firstTimeSel, setFirstTimeSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
+  const [progressTouched, setProgressTouched] = useState(false);
 
   // All results come from TVMaze — no local filtering, no "already on sidebar"
   const tvMatches = useMemo(() => tvResults.slice(0, 8), [tvResults]);
@@ -157,6 +158,7 @@ export default function SearchShows({
     setHighestSel({ s: 1, e: 1 });
     setRewatchSel({ s: 1, e: 1 });
     setFirstTimeSel({ s: 1, e: 1 });
+    setProgressTouched(false);
   };
 
   // No auth gate — anyone can open the onboarding modal
@@ -287,7 +289,7 @@ export default function SearchShows({
     onBrowsePublic?.(showId, confirming.name, entry, seasons);
   };
 
-  const canSubmit = !!watchChoice && !seasonsLoading && !creating;
+  const canSubmit = !!watchChoice && progressTouched && !seasonsLoading && !creating;
 
   return (
     <>
@@ -385,13 +387,13 @@ export default function SearchShows({
                   <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
                     What's the furthest you watched last time?
                   </label>
-                  <EpisodeSelectInline seasons={confirmingSeasons} value={highestSel} onChange={setHighestSel} />
+                  <EpisodeSelectInline seasons={confirmingSeasons} value={highestSel} onChange={(v) => { setHighestSel(v); setProgressTouched(true); }} />
                 </div>
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
                     How far are you on your rewatch?
                   </label>
-                  <EpisodeSelectInline seasons={confirmingSeasons} value={rewatchSel} onChange={setRewatchSel} />
+                  <EpisodeSelectInline seasons={confirmingSeasons} value={rewatchSel} onChange={(v) => { setRewatchSel(v); setProgressTouched(true); }} />
                 </div>
               </div>
             )}
@@ -401,7 +403,7 @@ export default function SearchShows({
                 <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
                   How far have you watched?
                 </label>
-                <EpisodeSelectInline seasons={confirmingSeasons} value={firstTimeSel} onChange={setFirstTimeSel} />
+                <EpisodeSelectInline seasons={confirmingSeasons} value={firstTimeSel} onChange={(v) => { setFirstTimeSel(v); setProgressTouched(true); }} />
               </div>
             )}
 
@@ -411,13 +413,13 @@ export default function SearchShows({
 
             {/* Four action buttons */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-              <button className="btn post" onClick={handleStartJournal} disabled={!canSubmit} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#fff" }}>
+              <button className="btn post" onClick={handleStartJournal} disabled={!canSubmit} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#fff", opacity: canSubmit ? 1 : 0.4 }}>
                 Start your journal
               </button>
-              <button className="btn post" onClick={handleCreateFriendRoom} disabled={!canSubmit} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#fff" }}>
+              <button className="btn post" onClick={handleCreateFriendRoom} disabled={!canSubmit} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#fff", opacity: canSubmit ? 1 : 0.4 }}>
                 Create a friend room
               </button>
-              <button className="btn" onClick={handleSeePublic} disabled={!canSubmit} style={{ width: "100%" }}>
+              <button className="btn" onClick={handleSeePublic} disabled={!canSubmit} style={{ width: "100%", opacity: canSubmit ? 1 : 0.4 }}>
                 See public conversations
               </button>
               <button className="btn" onClick={resetModal} disabled={creating} style={{ width: "100%", opacity: 0.7 }}>
