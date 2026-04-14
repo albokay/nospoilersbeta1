@@ -287,7 +287,7 @@ export default function RepliesList({
   likeReply, unlikeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
   threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile,
   onSetPendingReference, pendingReference, citations, threadCitations, composerRef, onScrollToComposer,
-  externalReplies, onRepliesLoaded, refreshKey, groupId,
+  externalReplies, onRepliesLoaded, refreshKey, groupId, departedUsernames,
 }: {
   thread: Thread;
   progressForShow?: { s: number; e: number };
@@ -316,6 +316,7 @@ export default function RepliesList({
   onRepliesLoaded?: (replies: Reply[]) => void; // notify parent of loaded replies
   refreshKey?: number;               // increment to force a re-fetch
   groupId?: string | null;           // scope replies to this friend room (prevents cross-room duplicates)
+  departedUsernames?: Set<string>;   // users who have left the room
 }) {
   const { user, profile } = useAuth();
   const { scrollTo: scrollHighlight } = useScrollHighlight();
@@ -774,6 +775,9 @@ export default function RepliesList({
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "2px 6px" }}>
                 <div style={{ fontSize: 14, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" }}>
                   <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold />
+                  {groupId && departedUsernames?.has(r.author) && (
+                    <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6 }}>has left the room</span>
+                  )}
                   {r.isRewatch && (
                     <Tooltip text={`This viewer is also rewatching ${thread.showId}.`} direction="above">
                       <span style={{ cursor: "default" }}><Heart size={14} color="var(--icon-color)" /></span>

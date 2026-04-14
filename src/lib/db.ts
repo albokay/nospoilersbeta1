@@ -1324,6 +1324,63 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
   if (error) throw error;
 }
 
+/** Transfer group ownership to another member (by join order). */
+export async function transferGroupOwnership(groupId: string, newOwnerId: string): Promise<void> {
+  const { error } = await supabase
+    .from("friend_groups")
+    .update({ created_by: newOwnerId })
+    .eq("id", groupId);
+  if (error) throw error;
+}
+
+/** Soft-delete a friend group (sets deleted_at, removes all members). */
+export async function softDeleteFriendGroup(groupId: string): Promise<void> {
+  // Remove all members first
+  const { error: mErr } = await supabase
+    .from("friend_group_members")
+    .delete()
+    .eq("group_id", groupId);
+  if (mErr) throw mErr;
+  // Set deleted_at timestamp
+  const { error } = await supabase
+    .from("friend_groups")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", groupId);
+  if (error) throw error;
+}
+
+/** Record a departed member (for "has left the room" display). */
+export async function recordDepartedMember(groupId: string, userId: string, username: string): Promise<void> {
+  const { error } = await supabase
+    .from("friend_group_departed_members")
+    .upsert({ group_id: groupId, user_id: userId, username, departed_at: new Date().toISOString() });
+  if (error) throw error;
+}
+
+/** Remove departed member record (on rejoin). */
+export async function removeDepartedMember(groupId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("friend_group_departed_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+/** Fetch departed members for a group. */
+export async function fetchDepartedMembers(groupId: string): Promise<{ userId: string; username: string; departedAt: number }[]> {
+  const { data, error } = await supabase
+    .from("friend_group_departed_members")
+    .select("user_id, username, departed_at")
+    .eq("group_id", groupId);
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    userId: r.user_id,
+    username: r.username,
+    departedAt: new Date(r.departed_at).getTime(),
+  }));
+}
+
 // ── Invitations ───────────────────────────────────────────────────────────────
 
 /** Create a single-use, time-limited invitation for an email address to join a group. */

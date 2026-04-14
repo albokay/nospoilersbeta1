@@ -1001,6 +1001,9 @@ export default function App() {
             showStaleNudge={showStaleNudge && !staleNudgeDismissed}
             onDismissStaleNudge={() => setStaleNudgeDismissed(true)}
             onSwitchShow={(id: string) => { setPickShowMode("confirm"); setPickShowId(id); }}
+            onGroupLeft={() => {
+              if (user) fetchAllFriendGroupsWithActivity(user.id).then(setAllFriendGroups).catch(() => {});
+            }}
           />
         </div>
       )}

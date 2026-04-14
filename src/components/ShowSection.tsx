@@ -52,7 +52,7 @@ function ThreadRedDot({ count, threadId, onDismiss }: { count: number; threadId:
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, sendInvite, fetchSentInvitations, fetchBrowseProgress } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, transferGroupOwnership, softDeleteFriendGroup, recordDepartedMember, fetchDepartedMembers, sendInvite, fetchSentInvitations, fetchBrowseProgress } from "../lib/db";
 import type { Invitation } from "../types";
 import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
@@ -81,7 +81,7 @@ export default function ShowSection({
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
   focusReplyId, onAuthRequired, onClickProfile, navLeft, navRight,
   showStaleNudge, onDismissStaleNudge,
-  clearRewatchFor, onOpenFeedback, onSwitchShow,
+  clearRewatchFor, onOpenFeedback, onSwitchShow, onGroupLeft,
 }: any) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -308,6 +308,11 @@ export default function ShowSection({
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<Invitation[]>([]);
   const [pendingInvitesLoading, setPendingInvitesLoading] = useState(false);
+  // Leave room modal
+  const [showLeaveModal, setShowLeaveModal] = useState<"confirm" | "last-member" | null>(null);
+  const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+  // Departed members (for "has left the room" labels)
+  const [departedMembers, setDepartedMembers] = useState<{ userId: string; username: string; departedAt: number }[]>([]);
 
   // Fetch friend groups whenever user or show changes
   useEffect(() => {
@@ -361,6 +366,10 @@ export default function ShowSection({
       })
       .catch(() => {})
       .finally(() => setGroupThreadsLoading(false));
+    // Fetch departed members for this group
+    fetchDepartedMembers(activeGroupId)
+      .then(setDepartedMembers)
+      .catch(() => setDepartedMembers([]));
   }, [activeGroupId, effectiveProgress?.s, effectiveProgress?.e]);
 
   const openGroupSettings = (groupId: string) => {
@@ -428,21 +437,77 @@ export default function ShowSection({
       setUserGroups(prev => prev.filter(g => g.id !== settingsGroupId));
       if (activeGroupId === settingsGroupId) setActiveGroupId(null);
       setShowGroupSettings(false);
+      if (typeof onGroupLeft === "function") onGroupLeft();
     } catch {
       alert("Failed to delete room. Please try again.");
     }
   };
 
-  const handleLeaveGroup = async () => {
-    if (!user || !settingsGroupId) return;
-    if (!window.confirm("Leave this room?")) return;
+  // Opens the appropriate leave modal based on member count
+  const initiateLeaveGroup = () => {
+    if (!settingsGroupId || !groupMembers.length) return;
+    if (groupMembers.length === 1) {
+      setShowLeaveModal("last-member");
+    } else {
+      setShowLeaveModal("confirm");
+    }
+  };
+
+  // Actually perform the leave (called from modal confirmation)
+  const executeLeaveGroup = async () => {
+    if (!user || !settingsGroupId || !profile) return;
+    setLeaveSubmitting(true);
     try {
+      const grp = userGroups.find(g => g.id === settingsGroupId);
+      const isCreator = !!grp && grp.createdBy === user.id;
+
+      // If creator is leaving and others remain, transfer ownership to next member by join order
+      if (isCreator && groupMembers.length > 1) {
+        const otherMembers = groupMembers
+          .filter(m => m.userId !== user.id)
+          .sort((a, b) => a.joinedAt - b.joinedAt);
+        if (otherMembers.length > 0) {
+          await transferGroupOwnership(settingsGroupId, otherMembers[0].userId);
+        }
+      }
+
+      // Record departure (so remaining members see "has left the room")
+      await recordDepartedMember(settingsGroupId, user.id, profile.username);
+
+      // Remove membership
       await removeGroupMember(settingsGroupId, user.id);
+
+      // Update local state
       setUserGroups(prev => prev.filter(g => g.id !== settingsGroupId));
       if (activeGroupId === settingsGroupId) setActiveGroupId(null);
       setShowGroupSettings(false);
+      setShowLeaveModal(null);
+      // Navigate to profile page
+      navigate("/profile");
+      if (typeof onGroupLeft === "function") onGroupLeft();
     } catch {
       alert("Failed to leave room. Please try again.");
+    } finally {
+      setLeaveSubmitting(false);
+    }
+  };
+
+  // Last member leaves → soft-delete the room
+  const executeLastMemberLeave = async () => {
+    if (!user || !settingsGroupId) return;
+    setLeaveSubmitting(true);
+    try {
+      await softDeleteFriendGroup(settingsGroupId);
+      setUserGroups(prev => prev.filter(g => g.id !== settingsGroupId));
+      if (activeGroupId === settingsGroupId) setActiveGroupId(null);
+      setShowGroupSettings(false);
+      setShowLeaveModal(null);
+      navigate("/profile");
+      if (typeof onGroupLeft === "function") onGroupLeft();
+    } catch {
+      alert("Failed to leave room. Please try again.");
+    } finally {
+      setLeaveSubmitting(false);
     }
   };
 
@@ -835,6 +900,9 @@ export default function ShowSection({
   }, [activeGroupId, groupThreadsData, allThreads, displayed]);
 
   const activeLoading = activeGroupId ? groupThreadsLoading : threadsLoading;
+
+  // Set of departed usernames for quick lookup in thread/reply rendering
+  const departedUsernameSet = useMemo(() => new Set(departedMembers.map(d => d.username)), [departedMembers]);
 
   const thread = activeThreadId ? allThreads.find(t => t.id === activeThreadId && t.showId === showId) : null;
 
@@ -1559,6 +1627,11 @@ export default function ShowSection({
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>@{m.username}{m.userId === grp?.createdBy ? <Crown size={14} color="var(--icon-color)" /> : ""}</span>
                     </div>
                   ))}
+                  {departedMembers.map(d => (
+                    <div key={d.userId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14, opacity: 0.5 }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>@{d.username} <em style={{ fontSize: 12 }}>has left the room</em></span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -1640,16 +1713,55 @@ export default function ShowSection({
 
             {/* Danger zone */}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              {!isCreator && (
-                <button className="btn" onClick={handleLeaveGroup} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Leave room</button>
-              )}
-              {isCreator && (
-                <button className="btn" onClick={handleDeleteGroup} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Delete room</button>
-              )}
+              <button className="btn" onClick={initiateLeaveGroup} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Leave room</button>
             </div>
           </Modal>
         );
       })()}
+
+      {/* Leave room confirmation modal */}
+      {showLeaveModal === "confirm" && (
+        <Modal onClose={() => setShowLeaveModal(null)} width="min(420px,90vw)">
+          <div style={{ textAlign: "center", padding: "8px 0" }}>
+            <h3 className="title" style={{ margin: "0 0 16px", fontSize: 18 }}>Are you sure?</h3>
+            <p style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.8, margin: "0 0 24px" }}>
+              You will no longer be able to see your own writing in this room. (Everything will remain intact in case you rejoin later.)
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
+              <button className="btn" onClick={executeLeaveGroup} disabled={leaveSubmitting}
+                style={{ background: "var(--danger)", border: "none", color: "#fff" }}>
+                {leaveSubmitting ? "Leaving…" : "Leave the room"}
+              </button>
+              <button className="btn" onClick={() => setShowLeaveModal(null)}
+                style={{ background: "var(--green)", border: "none", color: "#fff" }}>
+                I'll stay
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Last member leave confirmation modal */}
+      {showLeaveModal === "last-member" && (
+        <Modal onClose={() => setShowLeaveModal(null)} width="min(420px,90vw)">
+          <div style={{ textAlign: "center", padding: "8px 0" }}>
+            <h3 className="title" style={{ margin: "0 0 16px", fontSize: 18 }}>Are you sure?</h3>
+            <p style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.8, margin: "0 0 24px" }}>
+              You're the last one in here. Leaving now means deleting the room.
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
+              <button className="btn" onClick={executeLastMemberLeave} disabled={leaveSubmitting}
+                style={{ background: "var(--danger)", border: "none", color: "#fff" }}>
+                {leaveSubmitting ? "Leaving…" : "Delete and leave"}
+              </button>
+              <button className="btn" onClick={() => setShowLeaveModal(null)}
+                style={{ background: "var(--green)", border: "none", color: "#fff" }}>
+                I'll stay
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* CONTENT */}
       {/* If a thread ID is in the URL but threads haven't loaded yet, wait — don't flash the room */}
@@ -1661,6 +1773,7 @@ export default function ShowSection({
           show={allShows.find(s => s.id === showId) || { name: showId }}
           inGroupContext={!!activeGroupId}
           groupId={activeGroupId}
+          departedUsernames={departedUsernameSet}
           onBack={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
           progressForShow={effectiveProgress || { s: 1, e: 1 }}
           onMountAlignTop={() => scrollToShowTop()}
@@ -1841,6 +1954,9 @@ export default function ShowSection({
 
                 <div className="muted" style={{ marginTop: 4, fontSize: 14, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                   Started by <Username name={t.author} onClickProfile={onClickProfile} />
+                  {activeGroupId && departedMembers.some(d => d.username === t.author) && (
+                    <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6 }}>has left the room</span>
+                  )}
                   {t.isRewatch && (
                     <Tooltip text={`This viewer is also rewatching ${show.name}.`} direction="above">
                       <span style={{ cursor: "default", display: "inline-flex", alignItems: "center" }}><Heart size={14} color="var(--icon-color)" /></span>

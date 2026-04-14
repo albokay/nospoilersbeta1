@@ -57,6 +57,7 @@ export default function InlineThreadView({
   groupId: groupIdProp,
   userGroups,
   onThreadMovedToGroup,
+  departedUsernames,
 }: {
   thread: Thread;
   show: any;
@@ -97,6 +98,7 @@ export default function InlineThreadView({
   groupId?: string | null;
   userGroups?: FriendGroup[];
   onThreadMovedToGroup?: (groupId: string) => void;
+  departedUsernames?: Set<string>;
 }) {
   const { user, profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
@@ -401,7 +403,11 @@ export default function InlineThreadView({
             </div>
 
             <div className="muted" style={{ marginTop: 4, fontSize: 14 }}>
-              Started by <Username name={thread.author} onClickProfile={onClickProfile ?? (() => {})} /> • {timeAgo(thread.updatedAt)}
+              Started by <Username name={thread.author} onClickProfile={onClickProfile ?? (() => {})} />
+              {inGroupContext && departedUsernames?.has(thread.author) && (
+                <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6, marginLeft: 4 }}>has left the room</span>
+              )}
+              {" "}• {timeAgo(thread.updatedAt)}
             </div>
 
             {thread.isDeleted ? (
@@ -517,6 +523,7 @@ export default function InlineThreadView({
           threadCitations={threadCitations}
           composerRef={composerRef}
           onScrollToComposer={openComposer}
+          departedUsernames={departedUsernames}
           refreshKey={repliesKey}
           onRepliesLoaded={(replies) => {
             setLoadedReplies(replies);
