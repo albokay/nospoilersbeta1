@@ -268,7 +268,7 @@ export default function ResponseComposer({
           align="right"
           useAbsolute={true}
           width={280}
-          tooltipStyle={{ background: "#bdd4de", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
+          tooltipStyle={{ background: "#adc8d7", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
         >
           <button
             className="btn"

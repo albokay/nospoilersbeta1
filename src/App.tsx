@@ -217,17 +217,24 @@ export default function App() {
   });
 
   // Compute pill badge state
-  const { hasVisibleNewReplies, invisibleShowName } = useMemo(() => {
+  const { hasVisibleNewReplies, visibleShowName, invisibleShowName } = useMemo(() => {
     let hasVisible = false;
+    let latestVisible: { reply: Reply; thread: Thread } | null = null;
     let latestInvisible: { reply: Reply; thread: Thread } | null = null;
     for (const { reply: r, thread: t } of repliesToUser) {
       const canSee = canView({ season: r.season, episode: r.episode }, progress[t.showId]);
-      if (canSee) { if (r.updatedAt > visibleSeenAt) hasVisible = true; }
+      if (canSee) {
+        if (r.updatedAt > visibleSeenAt) {
+          hasVisible = true;
+          if (!latestVisible || r.updatedAt > latestVisible.reply.updatedAt) latestVisible = { reply: r, thread: t };
+        }
+      }
       else if (r.updatedAt > invisibleSeenAt && (!latestInvisible || r.updatedAt > latestInvisible.reply.updatedAt))
         latestInvisible = { reply: r, thread: t };
     }
     return {
       hasVisibleNewReplies: hasVisible,
+      visibleShowName: latestVisible ? (shows.find(s => s.id === latestVisible!.thread.showId)?.name ?? latestVisible.thread.showId) : "",
       invisibleShowName: latestInvisible ? (shows.find(s => s.id === latestInvisible!.thread.showId)?.name ?? latestInvisible.thread.showId) : "",
     };
   }, [repliesToUser, progress, visibleSeenAt, invisibleSeenAt, shows]);
@@ -515,7 +522,7 @@ export default function App() {
         const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
         const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
         const pillTooltipText =
-          pillBadge === "green" ? "Someone wrote you back!" :
+          pillBadge === "green" ? `Someone wrote you back about ${visibleShowName}! Find responses to you in here.` :
           pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
           null;
         const pillContent = (
@@ -531,15 +538,15 @@ export default function App() {
               <span className="profileChipLabel" style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
             </button>
             {pillBadge === "green" && (
-              <div style={{ position: "absolute", top: -6, right: -6, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
             )}
             {pillBadge === "red" && (
-              <div style={{ position: "absolute", top: -6, right: -6, width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
             )}
           </div>
         );
         return pillTooltipText
-          ? <Tooltip text={pillTooltipText} direction="below" align="right" tooltipStyle={{ background: "#bdd4de", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
+          ? <Tooltip text={pillTooltipText} direction="below" align="right" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
           : pillContent;
       })()}
       {!authLoading && user && username && (

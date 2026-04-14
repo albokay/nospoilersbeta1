@@ -4,16 +4,50 @@ import { useNavigate } from "react-router-dom";
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
 // Returns true if the thread's red dot should still be shown.
-// Starts the 36h expiry clock on first call with hasDot=true; clears on hasDot=false.
+// Checks localStorage for manual dismissal; falls back to 36h expiry.
 function threadDotActive(threadId: string, hasDot: boolean): boolean {
   const key = `ns_tdot_${threadId}`;
+  const dismissKey = `ns_tdot_dismiss_${threadId}`;
   if (!hasDot) { localStorage.removeItem(key); return false; }
+  // Check if manually dismissed
+  const dismissedAt = localStorage.getItem(dismissKey);
+  if (dismissedAt) {
+    const stored = localStorage.getItem(key);
+    // If the dot appeared before or at dismiss time, it's dismissed
+    if (stored && parseInt(stored, 10) <= parseInt(dismissedAt, 10)) return false;
+  }
   const stored = localStorage.getItem(key);
   const now = Date.now();
   if (!stored) { localStorage.setItem(key, String(now)); return true; }
   const seenAt = parseInt(stored, 10);
   if (now - seenAt >= THIRTY_SIX_HOURS) { localStorage.removeItem(key); return false; }
   return true;
+}
+
+function dismissThreadDot(threadId: string) {
+  localStorage.setItem(`ns_tdot_dismiss_${threadId}`, String(Date.now()));
+}
+
+/** Red dot with count that transforms to ✕ on hover; clicking ✕ dismisses. */
+function ThreadRedDot({ count, threadId, onDismiss }: { count: number; threadId: string; onDismiss: () => void }) {
+  const [hovered, setHovered] = React.useState(false);
+  return (
+    <div
+      style={{
+        width: 28, height: 28, borderRadius: "50%",
+        background: "var(--danger)", color: "#fff",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: hovered ? 12 : 11, fontWeight: 800, lineHeight: 1,
+        boxShadow: "0 2px 6px rgba(0,0,0,0.30)",
+        cursor: hovered ? "pointer" : "default",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={(e) => { e.stopPropagation(); dismissThreadDot(threadId); onDismiss(); }}
+    >
+      {hovered ? "✕" : count}
+    </div>
+  );
 }
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
@@ -103,6 +137,7 @@ export default function ShowSection({
   const [riskyRevealedIds, setRiskyRevealedIds] = useState<Set<string>>(new Set());
   const [freshReplyThreadIds, setFreshReplyThreadIds] = useState<Record<string, true>>({});
   const [freshReplyIds, setFreshReplyIds] = useState<Record<string, true>>({});
+  const [dismissedDots, setDismissedDots] = useState(0); // bump to force re-render after dot dismiss
 
   // Clear risky reveals only when the thread changes, not on mode toggle
   // Scroll to top whenever the show changes (reliable on mobile)
@@ -1718,21 +1753,13 @@ export default function ShowSection({
               <div key={t.id} style={{ position: "relative", margin: "0 0 12px 0" }}>
                 {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
                   <Tooltip
-                    text="People (who are ahead of you) have written you back!"
+                    text="There are new responses to you in here (for when you catch up)."
                     direction="right"
                     align="left"
                     useAbsolute
                     style={{ position: "absolute", left: -14, top: "calc(50% - 14px)", zIndex: 1 }}
                   >
-                    <div style={{
-                      width: 28, height: 28, borderRadius: "50%",
-                      background: "var(--danger)", color: "#fff",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 800, lineHeight: 1,
-                      boxShadow: "0 2px 6px rgba(0,0,0,0.30)",
-                    }}>
-                      {hiddenNew}
-                    </div>
+                    <ThreadRedDot count={hiddenNew} threadId={t.id} onDismiss={() => setDismissedDots(d => d + 1)} />
                   </Tooltip>
                 )}
               <div
@@ -1791,8 +1818,8 @@ export default function ShowSection({
                 </div>
 
                 <div className="replyCount">
-                  <span style={(!activeGroupId && (visibleNew > 0 || freshReplyThreadIds[t.id])) ? {
-                    background: "#dea838", color: "#fff", borderRadius: 9999,
+                  <span style={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? {
+                    background: "#4b8f6c", color: "#fff", borderRadius: 9999,
                     padding: "2px 7px", fontWeight: 700,
                   } : {}}>
                     💬 {displayReplyCount}

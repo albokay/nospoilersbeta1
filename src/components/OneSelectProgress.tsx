@@ -82,7 +82,7 @@ export default function OneSelectProgress({
       <>
         <button
           className="btn"
-          style={{ whiteSpace: "nowrap", background: "var(--progress-bg,#bdd4de)", color: "var(--progress-fg,#2256c9)", border: "2px solid var(--progress-bg,#bdd4de)", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
+          style={{ whiteSpace: "nowrap", background: "var(--progress-bg,#adc8d7)", color: "var(--progress-fg,#2256c9)", border: "2px solid var(--progress-bg,#adc8d7)", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
           onClick={() => setMobileOpen(true)}
         >
           {compactLabel} ▾
@@ -97,7 +97,7 @@ export default function OneSelectProgress({
               className="badge"
               value={selectedId}
               onChange={(e) => { onSelect(e); setMobileOpen(false); }}
-              style={{ background: "var(--progress-bg,#bdd4de)", color: "var(--progress-fg,#2256c9)", border: "2px solid var(--progress-bg,#bdd4de)", width: "100%", height: 40 }}
+              style={{ background: "var(--progress-bg,#adc8d7)", color: "var(--progress-fg,#2256c9)", border: "2px solid var(--progress-bg,#adc8d7)", width: "100%", height: 40 }}
               size={1}
             >
               {groups.map((g) => (
@@ -145,7 +145,7 @@ export default function OneSelectProgress({
         className="badge h40"
         value={selectedId}
         onChange={onSelect}
-        style={{ background: "var(--progress-bg,#bdd4de)", color: "var(--progress-fg,#2256c9)", border: "2px solid var(--progress-bg,#bdd4de)", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }}
+        style={{ background: "var(--progress-bg,#adc8d7)", color: "var(--progress-fg,#2256c9)", border: "2px solid var(--progress-bg,#adc8d7)", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }}
       >
         {groups.map((g) => (
           <optgroup key={g.season} label={`Season ${g.season}`}>

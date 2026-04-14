@@ -330,11 +330,66 @@ export default function ProfilePage({
     return r;
   }, [repliesToUser, progress]);
 
-  const shouldShowIndicator = (threadId: string) => {
+  // Which threads have visible replies (within progress) and their counts / latest timestamps
+  const visibleByThreadId = useMemo(() => {
+    const r: Record<string, true> = {};
+    for (const { reply, thread: t } of repliesToUser) {
+      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) r[t.id] = true;
+    }
+    return r;
+  }, [repliesToUser, progress]);
+
+  const visibleReplyCountByThreadId = useMemo(() => {
+    const r: Record<string, number> = {};
+    for (const { reply, thread: t } of repliesToUser) {
+      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId]))
+        r[t.id] = (r[t.id] ?? 0) + 1;
+    }
+    return r;
+  }, [repliesToUser, progress]);
+
+  const latestVisibleAtByThreadId = useMemo(() => {
+    const r: Record<string, number> = {};
+    for (const { reply, thread: t } of repliesToUser) {
+      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) {
+        if (!r[t.id] || reply.updatedAt > r[t.id]) r[t.id] = reply.updatedAt;
+      }
+    }
+    return r;
+  }, [repliesToUser, progress]);
+
+  // Dismissed green indicators (separate from red): threadId → timestamp
+  const [dismissedGreenIndicators, setDismissedGreenIndicators] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("ns_dismissed_green_indicators") || "{}"); }
+    catch { return {}; }
+  });
+  const dismissGreenIndicator = (threadId: string) => {
+    const updated = { ...dismissedGreenIndicators, [threadId]: Date.now() };
+    setDismissedGreenIndicators(updated);
+    localStorage.setItem("ns_dismissed_green_indicators", JSON.stringify(updated));
+  };
+
+  // Green indicator: visible replies exist and not dismissed (or new ones arrived after dismiss)
+  const shouldShowGreenIndicator = (threadId: string) => {
+    if (!visibleByThreadId[threadId]) return false;
+    const dismissedAt = dismissedGreenIndicators[threadId];
+    if (!dismissedAt) return true;
+    return (latestVisibleAtByThreadId[threadId] ?? 0) > dismissedAt;
+  };
+
+  // Red indicator: invisible replies exist and not dismissed
+  const shouldShowRedIndicator = (threadId: string) => {
     if (!invisibleByThreadId[threadId]) return false;
     const dismissedAt = dismissedIndicators[threadId];
     if (!dismissedAt) return true;
     return (latestInvisibleAtByThreadId[threadId] ?? 0) > dismissedAt;
+  };
+
+  // Priority: green over red. Green dismissed by X or entering thread.
+  const getThreadIndicator = (threadId: string): "green" | "red" | null => {
+    if (shouldShowGreenIndicator(threadId)) return "green";
+    if (shouldShowRedIndicator(threadId)) return "red";
+    return null;
   };
 
   // Which reply IDs are newly visible (unread since profile was opened)
@@ -432,6 +487,7 @@ export default function ProfilePage({
                         <button
                           key={sid}
                           className={`diaryTab${active ? " active" : ""}`}
+                          title={!viewed && activity ? "There are new responses to you in here." : undefined}
                           onClick={() => {
                             if (sid === activeTab) { openShow(sid); }
                             else { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
@@ -492,24 +548,50 @@ export default function ProfilePage({
                       // No entries at all (including new users on private filter) — show welcome
                       return <EmptyProfileWelcome />;
                     }
-                    return filtered.map(({ thread: t, groupId, groupName }) => (
+                    return filtered.map(({ thread: t, groupId, groupName }) => {
+                    const isPrivate = !t.isPublic && !groupId;
+                    const replyCount = visibleReplyCountByThreadId[t.id] ?? 0;
+                    const indicator = isPrivate ? null : getThreadIndicator(t.id);
+                    return (
                     <div key={t.id} className="card threadCard"
                       style={{
                         margin: "10px 0 10px 20px", cursor: "pointer", position: "relative",
-                        ...(groupId ? { background: "#bdd4de", color: "#1a3a4a", borderColor: "#fff" } : {}),
+                        paddingBottom: (!isPrivate && replyCount > 0) ? 36 : undefined,
+                        ...(groupId ? { background: "#adc8d7", color: "#1a3a4a", borderColor: "#fff" } : {}),
                       }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id, undefined, groupId)}>
-                      {shouldShowIndicator(t.id) && (
+                      onClick={() => {
+                        // Entering the thread dismisses the green indicator
+                        if (indicator === "green") dismissGreenIndicator(t.id);
+                        openThreadWithFocus(t.showId, t.id, undefined, groupId);
+                      }}>
+                      {indicator === "green" && (
                         <Tooltip
-                          text={<>{invisibleCountByThreadId[t.id] ?? ""} people ahead of you have written you back! You can read these once you catch up. And you can get rid of this indicator by clicking the X.<br /><br />Sidebar will still let you know if you get new responses, but you can always turn the indicator off.</>}
+                          text="People have written to you."
                           direction="right"
                           gap={14}
                           style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
-                          tooltipStyle={{ background: "#bdd4de", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
-                          width={260}
+                          tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
+                          width={200}
                         >
                           <div
-                            style={{ width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                            style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                            onClick={(e) => { e.stopPropagation(); dismissGreenIndicator(t.id); }}
+                          >
+                            <span style={{ color: "#fff", fontSize: 10, fontWeight: 800, lineHeight: 1, userSelect: "none" }}>✕</span>
+                          </div>
+                        </Tooltip>
+                      )}
+                      {indicator === "red" && (
+                        <Tooltip
+                          text="People ahead of you have written to you."
+                          direction="right"
+                          gap={14}
+                          style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
+                          tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
+                          width={200}
+                        >
+                          <div
+                            style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
                             onClick={(e) => { e.stopPropagation(); dismissIndicator(t.id); }}
                           >
                             <span style={{ color: "#fff", fontSize: 10, fontWeight: 800, lineHeight: 1, userSelect: "none" }}>✕</span>
@@ -518,7 +600,7 @@ export default function ProfilePage({
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="title" style={{ fontSize: 18, ...(groupId ? { color: "#1a3a4a" } : {}) }}>
-                          {!t.isPublic && !groupId && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
+                          {isPrivate && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
                           {groupId && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8 }}>👥</span>}
                           {t.titleBase}
                           {t.showId !== "simshow" && (
@@ -529,7 +611,7 @@ export default function ProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {t.body !== t.preview && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: groupId ? "#1a3a4a" : "#fff", color: groupId ? "#bdd4de" : "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: groupId ? "#1a3a4a" : "#fff", color: groupId ? "#adc8d7" : "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
                               {expandedIds.has(t.id) ? "▴ less" : "▾ expand"}
                             </div>
@@ -541,8 +623,14 @@ export default function ProfilePage({
                         className={expandedIds.has(t.id) ? undefined : "clamp3"}>
                         {expandedIds.has(t.id) ? t.body : t.preview}
                       </div>
+                      {!isPrivate && replyCount > 0 && (
+                        <div style={{ position: "absolute", right: 12, bottom: 8, fontSize: 18, color: groupId ? "rgba(26,58,74,0.65)" : "var(--dos-gray)" }}>
+                          <span>💬 {replyCount}</span>
+                        </div>
+                      )}
                     </div>
-                  ));
+                    );
+                  });
                   })()}
                   <div style={{ height: 32, flexShrink: 0 }} aria-hidden />
                   </div>{/* /diaryScrollArea */}
@@ -560,7 +648,7 @@ export default function ProfilePage({
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", position: "relative", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id, groupId)}>
                       {newVisibleReplyIds[r.id] && (
-                        <div style={{ position: "absolute", left: -10, top: -10, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
+                        <div style={{ position: "absolute", left: -10, top: -10, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="muted" style={{ fontSize: 14 }}>

@@ -7,29 +7,29 @@ export function injectDOSStyles() {
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
   --dos-accent:#FFFFFF; --danger:#f45028; --green:#dea838; --dos-user:#2256c9; --dos-border:#ffffff;
   /* canonical accent blue */
-  --blue-light:#bdd4de;
+  --blue-light:#adc8d7;
   /* progress dropdown (overridden to green in group context) */
-  --progress-bg:#bdd4de; --progress-fg:#2256c9;
+  --progress-bg:#adc8d7; --progress-fg:#2256c9;
   /* type scale */
   --t1:22px; --t2:17px; --t3:15px; --t4:13px;
 }
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
-  --dos-bg:#bdd4de; --dos-fg:#1a3a4a; --dos-cyan:#1a3a4a;
+  --dos-bg:#adc8d7; --dos-fg:#1a3a4a; --dos-cyan:#1a3a4a;
   --dos-gray:rgba(26,58,74,0.65); --dos-light:#1a3a4a;
   --dos-accent:#1a3a4a; --dos-border:rgba(26,58,74,0.3);
   --dos-blue:rgba(26,58,74,0.08);
   --progress-bg:#7abd8e; --progress-fg:#fff;
-  background: linear-gradient(to bottom,#d4e8f0 0px,#bdd4de 180px) fixed,#bdd4de;
+  background: linear-gradient(to bottom,#c8dde8 0px,#adc8d7 180px) fixed,#adc8d7;
   background-attachment:fixed;
 }
 body.group-context.has-header{
-  background: linear-gradient(to top,#d4e8f0 0px,#bdd4de 250px) fixed,#bdd4de;
+  background: linear-gradient(to top,#c8dde8 0px,#adc8d7 250px) fixed,#adc8d7;
   background-attachment:fixed;
 }
-body.group-context header.site{ background:rgba(189,212,222,0.98); }
-body.group-context .stickybar{ background:rgba(189,212,222,0.98); }
+body.group-context header.site{ background:rgba(173,200,215,0.98); }
+body.group-context .stickybar{ background:rgba(173,200,215,0.98); }
 
 .brandLink{ cursor:pointer; }
 .brandLink:focus-visible{ outline:2px dashed var(--dos-cyan); outline-offset:2px; }
@@ -172,7 +172,7 @@ header.site{
 .splashSearchWrap{
   position:relative; display:flex; align-items:center;
   width:288px; max-width:90vw; margin:20px auto;
-  height:40px; border:2px solid #bdd4de; border-radius:9999px;
+  height:40px; border:2px solid #adc8d7; border-radius:9999px;
   padding:0 16px;
   background:#fef8ea; border-color:#fef8ea; color:#c39431;
 }
@@ -503,7 +503,7 @@ body { -webkit-font-smoothing: antialiased; }
    Button: .btn with color #000 / borderColor #000.
    ──────────────────────────────────────────────────────────────────────────── */
 .explanation-card {
-  background: #bdd4de !important;
+  background: #adc8d7 !important;
   border: none !important;
   color: #000 !important;
 }
@@ -662,7 +662,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* ── Prompt card (the floating suggestion card) ─────────────────────────── */
 .prompt-card {
-  background: #bdd4de;
+  background: #adc8d7;
   border: none;
   border-radius: 16px;
   padding: 16px 18px 14px;
