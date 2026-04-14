@@ -482,7 +482,7 @@ export default function App() {
       <span className="mobileHide" style={{ display: "inline-flex" }}>
         <SearchShows
           shows={shows}
-          onPick={handlePickFromSearch}
+          onBrowsePublic={(showId) => { openShow(showId); }}
           onShowCreated={(newShow, entry) => {
             setShows(prev => [...prev, newShow]);
             setWatchStatusFor(newShow.id, entry);
@@ -783,7 +783,7 @@ export default function App() {
                 {user ? (
                   <SearchShows
                     shows={shows}
-                    onPick={handlePickFromSearch}
+                    onBrowsePublic={(showId) => { openShow(showId); }}
                     onShowCreated={(newShow, entry) => {
                       setShows(prev => [...prev, newShow]);
                       setWatchStatusFor(newShow.id, entry);
