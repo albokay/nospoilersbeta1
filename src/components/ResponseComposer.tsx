@@ -205,10 +205,10 @@ export default function ResponseComposer({
     <div
       ref={composerRef}
       className="card"
-      style={{ marginTop: 16, border: "2px solid var(--dos-accent)", borderRadius: 12 }}
+      style={{ marginTop: 16, border: "2px solid var(--dos-border)", borderRadius: 24 }}
       id="response-composer"
     >
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Write a response</div>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--dos-border)" }}>Write a response</div>
 
       {/* Pending reference row */}
       {pendingReference && pendingReference.type === "quote" && !quoteInserted && (
