@@ -875,25 +875,31 @@ export default function ProfilePage({
                 </button>
               )}
               <button className="btn" onClick={closeCompose} disabled={postSubmitting} style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
-              <button
-                className="btn compose-submit"
-                onClick={submitPost}
-                disabled={postSubmitting || !composeDestination || !postTitle.trim() || !postBody.trim()}
-                style={{
-                  background: "var(--danger)",
-                  border: "2px solid var(--danger)",
-                  color: "#fff",
-                  whiteSpace: "nowrap",
-                  fontSize: 13,
-                  minWidth: 130,
-                  opacity: (!composeDestination || !postTitle.trim() || !postBody.trim()) ? 0.4 : 1,
-                }}
-              >
-                {postSubmitting ? "Posting…"
-                  : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
-                  : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> post</>
-                  : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}
-              </button>
+              {(() => {
+                const formReady = !!composeDestination && !!postTitle.trim() && !!postBody.trim();
+                return (
+                  <button
+                    className="btn compose-submit"
+                    onClick={submitPost}
+                    disabled={postSubmitting || !formReady}
+                    style={{
+                      background: "var(--danger)",
+                      border: "2px solid var(--danger)",
+                      color: "#fff",
+                      whiteSpace: "nowrap",
+                      fontSize: 13,
+                      minWidth: 130,
+                      opacity: formReady ? 1 : 0.3,
+                    }}
+                  >
+                    {!formReady && !postSubmitting ? "\u00A0"
+                      : postSubmitting ? "Posting…"
+                      : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
+                      : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> post</>
+                      : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </Modal>
