@@ -80,6 +80,9 @@ body.public-context .expand-chip{ color:#7abd8e !important; }
 .brandLink{ cursor:pointer; }
 .brandLink:focus-visible{ outline:2px dashed var(--dos-cyan); outline-offset:2px; }
 
+/* Friend room scroll — hide scrollbar */
+.friendRoomScroll::-webkit-scrollbar{ display:none; }
+
 *{ box-sizing:border-box; }
 html,body,#root{ height:100%; }
 body{

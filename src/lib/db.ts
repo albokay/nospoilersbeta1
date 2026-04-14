@@ -1180,6 +1180,49 @@ export async function fetchFriendGroupsForUser(
   return (data ?? []).map(rowToFriendGroup);
 }
 
+/** Fetch ALL friend groups for a user (across all shows) with latest activity timestamp. */
+export async function fetchAllFriendGroupsWithActivity(
+  userId: string
+): Promise<(FriendGroup & { lastActivityAt: number })[]> {
+  // 1. Get all group IDs the user belongs to
+  const { data: memberRows, error: mErr } = await supabase
+    .from("friend_group_members")
+    .select("group_id")
+    .eq("user_id", userId);
+  if (mErr) throw mErr;
+  const groupIds = (memberRows ?? []).map((r: any) => r.group_id);
+  if (!groupIds.length) return [];
+
+  // 2. Fetch the groups
+  const { data: groupData, error: gErr } = await supabase
+    .from("friend_groups")
+    .select("*")
+    .in("id", groupIds);
+  if (gErr) throw gErr;
+  const groups = (groupData ?? []).map(rowToFriendGroup);
+
+  // 3. Fetch latest activity per group from group_threads
+  const { data: activityData, error: aErr } = await supabase
+    .from("group_threads")
+    .select("group_id, shared_at")
+    .in("group_id", groupIds);
+  if (aErr) throw aErr;
+
+  // Compute max shared_at per group
+  const latestByGroup: Record<string, number> = {};
+  for (const row of activityData ?? []) {
+    const ts = new Date(row.shared_at).getTime();
+    if (!latestByGroup[row.group_id] || ts > latestByGroup[row.group_id]) {
+      latestByGroup[row.group_id] = ts;
+    }
+  }
+
+  // 4. Merge and sort by activity (most recent first)
+  return groups
+    .map(g => ({ ...g, lastActivityAt: latestByGroup[g.id] ?? g.createdAt }))
+    .sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+}
+
 /** All members of a friend group with their usernames. */
 export async function fetchFriendGroupMembers(
   groupId: string

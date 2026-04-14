@@ -3,14 +3,15 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
-import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount } from "./lib/db";
+import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount, fetchAllFriendGroupsWithActivity } from "./lib/db";
 import { supabase } from "./lib/supabaseClient";
 import type { Show } from "./lib/db";
-import type { Reply, Thread, ProgressEntry } from "./types";
+import type { Reply, Thread, ProgressEntry, FriendGroup } from "./types";
 import { useAuth } from "./lib/auth";
 import ExtensionDock from "./extensions/ExtensionDock";
 import SearchShows from "./components/SearchShows";
 import YourShowsSelect from "./components/YourShowsSelect";
+import FriendRoomScroll from "./components/FriendRoomScroll";
 import ShowSection from "./components/ShowSection";
 import ProfilePage, { type ProfileTabData } from "./components/ProfilePage";
 import Modal from "./components/Modal";
@@ -18,7 +19,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight, MoveDown, X, Settings, BookOpen } from "lucide-react";
+import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight, MoveDown, X, Settings, BookOpen, BookMarked, ArrowRight } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -200,6 +201,13 @@ export default function App() {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
+
+  // All friend groups across all shows (for header scroll)
+  const [allFriendGroups, setAllFriendGroups] = useState<(FriendGroup & { lastActivityAt: number })[]>([]);
+  useEffect(() => {
+    if (!user) { setAllFriendGroups([]); return; }
+    fetchAllFriendGroupsWithActivity(user.id).then(setAllFriendGroups).catch(() => {});
   }, [user?.id]);
 
   // Track when user last visited their profile (clears green badge)
@@ -471,12 +479,38 @@ export default function App() {
 
   const fixedHelp = null;
 
-  // ── Fixed sidebar logo + "find a show" (non-homepage, top-left) ─
-  const fixedLogo = !isHomepage ? (
-    <div style={{ position: "fixed", top: 14, left: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 14 }}>
+  // ── Shared SearchShows handler (used in both header and homepage) ─
+  const searchShowsHandlers = {
+    onShowCreated: (newShow: Show, entry: ProgressEntry, action?: string) => {
+      setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow]);
+      setWatchStatusFor(newShow.id, entry);
+      if (action === "journal") {
+        navigate("/profile", { state: { activeTab: newShow.id } });
+        requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+      } else {
+        navigate(`/show/${newShow.id}`, { state: { openCreateGroup: true } });
+        requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+      }
+    },
+    onBrowsePublic: (showId: string, showName: string, _entry: ProgressEntry, seasons: number[]) => {
+      setShows(prev => prev.find(s => s.id === showId) ? prev : [...prev, {
+        id: showId, name: showName, seasons, status: "Ended", isHidden: false,
+      } as Show]);
+      navigate(`/show/${showId}`);
+      requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+    },
+    onAuthRequired: () => { setAuthHint("Sign in or create an account to start a journal or friend room."); setShowAuthModal(true); },
+  };
+
+  // ── Unified fixed header (non-homepage) ─
+  // Layout: [Logo] [Profile pill] [Friend room scroll] [Search] [Sign out] [Admin]
+  const fixedLogo = null; // replaced by fixedHeader below
+  const fixedAuth = !isHomepage ? (
+    <div style={{ position: "fixed", top: 14, left: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 10 }}>
+      {/* Logo */}
       <h1
         className="brand brandLink"
-        style={{ margin: 0 }}
+        style={{ margin: 0, flexShrink: 0 }}
         tabIndex={0}
         aria-label={user ? "Go to journal" : "Go to homepage"}
         onClick={user ? () => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } : goHomepage}
@@ -484,61 +518,9 @@ export default function App() {
       >
         <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
       </h1>
-      <span className="mobileHide" style={{ display: "inline-flex" }}>
-        <SearchShows
-          shows={shows}
-          onShowCreated={(newShow, entry, action) => {
-            setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow]);
-            setWatchStatusFor(newShow.id, entry);
-            if (action === "journal") {
-              navigate("/profile", { state: { activeTab: newShow.id } });
-              requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
-            } else {
-              navigate(`/show/${newShow.id}`, { state: { openCreateGroup: true } });
-              requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-            }
-          }}
-          onBrowsePublic={(showId, showName, _entry, seasons) => {
-            // Add a temporary show entry to React state (not DB) so ShowSection
-            // can render the correct name and seasons without a shows table row
-            setShows(prev => prev.find(s => s.id === showId) ? prev : [...prev, {
-              id: showId, name: showName, seasons, status: "Ended", isHidden: false,
-            } as Show]);
-            navigate(`/show/${showId}`);
-            requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-          }}
-          onAuthRequired={() => { setAuthHint("Sign in or create an account to start a journal or friend room."); setShowAuthModal(true); }}
-          style={{ width: 176, margin: 0, height: 34 }}
-        />
-      </span>
-    </div>
-  ) : null;
 
-  // ── Fixed auth / profile / admin controls (top-right, all pages) ─
-  const fixedAuth = (
-    <div className="fixedAuthWrap" style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
-      {!isHomepage && !expandedShowId && !authLoading && user && (
-        <span className="mobileHide" style={{ display: "inline-flex" }}>
-          <YourShowsSelect
-            shows={shows}
-            progress={progress}
-            value={""}
-            onChange={(id: string) => {
-              if (!id) return;
-              setPickShowMode("confirm");
-              setPickShowId(id);
-            }}
-            compact
-            excludeIds={hiddenTabs}
-          />
-        </span>
-      )}
-      {!authLoading && !user && (
-        <button className="btn" onClick={() => setShowAuthModal(true)}>
-          Sign in / Join
-        </button>
-      )}
-      {!isHomepage && !authLoading && user && username && (() => {
+      {/* Profile pill — left-justified, next to logo */}
+      {!authLoading && user && username && (() => {
         const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
         const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
         const pillTooltipText =
@@ -546,16 +528,19 @@ export default function App() {
           pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
           null;
         const pillContent = (
-          <div style={{ position: "relative", display: "inline-block" }}>
+          <div style={{ position: "relative", display: "inline-block", flexShrink: 0 }}>
             <button
               className="profileChip"
-              onClick={() => {
+              onClick={!showProfile ? () => {
                 navigate("/profile");
                 requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
-              }}
+              } : undefined}
+              style={showProfile ? { cursor: "default" } : undefined}
             >
-              <span className="avatar">{username[0].toUpperCase()}</span>
-              <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>{username}</span>
+              {showProfile
+                ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>{username}&rsquo;s journal</span></>
+                : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span><ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} /></>
+              }
             </button>
             {pillBadge === "green" && (
               <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
@@ -566,9 +551,81 @@ export default function App() {
           </div>
         );
         return pillTooltipText
-          ? <Tooltip text={pillTooltipText} direction="below" align="right" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
+          ? <Tooltip text={pillTooltipText} direction="below" align="left" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
           : pillContent;
       })()}
+
+      {/* Friend room scroll — fills middle space */}
+      {!authLoading && user && allFriendGroups.length > 0 && (
+        <span className="mobileHide" style={{ display: "flex", flex: 1, minWidth: 0 }}>
+          <FriendRoomScroll
+            groups={allFriendGroups}
+            onNavigate={(showId, groupId) => {
+              sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
+              navigate(`/show/${showId}`);
+              requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+            }}
+          />
+        </span>
+      )}
+
+      {/* Spacer when no friend rooms — push right-side items to the right */}
+      {(!user || !allFriendGroups.length) && <div style={{ flex: 1 }} />}
+
+      {/* Search — right side */}
+      <span className="mobileHide" style={{ display: "inline-flex", flexShrink: 0 }}>
+        <SearchShows
+          shows={shows}
+          {...searchShowsHandlers}
+          placeholder="find your new show"
+          style={{ width: 200, margin: 0, height: 34 }}
+        />
+      </span>
+
+      {/* Sign out */}
+      {!authLoading && user && username && (
+        <button className="btn signOutBtn" style={{ flexShrink: 0 }} onClick={() => { goHomepage(); signOut(); }}>
+          <span className="signOutLabel">Sign out</span>
+          <span className="signOutX"><X size={14} /></span>
+        </button>
+      )}
+
+      {/* Sign in (logged out) */}
+      {!authLoading && !user && (
+        <button className="btn" style={{ flexShrink: 0 }} onClick={() => setShowAuthModal(true)}>
+          Sign in / Join
+        </button>
+      )}
+
+      {/* Admin gear */}
+      {!authLoading && isAdmin && (
+        <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+          <button className="btn" onClick={() => navigate(showAdmin ? "/" : "/?admin")} title="Admin" style={{ fontSize: 18 }}>
+            <Settings size={18} color="currentColor" />
+          </button>
+          {feedbackUnread > 0 && (
+            <div style={{
+              position: "absolute", top: -6, right: -6,
+              width: 18, height: 18, borderRadius: "50%",
+              background: "var(--danger)", color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 10, fontWeight: 800, lineHeight: 1,
+              pointerEvents: "none",
+            }}>
+              {feedbackUnread > 9 ? "9+" : feedbackUnread}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  ) : (
+    /* Homepage — minimal auth controls only */
+    <div className="fixedAuthWrap" style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
+      {!authLoading && !user && (
+        <button className="btn" onClick={() => setShowAuthModal(true)}>
+          Sign in / Join
+        </button>
+      )}
       {!authLoading && user && username && (
         <button className="btn signOutBtn" onClick={() => { goHomepage(); signOut(); }}>
           <span className="signOutLabel">Sign out</span>
@@ -803,26 +860,8 @@ export default function App() {
                 </span>
                 <SearchShows
                   shows={shows}
-                  onShowCreated={(newShow, entry, action) => {
-                    setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow]);
-                    setWatchStatusFor(newShow.id, entry);
-                    if (action === "journal") {
-                      navigate("/profile", { state: { activeTab: newShow.id } });
-                      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
-                    } else {
-                      navigate(`/show/${newShow.id}`, { state: { openCreateGroup: true } });
-                      requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-                    }
-                  }}
-                  onBrowsePublic={(showId, showName, _entry, seasons) => {
-                    setShows(prev => prev.find(s => s.id === showId) ? prev : [...prev, {
-                      id: showId, name: showName, seasons, status: "Ended", isHidden: false,
-                    } as Show]);
-                    navigate(`/show/${showId}`);
-                    requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-                  }}
-                  onAuthRequired={() => { setAuthHint("Sign in or create an account to start a journal or friend room."); setShowAuthModal(true); }}
-                  placeholder="find a show"
+                  {...searchShowsHandlers}
+                  placeholder="find your new show"
                   style={{ width: "100%", minWidth: 0, margin: 0, height: 40, boxSizing: "border-box" }}
                 />
               </div>
