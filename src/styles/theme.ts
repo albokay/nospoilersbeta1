@@ -349,7 +349,7 @@ header.site{
   flex-shrink:0;
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   background:var(--dos-bg);
-  padding:32px 48px 32px 16px;
+  padding:24px 48px 24px 16px;
   border-bottom:none;
 }
 /* Scrollable entries region that fills the remaining card height */
