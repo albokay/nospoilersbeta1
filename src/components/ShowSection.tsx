@@ -1417,12 +1417,12 @@ export default function ShowSection({
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, padding: "8px 16px", marginBottom: 0,
           background: "#fff", border: "none",
-          borderRadius: 24, fontSize: 13, color: "var(--danger)",
+          borderRadius: 24, fontSize: 13, color: "var(--dos-bg)",
         }}>
           <span>
             Thanks for updating your progress — everyone's looking forward to your new thoughts!
           </span>
-          <button className="close-x" onClick={() => setShowProgressCelebration(false)}>
+          <button className="close-x" onClick={() => setShowProgressCelebration(false)} style={{ border: "2px solid var(--dos-bg)", color: "var(--dos-bg)" }}>
             <X size={14} />
           </button>
         </div>
