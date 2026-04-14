@@ -12,29 +12,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      (function() {
-        if (localStorage.getItem("ns_beta_access") === "1") return;
-        document.getElementById("root").style.display = "none";
-        var gate = document.createElement("div");
-        gate.id = "beta-gate";
-        gate.style.cssText = "position:fixed;inset:0;background:#f5f5f5;display:flex;align-items:center;justify-content:center;z-index:99999;";
-        gate.innerHTML = '<form id="beta-form" style="display:flex;flex-direction:column;gap:12px;width:280px"><input id="beta-input" type="password" placeholder="password" style="padding:10px 14px;font-size:15px;border:1px solid #ccc;border-radius:6px;outline:none;font-family:inherit"/><div id="beta-error" style="font-size:13px;color:#c00;display:none">incorrect password</div><button type="submit" style="padding:10px 14px;font-size:15px;background:#222;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit">enter</button></form>';
-        document.body.appendChild(gate);
-        setTimeout(function() { document.getElementById("beta-input").focus(); }, 50);
-        document.getElementById("beta-form").addEventListener("submit", function(e) {
-          e.preventDefault();
-          if (document.getElementById("beta-input").value === "mayaewk!osNOWi") {
-            localStorage.setItem("ns_beta_access", "1");
-            document.getElementById("beta-gate").remove();
-            document.getElementById("root").style.display = "";
-          } else {
-            document.getElementById("beta-error").style.display = "block";
-            document.getElementById("beta-input").value = "";
-          }
-        });
-      })();
-    </script>
+    <!-- Beta gate is now handled by the React BetaGate component via server-side RPC -->
     <!-- IMPORTANT: point directly at /src/index.tsx -->
     <script type="module" src="/src/index.tsx"></script>
   </body>

@@ -26,8 +26,6 @@ import HomepageLab from "./components/HomepageLab";
 import HomepageNarrative from "./components/HomepageNarrative";
 import InviteAcceptPage from "./components/InviteAcceptPage";
 
-const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
-
 const SINGLE_PAGE = true;
 const GLOBAL_HEADER_H = 56;
 
@@ -444,7 +442,7 @@ export default function App() {
   }, [isHomepage]);
   const isProfilePage = showProfile || !!publicProfileUsername;
   const showAdmin = location.search.includes("admin");
-  const isAdmin = user?.id === ADMIN_USER_ID;
+  const isAdmin = !!profile?.is_admin;
 
   // Fetch unread feedback count for admin badge
   useEffect(() => {

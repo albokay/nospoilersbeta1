@@ -1,7 +1,7 @@
 import React, { useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 
 const KEY = "ns_beta_access";
-const PASSWORD = "mayaewk!osNOWi";
 
 export function useBetaAccess() {
   return localStorage.getItem(KEY) === "1";
@@ -11,17 +11,31 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
   const [unlocked, setUnlocked] = useState(() => localStorage.getItem(KEY) === "1");
   const [input, setInput] = useState("");
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   if (unlocked) return <>{children}</>;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (input === PASSWORD) {
-      localStorage.setItem(KEY, "1");
-      setUnlocked(true);
-    } else {
+    setLoading(true);
+    setError(false);
+    try {
+      const { data, error: rpcError } = await supabase.rpc("check_beta_password", {
+        attempt: input,
+      });
+      if (rpcError) throw rpcError;
+      if (data === true) {
+        localStorage.setItem(KEY, "1");
+        setUnlocked(true);
+      } else {
+        setError(true);
+        setInput("");
+      }
+    } catch {
       setError(true);
       setInput("");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -37,8 +51,8 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
           style={{ padding: "10px 14px", fontSize: 15, border: "1px solid #ccc", borderRadius: 6, outline: "none" }}
         />
         {error && <div style={{ fontSize: 13, color: "#c00" }}>incorrect password</div>}
-        <button type="submit" style={{ padding: "10px 14px", fontSize: 15, background: "#222", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
-          enter
+        <button type="submit" disabled={loading} style={{ padding: "10px 14px", fontSize: 15, background: "#222", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
+          {loading ? "checking…" : "enter"}
         </button>
       </form>
     </div>

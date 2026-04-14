@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import type { User } from "@supabase/supabase-js";
 
-type Profile = { id: string; username: string; is_seed: boolean };
+type Profile = { id: string; username: string; is_seed: boolean; is_admin: boolean };
 
 type AuthCtx = {
   user: User | null;
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function loadProfile(userId: string) {
     const { data } = await supabase
       .from("profiles")
-      .select("id, username, is_seed")
+      .select("id, username, is_seed, is_admin")
       .eq("id", userId)
       .single();
     setProfile(data ?? null);
@@ -46,20 +46,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function signUp(email: string, password: string, username: string): Promise<string | null> {
+    // Validate username length
+    const trimmed = username.trim();
+    if (trimmed.length < 3) return "Username must be at least 3 characters";
+    if (trimmed.length > 30) return "Username must be 30 characters or less";
+
     // Check username is not already taken
     const { data: existing } = await supabase
       .from("profiles")
       .select("id")
       .eq("username", username)
       .single();
-    if (existing) return "That username is already taken.";
+    if (existing) return "An account with that email or username already exists.";
 
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { username } },
     });
-    return error ? error.message : null;
+    if (error) {
+      // Return a generic message to prevent email enumeration
+      if (
+        error.message.toLowerCase().includes("already") ||
+        error.message.toLowerCase().includes("exists") ||
+        error.message.toLowerCase().includes("registered") ||
+        error.message.toLowerCase().includes("duplicate")
+      ) {
+        return "An account with that email or username already exists.";
+      }
+      return error.message;
+    }
+    return null;
   }
 
   async function signIn(email: string, password: string): Promise<string | null> {

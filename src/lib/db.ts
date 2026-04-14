@@ -7,6 +7,35 @@ import type { Thread, Reply, FriendGroup, FriendGroupMember, Invitation } from "
 import type { PromptEntry } from "./promptData";
 import { repliesByThread } from "./mockData";
 
+// ── Rate-limit helpers ──────────────────────────────────────────────────────
+
+async function checkRateLimit(action: string, maxCount: number, windowSeconds: number = 60): Promise<void> {
+  const { data, error } = await supabase.rpc('check_rate_limit', {
+    action_name: action,
+    max_count: maxCount,
+    window_seconds: windowSeconds,
+  });
+  if (error) throw error;
+  if (data === false) throw new Error('Rate limit exceeded. Please wait before trying again.');
+}
+
+async function checkRateLimitDaily(action: string, maxDaily: number): Promise<void> {
+  const { data, error } = await supabase.rpc('check_rate_limit_daily', {
+    action_name: action,
+    max_daily: maxDaily,
+  });
+  if (error) throw error;
+  if (data === false) throw new Error('Daily limit reached. Please try again tomorrow.');
+}
+
+// ── Input length validation ─────────────────────────────────────────────────
+
+function validateLength(field: string, value: string, min: number, max: number): void {
+  const trimmed = value.trim();
+  if (trimmed.length < min) throw new Error(`${field} must be at least ${min} character${min > 1 ? 's' : ''}`);
+  if (trimmed.length > max) throw new Error(`${field} must be ${max} characters or less`);
+}
+
 // ── Shows ────────────────────────────────────────────────────────────────────
 
 export type Show = {
@@ -106,6 +135,9 @@ export async function insertThread(data: {
   groupIds?: string[];    // friend groups to share to immediately (Phase 4)
   isRewatch?: boolean;
 }): Promise<Thread> {
+  await checkRateLimit('create_thread', 5, 60);
+  validateLength("Title", data.title, 1, 200);
+  validateLength("Body", data.body, 1, 10000);
   const row = {
     id: crypto.randomUUID(),
     show_id: data.showId, season: data.season, episode: data.episode,
@@ -120,6 +152,8 @@ export async function insertThread(data: {
 }
 
 export async function editThread(threadId: string, title: string, body: string, season: number, episode: number): Promise<void> {
+  validateLength("Title", title, 1, 200);
+  validateLength("Body", body, 1, 10000);
   const preview = body.slice(0, 240) + (body.length > 240 ? "…" : "");
   const { error } = await supabase
     .from("threads")
@@ -231,21 +265,25 @@ export async function fetchUserReplyLikes(userId: string, replyIds: string[]): P
 }
 
 export async function likeThread(userId: string, threadId: string): Promise<void> {
+  await checkRateLimit('like', 20, 60);
   await supabase.from("likes_threads").insert({ user_id: userId, thread_id: threadId });
   await supabase.rpc("increment_thread_likes", { thread_id: threadId });
 }
 
 export async function unlikeThread(userId: string, threadId: string): Promise<void> {
+  await checkRateLimit('like', 20, 60);
   await supabase.from("likes_threads").delete().eq("user_id", userId).eq("thread_id", threadId);
   await supabase.rpc("decrement_thread_likes", { thread_id: threadId });
 }
 
 export async function likeReply(userId: string, replyId: string): Promise<void> {
+  await checkRateLimit('like', 20, 60);
   await supabase.from("likes_replies").insert({ user_id: userId, reply_id: replyId });
   await supabase.rpc("increment_reply_likes", { reply_id: replyId });
 }
 
 export async function unlikeReply(userId: string, replyId: string): Promise<void> {
+  await checkRateLimit('like', 20, 60);
   await supabase.from("likes_replies").delete().eq("user_id", userId).eq("reply_id", replyId);
   await supabase.rpc("decrement_reply_likes", { reply_id: replyId });
 }
@@ -293,6 +331,7 @@ export async function fetchRepliesForThread(threadId: string, groupId?: string |
 }
 
 export async function editReply(replyId: string, body: string, season: number, episode: number): Promise<void> {
+  validateLength("Reply", body, 1, 5000);
   const { error } = await supabase
     .from("replies")
     .update({ body, season, episode, is_edited: true, updated_at: new Date().toISOString() })
@@ -755,14 +794,13 @@ export async function fetchPublicRepliesForUser(userId: string): Promise<{ reply
     .filter(Boolean) as { reply: Reply; thread: Thread }[];
 }
 
-/** Shows a user is tracking (progress rows), sorted by show name. */
+/** Shows a user is tracking (progress rows), sorted by show name.
+ *  Uses RPC to bypass owner-only RLS on the progress table. */
 export async function fetchPublicProgressForUser(
   userId: string
 ): Promise<Record<string, { s: number; e: number }>> {
   const { data, error } = await supabase
-    .from("progress")
-    .select("show_id, season, episode")
-    .eq("user_id", userId);
+    .rpc("get_public_progress", { target_user_id: userId });
   if (error) throw error;
   const result: Record<string, { s: number; e: number }> = {};
   for (const row of data ?? []) {
@@ -782,6 +820,8 @@ export async function insertReply(data: {
   quotedText?: string | null;
   isRewatch?: boolean;
 }): Promise<Reply> {
+  await checkRateLimit('create_reply', 10, 60);
+  validateLength("Reply", data.body, 1, 5000);
   const row = {
     id: crypto.randomUUID(),
     thread_id: data.threadId, show_id: data.showId,
@@ -886,6 +926,8 @@ export async function insertFeedback(
   pageUrl: string,
   message: string
 ): Promise<void> {
+  await checkRateLimit('feedback', 6, 60);
+  validateLength("Feedback message", message, 1, 2000);
   const { error } = await supabase.from("feedback").insert({
     user_id: userId,
     username,
@@ -1065,6 +1107,8 @@ export async function createFriendGroup(data: {
   name: string;
   createdBy: string;
 }): Promise<FriendGroup> {
+  await checkRateLimit('create_group', 3, 60);
+  validateLength("Group name", data.name, 1, 60);
   const { data: inserted, error } = await supabase
     .from("friend_groups")
     .insert({ show_id: data.showId, name: data.name, created_by: data.createdBy })
@@ -1173,6 +1217,7 @@ export async function fetchGroupThreads(
 
 /** Rename a friend group. */
 export async function renameFriendGroup(groupId: string, name: string): Promise<void> {
+  validateLength("Group name", name, 1, 60);
   const { error } = await supabase
     .from("friend_groups")
     .update({ name })
@@ -1270,6 +1315,8 @@ export async function sendInvite(data: {
   inviteeEmail: string;
   inviterName: string;
 }): Promise<SendInviteResult> {
+  await checkRateLimit('send_invite', 4, 60);
+  await checkRateLimitDaily('send_invite', 10);
   const { data: result, error } = await supabase.functions.invoke("send-invite", {
     body: { ...data, appUrl: window.location.origin },
   });
