@@ -555,20 +555,17 @@ export default function App() {
           : pillContent;
       })()}
 
-      {/* Spacer — pushes everything after this to the right */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end" }}>
-        {/* Friend room scroll — right-justified within the spacer */}
+      {/* Spacer — pushes everything after this to the right; contains friend room scroll */}
+      <div className="mobileHide" style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end", overflow: "hidden" }}>
         {!authLoading && user && allFriendGroups.length > 0 && (
-          <span className="mobileHide" style={{ display: "flex", minWidth: 0, maxWidth: "100%" }}>
-            <FriendRoomScroll
-              groups={allFriendGroups}
-              onNavigate={(showId, groupId) => {
-                sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
-                navigate(`/show/${showId}`, { state: { activeGroupId: groupId } });
-                requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-              }}
-            />
-          </span>
+          <FriendRoomScroll
+            groups={allFriendGroups}
+            onNavigate={(showId, groupId) => {
+              sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
+              navigate(`/show/${showId}`, { state: { activeGroupId: groupId } });
+              requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+            }}
+          />
         )}
       </div>
 

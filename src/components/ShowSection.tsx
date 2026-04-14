@@ -327,7 +327,13 @@ export default function ShowSection({
   const prevShowIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (prevShowIdRef.current !== null && prevShowIdRef.current !== showId) {
-      setActiveGroupId(null);
+      // If navigating with an explicit activeGroupId in state, use that instead of clearing
+      const incomingGroupId = (location.state as any)?.activeGroupId;
+      if (incomingGroupId) {
+        setActiveGroupId(incomingGroupId);
+      } else {
+        setActiveGroupId(null);
+      }
       setGroupThreadsData([]);
       setGroupReplyCounts({});
     }
