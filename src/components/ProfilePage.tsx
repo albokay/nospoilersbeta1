@@ -547,7 +547,7 @@ export default function ProfilePage({
                           setComposeDestination(tabGroups.length > 0 ? tabGroups[0].id : "private");
                           setComposeOpen(true);
                         }}
-                        style={{ lineHeight: 1.2, marginLeft: 20, background: "#dea838", borderColor: "#dea838", color: "#fff", display: "inline-flex", alignItems: "center", gap: 5 }}
+                        style={{ lineHeight: 1.2, marginLeft: 20, background: "transparent", border: "2px solid #fff", color: "#fff", display: "inline-flex", alignItems: "center", gap: 5 }}
                       >
                         <SquarePen size={15} /> journal
                       </button>
