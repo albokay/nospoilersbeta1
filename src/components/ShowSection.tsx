@@ -8,13 +8,46 @@ const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 // Starts the 36h expiry clock on first call with hasDot=true; clears on hasDot=false.
 function threadDotActive(threadId: string, hasDot: boolean): boolean {
   const key = `ns_tdot_${threadId}`;
+  const dismissKey = `ns_tdot_dismiss_${threadId}`;
   if (!hasDot) { localStorage.removeItem(key); return false; }
+  // Check if manually dismissed
+  const dismissedAt = localStorage.getItem(dismissKey);
+  if (dismissedAt) {
+    const stored = localStorage.getItem(key);
+    if (stored && parseInt(stored, 10) <= parseInt(dismissedAt, 10)) return false;
+  }
   const stored = localStorage.getItem(key);
   const now = Date.now();
   if (!stored) { localStorage.setItem(key, String(now)); return true; }
   const seenAt = parseInt(stored, 10);
   if (now - seenAt >= THIRTY_SIX_HOURS) { localStorage.removeItem(key); return false; }
   return true;
+}
+
+function dismissThreadDot(threadId: string) {
+  localStorage.setItem(`ns_tdot_dismiss_${threadId}`, String(Date.now()));
+}
+
+/** Red dot with count that transforms to X on hover; clicking X dismisses. */
+function ThreadRedDot({ count, threadId, onDismiss }: { count: number; threadId: string; onDismiss: () => void }) {
+  const [hovered, setHovered] = React.useState(false);
+  return (
+    <div
+      style={{
+        width: 28, height: 28, borderRadius: "50%",
+        background: "var(--danger)", color: "#fff",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: hovered ? 12 : 11, fontWeight: 800, lineHeight: 1,
+        boxShadow: "0 2px 6px rgba(0,0,0,0.30)",
+        cursor: hovered ? "pointer" : "default",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={(e) => { e.stopPropagation(); dismissThreadDot(threadId); onDismiss(); }}
+    >
+      {hovered ? "\u2715" : count}
+    </div>
+  );
 }
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
@@ -215,6 +248,7 @@ export default function ShowSection({
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [dismissedDots, setDismissedDots] = useState(0);
 
   // ── Compose destination state (Phase 3) ──────────────────────────────────
   const [composeDestination, setComposeDestination] = useState<"private" | "public" | string>("private");
@@ -1749,21 +1783,13 @@ export default function ShowSection({
               <div key={t.id} style={{ position: "relative", margin: "0 0 12px 0" }}>
                 {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
                   <Tooltip
-                    text="People (who are ahead of you) have written you back!"
+                    text="There are new responses to you in here (for when you catch up)."
                     direction="right"
                     align="left"
                     useAbsolute
                     style={{ position: "absolute", left: -14, top: "calc(50% - 14px)", zIndex: 1 }}
                   >
-                    <div style={{
-                      width: 28, height: 28, borderRadius: "50%",
-                      background: "var(--danger)", color: "#fff",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 800, lineHeight: 1,
-                      boxShadow: "0 2px 6px rgba(0,0,0,0.30)",
-                    }}>
-                      {hiddenNew}
-                    </div>
+                    <ThreadRedDot count={hiddenNew} threadId={t.id} onDismiss={() => setDismissedDots(d => d + 1)} />
                   </Tooltip>
                 )}
               <div
@@ -1824,9 +1850,9 @@ export default function ShowSection({
                 </div>
 
                 <div className="replyCount">
-                  <span className={(!activeGroupId && (visibleNew > 0 || freshReplyThreadIds[t.id])) ? "newReplyBadge" : ""}
-                    style={(!activeGroupId && (visibleNew > 0 || freshReplyThreadIds[t.id])) ? {
-                    background: "#dea838", color: "#fff", borderRadius: 9999,
+                  <span className={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? "newReplyBadge" : ""}
+                    style={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? {
+                    background: "#4b8f6c", color: "#fff", borderRadius: 9999,
                     padding: "2px 7px", fontWeight: 700,
                   } : {}}>
                     <MessageCircle size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}

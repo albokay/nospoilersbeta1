@@ -7,12 +7,12 @@ const PAD = 80; // canvas overflow padding so shapes aren't clipped at the edges
 const DURATION = 750;
 const STAGGER = 40;
 
-const PALETTE = ["#f45028", "#dea838", "#fffaf0", "#acc9d6", "#355eb8"];
+const PALETTE = ["#f45028", "#dea838", "#fffaf0", "#adc8d7", "#355eb8"];
 
 const BLOCKS = [
   { id: "green",     color: "#dea838" },
   { id: "white",     color: "#fffaf0" },
-  { id: "lightBlue", color: "#acc9d6" },
+  { id: "lightBlue", color: "#adc8d7" },
   { id: "orange",    color: "#f45028" },
   { id: "blue",      color: "#355eb8" },
 ] as const;

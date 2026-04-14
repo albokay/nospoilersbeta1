@@ -5,7 +5,7 @@ const BLOCK = 52;
 const BLOCKS = [
   { id: "green",     color: "#dea838", z: 1, blend: "color-burn" },
   { id: "white",     color: "#fffaf0", z: 2, blend: "color-burn" },
-  { id: "lightBlue", color: "#acc9d6", z: 3, blend: "color-burn" },
+  { id: "lightBlue", color: "#adc8d7", z: 3, blend: "color-burn" },
   { id: "orange",    color: "#f45028", z: 4, blend: "multiply"   },
   { id: "blue",      color: "#355eb8", z: 5, blend: "color-burn" },
 ] as const;

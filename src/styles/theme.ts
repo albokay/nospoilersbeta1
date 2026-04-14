@@ -8,30 +8,30 @@ export function injectDOSStyles() {
   --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#355eb8; --dos-border:#ffffff;
   --icon-color:#fff;
   /* canonical accent blue */
-  --blue-light:#acc9d6;
+  --blue-light:#adc8d7;
   /* progress dropdown (overridden to green in group context) */
-  --progress-bg:#acc9d6; --progress-fg:#355eb8;
+  --progress-bg:#adc8d7; --progress-fg:#355eb8;
   /* type scale */
   --t1:22px; --t2:17px; --t3:15px; --t4:13px;
 }
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
-  --dos-bg:#acc9d6; --dos-fg:#1a3a4a; --dos-cyan:#1a3a4a;
+  --dos-bg:#adc8d7; --dos-fg:#1a3a4a; --dos-cyan:#1a3a4a;
   --dos-gray:rgba(26,58,74,0.65); --dos-light:#1a3a4a;
   --dos-accent:#1a3a4a; --dos-border:rgba(26,58,74,0.3);
   --dos-blue:rgba(26,58,74,0.08);
   --icon-color:#fff;
   --progress-bg:#7abd8e; --progress-fg:#fff;
-  background: linear-gradient(to bottom,#c3dde8 0px,#acc9d6 180px) fixed,#acc9d6;
+  background: linear-gradient(to bottom,#c8dde8 0px,#adc8d7 180px) fixed,#adc8d7;
   background-attachment:fixed;
 }
 body.group-context.has-header{
-  background: linear-gradient(to top,#c3dde8 0px,#acc9d6 250px) fixed,#acc9d6;
+  background: linear-gradient(to top,#c8dde8 0px,#adc8d7 250px) fixed,#adc8d7;
   background-attachment:fixed;
 }
-body.group-context header.site{ background:rgba(172,201,214,0.98); }
-body.group-context .stickybar{ background:rgba(172,201,214,0.98); }
+body.group-context header.site{ background:rgba(173,200,215,0.98); }
+body.group-context .stickybar{ background:rgba(173,200,215,0.98); }
 /* In friend rooms, reply cards should use dark text matching thread entries (not washed-out blue) */
 body.group-context .reply-card{ color:#1a3a4a !important; --dos-accent:#1a3a4a; --dos-cyan:#1a3a4a; --dos-gray:rgba(26,58,74,0.65); border-color:transparent !important; }
 /* In friend rooms, star button circle + star should both use the muted border color */
@@ -226,7 +226,7 @@ header.site{
 .splashSearchWrap{
   position:relative; display:flex; align-items:center;
   width:288px; max-width:90vw; margin:20px auto;
-  height:40px; border:2px solid #acc9d6; border-radius:9999px;
+  height:40px; border:2px solid #adc8d7; border-radius:9999px;
   padding:0 16px;
   background:#fef8ea; border-color:#fef8ea; color:#c39431;
 }
@@ -557,7 +557,7 @@ body { -webkit-font-smoothing: antialiased; }
    Button: .btn with color #000 / borderColor #000.
    ──────────────────────────────────────────────────────────────────────────── */
 .explanation-card {
-  background: #acc9d6 !important;
+  background: #adc8d7 !important;
   border: none !important;
   color: #000 !important;
 }
@@ -716,7 +716,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* ── Prompt card (the floating suggestion card) ─────────────────────────── */
 .prompt-card {
-  background: #acc9d6;
+  background: #adc8d7;
   border: none;
   border-radius: 16px;
   padding: 16px 18px 14px;

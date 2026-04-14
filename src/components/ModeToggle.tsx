@@ -15,7 +15,7 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
         onClick={disabled ? undefined : onToggle}
         aria-label={`Toggle mode (currently ${isRisky ? "Risky" : "Standard"})`}
         aria-pressed={isRisky}
-        title={isRisky ? "Risky: show redacted stubs (click to reveal)" : "Standard: hide newer comments"}
+        title={hiddenNewReplies > 0 ? "People have written to you from beyond your watch progress. Toggle to \u201crisky\u201d to see them." : isRisky ? "Risky: show redacted stubs (click to reveal)" : "Standard: hide newer comments"}
         disabled={disabled}
         style={{
           display: "inline-flex",
@@ -59,8 +59,8 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
           position: "absolute",
           top: -10,
           right: -10,
-          width: 22,
-          height: 22,
+          width: 20,
+          height: 20,
           borderRadius: "50%",
           background: "var(--danger)",
           color: "#fff",
