@@ -69,7 +69,6 @@ import Username from "./Username";
 import type { PendingReference } from "./ResponseComposer";
 import PromptCard from "./PromptCard";
 import type { PromptEntry } from "../lib/promptData";
-import YourShowsSelect from "./YourShowsSelect";
 import { getFragment, getPromptSuggestion } from "../lib/prompts";
 
 const GLOBAL_HEADER_H = 56;
@@ -1174,18 +1173,6 @@ export default function ShowSection({
                   ? "BREAKING BAD (DEMO)"
                   : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()}
             </span>
-            {user && onSwitchShow && (
-              <div style={{ flex: "0 0 auto" }}>
-                <YourShowsSelect
-                  shows={allShows}
-                  progress={progress}
-                  value={""}
-                  onChange={(id: string) => { if (id) onSwitchShow(id); }}
-                  compact
-                  excludeIds={hiddenTabs}
-                />
-              </div>
-            )}
           </div>
 
           <hr className="bleed-line" />
