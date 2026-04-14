@@ -815,9 +815,7 @@ export default function ProfilePage({
       {/* Compose modal */}
       {composeOpen && (
         <Modal onClose={closeCompose} width="min(720px,92vw)">
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button className="close-x" onClick={closeCompose}><X size={14} /></button>
-          </div>
+          <button className="close-x" onClick={closeCompose} style={{ position: "absolute", top: 12, right: 16 }}><X size={14} /></button>
           <div style={{ display: "grid", gap: 10 }}>
             {/* ── Destination dropdown ── */}
             <div>
