@@ -854,6 +854,7 @@ export async function insertReply(data: {
   referencedThreadId?: string | null;
   quotedText?: string | null;
   isRewatch?: boolean;
+  groupId?: string | null;
 }): Promise<Reply> {
   await checkRateLimit('create_reply', 10, 60);
   validateLength("Reply", data.body, 1, 5000);
@@ -867,6 +868,7 @@ export async function insertReply(data: {
     referenced_reply_id: data.referencedReplyId ?? null,
     referenced_thread_id: data.referencedThreadId ?? null,
     quoted_text: data.quotedText ?? null,
+    group_id: data.groupId ?? null,
   };
   const { data: inserted, error } = await supabase
     .from("replies").insert(row).select().single();

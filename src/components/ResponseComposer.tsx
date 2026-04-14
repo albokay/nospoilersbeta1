@@ -36,6 +36,7 @@ interface ResponseComposerProps {
   show?: Show;
   progress?: { s: number; e: number };
   inGroupContext?: boolean;
+  groupId?: string | null;
 }
 
 export default function ResponseComposer({
@@ -57,6 +58,7 @@ export default function ResponseComposer({
   show,
   progress,
   inGroupContext,
+  groupId,
 }: ResponseComposerProps) {
   // Re-watchers tag replies at their highest prior progress; others use viewerSeason/Episode
   const replyTagS = postTagSeason ?? viewerSeason;
@@ -179,6 +181,7 @@ export default function ResponseComposer({
         referencedThreadId: pendingReference?.threadId ?? null,
         quotedText: (pendingReference?.type === "quote" ? pendingReference.quotedText : null) ?? null,
         isRewatch: isRewatch ?? false,
+        groupId: groupId ?? null,
       });
       // Log prompt usage (best-effort)
       for (const pid of insertedPromptIds) {
