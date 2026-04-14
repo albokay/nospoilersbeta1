@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, Settings, MessageCircle, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart } from "lucide-react";
+import { SquarePen, X, Globe, Users, Settings, MessageCircle, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -1247,13 +1247,21 @@ export default function ShowSection({
               )}
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                 {!thread && (
-                  <select className="badge h40" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
-                    <option value="relevance">Relevance</option>
-                    <option value="post">Post date</option>
-                    <option value="episode">Episode order</option>
-                    <option value="hot">Hot</option>
-                    <option value="rewatchers">Rewatchers</option>
-                  </select>
+                  <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                    <select
+                      className="badge h40"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      style={{ fontSize: 12, fontWeight: 700, paddingRight: 28, appearance: "none", WebkitAppearance: "none", cursor: "pointer" }}
+                    >
+                      <option value="relevance">Relevance</option>
+                      <option value="post">Post date</option>
+                      <option value="episode">Episode order</option>
+                      <option value="hot">Hot</option>
+                      <option value="rewatchers">Rewatchers</option>
+                    </select>
+                    <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
+                  </div>
                 )}
                 {thread && (
                   <div style={{ transform: "translateX(-10px)" }}>
