@@ -189,11 +189,11 @@ export default function ProfilePage({
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
   const [postSubmitting, setPostSubmitting] = useState(false);
-  const [composeDestination, setComposeDestination] = useState<"private" | "public" | string>("private");
+  const [composeDestination, setComposeDestination] = useState<"private" | "public" | string>("");
 
   const closeCompose = () => {
     setComposeOpen(false);
-    setComposeDestination("private");
+    setComposeDestination("");
   };
   const postBodyRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -524,8 +524,8 @@ export default function ProfilePage({
                         <button
                           className="btn post h40"
                           onClick={() => {
-                            // Default to most recent group for this show, or private if none
-                            setComposeDestination(tabGroups.length > 0 ? tabGroups[0].id : "private");
+                            // Reset to placeholder so user must choose
+                            setComposeDestination("");
                             setComposeOpen(true);
                           }}
                           style={{ lineHeight: 1.2, marginLeft: 20, background: "transparent", border: "2px solid #fff", color: "#fff", display: "inline-flex", alignItems: "center", gap: 5 }}
@@ -816,13 +816,12 @@ export default function ProfilePage({
       {composeOpen && (
         <Modal onClose={closeCompose} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <h3 className="title" style={{ margin: 0 }}>write an entry</h3>
+            <div />
             <button className="close-x" onClick={closeCompose}><X size={14} /></button>
           </div>
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
             {/* ── Destination dropdown ── */}
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "var(--dos-light)" }}>where do you want to publish?</div>
               <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                 <select
                   className="badge"
@@ -830,6 +829,7 @@ export default function ProfilePage({
                   onChange={(e) => setComposeDestination(e.target.value)}
                   style={{ fontSize: 13, fontWeight: 600, paddingRight: 30, appearance: "none", WebkitAppearance: "none", cursor: "pointer", width: "100%" }}
                 >
+                  <option value="" disabled>where do you want to write?</option>
                   <option value="private">private entry</option>
                   <option value="public">public entry</option>
                   {tabGroups.map(g => (
@@ -868,28 +868,26 @@ export default function ProfilePage({
                 onInsert={handlePromptInsert}
               />
             )}
-            {promptEntries.length > 0 && (
-              <div>
-                <button className="prompt-btn" type="button" onClick={handlePromptBtn} title="Get a writing prompt">
+            {/* ── Submit row ── */}
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+              {promptEntries.length > 0 && (
+                <button className="prompt-btn" type="button" onClick={handlePromptBtn} title="Get a writing prompt" style={{ marginRight: "auto" }}>
                   <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>
-              </div>
-            )}
-
-            {/* ── Submit row ── */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              )}
               <button className="btn" onClick={closeCompose} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
               <button
                 className="btn compose-submit"
                 onClick={submitPost}
-                disabled={postSubmitting}
+                disabled={postSubmitting || !composeDestination || !postTitle.trim() || !postBody.trim()}
                 style={{
                   background: composeDestination !== "private" ? "var(--green)" : "var(--dos-bg)",
-                  border: "2px solid rgba(255,255,255,0.3)",
+                  border: "none",
                   color: "#fff",
                   whiteSpace: "nowrap",
                   fontSize: 13,
                   minWidth: 130,
+                  opacity: (!composeDestination || !postTitle.trim() || !postBody.trim()) ? 0.4 : 1,
                 }}
               >
                 {postSubmitting ? "Posting…" : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> Save to journal</> : "Post"}

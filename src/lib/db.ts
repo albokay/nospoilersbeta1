@@ -163,11 +163,31 @@ export async function editThread(threadId: string, title: string, body: string, 
 }
 
 export async function deleteThread(threadId: string): Promise<void> {
-  const { error } = await supabase
-    .from("threads")
-    .update({ is_deleted: true })
-    .eq("id", threadId);
-  if (error) throw error;
+  // Check if thread has any (non-deleted) replies
+  const { count: replyCount } = await supabase
+    .from("replies")
+    .select("id", { count: "exact", head: true })
+    .eq("thread_id", threadId)
+    .eq("is_deleted", false);
+
+  if (replyCount && replyCount > 0) {
+    // Soft delete — keep stub so replies remain anchored
+    const { error } = await supabase
+      .from("threads")
+      .update({ is_deleted: true })
+      .eq("id", threadId);
+    if (error) throw error;
+  } else {
+    // Hard delete — no responses, remove entirely
+    // Clean up any citation references first
+    await supabase.from("response_citations").delete().eq("cited_thread_id", threadId);
+    // Remove any soft-deleted replies that may linger
+    await supabase.from("replies").delete().eq("thread_id", threadId);
+    // Remove group_threads linkage
+    await supabase.from("group_threads").delete().eq("thread_id", threadId);
+    const { error } = await supabase.from("threads").delete().eq("id", threadId);
+    if (error) throw error;
+  }
 }
 
 /** Set a thread's public visibility. false = journal-only; true = visible on aggregated show page. */
@@ -340,11 +360,26 @@ export async function editReply(replyId: string, body: string, season: number, e
 }
 
 export async function deleteReply(replyId: string): Promise<void> {
-  const { error } = await supabase
-    .from("replies")
-    .update({ is_deleted: true })
-    .eq("id", replyId);
-  if (error) throw error;
+  // Check if this reply is cited by another reply
+  const { count: citedCount } = await supabase
+    .from("response_citations")
+    .select("id", { count: "exact", head: true })
+    .eq("cited_reply_id", replyId);
+
+  if (citedCount && citedCount > 0) {
+    // Soft delete — keep stub so citation chain remains intact
+    const { error } = await supabase
+      .from("replies")
+      .update({ is_deleted: true })
+      .eq("id", replyId);
+    if (error) throw error;
+  } else {
+    // Hard delete — not referenced anywhere, remove entirely
+    // Clean up any citations this reply made
+    await supabase.from("response_citations").delete().eq("citing_reply_id", replyId);
+    const { error } = await supabase.from("replies").delete().eq("id", replyId);
+    if (error) throw error;
+  }
 }
 
 // ── Profile page queries ──────────────────────────────────────────────────────

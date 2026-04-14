@@ -2,9 +2,9 @@ import React from "react";
 import type { Show } from "../lib/db";
 
 export default function YourShowsSelect({
-  shows, progress, value, onChange, compact, placeholder, wrapperStyle, onMouseEnter, onMouseLeave
-}: { shows: Show[]; progress: Record<string, { s: number; e: number }>; value: string; onChange: (id: string) => void; compact?: boolean; placeholder?: string; wrapperStyle?: React.CSSProperties; onMouseEnter?: () => void; onMouseLeave?: () => void }) {
-  const keys = Object.keys(progress).filter(id => shows.some(x => x.id === id));
+  shows, progress, value, onChange, compact, placeholder, wrapperStyle, onMouseEnter, onMouseLeave, excludeIds
+}: { shows: Show[]; progress: Record<string, { s: number; e: number }>; value: string; onChange: (id: string) => void; compact?: boolean; placeholder?: string; wrapperStyle?: React.CSSProperties; onMouseEnter?: () => void; onMouseLeave?: () => void; excludeIds?: Set<string> }) {
+  const keys = Object.keys(progress).filter(id => shows.some(x => x.id === id) && !(excludeIds?.has(id)));
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: compact ? "flex-end" : "stretch", width: compact ? "auto" : "100%", ...wrapperStyle }}>
       <select

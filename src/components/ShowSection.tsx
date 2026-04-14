@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, Settings, MessageCircle, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown } from "lucide-react";
+import { SquarePen, X, Globe, Users, Settings, MessageCircle, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -220,6 +220,12 @@ export default function ShowSection({
   const [composeDestination, setComposeDestination] = useState<"private" | "public" | string>("private");
   const [userGroups, setUserGroups] = useState<FriendGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
+
+  // Hidden tabs (read from localStorage so switch-shows dropdown excludes them)
+  const hiddenTabs = useMemo<Set<string>>(() => {
+    if (!user) return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem(`ns_hidden_tabs_${user.id}`) || "[]")); } catch { return new Set(); }
+  }, [user]);
 
   // ── Friend group view state (Phase 4) ────────────────────────────────────
   // Persist the active group in sessionStorage so a page refresh restores the
@@ -1125,6 +1131,7 @@ export default function ShowSection({
                   value={""}
                   onChange={(id: string) => { if (id) onSwitchShow(id); }}
                   compact
+                  excludeIds={hiddenTabs}
                 />
               </div>
             )}
@@ -1354,7 +1361,9 @@ export default function ShowSection({
                     color: "#fff",
                   }}
                 >
-                  <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> go to public conversations
+                  {activeGroupId
+                    ? <>to public conversations <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /></>
+                    : "public conversations"}
                 </button>
               </div>
             )}
@@ -1902,20 +1911,6 @@ export default function ShowSection({
                 onInsert={handlePromptInsert}
               />
             )}
-            {/* ── Prompt button row ── */}
-            {promptEntries.length > 0 && (
-              <div>
-                <button
-                  className="prompt-btn"
-                  type="button"
-                  onClick={handlePromptBtn}
-                  title="Get a writing prompt"
-                >
-                  <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
-                </button>
-              </div>
-            )}
-
             {/* ── Destination selector (hidden when writing from a friend room) ── */}
             {!activeGroupId && (
             <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
@@ -1953,7 +1948,18 @@ export default function ShowSection({
             )}
 
             {/* ── Submit row ── */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+              {promptEntries.length > 0 && (
+                <button
+                  className="prompt-btn"
+                  type="button"
+                  onClick={handlePromptBtn}
+                  title="Get a writing prompt"
+                  style={{ marginRight: "auto" }}
+                >
+                  <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
+                </button>
+              )}
               <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
               <button
                 className="btn compose-submit"
@@ -1961,7 +1967,7 @@ export default function ShowSection({
                 disabled={postSubmitting}
                 style={{
                   background: composeDestination !== "private" ? "var(--green)" : "var(--dos-bg)",
-                  border: "2px solid #fff",
+                  border: "none",
                   color: "#fff",
                   whiteSpace: "nowrap",
                   fontSize: 13,

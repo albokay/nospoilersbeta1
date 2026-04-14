@@ -141,6 +141,12 @@ export default function App() {
 
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({ bb: { s: 1, e: 1 } });
 
+  // Hidden tabs (read from localStorage so switch-shows dropdown excludes them)
+  const hiddenTabs = useMemo<Set<string>>(() => {
+    if (!user) return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem(`ns_hidden_tabs_${user.id}`) || "[]")); } catch { return new Set(); }
+  }, [user]);
+
   // Stale-progress nudge: show once per session if user returns after 12+ hour gap
   const [showStaleNudge, setShowStaleNudge] = useState(false);
   const [staleNudgeDismissed, setStaleNudgeDismissed] = useState(false);
@@ -515,6 +521,7 @@ export default function App() {
               setPickShowId(id);
             }}
             compact
+            excludeIds={hiddenTabs}
           />
         </span>
       )}
@@ -688,6 +695,7 @@ export default function App() {
                       wrapperStyle={{ width: "100%", height: "100%" }}
                       onMouseEnter={() => setShowsEmojiHover(true)}
                       onMouseLeave={() => setShowsEmojiHover(false)}
+                      excludeIds={hiddenTabs}
                     />
                     <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? <Eye size={16} color="currentColor" /> : <EyeOff size={16} color="currentColor" />}</span>
                   </div>
