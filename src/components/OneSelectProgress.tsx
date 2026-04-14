@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { X } from "lucide-react";
 import Modal from "./Modal";
 import { buildProgressOptions } from "../lib/utils";
 
@@ -82,7 +83,7 @@ export default function OneSelectProgress({
       <>
         <button
           className="btn"
-          style={{ whiteSpace: "nowrap", background: "var(--progress-bg,#adc8d7)", color: "var(--progress-fg,#2256c9)", border: "2px solid var(--progress-bg,#adc8d7)", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
+          style={{ whiteSpace: "nowrap", background: "var(--progress-bg,#acc9d6)", color: "var(--progress-fg,#355eb8)", border: "2px solid var(--progress-bg,#acc9d6)", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
           onClick={() => setMobileOpen(true)}
         >
           {compactLabel} ▾
@@ -91,13 +92,13 @@ export default function OneSelectProgress({
           <Modal onClose={() => setMobileOpen(false)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
               <h3 className="title" style={{ fontSize: 20, margin: 0 }}>you've watched: {pending ? epLabel(pending.s, pending.e) : ""}</h3>
-              <button className="btn" onClick={() => setMobileOpen(false)}>✕</button>
+              <button className="close-x" onClick={() => setMobileOpen(false)}><X size={14} /></button>
             </div>
             <select
               className="badge"
               value={selectedId}
               onChange={(e) => { onSelect(e); setMobileOpen(false); }}
-              style={{ background: "var(--progress-bg,#adc8d7)", color: "var(--progress-fg,#2256c9)", border: "2px solid var(--progress-bg,#adc8d7)", width: "100%", height: 40 }}
+              style={{ background: "var(--progress-bg,#acc9d6)", color: "var(--progress-fg,#355eb8)", border: "2px solid var(--progress-bg,#acc9d6)", width: "100%", height: 40 }}
               size={1}
             >
               {groups.map((g) => (
@@ -145,7 +146,7 @@ export default function OneSelectProgress({
         className="badge h40"
         value={selectedId}
         onChange={onSelect}
-        style={{ background: "var(--progress-bg,#adc8d7)", color: "var(--progress-fg,#2256c9)", border: "2px solid var(--progress-bg,#adc8d7)", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }}
+        style={{ background: "var(--progress-bg,#acc9d6)", color: "var(--progress-fg,#355eb8)", border: "2px solid var(--progress-bg,#acc9d6)", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }}
       >
         {groups.map((g) => (
           <optgroup key={g.season} label={`Season ${g.season}`}>

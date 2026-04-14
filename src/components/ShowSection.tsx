@@ -1,21 +1,14 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { SquarePen, X, Globe, Users, Settings, MessageCircle, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
 // Returns true if the thread's red dot should still be shown.
-// Checks localStorage for manual dismissal; falls back to 36h expiry.
+// Starts the 36h expiry clock on first call with hasDot=true; clears on hasDot=false.
 function threadDotActive(threadId: string, hasDot: boolean): boolean {
   const key = `ns_tdot_${threadId}`;
-  const dismissKey = `ns_tdot_dismiss_${threadId}`;
   if (!hasDot) { localStorage.removeItem(key); return false; }
-  // Check if manually dismissed
-  const dismissedAt = localStorage.getItem(dismissKey);
-  if (dismissedAt) {
-    const stored = localStorage.getItem(key);
-    // If the dot appeared before or at dismiss time, it's dismissed
-    if (stored && parseInt(stored, 10) <= parseInt(dismissedAt, 10)) return false;
-  }
   const stored = localStorage.getItem(key);
   const now = Date.now();
   if (!stored) { localStorage.setItem(key, String(now)); return true; }
@@ -23,36 +16,10 @@ function threadDotActive(threadId: string, hasDot: boolean): boolean {
   if (now - seenAt >= THIRTY_SIX_HOURS) { localStorage.removeItem(key); return false; }
   return true;
 }
-
-function dismissThreadDot(threadId: string) {
-  localStorage.setItem(`ns_tdot_dismiss_${threadId}`, String(Date.now()));
-}
-
-/** Red dot with count that transforms to ✕ on hover; clicking ✕ dismisses. */
-function ThreadRedDot({ count, threadId, onDismiss }: { count: number; threadId: string; onDismiss: () => void }) {
-  const [hovered, setHovered] = React.useState(false);
-  return (
-    <div
-      style={{
-        width: 28, height: 28, borderRadius: "50%",
-        background: "var(--danger)", color: "#fff",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: hovered ? 12 : 11, fontWeight: 800, lineHeight: 1,
-        boxShadow: "0 2px 6px rgba(0,0,0,0.30)",
-        cursor: hovered ? "pointer" : "default",
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={(e) => { e.stopPropagation(); dismissThreadDot(threadId); onDismiss(); }}
-    >
-      {hovered ? "✕" : count}
-    </div>
-  );
-}
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, sendInvite, fetchSentInvitations } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, sendInvite, fetchSentInvitations, fetchBrowseProgress } from "../lib/db";
 import type { Invitation } from "../types";
 import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
@@ -86,8 +53,16 @@ export default function ShowSection({
 }: any) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
-  const show = allShows.find((s) => s.id === showId) || { id: showId, name: showId, seasons: [10] };
+  const show = allShows.find((s) => s.id === showId) || (() => {
+    // Fallback: try browse metadata from sessionStorage (set by SearchShows onboarding modal)
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(`ns_browse_show_${showId}`) || "null");
+      if (stored) return { id: showId, name: stored.name, seasons: stored.seasons };
+    } catch {}
+    return { id: showId, name: showId, seasons: [10] };
+  })();
 
   // ── Guest progress (logged-out users — stored in localStorage) ───────────
   const guestProgressKey = `ns_guest_prog_${showId}`;
@@ -95,7 +70,27 @@ export default function ShowSection({
     if (user) return null;
     try { return JSON.parse(localStorage.getItem(`ns_guest_prog_${showId}`) || "null"); } catch { return null; }
   });
-  const [showGuestPicker, setShowGuestPicker] = useState(() => !user);
+  const [showGuestPicker, setShowGuestPicker] = useState(() => {
+    if (user) return false;
+    // Skip the picker if progress already exists from onboarding modal or prior visit
+    const hasGuest = !!(() => { try { return JSON.parse(localStorage.getItem(`ns_guest_prog_${showId}`) || "null"); } catch { return null; } })();
+    const hasBrowse = !!(() => { try { return JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null"); } catch { return null; } })();
+    return !hasGuest && !hasBrowse;
+  });
+
+  // Browse progress from sessionStorage — available immediately for all users
+  const [browseSessionProgress, setBrowseSessionProgress] = useState<{ s: number; e: number } | null>(() => {
+    try { return JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null"); } catch { return null; }
+  });
+  const [browseProgress, setBrowseProgress] = useState<any>(null);
+
+  // Fetch browse_progress for logged-in users who don't have committed progress
+  useEffect(() => {
+    if (!user || progress[showId]) { setBrowseProgress(null); return; }
+    fetchBrowseProgress(user.id, showId).then(bp => {
+      if (bp) setBrowseProgress(bp);
+    }).catch(() => {});
+  }, [user?.id, showId, !!progress[showId]]);
 
   // For logged-in users: show progress prompt if progress is unset (e === 0 sentinel)
   const [showLoggedInPicker, setShowLoggedInPicker] = useState(() =>
@@ -108,20 +103,30 @@ export default function ShowSection({
   // Sync guest progress state when showId changes (user navigates to a different show)
   useEffect(() => {
     if (user) return;
+    let hasProgress = false;
     try {
       const stored = JSON.parse(localStorage.getItem(`ns_guest_prog_${showId}`) || "null");
       setGuestProgress(stored);
-      setShowGuestPicker(!stored);
+      if (stored) hasProgress = true;
     } catch {
       setGuestProgress(null);
-      setShowGuestPicker(true);
     }
+    // Also check sessionStorage for browse progress
+    try {
+      const bp = JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null");
+      setBrowseSessionProgress(bp);
+      if (bp) hasProgress = true;
+    } catch {
+      setBrowseSessionProgress(null);
+    }
+    setShowGuestPicker(!hasProgress);
   }, [showId]);
 
-  // Effective progress: saved progress for logged-in users, guest progress for logged-out.
-  // No explicit annotation — infers as `any` from the any-typed progress prop,
-  // keeping rewatch fields (isRewatching, highestS/E etc.) accessible downstream.
-  const effectiveProgress = user ? progress[showId] : guestProgress ?? undefined;
+  // Effective progress: committed > sessionStorage browse > DB browse > guest > undefined
+  // sessionStorage is checked for all users (immediate, no async delay)
+  const effectiveProgress = user
+    ? (progress[showId] ?? browseSessionProgress ?? browseProgress ?? undefined)
+    : (guestProgress ?? browseSessionProgress ?? undefined);
 
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
   useEffect(() => {
@@ -137,7 +142,6 @@ export default function ShowSection({
   const [riskyRevealedIds, setRiskyRevealedIds] = useState<Set<string>>(new Set());
   const [freshReplyThreadIds, setFreshReplyThreadIds] = useState<Record<string, true>>({});
   const [freshReplyIds, setFreshReplyIds] = useState<Record<string, true>>({});
-  const [dismissedDots, setDismissedDots] = useState(0); // bump to force re-render after dot dismiss
 
   // Clear risky reveals only when the thread changes, not on mode toggle
   // Scroll to top whenever the show changes (reliable on mobile)
@@ -217,6 +221,12 @@ export default function ShowSection({
   const [userGroups, setUserGroups] = useState<FriendGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
 
+  // Hidden tabs (read from localStorage so switch-shows dropdown excludes them)
+  const hiddenTabs = useMemo<Set<string>>(() => {
+    if (!user) return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem(`ns_hidden_tabs_${user.id}`) || "[]")); } catch { return new Set(); }
+  }, [user]);
+
   // ── Friend group view state (Phase 4) ────────────────────────────────────
   // Persist the active group in sessionStorage so a page refresh restores the
   // correct room context (and shows the right "Share to Public" button label).
@@ -231,6 +241,15 @@ export default function ShowSection({
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [createGroupSubmitting, setCreateGroupSubmitting] = useState(false);
+
+  // Auto-open create group modal when navigated with openCreateGroup state
+  useEffect(() => {
+    if ((location.state as any)?.openCreateGroup) {
+      setShowCreateGroupModal(true);
+      // Clear the state so it doesn't re-trigger on navigation
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
   // Group settings modal
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
@@ -270,15 +289,6 @@ export default function ShowSection({
     prevShowIdRef.current = showId;
   }, [showId]);
 
-  // Apply light-blue theme when inside a friend room
-  useEffect(() => {
-    if (activeGroupId) {
-      document.body.classList.add("group-context");
-    } else {
-      document.body.classList.remove("group-context");
-    }
-    return () => { document.body.classList.remove("group-context"); };
-  }, [activeGroupId]);
 
   // Keep sessionStorage in sync with activeGroupId so refreshing restores the room context
   useEffect(() => {
@@ -522,6 +532,27 @@ export default function ShowSection({
 
   // ── DB state ──────────────────────────────────────────────
   const [dbThreads, setDbThreads] = useState<Thread[]>([]);
+
+  // Apply themed background: yellow for public room/posts, blue for friend room, default green for private posts
+  useEffect(() => {
+    const activeThread = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
+    const viewingPrivate = !activeGroupId && !!activeThread && !activeThread.isPublic;
+    if (activeGroupId) {
+      document.body.classList.add("group-context");
+      document.body.classList.remove("public-context");
+    } else if (viewingPrivate) {
+      document.body.classList.remove("group-context");
+      document.body.classList.remove("public-context");
+    } else {
+      document.body.classList.remove("group-context");
+      document.body.classList.add("public-context");
+    }
+    return () => {
+      document.body.classList.remove("group-context");
+      document.body.classList.remove("public-context");
+    };
+  }, [activeGroupId, activeThreadId, dbThreads]);
+
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
   const [replyMeta, setReplyMeta] = useState<Record<string, ReplyMeta[]>>({});
   const [hasExternalReplies, setHasExternalReplies] = useState<Record<string, boolean>>({});
@@ -1050,7 +1081,7 @@ export default function ShowSection({
         <Modal onClose={dismissBBPopup} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              🧪 This Breaking Bad DEMO room is seeded with AI-generated entries so you can see how the forum works before real users fill it. The posts are illustrative, not real opinions.
+              <FlaskConical size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> This Breaking Bad DEMO room is seeded with AI-generated entries so you can see how the forum works before real users fill it. The posts are illustrative, not real opinions.
             </p>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               Try updating your watch progress using the dropdown in the top right of the room to see how the spoiler filter works in practice. All other features are functional here too.
@@ -1100,6 +1131,7 @@ export default function ShowSection({
                   value={""}
                   onChange={(id: string) => { if (id) onSwitchShow(id); }}
                   compact
+                  excludeIds={hiddenTabs}
                 />
               </div>
             )}
@@ -1128,16 +1160,6 @@ export default function ShowSection({
                   >
                     {activeGroupId ? "← to friend room" : thread && !thread.isPublic ? "← back to journal" : "← to forum"}
                   </button>
-                  {(activeGroupId || (thread && !thread.isPublic)) && (
-                    <button
-                      className="btn"
-                      onClick={() => { setActiveGroupId(null); setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
-                      style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
-                      title="Go to public room"
-                    >
-                      🌍
-                    </button>
-                  )}
                 </div>
                 <ModeToggle
                   value={mode}
@@ -1151,9 +1173,9 @@ export default function ShowSection({
                 <button
                   className="btn post"
                   onClick={() => user ? openCompose() : onAuthRequired()}
-                  style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
+                  style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}
                 >
-                  + make an entry
+                  <SquarePen size={13} /> write
                 </button>
                 <OneSelectProgress
                   show={allShows.find(s => s.id === showId) || { seasons: [10] }}
@@ -1166,86 +1188,21 @@ export default function ShowSection({
             </div>
           ) : (
             /* ── Thread · desktop  OR  Forum (any width) ── */
+            <>
+            {/* ── Row 1: journal / back button (left) + sort & progress (right) ── */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: `${ROW_PAD_Y}px 0` }}>
               {!thread ? (
-                /* Forum view: make an entry + room switcher pills */
-                <div style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" as any }}>
-                  <button
-                    className="btn post h40"
-                    onClick={() => user ? openCompose() : onAuthRequired()}
-                    title="Start a new post"
-                    style={{ lineHeight: 1.2, flexShrink: 0 }}
-                  >
-                    + make an entry
-                  </button>
-                  {user && (
-                    <>
-                      {/* Public room pill */}
-                      <button
-                        className="btn"
-                        onClick={() => setActiveGroupId(null)}
-                        style={{
-                          whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                          background: !activeGroupId ? "var(--green)" : "transparent",
-                          border: !activeGroupId ? "2px solid var(--green)" : "2px solid rgba(255,255,255,0.2)",
-                          color: !activeGroupId ? "#fff" : "rgba(255,255,255,0.55)",
-                        }}
-                      >
-                        🌍 Public room
-                      </button>
-                      {/* One pill per group */}
-                      {userGroups.map(g => (
-                        <div key={g.id} style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-                          <button
-                            className="btn"
-                            onClick={() => setActiveGroupId(g.id)}
-                            style={{
-                              whiteSpace: "nowrap", fontSize: 13,
-                              background: activeGroupId === g.id ? "var(--dos-user)" : "transparent",
-                              border: activeGroupId === g.id ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
-                              color: activeGroupId === g.id ? "#fff" : "rgba(255,255,255,0.55)",
-                              borderRadius: "9999px 0 0 9999px",
-                              borderRight: "none",
-                              paddingRight: 8,
-                            }}
-                          >
-                            👥 {g.name}
-                          </button>
-                          <button
-                            className="btn"
-                            onClick={() => openGroupSettings(g.id)}
-                            title="Room settings"
-                            style={{
-                              fontSize: 12, padding: "5px 8px",
-                              background: activeGroupId === g.id ? "var(--dos-user)" : "transparent",
-                              border: activeGroupId === g.id ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
-                              borderLeft: "1px solid rgba(255,255,255,0.15)",
-                              borderRadius: "0 9999px 9999px 0",
-                              color: activeGroupId === g.id ? "#fff" : "rgba(255,255,255,0.55)",
-                            }}
-                          >
-                            ⚙
-                          </button>
-                        </div>
-                      ))}
-                      {/* Create new room */}
-                      <button
-                        className="btn"
-                        onClick={() => setShowCreateGroupModal(true)}
-                        style={{
-                          whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                          background: "transparent",
-                          border: "2px dashed rgba(255,255,255,0.3)",
-                          color: "rgba(255,255,255,0.45)",
-                        }}
-                      >
-                        + new room
-                      </button>
-                    </>
-                  )}
-                </div>
+                /* Forum view: journal button */
+                <button
+                  className="btn post h40"
+                  onClick={() => user ? openCompose() : onAuthRequired()}
+                  title="Start a new post"
+                  style={{ lineHeight: 1.2, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5 }}
+                >
+                  <SquarePen size={15} /> write
+                </button>
               ) : (
-                /* Thread view: context-aware back button + optional 🌍 */
+                /* Thread view: context-aware back button + optional globe + journal */
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <button
                     className="btn h40"
@@ -1265,35 +1222,33 @@ export default function ShowSection({
                         ? "← back to journal"
                         : "← Back to room"}
                   </button>
-                  {(activeGroupId || !thread.isPublic) && (
-                    <button
-                      className="btn h40"
-                      onClick={() => { setActiveGroupId(null); setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
-                      title="Go to public room"
-                      style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
-                    >
-                      🌍
-                    </button>
-                  )}
                   <button
                     className="btn post h40"
                     onClick={() => user ? openCompose() : onAuthRequired()}
                     title="Start a new post"
-                    style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
+                    style={{ lineHeight: 1.2, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 5 }}
                   >
-                    + make an entry
+                    <SquarePen size={15} /> write
                   </button>
                 </div>
               )}
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                 {!thread && (
-                  <select className="badge h40" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
-                    <option value="relevance">Relevance</option>
-                    <option value="post">Post date</option>
-                    <option value="episode">Episode order</option>
-                    <option value="hot">Hot</option>
-                    <option value="rewatchers">Rewatchers</option>
-                  </select>
+                  <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                    <select
+                      className="badge h40"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      style={{ fontSize: 12, fontWeight: 700, paddingRight: 28, appearance: "none", WebkitAppearance: "none", cursor: "pointer", color: "var(--dos-border)" }}
+                    >
+                      <option value="relevance">Relevance</option>
+                      <option value="post">Post date</option>
+                      <option value="episode">Episode order</option>
+                      <option value="hot">Hot</option>
+                      <option value="rewatchers">Rewatchers</option>
+                    </select>
+                    <ChevronDown size={14} color="var(--dos-border)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
+                  </div>
                 )}
                 {thread && (
                   <div style={{ transform: "translateX(-10px)" }}>
@@ -1337,6 +1292,62 @@ export default function ShowSection({
                 </div>
               </div>
             </div>
+            {/* ── Row 2: room switcher pills (forum view only) ── */}
+            {!thread && user && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, paddingBottom: ROW_PAD_Y, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" as any }}>
+                {/* Friend room pills — justified left */}
+                {userGroups.map(g => {
+                  const isActive = activeGroupId === g.id;
+                  const activeBg = "#dea838";
+                  return (
+                    <button
+                      key={g.id}
+                      className="btn"
+                      onClick={() => setActiveGroupId(g.id)}
+                      style={{
+                        whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                        padding: "3px 10px",
+                        background: isActive ? activeBg : "transparent",
+                        border: isActive ? `2px solid ${activeBg}` : "2px solid #fff",
+                        color: "#fff",
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                      }}
+                    >
+                      <Users size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {g.name}
+                      <span
+                        onClick={(e) => { e.stopPropagation(); openGroupSettings(g.id); }}
+                        title="Room settings"
+                        style={{
+                          marginLeft: 2,
+                          display: "inline-flex", alignItems: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Settings size={14} color="var(--icon-color)" />
+                      </span>
+                    </button>
+                  );
+                })}
+                {/* Go to public conversations — pushed to the right */}
+                <div style={{ flexGrow: 1 }} />
+                <button
+                  className="btn"
+                  onClick={() => setActiveGroupId(null)}
+                  style={{
+                    whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                    padding: "3px 12px",
+                    background: !activeGroupId ? "var(--dos-user)" : "transparent",
+                    border: !activeGroupId ? "2px solid var(--dos-user)" : "2px solid #fff",
+                    color: "#fff",
+                  }}
+                >
+                  {activeGroupId
+                    ? <>to public conversations <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /></>
+                    : "public conversations"}
+                </button>
+              </div>
+            )}
+            </>
           )}
         </div>
       </div>
@@ -1353,12 +1364,8 @@ export default function ShowSection({
             Have you watched more of <strong>{show.name}</strong>?{" "}
             If so, update your progress above so you don't leave any accidental spoilers!
           </span>
-          <button
-            className="btn"
-            onClick={onDismissStaleNudge}
-            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
-          >
-            ✕
+          <button className="close-x" onClick={onDismissStaleNudge}>
+            <X size={14} />
           </button>
         </div>
       )}
@@ -1374,12 +1381,8 @@ export default function ShowSection({
           <span>
             Congratulations, you've reached your previous watch progress! From now on your activity on the site will be sorted just like someone watching episodes for the first time — because you are!
           </span>
-          <button
-            className="btn"
-            onClick={() => setShowAutoFlipMsg(false)}
-            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
-          >
-            ✕
+          <button className="close-x" onClick={() => setShowAutoFlipMsg(false)}>
+            <X size={14} />
           </button>
         </div>
       )}
@@ -1389,7 +1392,7 @@ export default function ShowSection({
         <Modal onClose={() => setRiskyHintPending(false)} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
             <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              ⚠️ People who have watched further may have responded to a thread that's inside your watch progress. Sidebar can't promise they didn't leave spoilers, but you can take the risk if you like.
+              <AlertTriangle size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> People who have watched further may have responded to a thread that's inside your watch progress. Sidebar can't promise they didn't leave spoilers, but you can take the risk if you like.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
@@ -1414,17 +1417,13 @@ export default function ShowSection({
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, padding: "8px 16px", marginBottom: 0,
           background: "#fff", border: "none",
-          borderRadius: 24, fontSize: 13, color: "var(--danger)",
+          borderRadius: 24, fontSize: 13, color: "var(--dos-bg)",
         }}>
           <span>
             Thanks for updating your progress — everyone's looking forward to your new thoughts!
           </span>
-          <button
-            className="btn"
-            onClick={() => setShowProgressCelebration(false)}
-            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
-          >
-            ✕
+          <button className="close-x" onClick={() => setShowProgressCelebration(false)} style={{ border: "2px solid var(--dos-bg)", color: "var(--dos-bg)" }}>
+            <X size={14} />
           </button>
         </div>
       )}
@@ -1437,12 +1436,8 @@ export default function ShowSection({
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 700, fontSize: 14, color: "var(--dos-bg)" }}>Need help?</span>
-            <button
-              className="btn"
-              onClick={() => setHelpOpen(false)}
-              style={{ width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #7abd8e", borderRadius: "50%", color: "#7abd8e", fontSize: 13, lineHeight: 1 }}
-            >
-              ✕
+            <button className="close-x" onClick={() => setHelpOpen(false)}>
+              <X size={14} />
             </button>
           </div>
           {[
@@ -1508,8 +1503,8 @@ export default function ShowSection({
         return (
           <Modal onClose={() => setShowGroupSettings(false)} width="min(460px,92vw)">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-              <h3 className="title" style={{ margin: 0 }}>👥 {grp?.name ?? "Room settings"}</h3>
-              <button className="btn" onClick={() => setShowGroupSettings(false)}>✕</button>
+              <h3 className="title" style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: 4 }}><Users size={14} color="var(--icon-color)" /> {grp?.name ?? "Room settings"}</h3>
+              <button className="close-x" onClick={() => setShowGroupSettings(false)}><X size={14} /></button>
             </div>
 
             {/* Members list */}
@@ -1523,7 +1518,7 @@ export default function ShowSection({
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {groupMembers.map(m => (
                     <div key={m.userId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}>
-                      <span>@{m.username}{m.userId === grp?.createdBy ? " 👑" : ""}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>@{m.username}{m.userId === grp?.createdBy ? <Crown size={14} color="var(--icon-color)" /> : ""}</span>
                     </div>
                   ))}
                 </div>
@@ -1627,6 +1622,7 @@ export default function ShowSection({
           thread={{ ...thread, likes: likesThreads[thread.id] ?? thread.likes }}
           show={allShows.find(s => s.id === showId) || { name: showId }}
           inGroupContext={!!activeGroupId}
+          groupId={activeGroupId}
           onBack={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
           progressForShow={effectiveProgress || { s: 1, e: 1 }}
           onMountAlignTop={() => scrollToShowTop()}
@@ -1653,7 +1649,7 @@ export default function ShowSection({
             setTimeout(() => scrollToShowTop(), 0);
           }}
           onThreadMakePrivate={() => {
-            // Mark not-public in state — owner still sees it with 📝, others see nothing
+            // Mark not-public in state — owner still sees it with lock icon, others see nothing
             setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPublic: false } : t));
           }}
           onThreadMakePublic={() => {
@@ -1742,7 +1738,7 @@ export default function ShowSection({
                       (@{t.author}) deleted their post.
                     </div>
                     <div className="replyCount">
-                      <span>💬 {displayReplyCount}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MessageCircle size={14} color="var(--icon-color)" /> {displayReplyCount}</span>
                     </div>
                   </div>
                 </div>
@@ -1753,13 +1749,21 @@ export default function ShowSection({
               <div key={t.id} style={{ position: "relative", margin: "0 0 12px 0" }}>
                 {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
                   <Tooltip
-                    text="There are new responses to you in here (for when you catch up)."
+                    text="People (who are ahead of you) have written you back!"
                     direction="right"
                     align="left"
                     useAbsolute
                     style={{ position: "absolute", left: -14, top: "calc(50% - 14px)", zIndex: 1 }}
                   >
-                    <ThreadRedDot count={hiddenNew} threadId={t.id} onDismiss={() => setDismissedDots(d => d + 1)} />
+                    <div style={{
+                      width: 28, height: 28, borderRadius: "50%",
+                      background: "var(--danger)", color: "#fff",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: 800, lineHeight: 1,
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.30)",
+                    }}>
+                      {hiddenNew}
+                    </div>
                   </Tooltip>
                 )}
               <div
@@ -1787,7 +1791,9 @@ export default function ShowSection({
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h2 style={{ margin: 0, fontSize: 22 }} className="title">
-                    {!t.isPublic && <span style={{ marginRight: 4 }}>📝</span>}
+                    {activeGroupId
+                      ? <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}><Users size={14} color="var(--icon-color)" /></span>
+                      : !t.isPublic && <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}><LockKeyhole size={14} color="var(--icon-color)" /></span>}
                     {t.titleBase}
                     {t.showId !== "simshow" && (
                       <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
@@ -1807,7 +1813,7 @@ export default function ShowSection({
                   Started by <Username name={t.author} onClickProfile={onClickProfile} />
                   {t.isRewatch && (
                     <Tooltip text={`This viewer is also rewatching ${show.name}.`} direction="above">
-                      <span style={{ cursor: "default" }}>😍</span>
+                      <span style={{ cursor: "default", display: "inline-flex", alignItems: "center" }}><Heart size={14} color="var(--icon-color)" /></span>
                     </Tooltip>
                   )}
                   {" "}• {timeAgo(t.updatedAt)}
@@ -1818,11 +1824,12 @@ export default function ShowSection({
                 </div>
 
                 <div className="replyCount">
-                  <span style={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? {
-                    background: "#4b8f6c", color: "#fff", borderRadius: 9999,
+                  <span className={(!activeGroupId && (visibleNew > 0 || freshReplyThreadIds[t.id])) ? "newReplyBadge" : ""}
+                    style={(!activeGroupId && (visibleNew > 0 || freshReplyThreadIds[t.id])) ? {
+                    background: "#dea838", color: "#fff", borderRadius: 9999,
                     padding: "2px 7px", fontWeight: 700,
                   } : {}}>
-                    💬 {displayReplyCount}
+                    <MessageCircle size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
                   </span>
                 </div>
               </div>
@@ -1830,11 +1837,20 @@ export default function ShowSection({
             );
           })}
           {!activeLoading && activeList.length === 0 && (
-            <div className="muted" style={{ fontSize: 14 }}>
-              {activeGroupId
-                ? "No entries shared to this room yet. Write a post and select this room as a destination in the composer."
-                : "No posts match your watch progress."}
-            </div>
+            activeGroupId ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 0 48px", gap: 16 }}>
+                <div className="muted" style={{ fontSize: 14, textAlign: "center" }}>No entries shared to this room yet.</div>
+                <button
+                  className="btn"
+                  onClick={() => openGroupSettings(activeGroupId)}
+                  style={{ background: "var(--dos-user)", border: "none", color: "#fff", fontSize: 14, padding: "8px 20px" }}
+                >
+                  <Users size={14} color="#fff" style={{verticalAlign:"middle"}} /> invite friends
+                </button>
+              </div>
+            ) : (
+              <div className="muted" style={{ fontSize: 14 }}>No posts match your watch progress.</div>
+            )
           )}
         </div>
       )}
@@ -1843,8 +1859,8 @@ export default function ShowSection({
       {composeOpen && (
         <Modal onClose={() => closeCompose()} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <h3 className="title" style={{ margin: 0 }}>make an entry</h3>
-            <button className="btn" onClick={() => closeCompose()}>✕</button>
+            <h3 className="title" style={{ margin: 0 }}>{activeGroupId ? "write to your friends" : "add to journal"}</h3>
+            <button className="close-x" onClick={() => closeCompose()}><X size={14} /></button>
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -1875,87 +1891,73 @@ export default function ShowSection({
                 onInsert={handlePromptInsert}
               />
             )}
-            {/* ── Prompt button row ── */}
-            {promptEntries.length > 0 && (
-              <div>
+            {/* ── Destination selector (hidden when writing from a friend room) ── */}
+            {!activeGroupId && (
+            <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10 }}>Where to post</div>
+
+              {/* Private journal */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination("private")}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {composeDestination === "private" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
+                </div>
+                <span style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 4 }}><LockKeyhole size={14} color="var(--icon-color)" /> Private journal</span>
+              </div>
+
+              {/* One option per friend group */}
+              {userGroups.map(g => (
+                <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination(g.id)}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {composeDestination === g.id && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
+                  </div>
+                  <span style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 4 }}><Users size={14} color="var(--icon-color)" /> {g.name}</span>
+                </div>
+              ))}
+
+              {/* Public journal */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, cursor: "pointer" }} onClick={() => setComposeDestination("public")}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {composeDestination === "public" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
+                </div>
+                <span style={{ fontSize: 14 }}>
+                  <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public journal
+                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
+                </span>
+              </div>
+            </div>
+            )}
+
+            {/* ── Submit row ── */}
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+              {promptEntries.length > 0 && (
                 <button
                   className="prompt-btn"
                   type="button"
                   onClick={handlePromptBtn}
                   title="Get a writing prompt"
+                  style={{ marginRight: "auto" }}
                 >
-                  ✦ want a prompt?
+                  <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>
-              </div>
-            )}
-
-            {/* ── Destination selector ── */}
-            <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10 }}>Where to post</div>
-
-              {/* Private journal */}
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="composeDestination"
-                  checked={composeDestination === "private"}
-                  onChange={() => setComposeDestination("private")}
-                  style={{ accentColor: "var(--green)" }}
-                />
-                <span style={{ fontSize: 14 }}>📝 Private journal</span>
-              </label>
-
-              {/* One option per friend group */}
-              {userGroups.map(g => (
-                <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
-                  <input
-                    type="radio"
-                    name="composeDestination"
-                    checked={composeDestination === g.id}
-                    onChange={() => setComposeDestination(g.id)}
-                    style={{ accentColor: "var(--green)" }}
-                  />
-                  <span style={{ fontSize: 14 }}>👥 {g.name}</span>
-                </label>
-              ))}
-
-              {/* Public profile */}
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 0, cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="composeDestination"
-                  checked={composeDestination === "public"}
-                  onChange={() => setComposeDestination("public")}
-                  style={{ accentColor: "var(--green)", marginTop: 2 }}
-                />
-                <span style={{ fontSize: 14 }}>
-                  🌍 Public profile
-                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
-                </span>
-              </label>
-            </div>
-
-            {/* ── Submit row ── */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
+              )}
+              <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
               <button
-                className="btn"
+                className="btn compose-submit"
                 onClick={submitPost}
                 disabled={postSubmitting}
                 style={{
-                  background: composeDestination !== "private" ? "var(--green)" : "var(--dos-bg)",
-                  border: "2px solid #fff",
+                  background: "var(--danger)",
+                  border: "2px solid var(--danger)",
                   color: "#fff",
                   whiteSpace: "nowrap",
                   fontSize: 13,
                   minWidth: 130,
                 }}
               >
-                {postSubmitting
-                  ? "Posting…"
-                  : composeDestination === "private"
-                    ? "📝 Save to journal"
-                    : "Post"}
+                {postSubmitting ? "Posting…"
+                  : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
+                  : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> post</>
+                  : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}
               </button>
             </div>
           </div>

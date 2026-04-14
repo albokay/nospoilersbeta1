@@ -545,6 +545,7 @@ export default function InlineThreadView({
         show={show}
         progress={progressForShow}
         inGroupContext={inGroupContext}
+        groupId={groupIdProp}
       />}
     </section>
   );

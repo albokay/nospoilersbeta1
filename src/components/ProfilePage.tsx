@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, Map, ChevronDown } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -125,16 +126,47 @@ export default function ProfilePage({
     return Object.keys(latest).sort((a, b) => latest[b] - latest[a]);
   }, [myThreads, myReplies, repliesToMe, likedThreadsList, likedRepliesList, progress]);
 
+  // Hidden tabs: user can close tabs to declutter their private profile view.
+  // Entries and progress remain — purely a UI preference stored in localStorage.
+  const hiddenTabsKey = user ? `ns_hidden_tabs_${user.id}` : "";
+  const [hiddenTabs, setHiddenTabs] = useState<Set<string>>(() => {
+    if (!hiddenTabsKey) return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem(hiddenTabsKey) || "[]")); } catch { return new Set(); }
+  });
+  const hideTab = (sid: string) => {
+    setHiddenTabs(prev => {
+      const next = new Set(prev);
+      next.add(sid);
+      if (hiddenTabsKey) localStorage.setItem(hiddenTabsKey, JSON.stringify([...next]));
+      return next;
+    });
+  };
+  const unhideTab = (sid: string) => {
+    setHiddenTabs(prev => {
+      const next = new Set(prev);
+      next.delete(sid);
+      if (hiddenTabsKey) localStorage.setItem(hiddenTabsKey, JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  // Filter hidden tabs from the visible tab order
+  const visibleTabOrder = useMemo(() => showTabOrder.filter(sid => !hiddenTabs.has(sid)), [showTabOrder, hiddenTabs]);
+
   const [activeTab, setActiveTab] = useState("");
   const [viewedTabIds, setViewedTabIds] = useState<Set<string>>(new Set());
   useEffect(() => {
-    if (!loading && showTabOrder.length) {
+    if (!loading && visibleTabOrder.length) {
       const requestedTab = (location.state as any)?.activeTab;
-      const tab = (requestedTab && showTabOrder.includes(requestedTab)) ? requestedTab : showTabOrder[0];
+      // If a hidden tab is being re-opened (e.g. from "Start your journal"), unhide it
+      if (requestedTab && hiddenTabs.has(requestedTab)) {
+        unhideTab(requestedTab);
+      }
+      const tab = (requestedTab && (visibleTabOrder.includes(requestedTab) || showTabOrder.includes(requestedTab))) ? requestedTab : visibleTabOrder[0];
       setActiveTab(tab);
       setViewedTabIds(prev => new Set([...prev, tab]));
     }
-  }, [loading]);
+  }, [loading, location.key, visibleTabOrder.length]);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   // clear expanded state when switching tabs
@@ -157,13 +189,53 @@ export default function ProfilePage({
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
   const [postSubmitting, setPostSubmitting] = useState(false);
-  const [composeDestination, setComposeDestination] = useState<"private" | "public" | string>("private");
+  const [composeDestination, setComposeDestination] = useState<"private" | "public" | string>("");
 
   const closeCompose = () => {
     setComposeOpen(false);
-    setComposeDestination("private");
+    setComposeDestination("");
   };
   const postBodyRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Tab "go to" dropdown
+  const [tabDropdownOpen, setTabDropdownOpen] = useState<string | null>(null);
+  const [tabDropdownPos, setTabDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  const tabDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!tabDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (tabDropdownRef.current && !tabDropdownRef.current.contains(e.target as Node)) {
+        setTabDropdownOpen(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [tabDropdownOpen]);
+  const goToShowRoom = (sid: string, groupId?: string) => {
+    if (groupId) sessionStorage.setItem(`ns_active_group_${sid}`, groupId);
+    else sessionStorage.removeItem(`ns_active_group_${sid}`);
+    openShow(sid);
+    setTabDropdownOpen(null);
+  };
+
+  // Create friend room from profile
+  const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
+  const [newRoomName, setNewRoomName] = useState("");
+  const [createRoomSubmitting, setCreateRoomSubmitting] = useState(false);
+  const handleCreateRoom = async () => {
+    if (!user || !newRoomName.trim() || !activeTab) return;
+    setCreateRoomSubmitting(true);
+    try {
+      const g = await createFriendGroup({ showId: activeTab, name: newRoomName.trim(), createdBy: user.id });
+      setTabGroups(prev => [...prev, g]);
+      setNewRoomName("");
+      setShowCreateRoomModal(false);
+      // Navigate into the new room
+      sessionStorage.setItem(`ns_active_group_${activeTab}`, g.id);
+      openShow(activeTab);
+    } catch (e) { console.error(e); }
+    finally { setCreateRoomSubmitting(false); }
+  };
 
   // Prompt system
   const [promptEntries, setPromptEntries] = useState<PromptEntry[]>([]);
@@ -258,12 +330,15 @@ export default function ProfilePage({
         await addThreadToGroup(t.id, composeDestination).catch(() => {});
       }
 
+      const destShowId = activeTab;
       const groupId = (composeDestination !== "public" && composeDestination !== "private") ? composeDestination : undefined;
       const groupName = groupId ? tabGroups.find(g => g.id === groupId)?.name : undefined;
       setMyThreads(prev => [{ thread: t, groupId, groupName }, ...prev]);
       setPostTitle(""); setPostBody("");
       setActivePrompt(null); setShownPromptIds([]); setInsertedPromptIds([]);
-      closeCompose();
+      setComposeOpen(false);
+      // Navigate to the newly created thread in its context
+      openThreadWithFocus(destShowId, t.id, undefined, groupId);
     } catch {
       alert("Failed to post. Please try again.");
     } finally {
@@ -330,66 +405,11 @@ export default function ProfilePage({
     return r;
   }, [repliesToUser, progress]);
 
-  // Which threads have visible replies (within progress) and their counts / latest timestamps
-  const visibleByThreadId = useMemo(() => {
-    const r: Record<string, true> = {};
-    for (const { reply, thread: t } of repliesToUser) {
-      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) r[t.id] = true;
-    }
-    return r;
-  }, [repliesToUser, progress]);
-
-  const visibleReplyCountByThreadId = useMemo(() => {
-    const r: Record<string, number> = {};
-    for (const { reply, thread: t } of repliesToUser) {
-      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId]))
-        r[t.id] = (r[t.id] ?? 0) + 1;
-    }
-    return r;
-  }, [repliesToUser, progress]);
-
-  const latestVisibleAtByThreadId = useMemo(() => {
-    const r: Record<string, number> = {};
-    for (const { reply, thread: t } of repliesToUser) {
-      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) {
-        if (!r[t.id] || reply.updatedAt > r[t.id]) r[t.id] = reply.updatedAt;
-      }
-    }
-    return r;
-  }, [repliesToUser, progress]);
-
-  // Dismissed green indicators (separate from red): threadId → timestamp
-  const [dismissedGreenIndicators, setDismissedGreenIndicators] = useState<Record<string, number>>(() => {
-    try { return JSON.parse(localStorage.getItem("ns_dismissed_green_indicators") || "{}"); }
-    catch { return {}; }
-  });
-  const dismissGreenIndicator = (threadId: string) => {
-    const updated = { ...dismissedGreenIndicators, [threadId]: Date.now() };
-    setDismissedGreenIndicators(updated);
-    localStorage.setItem("ns_dismissed_green_indicators", JSON.stringify(updated));
-  };
-
-  // Green indicator: visible replies exist and not dismissed (or new ones arrived after dismiss)
-  const shouldShowGreenIndicator = (threadId: string) => {
-    if (!visibleByThreadId[threadId]) return false;
-    const dismissedAt = dismissedGreenIndicators[threadId];
-    if (!dismissedAt) return true;
-    return (latestVisibleAtByThreadId[threadId] ?? 0) > dismissedAt;
-  };
-
-  // Red indicator: invisible replies exist and not dismissed
-  const shouldShowRedIndicator = (threadId: string) => {
+  const shouldShowIndicator = (threadId: string) => {
     if (!invisibleByThreadId[threadId]) return false;
     const dismissedAt = dismissedIndicators[threadId];
     if (!dismissedAt) return true;
     return (latestInvisibleAtByThreadId[threadId] ?? 0) > dismissedAt;
-  };
-
-  // Priority: green over red. Green dismissed by X or entering thread.
-  const getThreadIndicator = (threadId: string): "green" | "red" | null => {
-    if (shouldShowGreenIndicator(threadId)) return "green";
-    if (shouldShowRedIndicator(threadId)) return "red";
-    return null;
   };
 
   // Which reply IDs are newly visible (unread since profile was opened)
@@ -421,7 +441,7 @@ export default function ProfilePage({
   useEffect(() => {
     if (loading) return;
     onTabsChangeRef.current?.({
-      showTabOrder,
+      showTabOrder: visibleTabOrder,
       activeTab,
       onTabClick: (sid: string) => {
         if (sid === activeTab) openShow(sid);
@@ -430,7 +450,7 @@ export default function ProfilePage({
       tabActivity,
       viewedTabIds,
     });
-  }, [loading, showTabOrder, activeTab, tabActivity, viewedTabIds]);
+  }, [loading, visibleTabOrder, activeTab, tabActivity, viewedTabIds]);
   useEffect(() => { return () => { onTabsChangeRef.current?.(null); }; }, []);
 
   return (
@@ -448,38 +468,12 @@ export default function ProfilePage({
               <section style={{ marginTop: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, marginBottom: 16, minHeight: 28 }}>
                   <div className="title profile-journal-heading" style={{ fontSize: 22, marginLeft: -42 }}>Your Journal</div>
-                  <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
-                    {(["all", "private"] as const).map(opt => (
-                      <button
-                        key={opt}
-                        onClick={() => setDiaryFilter(opt)}
-                        style={{
-                          padding: "3px 10px",
-                          fontSize: 12,
-                          fontWeight: diaryFilter === opt ? 700 : 400,
-                          background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
-                          color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
-                          border: "none",
-                          cursor: "pointer",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {opt === "all" ? "all" : "private journal only"}
-                      </button>
-                    ))}
-                  </div>
                 </div>
                 <div className="diaryOuter">
-                  {/* Background pages — visual depth only, lower-left cascade.
-                      top = tabRowHeight - offset so that after translate(Y+offset)
-                      the visual top of each line lands exactly at the card top. */}
-                  {[48, 32, 16].map(offset => (
-                    <div key={offset} className="diaryBackPage" style={{ top: 27, transform: `translate(-${offset}px, ${offset}px)` }} />
-                  ))}
                   {/* Folder tab row — sits flush on top of the front card */}
                   <div className="diaryTabScroller">
                   <div className="diaryTabRow">
-                    {showTabOrder.map(sid => {
+                    {visibleTabOrder.map(sid => {
                       const active = sid === activeTab;
                       const activity = tabActivity[sid];
                       const viewed = viewedTabIds.has(sid);
@@ -487,13 +481,26 @@ export default function ProfilePage({
                         <button
                           key={sid}
                           className={`diaryTab${active ? " active" : ""}`}
-                          title={!viewed && activity ? "There are new responses to you in here." : undefined}
-                          onClick={() => {
-                            if (sid === activeTab) { openShow(sid); }
-                            else { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
+                          onClick={(e) => {
+                            if (sid !== activeTab) {
+                              // First click: just select the tab
+                              setActiveTab(sid);
+                              setViewedTabIds(prev => new Set([...prev, sid]));
+                              setTabDropdownOpen(null);
+                              return;
+                            }
+                            // Second click (tab already active): toggle dropdown
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const hamburger = e.currentTarget.querySelector("[data-hamburger]");
+                            const anchorLeft = hamburger ? hamburger.getBoundingClientRect().left : rect.right;
+                            setTabDropdownPos({ top: rect.bottom + 6, left: anchorLeft });
+                            setTabDropdownOpen(prev => prev === sid ? null : sid);
                           }}
                         >
                           {showName(sid)}
+                          {active && (
+                            <span data-hamburger style={{ marginLeft: 8, opacity: 0.8, lineHeight: 1, display: "inline-flex", verticalAlign: "middle" }}><Map size={20} color="currentColor" /></span>
+                          )}
                           {!viewed && activity && (
                             <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: activity === "green" ? "var(--green)" : "var(--danger)", pointerEvents: "none" }} />
                           )}
@@ -503,21 +510,52 @@ export default function ProfilePage({
                   </div>
                   </div>
                 <div className="diaryCardWrap">
+                  {/* Background pages — positioned relative to diaryCardWrap so
+                      inset:0 matches the front card exactly; translate alone
+                      creates the even staircase (16px steps). */}
+                  {([48, 32, 16] as const).map(offset => {
+                    const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
+                    return (
+                      <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
+                    );
+                  })}
                 <div className="card" style={{ height: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
                     <div className="profileActionBar">
-                      <button
-                        className="btn post h40"
-                        onClick={() => {
-                          // Default to most recent group for this show, or private if none
-                          setComposeDestination(tabGroups.length > 0 ? tabGroups[0].id : "private");
-                          setComposeOpen(true);
-                        }}
-                        style={{ lineHeight: 1.2, marginLeft: 20 }}
-                      >
-                        + make an entry
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          className="btn post h40"
+                          onClick={() => {
+                            // Reset to placeholder so user must choose
+                            setComposeDestination("");
+                            setComposeOpen(true);
+                          }}
+                          style={{ lineHeight: 1.2, marginLeft: 20, background: "transparent", border: "2px solid #fff", color: "#fff", display: "inline-flex", alignItems: "center", gap: 5 }}
+                        >
+                          <SquarePen size={15} /> write
+                        </button>
+                        <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
+                          {(["all", "private"] as const).map(opt => (
+                            <button
+                              key={opt}
+                              onClick={() => setDiaryFilter(opt)}
+                              style={{
+                                padding: "3px 10px",
+                                fontSize: 12,
+                                fontWeight: diaryFilter === opt ? 700 : 400,
+                                background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
+                                color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
+                                border: "none",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {opt === "all" ? "all entries" : "private entries"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       {activeShow && (
                         <OneSelectProgress
                           show={activeShow}
@@ -530,7 +568,7 @@ export default function ProfilePage({
                   )}
                   <div className="diaryScrollArea">
                   {(() => {
-                    const byDiary = diaryFilter === "private" ? tabThreads.filter(({ thread: t }) => !t.isPublic) : tabThreads;
+                    const byDiary = diaryFilter === "private" ? tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !groupId) : tabThreads;
                     const filtered = journalGroupFilter ? byDiary.filter(({ groupId }) => groupId === journalGroupFilter) : byDiary;
                     if (filtered.length === 0) {
                       if (diaryFilter === "private" && tabThreads.length > 0) {
@@ -546,91 +584,76 @@ export default function ProfilePage({
                         );
                       }
                       // No entries at all (including new users on private filter) — show welcome
-                      return <EmptyProfileWelcome />;
+                      return <EmptyProfileWelcome isTsp={activeTab === "tsp" && visibleTabOrder.length === 1} />;
                     }
                     return filtered.map(({ thread: t, groupId, groupName }) => {
-                    const isPrivate = !t.isPublic && !groupId;
-                    const replyCount = visibleReplyCountByThreadId[t.id] ?? 0;
-                    const indicator = isPrivate ? null : getThreadIndicator(t.id);
+                    const isGroup = !!groupId;
+                    const isPub = t.isPublic && !groupId;
+                    // card bg: blue for friend room, yellow for public, transparent for private
+                    const cardBg = isGroup ? "#acc9d6" : isPub ? "#dea838" : undefined;
+                    const cardFg = isGroup ? "#1a3a4a" : "#fff";
+                    const cardMuted = isGroup ? "rgba(26,58,74,0.65)" : "rgba(255,255,255,0.65)";
+                    const epColor = isGroup ? "#1a3a4a" : "var(--dos-cyan)";
+                    // expand button: inverted chip using card accent
+                    const chipBg = isGroup ? "#1a3a4a" : isPub ? "rgba(0,0,0,0.18)" : "#fff";
+                    const chipFg = isGroup ? "#acc9d6" : isPub ? "#fff" : "var(--dos-bg)";
                     return (
                     <div key={t.id} className="card threadCard"
                       style={{
                         margin: "10px 0 10px 20px", cursor: "pointer", position: "relative",
-                        paddingBottom: (!isPrivate && replyCount > 0) ? 36 : undefined,
-                        ...(groupId ? { background: "#adc8d7", color: "#1a3a4a", borderColor: "#fff" } : {}),
+                        ...((isGroup || isPub) ? { background: cardBg, color: cardFg, borderColor: "transparent" } : {}),
                       }}
-                      onClick={() => {
-                        // Entering the thread dismisses the green indicator
-                        if (indicator === "green") dismissGreenIndicator(t.id);
-                        openThreadWithFocus(t.showId, t.id, undefined, groupId);
-                      }}>
-                      {indicator === "green" && (
+                      onClick={() => openThreadWithFocus(t.showId, t.id, undefined, groupId)}>
+                      {shouldShowIndicator(t.id) && (
                         <Tooltip
-                          text="People have written to you."
+                          text={<>{invisibleCountByThreadId[t.id] ?? ""} people ahead of you have written you back! You can read these once you catch up. And you can get rid of this indicator by clicking the X.<br /><br />Sidebar will still let you know if you get new responses, but you can always turn the indicator off.</>}
                           direction="right"
                           gap={14}
                           style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
-                          tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
-                          width={200}
+                          tooltipStyle={{ background: "#acc9d6", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
+                          width={260}
                         >
                           <div
-                            style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                            onClick={(e) => { e.stopPropagation(); dismissGreenIndicator(t.id); }}
-                          >
-                            <span style={{ color: "#fff", fontSize: 10, fontWeight: 800, lineHeight: 1, userSelect: "none" }}>✕</span>
-                          </div>
-                        </Tooltip>
-                      )}
-                      {indicator === "red" && (
-                        <Tooltip
-                          text="People ahead of you have written to you."
-                          direction="right"
-                          gap={14}
-                          style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
-                          tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
-                          width={200}
-                        >
-                          <div
-                            style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                            style={{ width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
                             onClick={(e) => { e.stopPropagation(); dismissIndicator(t.id); }}
                           >
-                            <span style={{ color: "#fff", fontSize: 10, fontWeight: 800, lineHeight: 1, userSelect: "none" }}>✕</span>
+                            <X size={14} color="currentColor" />
                           </div>
                         </Tooltip>
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div className="title" style={{ fontSize: 18, ...(groupId ? { color: "#1a3a4a" } : {}) }}>
-                          {isPrivate && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
-                          {groupId && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8 }}>👥</span>}
+                        <div className="title" style={{ fontSize: 18, ...((isGroup || isPub) ? { color: cardFg } : {}) }}>
+                          {!t.isPublic && !groupId && <span title="Private" style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><LockKeyhole size={14} color="var(--icon-color)" /></span>}
+                          {isPub && <span title="Public" style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><Globe size={14} color="var(--icon-color)" /></span>}
+                          {isGroup && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><Users size={14} color="var(--icon-color)" /></span>}
+                          {isGroup && groupName && (
+                            <span style={{ fontSize: 13, opacity: 0.7, fontWeight: 400, marginRight: 6 }}>
+                              {groupName} ·{" "}
+                            </span>
+                          )}
                           {t.titleBase}
                           {t.showId !== "simshow" && (
-                            <span style={{ color: groupId ? "#1a3a4a" : "var(--dos-cyan)" }}>
+                            <span style={{ color: epColor }}>
                               {` — S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")}`}
                             </span>
                           )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {t.body !== t.preview && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: groupId ? "#1a3a4a" : "#fff", color: groupId ? "#adc8d7" : "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: chipBg, color: chipFg, borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
                               {expandedIds.has(t.id) ? "▴ less" : "▾ expand"}
                             </div>
                           )}
-                          <div className="muted" style={{ fontSize: 13, ...(groupId ? { color: "rgba(26,58,74,0.65)" } : {}) }}>{timeAgo(t.updatedAt)}</div>
+                          <div className="muted" style={{ fontSize: 13, ...((isGroup || isPub) ? { color: cardMuted } : {}) }}>{timeAgo(t.updatedAt)}</div>
                         </div>
                       </div>
-                      <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined, ...(groupId ? { color: "#1a3a4a" } : {}) }}
+                      <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined, ...((isGroup || isPub) ? { color: cardFg } : {}) }}
                         className={expandedIds.has(t.id) ? undefined : "clamp3"}>
                         {expandedIds.has(t.id) ? t.body : t.preview}
                       </div>
-                      {!isPrivate && replyCount > 0 && (
-                        <div style={{ position: "absolute", right: 12, bottom: 8, fontSize: 18, color: groupId ? "rgba(26,58,74,0.65)" : "var(--dos-gray)" }}>
-                          <span>💬 {replyCount}</span>
-                        </div>
-                      )}
                     </div>
-                    );
-                  });
+                  );});
                   })()}
                   <div style={{ height: 32, flexShrink: 0 }} aria-hidden />
                   </div>{/* /diaryScrollArea */}
@@ -648,7 +671,7 @@ export default function ProfilePage({
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", position: "relative", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id, groupId)}>
                       {newVisibleReplyIds[r.id] && (
-                        <div style={{ position: "absolute", left: -10, top: -10, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
+                        <div style={{ position: "absolute", left: -10, top: -10, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="muted" style={{ fontSize: 14 }}>
@@ -663,7 +686,7 @@ export default function ProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {(r.body.length > 260 || r.body.split('\n').length > 3) && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {expandedIds.has(r.id) ? "▴ less" : "▾ expand"}
                             </div>
@@ -699,7 +722,7 @@ export default function ProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {(r.body.length > 260 || r.body.split('\n').length > 3) && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {expandedIds.has(r.id) ? "▴ less" : "▾ expand"}
                             </div>
@@ -736,7 +759,7 @@ export default function ProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {t.body !== t.preview && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
                               {expandedIds.has(t.id) ? "▴ less" : "▾ expand"}
                             </div>
@@ -771,7 +794,7 @@ export default function ProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {(r.body.length > 260 || r.body.split('\n').length > 3) && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {expandedIds.has(r.id) ? "▴ less" : "▾ expand"}
                             </div>
@@ -795,11 +818,28 @@ export default function ProfilePage({
       {/* Compose modal */}
       {composeOpen && (
         <Modal onClose={closeCompose} width="min(720px,92vw)">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <h3 className="title" style={{ margin: 0 }}>make an entry</h3>
-            <button className="btn" onClick={closeCompose}>✕</button>
-          </div>
-          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+          <button className="close-x" onClick={closeCompose} style={{ position: "absolute", top: 12, right: 16 }}><X size={14} /></button>
+          <div style={{ display: "grid", gap: 10 }}>
+            {/* ── Destination dropdown ── */}
+            <div>
+              <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                <select
+                  className="badge"
+                  value={composeDestination}
+                  onChange={(e) => setComposeDestination(e.target.value)}
+                  style={{ fontSize: 13, fontWeight: 600, paddingRight: 30, appearance: "none", WebkitAppearance: "none", cursor: "pointer", width: "100%" }}
+                >
+                  <option value="" disabled>where do you want to write?</option>
+                  <option value="private">private entry</option>
+                  <option value="public">public entry</option>
+                  {tabGroups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name} friend room</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
+              </div>
+            </div>
+
             <input
               className="badge"
               placeholder="Title"
@@ -828,81 +868,113 @@ export default function ProfilePage({
                 onInsert={handlePromptInsert}
               />
             )}
-            {promptEntries.length > 0 && (
-              <div>
-                <button className="prompt-btn" type="button" onClick={handlePromptBtn} title="Get a writing prompt">
-                  ✦ want a prompt?
-                </button>
-              </div>
-            )}
-
-            {/* ── Destination selector ── */}
-            <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10, color: "var(--dos-light)" }}>Where to post</div>
-
-              {/* Private journal */}
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="composeDestination"
-                  checked={composeDestination === "private"}
-                  onChange={() => setComposeDestination("private")}
-                  style={{ accentColor: "var(--green)" }}
-                />
-                <span style={{ fontSize: 14, color: "var(--dos-light)" }}>📝 Private journal</span>
-              </label>
-
-              {/* One option per friend group */}
-              {tabGroups.map(g => (
-                <label key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
-                  <input
-                    type="radio"
-                    name="composeDestination"
-                    checked={composeDestination === g.id}
-                    onChange={() => setComposeDestination(g.id)}
-                    style={{ accentColor: "var(--green)" }}
-                  />
-                  <span style={{ fontSize: 14, color: "var(--dos-light)" }}>👥 {g.name}</span>
-                </label>
-              ))}
-
-              {/* Public profile */}
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 0, cursor: "pointer" }}>
-                <input
-                  type="radio"
-                  name="composeDestination"
-                  checked={composeDestination === "public"}
-                  onChange={() => setComposeDestination("public")}
-                  style={{ accentColor: "var(--green)", marginTop: 2 }}
-                />
-                <span style={{ fontSize: 14, color: "var(--dos-light)" }}>
-                  🌍 Public profile
-                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
-                </span>
-              </label>
-            </div>
-
             {/* ── Submit row ── */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button className="btn" onClick={closeCompose} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
-              <button
-                className="btn"
-                onClick={submitPost}
-                disabled={postSubmitting}
-                style={{
-                  background: composeDestination !== "private" ? "var(--green)" : "var(--dos-bg)",
-                  border: "2px solid rgba(255,255,255,0.3)",
-                  color: "#fff",
-                  whiteSpace: "nowrap",
-                  fontSize: 13,
-                  minWidth: 130,
-                }}
-              >
-                {postSubmitting ? "Posting…" : composeDestination === "private" ? "📝 Save to journal" : "Post"}
-              </button>
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+              {promptEntries.length > 0 && (
+                <button className="prompt-btn" type="button" onClick={handlePromptBtn} title="Get a writing prompt" style={{ marginRight: "auto" }}>
+                  <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
+                </button>
+              )}
+              <button className="btn" onClick={closeCompose} disabled={postSubmitting} style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
+              {(() => {
+                const formReady = !!composeDestination && !!postTitle.trim() && !!postBody.trim();
+                return (
+                  <button
+                    className="btn compose-submit"
+                    onClick={submitPost}
+                    disabled={postSubmitting || !formReady}
+                    style={{
+                      background: "var(--danger)",
+                      border: "2px solid var(--danger)",
+                      color: "#fff",
+                      whiteSpace: "nowrap",
+                      fontSize: 13,
+                      minWidth: 130,
+                      opacity: formReady ? 1 : 0.3,
+                    }}
+                  >
+                    {!formReady && !postSubmitting ? "\u00A0"
+                      : postSubmitting ? "Posting…"
+                      : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
+                      : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> post</>
+                      : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Create friend room modal */}
+      {showCreateRoomModal && (
+        <Modal onClose={() => { setShowCreateRoomModal(false); setNewRoomName(""); }} width="min(420px,92vw)">
+          <h3 className="title" style={{ margin: "0 0 12px" }}>Create a friend room</h3>
+          <p style={{ margin: "0 0 16px", fontSize: 14, opacity: 0.75, lineHeight: 1.5 }}>
+            A friend room is a private space for a group of people watching this show together. Share entries there and reply in a spoiler-safe context.
+          </p>
+          <input
+            className="badge"
+            placeholder={'Room name (e.g. "Sunday watch crew")'}
+            value={newRoomName}
+            onChange={e => setNewRoomName(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleCreateRoom(); }}
+            style={{ width: "100%", height: 40, marginBottom: 12 }}
+            autoFocus
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button className="btn" onClick={() => { setShowCreateRoomModal(false); setNewRoomName(""); }} disabled={createRoomSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
+            <button className="btn" onClick={handleCreateRoom} disabled={createRoomSubmitting || !newRoomName.trim()} style={{ background: "var(--green)", border: "none", color: "#fff" }}>
+              {createRoomSubmitting ? "Creating…" : "Create room"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Tab "go to" dropdown — fixed so it escapes overflow-y:clip on .diaryTabScroller */}
+      {tabDropdownOpen && tabDropdownPos && (
+        <div ref={tabDropdownRef} style={{
+          position: "fixed", top: tabDropdownPos.top, left: tabDropdownPos.left,
+          display: "flex", flexDirection: "column", gap: 6,
+          background: "var(--dos-bg)", border: "none",
+          borderRadius: 10, padding: "8px", zIndex: 200,
+          boxShadow: "0 2px 10px rgba(0,0,0,0.18)"
+        }}>
+          <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }}
+            onClick={() => goToShowRoom(tabDropdownOpen)}>
+            <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public entries
+          </button>
+          {tabGroups.map(g => (
+            <button key={g.id} className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }}
+              onClick={() => goToShowRoom(tabDropdownOpen, g.id)}>
+              <Users size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {g.name}
+            </button>
+          ))}
+          <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap", opacity: 0.75 }}
+            onClick={() => { setTabDropdownOpen(null); setShowCreateRoomModal(true); }}>
+            + new friend room
+          </button>
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.2)", margin: "2px 0" }} />
+          <Tooltip text="Hides this tab from your journal view. Your entries and progress are kept. Search for the show again and choose 'Start your journal' to bring it back." direction="below">
+            <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap", opacity: 0.6, width: "100%" }}
+              onClick={() => {
+                const sid = tabDropdownOpen;
+                setTabDropdownOpen(null);
+                hideTab(sid);
+                // Clear browse/session progress so the onboarding modal reappears
+                // when the user searches for this show again
+                sessionStorage.removeItem(`ns_browse_prog_${sid}`);
+                sessionStorage.removeItem(`ns_browse_show_${sid}`);
+                // Switch to another tab if the hidden one was active
+                if (sid === activeTab) {
+                  const remaining = visibleTabOrder.filter(s => s !== sid);
+                  if (remaining.length) setActiveTab(remaining[0]);
+                }
+              }}>
+              Close show tab
+            </button>
+          </Tooltip>
+        </div>
       )}
     </section>
   );

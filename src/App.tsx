@@ -18,15 +18,13 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight, MoveDown } from "lucide-react";
+import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight, MoveDown, X, Settings, BookOpen } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
 import HomepageLab from "./components/HomepageLab";
 import HomepageNarrative from "./components/HomepageNarrative";
 import InviteAcceptPage from "./components/InviteAcceptPage";
-
-const ADMIN_USER_ID = "b4b37a6c-1f14-4189-9347-6ddbcadb99a6";
 
 const SINGLE_PAGE = true;
 const GLOBAL_HEADER_H = 56;
@@ -143,6 +141,12 @@ export default function App() {
 
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({ bb: { s: 1, e: 1 } });
 
+  // Hidden tabs (read from localStorage so switch-shows dropdown excludes them)
+  const hiddenTabs = useMemo<Set<string>>(() => {
+    if (!user) return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem(`ns_hidden_tabs_${user.id}`) || "[]")); } catch { return new Set(); }
+  }, [user]);
+
   // Stale-progress nudge: show once per session if user returns after 12+ hour gap
   const [showStaleNudge, setShowStaleNudge] = useState(false);
   const [staleNudgeDismissed, setStaleNudgeDismissed] = useState(false);
@@ -217,24 +221,17 @@ export default function App() {
   });
 
   // Compute pill badge state
-  const { hasVisibleNewReplies, visibleShowName, invisibleShowName } = useMemo(() => {
+  const { hasVisibleNewReplies, invisibleShowName } = useMemo(() => {
     let hasVisible = false;
-    let latestVisible: { reply: Reply; thread: Thread } | null = null;
     let latestInvisible: { reply: Reply; thread: Thread } | null = null;
     for (const { reply: r, thread: t } of repliesToUser) {
       const canSee = canView({ season: r.season, episode: r.episode }, progress[t.showId]);
-      if (canSee) {
-        if (r.updatedAt > visibleSeenAt) {
-          hasVisible = true;
-          if (!latestVisible || r.updatedAt > latestVisible.reply.updatedAt) latestVisible = { reply: r, thread: t };
-        }
-      }
+      if (canSee) { if (r.updatedAt > visibleSeenAt) hasVisible = true; }
       else if (r.updatedAt > invisibleSeenAt && (!latestInvisible || r.updatedAt > latestInvisible.reply.updatedAt))
         latestInvisible = { reply: r, thread: t };
     }
     return {
       hasVisibleNewReplies: hasVisible,
-      visibleShowName: latestVisible ? (shows.find(s => s.id === latestVisible!.thread.showId)?.name ?? latestVisible.thread.showId) : "",
       invisibleShowName: latestInvisible ? (shows.find(s => s.id === latestInvisible!.thread.showId)?.name ?? latestInvisible.thread.showId) : "",
     };
   }, [repliesToUser, progress, visibleSeenAt, invisibleSeenAt, shows]);
@@ -451,7 +448,7 @@ export default function App() {
   }, [isHomepage]);
   const isProfilePage = showProfile || !!publicProfileUsername;
   const showAdmin = location.search.includes("admin");
-  const isAdmin = user?.id === ADMIN_USER_ID;
+  const isAdmin = !!profile?.is_admin;
 
   // Fetch unread feedback count for admin badge
   useEffect(() => {
@@ -482,13 +479,27 @@ export default function App() {
       <span className="mobileHide" style={{ display: "inline-flex" }}>
         <SearchShows
           shows={shows}
-          onBrowsePublic={(showId) => { openShow(showId); }}
-          onShowCreated={(newShow, entry) => {
-            setShows(prev => [...prev, newShow]);
+          onShowCreated={(newShow, entry, action) => {
+            setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow]);
             setWatchStatusFor(newShow.id, entry);
-            openShow(newShow.id);
+            if (action === "journal") {
+              navigate("/profile", { state: { activeTab: newShow.id } });
+              requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+            } else {
+              navigate(`/show/${newShow.id}`, { state: { openCreateGroup: true } });
+              requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+            }
           }}
-          onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
+          onBrowsePublic={(showId, showName, _entry, seasons) => {
+            // Add a temporary show entry to React state (not DB) so ShowSection
+            // can render the correct name and seasons without a shows table row
+            setShows(prev => prev.find(s => s.id === showId) ? prev : [...prev, {
+              id: showId, name: showName, seasons, status: "Ended", isHidden: false,
+            } as Show]);
+            navigate(`/show/${showId}`);
+            requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+          }}
+          onAuthRequired={() => { setAuthHint("Sign in or create an account to start a journal or friend room."); setShowAuthModal(true); }}
           style={{ width: 176, margin: 0, height: 34 }}
         />
       </span>
@@ -510,6 +521,7 @@ export default function App() {
               setPickShowId(id);
             }}
             compact
+            excludeIds={hiddenTabs}
           />
         </span>
       )}
@@ -522,7 +534,7 @@ export default function App() {
         const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
         const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
         const pillTooltipText =
-          pillBadge === "green" ? `Someone wrote you back about ${visibleShowName}! Find responses to you in here.` :
+          pillBadge === "green" ? "Someone wrote you back!" :
           pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
           null;
         const pillContent = (
@@ -535,30 +547,30 @@ export default function App() {
               }}
             >
               <span className="avatar">{username[0].toUpperCase()}</span>
-              <span className="profileChipLabel" style={{ fontWeight: 700, color: "var(--dos-fg)" }}>{username}</span>
+              <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>{username}</span>
             </button>
             {pillBadge === "green" && (
-              <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", top: -6, right: -6, width: 21, height: 21, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
             )}
             {pillBadge === "red" && (
-              <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", top: -6, right: -6, width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
             )}
           </div>
         );
         return pillTooltipText
-          ? <Tooltip text={pillTooltipText} direction="below" align="right" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
+          ? <Tooltip text={pillTooltipText} direction="below" align="right" tooltipStyle={{ background: "#acc9d6", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
           : pillContent;
       })()}
       {!authLoading && user && username && (
         <button className="btn signOutBtn" onClick={() => { goHomepage(); signOut(); }}>
           <span className="signOutLabel">Sign out</span>
-          <span className="signOutX">✕</span>
+          <span className="signOutX"><X size={14} /></span>
         </button>
       )}
       {!authLoading && isAdmin && (
         <div style={{ position: "relative", display: "inline-flex" }}>
           <button className="btn" onClick={() => navigate(showAdmin ? "/" : "/?admin")} title="Admin" style={{ fontSize: 18 }}>
-            ⚙
+            <Settings size={18} color="currentColor" />
           </button>
           {feedbackUnread > 0 && (
             <div style={{
@@ -666,7 +678,7 @@ export default function App() {
                       position: "relative", whiteSpace: "nowrap",
                     }}
                   >
-                    <span style={{ position: "absolute", left: "12%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}>📓</span>
+                    <span style={{ position: "absolute", left: "12%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}><BookOpen size={16} color="var(--icon-color)" /></span>
                     read your journal
                   </button>
                   <div style={{ flex: isMobile ? undefined : 1, position: "relative", height: 40, boxSizing: "border-box" }}>
@@ -683,8 +695,9 @@ export default function App() {
                       wrapperStyle={{ width: "100%", height: "100%" }}
                       onMouseEnter={() => setShowsEmojiHover(true)}
                       onMouseLeave={() => setShowsEmojiHover(false)}
+                      excludeIds={hiddenTabs}
                     />
-                    <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? "🐵" : "🙈"}</span>
+                    <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? <Eye size={16} color="currentColor" /> : <EyeOff size={16} color="currentColor" />}</span>
                   </div>
                 </div>
               )}
@@ -780,31 +793,30 @@ export default function App() {
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 500, lineHeight: 1.6 }}>
                   The site is in early beta so there's not much to see yet in public spaces. Eventually you can explore public show rooms with the same no-spoiler mechanics as a friends-only room.
                 </span>
-                {user ? (
-                  <SearchShows
-                    shows={shows}
-                    onBrowsePublic={(showId) => { openShow(showId); }}
-                    onShowCreated={(newShow, entry) => {
-                      setShows(prev => [...prev, newShow]);
-                      setWatchStatusFor(newShow.id, entry);
-                      openShow(newShow.id);
-                    }}
-                    onAuthRequired={() => { setAuthHint("Sign in or open a new account in order to start a new show forum."); setShowAuthModal(true); }}
-                    placeholder="find a show"
-                    style={{ width: "100%", minWidth: 0, margin: 0, height: 40, boxSizing: "border-box" }}
-                  />
-                ) : (
-                  <button disabled style={{
-                    padding: "8px 32px", borderRadius: 9999,
-                    border: "2px dotted rgba(255,255,255,0.45)",
-                    background: "transparent",
-                    color: "rgba(255,255,255,0.3)",
-                    fontSize: 15, fontWeight: 700,
-                    letterSpacing: "0.05em", cursor: "not-allowed",
-                  }}>
-                    find a show
-                  </button>
-                )}
+                <SearchShows
+                  shows={shows}
+                  onShowCreated={(newShow, entry, action) => {
+                    setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow]);
+                    setWatchStatusFor(newShow.id, entry);
+                    if (action === "journal") {
+                      navigate("/profile", { state: { activeTab: newShow.id } });
+                      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+                    } else {
+                      navigate(`/show/${newShow.id}`, { state: { openCreateGroup: true } });
+                      requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+                    }
+                  }}
+                  onBrowsePublic={(showId, showName, _entry, seasons) => {
+                    setShows(prev => prev.find(s => s.id === showId) ? prev : [...prev, {
+                      id: showId, name: showName, seasons, status: "Ended", isHidden: false,
+                    } as Show]);
+                    navigate(`/show/${showId}`);
+                    requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+                  }}
+                  onAuthRequired={() => { setAuthHint("Sign in or create an account to start a journal or friend room."); setShowAuthModal(true); }}
+                  placeholder="find a show"
+                  style={{ width: "100%", minWidth: 0, margin: 0, height: 40, boxSizing: "border-box" }}
+                />
               </div>
             </div>
             </>
@@ -968,7 +980,7 @@ export default function App() {
             <h3 className="title" style={{ fontSize: 20, margin: 0 }}>
               {pickShowMode === "confirm" ? "Confirm or update your progress" : "Set your watch status"}
             </h3>
-            <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}>✕</button>
+            <button className="close-x" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}><X size={14} /></button>
           </div>
 
           {pickShowMode === "set" ? (
@@ -1012,18 +1024,14 @@ export default function App() {
                 <p className="muted" style={{ fontSize: 14, marginTop: 0, marginBottom: 10 }}>
                   Are you rewatching <strong>{pickShow.name}</strong>, or is this your first time through?
                 </p>
-                <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ display: "flex", gap: 20 }}>
                   {(["first", "rewatch"] as const).map(choice => (
-                    <label key={choice} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14 }}>
-                      <input
-                        type="radio"
-                        name="watchStatus"
-                        value={choice}
-                        checked={watchStatusChoice === choice}
-                        onChange={() => setWatchStatusChoice(choice)}
-                      />
+                    <div key={choice} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchStatusChoice(choice)}>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {watchStatusChoice === choice && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
+                      </div>
                       {choice === "first" ? "First time" : "Rewatching"}
-                    </label>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1073,7 +1081,7 @@ export default function App() {
                     openShow(pickShow.id);
                   }}
                 >
-                  {pickShow.isHidden === false && !progress[pickShow.id] ? "Create forum" : "Confirm"}
+                  Confirm
                 </button>
               </div>
             </div>
