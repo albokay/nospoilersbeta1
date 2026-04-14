@@ -30,8 +30,8 @@ body.group-context.has-header{
   background: linear-gradient(to top,#c3dde8 0px,#acc9d6 250px) fixed,#acc9d6;
   background-attachment:fixed;
 }
-body.group-context header.site{ background:rgba(189,212,222,0.98); }
-body.group-context .stickybar{ background:rgba(189,212,222,0.98); }
+body.group-context header.site{ background:rgba(172,201,214,0.98); }
+body.group-context .stickybar{ background:rgba(172,201,214,0.98); }
 /* In friend rooms, reply cards should use dark text matching thread entries (not washed-out blue) */
 body.group-context .reply-card{ color:#1a3a4a !important; --dos-accent:#1a3a4a; --dos-cyan:#1a3a4a; --dos-gray:rgba(26,58,74,0.65); }
 /* In friend rooms, star button circle + star should both use the muted border color */
