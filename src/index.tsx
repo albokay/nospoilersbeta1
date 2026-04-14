@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./lib/auth";
 import App from "./App";
+import BetaGate from "./components/BetaGate";
 
 declare global {
   interface Window { __reactRoot?: ReturnType<typeof createRoot> }
@@ -13,9 +14,11 @@ if (!window.__reactRoot) {
 }
 
 window.__reactRoot.render(
-  <BrowserRouter>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  </BrowserRouter>
+  <BetaGate>
+    <BrowserRouter>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
+  </BetaGate>
 );
