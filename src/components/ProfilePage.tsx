@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { SquarePen } from "lucide-react";
+import { SquarePen, X, Globe, Users, NotebookPen, Sparkles, Menu } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -516,7 +516,7 @@ export default function ProfilePage({
                         >
                           {showName(sid)}
                           {active && (
-                            <span data-hamburger style={{ marginLeft: 8, fontSize: 20, opacity: 0.8, lineHeight: 1 }}>☰</span>
+                            <span data-hamburger style={{ marginLeft: 8, opacity: 0.8, lineHeight: 1, display: "inline-flex", verticalAlign: "middle" }}><Menu size={16} color="currentColor" /></span>
                           )}
                           {!viewed && activity && (
                             <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: activity === "green" ? "var(--green)" : "var(--danger)", pointerEvents: "none" }} />
@@ -612,15 +612,15 @@ export default function ProfilePage({
                             style={{ width: 21, height: 21, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
                             onClick={(e) => { e.stopPropagation(); dismissIndicator(t.id); }}
                           >
-                            <span style={{ color: "#fff", fontSize: 10, fontWeight: 800, lineHeight: 1, userSelect: "none" }}>✕</span>
+                            <X size={14} color="currentColor" />
                           </div>
                         </Tooltip>
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="title" style={{ fontSize: 18, ...((isGroup || isPub) ? { color: cardFg } : {}) }}>
-                          {!t.isPublic && !groupId && <span title="Private" style={{ marginRight: 8 }}>📝</span>}
-                          {isPub && <span title="Public" style={{ marginRight: 8 }}>🌍</span>}
-                          {isGroup && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8 }}>👥</span>}
+                          {!t.isPublic && !groupId && <span title="Private" style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><NotebookPen size={14} color="var(--icon-color)" /></span>}
+                          {isPub && <span title="Public" style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><Globe size={14} color="var(--icon-color)" /></span>}
+                          {isGroup && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><Users size={14} color="var(--icon-color)" /></span>}
                           {isGroup && groupName && (
                             <span style={{ fontSize: 13, opacity: 0.7, fontWeight: 400, marginRight: 6 }}>
                               {groupName} ·{" "}
@@ -815,7 +815,7 @@ export default function ProfilePage({
         <Modal onClose={closeCompose} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <h3 className="title" style={{ margin: 0 }}>add to journal</h3>
-            <button className="btn" onClick={closeCompose}>✕</button>
+            <button className="btn" onClick={closeCompose}><X size={14} color="currentColor" /></button>
           </div>
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
             <input
@@ -849,7 +849,7 @@ export default function ProfilePage({
             {promptEntries.length > 0 && (
               <div>
                 <button className="prompt-btn" type="button" onClick={handlePromptBtn} title="Get a writing prompt">
-                  ✦ want a prompt?
+                  <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>
               </div>
             )}
@@ -863,7 +863,7 @@ export default function ProfilePage({
                 <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {composeDestination === "private" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                 </div>
-                <span style={{ fontSize: 14, color: "var(--dos-light)" }}>📝 Private journal</span>
+                <span style={{ fontSize: 14, color: "var(--dos-light)" }}><NotebookPen size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Private journal</span>
               </div>
 
               {/* One option per friend group */}
@@ -872,7 +872,7 @@ export default function ProfilePage({
                   <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {composeDestination === g.id && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                   </div>
-                  <span style={{ fontSize: 14, color: "var(--dos-light)" }}>👥 {g.name}</span>
+                  <span style={{ fontSize: 14, color: "var(--dos-light)" }}><Users size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {g.name}</span>
                 </div>
               ))}
 
@@ -882,7 +882,7 @@ export default function ProfilePage({
                   {composeDestination === "public" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                 </div>
                 <span style={{ fontSize: 14, color: "var(--dos-light)" }}>
-                  🌍 Public journal
+                  <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public journal
                   <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
                 </span>
               </div>
@@ -904,7 +904,7 @@ export default function ProfilePage({
                   minWidth: 130,
                 }}
               >
-                {postSubmitting ? "Posting…" : composeDestination === "private" ? "📝 Save to journal" : "Post"}
+                {postSubmitting ? "Posting…" : composeDestination === "private" ? <><NotebookPen size={14} style={{verticalAlign:"middle"}} /> Save to journal</> : "Post"}
               </button>
             </div>
           </div>
@@ -947,12 +947,12 @@ export default function ProfilePage({
         }}>
           <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }}
             onClick={() => goToShowRoom(tabDropdownOpen)}>
-            🌍 Public entries
+            <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public entries
           </button>
           {tabGroups.map(g => (
             <button key={g.id} className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }}
               onClick={() => goToShowRoom(tabDropdownOpen, g.id)}>
-              👥 {g.name}
+              <Users size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {g.name}
             </button>
           ))}
           <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap", opacity: 0.75 }}

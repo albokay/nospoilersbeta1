@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
+import { MessageSquare, Hand, NotebookPen, Globe, Users } from "lucide-react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import type { FriendGroup } from "../types";
 import { timeAgo, canView } from "../lib/utils";
@@ -285,7 +286,7 @@ export default function InlineThreadView({
         <Modal onClose={() => setThreadQuoteHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              🗣️ Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
+              <MessageSquare size={14} color="currentColor" /> Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
             </p>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               The thread stays linear, but the connections between ideas are visible.
@@ -308,7 +309,7 @@ export default function InlineThreadView({
         >
           <div style={{ padding: "16px 12px 12px" }}>
             <p style={{ margin: "0 0 24px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              👋 Sidebar's response threads are deliberately different from typical forums. Every response goes to the bottom of the thread in the order it was written. This encourages you to react to each thread as a cohesive conversation. No indentation. No branching comment trees. No sub-heads. One conversation.
+              <Hand size={14} color="currentColor" /> Sidebar's response threads are deliberately different from typical forums. Every response goes to the bottom of the thread in the order it was written. This encourages you to react to each thread as a cohesive conversation. No indentation. No branching comment trees. No sub-heads. One conversation.
             </p>
             <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
               (But you'll see a couple unexpected ways to interact when you look around…)
@@ -378,7 +379,7 @@ export default function InlineThreadView({
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: 22, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }} className="title">
-                {!thread.isPublic && <span>📝</span>}
+                {!thread.isPublic && <span><NotebookPen size={14} color="var(--icon-color)" /></span>}
                 <span>{thread.titleBase}</span>
                 {thread.showId !== "simshow" && (
                   <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7 }}>
@@ -473,10 +474,10 @@ export default function InlineThreadView({
                             borderRadius: 10, padding: "8px", zIndex: 10,
                             boxShadow: "0 2px 10px rgba(0,0,0,0.18)"
                           }}>
-                            <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }} onClick={handleMakePublic}>🌍 Public Room</button>
+                            <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }} onClick={handleMakePublic}><Globe size={14} color="var(--icon-color)" /> Public Room</button>
                             {(userGroups ?? []).map(g => (
                               <button key={g.id} className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }} onClick={() => handleMoveToGroup(g.id)}>
-                                👥 {g.name}
+                                <Users size={14} color="var(--icon-color)" /> {g.name}
                               </button>
                             ))}
                           </div>

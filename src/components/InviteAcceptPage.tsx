@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Link2, Clock, CircleCheck, PartyPopper, AlertTriangle, Clapperboard } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../lib/auth";
 import AuthModal from "./AuthModal";
@@ -84,7 +85,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   if (status === "invalid") {
     return (
       <Page>
-        <Emoji>🔗</Emoji>
+        <Emoji><Link2 size={44} color="var(--icon-color)" /></Emoji>
         <h2 className="title" style={{ marginBottom: 8 }}>Invalid invitation</h2>
         <p className="muted" style={{ marginBottom: 24 }}>
           This invite link doesn't exist, has already been used, or has expired.
@@ -97,7 +98,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   if (status === "expired") {
     return (
       <Page>
-        <Emoji>⏰</Emoji>
+        <Emoji><Clock size={44} color="var(--icon-color)" /></Emoji>
         <h2 className="title" style={{ marginBottom: 8 }}>Invitation expired</h2>
         <p className="muted" style={{ marginBottom: 24 }}>
           This invite link expired. Ask the room creator to send a new one.
@@ -110,7 +111,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   if (status === "already_accepted") {
     return (
       <Page>
-        <Emoji>✅</Emoji>
+        <Emoji><CircleCheck size={44} color="var(--icon-color)" /></Emoji>
         <h2 className="title" style={{ marginBottom: 8 }}>Already joined</h2>
         <p className="muted" style={{ marginBottom: 24 }}>
           This invitation has already been accepted — you may already be in the room.
@@ -128,7 +129,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   if (status === "done") {
     return (
       <Page>
-        <Emoji>🎉</Emoji>
+        <Emoji><PartyPopper size={44} color="var(--icon-color)" /></Emoji>
         <h2 className="title" style={{ marginBottom: 8 }}>You're in!</h2>
         <p className="muted">
           Joining <strong style={{ color: "var(--fg)" }}>"{invite?.group_name}"</strong>…
@@ -141,7 +142,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   if (status === "error") {
     return (
       <Page>
-        <Emoji>⚠️</Emoji>
+        <Emoji><AlertTriangle size={44} color="var(--icon-color)" /></Emoji>
         <h2 className="title" style={{ marginBottom: 8 }}>Something went wrong</h2>
         <p className="muted" style={{ marginBottom: 24 }}>
           {errMsg || "Could not accept the invitation. Please try again."}
@@ -155,7 +156,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   return (
     <>
       <Page>
-        <Emoji>🎬</Emoji>
+        <Emoji><Clapperboard size={44} color="var(--icon-color)" /></Emoji>
         <h2 className="title" style={{ marginBottom: 6 }}>You're invited!</h2>
         <p style={{ fontSize: 15, color: "rgba(255,255,255,0.65)", marginBottom: 28, lineHeight: 1.5 }}>
           Join the private watch room{" "}

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Search } from "lucide-react";
 import type { Show } from "../lib/db";
 import { createShow, upsertBrowseProgress } from "../lib/db";
 import { useAuth } from "../lib/auth";
@@ -291,7 +292,7 @@ export default function SearchShows({
   return (
     <>
       <div className="splashSearchWrap" style={style}>
-        <span className="splashSearchIcon" aria-hidden>🔍</span>
+        <span className="splashSearchIcon" aria-hidden><Search size={14} color="currentColor" /></span>
         <input
           placeholder={placeholder ?? "find a show"}
           className="splashSearch"

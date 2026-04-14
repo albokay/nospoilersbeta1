@@ -18,7 +18,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight, MoveDown } from "lucide-react";
+import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight, MoveDown, X, Settings, BookOpen } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -557,13 +557,13 @@ export default function App() {
       {!authLoading && user && username && (
         <button className="btn signOutBtn" onClick={() => { goHomepage(); signOut(); }}>
           <span className="signOutLabel">Sign out</span>
-          <span className="signOutX">✕</span>
+          <span className="signOutX"><X size={14} color="currentColor" /></span>
         </button>
       )}
       {!authLoading && isAdmin && (
         <div style={{ position: "relative", display: "inline-flex" }}>
           <button className="btn" onClick={() => navigate(showAdmin ? "/" : "/?admin")} title="Admin" style={{ fontSize: 18 }}>
-            ⚙
+            <Settings size={18} color="currentColor" />
           </button>
           {feedbackUnread > 0 && (
             <div style={{
@@ -671,7 +671,7 @@ export default function App() {
                       position: "relative", whiteSpace: "nowrap",
                     }}
                   >
-                    <span style={{ position: "absolute", left: "12%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}>📓</span>
+                    <span style={{ position: "absolute", left: "12%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}><BookOpen size={16} color="var(--icon-color)" /></span>
                     read your journal
                   </button>
                   <div style={{ flex: isMobile ? undefined : 1, position: "relative", height: 40, boxSizing: "border-box" }}>
@@ -689,7 +689,7 @@ export default function App() {
                       onMouseEnter={() => setShowsEmojiHover(true)}
                       onMouseLeave={() => setShowsEmojiHover(false)}
                     />
-                    <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? "🐵" : "🙈"}</span>
+                    <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? <Eye size={16} color="currentColor" /> : <EyeOff size={16} color="currentColor" />}</span>
                   </div>
                 </div>
               )}
@@ -972,7 +972,7 @@ export default function App() {
             <h3 className="title" style={{ fontSize: 20, margin: 0 }}>
               {pickShowMode === "confirm" ? "Confirm or update your progress" : "Set your watch status"}
             </h3>
-            <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}>✕</button>
+            <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}><X size={14} color="currentColor" /></button>
           </div>
 
           {pickShowMode === "set" ? (

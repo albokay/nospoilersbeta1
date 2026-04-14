@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { X } from "lucide-react";
 import Modal from "./Modal";
 import { useAuth } from "../lib/auth";
 
@@ -38,7 +39,7 @@ export default function AuthModal({ onClose, hint }: { onClose: () => void; hint
         <h3 className="title" style={{ margin: 0, fontSize: 20 }}>
           {mode === "signin" ? "Sign in" : "Create account"}
         </h3>
-        <button className="btn" onClick={onClose}>✕</button>
+        <button className="btn" onClick={onClose}><X size={14} color="currentColor" /></button>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10 }}>

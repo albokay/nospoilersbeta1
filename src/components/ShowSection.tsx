@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SquarePen } from "lucide-react";
+import { SquarePen, X, Globe, Users, Settings, MessageCircle, Sparkles, NotebookPen, AlertTriangle, Crown, FlaskConical, Heart } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -1075,7 +1075,7 @@ export default function ShowSection({
         <Modal onClose={dismissBBPopup} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              🧪 This Breaking Bad DEMO room is seeded with AI-generated entries so you can see how the forum works before real users fill it. The posts are illustrative, not real opinions.
+              <FlaskConical size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> This Breaking Bad DEMO room is seeded with AI-generated entries so you can see how the forum works before real users fill it. The posts are illustrative, not real opinions.
             </p>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               Try updating your watch progress using the dropdown in the top right of the room to see how the spoiler filter works in practice. All other features are functional here too.
@@ -1160,7 +1160,7 @@ export default function ShowSection({
                       style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
                       title="Go to public room"
                     >
-                      🌍
+                      <Globe size={14} color="var(--icon-color)" />
                     </button>
                   )}
                 </div>
@@ -1216,7 +1216,7 @@ export default function ShowSection({
                           color: !activeGroupId ? "#fff" : "rgba(255,255,255,0.55)",
                         }}
                       >
-                        🌍 Public room
+                        <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public room
                       </button>
                       {/* One pill per group */}
                       {userGroups.map(g => (
@@ -1234,7 +1234,7 @@ export default function ShowSection({
                               paddingRight: 8,
                             }}
                           >
-                            👥 {g.name}
+                            <Users size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {g.name}
                           </button>
                           <button
                             className="btn"
@@ -1249,7 +1249,7 @@ export default function ShowSection({
                               color: activeGroupId === g.id ? "#fff" : "rgba(255,255,255,0.55)",
                             }}
                           >
-                            ⚙
+                            <Settings size={18} color="var(--icon-color)" />
                           </button>
                         </div>
                       ))}
@@ -1297,7 +1297,7 @@ export default function ShowSection({
                       title="Go to public room"
                       style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
                     >
-                      🌍
+                      <Globe size={14} color="var(--icon-color)" />
                     </button>
                   )}
                   <button
@@ -1381,9 +1381,9 @@ export default function ShowSection({
           <button
             className="btn"
             onClick={onDismissStaleNudge}
-            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
+            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            ✕
+            <X size={14} color="currentColor" />
           </button>
         </div>
       )}
@@ -1402,9 +1402,9 @@ export default function ShowSection({
           <button
             className="btn"
             onClick={() => setShowAutoFlipMsg(false)}
-            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
+            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            ✕
+            <X size={14} color="currentColor" />
           </button>
         </div>
       )}
@@ -1414,7 +1414,7 @@ export default function ShowSection({
         <Modal onClose={() => setRiskyHintPending(false)} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
             <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              ⚠️ People who have watched further may have responded to a thread that's inside your watch progress. Sidebar can't promise they didn't leave spoilers, but you can take the risk if you like.
+              <AlertTriangle size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> People who have watched further may have responded to a thread that's inside your watch progress. Sidebar can't promise they didn't leave spoilers, but you can take the risk if you like.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
@@ -1447,9 +1447,9 @@ export default function ShowSection({
           <button
             className="btn"
             onClick={() => setShowProgressCelebration(false)}
-            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1 }}
+            style={{ flexShrink: 0, width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #c8e4b0", borderRadius: "50%", color: "#c8e4b0", fontSize: 13, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
           >
-            ✕
+            <X size={14} color="currentColor" />
           </button>
         </div>
       )}
@@ -1465,9 +1465,9 @@ export default function ShowSection({
             <button
               className="btn"
               onClick={() => setHelpOpen(false)}
-              style={{ width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #7abd8e", borderRadius: "50%", color: "#7abd8e", fontSize: 13, lineHeight: 1 }}
+              style={{ width: 28, height: 28, padding: 0, background: "transparent", border: "2px solid #7abd8e", borderRadius: "50%", color: "#7abd8e", fontSize: 13, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
             >
-              ✕
+              <X size={14} color="currentColor" />
             </button>
           </div>
           {[
@@ -1533,8 +1533,8 @@ export default function ShowSection({
         return (
           <Modal onClose={() => setShowGroupSettings(false)} width="min(460px,92vw)">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-              <h3 className="title" style={{ margin: 0 }}>👥 {grp?.name ?? "Room settings"}</h3>
-              <button className="btn" onClick={() => setShowGroupSettings(false)}>✕</button>
+              <h3 className="title" style={{ margin: 0, display: "inline-flex", alignItems: "center", gap: 4 }}><Users size={14} color="var(--icon-color)" /> {grp?.name ?? "Room settings"}</h3>
+              <button className="btn" onClick={() => setShowGroupSettings(false)}><X size={14} color="currentColor" /></button>
             </div>
 
             {/* Members list */}
@@ -1548,7 +1548,7 @@ export default function ShowSection({
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {groupMembers.map(m => (
                     <div key={m.userId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}>
-                      <span>@{m.username}{m.userId === grp?.createdBy ? " 👑" : ""}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>@{m.username}{m.userId === grp?.createdBy ? <Crown size={14} color="var(--icon-color)" /> : ""}</span>
                     </div>
                   ))}
                 </div>
@@ -1768,7 +1768,7 @@ export default function ShowSection({
                       (@{t.author}) deleted their post.
                     </div>
                     <div className="replyCount">
-                      <span>💬 {displayReplyCount}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MessageCircle size={14} color="var(--icon-color)" /> {displayReplyCount}</span>
                     </div>
                   </div>
                 </div>
@@ -1821,7 +1821,7 @@ export default function ShowSection({
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h2 style={{ margin: 0, fontSize: 22 }} className="title">
-                    {!t.isPublic && <span style={{ marginRight: 4 }}>📝</span>}
+                    {!t.isPublic && <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}><NotebookPen size={14} color="var(--icon-color)" /></span>}
                     {t.titleBase}
                     {t.showId !== "simshow" && (
                       <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
@@ -1841,7 +1841,7 @@ export default function ShowSection({
                   Started by <Username name={t.author} onClickProfile={onClickProfile} />
                   {t.isRewatch && (
                     <Tooltip text={`This viewer is also rewatching ${show.name}.`} direction="above">
-                      <span style={{ cursor: "default" }}>😍</span>
+                      <span style={{ cursor: "default", display: "inline-flex", alignItems: "center" }}><Heart size={14} color="var(--icon-color)" /></span>
                     </Tooltip>
                   )}
                   {" "}• {timeAgo(t.updatedAt)}
@@ -1857,7 +1857,7 @@ export default function ShowSection({
                     background: "#dea838", color: "#fff", borderRadius: 9999,
                     padding: "2px 7px", fontWeight: 700,
                   } : {}}>
-                    💬 {displayReplyCount}
+                    <MessageCircle size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
                   </span>
                 </div>
               </div>
@@ -1879,7 +1879,7 @@ export default function ShowSection({
         <Modal onClose={() => closeCompose()} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
             <h3 className="title" style={{ margin: 0 }}>add to journal</h3>
-            <button className="btn" onClick={() => closeCompose()}>✕</button>
+            <button className="btn" onClick={() => closeCompose()}><X size={14} color="currentColor" /></button>
           </div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -1919,7 +1919,7 @@ export default function ShowSection({
                   onClick={handlePromptBtn}
                   title="Get a writing prompt"
                 >
-                  ✦ want a prompt?
+                  <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>
               </div>
             )}
@@ -1933,7 +1933,7 @@ export default function ShowSection({
                 <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {composeDestination === "private" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                 </div>
-                <span style={{ fontSize: 14 }}>📝 Private journal</span>
+                <span style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 4 }}><NotebookPen size={14} color="var(--icon-color)" /> Private journal</span>
               </div>
 
               {/* One option per friend group */}
@@ -1942,7 +1942,7 @@ export default function ShowSection({
                   <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {composeDestination === g.id && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                   </div>
-                  <span style={{ fontSize: 14 }}>👥 {g.name}</span>
+                  <span style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 4 }}><Users size={14} color="var(--icon-color)" /> {g.name}</span>
                 </div>
               ))}
 
@@ -1952,7 +1952,7 @@ export default function ShowSection({
                   {composeDestination === "public" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                 </div>
                 <span style={{ fontSize: 14 }}>
-                  🌍 Public journal
+                  <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public journal
                   <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
                 </span>
               </div>
@@ -1977,7 +1977,7 @@ export default function ShowSection({
                 {postSubmitting
                   ? "Posting…"
                   : composeDestination === "private"
-                    ? "📝 Save to journal"
+                    ? <><NotebookPen size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Save to journal</>
                     : "Post"}
               </button>
             </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { MessageSquare, Link2, X, Heart } from "lucide-react";
 
 /** Resolves once the page finishes scrolling (scrollend event or debounce fallback). */
 function afterScroll(): Promise<void> {
@@ -573,7 +574,7 @@ export default function RepliesList({
         <Modal onClose={() => setQuoteHintId(null)} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              🗣️ Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
+              <MessageSquare size={14} color="currentColor" /> Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
             </p>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               The thread stays linear, but the connections between ideas are visible.
@@ -592,7 +593,7 @@ export default function RepliesList({
         <Modal onClose={() => setLinkHintPending(false)} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
             <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              🔗 Linking connects your response back to this entry. Your post will link back here and vice versa.
+              <Link2 size={14} color="currentColor" /> Linking connects your response back to this entry. Your post will link back here and vice versa.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
@@ -623,7 +624,7 @@ export default function RepliesList({
         <Modal onClose={() => setPromptFor(null)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <h3 className="title" style={{ margin: 0 }}>Are you sure?</h3>
-            <button className="btn" onClick={() => setPromptFor(null)}>✕</button>
+            <button className="btn" onClick={() => setPromptFor(null)}><X size={14} color="currentColor" /></button>
           </div>
           <p className="muted" style={{ marginTop: 6 }}>This person is replying to an episode you've watched, BUT they're further along in the show. <br /><br />There may be spoilers ahead!</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
@@ -649,7 +650,7 @@ export default function RepliesList({
         <Modal onClose={() => setDeleteConfirmId(null)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <h3 className="title" style={{ margin: 0 }}>Delete this response?</h3>
-            <button className="btn" onClick={() => setDeleteConfirmId(null)}>✕</button>
+            <button className="btn" onClick={() => setDeleteConfirmId(null)}><X size={14} color="currentColor" /></button>
           </div>
           <p className="muted" style={{ marginTop: 6 }}>It will turn into a stub visible to others. This can't be undone.</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
@@ -775,7 +776,7 @@ export default function RepliesList({
                   <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold />
                   {r.isRewatch && (
                     <Tooltip text={`This viewer is also rewatching ${thread.showId}.`} direction="above">
-                      <span style={{ cursor: "default" }}>😍</span>
+                      <span style={{ cursor: "default" }}><Heart size={14} color="var(--icon-color)" /></span>
                     </Tooltip>
                   )}
                   {thread.showId !== "simshow" && (

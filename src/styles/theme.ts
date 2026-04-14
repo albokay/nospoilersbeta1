@@ -6,6 +6,7 @@ export function injectDOSStyles() {
   --dos-bg:#7abd8e; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
   --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#2256c9; --dos-border:#ffffff;
+  --icon-color:#fff;
   /* canonical accent blue */
   --blue-light:#bdd4de;
   /* progress dropdown (overridden to green in group context) */
@@ -20,6 +21,7 @@ body.group-context{
   --dos-gray:rgba(26,58,74,0.65); --dos-light:#1a3a4a;
   --dos-accent:#1a3a4a; --dos-border:rgba(26,58,74,0.3);
   --dos-blue:rgba(26,58,74,0.08);
+  --icon-color:#7abd8e;
   --progress-bg:#7abd8e; --progress-fg:#fff;
   background: linear-gradient(to bottom,#d4e8f0 0px,#bdd4de 180px) fixed,#bdd4de;
   background-attachment:fixed;

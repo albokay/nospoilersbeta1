@@ -1,4 +1,5 @@
 import React from "react";
+import { X } from "lucide-react";
 import type { PromptEntry } from "../lib/promptData";
 
 interface PromptCardProps {
@@ -53,7 +54,7 @@ export default function PromptCard({
         }}
       >
         <button className="prompt-card-btn" onClick={onClose} title="Close">
-          ✕ close
+          <X size={14} color="currentColor" /> close
         </button>
         <button className="prompt-card-btn" onClick={onShuffle} title="Try another prompt">
           ↻ another

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Star } from "lucide-react";
 import Modal from "./Modal";
 
 export default function LikeBadge({
@@ -17,8 +18,8 @@ export default function LikeBadge({
 
   const [showHint, setShowHint] = useState(false);
 
-  // ☆ = not yet starred by this user, ⭐️ = starred by this user
-  const icon = userLiked ? "⭐️" : "☆";
+  // Outline star = not yet starred, filled star = starred by this user
+  const icon = <Star size={14} fill={userLiked ? "currentColor" : "none"} color="currentColor" />;
 
   const handleClick = (e: React.MouseEvent) => {
     if (!clickable) return;
@@ -33,7 +34,7 @@ export default function LikeBadge({
         <Modal onClose={() => setShowHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 700 }}>
-              ⭐ Starring is just for you.
+              <Star size={14} fill="currentColor" color="currentColor" /> Starring is just for you.
             </p>
             <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
               Starring a post saves it to your private profile page. Entries never get public "like counts."

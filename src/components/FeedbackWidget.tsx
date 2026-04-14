@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useLocation } from "react-router-dom";
 import { insertFeedback } from "../lib/db";
@@ -144,7 +145,7 @@ export default function FeedbackWidget({
               fontSize: 18, color: "var(--dos-fg)", padding: 4, lineHeight: 1,
             }}
           >
-            ✕
+            <X size={14} color="currentColor" />
           </button>
         </div>
 
