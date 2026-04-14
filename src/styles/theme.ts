@@ -34,6 +34,9 @@ body.group-context header.site{ background:rgba(189,212,222,0.98); }
 body.group-context .stickybar{ background:rgba(189,212,222,0.98); }
 /* In friend rooms, reply cards should use dark text matching thread entries (not washed-out blue) */
 body.group-context .reply-card{ color:#1a3a4a !important; --dos-accent:#1a3a4a; --dos-cyan:#1a3a4a; --dos-gray:rgba(26,58,74,0.65); }
+/* In friend rooms, star button circle + star should both use the muted border color */
+body.group-context .likeWrap{ color:rgba(26,58,74,0.3) !important; border-color:rgba(26,58,74,0.3) !important; }
+body.group-context .likeWrap:hover{ background:rgba(26,58,74,0.08) !important; }
 
 /* ── Public room context — golden-yellow theme ─────────────────────────────── */
 body.public-context{
