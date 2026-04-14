@@ -340,10 +340,11 @@ export async function fetchRepliesForThread(threadId: string, groupId?: string |
     .select("*")
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true });
-  // When viewing inside a friend room, scope replies to that room's group_id
-  // (shared seed threads have per-room reply copies — without this filter, duplicates appear)
+  // When viewing inside a friend room, include replies scoped to this group
+  // OR replies with no group_id (legacy replies posted before group_id tracking).
+  // This matches the count logic in fetchGroupThreads.
   if (groupId) {
-    query = query.eq("group_id", groupId);
+    query = query.or(`group_id.eq.${groupId},group_id.is.null`);
   }
   const { data, error } = await query;
   if (error) throw error;
