@@ -19,7 +19,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight, MoveDown, X, Settings, BookOpen, BookMarked, ArrowRight } from "lucide-react";
+import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight, MoveDown, X, Settings, BookOpen, BookMarked, ArrowLeft, CornerRightDown } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -538,8 +538,8 @@ export default function App() {
               style={showProfile ? { cursor: "default" } : undefined}
             >
               {showProfile
-                ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>{username}&rsquo;s journal</span></>
-                : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span><ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} /></>
+                ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>{username}&rsquo;s journal</span><CornerRightDown size={14} color="#fff" style={{ flexShrink: 0 }} /></>
+                : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
               }
             </button>
             {pillBadge === "green" && (
@@ -555,22 +555,22 @@ export default function App() {
           : pillContent;
       })()}
 
-      {/* Friend room scroll — fills middle space */}
-      {!authLoading && user && allFriendGroups.length > 0 && (
-        <span className="mobileHide" style={{ display: "flex", flex: 1, minWidth: 0 }}>
-          <FriendRoomScroll
-            groups={allFriendGroups}
-            onNavigate={(showId, groupId) => {
-              sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
-              navigate(`/show/${showId}`);
-              requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-            }}
-          />
-        </span>
-      )}
-
-      {/* Spacer when no friend rooms — push right-side items to the right */}
-      {(!user || !allFriendGroups.length) && <div style={{ flex: 1 }} />}
+      {/* Spacer — pushes everything after this to the right */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end" }}>
+        {/* Friend room scroll — right-justified within the spacer */}
+        {!authLoading && user && allFriendGroups.length > 0 && (
+          <span className="mobileHide" style={{ display: "flex", minWidth: 0, maxWidth: "100%" }}>
+            <FriendRoomScroll
+              groups={allFriendGroups}
+              onNavigate={(showId, groupId) => {
+                sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
+                navigate(`/show/${showId}`);
+                requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+              }}
+            />
+          </span>
+        )}
+      </div>
 
       {/* Search — right side */}
       <span className="mobileHide" style={{ display: "inline-flex", flexShrink: 0 }}>
@@ -578,7 +578,7 @@ export default function App() {
           shows={shows}
           {...searchShowsHandlers}
           placeholder="find your new show"
-          style={{ width: 200, margin: 0, height: 34 }}
+          style={{ width: 220, margin: 0, height: 34 }}
         />
       </span>
 

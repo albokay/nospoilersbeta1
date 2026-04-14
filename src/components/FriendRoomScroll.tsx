@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from "react";
+import { Dot } from "lucide-react";
 import type { FriendGroup } from "../types";
 
 type FriendRoomScrollProps = {
@@ -27,10 +28,10 @@ export default function FriendRoomScroll({ groups, onNavigate }: FriendRoomScrol
         gap: 6,
         overflowX: "auto",
         overflowY: "hidden",
-        flex: 1,
         minWidth: 0,
         scrollbarWidth: "none",
         WebkitOverflowScrolling: "touch",
+        justifyContent: "flex-end",
       }}
     >
       {groups.map(g => {
@@ -46,15 +47,21 @@ export default function FriendRoomScroll({ groups, onNavigate }: FriendRoomScrol
               color: "#fff",
               border: "none",
               borderRadius: 9999,
-              padding: "5px 14px",
-              fontSize: 12,
+              padding: "0 12px",
+              height: 34,
+              fontSize: "inherit",
               fontWeight: 700,
               cursor: "pointer",
               whiteSpace: "nowrap",
-              lineHeight: 1.3,
+              lineHeight: 1,
               fontFamily: "inherit",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0,
+              boxSizing: "border-box",
             }}
           >
+            <Dot size={20} color="#fff" style={{ marginLeft: -6, marginRight: -2 }} />
             {label}
           </button>
         );
