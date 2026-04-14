@@ -30,7 +30,6 @@ export default function FriendRoomScroll({ groups, onNavigate }: FriendRoomScrol
         minWidth: 0,
         scrollbarWidth: "none",
         WebkitOverflowScrolling: "touch",
-        justifyContent: "flex-end",
       }}
     >
       {groups.map(g => {
