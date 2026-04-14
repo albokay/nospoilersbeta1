@@ -410,10 +410,10 @@ export default function SearchShows({
 
             {/* Four action buttons */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-              <button className="btn post" onClick={handleStartJournal} disabled={!canSubmit} style={{ width: "100%" }}>
+              <button className="btn post" onClick={handleStartJournal} disabled={!canSubmit} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#fff" }}>
                 Start your journal
               </button>
-              <button className="btn post" onClick={handleCreateFriendRoom} disabled={!canSubmit} style={{ width: "100%" }}>
+              <button className="btn post" onClick={handleCreateFriendRoom} disabled={!canSubmit} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#fff" }}>
                 Create a friend room
               </button>
               <button className="btn" onClick={handleSeePublic} disabled={!canSubmit} style={{ width: "100%" }}>

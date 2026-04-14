@@ -965,6 +965,10 @@ export default function ProfilePage({
                 const sid = tabDropdownOpen;
                 setTabDropdownOpen(null);
                 hideTab(sid);
+                // Clear browse/session progress so the onboarding modal reappears
+                // when the user searches for this show again
+                sessionStorage.removeItem(`ns_browse_prog_${sid}`);
+                sessionStorage.removeItem(`ns_browse_show_${sid}`);
                 // Switch to another tab if the hidden one was active
                 if (sid === activeTab) {
                   const remaining = visibleTabOrder.filter(s => s !== sid);
