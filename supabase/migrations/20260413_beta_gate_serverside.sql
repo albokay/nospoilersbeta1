@@ -2,7 +2,7 @@
 -- =============================================================
 -- 1. Ensure pgcrypto is available
 -- =============================================================
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- =============================================================
 -- 2. beta_config table (single-row, stores bcrypt hash)
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS beta_config (
 -- Insert the hashed password.
 -- >>> CHANGE 'CHANGE_ME' to your real beta password before running. <<<
 INSERT INTO beta_config (hash)
-VALUES (crypt('CHANGE_ME', gen_salt('bf')));
+VALUES (extensions.crypt('CHANGE_ME', extensions.gen_salt('bf')));
 
 -- =============================================================
 -- 3. RLS: table is completely locked — no policy grants access
@@ -35,6 +35,6 @@ AS $$
   SELECT EXISTS (
     SELECT 1
     FROM beta_config
-    WHERE hash = crypt(attempt, hash)
+    WHERE hash = extensions.crypt(attempt, hash)
   );
 $$;
