@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, Settings, MessageCircle, Sparkles, NotebookPen, AlertTriangle, Crown, FlaskConical, Heart } from "lucide-react";
+import { SquarePen, X, Globe, Users, Settings, MessageCircle, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -1663,7 +1663,7 @@ export default function ShowSection({
             setTimeout(() => scrollToShowTop(), 0);
           }}
           onThreadMakePrivate={() => {
-            // Mark not-public in state — owner still sees it with 📝, others see nothing
+            // Mark not-public in state — owner still sees it with lock icon, others see nothing
             setDbThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, isPublic: false } : t));
           }}
           onThreadMakePublic={() => {
@@ -1805,7 +1805,7 @@ export default function ShowSection({
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h2 style={{ margin: 0, fontSize: 22 }} className="title">
-                    {!t.isPublic && <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}><NotebookPen size={14} color="var(--icon-color)" /></span>}
+                    {!t.isPublic && <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}><LockKeyhole size={14} color="var(--icon-color)" /></span>}
                     {t.titleBase}
                     {t.showId !== "simshow" && (
                       <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
@@ -1917,7 +1917,7 @@ export default function ShowSection({
                 <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {composeDestination === "private" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                 </div>
-                <span style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 4 }}><NotebookPen size={14} color="var(--icon-color)" /> Private journal</span>
+                <span style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 4 }}><LockKeyhole size={14} color="var(--icon-color)" /> Private journal</span>
               </div>
 
               {/* One option per friend group */}
@@ -1961,7 +1961,7 @@ export default function ShowSection({
                 {postSubmitting
                   ? "Posting…"
                   : composeDestination === "private"
-                    ? <><NotebookPen size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Save to journal</>
+                    ? <><LockKeyhole size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Save to journal</>
                     : "Post"}
               </button>
             </div>

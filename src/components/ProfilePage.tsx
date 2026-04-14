@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, NotebookPen, Sparkles, Menu } from "lucide-react";
+import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, Menu } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -618,7 +618,7 @@ export default function ProfilePage({
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="title" style={{ fontSize: 18, ...((isGroup || isPub) ? { color: cardFg } : {}) }}>
-                          {!t.isPublic && !groupId && <span title="Private" style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><NotebookPen size={14} color="var(--icon-color)" /></span>}
+                          {!t.isPublic && !groupId && <span title="Private" style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><LockKeyhole size={14} color="var(--icon-color)" /></span>}
                           {isPub && <span title="Public" style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><Globe size={14} color="var(--icon-color)" /></span>}
                           {isGroup && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><Users size={14} color="var(--icon-color)" /></span>}
                           {isGroup && groupName && (
@@ -863,7 +863,7 @@ export default function ProfilePage({
                 <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {composeDestination === "private" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                 </div>
-                <span style={{ fontSize: 14, color: "var(--dos-light)" }}><NotebookPen size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Private journal</span>
+                <span style={{ fontSize: 14, color: "var(--dos-light)" }}><LockKeyhole size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Private journal</span>
               </div>
 
               {/* One option per friend group */}
@@ -904,7 +904,7 @@ export default function ProfilePage({
                   minWidth: 130,
                 }}
               >
-                {postSubmitting ? "Posting…" : composeDestination === "private" ? <><NotebookPen size={14} style={{verticalAlign:"middle"}} /> Save to journal</> : "Post"}
+                {postSubmitting ? "Posting…" : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> Save to journal</> : "Post"}
               </button>
             </div>
           </div>

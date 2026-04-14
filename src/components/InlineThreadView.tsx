@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { MessageSquare, Hand, NotebookPen, Globe, Users } from "lucide-react";
+import { MessageSquare, Hand, LockKeyhole, Globe, Users } from "lucide-react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import type { FriendGroup } from "../types";
 import { timeAgo, canView } from "../lib/utils";
@@ -379,7 +379,7 @@ export default function InlineThreadView({
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: 22, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }} className="title">
-                {!thread.isPublic && <span><NotebookPen size={14} color="var(--icon-color)" /></span>}
+                {!thread.isPublic && <span><LockKeyhole size={14} color="var(--icon-color)" /></span>}
                 <span>{thread.titleBase}</span>
                 {thread.showId !== "simshow" && (
                   <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7 }}>

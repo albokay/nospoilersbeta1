@@ -21,7 +21,7 @@ body.group-context{
   --dos-gray:rgba(26,58,74,0.65); --dos-light:#1a3a4a;
   --dos-accent:#1a3a4a; --dos-border:rgba(26,58,74,0.3);
   --dos-blue:rgba(26,58,74,0.08);
-  --icon-color:#7abd8e;
+  --icon-color:#fff;
   --progress-bg:#7abd8e; --progress-fg:#fff;
   background: linear-gradient(to bottom,#d4e8f0 0px,#bdd4de 180px) fixed,#bdd4de;
   background-attachment:fixed;
