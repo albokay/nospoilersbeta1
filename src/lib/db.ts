@@ -340,11 +340,9 @@ export async function fetchRepliesForThread(threadId: string, groupId?: string |
     .select("*")
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true });
-  // When viewing inside a friend room, include replies scoped to this group
-  // OR replies with no group_id (legacy replies posted before group_id tracking).
-  // This matches the count logic in fetchGroupThreads.
+  // When viewing inside a friend room, scope replies to that room's group_id
   if (groupId) {
-    query = query.or(`group_id.eq.${groupId},group_id.is.null`);
+    query = query.eq("group_id", groupId);
   }
   const { data, error } = await query;
   if (error) throw error;
@@ -1239,10 +1237,10 @@ export async function fetchGroupThreads(
   for (const row of data ?? []) {
     const t = (row as any).threads;
     if (!t) continue;
-    // Count only replies scoped to this group (or with no group_id, for non-seeded replies)
+    // Count only replies strictly scoped to this group
     const allReplies = ((t.replies as any[]) ?? []);
     const replyCount = allReplies.filter(
-      (r: any) => !r.group_id || r.group_id === groupId
+      (r: any) => r.group_id === groupId
     ).length;
     if (t.is_deleted && replyCount === 0) continue;
     const thread = rowToThread(t);
