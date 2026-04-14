@@ -1960,25 +1960,24 @@ export default function ShowSection({
                   <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>
               )}
-              <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
+              <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
               <button
                 className="btn compose-submit"
                 onClick={submitPost}
                 disabled={postSubmitting}
                 style={{
-                  background: composeDestination !== "private" ? "var(--green)" : "var(--dos-bg)",
-                  border: "none",
+                  background: "var(--danger)",
+                  border: "2px solid var(--danger)",
                   color: "#fff",
                   whiteSpace: "nowrap",
                   fontSize: 13,
                   minWidth: 130,
                 }}
               >
-                {postSubmitting
-                  ? "Posting…"
-                  : composeDestination === "private"
-                    ? <><LockKeyhole size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Save to journal</>
-                    : "Post"}
+                {postSubmitting ? "Posting…"
+                  : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
+                  : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> post</>
+                  : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}
               </button>
             </div>
           </div>

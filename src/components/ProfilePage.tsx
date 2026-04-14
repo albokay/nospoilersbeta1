@@ -815,11 +815,10 @@ export default function ProfilePage({
       {/* Compose modal */}
       {composeOpen && (
         <Modal onClose={closeCompose} width="min(720px,92vw)">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <div />
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <button className="close-x" onClick={closeCompose}><X size={14} /></button>
           </div>
-          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 10 }}>
             {/* ── Destination dropdown ── */}
             <div>
               <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
@@ -875,14 +874,14 @@ export default function ProfilePage({
                   <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>
               )}
-              <button className="btn" onClick={closeCompose} disabled={postSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
+              <button className="btn" onClick={closeCompose} disabled={postSubmitting} style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
               <button
                 className="btn compose-submit"
                 onClick={submitPost}
                 disabled={postSubmitting || !composeDestination || !postTitle.trim() || !postBody.trim()}
                 style={{
-                  background: composeDestination !== "private" ? "var(--green)" : "var(--dos-bg)",
-                  border: "none",
+                  background: "var(--danger)",
+                  border: "2px solid var(--danger)",
                   color: "#fff",
                   whiteSpace: "nowrap",
                   fontSize: 13,
@@ -890,7 +889,10 @@ export default function ProfilePage({
                   opacity: (!composeDestination || !postTitle.trim() || !postBody.trim()) ? 0.4 : 1,
                 }}
               >
-                {postSubmitting ? "Posting…" : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> Save to journal</> : "Post"}
+                {postSubmitting ? "Posting…"
+                  : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
+                  : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> post</>
+                  : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}
               </button>
             </div>
           </div>
