@@ -223,16 +223,16 @@ export default function ProfilePage({
   const [newRoomName, setNewRoomName] = useState("");
   const [createRoomSubmitting, setCreateRoomSubmitting] = useState(false);
   const handleCreateRoom = async () => {
-    if (!user || !newRoomName.trim() || !tabDropdownOpen) return;
+    if (!user || !newRoomName.trim() || !activeTab) return;
     setCreateRoomSubmitting(true);
     try {
-      const g = await createFriendGroup({ showId: tabDropdownOpen, name: newRoomName.trim(), createdBy: user.id });
+      const g = await createFriendGroup({ showId: activeTab, name: newRoomName.trim(), createdBy: user.id });
       setTabGroups(prev => [...prev, g]);
       setNewRoomName("");
       setShowCreateRoomModal(false);
       // Navigate into the new room
-      sessionStorage.setItem(`ns_active_group_${tabDropdownOpen}`, g.id);
-      openShow(tabDropdownOpen);
+      sessionStorage.setItem(`ns_active_group_${activeTab}`, g.id);
+      openShow(activeTab);
     } catch (e) { console.error(e); }
     finally { setCreateRoomSubmitting(false); }
   };
