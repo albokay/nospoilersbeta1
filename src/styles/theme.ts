@@ -23,11 +23,11 @@ body.group-context{
   --dos-blue:rgba(26,58,74,0.08);
   --icon-color:#fff;
   --progress-bg:#7abd8e; --progress-fg:#fff;
-  background: linear-gradient(to bottom,#d4e8f0 0px,#acc9d6 180px) fixed,#acc9d6;
+  background: linear-gradient(to bottom,#c3dde8 0px,#acc9d6 180px) fixed,#acc9d6;
   background-attachment:fixed;
 }
 body.group-context.has-header{
-  background: linear-gradient(to top,#d4e8f0 0px,#acc9d6 250px) fixed,#acc9d6;
+  background: linear-gradient(to top,#c3dde8 0px,#acc9d6 250px) fixed,#acc9d6;
   background-attachment:fixed;
 }
 body.group-context header.site{ background:rgba(189,212,222,0.98); }
