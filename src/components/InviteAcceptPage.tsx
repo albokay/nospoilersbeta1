@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Link2, Clock, CircleCheck, PartyPopper, AlertTriangle, Clapperboard } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../lib/auth";
+import { upsertProgress, fetchProgress } from "../lib/db";
 import AuthModal from "./AuthModal";
 
 type InviteInfo = {
@@ -57,10 +58,24 @@ export default function InviteAcceptPage({ token }: { token: string }) {
       return;
     }
 
+    // Ensure the user has a progress entry for this show (creates the profile tab)
+    if (invite?.show_id && user) {
+      try {
+        const existing = await fetchProgress(user.id);
+        if (!existing[invite.show_id]) {
+          await upsertProgress(user.id, invite.show_id, 1, 1);
+        }
+      } catch {}
+    }
+
     setStatus("done");
-    // Navigate home after a short delay — let the user find the show themselves
-    // since they may not have set up progress for it yet
-    setTimeout(() => navigate("/"), 1800);
+    // Navigate to the show's friend room after a short delay
+    const showId = invite?.show_id;
+    const groupId = invite?.group_id;
+    if (showId && groupId) {
+      sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
+    }
+    setTimeout(() => navigate(showId ? `/show/${showId}` : "/"), 1800);
   }
 
   // If the user just signed in / signed up via the auth modal, auto-accept
