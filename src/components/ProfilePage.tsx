@@ -330,14 +330,15 @@ export default function ProfilePage({
         await addThreadToGroup(t.id, composeDestination).catch(() => {});
       }
 
+      const destShowId = activeTab;
       const groupId = (composeDestination !== "public" && composeDestination !== "private") ? composeDestination : undefined;
       const groupName = groupId ? tabGroups.find(g => g.id === groupId)?.name : undefined;
       setMyThreads(prev => [{ thread: t, groupId, groupName }, ...prev]);
       setPostTitle(""); setPostBody("");
       setActivePrompt(null); setShownPromptIds([]); setInsertedPromptIds([]);
-      closeCompose();
+      setComposeOpen(false);
       // Navigate to the newly created thread in its context
-      openThreadWithFocus(activeTab, t.id, undefined, groupId);
+      openThreadWithFocus(destShowId, t.id, undefined, groupId);
     } catch {
       alert("Failed to post. Please try again.");
     } finally {
