@@ -82,7 +82,7 @@ function EpisodeSelectInline({
         return (
           <optgroup key={s} label={`Season ${s}`}>
             {eps.map(e => (
-              <option key={e} value={`s${s}e${e}`}>S{s} E{e}</option>
+              <option key={e} value={`s${s}e${e}`}>Season {s} Episode {e}</option>
             ))}
           </optgroup>
         );
@@ -289,7 +289,7 @@ export default function SearchShows({
     onBrowsePublic?.(showId, confirming.name, entry, seasons);
   };
 
-  const canSubmit = !!watchChoice && progressTouched && !seasonsLoading && !creating;
+  const canSubmit = !!watchChoice && !seasonsLoading && !creating;
 
   return (
     <>
