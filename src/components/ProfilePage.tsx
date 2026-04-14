@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, Menu } from "lucide-react";
+import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, Map, ChevronDown } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -465,26 +465,6 @@ export default function ProfilePage({
               <section style={{ marginTop: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, marginBottom: 16, minHeight: 28 }}>
                   <div className="title profile-journal-heading" style={{ fontSize: 22, marginLeft: -42 }}>Your Journal</div>
-                  <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
-                    {(["all", "private"] as const).map(opt => (
-                      <button
-                        key={opt}
-                        onClick={() => setDiaryFilter(opt)}
-                        style={{
-                          padding: "3px 10px",
-                          fontSize: 12,
-                          fontWeight: diaryFilter === opt ? 700 : 400,
-                          background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
-                          color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
-                          border: "none",
-                          cursor: "pointer",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {opt === "all" ? "all" : "private journal only"}
-                      </button>
-                    ))}
-                  </div>
                 </div>
                 <div className="diaryOuter">
                   {/* Folder tab row — sits flush on top of the front card */}
@@ -516,7 +496,7 @@ export default function ProfilePage({
                         >
                           {showName(sid)}
                           {active && (
-                            <span data-hamburger style={{ marginLeft: 8, opacity: 0.8, lineHeight: 1, display: "inline-flex", verticalAlign: "middle" }}><Menu size={16} color="currentColor" /></span>
+                            <span data-hamburger style={{ marginLeft: 8, opacity: 0.8, lineHeight: 1, display: "inline-flex", verticalAlign: "middle" }}><Map size={20} color="currentColor" /></span>
                           )}
                           {!viewed && activity && (
                             <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: activity === "green" ? "var(--green)" : "var(--danger)", pointerEvents: "none" }} />
@@ -540,17 +520,39 @@ export default function ProfilePage({
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
                     <div className="profileActionBar">
-                      <button
-                        className="btn post h40"
-                        onClick={() => {
-                          // Default to most recent group for this show, or private if none
-                          setComposeDestination(tabGroups.length > 0 ? tabGroups[0].id : "private");
-                          setComposeOpen(true);
-                        }}
-                        style={{ lineHeight: 1.2, marginLeft: 20, background: "transparent", border: "2px solid #fff", color: "#fff", display: "inline-flex", alignItems: "center", gap: 5 }}
-                      >
-                        <SquarePen size={15} /> write
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          className="btn post h40"
+                          onClick={() => {
+                            // Default to most recent group for this show, or private if none
+                            setComposeDestination(tabGroups.length > 0 ? tabGroups[0].id : "private");
+                            setComposeOpen(true);
+                          }}
+                          style={{ lineHeight: 1.2, marginLeft: 20, background: "transparent", border: "2px solid #fff", color: "#fff", display: "inline-flex", alignItems: "center", gap: 5 }}
+                        >
+                          <SquarePen size={15} /> write
+                        </button>
+                        <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
+                          {(["all", "private"] as const).map(opt => (
+                            <button
+                              key={opt}
+                              onClick={() => setDiaryFilter(opt)}
+                              style={{
+                                padding: "3px 10px",
+                                fontSize: 12,
+                                fontWeight: diaryFilter === opt ? 700 : 400,
+                                background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
+                                color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
+                                border: "none",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {opt === "all" ? "all entries" : "private entries"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       {activeShow && (
                         <OneSelectProgress
                           show={activeShow}
@@ -814,10 +816,30 @@ export default function ProfilePage({
       {composeOpen && (
         <Modal onClose={closeCompose} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <h3 className="title" style={{ margin: 0 }}>add to journal</h3>
+            <h3 className="title" style={{ margin: 0 }}>write an entry</h3>
             <button className="close-x" onClick={closeCompose}><X size={14} /></button>
           </div>
           <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            {/* ── Destination dropdown ── */}
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "var(--dos-light)" }}>where do you want to publish?</div>
+              <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                <select
+                  className="badge"
+                  value={composeDestination}
+                  onChange={(e) => setComposeDestination(e.target.value)}
+                  style={{ fontSize: 13, fontWeight: 600, paddingRight: 30, appearance: "none", WebkitAppearance: "none", cursor: "pointer", width: "100%" }}
+                >
+                  <option value="private">private entry</option>
+                  <option value="public">public entry</option>
+                  {tabGroups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name} friend room</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
+              </div>
+            </div>
+
             <input
               className="badge"
               placeholder="Title"
@@ -853,40 +875,6 @@ export default function ProfilePage({
                 </button>
               </div>
             )}
-
-            {/* ── Destination selector ── */}
-            <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10, color: "var(--dos-light)" }}>Where to post</div>
-
-              {/* Private journal */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination("private")}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {composeDestination === "private" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
-                </div>
-                <span style={{ fontSize: 14, color: "var(--dos-light)" }}><LockKeyhole size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Private journal</span>
-              </div>
-
-              {/* One option per friend group */}
-              {tabGroups.map(g => (
-                <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination(g.id)}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {composeDestination === g.id && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
-                  </div>
-                  <span style={{ fontSize: 14, color: "var(--dos-light)" }}><Users size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {g.name}</span>
-                </div>
-              ))}
-
-              {/* Public journal */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, cursor: "pointer" }} onClick={() => setComposeDestination("public")}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {composeDestination === "public" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
-                </div>
-                <span style={{ fontSize: 14, color: "var(--dos-light)" }}>
-                  <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public journal
-                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
-                </span>
-              </div>
-            </div>
 
             {/* ── Submit row ── */}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>

@@ -1308,21 +1308,7 @@ export default function ShowSection({
             {/* ── Row 2: room switcher pills (forum view only) ── */}
             {!thread && user && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, paddingBottom: ROW_PAD_Y, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" as any }}>
-                {/* Public room pill */}
-                <button
-                  className="btn"
-                  onClick={() => setActiveGroupId(null)}
-                  style={{
-                    whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                    padding: "3px 12px",
-                    background: !activeGroupId ? "var(--dos-user)" : "transparent",
-                    border: !activeGroupId ? "2px solid var(--dos-user)" : "2px solid #fff",
-                    color: "#fff",
-                  }}
-                >
-                  <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public room
-                </button>
-                {/* One pill per group */}
+                {/* Friend room pills — justified left */}
                 {userGroups.map(g => {
                   const isActive = activeGroupId === g.id;
                   const activeBg = "#dea838";
@@ -1355,20 +1341,20 @@ export default function ShowSection({
                     </button>
                   );
                 })}
-                {/* Create new room — pushed to the right */}
+                {/* Go to public conversations — pushed to the right */}
                 <div style={{ flexGrow: 1 }} />
                 <button
                   className="btn"
-                  onClick={() => setShowCreateGroupModal(true)}
+                  onClick={() => setActiveGroupId(null)}
                   style={{
                     whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
                     padding: "3px 12px",
-                    background: "transparent",
-                    border: "2px dashed #fff",
+                    background: !activeGroupId ? "var(--dos-user)" : "transparent",
+                    border: !activeGroupId ? "2px solid var(--dos-user)" : "2px solid #fff",
                     color: "#fff",
                   }}
                 >
-                  + new room
+                  <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> go to public conversations
                 </button>
               </div>
             )}
@@ -1862,11 +1848,20 @@ export default function ShowSection({
             );
           })}
           {!activeLoading && activeList.length === 0 && (
-            <div className="muted" style={{ fontSize: 14 }}>
-              {activeGroupId
-                ? "No entries shared to this room yet. Write a post and select this room as a destination in the composer."
-                : "No posts match your watch progress."}
-            </div>
+            activeGroupId ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 0 48px", gap: 16 }}>
+                <div className="muted" style={{ fontSize: 14, textAlign: "center" }}>No entries shared to this room yet.</div>
+                <button
+                  className="btn"
+                  onClick={() => openGroupSettings(activeGroupId)}
+                  style={{ background: "var(--dos-user)", border: "none", color: "#fff", fontSize: 14, padding: "8px 20px" }}
+                >
+                  <Users size={14} color="#fff" style={{verticalAlign:"middle"}} /> invite friends
+                </button>
+              </div>
+            ) : (
+              <div className="muted" style={{ fontSize: 14 }}>No posts match your watch progress.</div>
+            )
           )}
         </div>
       )}
@@ -1875,7 +1870,7 @@ export default function ShowSection({
       {composeOpen && (
         <Modal onClose={() => closeCompose()} width="min(720px,92vw)">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <h3 className="title" style={{ margin: 0 }}>add to journal</h3>
+            <h3 className="title" style={{ margin: 0 }}>{activeGroupId ? "write to your friends" : "add to journal"}</h3>
             <button className="close-x" onClick={() => closeCompose()}><X size={14} /></button>
           </div>
 
@@ -1921,7 +1916,8 @@ export default function ShowSection({
               </div>
             )}
 
-            {/* ── Destination selector ── */}
+            {/* ── Destination selector (hidden when writing from a friend room) ── */}
+            {!activeGroupId && (
             <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10 }}>Where to post</div>
 
@@ -1954,6 +1950,7 @@ export default function ShowSection({
                 </span>
               </div>
             </div>
+            )}
 
             {/* ── Submit row ── */}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
