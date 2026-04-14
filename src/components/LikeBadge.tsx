@@ -3,13 +3,14 @@ import { Star } from "lucide-react";
 import Modal from "./Modal";
 
 export default function LikeBadge({
-  count: rawCount, userLiked, onClick, title = "Like", readOnly = false
+  count: rawCount, userLiked, onClick, title = "Like", readOnly = false, inReply = false
 }: {
   count: number;
   userLiked?: boolean;
   onClick?: (e: React.MouseEvent) => void;
   title?: string;
   readOnly?: boolean;
+  inReply?: boolean;
 }) {
   // count is kept in props so callers can still pass it for backend ordering,
   // but it is intentionally not rendered.
@@ -19,7 +20,8 @@ export default function LikeBadge({
   const [showHint, setShowHint] = useState(false);
 
   // Outline star = not yet starred, filled star = starred by this user
-  const icon = <Star size={14} fill={userLiked ? "currentColor" : "none"} color="currentColor" />;
+  const starColor = inReply ? "var(--dos-fg)" : "#fff";
+  const icon = <Star size={14} fill={userLiked ? starColor : "none"} color={starColor} />;
 
   const handleClick = (e: React.MouseEvent) => {
     if (!clickable) return;
@@ -63,14 +65,17 @@ export default function LikeBadge({
         onClick={handleClick}
         title={clickable ? (userLiked ? "Un-star" : title) : undefined}
         style={{
-          border: "2px solid var(--dos-border)",
-          borderRadius: 9999,
-          padding: "4px 11px",
+          border: `2px solid ${inReply ? "var(--dos-border)" : "#fff"}`,
+          borderRadius: "50%",
+          width: 32,
+          height: 32,
+          padding: 0,
           background: "transparent",
           cursor: clickable ? "pointer" : "default",
           display: "inline-flex",
-          alignItems: "baseline",
-          color: "var(--dos-fg)",
+          alignItems: "center",
+          justifyContent: "center",
+          color: inReply ? "var(--dos-fg)" : "#fff",
         }}
       >
         <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>

@@ -876,6 +876,7 @@ export default function RepliesList({
                     userLiked={userLiked}
                     onClick={() => handleLikeReply(r.id)}
                     title="this post!"
+                    inReply
                   />
                   {isReplyOwn && (
                     <>
