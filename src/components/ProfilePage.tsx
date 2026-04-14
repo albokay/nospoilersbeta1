@@ -762,18 +762,9 @@ export default function ProfilePage({
                               : <span style={{ fontStyle: "italic" }}>publicly</span>}{" "}
                           • <span className="username">@{r.author}</span>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                          {(r.body.length > 260 || r.body.split('\n').length > 3) && (
-                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
-                              onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
-                              {expandedIds.has(r.id) ? "▴ less" : "▾ expand"}
-                            </div>
-                          )}
-                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(r.updatedAt)}</div>
-                        </div>
+                        <div className="muted" style={{ fontSize: 13, flexShrink: 0 }}>{timeAgo(r.updatedAt)}</div>
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 15 }}
-                        className={expandedIds.has(r.id) ? undefined : "clamp3"}>
+                      <div style={{ marginTop: 6, fontSize: 15 }} className="clamp3">
                         {r.body}
                       </div>
                     </div>
@@ -798,18 +789,9 @@ export default function ProfilePage({
                             </span>
                           )}
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                          {(r.body.length > 260 || r.body.split('\n').length > 3) && (
-                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
-                              onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
-                              {expandedIds.has(r.id) ? "▴ less" : "▾ expand"}
-                            </div>
-                          )}
-                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(r.updatedAt)}</div>
-                        </div>
+                        <div className="muted" style={{ fontSize: 13, flexShrink: 0 }}>{timeAgo(r.updatedAt)}</div>
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 15 }}
-                        className={expandedIds.has(r.id) ? undefined : "clamp3"}>
+                      <div style={{ marginTop: 6, fontSize: 15 }} className="clamp3">
                         {r.body}
                       </div>
                     </div>
@@ -819,9 +801,9 @@ export default function ProfilePage({
 
               {/* Starred posts */}
               <section style={{ marginTop: 24 }}>
-                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your starred posts</div>
+                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your starred entries</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
-                  {tabLikedThreads.length === 0 && <div className="muted">No starred posts yet.</div>}
+                  {tabLikedThreads.length === 0 && <div className="muted">No starred entries yet.</div>}
                   {tabLikedThreads.map(t => (
                     <div key={t.id} className="card threadCard"
                       style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
@@ -835,19 +817,10 @@ export default function ProfilePage({
                             </span>
                           )}
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                          {t.body !== t.preview && (
-                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
-                              onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
-                              {expandedIds.has(t.id) ? "▴ less" : "▾ expand"}
-                            </div>
-                          )}
-                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(t.updatedAt)}</div>
-                        </div>
+                        <div className="muted" style={{ fontSize: 13, flexShrink: 0 }}>{timeAgo(t.updatedAt)}</div>
                       </div>
-                      <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined }}
-                        className={expandedIds.has(t.id) ? undefined : "clamp3"}>
-                        {expandedIds.has(t.id) ? t.body : t.preview}
+                      <div style={{ marginTop: 6 }} className="clamp3">
+                        {t.preview}
                       </div>
                     </div>
                   ))}
@@ -870,18 +843,9 @@ export default function ProfilePage({
                           </span>{" "}
                           • <span className="username">@{r.author}</span>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                          {(r.body.length > 260 || r.body.split('\n').length > 3) && (
-                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
-                              onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
-                              {expandedIds.has(r.id) ? "▴ less" : "▾ expand"}
-                            </div>
-                          )}
-                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(r.updatedAt)}</div>
-                        </div>
+                        <div className="muted" style={{ fontSize: 13, flexShrink: 0 }}>{timeAgo(r.updatedAt)}</div>
                       </div>
-                      <div style={{ marginTop: 6 }}
-                        className={expandedIds.has(r.id) ? undefined : "clamp3"}>
+                      <div style={{ marginTop: 6 }} className="clamp3">
                         {r.body}
                       </div>
                     </div>
