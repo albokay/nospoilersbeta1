@@ -20,9 +20,8 @@ export default function LikeBadge({
   const [showHint, setShowHint] = useState(false);
 
   // Outline star = not yet starred, filled star = starred by this user
-  // inReply uses currentColor so CSS context overrides (e.g. public-context green) take effect
-  const starColor = inReply ? "currentColor" : "#fff";
-  const icon = <Star size={14} fill={userLiked ? starColor : "none"} color={starColor} />;
+  // Always use currentColor so CSS context overrides (group-context, public-context) take effect
+  const icon = <Star size={14} fill={userLiked ? "currentColor" : "none"} color="currentColor" />;
 
   const handleClick = (e: React.MouseEvent) => {
     if (!clickable) return;
@@ -66,7 +65,7 @@ export default function LikeBadge({
         onClick={handleClick}
         title={clickable ? (userLiked ? "Un-star" : title) : undefined}
         style={{
-          border: `2px solid ${inReply ? "currentColor" : "#fff"}`,
+          border: "2px solid currentColor",
           borderRadius: "50%",
           width: 32,
           height: 32,
@@ -76,7 +75,7 @@ export default function LikeBadge({
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          color: inReply ? "var(--dos-fg)" : "#fff",
+          color: "#fff",
         }}
       >
         <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>
