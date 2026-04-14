@@ -549,7 +549,7 @@ export default function ProfilePage({
                         }}
                         style={{ lineHeight: 1.2, marginLeft: 20, background: "transparent", border: "2px solid #fff", color: "#fff", display: "inline-flex", alignItems: "center", gap: 5 }}
                       >
-                        <SquarePen size={15} /> journal
+                        <SquarePen size={15} /> write
                       </button>
                       {activeShow && (
                         <OneSelectProgress

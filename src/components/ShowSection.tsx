@@ -1178,7 +1178,7 @@ export default function ShowSection({
                   onClick={() => user ? openCompose() : onAuthRequired()}
                   style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}
                 >
-                  <SquarePen size={13} /> journal
+                  <SquarePen size={13} /> write
                 </button>
                 <OneSelectProgress
                   show={allShows.find(s => s.id === showId) || { seasons: [10] }}
@@ -1202,7 +1202,7 @@ export default function ShowSection({
                   title="Start a new post"
                   style={{ lineHeight: 1.2, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5 }}
                 >
-                  <SquarePen size={15} /> journal
+                  <SquarePen size={15} /> write
                 </button>
               ) : (
                 /* Thread view: context-aware back button + optional globe + journal */
@@ -1241,7 +1241,7 @@ export default function ShowSection({
                     title="Start a new post"
                     style={{ lineHeight: 1.2, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 5 }}
                   >
-                    <SquarePen size={15} /> journal
+                    <SquarePen size={15} /> write
                   </button>
                 </div>
               )}
