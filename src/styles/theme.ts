@@ -5,77 +5,31 @@ export function injectDOSStyles() {
 :root{
   --dos-bg:#7abd8e; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
-  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#355eb8; --dos-border:#ffffff;
-  --icon-color:#fff;
+  --dos-accent:#FFFFFF; --danger:#f45028; --green:#dea838; --dos-user:#2256c9; --dos-border:#ffffff;
   /* canonical accent blue */
-  --blue-light:#acc9d6;
+  --blue-light:#adc8d7;
   /* progress dropdown (overridden to green in group context) */
-  --progress-bg:#acc9d6; --progress-fg:#355eb8;
+  --progress-bg:#adc8d7; --progress-fg:#2256c9;
   /* type scale */
   --t1:22px; --t2:17px; --t3:15px; --t4:13px;
 }
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
-  --dos-bg:#acc9d6; --dos-fg:#1a3a4a; --dos-cyan:#1a3a4a;
+  --dos-bg:#adc8d7; --dos-fg:#1a3a4a; --dos-cyan:#1a3a4a;
   --dos-gray:rgba(26,58,74,0.65); --dos-light:#1a3a4a;
   --dos-accent:#1a3a4a; --dos-border:rgba(26,58,74,0.3);
   --dos-blue:rgba(26,58,74,0.08);
-  --icon-color:#fff;
   --progress-bg:#7abd8e; --progress-fg:#fff;
-  background: linear-gradient(to bottom,#c3dde8 0px,#acc9d6 180px) fixed,#acc9d6;
+  background: linear-gradient(to bottom,#c8dde8 0px,#adc8d7 180px) fixed,#adc8d7;
   background-attachment:fixed;
 }
 body.group-context.has-header{
-  background: linear-gradient(to top,#c3dde8 0px,#acc9d6 250px) fixed,#acc9d6;
+  background: linear-gradient(to top,#c8dde8 0px,#adc8d7 250px) fixed,#adc8d7;
   background-attachment:fixed;
 }
-body.group-context header.site{ background:rgba(172,201,214,0.98); }
-body.group-context .stickybar{ background:rgba(172,201,214,0.98); }
-/* In friend rooms, reply cards should use dark text matching thread entries (not washed-out blue) */
-body.group-context .reply-card{ color:#1a3a4a !important; --dos-accent:#1a3a4a; --dos-cyan:#1a3a4a; --dos-gray:rgba(26,58,74,0.65); border-color:transparent !important; }
-/* In friend rooms, star button circle + star should both use the muted border color */
-body.group-context .likeWrap{ color:rgba(26,58,74,0.3) !important; border-color:rgba(26,58,74,0.3) !important; }
-body.group-context .likeWrap:hover{ background:rgba(26,58,74,0.08) !important; }
-
-/* ── Public room context — golden-yellow theme ─────────────────────────────── */
-body.public-context{
-  --dos-bg:#dea838; --dos-fg:#FFFFFF; --dos-cyan:#FFFFFF;
-  --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
-  --dos-accent:#FFFFFF; --dos-border:#ffffff;
-  --dos-blue:rgba(0,0,0,0.14);
-  --progress-bg:#7abd8e; --progress-fg:#fff;
-  background: linear-gradient(to bottom,#f0cc60 0px,#dea838 180px) fixed,#dea838;
-  background-attachment:fixed;
-}
-body.public-context.has-header{
-  background: linear-gradient(to top,#f0cc60 0px,#dea838 250px) fixed,#dea838;
-  background-attachment:fixed;
-}
-body.public-context header.site{ background:rgba(222,168,56,0.98); }
-body.public-context .stickybar{ background:rgba(222,168,56,0.98); }
-/* In the yellow public room, reply cards have white bg — swap yellow accents to canon green */
-body.public-context .reply-card .btn:not(.btn-danger){ color:#7abd8e !important; border-color:#7abd8e !important; }
-body.public-context .reply-card .btn:not(.btn-danger):hover{ background:#7abd8e !important; color:#fff !important; border-color:#7abd8e !important; }
-body.public-context .reply-card .likeWrap{ color:#7abd8e !important; border-color:#7abd8e !important; }
-body.public-context .reply-card .likeWrap:hover{ background:#7abd8e !important; color:#fff !important; border-color:#7abd8e !important; }
-body.public-context .blockquote-ref .blockquote-author,
-body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
-body.public-context .responding-to-label{ color:#7abd8e; }
-body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
-body.public-context .btn.primary{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
-/* New-reply badge in thread list — green instead of yellow in public context */
-body.public-context .newReplyBadge{ background:#7abd8e !important; }
-/* Radio dot in compose destination selector — green instead of yellow in public context */
-body.public-context .radio-dot{ background:#7abd8e !important; }
-/* Retag warning box, move-to dropdown, edit textarea — green bg in public context */
-body.public-context .retag-warning{ background:#7abd8e !important; }
-body.public-context .move-to-dropdown{ background:#7abd8e !important; }
-body.public-context .edit-textarea{ background:#7abd8e !important; }
-/* Compose submit button — green instead of yellow in public context */
-body.public-context .compose-submit{ background:#7abd8e !important; }
-/* Expand/collapse chip — green text instead of yellow in public context */
-body.public-context .expand-chip{ color:#7abd8e !important; }
+body.group-context header.site{ background:rgba(173,200,215,0.98); }
+body.group-context .stickybar{ background:rgba(173,200,215,0.98); }
 
 .brandLink{ cursor:pointer; }
 .brandLink:focus-visible{ outline:2px dashed var(--dos-cyan); outline-offset:2px; }
@@ -111,7 +65,7 @@ body.has-header{
 hr{ display:none; }
 .title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; font-size:var(--t2); }
 .muted{ color:var(--dos-gray); font-size:var(--t4); }
-.card{ background:transparent; border:none; padding:12px; border-radius:24px; }
+.card{ background:transparent; border:2px solid var(--dos-border); padding:12px; border-radius:24px; }
 
 /* controls */
 .badge{
@@ -123,20 +77,12 @@ hr{ display:none; }
   background:transparent; color:var(--dos-fg); border:2px solid var(--dos-border);
   border-radius:9999px; padding:6px 12px; cursor:pointer; font-weight:500;
 }
-/* Consistent close-X button: circle, white outline, white X, transparent fill */
-.close-x{
-  width:28px; height:28px; padding:0; background:transparent;
-  border:2px solid #fff; border-radius:50%; color:#fff;
-  display:inline-flex; align-items:center; justify-content:center;
-  cursor:pointer; flex-shrink:0; line-height:1;
-}
-.close-x:hover{ background:rgba(255,255,255,0.15); }
 .btn.primary{ border-color:var(--dos-cyan); color:var(--dos-cyan); }
 .btn:hover{ background:var(--dos-blue); color:white; border-color:var(--dos-light); }
 .btn-danger{ border-color:var(--danger); color:var(--danger); }
 .btn-danger:hover{ background:var(--danger); color:#fff; border-color:var(--danger); }
 /* Green styling for +Post */
-.btn.post{ background: #dea838; color: #fff; border-color: #dea838; }
+.btn.post{ background: var(--green); color: #fff; border-color: var(--green); }
 .btn.post:hover{ background: #c4912a; border-color: #c4912a; color: #fff; }
 /* Fix dark inputs/textareas */
 select {
@@ -226,7 +172,7 @@ header.site{
 .splashSearchWrap{
   position:relative; display:flex; align-items:center;
   width:288px; max-width:90vw; margin:20px auto;
-  height:40px; border:2px solid #acc9d6; border-radius:9999px;
+  height:40px; border:2px solid #adc8d7; border-radius:9999px;
   padding:0 16px;
   background:#fef8ea; border-color:#fef8ea; color:#c39431;
 }
@@ -242,7 +188,7 @@ header.site{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
   max-height:300px; overflow:auto; background:rgba(122,189,142,0.97);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
-  border:none; border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
+  border:2px solid var(--dos-border); border-radius:23px; box-shadow:0 8px 23px rgba(0,0,0,0.15);
   color:var(--dos-fg);
 }
 
@@ -262,7 +208,7 @@ header.site{
 }
 
 /* thread/replies */
-.threadCard{ border:none; }
+.threadCard{ border-color:var(--dos-border); }
 .replyBarNew{ background:var(--green); height:6px; }
 .clamp3{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
 .redacted{ background:#e8e4dc; color:#888; border:2px solid #ccc; border-radius:23px; }
@@ -332,7 +278,7 @@ header.site{
   border-color:#fff;
   border-bottom:2px solid var(--dos-bg);
   font-size:var(--t3); font-weight:800;
-  text-decoration:none;
+  text-decoration:underline;
   margin-bottom:-3px;
 }
 /* front card */
@@ -349,7 +295,7 @@ header.site{
   flex-shrink:0;
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   background:var(--dos-bg);
-  padding:24px 48px 16px 16px;
+  padding:14px 48px 10px 16px;
   border-bottom:none;
 }
 /* Scrollable entries region that fills the remaining card height */
@@ -557,7 +503,7 @@ body { -webkit-font-smoothing: antialiased; }
    Button: .btn with color #000 / borderColor #000.
    ──────────────────────────────────────────────────────────────────────────── */
 .explanation-card {
-  background: #acc9d6 !important;
+  background: #adc8d7 !important;
   border: none !important;
   color: #000 !important;
 }
@@ -579,7 +525,7 @@ body { -webkit-font-smoothing: antialiased; }
   width: 280px;
   background: var(--dos-bg);
   color: var(--dos-fg);
-  border: none;
+  border: 2px solid var(--dos-border);
   border-radius: 16px;
   padding: 12px 14px 10px;
   font-size: 13px;
@@ -716,7 +662,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* ── Prompt card (the floating suggestion card) ─────────────────────────── */
 .prompt-card {
-  background: #acc9d6;
+  background: #adc8d7;
   border: none;
   border-radius: 16px;
   padding: 16px 18px 14px;
@@ -741,9 +687,9 @@ body { -webkit-font-smoothing: antialiased; }
   background: rgba(0,0,0,0.08);
 }
 .prompt-card-btn--use {
-  background: #355eb8;
+  background: #2256c9;
   color: #fff;
-  border-color: #355eb8;
+  border-color: #2256c9;
 }
 .prompt-card-btn--use:hover {
   background: #1a44a8;

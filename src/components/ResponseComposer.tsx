@@ -36,7 +36,6 @@ interface ResponseComposerProps {
   show?: Show;
   progress?: { s: number; e: number };
   inGroupContext?: boolean;
-  groupId?: string | null;
 }
 
 export default function ResponseComposer({
@@ -58,7 +57,6 @@ export default function ResponseComposer({
   show,
   progress,
   inGroupContext,
-  groupId,
 }: ResponseComposerProps) {
   // Re-watchers tag replies at their highest prior progress; others use viewerSeason/Episode
   const replyTagS = postTagSeason ?? viewerSeason;
@@ -181,7 +179,6 @@ export default function ResponseComposer({
         referencedThreadId: pendingReference?.threadId ?? null,
         quotedText: (pendingReference?.type === "quote" ? pendingReference.quotedText : null) ?? null,
         isRewatch: isRewatch ?? false,
-        groupId: groupId ?? null,
       });
       // Log prompt usage (best-effort)
       for (const pid of insertedPromptIds) {
@@ -205,10 +202,10 @@ export default function ResponseComposer({
     <div
       ref={composerRef}
       className="card"
-      style={{ marginTop: 16, border: "2px solid var(--dos-border)", borderRadius: 24 }}
+      style={{ marginTop: 16, borderLeft: "4px solid var(--dos-accent)" }}
       id="response-composer"
     >
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--dos-border)" }}>Write a response</div>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Write a response</div>
 
       {/* Pending reference row */}
       {pendingReference && pendingReference.type === "quote" && !quoteInserted && (
@@ -241,8 +238,8 @@ export default function ResponseComposer({
           boxSizing: "border-box",
           background: "#fff",
           color: "#000",
-          border: "none",
-          borderRadius: 8,
+          border: "1px solid var(--dos-border)",
+          borderRadius: 4,
           padding: "8px 10px",
           fontSize: 14,
           resize: "vertical",
@@ -259,7 +256,7 @@ export default function ResponseComposer({
           className="btn"
           onClick={onCancel}
           disabled={submitting}
-          style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
+          style={{ background: "var(--danger)", border: "none", color: "#fff" }}
         >
           Cancel
         </button>
@@ -271,13 +268,13 @@ export default function ResponseComposer({
           align="right"
           useAbsolute={true}
           width={280}
-          tooltipStyle={{ background: "#acc9d6", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
+          tooltipStyle={{ background: "#adc8d7", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
         >
           <button
             className="btn"
             onClick={() => handleSubmit(false)}
             disabled={submitting || !body.trim()}
-            style={{ background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff" }}
+            style={{ background: "var(--green)", border: "2px solid var(--green)", color: "#fff" }}
           >
             {submitting ? "Posting…" : "Send to the room"}
           </button>
