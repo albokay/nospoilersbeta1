@@ -579,7 +579,7 @@ export default function ProfilePage({
                         );
                       }
                       // No entries at all (including new users on private filter) — show welcome
-                      return <EmptyProfileWelcome />;
+                      return <EmptyProfileWelcome isTsp={activeTab === "tsp" && visibleTabOrder.length === 1} />;
                     }
                     return filtered.map(({ thread: t, groupId, groupName }) => {
                     const isGroup = !!groupId;
