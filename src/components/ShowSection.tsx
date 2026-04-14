@@ -1308,8 +1308,8 @@ export default function ShowSection({
                     whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
                     padding: "3px 12px",
                     background: !activeGroupId ? "var(--dos-user)" : "transparent",
-                    border: !activeGroupId ? "2px solid var(--dos-user)" : "2px solid rgba(255,255,255,0.2)",
-                    color: !activeGroupId ? "#fff" : "rgba(255,255,255,0.55)",
+                    border: !activeGroupId ? "2px solid var(--dos-user)" : "2px solid #fff",
+                    color: "#fff",
                   }}
                 >
                   <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public room
@@ -1327,8 +1327,8 @@ export default function ShowSection({
                         whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
                         padding: "3px 10px",
                         background: isActive ? activeBg : "transparent",
-                        border: isActive ? `2px solid ${activeBg}` : "2px solid rgba(255,255,255,0.2)",
-                        color: isActive ? "#fff" : "rgba(255,255,255,0.55)",
+                        border: isActive ? `2px solid ${activeBg}` : "2px solid #fff",
+                        color: "#fff",
                         display: "inline-flex", alignItems: "center", gap: 5,
                       }}
                     >
@@ -1340,7 +1340,6 @@ export default function ShowSection({
                           marginLeft: 2,
                           display: "inline-flex", alignItems: "center",
                           cursor: "pointer",
-                          opacity: isActive ? 1 : 0.6,
                         }}
                       >
                         <Settings size={14} color="var(--icon-color)" />
@@ -1348,7 +1347,8 @@ export default function ShowSection({
                     </button>
                   );
                 })}
-                {/* Create new room */}
+                {/* Create new room — pushed to the right */}
+                <div style={{ flexGrow: 1 }} />
                 <button
                   className="btn"
                   onClick={() => setShowCreateGroupModal(true)}
@@ -1356,8 +1356,8 @@ export default function ShowSection({
                     whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
                     padding: "3px 12px",
                     background: "transparent",
-                    border: "2px dashed rgba(255,255,255,0.3)",
-                    color: "rgba(255,255,255,0.45)",
+                    border: "2px dashed #fff",
+                    color: "#fff",
                   }}
                 >
                   + new room
