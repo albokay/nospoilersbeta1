@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, Map, ChevronDown } from "lucide-react";
+import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, Map, ChevronDown, Mail } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -665,7 +665,7 @@ export default function ProfilePage({
                           text="People have written to you."
                           direction="right"
                           gap={14}
-                          style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
+                          style={{ position: "absolute", left: -10, top: -2, zIndex: 2 }}
                           tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
                           width={200}
                         >
@@ -682,7 +682,7 @@ export default function ProfilePage({
                           text={<>{invisibleCountByThreadId[t.id] ?? ""} people ahead of you have written you back! You can read these once you catch up.</>}
                           direction="right"
                           gap={14}
-                          style={{ position: "absolute", left: -10, top: -10, zIndex: 2 }}
+                          style={{ position: "absolute", left: -10, top: -2, zIndex: 2 }}
                           tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
                           width={260}
                         >
@@ -726,8 +726,8 @@ export default function ProfilePage({
                         {expandedIds.has(t.id) ? t.body : t.preview}
                       </div>
                       {(isGroup || isPub) && visibleReplyCountByThreadId[t.id] > 0 && (
-                        <div style={{ position: "absolute", right: 12, bottom: 8, fontSize: 12, fontWeight: 700, color: "#4b8f6c", display: "flex", alignItems: "center", gap: 4 }}>
-                          {"\uD83D\uDCAC"} {visibleReplyCountByThreadId[t.id]}
+                        <div style={{ position: "absolute", right: 12, bottom: 8, fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
+                          <Mail size={14} color="#fff" /> {visibleReplyCountByThreadId[t.id]}
                         </div>
                       )}
                     </div>
@@ -749,7 +749,7 @@ export default function ProfilePage({
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", position: "relative", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id, groupId)}>
                       {newVisibleReplyIds[r.id] && (
-                        <div style={{ position: "absolute", left: -10, top: -10, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
+                        <div style={{ position: "absolute", left: -10, top: -2, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div className="muted" style={{ fontSize: 14 }}>

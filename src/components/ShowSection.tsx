@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, Settings, MessageCircle, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight } from "lucide-react";
+import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -1772,7 +1772,7 @@ export default function ShowSection({
                       (@{t.author}) deleted their post.
                     </div>
                     <div className="replyCount">
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MessageCircle size={14} color="var(--icon-color)" /> {displayReplyCount}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Mail size={14} color="var(--icon-color)" /> {displayReplyCount}</span>
                     </div>
                   </div>
                 </div>
@@ -1855,7 +1855,7 @@ export default function ShowSection({
                     background: "#4b8f6c", color: "#fff", borderRadius: 9999,
                     padding: "2px 7px", fontWeight: 700,
                   } : {}}>
-                    <MessageCircle size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
+                    <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
                   </span>
                 </div>
               </div>
