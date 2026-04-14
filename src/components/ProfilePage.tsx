@@ -858,8 +858,10 @@ export default function ProfilePage({
         </div>
       )}
       {/* Compose modal */}
-      {composeOpen && (
-        <Modal onClose={closeCompose} width="min(720px,92vw)">
+      {composeOpen && (() => {
+        const composeBg = composeDestination === "public" ? "#dea838" : "#7abd8e";
+        return (
+        <Modal onClose={closeCompose} width="min(720px,92vw)" cardStyle={{ background: composeBg }}>
           <button className="close-x" onClick={closeCompose} style={{ position: "absolute", top: 12, right: 16 }}><X size={14} /></button>
           <div style={{ display: "grid", gap: 10 }}>
             {/* ── Destination dropdown ── */}
@@ -873,10 +875,10 @@ export default function ProfilePage({
                 >
                   <option value="" disabled>where do you want to write?</option>
                   <option value="private">private entry</option>
-                  <option value="public">public entry</option>
                   {tabGroups.map(g => (
                     <option key={g.id} value={g.id}>{g.name} friend room</option>
                   ))}
+                  <option value="public">public entry</option>
                 </select>
                 <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
               </div>
@@ -891,7 +893,7 @@ export default function ProfilePage({
             />
             {activeShow && (
               <div className="muted" style={{ fontSize: 13 }}>
-                Your post is automatically marked to <b>S{String(postTagS).padStart(2, "0")}E{String(postTagE).padStart(2, "0")}</b> and will only show to people who've watched at least that far.
+                Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> and will only show to people who've watched at least that far.
               </div>
             )}
             <textarea
@@ -946,7 +948,8 @@ export default function ProfilePage({
             </div>
           </div>
         </Modal>
-      )}
+        );
+      })()}
 
       {/* Create friend room modal */}
       {showCreateRoomModal && (

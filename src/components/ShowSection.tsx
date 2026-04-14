@@ -2002,14 +2002,33 @@ export default function ShowSection({
       )}
 
       {/* Compose modal */}
-      {composeOpen && (
-        <Modal onClose={() => closeCompose()} width="min(720px,92vw)">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-            <h3 className="title" style={{ margin: 0 }}>{activeGroupId ? "write to your friends" : "add to journal"}</h3>
-            <button className="close-x" onClick={() => closeCompose()}><X size={14} /></button>
-          </div>
+      {composeOpen && (() => {
+        const composeBg = composeDestination === "public" ? "#dea838" : "#7abd8e";
+        const formReady = !!composeDestination && !!postTitle.trim() && !!postBody.trim();
+        return (
+        <Modal onClose={() => closeCompose()} width="min(720px,92vw)" cardStyle={{ background: composeBg }}>
+          <button className="close-x" onClick={() => closeCompose()} style={{ position: "absolute", top: 12, right: 16 }}><X size={14} /></button>
+          <div style={{ display: "grid", gap: 10 }}>
+            {/* ── Destination dropdown ── */}
+            <div>
+              <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                <select
+                  className="badge"
+                  value={composeDestination}
+                  onChange={(e) => setComposeDestination(e.target.value)}
+                  style={{ fontSize: 13, fontWeight: 600, paddingRight: 30, appearance: "none", WebkitAppearance: "none", cursor: "pointer", width: "100%" }}
+                >
+                  <option value="" disabled>where do you want to write?</option>
+                  <option value="private">private entry</option>
+                  {userGroups.map(g => (
+                    <option key={g.id} value={g.id}>{g.name} friend room</option>
+                  ))}
+                  <option value="public">public entry</option>
+                </select>
+                <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
+              </div>
+            </div>
 
-          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
             <input
               className="badge"
               placeholder="Title"
@@ -2018,7 +2037,7 @@ export default function ShowSection({
               style={{ width: "100%", height: 40, fontWeight: 700 }}
             />
             <div className="muted" style={{ fontSize: 13 }}>
-              Your post is automatically marked to <b>S{String(postTagS).padStart(2, "0")}E{String(postTagE).padStart(2, "0")}</b> and will only show to people who've watched at least that far.
+              Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> and will only show to people who've watched at least that far.
               {postProgress.isRewatching && <span> (tagged at your highest prior progress as a re-watcher)</span>}
             </div>
             <textarea
@@ -2036,41 +2055,6 @@ export default function ShowSection({
                 onShuffle={handlePromptShuffle}
                 onInsert={handlePromptInsert}
               />
-            )}
-            {/* ── Destination selector (hidden when writing from a friend room) ── */}
-            {!activeGroupId && (
-            <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "10px 14px", background: "rgba(255,255,255,0.04)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.55, marginBottom: 10 }}>Where to post</div>
-
-              {/* Private journal */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination("private")}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {composeDestination === "private" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
-                </div>
-                <span style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 4 }}><LockKeyhole size={14} color="var(--icon-color)" /> Private journal</span>
-              </div>
-
-              {/* One option per friend group */}
-              {userGroups.map(g => (
-                <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: "pointer" }} onClick={() => setComposeDestination(g.id)}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {composeDestination === g.id && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
-                  </div>
-                  <span style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 4 }}><Users size={14} color="var(--icon-color)" /> {g.name}</span>
-                </div>
-              ))}
-
-              {/* Public journal */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, cursor: "pointer" }} onClick={() => setComposeDestination("public")}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {composeDestination === "public" && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
-                </div>
-                <span style={{ fontSize: 14 }}>
-                  <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public journal
-                  <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 5 }}>visible to anyone at your progress</span>
-                </span>
-              </div>
-            </div>
             )}
 
             {/* ── Submit row ── */}
@@ -2090,7 +2074,7 @@ export default function ShowSection({
               <button
                 className="btn compose-submit"
                 onClick={submitPost}
-                disabled={postSubmitting}
+                disabled={postSubmitting || !formReady}
                 style={{
                   background: "var(--danger)",
                   border: "2px solid var(--danger)",
@@ -2098,9 +2082,11 @@ export default function ShowSection({
                   whiteSpace: "nowrap",
                   fontSize: 13,
                   minWidth: 130,
+                  opacity: formReady ? 1 : 0.3,
                 }}
               >
-                {postSubmitting ? "Posting…"
+                {!formReady && !postSubmitting ? "\u00A0"
+                  : postSubmitting ? "Posting…"
                   : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
                   : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> post</>
                   : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}
@@ -2108,7 +2094,8 @@ export default function ShowSection({
             </div>
           </div>
         </Modal>
-      )}
+        );
+      })()}
     </section>
   );
 }
