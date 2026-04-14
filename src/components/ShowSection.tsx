@@ -1160,16 +1160,6 @@ export default function ShowSection({
                   >
                     {activeGroupId ? "← to friend room" : thread && !thread.isPublic ? "← back to journal" : "← to forum"}
                   </button>
-                  {(activeGroupId || (thread && !thread.isPublic)) && (
-                    <button
-                      className="btn"
-                      onClick={() => { setActiveGroupId(null); setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
-                      style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
-                      title="Go to public room"
-                    >
-                      <Globe size={14} color="var(--icon-color)" />
-                    </button>
-                  )}
                 </div>
                 <ModeToggle
                   value={mode}
@@ -1232,16 +1222,6 @@ export default function ShowSection({
                         ? "← back to journal"
                         : "← Back to room"}
                   </button>
-                  {(activeGroupId || !thread.isPublic) && (
-                    <button
-                      className="btn h40"
-                      onClick={() => { setActiveGroupId(null); setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
-                      title="Go to public room"
-                      style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
-                    >
-                      <Globe size={14} color="var(--icon-color)" />
-                    </button>
-                  )}
                   <button
                     className="btn post h40"
                     onClick={() => user ? openCompose() : onAuthRequired()}
