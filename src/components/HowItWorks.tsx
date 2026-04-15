@@ -263,7 +263,7 @@ export default function HowItWorks() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const isJoinStep = step === TOTAL_STEPS - 1;
-  const isLastPanel = step === panels.length - 1;
+  const isLastPanel = step === panels.length - 1; // panel 4 (index 3)
 
   // Key forces remount so animations replay on step change
   const panelKey = `panel-${step}`;
@@ -392,26 +392,29 @@ export default function HowItWorks() {
           ))}
         </div>
 
-        <button
-          onClick={() => setStep(s => Math.min(TOTAL_STEPS - 1, s + 1))}
-          disabled={isJoinStep}
-          style={{
-            background: "transparent",
-            border: "2px solid #fff",
-            borderRadius: 9999,
-            padding: "8px 18px",
-            cursor: isJoinStep ? "default" : "pointer",
-            opacity: isJoinStep ? 0.3 : 1,
-            fontSize: 14,
-            fontWeight: 600,
-            color: "#fff",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          next <ArrowRight size={14} />
-        </button>
+        {isJoinStep ? (
+          /* invisible spacer to keep dots centered */
+          <div style={{ width: 105 }} />
+        ) : (
+          <button
+            onClick={() => setStep(s => s + 1)}
+            style={{
+              background: isLastPanel ? "rgba(255,255,255,0.92)" : "transparent",
+              border: "2px solid #fff",
+              borderRadius: 9999,
+              padding: "8px 18px",
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: 600,
+              color: isLastPanel ? PAGE_BG : "#fff",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            {isLastPanel ? "got it" : "next"} <ArrowRight size={14} />
+          </button>
+        )}
       </div>
 
       <div style={{ marginTop: 10, fontSize: 12, opacity: 0.45, fontWeight: 600 }}>
