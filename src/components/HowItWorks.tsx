@@ -99,11 +99,17 @@ const KEYFRAMES = `
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes hiw-flicker {
+@keyframes hiw-flicker-blue {
   0%   { opacity: 0; }
   33%  { opacity: 0.44; }
   66%  { opacity: 0.20; }
   100% { opacity: 0.60; }
+}
+@keyframes hiw-flicker-yellow {
+  0%   { opacity: 0; }
+  33%  { opacity: 0.44; }
+  66%  { opacity: 0.20; }
+  100% { opacity: 0.74; }
 }
 `;
 
@@ -132,7 +138,9 @@ function Pill({
   isInvisiblePill: boolean;
 }) {
   const color = owner === "you" ? YOU_COLOR : FRIEND_COLOR;
-  const animName = isInvisiblePill ? "hiw-flicker" : "hiw-rise";
+  const animName = isInvisiblePill
+    ? (owner === "you" ? "hiw-flicker-blue" : "hiw-flicker-yellow")
+    : "hiw-rise";
   const animDur = isInvisiblePill ? INVISIBLE_DURATION : VISIBLE_DURATION;
 
   return (
@@ -228,13 +236,14 @@ function ViewBox({
 const PANEL_HEIGHT = 460;
 const CAPTION_HEIGHT = 80;
 
-function PanelContent({ panel }: { panel: Panel }) {
+function PanelContent({ panel, panelIndex }: { panel: Panel; panelIndex: number }) {
   // Count max visible pills across both sides to calculate invisible start time
   const yourVisCount = panel.posts.filter(p => p.visible[0]).length;
   const friendVisCount = panel.posts.filter(p => p.visible[1]).length;
   const maxVisCount = Math.max(yourVisCount, friendVisCount);
-  // Invisible pills start immediately after last visible pill finishes
-  const invisibleStart = (maxVisCount - 1) * VISIBLE_STAGGER + VISIBLE_DURATION + INVISIBLE_PAUSE;
+  // Panel 0 gets a 1s pause before invisible pills; others start immediately
+  const extraPause = panelIndex === 0 ? 1 : 0;
+  const invisibleStart = (maxVisCount - 1) * VISIBLE_STAGGER + VISIBLE_DURATION + INVISIBLE_PAUSE + extraPause;
 
   return (
     <div style={{ display: "flex", gap: 12, height: "100%" }}>
@@ -321,7 +330,7 @@ export default function HowItWorks() {
         ) : (
           /* ── Animated panel ── */
           <div key={panelKey} style={{ height: "100%" }}>
-            <PanelContent panel={panels[step]} />
+            <PanelContent panel={panels[step]} panelIndex={step} />
           </div>
         )}
       </div>
