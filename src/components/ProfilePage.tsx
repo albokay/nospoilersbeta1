@@ -193,7 +193,7 @@ export default function ProfilePage({
 
   const closeCompose = () => {
     setComposeOpen(false);
-    setComposeDestination("");
+    setComposeDestination("private");
   };
   const postBodyRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -583,8 +583,7 @@ export default function ProfilePage({
                         <button
                           className="btn post h40"
                           onClick={() => {
-                            // Reset to placeholder so user must choose
-                            setComposeDestination("");
+                            setComposeDestination("private");
                             setComposeOpen(true);
                           }}
                           style={{ lineHeight: 1.2, marginLeft: 20, background: "transparent", border: "2px solid #fff", color: "#fff", display: "inline-flex", alignItems: "center", gap: 5 }}
