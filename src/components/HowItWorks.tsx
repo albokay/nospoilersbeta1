@@ -101,10 +101,9 @@ const KEYFRAMES = `
 }
 @keyframes hiw-flicker {
   0%   { opacity: 0; }
-  25%  { opacity: 0.44; }
-  50%  { opacity: 0.20; }
-  75%  { opacity: 0.66; }
-  100% { opacity: 1; }
+  33%  { opacity: 0.44; }
+  66%  { opacity: 0.20; }
+  100% { opacity: 0.60; }
 }
 `;
 
@@ -157,7 +156,7 @@ function Pill({
           : { background: "transparent", color: color, border: `2px dashed ${color}` }),
       }}
     >
-      {label}
+      {isVisible ? label : "invisible post"}
     </div>
   );
 }
