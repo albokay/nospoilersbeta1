@@ -2081,8 +2081,8 @@ export default function ShowSection({
                 onClick={submitPost}
                 disabled={postSubmitting || !formReady}
                 style={{
-                  background: "var(--danger)",
-                  border: "2px solid var(--danger)",
+                  background: promptBtnBg,
+                  border: "none",
                   color: "#fff",
                   whiteSpace: "nowrap",
                   fontSize: 13,
