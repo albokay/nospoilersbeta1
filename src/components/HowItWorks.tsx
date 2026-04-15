@@ -274,7 +274,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: onClose ? undefined : "100vh",
         background: PAGE_BG,
         fontFamily: '"Inter","Nunito",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
         color: "#fff",

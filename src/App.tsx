@@ -683,15 +683,26 @@ export default function App() {
       />
       {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); }} hint={authHint ?? undefined} />}
       {showHowItWorks && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 2000,
-          background: "#7abd8e",
-          overflowY: "auto",
-        }}>
-          <HowItWorks
-            onClose={() => setShowHowItWorks(false)}
-            onSignup={() => { setShowHowItWorks(false); setShowAuthModal(true); }}
-          />
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 2000,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowHowItWorks(false); }}
+        >
+          <div style={{
+            width: "min(92vw, 860px)",
+            maxHeight: "90vh",
+            borderRadius: 20,
+            background: "#7abd8e",
+            overflowY: "auto",
+          }}>
+            <HowItWorks
+              onClose={() => setShowHowItWorks(false)}
+              onSignup={() => { setShowHowItWorks(false); setShowAuthModal(true); }}
+            />
+          </div>
         </div>
       )}
       {!showProfile && !publicProfileUsername && (
