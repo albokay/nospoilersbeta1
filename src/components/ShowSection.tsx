@@ -1281,7 +1281,7 @@ export default function ShowSection({
                   flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6,
                 }}
               >
-                <Globe size={18} color="#fff" />
+                {!(thread && !thread.isPublic && !activeGroupId) && <Globe size={18} color="#fff" />}
                 {showId === "bb"
                   ? "BREAKING BAD (DEMO)"
                   : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()}
@@ -1313,12 +1313,14 @@ export default function ShowSection({
                     {activeGroupId ? "← to friend room" : thread && !thread.isPublic ? "← back to journal" : "← to forum"}
                   </button>
                 </div>
-                <ModeToggle
-                  value={mode}
-                  onToggle={handleModeToggle}
-                  hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
-                  compact={true}
-                />
+                {!(thread && !thread.isPublic && !activeGroupId) && (
+                  <ModeToggle
+                    value={mode}
+                    onToggle={handleModeToggle}
+                    hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
+                    compact={true}
+                  />
+                )}
               </div>
               {/* Row 2: compose + progress */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
@@ -1402,7 +1404,7 @@ export default function ShowSection({
                     <ChevronDown size={14} color="var(--dos-border)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
                   </div>
                 )}
-                {thread && (
+                {thread && !(!thread.isPublic && !activeGroupId) && (
                   <div style={{ transform: "translateX(-10px)" }}>
                     <ModeToggle
                       value={mode}
