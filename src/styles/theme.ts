@@ -72,8 +72,7 @@ body.public-context .radio-dot{ background:#7abd8e !important; }
 body.public-context .retag-warning{ background:#7abd8e !important; }
 body.public-context .move-to-dropdown{ background:#7abd8e !important; }
 body.public-context .edit-textarea{ background:#7abd8e !important; }
-/* Compose submit button — green instead of yellow in public context */
-body.public-context .compose-submit{ background:#7abd8e !important; }
+/* compose-submit color now driven by inline styles in the modal */
 /* Expand/collapse chip — green text instead of yellow in public context */
 body.public-context .expand-chip{ color:#7abd8e !important; }
 
