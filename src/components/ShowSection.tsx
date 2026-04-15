@@ -2024,10 +2024,9 @@ export default function ShowSection({
           : openedFromGroup ? "#adc8d7" : "#dea838";
         const formReady = !!composeDestination && !!postTitle.trim() && !!postBody.trim();
 
-        // Friend room context has distinct styling
-        const isLightBlue = isGroupDest;
-        const dropdownColor = isLightBlue ? "#fff" : undefined;
-        const dropdownBorder = isLightBlue ? "2px solid #fff" : undefined;
+        // Friend room context has distinct styling (persists even when switching to private)
+        const dropdownColor = openedFromGroup ? "#fff" : undefined;
+        const dropdownBorder = openedFromGroup ? "2px solid #fff" : undefined;
 
         return (
         <Modal onClose={() => closeCompose()} width="min(720px,92vw)" cardStyle={{ background: composeBg }}>
@@ -2060,7 +2059,7 @@ export default function ShowSection({
               placeholder="Title"
               value={postTitle}
               onChange={(e) => setPostTitle(e.target.value)}
-              style={{ width: "100%", height: 40, fontWeight: 700, ...(isLightBlue ? { border: "none" } : {}) }}
+              style={{ width: "100%", height: 40, fontWeight: 700, ...(openedFromGroup ? { border: "none" } : {}) }}
             />
             <div className="muted" style={{ fontSize: 13 }}>
               Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> and will only show to people who've watched at least that far.
