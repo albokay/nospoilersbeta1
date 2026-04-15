@@ -607,7 +607,7 @@ export default function ProfilePage({
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
                     <div className="profileActionBar">
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                         <button
                           className="btn post h40"
                           onClick={() => {
