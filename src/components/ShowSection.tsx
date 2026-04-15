@@ -550,8 +550,15 @@ export default function ShowSection({
 
   const openCompose = () => {
     setComposeOpen(true);
-    // Default: most recent group for this show, or private if no groups
-    setComposeDestination(activeGroupId ?? (userGroups.length > 0 ? userGroups[0].id : "private"));
+    // Default based on context: friend room → that room, public view → public, otherwise → private
+    if (activeGroupId) {
+      setComposeDestination(activeGroupId);
+    } else if (!activeThreadId || dbThreads.find(t => t.id === activeThreadId)?.isPublic) {
+      // In public forum view or viewing a public thread
+      setComposeDestination("public");
+    } else {
+      setComposeDestination("private");
+    }
   };
   const closeCompose = () => {
     setComposeOpen(false);
@@ -2004,6 +2011,7 @@ export default function ShowSection({
       {/* Compose modal */}
       {composeOpen && (() => {
         const composeBg = composeDestination === "public" ? "#dea838" : "#7abd8e";
+        const promptBtnBg = composeDestination === "public" ? "#7abd8e" : "#dea838";
         const formReady = !!composeDestination && !!postTitle.trim() && !!postBody.trim();
         return (
         <Modal onClose={() => closeCompose()} width="min(720px,92vw)" cardStyle={{ background: composeBg }}>
@@ -2020,9 +2028,6 @@ export default function ShowSection({
                 >
                   <option value="" disabled>where do you want to write?</option>
                   <option value="private">private entry</option>
-                  {userGroups.map(g => (
-                    <option key={g.id} value={g.id}>{g.name} friend room</option>
-                  ))}
                   <option value="public">public entry</option>
                 </select>
                 <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
@@ -2065,7 +2070,7 @@ export default function ShowSection({
                   type="button"
                   onClick={handlePromptBtn}
                   title="Get a writing prompt"
-                  style={{ marginRight: "auto" }}
+                  style={{ marginRight: "auto", background: promptBtnBg, borderColor: promptBtnBg, color: "#fff" }}
                 >
                   <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>

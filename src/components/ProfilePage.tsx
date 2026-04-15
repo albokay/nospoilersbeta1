@@ -860,6 +860,7 @@ export default function ProfilePage({
       {/* Compose modal */}
       {composeOpen && (() => {
         const composeBg = composeDestination === "public" ? "#dea838" : "#7abd8e";
+        const promptBtnBg = composeDestination === "public" ? "#7abd8e" : "#dea838";
         return (
         <Modal onClose={closeCompose} width="min(720px,92vw)" cardStyle={{ background: composeBg }}>
           <button className="close-x" onClick={closeCompose} style={{ position: "absolute", top: 12, right: 16 }}><X size={14} /></button>
@@ -875,9 +876,6 @@ export default function ProfilePage({
                 >
                   <option value="" disabled>where do you want to write?</option>
                   <option value="private">private entry</option>
-                  {tabGroups.map(g => (
-                    <option key={g.id} value={g.id}>{g.name} friend room</option>
-                  ))}
                   <option value="public">public entry</option>
                 </select>
                 <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
@@ -915,7 +913,7 @@ export default function ProfilePage({
             {/* ── Submit row ── */}
             <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
               {promptEntries.length > 0 && (
-                <button className="prompt-btn" type="button" onClick={handlePromptBtn} title="Get a writing prompt" style={{ marginRight: "auto" }}>
+                <button className="prompt-btn" type="button" onClick={handlePromptBtn} title="Get a writing prompt" style={{ marginRight: "auto", background: promptBtnBg, borderColor: promptBtnBg, color: "#fff" }}>
                   <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>
               )}
