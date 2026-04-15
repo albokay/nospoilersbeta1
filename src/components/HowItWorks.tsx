@@ -18,8 +18,7 @@ type Panel = {
 };
 
 // ── 4 panels ───────────────────────────────────────────────────────────────
-// Descending order (newest first). Invisible pills are omitted entirely —
-// each side only shows what that viewer can see.
+// Posts are listed top-to-bottom = newest first (descending like a forum).
 
 const panels: Panel[] = [
   {
@@ -63,9 +62,9 @@ const panels: Panel[] = [
     yourEp: 8,
     friendEp: 9,
     posts: [
+      { label: "FRIEND post - ep 9", owner: "friend", visible: [false, true] },
       { label: "YOUR post - ep 8", owner: "you", visible: [true, true] },
       { label: "YOUR post - ep 7", owner: "you", visible: [true, true] },
-      { label: "FRIEND post - ep 9", owner: "friend", visible: [false, true] },
       { label: "FRIEND post - ep 5", owner: "friend", visible: [true, true] },
       { label: "YOUR post - ep 6", owner: "you", visible: [true, true] },
       { label: "FRIEND post - ep 4", owner: "friend", visible: [true, true] },
@@ -82,15 +81,14 @@ const panels: Panel[] = [
 
 const PAGE_BG = "#7abd8e";
 const BOX_BG = "rgba(255,255,255,0.92)";
-const YOUR_HEADER = "#375eb8";    // canon dark-blue
-const FRIEND_HEADER = "#dea838";  // canon yellow
-const EP_COLOR = "#f45028";       // canon red
+const YOU_THEME = "#375eb8";      // canon dark-blue
+const FRIEND_THEME = "#dea838";   // canon yellow
 const YOU_COLOR = "#375eb8";
 const FRIEND_COLOR = "#dea838";
 
 // ── Pill ────────────────────────────────────────────────────────────────────
 
-function Pill({ label, owner }: { label: string; owner: "you" | "friend" }) {
+function Pill({ label, owner, isVisible }: { label: string; owner: "you" | "friend"; isVisible: boolean }) {
   const color = owner === "you" ? YOU_COLOR : FRIEND_COLOR;
   return (
     <div
@@ -105,9 +103,9 @@ function Pill({ label, owner }: { label: string; owner: "you" | "friend" }) {
         fontWeight: 700,
         whiteSpace: "nowrap",
         lineHeight: 1.3,
-        background: color,
-        color: "#fff",
-        border: "2px solid transparent",
+        ...(isVisible
+          ? { background: color, color: "#fff", border: "2px solid transparent" }
+          : { background: "transparent", color: color, border: `2px dashed ${color}`, opacity: 0.4 }),
       }}
     >
       {label}
@@ -115,24 +113,21 @@ function Pill({ label, owner }: { label: string; owner: "you" | "friend" }) {
   );
 }
 
-// ── View box ───────────────────────────────────────────────────────────────
+// ── View box (one side of the split) ───────────────────────────────────────
 
 function ViewBox({
   title,
   epCount,
   posts,
   side,
-  headerColor,
+  themeColor,
 }: {
   title: string;
   epCount: number;
   posts: Post[];
   side: 0 | 1;
-  headerColor: string;
+  themeColor: string;
 }) {
-  // Only show posts that are visible on this side
-  const visiblePosts = posts.filter(p => p.visible[side]);
-
   return (
     <div
       style={{
@@ -146,13 +141,13 @@ function ViewBox({
         overflow: "auto",
       }}
     >
-      <div style={{ fontWeight: 900, fontSize: 20, color: headerColor }}>{title}</div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: EP_COLOR, marginBottom: 14 }}>
+      <div style={{ fontWeight: 600, fontSize: 13, color: themeColor }}>{title}</div>
+      <div style={{ fontWeight: 900, fontSize: 20, color: themeColor, marginBottom: 14 }}>
         episodes watched: {epCount}
       </div>
-      {visiblePosts.map((p, i) => (
+      {posts.map((p, i) => (
         <div key={i} style={{ marginBottom: 7 }}>
-          <Pill label={p.label} owner={p.owner} />
+          <Pill label={p.label} owner={p.owner} isVisible={p.visible[side]} />
         </div>
       ))}
     </div>
@@ -162,16 +157,19 @@ function ViewBox({
 // ── Panel content ──────────────────────────────────────────────────────────
 
 const PANEL_HEIGHT = 460;
-const CAPTION_HEIGHT = 80;
 
 function PanelContent({ panel }: { panel: Panel }) {
   return (
     <div style={{ display: "flex", gap: 12, height: "100%" }}>
-      <ViewBox title="your view" epCount={panel.yourEp} posts={panel.posts} side={0} headerColor={YOUR_HEADER} />
-      <ViewBox title="friend's view" epCount={panel.friendEp} posts={panel.posts} side={1} headerColor={FRIEND_HEADER} />
+      <ViewBox title="your view" epCount={panel.yourEp} posts={panel.posts} side={0} themeColor={YOU_THEME} />
+      <ViewBox title="friend's view" epCount={panel.friendEp} posts={panel.posts} side={1} themeColor={FRIEND_THEME} />
     </div>
   );
 }
+
+// ── Caption area — fixed height so nav never shifts ────────────────────────
+
+const CAPTION_HEIGHT = 80;
 
 // ── Main page ──────────────────────────────────────────────────────────────
 
@@ -225,7 +223,7 @@ export default function HowItWorks() {
         <PanelContent panel={panels[step]} />
       </div>
 
-      {/* Caption — fixed height so nav stays put */}
+      {/* Caption — fixed height container so nav stays put */}
       <div
         style={{
           height: CAPTION_HEIGHT,
