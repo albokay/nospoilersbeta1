@@ -2010,9 +2010,25 @@ export default function ShowSection({
 
       {/* Compose modal */}
       {composeOpen && (() => {
-        const composeBg = composeDestination === "public" ? "#dea838" : "#7abd8e";
-        const promptBtnBg = composeDestination === "public" ? "#7abd8e" : "#dea838";
+        // Determine if destination is a friend room (not private/public/empty)
+        const isGroupDest = composeDestination !== "" && composeDestination !== "private" && composeDestination !== "public";
+        // Was the modal opened from a friend room context?
+        const openedFromGroup = !!activeGroupId;
+        const activeGrp = openedFromGroup ? userGroups.find(g => g.id === activeGroupId) : null;
+
+        // Color scheme: public → yellow, friend room → light-blue, private → green
+        const composeBg = composeDestination === "public" ? "#dea838" : isGroupDest ? "#adc8d7" : "#7abd8e";
+        // Inverse button color: public → green, friend room → green, private (from group context) → light-blue, private (from public) → yellow
+        const inverseBg = composeDestination === "public" ? "#7abd8e"
+          : isGroupDest ? "#7abd8e"
+          : openedFromGroup ? "#adc8d7" : "#dea838";
         const formReady = !!composeDestination && !!postTitle.trim() && !!postBody.trim();
+
+        // Friend room context has distinct styling
+        const isLightBlue = isGroupDest;
+        const dropdownColor = isLightBlue ? "#fff" : undefined;
+        const dropdownBorder = isLightBlue ? "2px solid #fff" : undefined;
+
         return (
         <Modal onClose={() => closeCompose()} width="min(720px,92vw)" cardStyle={{ background: composeBg }}>
           <button className="close-x" onClick={() => closeCompose()} style={{ position: "absolute", top: 12, right: 16 }}><X size={14} /></button>
@@ -2024,13 +2040,18 @@ export default function ShowSection({
                   className="badge"
                   value={composeDestination}
                   onChange={(e) => setComposeDestination(e.target.value)}
-                  style={{ fontSize: 13, fontWeight: 600, paddingRight: 30, appearance: "none", WebkitAppearance: "none", cursor: "pointer", width: "100%" }}
+                  style={{ fontSize: 13, fontWeight: 600, paddingRight: 30, appearance: "none", WebkitAppearance: "none", cursor: "pointer", width: "100%", ...(dropdownColor ? { color: dropdownColor, border: dropdownBorder } : {}) }}
                 >
                   <option value="" disabled>where do you want to write?</option>
                   <option value="private">private entry</option>
-                  <option value="public">public entry</option>
+                  {openedFromGroup && activeGrp && (
+                    <option value={activeGrp.id}>{activeGrp.name} friend room</option>
+                  )}
+                  {!openedFromGroup && (
+                    <option value="public">public entry</option>
+                  )}
                 </select>
-                <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
+                <ChevronDown size={14} color={dropdownColor ?? "var(--dos-fg)"} style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
               </div>
             </div>
 
@@ -2039,7 +2060,7 @@ export default function ShowSection({
               placeholder="Title"
               value={postTitle}
               onChange={(e) => setPostTitle(e.target.value)}
-              style={{ width: "100%", height: 40, fontWeight: 700 }}
+              style={{ width: "100%", height: 40, fontWeight: 700, ...(isLightBlue ? { border: "none" } : {}) }}
             />
             <div className="muted" style={{ fontSize: 13 }}>
               Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> and will only show to people who've watched at least that far.
@@ -2070,23 +2091,24 @@ export default function ShowSection({
                   type="button"
                   onClick={handlePromptBtn}
                   title="Get a writing prompt"
-                  style={{ marginRight: "auto", background: promptBtnBg, borderColor: promptBtnBg, color: "#fff" }}
+                  style={{ marginRight: "auto", background: inverseBg, border: "none", color: "#fff", height: 34 }}
                 >
                   <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>
               )}
-              <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)", whiteSpace: "nowrap", fontSize: 13 }}>Cancel</button>
+              <button className="btn" onClick={() => closeCompose()} disabled={postSubmitting} style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)", whiteSpace: "nowrap", fontSize: 13, height: 34 }}>Cancel</button>
               <button
                 className="btn compose-submit"
                 onClick={submitPost}
                 disabled={postSubmitting || !formReady}
                 style={{
-                  background: promptBtnBg,
+                  background: inverseBg,
                   border: "none",
                   color: "#fff",
                   whiteSpace: "nowrap",
                   fontSize: 13,
                   minWidth: 130,
+                  height: 34,
                   opacity: formReady ? 1 : 0.3,
                 }}
               >
