@@ -118,6 +118,7 @@ export default function App() {
     return params.has("signup");
   });
   const [authHint, setAuthHint] = useState<string | null>(null);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [feedbackForcedOpen, setFeedbackForcedOpen] = useState(false);
   const [feedbackPrefill, setFeedbackPrefill] = useState("");
 
@@ -325,7 +326,7 @@ export default function App() {
   const [showsEmojiHover, setShowsEmojiHover] = useState(false);
   const narrativeRef = useRef<HTMLDivElement>(null);
   const [gradientOpacity, setGradientOpacity] = useState(0);
-  const [arrowOpacity, setArrowOpacity] = useState(1);
+  const [arrowOpacity, setArrowOpacity] = useState(0.6);
   const [newHighlights, setNewHighlights] = useState<{ [sid: string]: { [tid: string]: true } }>({});
   const [visitedThreads, setVisitedThreads] = useState<{ [tid: string]: true }>({});
 
@@ -464,8 +465,8 @@ export default function App() {
       // Start at 15%, full power at ~75% (approx when finale copy is mid-screen)
       const progress = Math.min(Math.max((raw - 0.15) / 0.6, 0), 1);
       setGradientOpacity(progress);
-      // Fade arrow out quickly — gone by 10% of narrative height
-      const arrowFade = Math.max(1 - (window.scrollY / (el.offsetHeight * 0.10)), 0);
+      // Fade arrow out quickly — starts at 60%, gone by 5% of narrative height
+      const arrowFade = Math.max(0.6 - (window.scrollY / (el.offsetHeight * 0.05)) * 0.6, 0);
       setArrowOpacity(arrowFade);
     }
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -681,6 +682,18 @@ export default function App() {
         onForcedClose={() => setFeedbackForcedOpen(false)}
       />
       {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); }} hint={authHint ?? undefined} />}
+      {showHowItWorks && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 2000,
+          background: "#7abd8e",
+          overflowY: "auto",
+        }}>
+          <HowItWorks
+            onClose={() => setShowHowItWorks(false)}
+            onSignup={() => { setShowHowItWorks(false); setShowAuthModal(true); }}
+          />
+        </div>
+      )}
       {!showProfile && !publicProfileUsername && (
         <>
           {/* ── Homepage ── */}
@@ -854,7 +867,7 @@ export default function App() {
                     Sign in / Join
                   </button>
                   <button
-                    onClick={() => navigate("/how-it-works")}
+                    onClick={() => setShowHowItWorks(true)}
                     style={{
                       width: "100%", maxWidth: 420,
                       background: "transparent", color: "#fff",

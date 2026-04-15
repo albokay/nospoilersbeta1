@@ -257,13 +257,16 @@ function PanelContent({ panel, panelIndex }: { panel: Panel; panelIndex: number 
 
 const TOTAL_STEPS = 5; // 4 animated panels + 1 join screen
 
-export default function HowItWorks() {
+export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void; onSignup?: () => void } = {}) {
   injectKeyframes();
 
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const isJoinStep = step === TOTAL_STEPS - 1;
   const isLastPanel = step === panels.length - 1; // panel 4 (index 3)
+
+  const handleClose = onClose ?? (() => navigate("/"));
+  const handleSignup = onSignup ?? (() => navigate("/?signup"));
 
   // Key forces remount so animations replay on step change
   const panelKey = `panel-${step}`;
@@ -285,7 +288,7 @@ export default function HowItWorks() {
       <div style={{ width: "100%", maxWidth: 780, marginBottom: 20, display: "flex", justifyContent: "flex-end" }}>
         <button
           className="close-x"
-          onClick={() => navigate("/")}
+          onClick={handleClose}
         >
           <X size={14} />
         </button>
@@ -311,7 +314,7 @@ export default function HowItWorks() {
             }}
           >
             <button
-              onClick={() => navigate("/?signup")}
+              onClick={handleSignup}
               style={{
                 background: "#fff",
                 color: PAGE_BG,
