@@ -25,6 +25,7 @@ import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
 import HomepageLab from "./components/HomepageLab";
 import HowItWorks from "./components/HowItWorks";
+import HowItWorksV2 from "./components/HowItWorksV2";
 import HomepageNarrative from "./components/HomepageNarrative";
 import InviteAcceptPage from "./components/InviteAcceptPage";
 
@@ -136,6 +137,7 @@ export default function App() {
   const pathParts = location.pathname.split("/").filter(Boolean);
   if (pathParts[0] === "lab") return <HomepageLab />;
   if (pathParts[0] === "how-it-works") return <HowItWorks />;
+  if (pathParts[0] === "how-it-works-v2") return <HowItWorksV2 />;
   if (pathParts[0] === "invite" && pathParts[1]) return <InviteAcceptPage token={pathParts[1]} />;
   const expandedShowId   = pathParts[0] === "show" ? (pathParts[1] ?? null) : null;
   const activeThreadId   = pathParts[0] === "show" && pathParts[2] === "thread" ? (pathParts[3] ?? null) : null;
