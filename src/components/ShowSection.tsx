@@ -1233,26 +1233,41 @@ export default function ShowSection({
           <div className="bannerRow1">
             {activeGroupId && activeGroup ? (
               <>
-                <span
-                  className="bannerTitle"
-                  role={thread ? "button" : "heading"}
-                  title={thread ? "Back to room" : "Room"}
-                  onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "0 0 auto" }}>
+                  <span
+                    className="bannerTitle"
+                    role={thread ? "button" : "heading"}
+                    title={thread ? "Back to room" : "Room"}
+                    onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
+                    style={{
+                      fontSize: 22, fontWeight: 800, letterSpacing: .5,
+                      color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                    }}
+                  >
+                    <Users size={22} color="var(--dos-light)" /> {activeGroup.name.toUpperCase()}
+                  </span>
+                  <span
+                    onClick={() => openGroupSettings(activeGroupId)}
+                    title="Room settings"
+                    style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
+                  >
+                    <Settings size={20} color="#fff" />
+                  </span>
+                </div>
+                <button
+                  className="btn"
+                  onClick={() => setActiveGroupId(null)}
                   style={{
-                    fontSize: 22, fontWeight: 800, letterSpacing: .5,
-                    color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
-                    flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6,
+                    whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                    padding: "3px 12px",
+                    background: "transparent",
+                    border: "2px solid #fff",
+                    color: "#fff",
                   }}
                 >
-                  <Users size={18} color="var(--dos-light)" /> {activeGroup.name.toUpperCase()}
-                </span>
-                <span
-                  onClick={() => openGroupSettings(activeGroupId)}
-                  title="Room settings"
-                  style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", marginLeft: 6 }}
-                >
-                  <Settings size={16} color="#fff" />
-                </span>
+                  to public conversations <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} />
+                </button>
               </>
             ) : (
               <span
