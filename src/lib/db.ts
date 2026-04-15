@@ -466,26 +466,28 @@ export async function fetchRepliesToUserThreads(
   const threadById: Record<string, Thread> = {};
   for (const t of threads) threadById[t.id] = t;
 
-  // Fetch group context for each thread so notifications can show "in [Group Name]"
+  // Fetch group context + replies in parallel (both depend only on threadIds)
   const groupByThreadId: Record<string, { groupId: string; groupName: string }> = {};
-  const { data: gtData } = await supabase
-    .from("group_threads")
-    .select("thread_id, friend_groups(id, name)")
-    .in("thread_id", threadIds);
-  for (const row of gtData ?? []) {
+  const [gtResult, replyResult] = await Promise.all([
+    supabase
+      .from("group_threads")
+      .select("thread_id, friend_groups(id, name)")
+      .in("thread_id", threadIds),
+    supabase
+      .from("replies")
+      .select("*")
+      .in("thread_id", threadIds)
+      .neq("author_id", userId)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: false })
+      .limit(200),
+  ]);
+  for (const row of gtResult.data ?? []) {
     const g = (row as any).friend_groups;
     if (g) groupByThreadId[row.thread_id] = { groupId: g.id, groupName: g.name };
   }
-
-  const { data: replyData, error: rErr } = await supabase
-    .from("replies")
-    .select("*")
-    .in("thread_id", threadIds)
-    .neq("author_id", userId)
-    .eq("is_deleted", false)
-    .order("created_at", { ascending: false })
-    .limit(200);
-  if (rErr) throw rErr;
+  const replyData = replyResult.data;
+  if (replyResult.error) throw replyResult.error;
 
   return (replyData ?? []).map((row: any) => {
     const thread = threadById[row.thread_id];
@@ -494,31 +496,24 @@ export async function fetchRepliesToUserThreads(
   }).filter(x => x.thread);
 }
 
-/** Replies written BY the user, with their parent thread for context. */
+/** Replies written BY the user, with their parent thread for context (single query via JOIN). */
 export async function fetchUserReplies(userId: string, showId?: string): Promise<{ reply: Reply; thread: Thread }[]> {
   let query = supabase
     .from("replies")
-    .select("*")
+    .select("*, threads!inner(*)")
     .eq("author_id", userId)
     .eq("is_deleted", false)
+    .eq("threads.is_deleted", false)
     .order("created_at", { ascending: false })
     .limit(200);
   if (showId) query = query.eq("show_id", showId);
   const { data, error } = await query;
   if (error) throw error;
-  const replies = (data ?? []).map(rowToReply);
-  const threadIds = [...new Set(replies.map(r => r.threadId))];
-  if (!threadIds.length) return [];
-  const { data: tData, error: tErr } = await supabase
-    .from("threads").select("*").in("id", threadIds);
-  if (tErr) throw tErr;
-  const threadById: Record<string, Thread> = {};
-  for (const t of (tData ?? []).map(rowToThread)) threadById[t.id] = t;
-  return replies
-    .map(r => {
-      const t = threadById[r.threadId];
-      if (!t || t.isDeleted) return null;
-      return { reply: r, thread: t };
+  return (data ?? [])
+    .map((row: any) => {
+      const thread = row.threads ? rowToThread(row.threads) : null;
+      if (!thread) return null;
+      return { reply: rowToReply(row), thread };
     })
     .filter(Boolean) as { reply: Reply; thread: Thread }[];
 }
@@ -541,27 +536,18 @@ export async function fetchLikedThreads(userId: string, showId?: string): Promis
 export async function fetchLikedReplies(userId: string, showId?: string): Promise<{ reply: Reply; thread: Thread }[]> {
   let query = supabase
     .from("likes_replies")
-    .select("replies(*)")
+    .select("replies(*, threads!inner(*))")
     .eq("user_id", userId);
   if (showId) query = query.eq("replies.show_id", showId);
   const { data, error } = await query;
   if (error) throw error;
-  const replies = (data ?? [])
-    .map((row: any) => row.replies)
-    .filter((r: any) => r && !r.is_deleted)
-    .map(rowToReply);
-  const threadIds = [...new Set(replies.map((r: Reply) => r.threadId))];
-  if (!threadIds.length) return [];
-  const { data: tData, error: tErr } = await supabase
-    .from("threads").select("*").in("id", threadIds);
-  if (tErr) throw tErr;
-  const threadById: Record<string, Thread> = {};
-  for (const t of (tData ?? []).map(rowToThread)) threadById[t.id] = t;
-  return replies
-    .map((r: Reply) => {
-      const t = threadById[r.threadId];
-      if (!t || t.isDeleted) return null;
-      return { reply: r, thread: t };
+  return (data ?? [])
+    .map((row: any) => {
+      const r = row.replies;
+      if (!r || r.is_deleted) return null;
+      const t = r.threads;
+      if (!t || t.is_deleted) return null;
+      return { reply: rowToReply(r), thread: rowToThread(t) };
     })
     .filter(Boolean)
     .sort((a: any, b: any) => b.reply.updatedAt - a.reply.updatedAt) as { reply: Reply; thread: Thread }[];
@@ -846,25 +832,19 @@ export async function fetchPublicThreadsForShow(
 export async function fetchPublicRepliesForUser(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
   const { data, error } = await supabase
     .from("replies")
-    .select("*")
+    .select("*, threads!inner(*)")
     .eq("author_id", userId)
     .eq("is_deleted", false)
+    .eq("threads.is_deleted", false)
+    .eq("threads.is_public", true)
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) throw error;
-  const replies = (data ?? []).map(rowToReply);
-  const threadIds = [...new Set(replies.map(r => r.threadId))];
-  if (!threadIds.length) return [];
-  const { data: tData, error: tErr } = await supabase
-    .from("threads").select("*").in("id", threadIds);
-  if (tErr) throw tErr;
-  const threadById: Record<string, Thread> = {};
-  for (const t of (tData ?? []).map(rowToThread)) threadById[t.id] = t;
-  return replies
-    .map(r => {
-      const t = threadById[r.threadId];
-      if (!t || t.isDeleted || !t.isPublic) return null;
-      return { reply: r, thread: t };
+  return (data ?? [])
+    .map((row: any) => {
+      const thread = row.threads ? rowToThread(row.threads) : null;
+      if (!thread) return null;
+      return { reply: rowToReply(row), thread };
     })
     .filter(Boolean) as { reply: Reply; thread: Thread }[];
 }

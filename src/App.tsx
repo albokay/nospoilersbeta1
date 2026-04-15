@@ -334,15 +334,16 @@ export default function App() {
   // Load the user's likes from DB on login so stars persist across refreshes
   useEffect(() => {
     if (!user) { setLikedByUserThreads({}); setLikedByUserReplies({}); return; }
-    fetchLikedThreads(user.id).then(threads => {
-      const map: Record<string, boolean> = {};
-      threads.forEach(t => { map[t.id] = true; });
-      setLikedByUserThreads(map);
-    }).catch(() => {});
-    fetchLikedReplies(user.id).then(pairs => {
-      const map: Record<string, boolean> = {};
-      pairs.forEach(({ reply }) => { map[reply.id] = true; });
-      setLikedByUserReplies(map);
+    Promise.all([
+      fetchLikedThreads(user.id),
+      fetchLikedReplies(user.id),
+    ]).then(([threads, pairs]) => {
+      const tMap: Record<string, boolean> = {};
+      threads.forEach(t => { tMap[t.id] = true; });
+      setLikedByUserThreads(tMap);
+      const rMap: Record<string, boolean> = {};
+      pairs.forEach(({ reply }) => { rMap[reply.id] = true; });
+      setLikedByUserReplies(rMap);
     }).catch(() => {});
   }, [user?.id]);
 
