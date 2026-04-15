@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
@@ -17,8 +17,7 @@ type Panel = {
   caption: string;
 };
 
-// ── 4 panels ───────────────────────────────────────────────────────────────
-// Posts are listed top-to-bottom = newest first (descending like a forum).
+// ── 4 panels (descending / newest first) ───────────────────────────────────
 
 const panels: Panel[] = [
   {
@@ -81,15 +80,61 @@ const panels: Panel[] = [
 
 const PAGE_BG = "#7abd8e";
 const BOX_BG = "rgba(255,255,255,0.92)";
-const YOU_THEME = "#375eb8";      // canon dark-blue
-const FRIEND_THEME = "#dea838";   // canon yellow
+const YOU_THEME = "#375eb8";
+const FRIEND_THEME = "#dea838";
 const YOU_COLOR = "#375eb8";
 const FRIEND_COLOR = "#dea838";
 
+// ── Animation timing ────────────────────────────────────────────────────────
+
+const VISIBLE_STAGGER = 0.15;   // seconds between each visible pill
+const VISIBLE_DURATION = 0.5;   // seconds for visible pill to animate in
+const INVISIBLE_PAUSE = 1;      // seconds to wait after last visible pill
+const INVISIBLE_DURATION = 1;   // seconds for invisible pill flicker
+
+// ── CSS keyframes (injected once) ──────────────────────────────────────────
+
+const KEYFRAMES = `
+@keyframes hiw-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes hiw-flicker {
+  0%   { opacity: 0; }
+  33%  { opacity: 0.66; }
+  66%  { opacity: 0.33; }
+  100% { opacity: 1; }
+}
+`;
+
+let injected = false;
+function injectKeyframes() {
+  if (injected) return;
+  injected = true;
+  const style = document.createElement("style");
+  style.textContent = KEYFRAMES;
+  document.head.appendChild(style);
+}
+
 // ── Pill ────────────────────────────────────────────────────────────────────
 
-function Pill({ label, owner, isVisible }: { label: string; owner: "you" | "friend"; isVisible: boolean }) {
+function Pill({
+  label,
+  owner,
+  isVisible,
+  animDelay,
+  isInvisiblePill,
+}: {
+  label: string;
+  owner: "you" | "friend";
+  isVisible: boolean;
+  animDelay: number;
+  isInvisiblePill: boolean;
+}) {
   const color = owner === "you" ? YOU_COLOR : FRIEND_COLOR;
+  const animName = isInvisiblePill ? "hiw-flicker" : "hiw-rise";
+  const animDur = isInvisiblePill ? INVISIBLE_DURATION : VISIBLE_DURATION;
+
   return (
     <div
       style={{
@@ -103,9 +148,12 @@ function Pill({ label, owner, isVisible }: { label: string; owner: "you" | "frie
         fontWeight: 700,
         whiteSpace: "nowrap",
         lineHeight: 1.3,
+        opacity: 0,
+        animation: `${animName} ${animDur}s ease forwards`,
+        animationDelay: `${animDelay}s`,
         ...(isVisible
           ? { background: color, color: "#fff", border: "2px solid transparent" }
-          : { background: "transparent", color: color, border: `2px dashed ${color}`, opacity: 0.4 }),
+          : { background: "transparent", color: color, border: `2px dashed ${color}` }),
       }}
     >
       {label}
@@ -113,7 +161,7 @@ function Pill({ label, owner, isVisible }: { label: string; owner: "you" | "frie
   );
 }
 
-// ── View box (one side of the split) ───────────────────────────────────────
+// ── View box ───────────────────────────────────────────────────────────────
 
 function ViewBox({
   title,
@@ -121,13 +169,18 @@ function ViewBox({
   posts,
   side,
   themeColor,
+  invisibleStart,
 }: {
   title: string;
   epCount: number;
   posts: Post[];
   side: 0 | 1;
   themeColor: string;
+  invisibleStart: number;
 }) {
+  // Track stagger index for visible pills on this side
+  let visIndex = 0;
+
   return (
     <div
       style={{
@@ -145,11 +198,27 @@ function ViewBox({
       <div style={{ fontWeight: 900, fontSize: 20, color: themeColor, marginBottom: 14 }}>
         episodes watched: {epCount}
       </div>
-      {posts.map((p, i) => (
-        <div key={i} style={{ marginBottom: 7 }}>
-          <Pill label={p.label} owner={p.owner} isVisible={p.visible[side]} />
-        </div>
-      ))}
+      {posts.map((p, i) => {
+        const isVis = p.visible[side];
+        let delay: number;
+        if (isVis) {
+          delay = visIndex * VISIBLE_STAGGER;
+          visIndex++;
+        } else {
+          delay = invisibleStart;
+        }
+        return (
+          <div key={i} style={{ marginBottom: 7 }}>
+            <Pill
+              label={p.label}
+              owner={p.owner}
+              isVisible={isVis}
+              animDelay={delay}
+              isInvisiblePill={!isVis}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -157,26 +226,36 @@ function ViewBox({
 // ── Panel content ──────────────────────────────────────────────────────────
 
 const PANEL_HEIGHT = 460;
+const CAPTION_HEIGHT = 80;
 
 function PanelContent({ panel }: { panel: Panel }) {
+  // Count max visible pills across both sides to calculate invisible start time
+  const yourVisCount = panel.posts.filter(p => p.visible[0]).length;
+  const friendVisCount = panel.posts.filter(p => p.visible[1]).length;
+  const maxVisCount = Math.max(yourVisCount, friendVisCount);
+  // Invisible pills start after: last visible pill finishes + pause
+  const invisibleStart = maxVisCount * VISIBLE_STAGGER + VISIBLE_DURATION + INVISIBLE_PAUSE;
+
   return (
     <div style={{ display: "flex", gap: 12, height: "100%" }}>
-      <ViewBox title="your view" epCount={panel.yourEp} posts={panel.posts} side={0} themeColor={YOU_THEME} />
-      <ViewBox title="friend's view" epCount={panel.friendEp} posts={panel.posts} side={1} themeColor={FRIEND_THEME} />
+      <ViewBox title="your view" epCount={panel.yourEp} posts={panel.posts} side={0} themeColor={YOU_THEME} invisibleStart={invisibleStart} />
+      <ViewBox title="friend's view" epCount={panel.friendEp} posts={panel.posts} side={1} themeColor={FRIEND_THEME} invisibleStart={invisibleStart} />
     </div>
   );
 }
 
-// ── Caption area — fixed height so nav never shifts ────────────────────────
-
-const CAPTION_HEIGHT = 80;
-
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export default function HowItWorks() {
+  injectKeyframes();
+
   const [step, setStep] = useState(0);
+  const [showJoin, setShowJoin] = useState(false);
   const navigate = useNavigate();
   const isLast = step === panels.length - 1;
+
+  // Key forces remount so animations replay on step change
+  const panelKey = `panel-${step}`;
 
   return (
     <div
@@ -194,7 +273,11 @@ export default function HowItWorks() {
       {/* Back link */}
       <div style={{ width: "100%", maxWidth: 780, marginBottom: 20 }}>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => {
+            if (showJoin) { setShowJoin(false); }
+            else if (step > 0) { setStep(s => s - 1); }
+            else { navigate("/"); }
+          }}
           style={{
             background: "transparent",
             border: "2px solid #fff",
@@ -209,7 +292,7 @@ export default function HowItWorks() {
             gap: 6,
           }}
         >
-          <ArrowLeft size={14} /> back to Sidebar
+          <ArrowLeft size={14} /> back{showJoin ? "" : step === 0 ? " to Sidebar" : ""}
         </button>
       </div>
 
@@ -218,101 +301,132 @@ export default function HowItWorks() {
         How does the no-spoiler mechanic work?
       </div>
 
-      {/* Fixed-size panel area */}
+      {/* Panel area — fixed height */}
       <div style={{ width: "100%", maxWidth: 780, height: PANEL_HEIGHT }}>
-        <PanelContent panel={panels[step]} />
+        {showJoin ? (
+          /* ── Join screen ── */
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 24,
+            }}
+          >
+            <button
+              onClick={() => navigate("/?signup")}
+              style={{
+                background: "#fff",
+                color: PAGE_BG,
+                border: "none",
+                borderRadius: 9999,
+                padding: "16px 48px",
+                fontSize: 20,
+                fontWeight: 800,
+                cursor: "pointer",
+                letterSpacing: "0.02em",
+              }}
+            >
+              Join Sidebar
+            </button>
+          </div>
+        ) : (
+          /* ── Animated panel ── */
+          <div key={panelKey} style={{ height: "100%" }}>
+            <PanelContent panel={panels[step]} />
+          </div>
+        )}
       </div>
 
-      {/* Caption — fixed height container so nav stays put */}
-      <div
-        style={{
-          height: CAPTION_HEIGHT,
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "center",
-          maxWidth: 580,
-          marginTop: 20,
-        }}
-      >
+      {/* Caption — fixed height */}
+      {!showJoin && (
         <div
           style={{
-            fontSize: 14,
-            fontWeight: 600,
-            lineHeight: 1.55,
-            textAlign: "center",
-            color: "#fff",
-            opacity: 0.9,
+            height: CAPTION_HEIGHT,
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            maxWidth: 580,
+            marginTop: 20,
           }}
         >
-          {panels[step].caption}
+          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.55, textAlign: "center", color: "#fff", opacity: 0.9 }}>
+            {panels[step].caption}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Navigation */}
-      <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 12 }}>
-        <button
-          onClick={() => setStep(s => Math.max(0, s - 1))}
-          disabled={step === 0}
-          style={{
-            background: "transparent",
-            border: "2px solid #fff",
-            borderRadius: 9999,
-            padding: "8px 18px",
-            cursor: step === 0 ? "default" : "pointer",
-            opacity: step === 0 ? 0.3 : 1,
-            fontSize: 14,
-            fontWeight: 600,
-            color: "#fff",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <ArrowLeft size={14} /> back
-        </button>
+      {/* Navigation — only show when not on join screen */}
+      {!showJoin && (
+        <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 12 }}>
+          <button
+            onClick={() => setStep(s => Math.max(0, s - 1))}
+            disabled={step === 0}
+            style={{
+              background: "transparent",
+              border: "2px solid #fff",
+              borderRadius: 9999,
+              padding: "8px 18px",
+              cursor: step === 0 ? "default" : "pointer",
+              opacity: step === 0 ? 0.3 : 1,
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#fff",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <ArrowLeft size={14} /> back
+          </button>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          {panels.map((_, i) => (
-            <div
-              key={i}
-              onClick={() => setStep(i)}
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                background: i === step ? "#fff" : "rgba(255,255,255,0.35)",
-                cursor: "pointer",
-              }}
-            />
-          ))}
+          <div style={{ display: "flex", gap: 8 }}>
+            {panels.map((_, i) => (
+              <div
+                key={i}
+                onClick={() => setStep(i)}
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: i === step ? "#fff" : "rgba(255,255,255,0.35)",
+                  cursor: "pointer",
+                }}
+              />
+            ))}
+          </div>
+
+          <button
+            onClick={() => {
+              if (isLast) setShowJoin(true);
+              else setStep(s => s + 1);
+            }}
+            style={{
+              background: isLast ? "rgba(255,255,255,0.92)" : "transparent",
+              border: "2px solid #fff",
+              borderRadius: 9999,
+              padding: "8px 18px",
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: 600,
+              color: isLast ? PAGE_BG : "#fff",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            {isLast ? "got it" : "next"} <ArrowRight size={14} />
+          </button>
         </div>
+      )}
 
-        <button
-          onClick={() => {
-            if (isLast) navigate("/");
-            else setStep(s => s + 1);
-          }}
-          style={{
-            background: isLast ? "rgba(255,255,255,0.92)" : "transparent",
-            border: "2px solid #fff",
-            borderRadius: 9999,
-            padding: "8px 18px",
-            cursor: "pointer",
-            fontSize: 14,
-            fontWeight: 600,
-            color: isLast ? PAGE_BG : "#fff",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          {isLast ? "got it" : "next"} <ArrowRight size={14} />
-        </button>
-      </div>
-
-      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.45, fontWeight: 600 }}>
-        {step + 1} / {panels.length}
-      </div>
+      {!showJoin && (
+        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.45, fontWeight: 600 }}>
+          {step + 1} / {panels.length}
+        </div>
+      )}
     </div>
   );
 }

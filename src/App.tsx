@@ -113,7 +113,10 @@ export default function App() {
 
   const { user, profile, loading: authLoading, signOut } = useAuth();
   const username = profile?.username ?? null;
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has("signup");
+  });
   const [authHint, setAuthHint] = useState<string | null>(null);
   const [feedbackForcedOpen, setFeedbackForcedOpen] = useState(false);
   const [feedbackPrefill, setFeedbackPrefill] = useState("");
