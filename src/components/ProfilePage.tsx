@@ -4,7 +4,7 @@ import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, Map, ChevronDown, Ma
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -57,34 +57,75 @@ export default function ProfilePage({
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const showName = (showId: string) => showId === "bb" ? "Breaking Bad (DEMO)" : allShows.find(s => s.id === showId)?.name || showId;
 
-  const [myThreads, setMyThreads] = useState<{ thread: Thread; groupId?: string; groupName?: string }[]>([]);
-  const [myReplies, setMyReplies] = useState<{ reply: Reply; thread: Thread }[]>([]);
-  const [repliesToMe, setRepliesToMe] = useState<{ reply: Reply; thread: Thread; groupId?: string; groupName?: string }[]>([]);
-  const [likedThreadsList, setLikedThreadsList] = useState<Thread[]>([]);
-  const [likedRepliesList, setLikedRepliesList] = useState<{ reply: Reply; thread: Thread }[]>([]);
+  // ── Lazy-load: lightweight activity query for tab ordering, per-tab data cache ──
+  type TabData = {
+    myThreads: { thread: Thread; groupId?: string; groupName?: string }[];
+    myReplies: { reply: Reply; thread: Thread }[];
+    repliesToMe: { reply: Reply; thread: Thread; groupId?: string; groupName?: string }[];
+    likedThreads: Thread[];
+    likedReplies: { reply: Reply; thread: Thread }[];
+  };
+  const [activityOrder, setActivityOrder] = useState<{ showId: string; latestAt: number }[]>([]);
+  const [tabDataCache, setTabDataCache] = useState<Record<string, TabData>>({});
   const [loading, setLoading] = useState(true);
+  const [tabLoading, setTabLoading] = useState(false);
+  const loadingTabRef = useRef<string | null>(null);
 
+  // Step 1: lightweight metadata query — only show IDs + timestamps
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    Promise.all([
-      fetchUserThreads(user.id),
-      fetchUserReplies(user.id),
-      fetchRepliesToUserThreads(user.id),
-      fetchLikedThreads(user.id),
-      fetchLikedReplies(user.id),
-    ]).then(([threads, myR, replies, likedT, likedR]) => {
-      setMyThreads(threads);
-      setMyReplies(myR);
-      setRepliesToMe(replies);
-      setLikedThreadsList(likedT);
-      setLikedRepliesList(likedR);
-      setLoading(false);
-    }).catch(err => {
-      console.error("ProfilePage load error:", err);
-      setLoading(false);
-    });
+    fetchUserShowActivity(user.id)
+      .then(activity => {
+        setActivityOrder(activity);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("ProfilePage activity load error:", err);
+        setLoading(false);
+      });
   }, [user?.id]);
+
+  // Step 2: fetch per-tab data when activeTab changes and isn't cached
+  const [activeTab, setActiveTab] = useState("");
+  useEffect(() => {
+    if (!user || !activeTab || tabDataCache[activeTab] || loadingTabRef.current === activeTab) return;
+    loadingTabRef.current = activeTab;
+    setTabLoading(true);
+    const tabId = activeTab; // capture for closure
+    Promise.all([
+      fetchUserThreads(user.id, tabId),
+      fetchUserReplies(user.id, tabId),
+      fetchRepliesToUserThreads(user.id, tabId),
+      fetchLikedThreads(user.id, tabId),
+      fetchLikedReplies(user.id, tabId),
+    ]).then(([threads, myR, replies, likedT, likedR]) => {
+      setTabDataCache(prev => ({
+        ...prev,
+        [tabId]: {
+          myThreads: threads,
+          myReplies: myR,
+          repliesToMe: replies,
+          likedThreads: likedT,
+          likedReplies: likedR,
+        },
+      }));
+      if (loadingTabRef.current === tabId) loadingTabRef.current = null;
+      setTabLoading(false);
+    }).catch(err => {
+      console.error("ProfilePage tab load error:", err);
+      if (loadingTabRef.current === tabId) loadingTabRef.current = null;
+      setTabLoading(false);
+    });
+  }, [user?.id, activeTab, tabDataCache]);
+
+  // Derive flat lists from the active tab's cache (or empty if not yet loaded)
+  const currentTabData = tabDataCache[activeTab];
+  const myThreads = currentTabData?.myThreads ?? [];
+  const myReplies = currentTabData?.myReplies ?? [];
+  const repliesToMe = currentTabData?.repliesToMe ?? [];
+  const likedThreadsList = currentTabData?.likedThreads ?? [];
+  const likedRepliesList = currentTabData?.likedReplies ?? [];
 
   // Spoiler-filter
   const visibleThreads = useMemo(() =>
@@ -110,21 +151,14 @@ export default function ProfilePage({
       canView({ season: r.season, episode: r.episode }, progress[t.showId])),
     [likedRepliesList, progress]);
 
-  // Compute show tab order: most recently engaged first
+  // Compute show tab order from lightweight activity data + progress keys
   const showTabOrder = useMemo(() => {
     const latest: Record<string, number> = {};
-    const bump = (sid: string, ts: number) => {
-      if (!latest[sid] || ts > latest[sid]) latest[sid] = ts;
-    };
-    myThreads.forEach(({ thread: t }) => bump(t.showId, t.updatedAt));
-    myReplies.forEach(({ reply: r, thread: t }) => bump(t.showId, r.updatedAt));
-    repliesToMe.forEach(({ reply: r, thread: t }) => bump(t.showId, r.updatedAt));
-    likedThreadsList.forEach(t => bump(t.showId, t.updatedAt));
-    likedRepliesList.forEach(({ reply: r, thread: t }) => bump(t.showId, r.updatedAt));
+    for (const { showId, latestAt } of activityOrder) latest[showId] = latestAt;
     // include shows from progress even if no posts yet
     Object.keys(progress).forEach(sid => { if (!latest[sid]) latest[sid] = 0; });
     return Object.keys(latest).sort((a, b) => latest[b] - latest[a]);
-  }, [myThreads, myReplies, repliesToMe, likedThreadsList, likedRepliesList, progress]);
+  }, [activityOrder, progress]);
 
   // Hidden tabs: user can close tabs to declutter their private profile view.
   // Entries and progress remain — purely a UI preference stored in localStorage.
@@ -153,7 +187,6 @@ export default function ProfilePage({
   // Filter hidden tabs from the visible tab order
   const visibleTabOrder = useMemo(() => showTabOrder.filter(sid => !hiddenTabs.has(sid)), [showTabOrder, hiddenTabs]);
 
-  const [activeTab, setActiveTab] = useState("");
   const [viewedTabIds, setViewedTabIds] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (!loading && visibleTabOrder.length) {
@@ -333,7 +366,11 @@ export default function ProfilePage({
       const destShowId = activeTab;
       const groupId = (composeDestination !== "public" && composeDestination !== "private") ? composeDestination : undefined;
       const groupName = groupId ? tabGroups.find(g => g.id === groupId)?.name : undefined;
-      setMyThreads(prev => [{ thread: t, groupId, groupName }, ...prev]);
+      setTabDataCache(prev => {
+        const existing = prev[activeTab];
+        if (!existing) return prev;
+        return { ...prev, [activeTab]: { ...existing, myThreads: [{ thread: t, groupId, groupName }, ...existing.myThreads] } };
+      });
       setPostTitle(""); setPostBody("");
       setActivePrompt(null); setShownPromptIds([]); setInsertedPromptIds([]);
       setComposeOpen(false);
@@ -349,21 +386,12 @@ export default function ProfilePage({
   const toggleExpand = (id: string) =>
     setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  // All content filtered to active tab
-  const tabThreads = useMemo(() =>
-    visibleThreads.filter(({ thread: t }) => t.showId === activeTab), [visibleThreads, activeTab]);
-
-  const tabMyReplies = useMemo(() =>
-    visibleMyReplies.filter(p => p.thread.showId === activeTab), [visibleMyReplies, activeTab]);
-
-  const tabRepliesToMe = useMemo(() =>
-    visibleRepliesToMe.filter(p => p.thread.showId === activeTab), [visibleRepliesToMe, activeTab]);
-
-  const tabLikedThreads = useMemo(() =>
-    visibleLikedThreads.filter(t => t.showId === activeTab), [visibleLikedThreads, activeTab]);
-
-  const tabLikedReplies = useMemo(() =>
-    visibleLikedReplies.filter(p => p.thread.showId === activeTab), [visibleLikedReplies, activeTab]);
+  // Per-tab data is already filtered by showId via lazy-load; apply spoiler filter only
+  const tabThreads = visibleThreads;
+  const tabMyReplies = visibleMyReplies;
+  const tabRepliesToMe = visibleRepliesToMe;
+  const tabLikedThreads = visibleLikedThreads;
+  const tabLikedReplies = visibleLikedReplies;
 
   // Dismissed indicators: threadId → timestamp when dismissed
   const [dismissedIndicators, setDismissedIndicators] = useState<Record<string, number>>(() => {
@@ -622,7 +650,10 @@ export default function ProfilePage({
                     </div>
                   )}
                   <div className="diaryScrollArea">
-                  {(() => {
+                  {tabLoading && !currentTabData && (
+                    <div className="muted" style={{ padding: "80px 20px", textAlign: "center" }}>Loading…</div>
+                  )}
+                  {(!tabLoading || currentTabData) && (() => {
                     const byDiary = diaryFilter === "private" ? tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !groupId) : tabThreads;
                     const filtered = journalGroupFilter ? byDiary.filter(({ groupId }) => groupId === journalGroupFilter) : byDiary;
                     if (filtered.length === 0) {

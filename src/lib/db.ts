@@ -383,15 +383,47 @@ export async function deleteReply(replyId: string): Promise<void> {
 
 // ── Profile page queries ──────────────────────────────────────────────────────
 
+/** Lightweight query: get show IDs + latest activity timestamp for tab ordering. */
+export async function fetchUserShowActivity(userId: string): Promise<{ showId: string; latestAt: number }[]> {
+  // Fetch just show_id and updated_at from user's threads (lightweight — no body/preview)
+  const { data: threadData } = await supabase
+    .from("threads")
+    .select("show_id, updated_at")
+    .eq("author_id", userId)
+    .eq("is_deleted", false);
+  // Fetch show_id from user's replies via their parent threads
+  const { data: replyData } = await supabase
+    .from("replies")
+    .select("updated_at, threads!inner(show_id)")
+    .eq("author_id", userId)
+    .eq("is_deleted", false);
+
+  const latest: Record<string, number> = {};
+  const bump = (sid: string, ts: number) => {
+    if (!latest[sid] || ts > latest[sid]) latest[sid] = ts;
+  };
+  for (const row of threadData ?? []) bump(row.show_id, new Date(row.updated_at).getTime());
+  for (const row of replyData ?? []) {
+    const sid = (row as any).threads?.show_id;
+    if (sid) bump(sid, new Date(row.updated_at).getTime());
+  }
+  return Object.entries(latest)
+    .map(([showId, latestAt]) => ({ showId, latestAt }))
+    .sort((a, b) => b.latestAt - a.latestAt);
+}
+
 export async function fetchUserThreads(
-  userId: string
+  userId: string,
+  showId?: string
 ): Promise<{ thread: Thread; groupId?: string; groupName?: string }[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("threads")
     .select("*")
     .eq("author_id", userId)
     .eq("is_deleted", false)
     .order("updated_at", { ascending: false });
+  if (showId) query = query.eq("show_id", showId);
+  const { data, error } = await query;
   if (error) throw error;
   const threads = (data ?? []).map(rowToThread);
   if (!threads.length) return [];
@@ -416,13 +448,16 @@ export async function fetchUserThreads(
 
 // Replies in threads the user started, not written by the user themselves
 export async function fetchRepliesToUserThreads(
-  userId: string
+  userId: string,
+  showId?: string
 ): Promise<{ reply: Reply; thread: Thread; groupId?: string; groupName?: string }[]> {
-  const { data: threadData, error: tErr } = await supabase
+  let tQuery = supabase
     .from("threads")
     .select("*")
     .eq("author_id", userId)
     .eq("is_deleted", false);
+  if (showId) tQuery = tQuery.eq("show_id", showId);
+  const { data: threadData, error: tErr } = await tQuery;
   if (tErr) throw tErr;
   const threads = (threadData ?? []).map(rowToThread);
   if (!threads.length) return [];
@@ -460,14 +495,16 @@ export async function fetchRepliesToUserThreads(
 }
 
 /** Replies written BY the user, with their parent thread for context. */
-export async function fetchUserReplies(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
-  const { data, error } = await supabase
+export async function fetchUserReplies(userId: string, showId?: string): Promise<{ reply: Reply; thread: Thread }[]> {
+  let query = supabase
     .from("replies")
     .select("*")
     .eq("author_id", userId)
     .eq("is_deleted", false)
     .order("created_at", { ascending: false })
     .limit(200);
+  if (showId) query = query.eq("show_id", showId);
+  const { data, error } = await query;
   if (error) throw error;
   const replies = (data ?? []).map(rowToReply);
   const threadIds = [...new Set(replies.map(r => r.threadId))];
@@ -486,11 +523,13 @@ export async function fetchUserReplies(userId: string): Promise<{ reply: Reply; 
     .filter(Boolean) as { reply: Reply; thread: Thread }[];
 }
 
-export async function fetchLikedThreads(userId: string): Promise<Thread[]> {
-  const { data, error } = await supabase
+export async function fetchLikedThreads(userId: string, showId?: string): Promise<Thread[]> {
+  let query = supabase
     .from("likes_threads")
     .select("threads(*)")
     .eq("user_id", userId);
+  if (showId) query = query.eq("threads.show_id", showId);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? [])
     .map((row: any) => row.threads)
@@ -499,11 +538,13 @@ export async function fetchLikedThreads(userId: string): Promise<Thread[]> {
     .sort((a: Thread, b: Thread) => b.updatedAt - a.updatedAt);
 }
 
-export async function fetchLikedReplies(userId: string): Promise<{ reply: Reply; thread: Thread }[]> {
-  const { data, error } = await supabase
+export async function fetchLikedReplies(userId: string, showId?: string): Promise<{ reply: Reply; thread: Thread }[]> {
+  let query = supabase
     .from("likes_replies")
     .select("replies(*)")
     .eq("user_id", userId);
+  if (showId) query = query.eq("replies.show_id", showId);
+  const { data, error } = await query;
   if (error) throw error;
   const replies = (data ?? [])
     .map((row: any) => row.replies)
