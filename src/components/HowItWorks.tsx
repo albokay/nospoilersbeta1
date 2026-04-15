@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, ArrowUpLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -15,10 +15,10 @@ type Panel = {
   friendEp: number;
   posts: Post[];
   caption: string;
-  showArrow?: boolean;
 };
 
-// ── 5 panels matching the PDF ──────────────────────────────────────────────
+// ── 4 panels ───────────────────────────────────────────────────────────────
+// Posts are listed top-to-bottom = newest first (descending like a forum).
 
 const panels: Panel[] = [
   {
@@ -29,16 +29,15 @@ const panels: Panel[] = [
     ],
     caption:
       "You just watched the first episode of a show. You loved it and invited a friend to watch with you. You\u2019ve already made a post about the show. But since your friend hasn\u2019t started yet, they don\u2019t see your post yet.",
-    showArrow: true,
   },
   {
     yourEp: 2,
     friendEp: 4,
     posts: [
-      { label: "YOUR post - ep 1", owner: "you", visible: [true, true] },
-      { label: "FRIEND post - ep 2", owner: "friend", visible: [true, true] },
-      { label: "FRIEND post - ep 4", owner: "friend", visible: [false, true] },
       { label: "YOUR post - ep 2", owner: "you", visible: [true, true] },
+      { label: "FRIEND post - ep 4", owner: "friend", visible: [false, true] },
+      { label: "FRIEND post - ep 2", owner: "friend", visible: [true, true] },
+      { label: "YOUR post - ep 1", owner: "you", visible: [true, true] },
     ],
     caption:
       "Later, your friend has written more and has watched ahead. But even though one of their posts was written before your second one, you don\u2019t see it until you catch up.",
@@ -47,60 +46,45 @@ const panels: Panel[] = [
     yourEp: 7,
     friendEp: 5,
     posts: [
-      { label: "YOUR post - ep 1", owner: "you", visible: [true, true] },
-      { label: "FRIEND post - ep 3", owner: "friend", visible: [true, true] },
+      { label: "YOUR post - ep 7", owner: "you", visible: [true, false] },
+      { label: "FRIEND post - ep 5", owner: "friend", visible: [true, true] },
+      { label: "YOUR post - ep 6", owner: "you", visible: [true, false] },
       { label: "FRIEND post - ep 4", owner: "friend", visible: [true, true] },
       { label: "YOUR post - ep 2", owner: "you", visible: [true, true] },
       { label: "FRIEND post - ep 4", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 6", owner: "you", visible: [true, false] },
-      { label: "FRIEND post - ep 5", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 7", owner: "you", visible: [true, false] },
+      { label: "FRIEND post - ep 3", owner: "friend", visible: [true, true] },
+      { label: "YOUR post - ep 1", owner: "you", visible: [true, true] },
     ],
     caption:
       "This filtering is applied across the entire site, to: posts, responses, public posts.",
   },
   {
-    yourEp: 12,
+    yourEp: 8,
     friendEp: 8,
     posts: [
-      { label: "YOUR post - ep 8", owner: "you", visible: [true, false] },
-      { label: "FRIEND post - ep 6", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 9", owner: "you", visible: [true, false] },
-      { label: "FRIEND post - ep 7", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 12", owner: "you", visible: [true, false] },
-      { label: "FRIEND post - ep 8", owner: "friend", visible: [true, true] },
-      { label: "FRIEND post - ep 10", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 13", owner: "you", visible: [true, false] },
+      { label: "\u2026ep 8", owner: "you", visible: [true, true] },
+      { label: "YOUR post - ep 7", owner: "you", visible: [true, true] },
+      { label: "FRIEND post - ep 5", owner: "friend", visible: [true, true] },
+      { label: "YOUR post - ep 6", owner: "you", visible: [true, true] },
+      { label: "FRIEND post - ep 4", owner: "friend", visible: [true, true] },
+      { label: "YOUR post - ep 2", owner: "you", visible: [true, true] },
+      { label: "FRIEND post - ep 4", owner: "friend", visible: [true, true] },
+      { label: "FRIEND post - ep 3", owner: "friend", visible: [true, true] },
+      { label: "YOUR post - ep 1", owner: "you", visible: [true, true] },
+      { label: "\u2026ep 8", owner: "friend", visible: [true, true] },
     ],
     caption: "Nobody has to hold back. Nobody gets spoiled.",
-  },
-  {
-    yourEp: 15,
-    friendEp: 19,
-    posts: [
-      { label: "YOUR post - ep 13", owner: "you", visible: [true, true] },
-      { label: "FRIEND post - ep 14", owner: "friend", visible: [true, true] },
-      { label: "FRIEND post - ep 15", owner: "friend", visible: [false, true] },
-      { label: "FRIEND post - ep 16", owner: "friend", visible: [false, true] },
-      { label: "FRIEND post - ep 18", owner: "friend", visible: [false, true] },
-      { label: "YOUR post - ep 14", owner: "you", visible: [true, true] },
-      { label: "YOUR post - ep 15", owner: "you", visible: [true, true] },
-      { label: "FRIEND post - ep 19", owner: "friend", visible: [false, true] },
-    ],
-    caption: "Invite a friend. Don\u2019t stop talking.",
   },
 ];
 
 // ── Colors ──────────────────────────────────────────────────────────────────
-// Green page background matching the site. White-on-green text.
-// "You" pills: white with green text. "Friend" pills: a warm accent.
+
 const PAGE_BG = "#7abd8e";
-const PANEL_BG = "rgba(255,255,255,0.92)";
-const TEXT_ON_PANEL = "#4a7a5a";
-const MUTED_ON_PANEL = "rgba(74,122,90,0.55)";
+const BOX_BG = "rgba(255,255,255,0.92)";
+const HEADER_COLOR = "#dea838";   // canon yellow
+const EP_COLOR = "#f45028";       // canon red
 const YOU_COLOR = "#375eb8";
 const FRIEND_COLOR = "#dea838";
-const DIVIDER = "rgba(74,122,90,0.15)";
 
 // ── Pill ────────────────────────────────────────────────────────────────────
 
@@ -129,71 +113,61 @@ function Pill({ label, owner, isVisible }: { label: string; owner: "you" | "frie
   );
 }
 
+// ── View box (one side of the split) ───────────────────────────────────────
+
+function ViewBox({
+  title,
+  epCount,
+  posts,
+  side,
+}: {
+  title: string;
+  epCount: number;
+  posts: Post[];
+  side: 0 | 1;
+}) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        borderRadius: 16,
+        background: BOX_BG,
+        padding: "16px 12px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        overflow: "auto",
+      }}
+    >
+      <div style={{ fontWeight: 900, fontSize: 20, color: HEADER_COLOR }}>{title}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: EP_COLOR, marginBottom: 14 }}>
+        episodes watched: {epCount}
+      </div>
+      {posts.map((p, i) => (
+        <div key={i} style={{ marginBottom: 7 }}>
+          <Pill label={p.label} owner={p.owner} isVisible={p.visible[side]} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Panel content ──────────────────────────────────────────────────────────
 
 const PANEL_HEIGHT = 460;
 
 function PanelContent({ panel }: { panel: Panel }) {
-  const firstInvisFriend = panel.showArrow
-    ? panel.posts.findIndex(p => !p.visible[1])
-    : -1;
-
   return (
-    <div style={{ display: "flex", height: "100%" }}>
-      {/* Your view */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 6px" }}>
-        <div style={{ fontWeight: 900, fontSize: 22, color: TEXT_ON_PANEL }}>your view</div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: MUTED_ON_PANEL, marginBottom: 14 }}>
-          episodes watched: {panel.yourEp}
-        </div>
-        {panel.posts.map((p, i) => (
-          <div key={`y-${i}`} style={{ marginBottom: 7 }}>
-            <Pill label={p.label} owner={p.owner} isVisible={p.visible[0]} />
-          </div>
-        ))}
-      </div>
-
-      {/* Divider */}
-      <div style={{ width: 1, background: DIVIDER, flexShrink: 0 }} />
-
-      {/* Friend's view */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 6px" }}>
-        <div style={{ fontWeight: 900, fontSize: 22, color: TEXT_ON_PANEL }}>friend&rsquo;s view</div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: MUTED_ON_PANEL, marginBottom: 14 }}>
-          episodes watched: {panel.friendEp}
-        </div>
-        {panel.posts.map((p, i) => (
-          <div key={`f-${i}`} style={{ marginBottom: 7, position: "relative" }}>
-            <Pill label={p.label} owner={p.owner} isVisible={p.visible[1]} />
-            {i === firstInvisFriend && (
-              <div
-                style={{
-                  position: "absolute",
-                  right: -90,
-                  top: -6,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 3,
-                  transform: "rotate(-20deg)",
-                  color: TEXT_ON_PANEL,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  fontStyle: "italic",
-                  whiteSpace: "nowrap",
-                  opacity: 0.7,
-                  pointerEvents: "none",
-                }}
-              >
-                <ArrowUpLeft size={14} color={TEXT_ON_PANEL} />
-                invisible post
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+    <div style={{ display: "flex", gap: 12, height: "100%" }}>
+      <ViewBox title="your view" epCount={panel.yourEp} posts={panel.posts} side={0} />
+      <ViewBox title="friend's view" epCount={panel.friendEp} posts={panel.posts} side={1} />
     </div>
   );
 }
+
+// ── Caption area — fixed height so nav never shifts ────────────────────────
+
+const CAPTION_HEIGHT = 80;
 
 // ── Main page ──────────────────────────────────────────────────────────────
 
@@ -242,40 +216,38 @@ export default function HowItWorks() {
         How does the no-spoiler mechanic work?
       </div>
 
-      {/* Fixed-size panel */}
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 780,
-          height: PANEL_HEIGHT,
-          borderRadius: 16,
-          background: PANEL_BG,
-          padding: 20,
-          boxSizing: "border-box",
-          overflow: "auto",
-        }}
-      >
+      {/* Fixed-size panel area */}
+      <div style={{ width: "100%", maxWidth: 780, height: PANEL_HEIGHT }}>
         <PanelContent panel={panels[step]} />
       </div>
 
-      {/* Caption */}
+      {/* Caption — fixed height container so nav stays put */}
       <div
         style={{
+          height: CAPTION_HEIGHT,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
           maxWidth: 580,
           marginTop: 20,
-          fontSize: 14,
-          fontWeight: 600,
-          lineHeight: 1.55,
-          textAlign: "center",
-          color: "#fff",
-          opacity: 0.9,
         }}
       >
-        {panels[step].caption}
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            lineHeight: 1.55,
+            textAlign: "center",
+            color: "#fff",
+            opacity: 0.9,
+          }}
+        >
+          {panels[step].caption}
+        </div>
       </div>
 
       {/* Navigation */}
-      <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 28 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 12 }}>
         <button
           onClick={() => setStep(s => Math.max(0, s - 1))}
           disabled={step === 0}
