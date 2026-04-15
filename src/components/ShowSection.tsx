@@ -1231,23 +1231,47 @@ export default function ShowSection({
           )}
           {/* Row 1 */}
           <div className="bannerRow1">
-            <span
-              className="bannerTitle"
-              role={thread ? "button" : "heading"}
-              title={thread ? "Back to room" : "Room"}
-              onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
-              style={{
-                fontSize: 22, fontWeight: 800, letterSpacing: .5,
-                color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
-                flex: "0 0 auto",
-              }}
-            >
-              {activeGroupId && activeGroup
-                ? activeGroup.name.toUpperCase()
-                : showId === "bb"
+            {activeGroupId && activeGroup ? (
+              <>
+                <span
+                  className="bannerTitle"
+                  role={thread ? "button" : "heading"}
+                  title={thread ? "Back to room" : "Room"}
+                  onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
+                  style={{
+                    fontSize: 22, fontWeight: 800, letterSpacing: .5,
+                    color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
+                    flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6,
+                  }}
+                >
+                  <Users size={18} color="var(--dos-light)" /> {activeGroup.name.toUpperCase()}
+                </span>
+                <span
+                  onClick={() => openGroupSettings(activeGroupId)}
+                  title="Room settings"
+                  style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", marginLeft: 6 }}
+                >
+                  <Settings size={16} color="#fff" />
+                </span>
+              </>
+            ) : (
+              <span
+                className="bannerTitle"
+                role={thread ? "button" : "heading"}
+                title={thread ? "Back to forum" : "Show"}
+                onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
+                style={{
+                  fontSize: 22, fontWeight: 800, letterSpacing: .5,
+                  color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
+                  flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6,
+                }}
+              >
+                <Globe size={18} color="#fff" />
+                {showId === "bb"
                   ? "BREAKING BAD (DEMO)"
                   : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()}
-            </span>
+              </span>
+            )}
           </div>
 
           <hr className="bleed-line" />
@@ -1405,61 +1429,7 @@ export default function ShowSection({
                 </div>
               </div>
             </div>
-            {/* ── Row 2: room switcher pills (forum view only) ── */}
-            {!thread && user && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, paddingBottom: ROW_PAD_Y, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" as any }}>
-                {/* Friend room pills — justified left */}
-                {userGroups.map(g => {
-                  const isActive = activeGroupId === g.id;
-                  const activeBg = "#dea838";
-                  return (
-                    <button
-                      key={g.id}
-                      className="btn"
-                      onClick={() => setActiveGroupId(g.id)}
-                      style={{
-                        whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                        padding: "3px 10px",
-                        background: isActive ? activeBg : "transparent",
-                        border: isActive ? `2px solid ${activeBg}` : "2px solid #fff",
-                        color: "#fff",
-                        display: "inline-flex", alignItems: "center", gap: 5,
-                      }}
-                    >
-                      <Users size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {g.name}
-                      <span
-                        onClick={(e) => { e.stopPropagation(); openGroupSettings(g.id); }}
-                        title="Room settings"
-                        style={{
-                          marginLeft: 2,
-                          display: "inline-flex", alignItems: "center",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <Settings size={14} color="var(--icon-color)" />
-                      </span>
-                    </button>
-                  );
-                })}
-                {/* Go to public conversations — pushed to the right */}
-                <div style={{ flexGrow: 1 }} />
-                <button
-                  className="btn"
-                  onClick={() => setActiveGroupId(null)}
-                  style={{
-                    whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                    padding: "3px 12px",
-                    background: !activeGroupId ? "var(--dos-user)" : "transparent",
-                    border: !activeGroupId ? "2px solid var(--dos-user)" : "2px solid #fff",
-                    color: "#fff",
-                  }}
-                >
-                  {activeGroupId
-                    ? <>to public conversations <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /></>
-                    : "public conversations"}
-                </button>
-              </div>
-            )}
+            {/* Room switcher pills removed — navigation now via header scroll + title icons */}
             </>
           )}
         </div>
