@@ -19,7 +19,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, MoveRight, MoveDown, X, Settings, BookOpen, BookMarked, ArrowLeft, CornerRightDown } from "lucide-react";
+import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, CornerRightDown } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
