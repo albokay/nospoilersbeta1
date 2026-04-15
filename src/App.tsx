@@ -19,7 +19,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, CornerRightDown } from "lucide-react";
+import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, CornerRightDown, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Filter, ShieldCheck } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -325,6 +325,7 @@ export default function App() {
   const [showsEmojiHover, setShowsEmojiHover] = useState(false);
   const narrativeRef = useRef<HTMLDivElement>(null);
   const [gradientOpacity, setGradientOpacity] = useState(0);
+  const [arrowOpacity, setArrowOpacity] = useState(1);
   const [newHighlights, setNewHighlights] = useState<{ [sid: string]: { [tid: string]: true } }>({});
   const [visitedThreads, setVisitedThreads] = useState<{ [tid: string]: true }>({});
 
@@ -463,6 +464,9 @@ export default function App() {
       // Start at 15%, full power at ~75% (approx when finale copy is mid-screen)
       const progress = Math.min(Math.max((raw - 0.15) / 0.6, 0), 1);
       setGradientOpacity(progress);
+      // Fade arrow out quickly — gone by 10% of narrative height
+      const arrowFade = Math.max(1 - (window.scrollY / (el.offsetHeight * 0.10)), 0);
+      setArrowOpacity(arrowFade);
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
@@ -624,11 +628,6 @@ export default function App() {
   ) : (
     /* Homepage — minimal auth controls only */
     <div className="fixedAuthWrap" style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
-      {!authLoading && !user && (
-        <button className="btn" onClick={() => setShowAuthModal(true)}>
-          Sign in / Join
-        </button>
-      )}
       {!authLoading && user && username && (
         <button className="btn signOutBtn" onClick={() => { goHomepage(); signOut(); }}>
           <span className="signOutLabel">Sign out</span>
@@ -695,6 +694,17 @@ export default function App() {
                 pointerEvents: "none",
                 zIndex: 0,
               }} />
+
+              {/* ── Scroll-down arrow hint ── */}
+              {arrowOpacity > 0 && (
+                <div style={{
+                  position: "fixed", bottom: "8vh", left: "50%", transform: "translateX(-50%)",
+                  opacity: arrowOpacity, pointerEvents: "none", zIndex: 10,
+                  transition: "opacity 0.15s ease",
+                }}>
+                  <ArrowDown size={28} color="#fff" strokeWidth={2} />
+                </div>
+              )}
 
               {/* ── Scrolling narrative ── */}
               <div ref={narrativeRef} style={{ width: "100vw", marginLeft: "calc(-50vw + 50%)" }}>
@@ -778,14 +788,15 @@ export default function App() {
                 How?
               </p>
 
-              {/* Feature grid — 5 steps, single icon + number, boxes 3 & 4 highlighted */}
+              {/* Feature grid — 6 steps, all white-filled with green text/icons */}
               {(() => {
-                const items: { Icon: React.ElementType; text: string; highlight: boolean }[] = [
-                  { Icon: Search,     text: "Find your show and join its room.", highlight: false },
-                  { Icon: UsersRound, text: "Invite your friends. Share the room with the people you love to talk to.", highlight: false },
-                  { Icon: ListCheck,  text: "All of you log the last episode you watched each time you sign in. Sidebar filters the room to everyone's unique watch progress.", highlight: true },
-                  { Icon: Eye,        text: "Nothing you read is ahead of where you are. Whether behind or ahead, everyone's entries wait until they're ready.", highlight: true },
-                  { Icon: Rocket,     text: "Venture further — you can decide if you want a public or private room. Friends only, or let your conversation expand?", highlight: false },
+                const items: { Icon: React.ElementType; text: string }[] = [
+                  { Icon: DoorOpen,          text: "Find the show you\u2019re watching and create a room." },
+                  { Icon: UserPlus,          text: "Invite the friends you love talking TV with." },
+                  { Icon: ClipboardList,     text: "Everyone logs their progress each time they watch." },
+                  { Icon: MessageSquareText, text: "Post and reply freely." },
+                  { Icon: Filter,            text: "Sidebar filters everyone\u2019s writing to everyone\u2019s unique watch progress." },
+                  { Icon: ShieldCheck,       text: "Nothing you read is ever ahead of where you are." },
                 ];
                 return (
                   <div style={{
@@ -798,76 +809,65 @@ export default function App() {
                     padding: isMobile ? 0 : "0 16px",
                     boxSizing: "border-box",
                   }}>
-                    {items.map(({ Icon, text, highlight }, idx) => {
-                      const isLast = idx === items.length - 1;
-                      const iconColor = highlight ? "var(--dos-bg)" : "#fff";
-                      const numColor = highlight ? "var(--dos-bg)" : "rgba(255,255,255,0.6)";
-                      return (
-                        <div key={text} style={{
-                          borderRadius: 16,
-                          padding: isMobile ? "12px 14px" : "16px 18px",
-                          display: "flex",
-                          flexDirection: isMobile ? "row" : "column",
-                          alignItems: "center",
-                          gap: isMobile ? 14 : 8,
-                          background: highlight ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.18)",
-                          gridColumn: (!isMobile && isLast) ? "1 / -1" : undefined,
-                        }}>
-                          {/* Number + icon, always stacked and centered */}
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                            <span style={{ fontSize: 16, fontWeight: 800, color: numColor, lineHeight: 1 }}>
-                              {idx + 1}.
-                            </span>
-                            <Icon size={isMobile ? 18 : 22} color={iconColor} strokeWidth={1.5} />
-                          </div>
-                          <span style={{
-                            fontSize: isMobile ? 12 : 13,
-                            color: highlight ? "var(--dos-bg)" : "#fff",
-                            fontWeight: highlight ? 600 : 500,
-                            lineHeight: 1.4,
-                            textAlign: isMobile ? "left" : "center",
-                          }}>{text}</span>
+                    {items.map(({ Icon, text }, idx) => (
+                      <div key={text} style={{
+                        borderRadius: 16,
+                        padding: isMobile ? "12px 14px" : "16px 18px",
+                        display: "flex",
+                        flexDirection: isMobile ? "row" : "column",
+                        alignItems: "center",
+                        gap: isMobile ? 14 : 8,
+                        background: "rgba(255,255,255,0.92)",
+                      }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                          <span style={{ fontSize: 16, fontWeight: 800, color: "var(--dos-bg)", lineHeight: 1 }}>
+                            {idx + 1}.
+                          </span>
+                          <Icon size={isMobile ? 18 : 22} color="var(--dos-bg)" strokeWidth={1.5} />
                         </div>
-                      );
-                    })}
+                        <span style={{
+                          fontSize: isMobile ? 12 : 13,
+                          color: "var(--dos-bg)",
+                          fontWeight: 600,
+                          lineHeight: 1.4,
+                          textAlign: isMobile ? "left" : "center",
+                        }}>{text}</span>
+                      </div>
+                    ))}
                   </div>
                 );
               })()}
 
-              {/* BB demo — only shown to logged-out users */}
+              {/* CTA buttons — sign in / learn more */}
               {!user && (
-                <div style={{ marginTop: 40, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 14, color: "#fff", fontWeight: 600, lineHeight: 1.5 }}>
-                    See how it works in a mock room:
-                  </span>
+                <div style={{ marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: isMobile ? "min(288px, 90vw)" : "100%", maxWidth: isMobile ? undefined : 840, padding: isMobile ? 0 : "0 16px", boxSizing: "border-box" }}>
                   <button
-                    className="btn"
-                    onClick={() => { setPickShowMode("set"); setPickShowId("bb"); }}
-                    style={{ fontSize: 15, padding: "8px 28px", borderRadius: 9999, whiteSpace: "nowrap", background: "#fff", color: "var(--dos-bg)", borderColor: "#fff", letterSpacing: "0.04em", fontWeight: 700 }}
+                    onClick={() => setShowAuthModal(true)}
+                    style={{
+                      width: "100%", maxWidth: 420,
+                      background: "#fff", color: "var(--dos-bg)", border: "none",
+                      borderRadius: 9999, padding: "14px 0",
+                      fontSize: 18, fontWeight: 800, cursor: "pointer",
+                      letterSpacing: "0.02em",
+                    }}
                   >
-                    LET WALTER WHITE BE YOUR GUIDE
+                    Sign in / Join
+                  </button>
+                  <button
+                    onClick={() => navigate("/how-it-works")}
+                    style={{
+                      width: "100%", maxWidth: 420,
+                      background: "transparent", color: "#fff",
+                      border: "2px solid #fff",
+                      borderRadius: 9999, padding: "12px 0",
+                      fontSize: 18, fontWeight: 800, cursor: "pointer",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    Learn more
                   </button>
                 </div>
               )}
-
-              {/* Find a show — non-functional teaser for logged-out, functional for logged-in */}
-              <div style={{
-                marginTop: 36, marginBottom: 8,
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
-                maxWidth: isMobile ? "min(288px, 90vw)" : 480,
-                width: "100%", textAlign: "center",
-                padding: isMobile ? "0 16px" : 0,
-              }}>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 500, lineHeight: 1.6 }}>
-                  The site is in early beta so there's not much to see yet in public spaces. Eventually you can explore public show rooms with the same no-spoiler mechanics as a friends-only room.
-                </span>
-                <SearchShows
-                  shows={shows}
-                  {...searchShowsHandlers}
-                  placeholder="find your new show"
-                  style={{ width: "100%", minWidth: 0, margin: 0, height: 40, boxSizing: "border-box" }}
-                />
-              </div>
             </div>
             </>
           )}
