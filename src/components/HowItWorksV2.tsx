@@ -5,84 +5,98 @@ import { ArrowLeft, ArrowRight, X } from "lucide-react";
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type PillType = "your-post" | "post" | "reply" | "invisible";
+type PillAlign = "left" | "right";
 
-type PillData = { type: PillType };
+type PillData = { type: PillType; align: PillAlign };
 
 type Panel = {
-  title?: string;          // only panel 1 has the big title
-  caption: string;
+  title?: string;
+  caption: React.ReactNode;
   pills: PillData[];
 };
 
 // ── 4 content panels ──────────────────────────────────────────────────────
+// Pill alignment matches PDF: posts left, replies right, invisible inherits
 
 const panels: Panel[] = [
   {
     title: "HOW DO THE NO-SPOILER\nMECHANICS WORK?",
-    caption:
-      "Your friends have been watching a new show and invited you to their Sidebar room.\n\nYou watch the first episode and log in. You read a handful of posts and then make your own post about your first impressions.\n\n\u2026But in reality\u2026",
+    caption: (
+      <>
+        Your friends have been watching a new show and invited you to their Sidebar room.
+        {"\n\n"}
+        You watch the first episode and log in. You read a handful of posts and then make your own post about your first impressions.
+        {"\n\n"}
+        <em>But in reality{"\u2026"}</em>
+      </>
+    ),
     pills: [
-      { type: "your-post" },
-      { type: "post" },
-      { type: "reply" },
-      { type: "post" },
-      { type: "reply" },
-      { type: "reply" },
-      { type: "post" },
+      { type: "your-post", align: "left" },
+      { type: "post",      align: "left" },
+      { type: "reply",     align: "right" },
+      { type: "post",      align: "left" },
+      { type: "reply",     align: "right" },
+      { type: "reply",     align: "right" },
+      { type: "post",      align: "left" },
     ],
   },
   {
     caption:
       "There is a lot more activity in the room because the show has 4 episodes available and your friends have been talking.\n\nFor now, you can\u2019t see anything they wrote after having watched episode 2.\n\nSoon enough your post even gets replies from friends who\u2019ve watched more than you.",
     pills: [
-      { type: "invisible" },
-      { type: "invisible" },
-      { type: "your-post" },
-      { type: "invisible" },
-      { type: "invisible" },
-      { type: "invisible" },
-      { type: "post" },
-      { type: "reply" },
-      { type: "invisible" },
-      { type: "reply" },
-      { type: "invisible" },
-      { type: "post" },
+      { type: "invisible", align: "left" },
+      { type: "invisible", align: "right" },
+      { type: "your-post", align: "left" },
+      { type: "invisible", align: "left" },
+      { type: "invisible", align: "right" },
+      { type: "invisible", align: "left" },
+      { type: "post",      align: "left" },
+      { type: "reply",     align: "right" },
+      { type: "invisible", align: "left" },
+      { type: "reply",     align: "right" },
+      { type: "invisible", align: "left" },
+      { type: "post",      align: "left" },
     ],
   },
   {
     caption:
-      "A few days later you watch episode 2 and more activity is revealed to you.",
+      "A few days later you watch episode 2 and more activity is revealed to you. When you catch up, you\u2019ll be able to read everything.",
     pills: [
-      { type: "invisible" },
-      { type: "invisible" },
-      { type: "your-post" },
-      { type: "reply" },
-      { type: "reply" },
-      { type: "post" },
-      { type: "post" },
-      { type: "reply" },
-      { type: "reply" },
-      { type: "reply" },
-      { type: "invisible" },
-      { type: "post" },
+      { type: "invisible", align: "left" },
+      { type: "invisible", align: "right" },
+      { type: "your-post", align: "left" },
+      { type: "reply",     align: "right" },
+      { type: "reply",     align: "right" },
+      { type: "post",      align: "left" },
+      { type: "post",      align: "left" },
+      { type: "reply",     align: "right" },
+      { type: "reply",     align: "right" },
+      { type: "reply",     align: "right" },
+      { type: "invisible", align: "left" },
+      { type: "post",      align: "left" },
     ],
   },
   {
-    caption:
-      "Once you\u2019re caught up, you can read everything.\n\nNo one ever writes \u201CI can\u2019t wait for you to watch\u2026\u201D or censors their excitement in any way.\n\nYou all write as if you\u2019ve JUST watched an episode together \u2014 and the site makes that experience real.",
+    caption: (
+      <>
+        No one ever writes {"\u201C"}I can{"\u2019"}t wait for you to watch{"\u2026\u201D"} or censors their excitement in any way.
+        {"\n\n"}
+        You all write as if you{"\u2019"}ve JUST watched an episode together {"\u2014"} and the site makes that experience real.
+      </>
+    ),
     pills: [
-      { type: "post" },
-      { type: "reply" },
-      { type: "your-post" },
-      { type: "reply" },
-      { type: "reply" },
-      { type: "post" },
-      { type: "post" },
-      { type: "reply" },
-      { type: "reply" },
-      { type: "reply" },
-      { type: "post" },
-      { type: "post" },
+      { type: "post",      align: "left" },
+      { type: "reply",     align: "right" },
+      { type: "your-post", align: "left" },
+      { type: "reply",     align: "right" },
+      { type: "reply",     align: "right" },
+      { type: "post",      align: "left" },
+      { type: "post",      align: "left" },
+      { type: "reply",     align: "right" },
+      { type: "reply",     align: "right" },
+      { type: "reply",     align: "right" },
+      { type: "post",      align: "left" },
+      { type: "post",      align: "left" },
     ],
   },
 ];
@@ -93,6 +107,7 @@ const PAGE_BG = "#7abd8e";
 const BOX_BG = "rgba(255,255,255,0.92)";
 const GREEN = "#7abd8e";
 const RED = "#f45028";
+const BORDER_W = 3;
 
 // ── Animation timing ────────────────────────────────────────────────────────
 
@@ -132,11 +147,16 @@ function injectKeyframes() {
 
 // ── Pill ────────────────────────────────────────────────────────────────────
 
+const PILL_W = 170;
+const INDENT = 24;
+
 function Pill({
   type,
+  align,
   animDelay,
 }: {
   type: PillType;
+  align: PillAlign;
   animDelay: number;
 }) {
   const isInvisible = type === "invisible";
@@ -150,33 +170,42 @@ function Pill({
     ? "POST"
     : "REPLY";
 
-  const animName = isInvisible
-    ? "hiw-flicker-red"
-    : "hiw-rise";
+  const animName = isInvisible ? "hiw-flicker-red" : "hiw-rise";
   const animDur = isInvisible ? INVISIBLE_DURATION : VISIBLE_DURATION;
 
   return (
     <div
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 180,
-        padding: "7px 0",
-        borderRadius: 9999,
-        fontSize: 12,
-        fontWeight: 700,
-        whiteSpace: "nowrap",
-        lineHeight: 1.3,
-        opacity: 0,
-        animation: `${animName} ${animDur}s ease forwards`,
-        animationDelay: `${animDelay}s`,
-        ...(isYourPost
-          ? { background: GREEN, color: "#fff", border: "2px solid transparent" }
-          : { background: "transparent", color, border: `2px dashed ${color}` }),
+        width: "100%",
+        display: "flex",
+        justifyContent: align === "right" ? "flex-end" : "flex-start",
+        paddingLeft: align === "right" ? INDENT : 0,
+        paddingRight: align === "left" ? INDENT : 0,
+        boxSizing: "border-box",
       }}
     >
-      {label}
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: PILL_W,
+          padding: "7px 0",
+          borderRadius: 9999,
+          fontSize: 12,
+          fontWeight: 700,
+          whiteSpace: "nowrap",
+          lineHeight: 1.3,
+          opacity: 0,
+          animation: `${animName} ${animDur}s ease forwards`,
+          animationDelay: `${animDelay}s`,
+          ...(isYourPost
+            ? { background: GREEN, color: "#fff", border: `${BORDER_W}px solid transparent` }
+            : { background: "transparent", color, border: `${BORDER_W}px dashed ${color}` }),
+        }}
+      >
+        {label}
+      </div>
     </div>
   );
 }
@@ -214,8 +243,8 @@ function PanelGraphic({ panel, panelIndex }: { panel: Panel; panelIndex: number 
           delay = invisibleStart;
         }
         return (
-          <div key={i} style={{ marginBottom: 7 }}>
-            <Pill type={p.type} animDelay={delay} />
+          <div key={i} style={{ marginBottom: 6, width: "100%" }}>
+            <Pill type={p.type} align={p.align} animDelay={delay} />
           </div>
         );
       })}
