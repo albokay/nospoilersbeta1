@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, X } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -89,8 +89,8 @@ const FRIEND_COLOR = "#dea838";
 
 const VISIBLE_STAGGER = 0.15;   // seconds between each visible pill
 const VISIBLE_DURATION = 0.5;   // seconds for visible pill to animate in
-const INVISIBLE_PAUSE = 1;      // seconds to wait after last visible pill
-const INVISIBLE_DURATION = 1;   // seconds for invisible pill flicker
+const INVISIBLE_PAUSE = 0;      // seconds to wait after last visible pill finishes
+const INVISIBLE_DURATION = 2;   // seconds for invisible pill flicker
 
 // ── CSS keyframes (injected once) ──────────────────────────────────────────
 
@@ -101,8 +101,9 @@ const KEYFRAMES = `
 }
 @keyframes hiw-flicker {
   0%   { opacity: 0; }
-  33%  { opacity: 0.66; }
-  66%  { opacity: 0.33; }
+  25%  { opacity: 0.44; }
+  50%  { opacity: 0.20; }
+  75%  { opacity: 0.66; }
   100% { opacity: 1; }
 }
 `;
@@ -233,8 +234,8 @@ function PanelContent({ panel }: { panel: Panel }) {
   const yourVisCount = panel.posts.filter(p => p.visible[0]).length;
   const friendVisCount = panel.posts.filter(p => p.visible[1]).length;
   const maxVisCount = Math.max(yourVisCount, friendVisCount);
-  // Invisible pills start after: last visible pill finishes + pause
-  const invisibleStart = maxVisCount * VISIBLE_STAGGER + VISIBLE_DURATION + INVISIBLE_PAUSE;
+  // Invisible pills start immediately after last visible pill finishes
+  const invisibleStart = (maxVisCount - 1) * VISIBLE_STAGGER + VISIBLE_DURATION + INVISIBLE_PAUSE;
 
   return (
     <div style={{ display: "flex", gap: 12, height: "100%" }}>
@@ -246,13 +247,15 @@ function PanelContent({ panel }: { panel: Panel }) {
 
 // ── Main page ──────────────────────────────────────────────────────────────
 
+const TOTAL_STEPS = 5; // 4 animated panels + 1 join screen
+
 export default function HowItWorks() {
   injectKeyframes();
 
   const [step, setStep] = useState(0);
-  const [showJoin, setShowJoin] = useState(false);
   const navigate = useNavigate();
-  const isLast = step === panels.length - 1;
+  const isJoinStep = step === TOTAL_STEPS - 1;
+  const isLastPanel = step === panels.length - 1;
 
   // Key forces remount so animations replay on step change
   const panelKey = `panel-${step}`;
@@ -270,29 +273,13 @@ export default function HowItWorks() {
         alignItems: "center",
       }}
     >
-      {/* Back link */}
-      <div style={{ width: "100%", maxWidth: 780, marginBottom: 20 }}>
+      {/* Close button — top right */}
+      <div style={{ width: "100%", maxWidth: 780, marginBottom: 20, display: "flex", justifyContent: "flex-end" }}>
         <button
-          onClick={() => {
-            if (showJoin) { setShowJoin(false); }
-            else if (step > 0) { setStep(s => s - 1); }
-            else { navigate("/"); }
-          }}
-          style={{
-            background: "transparent",
-            border: "2px solid #fff",
-            borderRadius: 9999,
-            padding: "6px 14px",
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 600,
-            color: "#fff",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}
+          className="close-x"
+          onClick={() => navigate("/")}
         >
-          <ArrowLeft size={14} /> back{showJoin ? "" : step === 0 ? " to Sidebar" : ""}
+          <X size={14} />
         </button>
       </div>
 
@@ -303,8 +290,8 @@ export default function HowItWorks() {
 
       {/* Panel area — fixed height */}
       <div style={{ width: "100%", maxWidth: 780, height: PANEL_HEIGHT }}>
-        {showJoin ? (
-          /* ── Join screen ── */
+        {isJoinStep ? (
+          /* ── Join screen (panel 5) ── */
           <div
             style={{
               height: "100%",
@@ -341,92 +328,87 @@ export default function HowItWorks() {
       </div>
 
       {/* Caption — fixed height */}
-      {!showJoin && (
-        <div
-          style={{
-            height: CAPTION_HEIGHT,
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "center",
-            maxWidth: 580,
-            marginTop: 20,
-          }}
-        >
+      <div
+        style={{
+          height: CAPTION_HEIGHT,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          maxWidth: 580,
+          marginTop: 20,
+        }}
+      >
+        {!isJoinStep && (
           <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.55, textAlign: "center", color: "#fff", opacity: 0.9 }}>
             {panels[step].caption}
           </div>
+        )}
+      </div>
+
+      {/* Navigation — always visible */}
+      <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 12 }}>
+        <button
+          onClick={() => setStep(s => Math.max(0, s - 1))}
+          disabled={step === 0}
+          style={{
+            background: "transparent",
+            border: "2px solid #fff",
+            borderRadius: 9999,
+            padding: "8px 18px",
+            cursor: step === 0 ? "default" : "pointer",
+            opacity: step === 0 ? 0.3 : 1,
+            fontSize: 14,
+            fontWeight: 600,
+            color: "#fff",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <ArrowLeft size={14} /> back
+        </button>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <div
+              key={i}
+              onClick={() => setStep(i)}
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: i === step ? "#fff" : "rgba(255,255,255,0.35)",
+                cursor: "pointer",
+              }}
+            />
+          ))}
         </div>
-      )}
 
-      {/* Navigation — only show when not on join screen */}
-      {!showJoin && (
-        <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 12 }}>
-          <button
-            onClick={() => setStep(s => Math.max(0, s - 1))}
-            disabled={step === 0}
-            style={{
-              background: "transparent",
-              border: "2px solid #fff",
-              borderRadius: 9999,
-              padding: "8px 18px",
-              cursor: step === 0 ? "default" : "pointer",
-              opacity: step === 0 ? 0.3 : 1,
-              fontSize: 14,
-              fontWeight: 600,
-              color: "#fff",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <ArrowLeft size={14} /> back
-          </button>
+        <button
+          onClick={() => setStep(s => Math.min(TOTAL_STEPS - 1, s + 1))}
+          disabled={isJoinStep}
+          style={{
+            background: "transparent",
+            border: "2px solid #fff",
+            borderRadius: 9999,
+            padding: "8px 18px",
+            cursor: isJoinStep ? "default" : "pointer",
+            opacity: isJoinStep ? 0.3 : 1,
+            fontSize: 14,
+            fontWeight: 600,
+            color: "#fff",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          next <ArrowRight size={14} />
+        </button>
+      </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            {panels.map((_, i) => (
-              <div
-                key={i}
-                onClick={() => setStep(i)}
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: i === step ? "#fff" : "rgba(255,255,255,0.35)",
-                  cursor: "pointer",
-                }}
-              />
-            ))}
-          </div>
-
-          <button
-            onClick={() => {
-              if (isLast) setShowJoin(true);
-              else setStep(s => s + 1);
-            }}
-            style={{
-              background: isLast ? "rgba(255,255,255,0.92)" : "transparent",
-              border: "2px solid #fff",
-              borderRadius: 9999,
-              padding: "8px 18px",
-              cursor: "pointer",
-              fontSize: 14,
-              fontWeight: 600,
-              color: isLast ? PAGE_BG : "#fff",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            {isLast ? "got it" : "next"} <ArrowRight size={14} />
-          </button>
-        </div>
-      )}
-
-      {!showJoin && (
-        <div style={{ marginTop: 10, fontSize: 12, opacity: 0.45, fontWeight: 600 }}>
-          {step + 1} / {panels.length}
-        </div>
-      )}
+      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.45, fontWeight: 600 }}>
+        {step + 1} / {TOTAL_STEPS}
+      </div>
     </div>
   );
 }
