@@ -1,78 +1,89 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type Post = {
-  label: string;
-  owner: "you" | "friend";
-  visible: [boolean, boolean];
-};
+type PillType = "your-post" | "post" | "reply" | "invisible";
+
+type PillData = { type: PillType };
 
 type Panel = {
-  yourEp: number;
-  friendEp: number;
-  posts: Post[];
+  title?: string;          // only panel 1 has the big title
   caption: string;
+  pills: PillData[];
 };
 
-// ── 4 panels (descending / newest first) ───────────────────────────────────
+// ── 4 content panels ──────────────────────────────────────────────────────
 
 const panels: Panel[] = [
   {
-    yourEp: 1,
-    friendEp: 0,
-    posts: [
-      { label: "YOUR post - ep 1", owner: "you", visible: [true, false] },
-    ],
+    title: "HOW DO THE NO-SPOILER\nMECHANICS WORK?",
     caption:
-      "You just watched the first episode of a show. You loved it and invited a friend to watch with you. You\u2019ve already made a post about the show. But since your friend hasn\u2019t started yet, they don\u2019t see your post yet.",
+      "Your friends have been watching a new show and invited you to their Sidebar room.\n\nYou watch the first episode and log in. You read a handful of posts and then make your own post about your first impressions.\n\n\u2026But in reality\u2026",
+    pills: [
+      { type: "your-post" },
+      { type: "post" },
+      { type: "reply" },
+      { type: "post" },
+      { type: "reply" },
+      { type: "reply" },
+      { type: "post" },
+    ],
   },
   {
-    yourEp: 2,
-    friendEp: 4,
-    posts: [
-      { label: "YOUR post - ep 2", owner: "you", visible: [true, true] },
-      { label: "FRIEND post - ep 4", owner: "friend", visible: [false, true] },
-      { label: "FRIEND post - ep 2", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 1", owner: "you", visible: [true, true] },
-    ],
     caption:
-      "Later, your friend has written more and has watched ahead. But even though one of their posts was written before your second one, you don\u2019t see it until you catch up.",
+      "There is a lot more activity in the room because the show has 4 episodes available and your friends have been talking.\n\nFor now, you can\u2019t see anything they wrote after having watched episode 2.\n\nSoon enough your post even gets replies from friends who\u2019ve watched more than you.",
+    pills: [
+      { type: "invisible" },
+      { type: "invisible" },
+      { type: "your-post" },
+      { type: "invisible" },
+      { type: "invisible" },
+      { type: "invisible" },
+      { type: "post" },
+      { type: "reply" },
+      { type: "invisible" },
+      { type: "reply" },
+      { type: "invisible" },
+      { type: "post" },
+    ],
   },
   {
-    yourEp: 7,
-    friendEp: 5,
-    posts: [
-      { label: "YOUR post - ep 7", owner: "you", visible: [true, false] },
-      { label: "FRIEND post - ep 5", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 6", owner: "you", visible: [true, false] },
-      { label: "FRIEND post - ep 4", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 2", owner: "you", visible: [true, true] },
-      { label: "FRIEND post - ep 4", owner: "friend", visible: [true, true] },
-      { label: "FRIEND post - ep 3", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 1", owner: "you", visible: [true, true] },
-    ],
     caption:
-      "This filtering is applied across the entire site, to: posts, responses, public posts.",
+      "A few days later you watch episode 2 and more activity is revealed to you.",
+    pills: [
+      { type: "invisible" },
+      { type: "invisible" },
+      { type: "your-post" },
+      { type: "reply" },
+      { type: "reply" },
+      { type: "post" },
+      { type: "post" },
+      { type: "reply" },
+      { type: "reply" },
+      { type: "reply" },
+      { type: "invisible" },
+      { type: "post" },
+    ],
   },
   {
-    yourEp: 8,
-    friendEp: 9,
-    posts: [
-      { label: "FRIEND post - ep 9", owner: "friend", visible: [false, true] },
-      { label: "YOUR post - ep 8", owner: "you", visible: [true, true] },
-      { label: "YOUR post - ep 7", owner: "you", visible: [true, true] },
-      { label: "FRIEND post - ep 5", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 6", owner: "you", visible: [true, true] },
-      { label: "FRIEND post - ep 4", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 2", owner: "you", visible: [true, true] },
-      { label: "FRIEND post - ep 4", owner: "friend", visible: [true, true] },
-      { label: "FRIEND post - ep 3", owner: "friend", visible: [true, true] },
-      { label: "YOUR post - ep 1", owner: "you", visible: [true, true] },
+    caption:
+      "Once you\u2019re caught up, you can read everything.\n\nNo one ever writes \u201CI can\u2019t wait for you to watch\u2026\u201D or censors their excitement in any way.\n\nYou all write as if you\u2019ve JUST watched an episode together \u2014 and the site makes that experience real.",
+    pills: [
+      { type: "post" },
+      { type: "reply" },
+      { type: "your-post" },
+      { type: "reply" },
+      { type: "reply" },
+      { type: "post" },
+      { type: "post" },
+      { type: "reply" },
+      { type: "reply" },
+      { type: "reply" },
+      { type: "post" },
+      { type: "post" },
     ],
-    caption: "Nobody has to hold back. Nobody gets spoiled.",
   },
 ];
 
@@ -80,17 +91,14 @@ const panels: Panel[] = [
 
 const PAGE_BG = "#7abd8e";
 const BOX_BG = "rgba(255,255,255,0.92)";
-const YOU_THEME = "#375eb8";
-const FRIEND_THEME = "#dea838";
-const YOU_COLOR = "#375eb8";
-const FRIEND_COLOR = "#dea838";
+const GREEN = "#7abd8e";
+const RED = "#f45028";
 
 // ── Animation timing ────────────────────────────────────────────────────────
 
-const VISIBLE_STAGGER = 0.15;   // seconds between each visible pill
-const VISIBLE_DURATION = 0.5;   // seconds for visible pill to animate in
-const INVISIBLE_PAUSE = 0;      // seconds to wait after last visible pill finishes
-const INVISIBLE_DURATION = 2;   // seconds for invisible pill flicker
+const VISIBLE_STAGGER = 0.15;
+const VISIBLE_DURATION = 0.5;
+const INVISIBLE_DURATION = 2;
 
 // ── CSS keyframes (injected once) ──────────────────────────────────────────
 
@@ -99,13 +107,13 @@ const KEYFRAMES = `
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes hiw-flicker-blue {
+@keyframes hiw-flicker-green {
   0%   { opacity: 0; }
   33%  { opacity: 0.44; }
   66%  { opacity: 0.20; }
   100% { opacity: 0.60; }
 }
-@keyframes hiw-flicker-yellow {
+@keyframes hiw-flicker-red {
   0%   { opacity: 0; }
   33%  { opacity: 0.44; }
   66%  { opacity: 0.20; }
@@ -125,23 +133,27 @@ function injectKeyframes() {
 // ── Pill ────────────────────────────────────────────────────────────────────
 
 function Pill({
-  label,
-  owner,
-  isVisible,
+  type,
   animDelay,
-  isInvisiblePill,
 }: {
-  label: string;
-  owner: "you" | "friend";
-  isVisible: boolean;
+  type: PillType;
   animDelay: number;
-  isInvisiblePill: boolean;
 }) {
-  const color = owner === "you" ? YOU_COLOR : FRIEND_COLOR;
-  const animName = isInvisiblePill
-    ? (owner === "you" ? "hiw-flicker-blue" : "hiw-flicker-yellow")
+  const isInvisible = type === "invisible";
+  const isYourPost = type === "your-post";
+  const color = isInvisible ? RED : GREEN;
+  const label = isYourPost
+    ? "YOUR POST"
+    : isInvisible
+    ? "INVISIBLE"
+    : type === "post"
+    ? "POST"
+    : "REPLY";
+
+  const animName = isInvisible
+    ? "hiw-flicker-red"
     : "hiw-rise";
-  const animDur = isInvisiblePill ? INVISIBLE_DURATION : VISIBLE_DURATION;
+  const animDur = isInvisible ? INVISIBLE_DURATION : VISIBLE_DURATION;
 
   return (
     <div
@@ -159,34 +171,24 @@ function Pill({
         opacity: 0,
         animation: `${animName} ${animDur}s ease forwards`,
         animationDelay: `${animDelay}s`,
-        ...(isVisible
-          ? { background: color, color: "#fff", border: "2px solid transparent" }
-          : { background: "transparent", color: color, border: `2px dashed ${color}` }),
+        ...(isYourPost
+          ? { background: GREEN, color: "#fff", border: "2px solid transparent" }
+          : { background: "transparent", color, border: `2px dashed ${color}` }),
       }}
     >
-      {isVisible ? label : "invisible post"}
+      {label}
     </div>
   );
 }
 
-// ── View box ───────────────────────────────────────────────────────────────
+// ── Panel graphic (right side) ────────────────────────────────────────────
 
-function ViewBox({
-  title,
-  epCount,
-  posts,
-  side,
-  themeColor,
-  invisibleStart,
-}: {
-  title: string;
-  epCount: number;
-  posts: Post[];
-  side: 0 | 1;
-  themeColor: string;
-  invisibleStart: number;
-}) {
-  // Track stagger index for visible pills on this side
+function PanelGraphic({ panel, panelIndex }: { panel: Panel; panelIndex: number }) {
+  const visiblePills = panel.pills.filter(p => p.type !== "invisible");
+  const visCount = visiblePills.length;
+  const extraPause = panelIndex === 0 ? 1 : 0;
+  const invisibleStart = (visCount - 1) * VISIBLE_STAGGER + VISIBLE_DURATION + extraPause;
+
   let visIndex = 0;
 
   return (
@@ -195,21 +197,17 @@ function ViewBox({
         flex: 1,
         borderRadius: 16,
         background: BOX_BG,
-        padding: "16px 12px",
+        padding: "20px 16px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        overflow: "auto",
+        overflowY: "auto",
       }}
     >
-      <div style={{ fontWeight: 600, fontSize: 13, color: themeColor }}>{title}</div>
-      <div style={{ fontWeight: 900, fontSize: 20, color: themeColor, marginBottom: 14 }}>
-        episodes watched: {epCount}
-      </div>
-      {posts.map((p, i) => {
-        const isVis = p.visible[side];
+      {panel.pills.map((p, i) => {
+        const isInvis = p.type === "invisible";
         let delay: number;
-        if (isVis) {
+        if (!isInvis) {
           delay = visIndex * VISIBLE_STAGGER;
           visIndex++;
         } else {
@@ -217,13 +215,7 @@ function ViewBox({
         }
         return (
           <div key={i} style={{ marginBottom: 7 }}>
-            <Pill
-              label={p.label}
-              owner={p.owner}
-              isVisible={isVis}
-              animDelay={delay}
-              isInvisiblePill={!isVis}
-            />
+            <Pill type={p.type} animDelay={delay} />
           </div>
         );
       })}
@@ -231,31 +223,10 @@ function ViewBox({
   );
 }
 
-// ── Panel content ──────────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────
 
-const PANEL_HEIGHT = 460;
-const CAPTION_HEIGHT = 80;
-
-function PanelContent({ panel, panelIndex }: { panel: Panel; panelIndex: number }) {
-  // Count max visible pills across both sides to calculate invisible start time
-  const yourVisCount = panel.posts.filter(p => p.visible[0]).length;
-  const friendVisCount = panel.posts.filter(p => p.visible[1]).length;
-  const maxVisCount = Math.max(yourVisCount, friendVisCount);
-  // Panel 0 gets a 1s pause before invisible pills; others start immediately
-  const extraPause = panelIndex === 0 ? 1 : 0;
-  const invisibleStart = (maxVisCount - 1) * VISIBLE_STAGGER + VISIBLE_DURATION + INVISIBLE_PAUSE + extraPause;
-
-  return (
-    <div style={{ display: "flex", gap: 12, height: "100%" }}>
-      <ViewBox title="your view" epCount={panel.yourEp} posts={panel.posts} side={0} themeColor={YOU_THEME} invisibleStart={invisibleStart} />
-      <ViewBox title="friend's view" epCount={panel.friendEp} posts={panel.posts} side={1} themeColor={FRIEND_THEME} invisibleStart={invisibleStart} />
-    </div>
-  );
-}
-
-// ── Main page ──────────────────────────────────────────────────────────────
-
-const TOTAL_STEPS = 5; // 4 animated panels + 1 join screen
+const PANEL_HEIGHT = 520;
+const TOTAL_STEPS = 5;
 
 export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => void; onSignup?: () => void } = {}) {
   injectKeyframes();
@@ -263,12 +234,11 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const isJoinStep = step === TOTAL_STEPS - 1;
-  const isLastPanel = step === panels.length - 1; // panel 4 (index 3)
+  const isLastPanel = step === panels.length - 1;
 
   const handleClose = onClose ?? (() => navigate("/"));
   const handleSignup = onSignup ?? (() => navigate("/?signup"));
 
-  // Key forces remount so animations replay on step change
   const panelKey = `panel-${step}`;
 
   return (
@@ -278,31 +248,21 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
         background: PAGE_BG,
         fontFamily: '"Inter","Nunito",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
         color: "#fff",
-        padding: "32px 16px 80px",
+        padding: "24px 16px 40px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
       }}
     >
       {/* Close button — top right */}
-      <div style={{ width: "100%", maxWidth: 780, marginBottom: 20, display: "flex", justifyContent: "flex-end" }}>
-        <button
-          className="close-x"
-          onClick={handleClose}
-        >
+      <div style={{ width: "100%", maxWidth: 860, marginBottom: 12, display: "flex", justifyContent: "flex-end" }}>
+        <button className="close-x" onClick={handleClose}>
           <X size={14} />
         </button>
       </div>
 
-      {/* Title */}
-      {!isJoinStep && (
-        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 24, textAlign: "center", color: "#fff" }}>
-          How does the no-spoiler mechanic work?
-        </div>
-      )}
-
-      {/* Panel area — fixed height */}
-      <div style={{ width: "100%", maxWidth: 780, height: PANEL_HEIGHT }}>
+      {/* Panel area — fixed height, split layout */}
+      <div style={{ width: "100%", maxWidth: 860, height: PANEL_HEIGHT }}>
         {isJoinStep ? (
           /* ── Join screen (panel 5) ── */
           <div
@@ -333,33 +293,51 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
             </button>
           </div>
         ) : (
-          /* ── Animated panel ── */
-          <div key={panelKey} style={{ height: "100%" }}>
-            <PanelContent panel={panels[step]} panelIndex={step} />
+          /* ── Split panel: caption left, graphic right ── */
+          <div key={panelKey} style={{ display: "flex", gap: 0, height: "100%" }}>
+            {/* Left — green caption area */}
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                padding: "24px 28px 24px 12px",
+              }}
+            >
+              {panels[step].title && (
+                <div style={{
+                  fontSize: 24,
+                  fontWeight: 900,
+                  lineHeight: 1.2,
+                  color: "#fff",
+                  marginBottom: 32,
+                  whiteSpace: "pre-line",
+                }}>
+                  {panels[step].title}
+                </div>
+              )}
+              <div style={{
+                fontSize: 15,
+                fontWeight: 700,
+                lineHeight: 1.6,
+                color: "#fff",
+                whiteSpace: "pre-line",
+              }}>
+                {panels[step].caption}
+              </div>
+            </div>
+
+            {/* Right — pill graphic */}
+            <div style={{ flex: 1, display: "flex" }}>
+              <PanelGraphic panel={panels[step]} panelIndex={step} />
+            </div>
           </div>
         )}
       </div>
 
-      {/* Caption — fixed height */}
-      <div
-        style={{
-          height: CAPTION_HEIGHT,
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "center",
-          maxWidth: 580,
-          marginTop: 20,
-        }}
-      >
-        {!isJoinStep && (
-          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.55, textAlign: "center", color: "#fff", opacity: 0.9 }}>
-            {panels[step].caption}
-          </div>
-        )}
-      </div>
-
-      {/* Navigation — always visible */}
-      <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 12 }}>
+      {/* Navigation */}
+      <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 16 }}>
         <button
           onClick={() => setStep(s => Math.max(0, s - 1))}
           disabled={step === 0}
@@ -398,7 +376,6 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
         </div>
 
         {isJoinStep ? (
-          /* invisible spacer to keep dots centered */
           <div style={{ width: 105 }} />
         ) : (
           <button
