@@ -295,9 +295,11 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
       </div>
 
       {/* Title */}
-      <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 24, textAlign: "center", color: "#fff" }}>
-        How does the no-spoiler mechanic work?
-      </div>
+      {!isJoinStep && (
+        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 24, textAlign: "center", color: "#fff" }}>
+          How does the no-spoiler mechanic work?
+        </div>
+      )}
 
       {/* Panel area — fixed height */}
       <div style={{ width: "100%", maxWidth: 780, height: PANEL_HEIGHT }}>
