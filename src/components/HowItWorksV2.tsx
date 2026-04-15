@@ -148,7 +148,7 @@ function injectKeyframes() {
 // ── Pill ────────────────────────────────────────────────────────────────────
 
 const PILL_W = 170;
-const INDENT = 24;
+const INDENT = 16; // offset from center
 
 function Pill({
   type,
@@ -173,39 +173,32 @@ function Pill({
   const animName = isInvisible ? "hiw-flicker-red" : "hiw-rise";
   const animDur = isInvisible ? INVISIBLE_DURATION : VISIBLE_DURATION;
 
+  // Offset from center: left pills shift left, right pills shift right
+  const offset = align === "right" ? INDENT : -INDENT;
+
   return (
     <div
       style={{
-        width: "100%",
         display: "flex",
-        justifyContent: align === "right" ? "flex-end" : "flex-start",
-        paddingLeft: align === "right" ? INDENT : 0,
-        paddingRight: align === "left" ? INDENT : 0,
-        boxSizing: "border-box",
+        alignItems: "center",
+        justifyContent: "center",
+        width: PILL_W,
+        padding: "7px 0",
+        borderRadius: 9999,
+        fontSize: 12,
+        fontWeight: 700,
+        whiteSpace: "nowrap",
+        lineHeight: 1.3,
+        opacity: 0,
+        animation: `${animName} ${animDur}s ease forwards`,
+        animationDelay: `${animDelay}s`,
+        marginLeft: `calc(50% - ${PILL_W / 2}px + ${offset}px)`,
+        ...(isYourPost
+          ? { background: GREEN, color: "#fff", border: `${BORDER_W}px solid transparent` }
+          : { background: "transparent", color, border: `${BORDER_W}px dashed ${color}` }),
       }}
     >
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: PILL_W,
-          padding: "7px 0",
-          borderRadius: 9999,
-          fontSize: 12,
-          fontWeight: 700,
-          whiteSpace: "nowrap",
-          lineHeight: 1.3,
-          opacity: 0,
-          animation: `${animName} ${animDur}s ease forwards`,
-          animationDelay: `${animDelay}s`,
-          ...(isYourPost
-            ? { background: GREEN, color: "#fff", border: `${BORDER_W}px solid transparent` }
-            : { background: "transparent", color, border: `${BORDER_W}px dashed ${color}` }),
-        }}
-      >
-        {label}
-      </div>
+      {label}
     </div>
   );
 }
@@ -243,7 +236,7 @@ function PanelGraphic({ panel, panelIndex }: { panel: Panel; panelIndex: number 
           delay = invisibleStart;
         }
         return (
-          <div key={i} style={{ marginBottom: 6, width: "100%" }}>
+          <div key={i} style={{ marginBottom: 6, width: "100%", position: "relative" }}>
             <Pill type={p.type} align={p.align} animDelay={delay} />
           </div>
         );
