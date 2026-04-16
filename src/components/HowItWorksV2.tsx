@@ -145,8 +145,12 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
   useEffect(() => {
     if (panelIndex === 0) return;
     setPhase(0);
-    const t = setTimeout(() => setPhase(1), PHASE_DELAY);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setPhase(1), PHASE_DELAY);
+    // Panel 2: phase 2 triggers red flicker after slide completes
+    const t2 = panelIndex === 1
+      ? setTimeout(() => setPhase(2), PHASE_DELAY + SLIDE_DURATION * 1000)
+      : undefined;
+    return () => { clearTimeout(t1); if (t2) clearTimeout(t2); };
   }, [panelIndex]);
 
   const slots = panelSlots[panelIndex];
@@ -214,7 +218,7 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
             // Green pill that slides from panel 1 position
             const slideFrom = panel2SlideMap[i];
             if (slideFrom !== undefined) {
-              const slideY = phase === 0 ? (slideFrom - i) * SLOT_H : 0;
+              const slideY = phase < 1 ? (slideFrom - i) * SLOT_H : 0;
               return (
                 <div
                   key={i}
@@ -230,13 +234,13 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
               );
             }
 
-            // Red invisible pill — hidden in phase 0, flicker in phase 1
+            // Red invisible pill — hidden until phase 2 (after slide completes)
             return (
               <div
                 key={i}
                 style={{
                   ...basePillStyle(slot.type, slot.align, i),
-                  ...(phase === 0
+                  ...(phase < 2
                     ? { opacity: 0 }
                     : { opacity: 0, animation: `hiw-flicker-red ${INVISIBLE_DURATION}s ease forwards` }),
                 }}
