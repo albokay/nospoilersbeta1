@@ -1221,7 +1221,7 @@ export default function ShowSection({
         </Modal>
       )}
       {/* TWO-ROW STICKY BANNER */}
-      <div className="stickybar bleed" style={{ top: GLOBAL_HEADER_H }} ref={bannerRef}>
+      <div className="stickybar bleed" ref={bannerRef}>
         <div className="container">
           {(navLeft || navRight) && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0 4px" }}>

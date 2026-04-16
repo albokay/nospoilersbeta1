@@ -13,7 +13,15 @@ export function injectDOSStyles() {
   --progress-bg:#adc8d7; --progress-fg:#355eb8;
   /* type scale */
   --t1:22px; --t2:17px; --t3:15px; --t4:13px;
+  /* Top-header spacer height — used by header.site and .stickybar.
+     Wide (>=1134px): single row layout, ~88px tall → 96 gives breathing room.
+     Narrow (<1134px): two-row stacked layout, ~130px tall → 136.
+     Phone (<600px): search/friend-rooms hide, back to ~90 → 96.
+  */
+  --site-header-h:96px;
 }
+@media(max-width:1133px){ :root{ --site-header-h:136px; } }
+@media(max-width:600px){ :root{ --site-header-h:96px; } }
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
@@ -199,6 +207,7 @@ input.badge::placeholder, textarea::placeholder { color: #aaa !important; }
 /* sticky bars */
 header.site{
   position:sticky; top:0; z-index:90; background:rgba(122,189,142,0.98);
+  height: var(--site-header-h);
 }
 .brand{
   line-height:0; font-size:0;
@@ -234,7 +243,7 @@ header.site{
 
 
 .stickybar{
-  position:sticky; top:0; z-index:70; background:rgba(122,189,142,0.98);
+  position:sticky; top:var(--site-header-h); z-index:70; background:rgba(122,189,142,0.98);
 }
 
 /* banner row 1: title + sort — stacks on mobile */

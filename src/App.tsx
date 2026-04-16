@@ -30,7 +30,7 @@ import HomepageNarrative from "./components/HomepageNarrative";
 import InviteAcceptPage from "./components/InviteAcceptPage";
 
 const SINGLE_PAGE = true;
-const GLOBAL_HEADER_H = 56;
+const GLOBAL_HEADER_H = 96;
 
 // Reusable grouped episode select (used in the watch-status first-join modal)
 function EpisodeSelect({ show, value, onChange }: { show: any; value: { s: number; e: number }; onChange: (v: { s: number; e: number }) => void }) {
@@ -543,7 +543,7 @@ export default function App() {
             <SearchShows
               shows={shows}
               {...searchShowsHandlers}
-              placeholder="find your new show"
+              placeholder="find your show"
             />
           </span>
         </div>
@@ -671,10 +671,9 @@ export default function App() {
 
   // Header is a pure height-spacer + full-bleed bottom border.
   // Logo and auth are both position:fixed so they float above this bar.
-  // On profile pages an extra fixed button-bar sits just below, so the spacer is taller.
-  const headerHeight = GLOBAL_HEADER_H;
+  // Height is driven by the --site-header-h CSS var (responsive via media queries).
   const header = (
-    <header className="site bleed" style={{ height: headerHeight }} />
+    <header className="site bleed" />
   );
 
   // Show tabs are now integrated directly into the diary graphic on the profile page.
