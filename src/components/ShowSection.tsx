@@ -2041,7 +2041,7 @@ export default function ShowSection({
           {!activeLoading && activeList.length === 0 && (
             activeGroupId ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 0 48px", gap: 16 }}>
-                <div className="muted" style={{ fontSize: 14, textAlign: "center" }}>No entries shared to this room yet.</div>
+                <div className="muted" style={{ fontSize: 14, textAlign: "center" }}>You can start the conversation or:</div>
                 <button
                   className="btn"
                   onClick={() => openGroupSettings(activeGroupId)}
