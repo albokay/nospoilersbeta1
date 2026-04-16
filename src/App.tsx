@@ -136,7 +136,8 @@ export default function App() {
   //   /user/:username           → public profile
   const pathParts = location.pathname.split("/").filter(Boolean);
   if (pathParts[0] === "lab") return <HomepageLab />;
-  if (pathParts[0] === "how-it-works") return <HowItWorks />;
+  if (pathParts[0] === "how-it-works") return <HowItWorksV2 />;
+  if (pathParts[0] === "how-it-works-v1") return <HowItWorks />;
   if (pathParts[0] === "how-it-works-v2") return <HowItWorksV2 />;
   if (pathParts[0] === "invite" && pathParts[1]) return <InviteAcceptPage token={pathParts[1]} />;
   const expandedShowId   = pathParts[0] === "show" ? (pathParts[1] ?? null) : null;
@@ -700,7 +701,7 @@ export default function App() {
             background: "#7abd8e",
             overflowY: "auto",
           }}>
-            <HowItWorks
+            <HowItWorksV2
               onClose={() => setShowHowItWorks(false)}
               onSignup={() => { setShowHowItWorks(false); setShowAuthModal(true); }}
             />
