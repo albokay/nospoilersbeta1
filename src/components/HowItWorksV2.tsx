@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 
@@ -6,127 +6,80 @@ import { ArrowLeft, ArrowRight, X } from "lucide-react";
 
 type PillType = "your-post" | "post" | "reply" | "invisible";
 type PillAlign = "left" | "right";
+type SlotDef = { type: PillType; align: PillAlign };
 
-type PillData = { type: PillType; align: PillAlign };
+const S = (type: PillType, align: PillAlign): SlotDef => ({ type, align });
 
-type Panel = {
-  title?: string;
-  caption: React.ReactNode;
-  pills: PillData[];
-};
+// ── 12-slot panel end-states (YOUR POST always at slot 2) ─────────────────
 
-// ── 4 content panels ──────────────────────────────────────────────────────
-// Pill alignment matches PDF: posts left, replies right, invisible inherits
-
-const panels: Panel[] = [
-  {
-    title: "HOW DO THE NO-SPOILER\nMECHANICS WORK?",
-    caption: (
-      <>
-        Your friends have been watching a new show and invited you to their Sidebar room.
-        {"\n\n"}
-        You watch the first episode and log in. You read a handful of posts and then make your own post about your first impressions.
-        {"\n\n"}
-        <em>But in reality{"\u2026"}</em>
-      </>
-    ),
-    pills: [
-      { type: "your-post", align: "left" },
-      { type: "post",      align: "left" },
-      { type: "reply",     align: "right" },
-      { type: "post",      align: "left" },
-      { type: "reply",     align: "right" },
-      { type: "reply",     align: "right" },
-      { type: "post",      align: "left" },
-    ],
-  },
-  {
-    caption:
-      "There is a lot more activity in the room because the show has 4 episodes available and your friends have been talking.\n\nFor now, you can\u2019t see anything they wrote after having watched episode 2.\n\nSoon enough your post even gets replies from friends who\u2019ve watched more than you.",
-    pills: [
-      { type: "invisible", align: "left" },
-      { type: "invisible", align: "right" },
-      { type: "your-post", align: "left" },
-      { type: "invisible", align: "left" },
-      { type: "invisible", align: "right" },
-      { type: "invisible", align: "left" },
-      { type: "post",      align: "left" },
-      { type: "reply",     align: "right" },
-      { type: "invisible", align: "left" },
-      { type: "reply",     align: "right" },
-      { type: "invisible", align: "left" },
-      { type: "post",      align: "left" },
-    ],
-  },
-  {
-    caption:
-      "A few days later you watch episode 2 and more activity is revealed to you. When you catch up, you\u2019ll be able to read everything.",
-    pills: [
-      { type: "invisible", align: "left" },
-      { type: "invisible", align: "right" },
-      { type: "your-post", align: "left" },
-      { type: "reply",     align: "right" },
-      { type: "reply",     align: "right" },
-      { type: "post",      align: "left" },
-      { type: "post",      align: "left" },
-      { type: "reply",     align: "right" },
-      { type: "reply",     align: "right" },
-      { type: "reply",     align: "right" },
-      { type: "invisible", align: "left" },
-      { type: "post",      align: "left" },
-    ],
-  },
-  {
-    caption: (
-      <>
-        No one ever writes {"\u201C"}I can{"\u2019"}t wait for you to watch{"\u2026\u201D"} or censors their excitement in any way.
-        {"\n\n"}
-        You all write as if you{"\u2019"}ve JUST watched an episode together {"\u2014"} and the site makes that experience real.
-      </>
-    ),
-    pills: [
-      { type: "post",      align: "left" },
-      { type: "reply",     align: "right" },
-      { type: "your-post", align: "left" },
-      { type: "reply",     align: "right" },
-      { type: "reply",     align: "right" },
-      { type: "post",      align: "left" },
-      { type: "post",      align: "left" },
-      { type: "reply",     align: "right" },
-      { type: "reply",     align: "right" },
-      { type: "reply",     align: "right" },
-      { type: "post",      align: "left" },
-      { type: "post",      align: "left" },
-    ],
-  },
+const panelSlots: (SlotDef | null)[][] = [
+  // Panel 1: 5 pills at slots 2-6
+  [null, null, S("your-post","left"), S("post","left"), S("reply","right"), S("reply","right"), S("post","left"), null, null, null, null, null],
+  // Panel 2
+  [S("invisible","left"), S("invisible","right"), S("your-post","left"), S("invisible","left"), S("invisible","right"), S("invisible","left"), S("post","left"), S("reply","right"), S("invisible","left"), S("reply","right"), S("invisible","left"), S("post","left")],
+  // Panel 3
+  [S("invisible","left"), S("invisible","right"), S("your-post","left"), S("reply","right"), S("reply","right"), S("post","left"), S("post","left"), S("reply","right"), S("reply","right"), S("reply","right"), S("invisible","left"), S("post","left")],
+  // Panel 4
+  [S("post","left"), S("reply","right"), S("your-post","left"), S("reply","right"), S("reply","right"), S("post","left"), S("post","left"), S("reply","right"), S("reply","right"), S("reply","right"), S("post","left"), S("post","left")],
 ];
 
-// ── Colors ──────────────────────────────────────────────────────────────────
+// Panel 2: maps current slot → previous slot for sliding green pills
+const panel2SlideMap: Record<number, number> = { 6: 3, 7: 4, 9: 5, 11: 6 };
+
+// ── Captions & titles ─────────────────────────────────────────────────────
+
+const panelTitles: (string | undefined)[] = [
+  "HOW DO THE NO-SPOILER\nMECHANICS WORK?",
+  undefined,
+  undefined,
+  undefined,
+];
+
+const panelCaptions: React.ReactNode[] = [
+  <>
+    Your friends have been watching a new show and invited you to their Sidebar room.
+    {"\n\n"}
+    You watch the first episode and log in. You read a handful of posts and then make your own post about your first impressions.
+    {"\n\n"}
+    <em>But in reality{"\u2026"}</em>
+  </>,
+  "There is a lot more activity in the room because the show has 4 episodes available and your friends have been talking.\n\nFor now, you can\u2019t see anything they wrote after having watched episode 2.\n\nSoon enough your post even gets replies from friends who\u2019ve watched more than you.",
+  "A few days later you watch episode 2 and more activity is revealed to you. When you catch up, you\u2019ll be able to read everything.",
+  <>
+    No one ever writes {"\u201C"}I can{"\u2019"}t wait for you to watch{"\u2026\u201D"} or censors their excitement in any way.
+    {"\n\n"}
+    You all write as if you{"\u2019"}ve JUST watched an episode together {"\u2014"} and the site makes that experience real.
+  </>,
+];
+
+// ── Colors & dimensions ───────────────────────────────────────────────────
 
 const PAGE_BG = "#7abd8e";
 const BOX_BG = "rgba(255,255,255,0.92)";
 const GREEN = "#7abd8e";
 const RED = "#f45028";
 const BORDER_W = 3;
+const PILL_W = 170;
+const PILL_H = 34;
+const INDENT = 16;
+const SLOT_H = 40;
+const NUM_SLOTS = 12;
 
-// ── Animation timing ────────────────────────────────────────────────────────
+// ── Animation timing ──────────────────────────────────────────────────────
 
 const VISIBLE_STAGGER = 0.15;
 const VISIBLE_DURATION = 0.5;
 const INVISIBLE_DURATION = 2;
+const PHASE_DELAY = 500;
+const SLIDE_DURATION = 0.5;
+const MORPH_DURATION = 0.6;
 
-// ── CSS keyframes (injected once) ──────────────────────────────────────────
+// ── Keyframes ─────────────────────────────────────────────────────────────
 
 const KEYFRAMES = `
 @keyframes hiw-rise {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes hiw-flicker-green {
-  0%   { opacity: 0; }
-  33%  { opacity: 0.44; }
-  66%  { opacity: 0.20; }
-  100% { opacity: 0.60; }
 }
 @keyframes hiw-flicker-red {
   0%   { opacity: 0; }
@@ -140,107 +93,224 @@ let injected = false;
 function injectKeyframes() {
   if (injected) return;
   injected = true;
-  const style = document.createElement("style");
-  style.textContent = KEYFRAMES;
-  document.head.appendChild(style);
+  const el = document.createElement("style");
+  el.textContent = KEYFRAMES;
+  document.head.appendChild(el);
 }
 
-// ── Pill ────────────────────────────────────────────────────────────────────
+// ── Pill helpers ──────────────────────────────────────────────────────────
 
-const PILL_W = 170;
-const INDENT = 16; // offset from center
+function pillLabel(type: PillType) {
+  switch (type) {
+    case "your-post": return "YOUR POST";
+    case "post": return "POST";
+    case "reply": return "REPLY";
+    case "invisible": return "INVISIBLE";
+  }
+}
 
-function Pill({
-  type,
-  align,
-  animDelay,
-}: {
-  type: PillType;
-  align: PillAlign;
-  animDelay: number;
-}) {
+function basePillStyle(type: PillType, align: PillAlign, slotIndex: number): React.CSSProperties {
   const isInvisible = type === "invisible";
   const isYourPost = type === "your-post";
   const color = isInvisible ? RED : GREEN;
-  const label = isYourPost
-    ? "YOUR POST"
-    : isInvisible
-    ? "INVISIBLE"
-    : type === "post"
-    ? "POST"
-    : "REPLY";
-
-  const animName = isInvisible ? "hiw-flicker-red" : "hiw-rise";
-  const animDur = isInvisible ? INVISIBLE_DURATION : VISIBLE_DURATION;
-
-  // Offset from center: left pills shift left, right pills shift right
   const offset = align === "right" ? INDENT : -INDENT;
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: PILL_W,
-        padding: "7px 0",
-        borderRadius: 9999,
-        fontSize: 12,
-        fontWeight: 700,
-        whiteSpace: "nowrap",
-        lineHeight: 1.3,
-        opacity: 0,
-        animation: `${animName} ${animDur}s ease forwards`,
-        animationDelay: `${animDelay}s`,
-        marginLeft: `calc(50% - ${PILL_W / 2}px + ${offset}px)`,
-        ...(isYourPost
-          ? { background: GREEN, color: "#fff", border: `${BORDER_W}px solid transparent` }
-          : { background: "transparent", color, border: `${BORDER_W}px dashed ${color}` }),
-      }}
-    >
-      {label}
-    </div>
-  );
+  return {
+    position: "absolute",
+    top: slotIndex * SLOT_H,
+    left: `calc(50% - ${PILL_W / 2}px + ${offset}px)`,
+    width: PILL_W,
+    height: PILL_H,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 9999,
+    fontSize: 12,
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+    lineHeight: 1.3,
+    boxSizing: "border-box",
+    borderWidth: BORDER_W,
+    ...(isYourPost
+      ? { background: GREEN, color: "#fff", borderStyle: "solid" as const, borderColor: "transparent" }
+      : { background: "transparent", color, borderStyle: "dashed" as const, borderColor: color }),
+  };
 }
 
-// ── Panel graphic (right side) ────────────────────────────────────────────
+// ── Panel graphic ─────────────────────────────────────────────────────────
 
-function PanelGraphic({ panel, panelIndex }: { panel: Panel; panelIndex: number }) {
-  const visiblePills = panel.pills.filter(p => p.type !== "invisible");
-  const visCount = visiblePills.length;
-  const extraPause = panelIndex === 0 ? 1 : 0;
-  const invisibleStart = (visCount - 1) * VISIBLE_STAGGER + VISIBLE_DURATION + extraPause;
+function PanelGraphic({ panelIndex }: { panelIndex: number }) {
+  const [phase, setPhase] = useState(0);
 
-  let visIndex = 0;
+  useEffect(() => {
+    if (panelIndex === 0) return;
+    setPhase(0);
+    const t = setTimeout(() => setPhase(1), PHASE_DELAY);
+    return () => clearTimeout(t);
+  }, [panelIndex]);
 
+  const slots = panelSlots[panelIndex];
+  const prevSlots = panelIndex > 0 ? panelSlots[panelIndex - 1] : null;
+
+  const box: React.CSSProperties = {
+    flex: 1,
+    borderRadius: 16,
+    background: BOX_BG,
+    padding: "20px 16px",
+    position: "relative",
+    overflow: "hidden",
+  };
+
+  const inner: React.CSSProperties = {
+    position: "relative",
+    height: NUM_SLOTS * SLOT_H,
+  };
+
+  // ── Panel 1: staggered rise ──────────────────────────────────────────
+  if (panelIndex === 0) {
+    let visIdx = 0;
+    return (
+      <div style={box}>
+        <div style={inner}>
+          {slots.map((slot, i) => {
+            if (!slot) return null;
+            const delay = visIdx * VISIBLE_STAGGER;
+            visIdx++;
+            return (
+              <div
+                key={i}
+                style={{
+                  ...basePillStyle(slot.type, slot.align, i),
+                  opacity: 0,
+                  animation: `hiw-rise ${VISIBLE_DURATION}s ease ${delay}s forwards`,
+                }}
+              >
+                {pillLabel(slot.type)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Panel 2: slide greens + flicker reds ────────────────────────────
+  if (panelIndex === 1) {
+    return (
+      <div style={box}>
+        <div style={inner}>
+          {slots.map((slot, i) => {
+            if (!slot) return null;
+
+            // YOUR POST — always visible, no animation
+            if (slot.type === "your-post") {
+              return (
+                <div key={i} style={{ ...basePillStyle(slot.type, slot.align, i), opacity: 1 }}>
+                  {pillLabel(slot.type)}
+                </div>
+              );
+            }
+
+            // Green pill that slides from panel 1 position
+            const slideFrom = panel2SlideMap[i];
+            if (slideFrom !== undefined) {
+              const slideY = phase === 0 ? (slideFrom - i) * SLOT_H : 0;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    ...basePillStyle(slot.type, slot.align, i),
+                    opacity: 1,
+                    transform: `translateY(${slideY}px)`,
+                    transition: `transform ${SLIDE_DURATION}s ease`,
+                  }}
+                >
+                  {pillLabel(slot.type)}
+                </div>
+              );
+            }
+
+            // Red invisible pill — hidden in phase 0, flicker in phase 1
+            return (
+              <div
+                key={i}
+                style={{
+                  ...basePillStyle(slot.type, slot.align, i),
+                  ...(phase === 0
+                    ? { opacity: 0 }
+                    : { opacity: 0, animation: `hiw-flicker-red ${INVISIBLE_DURATION}s ease forwards` }),
+                }}
+              >
+                {pillLabel(slot.type)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Panels 3-4: morph reds → greens ─────────────────────────────────
   return (
-    <div
-      style={{
-        flex: 1,
-        borderRadius: 16,
-        background: BOX_BG,
-        padding: "20px 16px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        overflowY: "auto",
-      }}
-    >
-      {panel.pills.map((p, i) => {
-        const isInvis = p.type === "invisible";
-        let delay: number;
-        if (!isInvis) {
-          delay = visIndex * VISIBLE_STAGGER;
-          visIndex++;
-        } else {
-          delay = invisibleStart;
-        }
-        return (
-          <div key={i} style={{ marginBottom: 6, width: "100%", position: "relative" }}>
-            <Pill type={p.type} align={p.align} animDelay={delay} />
-          </div>
-        );
-      })}
+    <div style={box}>
+      <div style={inner}>
+        {slots.map((slot, i) => {
+          if (!slot) return null;
+          const prev = prevSlots?.[i];
+
+          // Was invisible in previous panel, now visible → morphing pill
+          const isMorphing =
+            prev?.type === "invisible" &&
+            slot.type !== "invisible" &&
+            slot.type !== "your-post";
+
+          if (isMorphing) {
+            const showType = phase === 0 ? "invisible" : slot.type;
+            const showAlign = phase === 0 ? (prev?.align ?? slot.align) : slot.align;
+            const color = showType === "invisible" ? RED : GREEN;
+            const offset = showAlign === "right" ? INDENT : -INDENT;
+
+            return (
+              <div
+                key={i}
+                style={{
+                  position: "absolute",
+                  top: i * SLOT_H,
+                  left: `calc(50% - ${PILL_W / 2}px + ${offset}px)`,
+                  width: PILL_W,
+                  height: PILL_H,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 9999,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                  lineHeight: 1.3,
+                  boxSizing: "border-box",
+                  borderWidth: BORDER_W,
+                  borderStyle: "dashed",
+                  background: "transparent",
+                  color,
+                  borderColor: color,
+                  opacity: phase === 0 ? 0.74 : 1,
+                  transition: `border-color ${MORPH_DURATION}s ease, color ${MORPH_DURATION}s ease, opacity ${MORPH_DURATION}s ease, left ${MORPH_DURATION}s ease`,
+                }}
+              >
+                {pillLabel(showType)}
+              </div>
+            );
+          }
+
+          // Non-morphing pill — just show at final state
+          const opacity = slot.type === "invisible" ? 0.74 : 1;
+          return (
+            <div key={i} style={{ ...basePillStyle(slot.type, slot.align, i), opacity }}>
+              {pillLabel(slot.type)}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -256,7 +326,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const isJoinStep = step === TOTAL_STEPS - 1;
-  const isLastPanel = step === panels.length - 1;
+  const isLastPanel = step === panelSlots.length - 1;
 
   const handleClose = onClose ?? (() => navigate("/"));
   const handleSignup = onSignup ?? (() => navigate("/?signup"));
@@ -276,17 +346,16 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
         alignItems: "center",
       }}
     >
-      {/* Close button — top right */}
+      {/* Close button */}
       <div style={{ width: "100%", maxWidth: 860, marginBottom: 12, display: "flex", justifyContent: "flex-end" }}>
         <button className="close-x" onClick={handleClose}>
           <X size={14} />
         </button>
       </div>
 
-      {/* Panel area — fixed height, split layout */}
+      {/* Panel area */}
       <div style={{ width: "100%", maxWidth: 860, height: PANEL_HEIGHT }}>
         {isJoinStep ? (
-          /* ── Join screen (panel 5) ── */
           <div
             style={{
               height: "100%",
@@ -294,7 +363,6 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              gap: 24,
             }}
           >
             <button
@@ -315,9 +383,8 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
             </button>
           </div>
         ) : (
-          /* ── Split panel: caption left, graphic right ── */
           <div key={panelKey} style={{ display: "flex", gap: 0, height: "100%" }}>
-            {/* Left — green caption area */}
+            {/* Left — caption */}
             <div
               style={{
                 flex: 1,
@@ -327,32 +394,36 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                 padding: "24px 28px 24px 12px",
               }}
             >
-              {panels[step].title && (
-                <div style={{
-                  fontSize: 24,
-                  fontWeight: 900,
-                  lineHeight: 1.2,
-                  color: "#fff",
-                  marginBottom: 32,
-                  whiteSpace: "pre-line",
-                }}>
-                  {panels[step].title}
+              {panelTitles[step] && (
+                <div
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 900,
+                    lineHeight: 1.2,
+                    color: "#fff",
+                    marginBottom: 32,
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  {panelTitles[step]}
                 </div>
               )}
-              <div style={{
-                fontSize: 15,
-                fontWeight: 700,
-                lineHeight: 1.6,
-                color: "#fff",
-                whiteSpace: "pre-line",
-              }}>
-                {panels[step].caption}
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 700,
+                  lineHeight: 1.6,
+                  color: "#fff",
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {panelCaptions[step]}
               </div>
             </div>
 
             {/* Right — pill graphic */}
             <div style={{ flex: 1, display: "flex" }}>
-              <PanelGraphic panel={panels[step]} panelIndex={step} />
+              <PanelGraphic panelIndex={step} />
             </div>
           </div>
         )}
