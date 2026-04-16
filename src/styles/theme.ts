@@ -14,14 +14,16 @@ export function injectDOSStyles() {
   /* type scale */
   --t1:22px; --t2:17px; --t3:15px; --t4:13px;
   /* Top-header spacer height — used by header.site and .stickybar.
-     Wide (>=1134px): single row layout, ~88px tall → 96 gives breathing room.
-     Narrow (<1134px): two-row stacked layout, ~130px tall → 136.
-     Phone (<600px): search/friend-rooms hide, back to ~90 → 96.
+     Wide (>=1134px): single row layout (pill overlays logo), ~88px tall → 96.
+     Narrow (<1134px): two-row stacked layout with 40px gap between rows,
+       ~162px tall (14 top + 74 logo+search + 40 gap + 34 pill) → 168.
+     Phone (<600px): search + friend-rooms hide, leaving logo (34) + 40 gap + pill (30),
+       ~118px tall → 124.
   */
   --site-header-h:96px;
 }
-@media(max-width:1133px){ :root{ --site-header-h:136px; } }
-@media(max-width:600px){ :root{ --site-header-h:96px; } }
+@media(max-width:1133px){ :root{ --site-header-h:168px; } }
+@media(max-width:600px){ :root{ --site-header-h:124px; } }
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
@@ -108,7 +110,7 @@ body.public-context .expand-chip{ color:#7abd8e !important; }
 .topHeaderRight{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
 .topHeaderContentRow{
   width:min(672px, 92vw);
-  margin:8px auto 0;
+  margin:40px auto 0;
   display:flex; justify-content:space-between; align-items:center; gap:10px; min-width:0;
 }
 @media(min-width:1134px){
