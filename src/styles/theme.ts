@@ -85,6 +85,35 @@ body.public-context .expand-chip{ color:#7abd8e !important; }
 /* Friend room scroll — hide scrollbar */
 .friendRoomScroll::-webkit-scrollbar{ display:none; }
 
+/* ── Top header layout ──────────────────────────────────────────────
+   Wide screens (>=1134px): single visual row.
+     - Left: logo + search stacked (flush to left of viewport)
+     - Center: pill + friend-room scroll aligned to the .container width (672px / 92vw centered)
+     - Right: sign-out + admin (flush to right of viewport)
+   Narrow screens (<1134px): two rows stacked.
+     Row 1: logo+search (left) ... signout+admin (right)
+     Row 2: pill + friend-room scroll (centered on content column)
+*/
+.topHeaderWrap{ position:fixed; top:14px; left:14px; right:14px; z-index:1000; }
+.topHeaderBand{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.topHeaderLeft{ display:flex; flex-direction:column; align-items:flex-start; gap:6px; flex-shrink:0; }
+.topHeaderRight{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.topHeaderContentRow{
+  width:min(672px, 92vw);
+  margin:8px auto 0;
+  display:flex; justify-content:space-between; align-items:center; gap:10px; min-width:0;
+}
+@media(min-width:1134px){
+  .topHeaderContentRow{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    margin:0; height:38px;
+  }
+}
+/* The search shrinks to 176px inside the header stack. Override .splashSearchWrap defaults. */
+.topHeaderSearch .splashSearchWrap{ width:176px; height:30px; margin:0; }
+.topHeaderSearch .splashSearch{ font-size:13px; padding:0 28px; }
+.topHeaderSearch .splashSearchIcon{ font-size:14px; }
+
 *{ box-sizing:border-box; }
 html,body,#root{ height:100%; }
 body{

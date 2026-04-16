@@ -517,115 +517,124 @@ export default function App() {
   };
 
   // ── Unified fixed header (non-homepage) ─
-  // Layout: [Logo] [Profile pill] [Friend room scroll] [Search] [Sign out] [Admin]
+  // Wide (>=1134px): single row — [Logo+Search stack] ... [Pill] [FriendRooms] ... [Sign out] [Admin]
+  //   (Pill and FriendRooms are anchored to the .container content-column edges via absolute positioning.)
+  // Narrow (<1134px): two stacked rows —
+  //   Row 1: [Logo+Search stack] ............................................ [Sign out] [Admin]
+  //   Row 2: [Pill] ............................................... [FriendRooms]
   const fixedLogo = null; // replaced by fixedHeader below
   const fixedAuth = !isHomepage ? (
-    <div style={{ position: "fixed", top: 14, left: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 10 }}>
-      {/* Logo */}
-      <h1
-        className="brand brandLink"
-        style={{ margin: 0, flexShrink: 0 }}
-        tabIndex={0}
-        aria-label={user ? "Go to journal" : "Go to homepage"}
-        onClick={user ? () => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } : goHomepage}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? navigate("/profile") : goHomepage(); } }}
-      >
-        <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
-      </h1>
+    <div className="topHeaderWrap">
+      {/* Band: logo+search (left) + signout/admin (right) */}
+      <div className="topHeaderBand">
+        {/* Left stack: logo on top, search below */}
+        <div className="topHeaderLeft">
+          <h1
+            className="brand brandLink"
+            style={{ margin: 0 }}
+            tabIndex={0}
+            aria-label={user ? "Go to journal" : "Go to homepage"}
+            onClick={user ? () => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } : goHomepage}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? navigate("/profile") : goHomepage(); } }}
+          >
+            <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
+          </h1>
+          <span className="mobileHide topHeaderSearch" style={{ display: "inline-flex" }}>
+            <SearchShows
+              shows={shows}
+              {...searchShowsHandlers}
+              placeholder="find your new show"
+            />
+          </span>
+        </div>
 
-      {/* Profile pill — left-justified, next to logo */}
-      {!authLoading && user && username && (() => {
-        const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
-        const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
-        const pillTooltipText =
-          pillBadge === "green" ? `Someone wrote you back about ${visibleShowName}! Find responses to you in here.` :
-          pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
-          null;
-        const pillContent = (
-          <div style={{ position: "relative", display: "inline-block", flexShrink: 0 }}>
-            <button
-              className="profileChip"
-              onClick={!showProfile ? () => {
-                navigate("/profile");
-                requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
-              } : undefined}
-              style={showProfile ? { cursor: "default" } : undefined}
-            >
-              {showProfile
-                ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>{username}&rsquo;s journal</span><CornerRightDown size={14} color="#fff" style={{ flexShrink: 0 }} /></>
-                : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
-              }
+        {/* Right cluster: sign out / sign in + admin gear */}
+        <div className="topHeaderRight">
+          {!authLoading && user && username && (
+            <button className="btn signOutBtn" style={{ flexShrink: 0 }} onClick={() => { goHomepage(); signOut(); }}>
+              <span className="signOutLabel">Sign out</span>
+              <span className="signOutX"><X size={14} /></span>
             </button>
-            {pillBadge === "green" && (
-              <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
-            )}
-            {pillBadge === "red" && (
-              <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
-            )}
-          </div>
-        );
-        return pillTooltipText
-          ? <Tooltip text={pillTooltipText} direction="below" align="left" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
-          : pillContent;
-      })()}
-
-      {/* Spacer — pushes everything after this to the right; contains friend room scroll */}
-      <div className="mobileHide" style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end", overflow: "hidden" }}>
-        {!authLoading && user && allFriendGroups.length > 0 && (
-          <FriendRoomScroll
-            groups={allFriendGroups}
-            onNavigate={(showId, groupId) => {
-              sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
-              navigate(`/show/${showId}`, { state: { activeGroupId: groupId } });
-              requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-            }}
-          />
-        )}
-      </div>
-
-      {/* Search — right side */}
-      <span className="mobileHide" style={{ display: "inline-flex", flexShrink: 0 }}>
-        <SearchShows
-          shows={shows}
-          {...searchShowsHandlers}
-          placeholder="find your new show"
-          style={{ width: 250, margin: 0, height: 34 }}
-        />
-      </span>
-
-      {/* Sign out */}
-      {!authLoading && user && username && (
-        <button className="btn signOutBtn" style={{ flexShrink: 0 }} onClick={() => { goHomepage(); signOut(); }}>
-          <span className="signOutLabel">Sign out</span>
-          <span className="signOutX"><X size={14} /></span>
-        </button>
-      )}
-
-      {/* Sign in (logged out) */}
-      {!authLoading && !user && (
-        <button className="btn" style={{ flexShrink: 0 }} onClick={() => setShowAuthModal(true)}>
-          Sign in / Join
-        </button>
-      )}
-
-      {/* Admin gear */}
-      {!authLoading && isAdmin && (
-        <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
-          <button className="btn" onClick={() => navigate(showAdmin ? "/" : "/?admin")} title="Admin" style={{ fontSize: 18 }}>
-            <Settings size={18} color="currentColor" />
-          </button>
-          {feedbackUnread > 0 && (
-            <div style={{
-              position: "absolute", top: -6, right: -6,
-              width: 18, height: 18, borderRadius: "50%",
-              background: "var(--danger)", color: "#fff",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 10, fontWeight: 800, lineHeight: 1,
-              pointerEvents: "none",
-            }}>
-              {feedbackUnread > 9 ? "9+" : feedbackUnread}
+          )}
+          {!authLoading && !user && (
+            <button className="btn" style={{ flexShrink: 0 }} onClick={() => setShowAuthModal(true)}>
+              Sign in / Join
+            </button>
+          )}
+          {!authLoading && isAdmin && (
+            <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+              <button className="btn" onClick={() => navigate(showAdmin ? "/" : "/?admin")} title="Admin" style={{ fontSize: 18 }}>
+                <Settings size={18} color="currentColor" />
+              </button>
+              {feedbackUnread > 0 && (
+                <div style={{
+                  position: "absolute", top: -6, right: -6,
+                  width: 18, height: 18, borderRadius: "50%",
+                  background: "var(--danger)", color: "#fff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 10, fontWeight: 800, lineHeight: 1,
+                  pointerEvents: "none",
+                }}>
+                  {feedbackUnread > 9 ? "9+" : feedbackUnread}
+                </div>
+              )}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Content row: pill at left edge of content column, friend-room scroll at right edge.
+          On wide screens this row is absolute-positioned to overlay the band at the content-column width. */}
+      {!authLoading && user && username && (
+        <div className="topHeaderContentRow">
+          {(() => {
+            const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
+            const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
+            const pillTooltipText =
+              pillBadge === "green" ? `Someone wrote you back about ${visibleShowName}! Find responses to you in here.` :
+              pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
+              null;
+            const pillContent = (
+              <div style={{ position: "relative", display: "inline-block", flexShrink: 0 }}>
+                <button
+                  className="profileChip"
+                  onClick={!showProfile ? () => {
+                    navigate("/profile");
+                    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+                  } : undefined}
+                  style={showProfile ? { cursor: "default" } : undefined}
+                >
+                  {showProfile
+                    ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>{username}&rsquo;s journal</span><CornerRightDown size={14} color="#fff" style={{ flexShrink: 0 }} /></>
+                    : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
+                  }
+                </button>
+                {pillBadge === "green" && (
+                  <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+                )}
+                {pillBadge === "red" && (
+                  <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+                )}
+              </div>
+            );
+            return pillTooltipText
+              ? <Tooltip text={pillTooltipText} direction="below" align="left" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
+              : pillContent;
+          })()}
+
+          {/* Friend-room scroll anchored to the right edge */}
+          <div className="mobileHide" style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end", overflow: "hidden" }}>
+            {allFriendGroups.length > 0 && (
+              <FriendRoomScroll
+                groups={allFriendGroups}
+                onNavigate={(showId, groupId) => {
+                  sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
+                  navigate(`/show/${showId}`, { state: { activeGroupId: groupId } });
+                  requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
+                }}
+              />
+            )}
+          </div>
         </div>
       )}
     </div>
