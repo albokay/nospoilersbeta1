@@ -389,18 +389,21 @@ header.site{
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
 /* Action bar sits above the scroll area — bar is NOT inside the scroll container,
-   so entries never bleed through above it. Card becomes a flex column. */
+   so entries never bleed through above it. Card becomes a flex column.
+   Horizontal padding: 56 left / 60 right makes the inner text column 672px wide
+   (paper is 788px = .container 672 + diaryOuter -56 left + 60 right overhang),
+   with its left edge aligned to the .container left edge used elsewhere on the site. */
 .profileActionBar{
   flex-shrink:0;
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   background:var(--dos-bg);
-  padding:24px 48px 16px 16px;
+  padding:24px 60px 16px 56px;
   border-bottom:none;
 }
 /* Scrollable entries region that fills the remaining card height */
 .diaryScrollArea{
   flex:1; overflow-y:auto;
-  padding:12px 48px 32px 16px;
+  padding:12px 60px 32px 56px;
 }
 
 /* profile chip */
