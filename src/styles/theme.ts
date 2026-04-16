@@ -62,7 +62,10 @@ body.public-context .reply-card .likeWrap:hover{ background:#7abd8e !important; 
 body.public-context .blockquote-ref .blockquote-author,
 body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
 body.public-context .responding-to-label{ color:#7abd8e; }
-body.public-context .btn.post{ background:#7abd8e !important; border-color:#fff !important; color:#fff !important; }
+body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.public-context .progress-control{ border-color:#7abd8e !important; }
+body.group-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.group-context .progress-control{ border-color:#7abd8e !important; }
 body.public-context .btn.primary{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
 /* New-reply badge in thread list — green instead of yellow in public context */
 body.public-context .newReplyBadge{ background:#7abd8e !important; }

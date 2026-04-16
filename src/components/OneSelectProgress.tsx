@@ -82,7 +82,7 @@ export default function OneSelectProgress({
     return (
       <>
         <button
-          className="btn"
+          className="btn progress-control"
           style={{ whiteSpace: "nowrap", background: "#7abd8e", color: "#fff", border: "2px solid #fff", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
           onClick={() => setMobileOpen(true)}
         >
@@ -95,7 +95,7 @@ export default function OneSelectProgress({
               <button className="close-x" onClick={() => setMobileOpen(false)}><X size={14} /></button>
             </div>
             <select
-              className="badge"
+              className="badge progress-control"
               value={selectedId}
               onChange={(e) => { onSelect(e); setMobileOpen(false); }}
               style={{ background: "#7abd8e", color: "#fff", border: "2px solid #fff", width: "100%", height: 40 }}
@@ -143,7 +143,7 @@ export default function OneSelectProgress({
   return (
     <>
       <select
-        className="badge h40"
+        className="badge h40 progress-control"
         value={selectedId}
         onChange={onSelect}
         style={{ background: "#7abd8e", color: "#fff", border: "2px solid #fff", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }}
