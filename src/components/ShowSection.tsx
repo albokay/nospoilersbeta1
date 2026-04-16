@@ -1343,23 +1343,22 @@ export default function ShowSection({
           {thread && isMobile ? (
             /* ── Thread · mobile: two rows so nothing bleeds off-screen ── */
             <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: `${ROW_PAD_Y}px 0` }}>
-              {/* Row 1: back + mode toggle */}
+              {/* Row 1: back + mode toggle. Private threads skip the back
+                  button — users return to the journal via the top-nav pill. */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <button
-                    className="btn"
-                    onClick={() => {
-                      if (!activeGroupId && thread && !thread.isPublic) {
-                        navigate("/profile", { state: { activeTab: showId } });
-                      } else {
+                  {!(!activeGroupId && thread && !thread.isPublic) && (
+                    <button
+                      className="btn"
+                      onClick={() => {
                         setActiveThreadId(null);
                         setTimeout(() => scrollToShowTop(), 0);
-                      }
-                    }}
-                    style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
-                  >
-                    {activeGroupId ? "← to friend room" : thread && !thread.isPublic ? "← back to journal" : "← to forum"}
-                  </button>
+                      }}
+                      style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
+                    >
+                      {activeGroupId ? "← to friend room" : "← to forum"}
+                    </button>
+                  )}
                 </div>
                 {!(thread && !thread.isPublic && !activeGroupId) && (
                   <ModeToggle
@@ -1394,7 +1393,9 @@ export default function ShowSection({
             {/* ── Row 1: journal / back button (left) + sort & progress (right) ── */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: `${ROW_PAD_Y}px 0` }}>
               {!thread ? (
-                /* Forum view: write + "+ friend room" buttons */
+                /* Forum view: write + (public-only) "+ friend room" button.
+                   Hide the friend-room CTA when the user is already inside a
+                   friend room — they can't create one from within another. */
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <button
                     className="btn post h40"
@@ -1404,40 +1405,38 @@ export default function ShowSection({
                   >
                     <SquarePen size={15} /> write
                   </button>
-                  <button
-                    className="btn h40"
-                    onClick={() => user ? setShowCreateGroupModal(true) : onAuthRequired()}
-                    title="Create a friend room for this show"
-                    style={{
-                      lineHeight: 1.2, flexShrink: 0, whiteSpace: "nowrap",
-                      display: "inline-flex", alignItems: "center", gap: 5,
-                      background: "transparent", border: "2px solid #fff", color: "#fff",
-                    }}
-                  >
-                    <Plus size={15} /> friend room
-                  </button>
+                  {!activeGroupId && (
+                    <button
+                      className="btn h40"
+                      onClick={() => user ? setShowCreateGroupModal(true) : onAuthRequired()}
+                      title="Create a friend room for this show"
+                      style={{
+                        lineHeight: 1.2, flexShrink: 0, whiteSpace: "nowrap",
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        background: "transparent", border: "2px solid #fff", color: "#fff",
+                      }}
+                    >
+                      <Plus size={15} /> friend room
+                    </button>
+                  )}
                 </div>
               ) : (
-                /* Thread view: context-aware back button + optional globe + journal */
+                /* Thread view: back button (public / friend-room only) + write.
+                   Private threads skip the back button — users return to the
+                   journal via the top-nav pill. */
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <button
-                    className="btn h40"
-                    onClick={() => {
-                      if (!activeGroupId && !thread.isPublic) {
-                        navigate("/profile", { state: { activeTab: showId } });
-                      } else {
+                  {!(!activeGroupId && !thread.isPublic) && (
+                    <button
+                      className="btn h40"
+                      onClick={() => {
                         setActiveThreadId(null);
                         setTimeout(() => scrollToShowTop(), 0);
-                      }
-                    }}
-                    style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
-                  >
-                    {activeGroupId
-                      ? "← to friend room"
-                      : !thread.isPublic
-                        ? "← back to journal"
-                        : "← Back to room"}
-                  </button>
+                      }}
+                      style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
+                    >
+                      {activeGroupId ? "← to friend room" : "← Back to room"}
+                    </button>
+                  )}
                   <button
                     className="btn post h40"
                     onClick={() => user ? openCompose() : onAuthRequired()}
