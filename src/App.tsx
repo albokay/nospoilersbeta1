@@ -19,7 +19,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, CornerRightDown, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Filter, ShieldCheck } from "lucide-react";
+import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Filter, ShieldCheck } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -605,7 +605,7 @@ export default function App() {
                   style={showProfile ? { cursor: "default" } : undefined}
                 >
                   {showProfile
-                    ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>{username}&rsquo;s journal</span><CornerRightDown size={14} color="#fff" style={{ flexShrink: 0 }} /></>
+                    ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>you are {username}</span></>
                     : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
                   }
                 </button>

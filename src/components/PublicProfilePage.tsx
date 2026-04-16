@@ -130,12 +130,12 @@ export default function PublicProfilePage({
           )}
 
           {activeTab && (
-            <div className="hangLContent" style={{ paddingTop: 20 }}>
+            <div className="hangLContent" style={{ paddingTop: 0 }}>
             <>
               {/* Their posts — diary look */}
               <section style={{ marginTop: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, marginBottom: 16, minHeight: 28 }}>
-                  <div className="title" style={{ fontSize: 22, marginLeft: -42 }}>{username}'s {showName(activeTab).toUpperCase()} journal</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 0, marginBottom: 12, minHeight: 28 }}>
+                  <div className="title" style={{ fontSize: 22, marginLeft: 0 }}>this is {username}'s journal</div>
                 </div>
                 <div className="diaryOuter">
                   {[48, 32, 16].map(offset => (

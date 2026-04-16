@@ -545,12 +545,12 @@ export default function ProfilePage({
           {showTabOrder.length === 0 && <EmptyProfileWelcome />}
 
           {activeTab && (
-            <div className="hangLContent" style={{ paddingTop: 20 }}>
+            <div className="hangLContent" style={{ paddingTop: 0 }}>
             <>
               {/* Your Watch Diary */}
               <section style={{ marginTop: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, marginBottom: 16, minHeight: 28 }}>
-                  <div className="title profile-journal-heading" style={{ fontSize: 22, marginLeft: -42 }}>Your Journal</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 0, marginBottom: 12, minHeight: 28 }}>
+                  <div className="title profile-journal-heading" style={{ fontSize: 22, marginLeft: 0 }}>this is your journal</div>
                 </div>
                 <div className="diaryOuter">
                   {/* Folder tab row — sits flush on top of the front card */}
