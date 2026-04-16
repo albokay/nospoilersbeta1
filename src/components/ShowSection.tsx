@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight, Plus } from "lucide-react";
+import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight, Plus, Clock } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -2051,7 +2051,12 @@ export default function ShowSection({
                 </button>
               </div>
             ) : (
-              <div className="muted" style={{ fontSize: 14 }}>No posts match your watch progress.</div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 0 48px", gap: 12 }}>
+                <Clock size={24} color="var(--icon-color)" />
+                <div className="muted" style={{ fontSize: 14, textAlign: "center", maxWidth: 480, lineHeight: 1.5 }}>
+                  Sidebar is brand new so there isn&rsquo;t much to see in public spaces yet. It&rsquo;s only a matter of time. But also, this is your chance to be a pioneer&hellip;
+                </div>
+              </div>
             )
           )}
         </div>
