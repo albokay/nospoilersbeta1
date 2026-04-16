@@ -95,6 +95,7 @@ function EpisodeSelectInline({
 
 export default function SearchShows({
   shows,
+  progress,
   onShowCreated,
   onBrowsePublic,
   onAuthRequired,
@@ -102,6 +103,7 @@ export default function SearchShows({
   placeholder,
 }: {
   shows: Show[];
+  progress?: Record<string, ProgressEntry>;
   onShowCreated?: (show: Show, entry: ProgressEntry, action: "journal" | "friendRoom") => void;
   onBrowsePublic?: (showId: string, showName: string, entry: ProgressEntry, seasons: number[]) => void;
   onAuthRequired?: () => void;
@@ -167,11 +169,14 @@ export default function SearchShows({
     setOpen(false);
 
     // Skip the modal + go straight to the public space ONLY if the user already
-    // has this show in their journal (real shows row + progress). A sessionStorage
+    // has this show in their journal (real progress row in DB). A sessionStorage
     // shortcut from a prior "see public conversations" click is NOT enough —
     // otherwise the user can never get back to the onboarding modal to create a
     // journal tab or friend room for that show.
-    const hasJournalTab = shows.some(s => s.id === showId);
+    // NOTE: checking the `shows` array is wrong — App.onBrowsePublic adds shows
+    // optimistically, so `shows` contains entries even for browse-only sessions.
+    // progress[showId] is only set when onboarding completed (journal / friend room).
+    const hasJournalTab = !!progress?.[showId];
     if (hasJournalTab) {
       try {
         const existing = JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null");

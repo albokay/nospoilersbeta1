@@ -542,6 +542,7 @@ export default function App() {
           <span className="mobileHide topHeaderSearch" style={{ display: "inline-flex" }}>
             <SearchShows
               shows={shows}
+              progress={progress}
               {...searchShowsHandlers}
               placeholder="find your show"
             />

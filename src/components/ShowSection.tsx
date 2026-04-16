@@ -406,7 +406,8 @@ export default function ShowSection({
       // "see public conversations" without ever onboarding into this show,
       // the shows row + their progress row may not exist, which would make
       // createFriendGroup fail the show_id FK. Ensure both exist first.
-      const hasJournalTab = (showsProp ?? []).some((s: Show) => s.id === showId);
+      // See submitPost comment for why we check progress[showId] (not shows list).
+      const hasJournalTab = !!progress?.[showId];
       if (!hasJournalTab) {
         await createShow({
           id: showId,
@@ -1095,7 +1096,11 @@ export default function ShowSection({
       // Creating the thread would fail the FK. Auto-onboard them here so posting
       // from the public/private space just works — creates the show row (idempotent),
       // writes their progress (= journal tab), and syncs App state.
-      const hasJournalTab = (showsProp ?? []).some((s: Show) => s.id === showId);
+      // NOTE: shows state is populated optimistically by App.onBrowsePublic even when
+      // the DB row doesn't exist, so that list is NOT a reliable "has journal tab"
+      // signal. progress[showId] is — it's only set when the user picks Start Journal
+      // or Create Friend Room from the onboarding modal.
+      const hasJournalTab = !!progress?.[showId];
       if (!hasJournalTab) {
         await createShow({
           id: showId,
