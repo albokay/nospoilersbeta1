@@ -2053,8 +2053,9 @@ export default function ShowSection({
             ) : (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 0 48px", gap: 12 }}>
                 <Clock size={24} color="var(--icon-color)" />
-                <div className="muted" style={{ fontSize: 14, textAlign: "center", maxWidth: 480, lineHeight: 1.5 }}>
-                  Sidebar is brand new so there isn&rsquo;t much to see in public spaces yet. It&rsquo;s only a matter of time. But also, this is your chance to be a pioneer&hellip;
+                <div className="muted" style={{ fontSize: 14, textAlign: "center", maxWidth: 360, lineHeight: 1.5 }}>
+                  <p style={{ margin: 0 }}>Sidebar is brand new so there isn&rsquo;t much to see in public spaces yet. It&rsquo;s only a matter of time.</p>
+                  <p style={{ margin: "12px 0 0" }}>But this is your chance to be a pioneer&hellip;</p>
                 </div>
               </div>
             )
