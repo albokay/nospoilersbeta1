@@ -166,18 +166,24 @@ export default function SearchShows({
     const showId = slugify(tv.name);
     setOpen(false);
 
-    // If browse progress already exists this session, skip the modal
-    // and go straight to the public space
-    try {
-      const existing = JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null");
-      if (existing) {
-        const storedShow = JSON.parse(sessionStorage.getItem(`ns_browse_show_${showId}`) || "null");
-        const seasons = storedShow?.seasons ?? [1];
-        setQuery(tv.name);
-        onBrowsePublic?.(showId, tv.name, existing, seasons);
-        return;
-      }
-    } catch {}
+    // Skip the modal + go straight to the public space ONLY if the user already
+    // has this show in their journal (real shows row + progress). A sessionStorage
+    // shortcut from a prior "see public conversations" click is NOT enough —
+    // otherwise the user can never get back to the onboarding modal to create a
+    // journal tab or friend room for that show.
+    const hasJournalTab = shows.some(s => s.id === showId);
+    if (hasJournalTab) {
+      try {
+        const existing = JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null");
+        if (existing) {
+          const storedShow = JSON.parse(sessionStorage.getItem(`ns_browse_show_${showId}`) || "null");
+          const seasons = storedShow?.seasons ?? shows.find(s => s.id === showId)?.seasons ?? [1];
+          setQuery(tv.name);
+          onBrowsePublic?.(showId, tv.name, existing, seasons);
+          return;
+        }
+      } catch {}
+    }
 
     setConfirming(tv);
     setConfirmingSeasons(null);

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight } from "lucide-react";
+import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight, Plus } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -52,7 +52,7 @@ function ThreadRedDot({ count, threadId, onDismiss }: { count: number; threadId:
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, transferGroupOwnership, softDeleteFriendGroup, recordDepartedMember, fetchDepartedMembers, sendInvite, fetchSentInvitations, fetchBrowseProgress } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, createShow, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, transferGroupOwnership, softDeleteFriendGroup, recordDepartedMember, fetchDepartedMembers, sendInvite, fetchSentInvitations, fetchBrowseProgress } from "../lib/db";
 import type { Invitation } from "../types";
 import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
@@ -75,7 +75,7 @@ const GLOBAL_HEADER_H = 56;
 const ROW_PAD_Y = 8;
 
 export default function ShowSection({
-  shows: showsProp, onShowUpdated, username, showId, progress, updateProgressFor, newHighlights, setNewHighlights,
+  shows: showsProp, onShowUpdated, onShowCreated, username, showId, progress, updateProgressFor, newHighlights, setNewHighlights,
   visitedThreads, setVisitedThreads, activeThreadId, setActiveThreadId, onHomepage,
   likesThreads, setLikesThreads, likedByUserThreads, setLikedByUserThreads,
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
@@ -402,6 +402,27 @@ export default function ShowSection({
     if (!user || !newGroupName.trim()) return;
     setCreateGroupSubmitting(true);
     try {
+      // Same auto-onboard guard as submitPost: if the user landed here via
+      // "see public conversations" without ever onboarding into this show,
+      // the shows row + their progress row may not exist, which would make
+      // createFriendGroup fail the show_id FK. Ensure both exist first.
+      const hasJournalTab = (showsProp ?? []).some((s: Show) => s.id === showId);
+      if (!hasJournalTab) {
+        await createShow({
+          id: showId,
+          name: show.name,
+          seasons: show.seasons,
+        });
+        const prog = progress[showId] || { s: 1, e: 1 };
+        updateProgressFor?.(showId, { s: prog.s, e: prog.e });
+        onShowCreated?.({
+          id: showId,
+          name: show.name,
+          seasons: show.seasons,
+          status: "Ended",
+          isHidden: false,
+        } as Show);
+      }
       const g = await createFriendGroup({ showId, name: newGroupName.trim(), createdBy: user.id });
       setUserGroups(prev => [...prev, g]);
       setActiveGroupId(g.id);
@@ -1069,6 +1090,28 @@ export default function ShowSection({
     if (!body) { alert("Write something first."); return; }
     setPostSubmitting(true);
     try {
+      // If the user landed here via "see public conversations" without ever onboarding
+      // into this show, the shows row + their progress row may not exist in DB.
+      // Creating the thread would fail the FK. Auto-onboard them here so posting
+      // from the public/private space just works — creates the show row (idempotent),
+      // writes their progress (= journal tab), and syncs App state.
+      const hasJournalTab = (showsProp ?? []).some((s: Show) => s.id === showId);
+      if (!hasJournalTab) {
+        await createShow({
+          id: showId,
+          name: show.name,
+          seasons: show.seasons,
+        });
+        updateProgressFor?.(showId, { s: postTagS, e: postTagE });
+        onShowCreated?.({
+          id: showId,
+          name: show.name,
+          seasons: show.seasons,
+          status: "Ended",
+          isHidden: false,
+        } as Show);
+      }
+
       const threadData = {
         showId, season: postTagS, episode: postTagE,
         authorId: user.id, authorName: profile.username,
@@ -1346,15 +1389,29 @@ export default function ShowSection({
             {/* ── Row 1: journal / back button (left) + sort & progress (right) ── */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: `${ROW_PAD_Y}px 0` }}>
               {!thread ? (
-                /* Forum view: journal button */
-                <button
-                  className="btn post h40"
-                  onClick={() => user ? openCompose() : onAuthRequired()}
-                  title="Start a new post"
-                  style={{ lineHeight: 1.2, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5 }}
-                >
-                  <SquarePen size={15} /> write
-                </button>
+                /* Forum view: write + "+ friend room" buttons */
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    className="btn post h40"
+                    onClick={() => user ? openCompose() : onAuthRequired()}
+                    title="Start a new post"
+                    style={{ lineHeight: 1.2, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5 }}
+                  >
+                    <SquarePen size={15} /> write
+                  </button>
+                  <button
+                    className="btn h40"
+                    onClick={() => user ? setShowCreateGroupModal(true) : onAuthRequired()}
+                    title="Create a friend room for this show"
+                    style={{
+                      lineHeight: 1.2, flexShrink: 0, whiteSpace: "nowrap",
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      background: "transparent", border: "2px solid #fff", color: "#fff",
+                    }}
+                  >
+                    <Plus size={15} /> friend room
+                  </button>
+                </div>
               ) : (
                 /* Thread view: context-aware back button + optional globe + journal */
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

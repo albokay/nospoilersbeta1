@@ -1009,6 +1009,7 @@ export default function App() {
           <ShowSection
             shows={shows}
             onShowUpdated={(updated: Show) => setShows(prev => prev.map(s => s.id === updated.id ? updated : s))}
+            onShowCreated={(newShow: Show) => setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow])}
             username={username ?? ""}
             showId={expandedShowId}
             progress={progress}
