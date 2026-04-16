@@ -394,11 +394,11 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
             {/* Left — caption */}
             <div
               style={{
-                flex: "0 0 44%",
+                flex: "0 0 42%",
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "center",
-                padding: "24px 20px 24px 12px",
+                padding: "24px 24px 24px 4px",
               }}
             >
               {panelTitles[step] && (
@@ -436,27 +436,30 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
         )}
       </div>
 
-      {/* Navigation */}
+      {/* Navigation — fixed-width sides keep dots centered */}
       <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 16 }}>
-        <button
-          onClick={() => setStep(s => Math.max(0, s - 1))}
-          disabled={step === 0}
-          style={{
-            width: 36, height: 36,
-            background: "transparent",
-            border: "2px solid #fff",
-            borderRadius: "50%",
-            padding: 0,
-            cursor: step === 0 ? "default" : "pointer",
-            opacity: step === 0 ? 0.3 : 1,
-            color: "#fff",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <ArrowLeft size={16} />
-        </button>
+        {/* Left side — fixed width */}
+        <div style={{ width: 36, flexShrink: 0 }}>
+          <button
+            onClick={() => setStep(s => Math.max(0, s - 1))}
+            disabled={step === 0}
+            style={{
+              width: 36, height: 36,
+              background: "transparent",
+              border: "2px solid #fff",
+              borderRadius: "50%",
+              padding: 0,
+              cursor: step === 0 ? "default" : "pointer",
+              opacity: step === 0 ? 0.3 : 1,
+              color: "#fff",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ArrowLeft size={16} />
+          </button>
+        </div>
 
         <div style={{ display: "flex", gap: 8 }}>
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -474,43 +477,49 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
           ))}
         </div>
 
-        {isJoinStep ? (
-          <div style={{ width: 36 }} />
-        ) : isLastPanel ? (
-          <button
-            onClick={() => setStep(s => s + 1)}
-            style={{
-              background: "rgba(255,255,255,0.92)",
-              border: "2px solid #fff",
-              borderRadius: 9999,
-              padding: "8px 18px",
-              cursor: "pointer",
-              fontSize: 14,
-              fontWeight: 600,
-              color: PAGE_BG,
-            }}
-          >
-            got it
-          </button>
-        ) : (
-          <button
-            onClick={() => setStep(s => s + 1)}
-            style={{
-              width: 36, height: 36,
-              background: "transparent",
-              border: "2px solid #fff",
-              borderRadius: "50%",
-              padding: 0,
-              cursor: "pointer",
-              color: "#fff",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <ArrowRight size={16} />
-          </button>
-        )}
+        {/* Right side — fixed width, "got it" positioned absolutely */}
+        <div style={{ width: 36, flexShrink: 0, position: "relative" }}>
+          {isJoinStep ? null : isLastPanel ? (
+            <button
+              onClick={() => setStep(s => s + 1)}
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "rgba(255,255,255,0.92)",
+                border: "2px solid #fff",
+                borderRadius: 9999,
+                padding: "8px 18px",
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: 600,
+                color: PAGE_BG,
+                whiteSpace: "nowrap",
+              }}
+            >
+              got it
+            </button>
+          ) : (
+            <button
+              onClick={() => setStep(s => s + 1)}
+              style={{
+                width: 36, height: 36,
+                background: "transparent",
+                border: "2px solid #fff",
+                borderRadius: "50%",
+                padding: 0,
+                cursor: "pointer",
+                color: "#fff",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <ArrowRight size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div style={{ marginTop: 10, fontSize: 12, opacity: 0.45, fontWeight: 600 }}>
