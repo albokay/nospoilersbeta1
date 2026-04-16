@@ -436,21 +436,20 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
           onClick={() => setStep(s => Math.max(0, s - 1))}
           disabled={step === 0}
           style={{
+            width: 36, height: 36,
             background: "transparent",
             border: "2px solid #fff",
-            borderRadius: 9999,
-            padding: "8px 18px",
+            borderRadius: "50%",
+            padding: 0,
             cursor: step === 0 ? "default" : "pointer",
             opacity: step === 0 ? 0.3 : 1,
-            fontSize: 14,
-            fontWeight: 600,
             color: "#fff",
             display: "inline-flex",
             alignItems: "center",
-            gap: 6,
+            justifyContent: "center",
           }}
         >
-          <ArrowLeft size={14} /> back
+          <ArrowLeft size={16} />
         </button>
 
         <div style={{ display: "flex", gap: 8 }}>
@@ -470,25 +469,43 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
         </div>
 
         {isJoinStep ? (
-          <div style={{ width: 105 }} />
-        ) : (
+          <div style={{ width: 36 }} />
+        ) : isLastPanel ? (
           <button
             onClick={() => setStep(s => s + 1)}
             style={{
-              background: isLastPanel ? "rgba(255,255,255,0.92)" : "transparent",
+              background: "rgba(255,255,255,0.92)",
               border: "2px solid #fff",
               borderRadius: 9999,
               padding: "8px 18px",
               cursor: "pointer",
               fontSize: 14,
               fontWeight: 600,
-              color: isLastPanel ? PAGE_BG : "#fff",
+              color: PAGE_BG,
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
             }}
           >
-            {isLastPanel ? "got it" : "next"} <ArrowRight size={14} />
+            got it <ArrowRight size={14} />
+          </button>
+        ) : (
+          <button
+            onClick={() => setStep(s => s + 1)}
+            style={{
+              width: 36, height: 36,
+              background: "transparent",
+              border: "2px solid #fff",
+              borderRadius: "50%",
+              padding: 0,
+              cursor: "pointer",
+              color: "#fff",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ArrowRight size={16} />
           </button>
         )}
       </div>
