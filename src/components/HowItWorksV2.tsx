@@ -15,8 +15,8 @@ const S = (type: PillType, align: PillAlign): SlotDef => ({ type, align });
 const panelSlots: (SlotDef | null)[][] = [
   // Panel 1: 5 pills at slots 2-6
   [null, null, S("your-post","left"), S("post","left"), S("reply","right"), S("reply","right"), S("post","left"), null, null, null, null, null],
-  // Panel 2
-  [S("invisible","left"), S("invisible","right"), S("your-post","left"), S("invisible","left"), S("invisible","right"), S("invisible","left"), S("post","left"), S("reply","right"), S("invisible","left"), S("reply","right"), S("invisible","left"), S("post","left")],
+  // Panel 2 (invisible pills pre-aligned to their panel 3 positions)
+  [S("invisible","left"), S("invisible","right"), S("your-post","left"), S("invisible","right"), S("invisible","right"), S("invisible","left"), S("post","left"), S("reply","right"), S("invisible","right"), S("reply","right"), S("invisible","left"), S("post","left")],
   // Panel 3
   [S("invisible","left"), S("invisible","right"), S("your-post","left"), S("reply","right"), S("reply","right"), S("post","left"), S("post","left"), S("reply","right"), S("reply","right"), S("reply","right"), S("invisible","left"), S("post","left")],
   // Panel 4
@@ -71,7 +71,7 @@ const VISIBLE_STAGGER = 0.15;
 const VISIBLE_DURATION = 0.5;
 const INVISIBLE_DURATION = 2;
 const PHASE_DELAY = 500;
-const SLIDE_DURATION = 0.5;
+const SLIDE_DURATION = 1.0;
 const MORPH_DURATION = 0.6;
 
 // ── Keyframes ─────────────────────────────────────────────────────────────
@@ -265,40 +265,37 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
             slot.type !== "your-post";
 
           if (isMorphing) {
-            const showType = phase === 0 ? "invisible" : slot.type;
-            const showAlign = phase === 0 ? (prev?.align ?? slot.align) : slot.align;
-            const color = showType === "invisible" ? RED : GREEN;
-            const offset = showAlign === "right" ? INDENT : -INDENT;
+            // Crossfade: old red pill fades out, new green pill fades in
+            const prevAlign = prev?.align ?? slot.align;
+            const prevOffset = prevAlign === "right" ? INDENT : -INDENT;
+            const newOffset = slot.align === "right" ? INDENT : -INDENT;
 
             return (
-              <div
-                key={i}
-                style={{
-                  position: "absolute",
-                  top: i * SLOT_H,
-                  left: `calc(50% - ${PILL_W / 2}px + ${offset}px)`,
-                  width: PILL_W,
-                  height: PILL_H,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 9999,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                  lineHeight: 1.3,
-                  boxSizing: "border-box",
-                  borderWidth: BORDER_W,
-                  borderStyle: "dashed",
-                  background: "transparent",
-                  color,
-                  borderColor: color,
-                  opacity: phase === 0 ? 0.74 : 1,
-                  transition: `border-color ${MORPH_DURATION}s ease, color ${MORPH_DURATION}s ease, opacity ${MORPH_DURATION}s ease, left ${MORPH_DURATION}s ease`,
-                }}
-              >
-                {pillLabel(showType)}
-              </div>
+              <React.Fragment key={i}>
+                {/* Outgoing red pill */}
+                <div
+                  style={{
+                    ...basePillStyle("invisible", prevAlign, i),
+                    left: `calc(50% - ${PILL_W / 2}px + ${prevOffset}px)`,
+                    opacity: phase === 0 ? 0.74 : 0,
+                    transition: `opacity ${MORPH_DURATION}s ease`,
+                    pointerEvents: "none",
+                  }}
+                >
+                  {pillLabel("invisible")}
+                </div>
+                {/* Incoming green pill */}
+                <div
+                  style={{
+                    ...basePillStyle(slot.type, slot.align, i),
+                    left: `calc(50% - ${PILL_W / 2}px + ${newOffset}px)`,
+                    opacity: phase === 0 ? 0 : 1,
+                    transition: `opacity ${MORPH_DURATION}s ease`,
+                  }}
+                >
+                  {pillLabel(slot.type)}
+                </div>
+              </React.Fragment>
             );
           }
 
