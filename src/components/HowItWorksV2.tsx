@@ -484,7 +484,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
               onClick={() => setStep(s => s + 1)}
               style={{
                 position: "absolute",
-                right: 0,
+                left: 0,
                 top: "50%",
                 transform: "translateY(-50%)",
                 background: "rgba(255,255,255,0.92)",
