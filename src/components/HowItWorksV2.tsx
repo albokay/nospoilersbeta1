@@ -394,11 +394,11 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
             {/* Left — caption */}
             <div
               style={{
-                flex: 1,
+                flex: "0 0 44%",
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "center",
-                padding: "24px 28px 24px 12px",
+                padding: "24px 20px 24px 12px",
               }}
             >
               {panelTitles[step] && (
@@ -476,43 +476,40 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
 
         {isJoinStep ? (
           <div style={{ width: 36 }} />
+        ) : isLastPanel ? (
+          <button
+            onClick={() => setStep(s => s + 1)}
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              border: "2px solid #fff",
+              borderRadius: 9999,
+              padding: "8px 18px",
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: 600,
+              color: PAGE_BG,
+            }}
+          >
+            got it
+          </button>
         ) : (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-            <button
-              onClick={() => setStep(s => s + 1)}
-              style={{
-                width: 36, height: 36,
-                background: isLastPanel ? "rgba(255,255,255,0.92)" : "transparent",
-                border: "2px solid #fff",
-                borderRadius: "50%",
-                padding: 0,
-                cursor: "pointer",
-                color: isLastPanel ? PAGE_BG : "#fff",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ArrowRight size={16} />
-            </button>
-            {isLastPanel && (
-              <button
-                onClick={() => setStep(s => s + 1)}
-                style={{
-                  background: "rgba(255,255,255,0.92)",
-                  border: "2px solid #fff",
-                  borderRadius: 9999,
-                  padding: "6px 16px",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: PAGE_BG,
-                }}
-              >
-                got it
-              </button>
-            )}
-          </div>
+          <button
+            onClick={() => setStep(s => s + 1)}
+            style={{
+              width: 36, height: 36,
+              background: "transparent",
+              border: "2px solid #fff",
+              borderRadius: "50%",
+              padding: 0,
+              cursor: "pointer",
+              color: "#fff",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ArrowRight size={16} />
+          </button>
         )}
       </div>
 
