@@ -614,7 +614,7 @@ export default function ProfilePage({
                             setComposeDestination("private");
                             setComposeOpen(true);
                           }}
-                          style={{ lineHeight: 1.2, marginLeft: 20, background: "transparent", border: "2px solid #fff", color: "#fff", display: "inline-flex", alignItems: "center", gap: 5 }}
+                          style={{ lineHeight: 1.2, marginLeft: 20, display: "inline-flex", alignItems: "center", gap: 5 }}
                         >
                           <SquarePen size={15} /> write
                         </button>

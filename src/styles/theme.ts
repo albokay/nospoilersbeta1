@@ -62,7 +62,7 @@ body.public-context .reply-card .likeWrap:hover{ background:#7abd8e !important; 
 body.public-context .blockquote-ref .blockquote-author,
 body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
 body.public-context .responding-to-label{ color:#7abd8e; }
-body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.public-context .btn.post{ background:#7abd8e !important; border-color:#fff !important; color:#fff !important; }
 body.public-context .btn.primary{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
 /* New-reply badge in thread list — green instead of yellow in public context */
 body.public-context .newReplyBadge{ background:#7abd8e !important; }
@@ -137,9 +137,9 @@ hr{ display:none; }
 .btn:hover{ background:var(--dos-blue); color:white; border-color:var(--dos-light); }
 .btn-danger{ border-color:var(--danger); color:var(--danger); }
 .btn-danger:hover{ background:var(--danger); color:#fff; border-color:var(--danger); }
-/* Green styling for +Post */
-.btn.post{ background: #dea838; color: #fff; border-color: #dea838; }
-.btn.post:hover{ background: #c4912a; border-color: #c4912a; color: #fff; }
+/* Standardized write/post button: canon-green fill, white outline, white text */
+.btn.post{ background: #7abd8e; color: #fff; border-color: #fff; }
+.btn.post:hover{ background: #6aad7e; border-color: #fff; color: #fff; }
 /* Fix dark inputs/textareas */
 select {
   color: var(--dos-fg);
