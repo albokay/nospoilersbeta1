@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, Map, ChevronDown, Mail } from "lucide-react";
+import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, Map, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -1011,25 +1011,49 @@ export default function ProfilePage({
           display: "flex", flexDirection: "column", gap: 6,
           background: "var(--dos-bg)", border: "none",
           borderRadius: 10, padding: "8px", zIndex: 200,
-          boxShadow: "0 2px 10px rgba(0,0,0,0.18)"
+          boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+          minWidth: 260,
         }}>
-          <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }}
-            onClick={() => goToShowRoom(tabDropdownOpen)}>
-            <Globe size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> Public entries
-          </button>
+          {/* 1. Active friend rooms */}
           {tabGroups.map(g => (
-            <button key={g.id} className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }}
+            <button key={g.id} className="btn" style={{
+              fontSize: 13, whiteSpace: "nowrap",
+              display: "flex", alignItems: "center", width: "100%",
+            }}
               onClick={() => goToShowRoom(tabDropdownOpen, g.id)}>
-              <Users size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {g.name}
+              <ArrowRight size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>{g.name}</span>
+              <Users size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
             </button>
           ))}
-          <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap", opacity: 0.75 }}
-            onClick={() => { setTabDropdownOpen(null); setShowCreateRoomModal(true); }}>
-            + new friend room
+          {/* 2. Public conversations */}
+          <button className="btn" style={{
+            fontSize: 13, whiteSpace: "nowrap",
+            display: "flex", alignItems: "center", width: "100%",
+          }}
+            onClick={() => goToShowRoom(tabDropdownOpen)}>
+            <ArrowRight size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Public conversations</span>
+            <Globe size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
           </button>
+          {/* 3. Divider */}
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.2)", margin: "2px 0" }} />
+          {/* 4. New friend room */}
+          <button className="btn" style={{
+            fontSize: 13, whiteSpace: "nowrap", opacity: 0.75,
+            display: "flex", alignItems: "center", width: "100%",
+          }}
+            onClick={() => { setTabDropdownOpen(null); setShowCreateRoomModal(true); }}>
+            <Plus size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>new friend room</span>
+            <span style={{ width: 14, flexShrink: 0 }} />
+          </button>
+          {/* 5. Close show tab */}
           <Tooltip text="Hides this tab from your journal view. Your entries and progress are kept. Search for the show again and choose 'Start your journal' to bring it back." direction="below">
-            <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap", opacity: 0.6, width: "100%" }}
+            <button className="btn" style={{
+              fontSize: 13, whiteSpace: "nowrap", opacity: 0.6,
+              display: "flex", alignItems: "center", width: "100%",
+            }}
               onClick={() => {
                 const sid = tabDropdownOpen;
                 setTabDropdownOpen(null);
@@ -1044,7 +1068,9 @@ export default function ProfilePage({
                   if (remaining.length) setActiveTab(remaining[0]);
                 }
               }}>
-              Close show tab
+              <X size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Close show tab</span>
+              <span style={{ width: 14, flexShrink: 0 }} />
             </button>
           </Tooltip>
         </div>
