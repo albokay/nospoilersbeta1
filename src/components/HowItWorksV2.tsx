@@ -37,18 +37,24 @@ const panelTitles: (string | undefined)[] = [
 
 const panelCaptions: React.ReactNode[] = [
   <>
-    Your friends have been watching a new show and invited you to their Sidebar room.
+    Your friends have been watching a new show and invite you to their Sidebar room.
     {"\n\n"}
-    You watch the first episode and log in. You read a handful of posts and then make your own post about your first impressions.
+    You watch the first episode, log your watch progress, and write a post about your first impressions. There are a handful of posts to read in the room {"\u2014"} these were all written when your friends were also on episode 1.
     {"\n\n"}
     <em>But in reality{"\u2026"}</em>
   </>,
-  "There is a lot more activity in the room because the show has 4 episodes available and your friends have been talking.\n\nFor now, you can\u2019t see anything they wrote after having watched episode 2.\n\nSoon enough your post even gets replies from friends who\u2019ve watched more than you.",
-  "A few days later you watch episode 2 and more activity is revealed to you. When you catch up, you\u2019ll be able to read everything.",
   <>
-    No one ever writes {"\u201C"}I can{"\u2019"}t wait for you to watch{"\u2026\u201D"} or censors their excitement in any way.
+    There is a lot more activity in the room because the show has 4 episodes available. For now, you can{"\u2019"}t see anything written from beyond episode 1.
     {"\n\n"}
-    You all write as if you{"\u2019"}ve JUST watched an episode together {"\u2014"} and the site makes that experience real.
+    Your friends have been updating their watch progress and writing. Soon enough, your post gets replies (even though you don{"\u2019"}t know it yet).
+  </>,
+  <>
+    A few days later you watch episode 2 and more activity is revealed to you. Those replies to your episode 1 post feel like your friends just finished watching episode 2 along with you (because they wrote it after <em>they</em> watched episode 2).
+  </>,
+  <>
+    No one ever writes {"\u201C"}I can{"\u2019"}t wait for you to watch{"\u2026\u201D"} or censors their excitement in any way. You all write as if you{"\u2019"}re watching together {"\u2014"} and the site makes that experience real.
+    {"\n\n"}
+    When you catch up, you{"\u2019"}ll be able to read everything.
   </>,
 ];
 
@@ -470,43 +476,43 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
 
         {isJoinStep ? (
           <div style={{ width: 36 }} />
-        ) : isLastPanel ? (
-          <button
-            onClick={() => setStep(s => s + 1)}
-            style={{
-              background: "rgba(255,255,255,0.92)",
-              border: "2px solid #fff",
-              borderRadius: 9999,
-              padding: "8px 18px",
-              cursor: "pointer",
-              fontSize: 14,
-              fontWeight: 600,
-              color: PAGE_BG,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            got it <ArrowRight size={14} />
-          </button>
         ) : (
-          <button
-            onClick={() => setStep(s => s + 1)}
-            style={{
-              width: 36, height: 36,
-              background: "transparent",
-              border: "2px solid #fff",
-              borderRadius: "50%",
-              padding: 0,
-              cursor: "pointer",
-              color: "#fff",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <ArrowRight size={16} />
-          </button>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+            <button
+              onClick={() => setStep(s => s + 1)}
+              style={{
+                width: 36, height: 36,
+                background: isLastPanel ? "rgba(255,255,255,0.92)" : "transparent",
+                border: "2px solid #fff",
+                borderRadius: "50%",
+                padding: 0,
+                cursor: "pointer",
+                color: isLastPanel ? PAGE_BG : "#fff",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <ArrowRight size={16} />
+            </button>
+            {isLastPanel && (
+              <button
+                onClick={() => setStep(s => s + 1)}
+                style={{
+                  background: "rgba(255,255,255,0.92)",
+                  border: "2px solid #fff",
+                  borderRadius: 9999,
+                  padding: "6px 16px",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: PAGE_BG,
+                }}
+              >
+                got it
+              </button>
+            )}
+          </div>
         )}
       </div>
 
