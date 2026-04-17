@@ -46,9 +46,13 @@ export default function EpisodeTag({
     "A rewatch post. The lower number shows where they are on this rewatch. The higher number is how far they got the first time.";
 
   return (
-    <Tooltip text={tooltipText} direction="above">
+    <Tooltip
+      text={tooltipText}
+      direction="below"
+      tooltipStyle={{ background: "#2a2a2a", opacity: 1, color: "#fff" }}
+    >
       <span style={{ display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
-        <HatGlasses size={13} color={CANON_RED} style={{ flexShrink: 0 }} />
+        <HatGlasses size={16} color={CANON_RED} style={{ flexShrink: 0 }} />
         <span>
           {parens && "("}
           <span>{rewatchLabel}</span>

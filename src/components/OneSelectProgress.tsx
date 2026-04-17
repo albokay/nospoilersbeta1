@@ -70,7 +70,7 @@ export default function OneSelectProgress({
   // for options within their previous highest, and "you've watched: " past it.
   function optionPrefix(s: number, e: number) {
     if (rewatchHighest && isWithinPreviousHighest(s, e, rewatchHighest)) {
-      return "you rewatched: ";
+      return "you REwatched: ";
     }
     return "you've watched: ";
   }
@@ -108,7 +108,7 @@ export default function OneSelectProgress({
   const groups = buildGroupedOptions(show);
   const shortEp = epLabel(curS, curE);
   const currentIsRewatch = !!rewatchHighest && isWithinPreviousHighest(curS, curE, rewatchHighest);
-  const selectedLabelPrefix = currentIsRewatch ? "you rewatched: " : "you've watched: ";
+  const selectedLabelPrefix = currentIsRewatch ? "you REwatched: " : "you've watched: ";
 
   // Compact (mobile) button that opens a picker modal
   if (compactLabel) {

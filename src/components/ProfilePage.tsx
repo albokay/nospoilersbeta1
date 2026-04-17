@@ -743,8 +743,8 @@ export default function ProfilePage({
                           )}
                           {t.titleBase}
                           {t.showId !== "simshow" && (
-                            <span style={{ color: epColor }}>
-                              {" — "}<EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} parens={false} useSpacing={false} />
+                            <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
+                              <EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} />
                             </span>
                           )}
                         </div>
@@ -849,8 +849,8 @@ export default function ProfilePage({
                         <div className="title" style={{ fontSize: 18 }}>
                           {t.titleBase}
                           {t.showId !== "simshow" && (
-                            <span style={{ color: "var(--dos-cyan)" }}>
-                              {" — "}<EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} parens={false} useSpacing={false} />
+                            <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
+                              <EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} />
                             </span>
                           )}
                         </div>
