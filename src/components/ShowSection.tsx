@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight, Plus, Clock } from "lucide-react";
+import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight, Plus, Clock, EyeOff } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -2083,6 +2083,14 @@ export default function ShowSection({
                 >
                   <Users size={14} color="#fff" style={{verticalAlign:"middle"}} /> invite friends
                 </button>
+              </div>
+            ) : effectiveProgress?.s === 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 0 48px", gap: 12 }}>
+                <EyeOff size={24} color="var(--icon-color)" />
+                <div className="muted" style={{ fontSize: 14, textAlign: "center", maxWidth: 360, lineHeight: 1.5 }}>
+                  <p style={{ margin: 0 }}>You haven&rsquo;t watched anything so there&rsquo;s nothing to read yet! Come back and update your progress after you&rsquo;ve watched an episode.</p>
+                  <p style={{ margin: "12px 0 0" }}>(Or make a post about how excited you are to start watching?!)</p>
+                </div>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 0 48px", gap: 12 }}>

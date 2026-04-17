@@ -57,10 +57,12 @@ function EpisodeSelectInline({
   seasons,
   value,
   onChange,
+  allowZero = false,
 }: {
   seasons: number[];
   value: { s: number; e: number };
   onChange: (v: { s: number; e: number }) => void;
+  allowZero?: boolean;
 }) {
   const val = `s${value.s}e${value.e}`;
   return (
@@ -76,6 +78,9 @@ function EpisodeSelectInline({
         padding: "4px 8px", fontSize: 13, width: "100%",
       }}
     >
+      {allowZero && (
+        <option value="s0e0">Haven't started</option>
+      )}
       {seasons.map((epCount, idx) => {
         const s = idx + 1;
         const eps = Array.from({ length: epCount }, (_, i) => i + 1);
@@ -414,7 +419,7 @@ export default function SearchShows({
                 <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
                   How far have you watched?
                 </label>
-                <EpisodeSelectInline seasons={confirmingSeasons} value={firstTimeSel} onChange={(v) => { setFirstTimeSel(v); setProgressTouched(true); }} />
+                <EpisodeSelectInline seasons={confirmingSeasons} value={firstTimeSel} onChange={(v) => { setFirstTimeSel(v); setProgressTouched(true); }} allowZero />
               </div>
             )}
 
