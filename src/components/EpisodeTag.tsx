@@ -50,6 +50,7 @@ export default function EpisodeTag({
       text={tooltipText}
       direction="below"
       tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
+      portal
     >
       <span style={{ display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
         <HatGlasses size={16} color={CANON_RED} style={{ flexShrink: 0 }} />

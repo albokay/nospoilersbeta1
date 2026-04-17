@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 
 type Direction = "above" | "below" | "right" | "left";
 type Align = "center" | "left" | "right";
@@ -17,6 +18,7 @@ export default function Tooltip({
   width = TW,
   tooltipStyle,
   disabled = false,
+  portal = false,
 }: {
   text: React.ReactNode;
   children: React.ReactNode;
@@ -28,6 +30,10 @@ export default function Tooltip({
   width?: number;
   tooltipStyle?: React.CSSProperties;
   disabled?: boolean;
+  // When true, render the bubble into document.body so it escapes any
+  // ancestor that creates a stacking context (opacity, transform, filter).
+  // Only valid when useAbsolute is false (fixed positioning).
+  portal?: boolean;
 }) {
   // Hooks must always be called unconditionally — early return comes after
   const [show, setShow] = useState(false);
@@ -84,26 +90,29 @@ export default function Tooltip({
       onMouseLeave={() => setShow(false)}
     >
       {children}
-      {show && (useAbsolute || rect) && (
-        <div style={{
-          ...(useAbsolute ? getAbsoluteStyle() : getFixedStyle()),
-          background: "var(--dos-bg)",
-          color: "#fff",
-          borderRadius: 18,
-          padding: "9px 14px",
-          fontSize: 13,
-          fontWeight: 500,
-          lineHeight: 1.4,
-          boxShadow: "0 4px 20px rgba(0,0,0,0.32)",
-          width,
-          zIndex: 9999,
-          pointerEvents: "none",
-          textAlign: "center",
-          ...tooltipStyle,
-        }}>
-          {text}
-        </div>
-      )}
+      {show && (useAbsolute || rect) && (() => {
+        const bubble = (
+          <div style={{
+            ...(useAbsolute ? getAbsoluteStyle() : getFixedStyle()),
+            background: "var(--dos-bg)",
+            color: "#fff",
+            borderRadius: 18,
+            padding: "9px 14px",
+            fontSize: 13,
+            fontWeight: 500,
+            lineHeight: 1.4,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.32)",
+            width,
+            zIndex: 9999,
+            pointerEvents: "none",
+            textAlign: "center",
+            ...tooltipStyle,
+          }}>
+            {text}
+          </div>
+        );
+        return portal && !useAbsolute ? createPortal(bubble, document.body) : bubble;
+      })()}
     </span>
   );
 }
