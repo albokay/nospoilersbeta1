@@ -58,13 +58,33 @@ function EpisodeSelectInline({
   value,
   onChange,
   allowZero = false,
+  disableAtOrAbove,
+  disableAtOrBelow,
 }: {
   seasons: number[];
   value: { s: number; e: number };
   onChange: (v: { s: number; e: number }) => void;
   allowZero?: boolean;
+  // Rewatch pairing: options that are (s,e) >= this bound are disabled.
+  // Used on the rewatch-position selector when highest is set — rewatch
+  // must be strictly less than highest.
+  disableAtOrAbove?: { s: number; e: number };
+  // Options that are (s,e) <= this bound are disabled. Used on the
+  // highest selector — highest must be strictly greater than rewatch.
+  disableAtOrBelow?: { s: number; e: number };
 }) {
   const val = `s${value.s}e${value.e}`;
+  const isDisabled = (s: number, e: number) => {
+    if (disableAtOrAbove) {
+      const a = disableAtOrAbove;
+      if (s > a.s || (s === a.s && e >= a.e)) return true;
+    }
+    if (disableAtOrBelow) {
+      const b = disableAtOrBelow;
+      if (s < b.s || (s === b.s && e <= b.e)) return true;
+    }
+    return false;
+  };
   return (
     <select
       value={val}
@@ -87,7 +107,9 @@ function EpisodeSelectInline({
         return (
           <optgroup key={s} label={`Season ${s}`}>
             {eps.map(e => (
-              <option key={e} value={`s${s}e${e}`}>Season {s} Episode {e}</option>
+              <option key={e} value={`s${s}e${e}`} disabled={isDisabled(s, e)}>
+                Season {s} Episode {e}
+              </option>
             ))}
           </optgroup>
         );
@@ -305,7 +327,13 @@ export default function SearchShows({
     onBrowsePublic?.(showId, confirming.name, entry, seasons);
   };
 
-  const canSubmit = !!watchChoice && !seasonsLoading && !creating;
+  // Rewatch must be strictly less than highest — required for the rewatch
+  // post-tagging model (posts tag at highest, display the rewatch pair).
+  const rewatchValid =
+    watchChoice !== "rewatch" ||
+    highestSel.s > rewatchSel.s ||
+    (highestSel.s === rewatchSel.s && highestSel.e > rewatchSel.e);
+  const canSubmit = !!watchChoice && !seasonsLoading && !creating && rewatchValid;
 
   return (
     <>
@@ -403,14 +431,31 @@ export default function SearchShows({
                   <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
                     What's the furthest you watched last time?
                   </label>
-                  <EpisodeSelectInline seasons={confirmingSeasons} value={highestSel} onChange={(v) => { setHighestSel(v); setProgressTouched(true); }} />
+                  <EpisodeSelectInline
+                    seasons={confirmingSeasons}
+                    value={highestSel}
+                    onChange={(v) => { setHighestSel(v); setProgressTouched(true); }}
+                    // Highest must be strictly greater than rewatch position.
+                    disableAtOrBelow={progressTouched ? rewatchSel : undefined}
+                  />
                 </div>
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
                     How far are you on your rewatch?
                   </label>
-                  <EpisodeSelectInline seasons={confirmingSeasons} value={rewatchSel} onChange={(v) => { setRewatchSel(v); setProgressTouched(true); }} />
+                  <EpisodeSelectInline
+                    seasons={confirmingSeasons}
+                    value={rewatchSel}
+                    onChange={(v) => { setRewatchSel(v); setProgressTouched(true); }}
+                    // Rewatch must be strictly less than highest.
+                    disableAtOrAbove={progressTouched ? highestSel : undefined}
+                  />
                 </div>
+                {!rewatchValid && (
+                  <div style={{ fontSize: 12, color: "var(--danger)" }}>
+                    Your rewatch position needs to be earlier than the furthest you've watched.
+                  </div>
+                )}
               </div>
             )}
 
