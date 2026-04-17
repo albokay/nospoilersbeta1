@@ -566,6 +566,13 @@ export default function App() {
       navigate(`/show/${showId}`);
       requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
     },
+    // User searched a show they've already onboarded onto. Take them back
+    // to their existing journal tab — ProfilePage auto-unhides hidden tabs
+    // when activeTab state is supplied, so this also reopens closed tabs.
+    onReopenJournal: (showId: string) => {
+      navigate("/profile", { state: { activeTab: showId } });
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+    },
     onAuthRequired: () => { setAuthHint("Sign in or create an account to start a journal or friend room."); setShowAuthModal(true); },
   };
 

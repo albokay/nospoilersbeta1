@@ -125,6 +125,7 @@ export default function SearchShows({
   progress,
   onShowCreated,
   onBrowsePublic,
+  onReopenJournal,
   onAuthRequired,
   style,
   placeholder,
@@ -133,6 +134,11 @@ export default function SearchShows({
   progress?: Record<string, ProgressEntry>;
   onShowCreated?: (show: Show, entry: ProgressEntry, action: "journal" | "friendRoom") => void;
   onBrowsePublic?: (showId: string, showName: string, entry: ProgressEntry, seasons: number[]) => void;
+  // Called when the user searches a show they've already onboarded onto
+  // (real progress row exists) and no active sessionStorage browse override
+  // is set. Takes them back to their journal tab — unhiding it if they had
+  // previously closed it — instead of re-running the onboarding modal.
+  onReopenJournal?: (showId: string) => void;
   onAuthRequired?: () => void;
   style?: React.CSSProperties;
   placeholder?: string;
@@ -195,16 +201,16 @@ export default function SearchShows({
     const showId = slugify(tv.name);
     setOpen(false);
 
-    // Skip the modal + go straight to the public space ONLY if the user already
-    // has this show in their journal (real progress row in DB). A sessionStorage
-    // shortcut from a prior "see public conversations" click is NOT enough —
-    // otherwise the user can never get back to the onboarding modal to create a
-    // journal tab or friend room for that show.
-    // NOTE: checking the `shows` array is wrong — App.onBrowsePublic adds shows
-    // optimistically, so `shows` contains entries even for browse-only sessions.
-    // progress[showId] is only set when onboarding completed (journal / friend room).
+    // Skip the modal for users who've already onboarded onto this show
+    // (real progress row in DB). NOTE: checking the `shows` array is wrong —
+    // App.onBrowsePublic adds shows optimistically, so `shows` contains
+    // entries even for browse-only sessions. progress[showId] is only set
+    // when onboarding completed (journal / friend room).
     const hasJournalTab = !!progress?.[showId];
     if (hasJournalTab) {
+      // Preserve "see public conversations" intent: if they opted into the
+      // public show space this session, keep them there instead of yanking
+      // back to the journal.
       try {
         const existing = JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null");
         if (existing) {
@@ -215,6 +221,14 @@ export default function SearchShows({
           return;
         }
       } catch {}
+      // Otherwise: go back to their journal tab. The user may have closed
+      // the tab previously; ProfilePage auto-unhides when navigated to via
+      // activeTab state. Their saved progress is preserved — no re-onboarding.
+      if (onReopenJournal) {
+        setQuery(tv.name);
+        onReopenJournal(showId);
+        return;
+      }
     }
 
     setConfirming(tv);
