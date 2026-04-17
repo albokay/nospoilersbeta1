@@ -451,11 +451,6 @@ export default function SearchShows({
                     disableAtOrAbove={progressTouched ? highestSel : undefined}
                   />
                 </div>
-                {!rewatchValid && (
-                  <div style={{ fontSize: 12, color: "var(--danger)" }}>
-                    Your rewatch position needs to be earlier than the furthest you've watched.
-                  </div>
-                )}
               </div>
             )}
 
