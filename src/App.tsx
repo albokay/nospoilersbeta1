@@ -1195,6 +1195,7 @@ export default function App() {
                   onPendingChange={setHasPendingChange}
                   requireConfirm={false}
                   onChangeSelected={(val) => setFirstSel(val)}
+                  allowZero={progress[pickShow.id]?.s === 0}
                 />
                 <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
                   <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}>Cancel</button>

@@ -645,6 +645,7 @@ export default function ProfilePage({
                           value={postProgress}
                           onConfirm={(val) => updateProgressFor?.(activeTab, val)}
                           requireConfirm={true}
+                          allowZero={postProgress?.s === 0}
                         />
                       )}
                     </div>

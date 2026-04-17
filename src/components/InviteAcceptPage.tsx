@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { Link2, Clock, CircleCheck, PartyPopper, AlertTriangle, Clapperboard } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../lib/auth";
-import { upsertProgress, fetchProgress } from "../lib/db";
+import { upsertProgress, fetchProgress, fetchShows } from "../lib/db";
+import type { Show } from "../lib/db";
 import AuthModal from "./AuthModal";
+import OneSelectProgress from "./OneSelectProgress";
 
 type InviteInfo = {
   id: string;
@@ -32,6 +34,12 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   const [invite, setInvite]   = useState<InviteInfo | null>(null);
   const [errMsg, setErrMsg]   = useState("");
   const [showAuth, setShowAuth] = useState(false);
+  // Zero-progress: when the joiner has no prior progress for this show,
+  // they pick it here (including "haven't started"). If they already
+  // have progress for the show, this is skipped entirely.
+  const [needsProgressPick, setNeedsProgressPick] = useState(false);
+  const [progressPick, setProgressPick] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
+  const [showForInvite, setShowForInvite] = useState<Show | null>(null);
 
   // Load invite info (no auth needed — SECURITY DEFINER RPC)
   useEffect(() => {
@@ -58,12 +66,14 @@ export default function InviteAcceptPage({ token }: { token: string }) {
       return;
     }
 
-    // Ensure the user has a progress entry for this show (creates the profile tab)
+    // Ensure the user has a progress entry for this show (creates the profile tab).
+    // If the joiner picked their progress in this page (because they had none),
+    // use that value — including zero. Otherwise inherit whatever they already have.
     if (invite?.show_id && user) {
       try {
         const existing = await fetchProgress(user.id);
         if (!existing[invite.show_id]) {
-          await upsertProgress(user.id, invite.show_id, 1, 1);
+          await upsertProgress(user.id, invite.show_id, progressPick.s, progressPick.e);
         }
       } catch {}
     }
@@ -78,14 +88,42 @@ export default function InviteAcceptPage({ token }: { token: string }) {
     setTimeout(() => navigate(showId ? `/show/${showId}` : "/"), 1800);
   }
 
-  // If the user just signed in / signed up via the auth modal, auto-accept
+  // Decide whether the joiner needs to pick their progress. Only when
+  // they have no prior progress row for this show — otherwise their
+  // existing progress is inherited untouched.
   useEffect(() => {
-    if (user && status === "ready" && showAuth) {
+    let cancelled = false;
+    if (!user || !invite?.show_id) { setNeedsProgressPick(false); return; }
+    (async () => {
+      try {
+        const [existing, allShows] = await Promise.all([
+          fetchProgress(user.id),
+          fetchShows(),
+        ]);
+        if (cancelled) return;
+        const hasPrior = !!existing[invite.show_id!];
+        setNeedsProgressPick(!hasPrior);
+        const sh = allShows.find(x => x.id === invite.show_id) || null;
+        setShowForInvite(sh);
+      } catch {
+        // If this probe fails, fall back to not showing the picker; accept
+        // will still run with the default progressPick (zero). The failure
+        // would be transient network — the UX degrades gracefully.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, invite?.show_id]);
+
+  // If the user just signed in / signed up via the auth modal, auto-accept.
+  // Only auto-accept if we're not still waiting for them to pick progress —
+  // otherwise we'd jump past the picker.
+  useEffect(() => {
+    if (user && status === "ready" && showAuth && !needsProgressPick) {
       setShowAuth(false);
       handleAccept();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, needsProgressPick]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -192,14 +230,30 @@ export default function InviteAcceptPage({ token }: { token: string }) {
             </button>
           </>
         ) : (
-          <button
-            className="btn"
-            onClick={handleAccept}
-            disabled={status === "accepting"}
-            style={{ background: "var(--green)", border: "none", color: "#fff", padding: "10px 28px", fontSize: 15 }}
-          >
-            {(status as string) === "accepting" ? "Joining…" : `Join "${invite?.group_name}"`}
-          </button>
+          <>
+            {needsProgressPick && showForInvite && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 13, opacity: 0.75, marginBottom: 8 }}>Where are you in the show?</div>
+                <div style={{ display: "inline-block" }}>
+                  <OneSelectProgress
+                    show={showForInvite}
+                    value={progressPick}
+                    onConfirm={(val) => setProgressPick(val)}
+                    requireConfirm={false}
+                    allowZero
+                  />
+                </div>
+              </div>
+            )}
+            <button
+              className="btn"
+              onClick={handleAccept}
+              disabled={status === "accepting" || (needsProgressPick && !showForInvite)}
+              style={{ background: "var(--green)", border: "none", color: "#fff", padding: "10px 28px", fontSize: 15 }}
+            >
+              {(status as string) === "accepting" ? "Joining…" : `Join "${invite?.group_name}"`}
+            </button>
+          </>
         )}
 
         {invite && (

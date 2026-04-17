@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import Modal from "./Modal";
-import { buildProgressOptions } from "../lib/utils";
+import { buildProgressOptions, isZeroProgress } from "../lib/utils";
+
+const ZERO_ID = "0-0";
+const ZERO_LABEL = "haven't started";
 
 function buildGroupedOptions(show: { seasons?: number[] }) {
   const seasons = show?.seasons || [];
@@ -18,11 +21,12 @@ function buildGroupedOptions(show: { seasons?: number[] }) {
 }
 
 function epLabel(s: number, e: number) {
+  if (s === 0 && e === 0) return ZERO_LABEL;
   return `S${String(s).padStart(2, "0")} E${String(e).padStart(2, "0")}`;
 }
 
 export default function OneSelectProgress({
-  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel
+  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel, allowZero = false
 }: {
   show: any;
   value: any;
@@ -31,9 +35,12 @@ export default function OneSelectProgress({
   requireConfirm?: boolean;
   onChangeSelected?: (v: { s: number; e: number }) => void;
   compactLabel?: string;
+  allowZero?: boolean;
 }) {
   const opts = buildProgressOptions(show);
-  const currentId = `${value?.s || 1}-${value?.e || 1}`;
+  const curS = value?.s ?? 1;
+  const curE = value?.e ?? 1;
+  const currentId = `${curS}-${curE}`;
   const [selectedId, setSelectedId] = useState(currentId);
   const [pending, setPending] = useState<{ id: string; s: number; e: number; backwards?: boolean } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -41,13 +48,14 @@ export default function OneSelectProgress({
 
   useEffect(() => { setSelectedId(currentId); setPending(null); setConfirmOpen(false); onPendingChange?.(false); }, [currentId]);
 
+  // Defense-in-depth: the zero option is monotonic. Once the user is past zero,
+  // it must never be offered again, even if a caller passes allowZero={true}.
+  const showZeroOption = allowZero && curS === 0 && curE === 0;
+
   function onSelect(ev: React.ChangeEvent<HTMLSelectElement>) {
     const nextId = String(ev.target.value);
     const [sStr, eStr] = nextId.split("-");
     const next = { id: nextId, s: Number(sStr), e: Number(eStr) };
-
-    const curS = value?.s ?? 1;
-    const curE = value?.e ?? 1;
 
     const backwards = (next.s < curS) || (next.s === curS && next.e < curE);
 
@@ -75,7 +83,7 @@ export default function OneSelectProgress({
   }
 
   const groups = buildGroupedOptions(show);
-  const shortEp = epLabel(value?.s || 1, value?.e || 1);
+  const shortEp = epLabel(curS, curE);
 
   // Compact (mobile) button that opens a picker modal
   if (compactLabel) {
@@ -101,6 +109,9 @@ export default function OneSelectProgress({
               style={{ background: "#7abd8e", color: "#fff", border: "2px solid #fff", width: "100%", height: 40 }}
               size={1}
             >
+              {showZeroOption && (
+                <option value={ZERO_ID}>{ZERO_LABEL}</option>
+              )}
               {groups.map((g) => (
                 <optgroup key={g.season} label={`Season ${g.season}`}>
                   {g.episodes.map((ep) => (
@@ -148,6 +159,9 @@ export default function OneSelectProgress({
         onChange={onSelect}
         style={{ background: "#7abd8e", color: "#fff", border: "2px solid #fff", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }}
       >
+        {showZeroOption && (
+          <option value={ZERO_ID}>{ZERO_LABEL}</option>
+        )}
         {groups.map((g) => (
           <optgroup key={g.season} label={`Season ${g.season}`}>
             {g.episodes.map((ep) => (

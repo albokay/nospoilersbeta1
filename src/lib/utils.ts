@@ -26,6 +26,9 @@ export const buildProgressOptions = (show: { seasons?: number[] }) => {
 export const canView = (t: { season: number; episode: number }, p?: { s: number; e: number }) =>
   !!p && (t.season < p.s || (t.season === p.s && t.episode <= p.e));
 
+export const isZeroProgress = (p?: { s: number; e: number } | null) =>
+  !!p && p.s === 0 && p.e === 0;
+
 export const visibleRepliesCount = (
   threadId: string,
   repliesByThread: { [threadId: string]: Reply[] },

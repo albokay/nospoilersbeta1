@@ -124,13 +124,17 @@ export default function ShowSection({
     }).catch(() => {});
   }, [user?.id, showId, !!progress[showId]]);
 
-  // For logged-in users: show progress prompt if progress is unset (e === 0 sentinel)
+  // For logged-in users: show progress prompt if progress is unset (e === 0 sentinel).
+  // Exempt legitimate zero-progress ({s:0, e:0}), which is a real "haven't started
+  // yet" state set via the friend-room creation / invite-accept flows.
+  const isUnsetSentinel = (p?: { s: number; e: number }) =>
+    !!p && p.e === 0 && p.s !== 0;
   const [showLoggedInPicker, setShowLoggedInPicker] = useState(() =>
-    !!(user && progress[showId]?.e === 0)
+    !!(user && isUnsetSentinel(progress[showId]))
   );
   useEffect(() => {
-    if (user && progress[showId]?.e === 0) setShowLoggedInPicker(true);
-  }, [showId, user, progress[showId]?.e]);
+    if (user && isUnsetSentinel(progress[showId])) setShowLoggedInPicker(true);
+  }, [showId, user, progress[showId]?.e, progress[showId]?.s]);
 
   // Sync guest progress state when showId changes (user navigates to a different show)
   useEffect(() => {
@@ -274,6 +278,10 @@ export default function ShowSection({
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [createGroupSubmitting, setCreateGroupSubmitting] = useState(false);
+  // Zero-progress: when creating a room for a show the user hasn't onboarded
+  // onto yet, they pick their current progress (including "haven't started").
+  // Defaults to zero; only used when progress[showId] is absent.
+  const [newRoomProgress, setNewRoomProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
 
   // Auto-open create group modal when navigated with openCreateGroup state
   useEffect(() => {
@@ -414,8 +422,9 @@ export default function ShowSection({
           name: show.name,
           seasons: show.seasons,
         });
-        const prog = progress[showId] || { s: 1, e: 1 };
-        updateProgressFor?.(showId, { s: prog.s, e: prog.e });
+        // User selected their progress inside the Create-room modal.
+        // This is the only place zero-progress can enter the system.
+        updateProgressFor?.(showId, { s: newRoomProgress.s, e: newRoomProgress.e });
         onShowCreated?.({
           id: showId,
           name: show.name,
@@ -429,6 +438,7 @@ export default function ShowSection({
       setActiveGroupId(g.id);
       setShowCreateGroupModal(false);
       setNewGroupName("");
+      setNewRoomProgress({ s: 0, e: 0 });
     } catch (e: any) {
       console.error("createFriendGroup error:", e);
       alert("Failed to create room: " + (e?.message ?? String(e)));
@@ -1384,6 +1394,7 @@ export default function ShowSection({
                   onConfirm={handleProgressConfirm}
                   requireConfirm={true}
                   compactLabel="progress"
+                  allowZero={effectiveProgress?.s === 0}
                 />
               </div>
             </div>
@@ -1481,6 +1492,7 @@ export default function ShowSection({
                     onConfirm={handleProgressConfirm}
                     requireConfirm={true}
                     compactLabel={undefined}
+                    allowZero={effectiveProgress?.s === 0}
                   />
                   <Tooltip
                     key={String(helpOpen)}
@@ -1633,8 +1645,18 @@ export default function ShowSection({
       )}
 
       {/* ── Create friend room modal ── */}
-      {showCreateGroupModal && (
-        <Modal onClose={() => { setShowCreateGroupModal(false); setNewGroupName(""); }} width="min(420px,92vw)">
+      {showCreateGroupModal && (() => {
+        // The progress selector only appears when the user has no prior
+        // progress for this show. If they're already on a journey for it,
+        // their progress doesn't change when creating a room.
+        const needsProgressPick = !progress?.[showId];
+        const resetModal = () => {
+          setShowCreateGroupModal(false);
+          setNewGroupName("");
+          setNewRoomProgress({ s: 0, e: 0 });
+        };
+        return (
+        <Modal onClose={resetModal} width="min(420px,92vw)">
           <h3 className="title" style={{ margin: "0 0 12px" }}>Create a friend room</h3>
           <p style={{ margin: "0 0 16px", fontSize: 14, opacity: 0.75, lineHeight: 1.5 }}>
             A friend room is a private space for a group of people watching this show together. Share entries there and reply in a spoiler-safe context.
@@ -1648,14 +1670,27 @@ export default function ShowSection({
             style={{ width: "100%", height: 40, marginBottom: 12 }}
             autoFocus
           />
+          {needsProgressPick && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 13, marginBottom: 6, opacity: 0.8 }}>Where are you in the show?</div>
+              <OneSelectProgress
+                show={allShows.find(s => s.id === showId) || { seasons: [10] }}
+                value={newRoomProgress}
+                onConfirm={(val) => setNewRoomProgress(val)}
+                requireConfirm={false}
+                allowZero
+              />
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <button className="btn" onClick={() => { setShowCreateGroupModal(false); setNewGroupName(""); }} disabled={createGroupSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
+            <button className="btn" onClick={resetModal} disabled={createGroupSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
             <button className="btn" onClick={handleCreateGroup} disabled={createGroupSubmitting || !newGroupName.trim()} style={{ background: "var(--green)", border: "none", color: "#fff" }}>
               {createGroupSubmitting ? "Creating…" : "Create room"}
             </button>
           </div>
         </Modal>
-      )}
+        );
+      })()}
 
       {/* ── Group settings modal ── */}
       {showGroupSettings && settingsGroupId && (() => {
