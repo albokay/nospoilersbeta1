@@ -35,7 +35,7 @@ export default function FeedbackWidget({
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const [phase, setPhase] = useState<"idle" | "sending" | "sent" | "rate-limited">("idle");
+  const [phase, setPhase] = useState<"idle" | "sending" | "sent" | "rate-limited" | "error">("idle");
 
   // Sync externally-triggered open/prefill
   const prevForcedOpen = React.useRef(false);
@@ -68,8 +68,11 @@ export default function FeedbackWidget({
       setPhase("sent");
       setMessage("");
       setTimeout(() => { setPhase("idle"); setOpen(false); }, 1000);
-    } catch {
-      setPhase("idle");
+    } catch (err) {
+      // Log details for diagnosis but don't surface raw Supabase errors
+      // (which can include schema / RLS policy names) to end users.
+      console.error("[feedback] submit failed:", err);
+      setPhase("error");
     }
   };
 
@@ -189,6 +192,11 @@ export default function FeedbackWidget({
           {phase === "rate-limited" && (
             <div style={{ fontSize: 13, color: "var(--danger)", fontWeight: 600 }}>
               Give it a moment before sending another.
+            </div>
+          )}
+          {phase === "error" && (
+            <div style={{ fontSize: 13, color: "var(--danger)", fontWeight: 600 }}>
+              Couldn&rsquo;t send — please try again.
             </div>
           )}
 

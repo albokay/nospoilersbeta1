@@ -65,17 +65,24 @@ export default function AdminPage({
   // ── Feedback state ───────────────────────────────────────────────────────
   const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchFeedback()
       .then(rows => {
         setFeedback(rows);
+        setFeedbackError(null);
         // Mark all currently unread as read
         const unreadIds = rows.filter(r => !r.readAt).map(r => r.id);
-        if (unreadIds.length) markFeedbackRead(unreadIds).catch(() => {});
+        if (unreadIds.length) markFeedbackRead(unreadIds).catch(err => {
+          console.error("[admin] markFeedbackRead failed:", err);
+        });
       })
-      .catch(() => {})
+      .catch(err => {
+        console.error("[admin] fetchFeedback failed:", err);
+        setFeedbackError(err?.message ?? String(err));
+      })
       .finally(() => setFeedbackLoading(false));
   }, []);
 
@@ -236,14 +243,24 @@ export default function AdminPage({
   const activeCount = prompts.filter(p => p.is_active).length;
 
   const handleFeedbackStatus = async (id: string, status: FeedbackStatus | null) => {
-    await updateFeedbackStatus(id, status).catch(() => {});
-    setFeedback(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+    try {
+      await updateFeedbackStatus(id, status);
+      setFeedback(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+    } catch (err) {
+      console.error("[admin] updateFeedbackStatus failed:", err);
+      alert("Couldn't update status: " + ((err as any)?.message ?? String(err)));
+    }
   };
 
   const handleFeedbackDelete = async (id: string) => {
-    await deleteFeedback(id).catch(() => {});
-    setFeedback(prev => prev.filter(r => r.id !== id));
-    setDeletingId(null);
+    try {
+      await deleteFeedback(id);
+      setFeedback(prev => prev.filter(r => r.id !== id));
+      setDeletingId(null);
+    } catch (err) {
+      console.error("[admin] deleteFeedback failed:", err);
+      alert("Couldn't delete: " + ((err as any)?.message ?? String(err)));
+    }
   };
 
   const sortedFeedback = sortFeedback(feedback);
@@ -332,7 +349,13 @@ export default function AdminPage({
 
         {feedbackLoading && <div className="muted">Loading…</div>}
 
-        {!feedbackLoading && feedback.length === 0 && (
+        {!feedbackLoading && feedbackError && (
+          <div style={{ padding: 12, border: "1px solid var(--danger)", borderRadius: 6, color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>
+            Couldn&rsquo;t load feedback: {feedbackError}
+          </div>
+        )}
+
+        {!feedbackLoading && !feedbackError && feedback.length === 0 && (
           <div className="muted">No feedback yet.</div>
         )}
 
