@@ -919,19 +919,24 @@ export default function RepliesList({
         )}
       </div>
 
-      {/* "Respond to the thread" button at the very bottom — right-aligned, breathing room above */}
-      <div style={{ marginTop: 40, display: "flex", justifyContent: "flex-end" }}>
-        <button
-          className="btn"
-          style={{ fontSize: 17, padding: "10px 22px" }}
-          onClick={() => {
-            if (!user) { onAuthRequired(); return; }
-            onScrollToComposer?.();
-          }}
-        >
-          Respond to the thread
-        </button>
-      </div>
+      {/* "Respond to the thread" button at the very bottom — only shown when
+         the thread has at least one reply. Before that, the in-entry
+         "Write a response" button is the sole entry point, so we don't
+         double up. */}
+      {replies.length > 0 && (
+        <div style={{ marginTop: 40, display: "flex", justifyContent: "flex-end" }}>
+          <button
+            className="btn"
+            style={{ fontSize: 17, padding: "10px 22px" }}
+            onClick={() => {
+              if (!user) { onAuthRequired(); return; }
+              onScrollToComposer?.();
+            }}
+          >
+            Respond to the thread
+          </button>
+        </div>
+      )}
     </>
   );
 }

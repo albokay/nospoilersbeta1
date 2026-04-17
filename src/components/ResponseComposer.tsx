@@ -231,7 +231,7 @@ export default function ResponseComposer({
       {pendingReference && pendingReference.type === "link" && (
         <div style={{ marginBottom: 8 }}>
           <span className="pending-ref-chip">
-            Linking to {pendingReference.authorName}'s response
+            Responding to {pendingReference.authorName}
             <button onClick={onClearReference} title="Discard reference">×</button>
           </span>
         </div>
