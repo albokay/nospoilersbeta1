@@ -3,6 +3,7 @@ import { MessageSquare, Hand, LockKeyhole, Globe, Users } from "lucide-react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import type { FriendGroup } from "../types";
 import { timeAgo, canView } from "../lib/utils";
+import EpisodeTag from "./EpisodeTag";
 import { useAuth } from "../lib/auth";
 import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, addThreadToGroup } from "../lib/db";
 import type { CitationEntry } from "../lib/db";
@@ -385,7 +386,13 @@ export default function InlineThreadView({
                 <span>{thread.titleBase}</span>
                 {thread.showId !== "simshow" && (
                   <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7 }}>
-                    {`(S${String(thread.season).padStart(2, "0")} E${String(thread.episode).padStart(2, "0")})`}
+                    <EpisodeTag
+                      season={thread.season}
+                      episode={thread.episode}
+                      isRewatch={thread.isRewatch}
+                      rewatchS={thread.rewatchS}
+                      rewatchE={thread.rewatchE}
+                    />
                   </span>
                 )}
                 {thread.isEdited && (
@@ -541,6 +548,8 @@ export default function InlineThreadView({
         postTagSeason={progressForShow?.isRewatching && progressForShow.highestS ? progressForShow.highestS : (progressForShow?.s ?? thread.season)}
         postTagEpisode={progressForShow?.isRewatching && progressForShow.highestE ? progressForShow.highestE : (progressForShow?.e ?? thread.episode)}
         isRewatch={progressForShow?.isRewatching ?? false}
+        rewatchSnapshotSeason={progressForShow?.isRewatching ? (progressForShow.rewatchS ?? progressForShow.s) : undefined}
+        rewatchSnapshotEpisode={progressForShow?.isRewatching ? (progressForShow.rewatchE ?? progressForShow.e) : undefined}
         onSubmitted={handleComposerSubmitted}
         onCancel={() => setComposerOpen(false)}
         pendingReference={pendingReference ?? null}

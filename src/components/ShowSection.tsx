@@ -59,6 +59,7 @@ import { supabase } from "../lib/supabaseClient";
 import type { ReplyMeta } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
+import EpisodeTag from "./EpisodeTag";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
 import Tooltip from "./Tooltip";
@@ -960,14 +961,15 @@ export default function ShowSection({
     }
     const prog = progress[showId];
 
-    // Auto-flip: if re-watcher reaches or passes their highest prior progress, revert to regular mode
+    // Transition detection: strictly past the previous highest flips rewatch off.
+    // updateProgressFor handles the actual state update (flag, highest, rewatch
+    // fields) — this branch just triggers the celebratory UI.
     if (prog?.isRewatching && prog.highestS != null && prog.highestE != null) {
-      const reachedHighest =
+      const pastHighest =
         val.s > prog.highestS ||
-        (val.s === prog.highestS && val.e >= prog.highestE);
-      if (reachedHighest) {
+        (val.s === prog.highestS && val.e > prog.highestE);
+      if (pastHighest) {
         updateProgressFor(showId, val);
-        clearRewatchFor?.(showId);
         if (thread && !canView({ season: thread.season, episode: thread.episode }, val)) {
           setActiveThreadId(null);
         }
@@ -1134,6 +1136,10 @@ export default function ShowSection({
         preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
         body: body || "(blank)",
         isRewatch: postProgress.isRewatching ?? false,
+        // Frozen rewatch-position snapshot for the badge display: (rewatch / highest).
+        // Only set when posting as a rewatcher; otherwise undefined.
+        rewatchSeason: postProgress.isRewatching ? (postProgress.rewatchS ?? postProgress.s) : undefined,
+        rewatchEpisode: postProgress.isRewatching ? (postProgress.rewatchE ?? postProgress.e) : undefined,
       };
 
       let t: Awaited<ReturnType<typeof insertThread>>;
@@ -1393,8 +1399,11 @@ export default function ShowSection({
                   value={effectiveProgress || { s: 1, e: 1 }}
                   onConfirm={handleProgressConfirm}
                   requireConfirm={true}
-                  compactLabel="progress"
+                  compactLabel={effectiveProgress?.isRewatching ? "rewatch" : "progress"}
                   allowZero={effectiveProgress?.s === 0}
+                  rewatchHighest={effectiveProgress?.isRewatching && effectiveProgress.highestS != null && effectiveProgress.highestE != null
+                    ? { s: effectiveProgress.highestS, e: effectiveProgress.highestE }
+                    : null}
                 />
               </div>
             </div>
@@ -1493,6 +1502,9 @@ export default function ShowSection({
                     requireConfirm={true}
                     compactLabel={undefined}
                     allowZero={effectiveProgress?.s === 0}
+                    rewatchHighest={effectiveProgress?.isRewatching && effectiveProgress.highestS != null && effectiveProgress.highestE != null
+                      ? { s: effectiveProgress.highestS, e: effectiveProgress.highestE }
+                      : null}
                   />
                   <Tooltip
                     key={String(helpOpen)}
@@ -2030,7 +2042,13 @@ export default function ShowSection({
                     {t.titleBase}
                     {t.showId !== "simshow" && (
                       <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
-                        {`(S${String(t.season).padStart(2, "0")} E${String(t.episode).padStart(2, "0")})`}
+                        <EpisodeTag
+                          season={t.season}
+                          episode={t.episode}
+                          isRewatch={t.isRewatch}
+                          rewatchS={t.rewatchS}
+                          rewatchE={t.rewatchE}
+                        />
                       </span>
                     )}
                     {t.isEdited && (

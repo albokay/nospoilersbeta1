@@ -7,7 +7,8 @@ import {
   fetchPublicRepliesForUser,
   fetchPublicProgressForUser,
 } from "../lib/db";
-import { canView, timeAgo } from "../lib/utils";
+import { canView, timeAgo, type ViewerProgress } from "../lib/utils";
+import EpisodeTag from "./EpisodeTag";
 import type { ProfileTabData } from "./ProfilePage";
 
 const GLOBAL_HEADER_H = 72;
@@ -24,7 +25,7 @@ export default function PublicProfilePage({
 }: {
   username: string;
   shows: Show[];
-  viewerProgress: Record<string, { s: number; e: number }>;
+  viewerProgress: Record<string, ViewerProgress>;
   openThreadWithFocus: (showId: string, threadId: string, replyId?: string) => void;
   openShow: (showId: string) => void;
   onClose: () => void;
@@ -174,7 +175,7 @@ export default function PublicProfilePage({
                           {t.titleBase}
                           {t.showId !== "simshow" && (
                             <span style={{ color: "var(--dos-cyan)" }}>
-                              {` — S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")}`}
+                              {" — "}<EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} parens={false} useSpacing={false} />
                             </span>
                           )}
                         </div>
@@ -224,7 +225,7 @@ export default function PublicProfilePage({
                           On <b>{t.titleBase}</b>{" "}
                           {t.showId !== "simshow" && (
                             <span style={{ color: "var(--dos-cyan)", fontWeight: 700 }}>
-                              S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
+                              <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
                             </span>
                           )}
                         </div>

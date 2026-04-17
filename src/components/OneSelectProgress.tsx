@@ -25,8 +25,17 @@ function epLabel(s: number, e: number) {
   return `S${String(s).padStart(2, "0")} E${String(e).padStart(2, "0")}`;
 }
 
+// Returns true when (s, e) is ≤ the previous highest — i.e. the user is
+// still within the territory they've already seen before on this show.
+function isWithinPreviousHighest(s: number, e: number, highest?: { s: number; e: number } | null) {
+  if (!highest) return false;
+  if (s < highest.s) return true;
+  if (s === highest.s && e <= highest.e) return true;
+  return false;
+}
+
 export default function OneSelectProgress({
-  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel, allowZero = false
+  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel, allowZero = false, rewatchHighest
 }: {
   show: any;
   value: any;
@@ -36,6 +45,11 @@ export default function OneSelectProgress({
   onChangeSelected?: (v: { s: number; e: number }) => void;
   compactLabel?: string;
   allowZero?: boolean;
+  // When the user is rewatching a show, pass the previous highest point.
+  // Options ≤ this get "you rewatched: " labels; options past it revert
+  // to "you've watched: " because the user would be entering genuinely
+  // new territory (and crossing out of rewatch mode).
+  rewatchHighest?: { s: number; e: number } | null;
 }) {
   const opts = buildProgressOptions(show);
   const curS = value?.s ?? 1;
@@ -51,6 +65,15 @@ export default function OneSelectProgress({
   // Defense-in-depth: the zero option is monotonic. Once the user is past zero,
   // it must never be offered again, even if a caller passes allowZero={true}.
   const showZeroOption = allowZero && curS === 0 && curE === 0;
+
+  // Prefix helper for an option label. Rewatching users see "you rewatched: "
+  // for options within their previous highest, and "you've watched: " past it.
+  function optionPrefix(s: number, e: number) {
+    if (rewatchHighest && isWithinPreviousHighest(s, e, rewatchHighest)) {
+      return "you rewatched: ";
+    }
+    return "you've watched: ";
+  }
 
   function onSelect(ev: React.ChangeEvent<HTMLSelectElement>) {
     const nextId = String(ev.target.value);
@@ -84,6 +107,8 @@ export default function OneSelectProgress({
 
   const groups = buildGroupedOptions(show);
   const shortEp = epLabel(curS, curE);
+  const currentIsRewatch = !!rewatchHighest && isWithinPreviousHighest(curS, curE, rewatchHighest);
+  const selectedLabelPrefix = currentIsRewatch ? "you rewatched: " : "you've watched: ";
 
   // Compact (mobile) button that opens a picker modal
   if (compactLabel) {
@@ -99,7 +124,7 @@ export default function OneSelectProgress({
         {mobileOpen && (
           <Modal onClose={() => setMobileOpen(false)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>you've watched: {pending ? epLabel(pending.s, pending.e) : ""}</h3>
+              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{selectedLabelPrefix}{pending ? epLabel(pending.s, pending.e) : ""}</h3>
               <button className="close-x" onClick={() => setMobileOpen(false)}><X size={14} /></button>
             </div>
             <select
@@ -127,7 +152,7 @@ export default function OneSelectProgress({
         {requireConfirm && confirmOpen && (
           <Modal onClose={cancelSelection}>
             <div style={{ marginBottom: 12 }}>
-              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>you've watched: {pending ? epLabel(pending.s, pending.e) : ""}</h3>
+              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
             </div>
             <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>
               Your feed will only show posts up to your selected episode.
@@ -166,7 +191,7 @@ export default function OneSelectProgress({
           <optgroup key={g.season} label={`Season ${g.season}`}>
             {g.episodes.map((ep) => (
               <option key={ep.id} value={ep.id}>
-                {`you've watched: ${epLabel(ep.s, ep.e)}`}
+                {`${optionPrefix(ep.s, ep.e)}${epLabel(ep.s, ep.e)}`}
               </option>
             ))}
           </optgroup>
@@ -176,7 +201,7 @@ export default function OneSelectProgress({
       {requireConfirm && confirmOpen && (
         <Modal onClose={cancelSelection}>
           <div style={{ marginBottom: 12 }}>
-            <h3 className="title" style={{ fontSize: 20, margin: 0 }}>you've watched: {pending ? epLabel(pending.s, pending.e) : ""}</h3>
+            <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
           </div>
 
           <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>

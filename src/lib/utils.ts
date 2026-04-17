@@ -23,8 +23,36 @@ export const buildProgressOptions = (show: { seasons?: number[] }) => {
   return out;
 };
 
-export const canView = (t: { season: number; episode: number }, p?: { s: number; e: number }) =>
-  !!p && (t.season < p.s || (t.season === p.s && t.episode <= p.e));
+// A viewer's *effective* watch position for spoiler filtering.
+// A rewatcher's real spoiler ceiling is their highest-ever point — their
+// rewatch position can be low even though they know everything up through
+// highest. Filter calls must go through this so rewatchers see the posts
+// they're entitled to (including their own).
+export type ViewerProgress = {
+  s: number;
+  e: number;
+  isRewatching?: boolean;
+  highestS?: number;
+  highestE?: number;
+};
+
+export const effectiveProgress = (
+  p?: ViewerProgress | null
+): { s: number; e: number } | null => {
+  if (!p) return null;
+  if (p.isRewatching && p.highestS != null && p.highestE != null) {
+    return { s: p.highestS, e: p.highestE };
+  }
+  return { s: p.s, e: p.e };
+};
+
+export const canView = (
+  t: { season: number; episode: number },
+  p?: ViewerProgress | null
+) => {
+  const eff = effectiveProgress(p);
+  return !!eff && (t.season < eff.s || (t.season === eff.s && t.episode <= eff.e));
+};
 
 export const isZeroProgress = (p?: { s: number; e: number } | null) =>
   !!p && p.s === 0 && p.e === 0;
@@ -32,7 +60,7 @@ export const isZeroProgress = (p?: { s: number; e: number } | null) =>
 export const visibleRepliesCount = (
   threadId: string,
   repliesByThread: { [threadId: string]: Reply[] },
-  prog?: { s: number; e: number }
+  prog?: ViewerProgress | null
 ) => {
   if (!prog) return 0;
   const list = repliesByThread[threadId] || [];

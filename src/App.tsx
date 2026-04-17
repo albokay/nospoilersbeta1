@@ -367,14 +367,65 @@ export default function App() {
     setLikesThreads(lt); setLikesReplies(lr);
   }, []);
 
-  // Lightweight progress update — merges into existing entry, preserving rewatch metadata
+  // Progress update — rewatch-aware.
+  //   Non-rewatcher: writes season/episode, bumps highest if new > current highest.
+  //   Rewatcher, still within previous highest: writes rewatch_season/episode,
+  //     leaves is_rewatching / highest alone.
+  //   Rewatcher, strictly past previous highest: transitions out of rewatch —
+  //     flips is_rewatching=false, nulls rewatch_season/episode, bumps highest
+  //     to the new position.
   const updateProgressFor = (sid: string, next: { s: number; e: number }) => {
-    setProgress(prev => ({ ...prev, [sid]: { ...(prev[sid] || {}), ...next } }));
-    if (user) {
-      upsertProgress(user.id, sid, next.s, next.e).catch(err =>
-        console.error("Failed to save progress:", err)
+    setProgress(prev => {
+      const cur = prev[sid];
+      // Non-rewatcher (or no prior entry): regular forward progress.
+      if (!cur?.isRewatching) {
+        const newHighestS = cur?.highestS != null && cur?.highestE != null
+          ? (next.s > cur.highestS || (next.s === cur.highestS && next.e > cur.highestE) ? next.s : cur.highestS)
+          : next.s;
+        const newHighestE = cur?.highestS != null && cur?.highestE != null
+          ? (next.s > cur.highestS || (next.s === cur.highestS && next.e > cur.highestE) ? next.e : cur.highestE)
+          : next.e;
+        const updated: ProgressEntry = {
+          ...(cur || {}),
+          s: next.s, e: next.e,
+          highestS: newHighestS,
+          highestE: newHighestE,
+        };
+        if (user) upsertRewatchStatus(user.id, sid, updated).catch(err =>
+          console.error("Failed to save progress:", err)
+        );
+        return { ...prev, [sid]: updated };
+      }
+      // Rewatcher: compare new position to previous highest.
+      const hs = cur.highestS ?? cur.s;
+      const he = cur.highestE ?? cur.e;
+      const pastHighest = next.s > hs || (next.s === hs && next.e > he);
+      if (!pastHighest) {
+        // Still rewatching — update rewatch position, leave flag + highest alone.
+        const updated: ProgressEntry = {
+          ...cur,
+          s: next.s, e: next.e,
+          rewatchS: next.s, rewatchE: next.e,
+        };
+        if (user) upsertRewatchStatus(user.id, sid, updated).catch(err =>
+          console.error("Failed to save rewatch progress:", err)
+        );
+        return { ...prev, [sid]: updated };
+      }
+      // Transition out of rewatch — strictly past previous highest.
+      const updated: ProgressEntry = {
+        s: next.s, e: next.e,
+        isRewatching: false,
+        rewatchS: undefined,
+        rewatchE: undefined,
+        highestS: next.s,
+        highestE: next.e,
+      };
+      if (user) upsertRewatchStatus(user.id, sid, updated).catch(err =>
+        console.error("Failed to complete rewatch:", err)
       );
-    }
+      return { ...prev, [sid]: updated };
+    });
   };
 
   // Full entry setter — used on first join and rewatch status changes
@@ -387,11 +438,13 @@ export default function App() {
     }
   };
 
-  // Clear rewatch mode — called on auto-flip after re-watcher catches up
+  // Kept for back-compat with callers that explicitly clear rewatch mode
+  // without advancing progress (rare). Prefer updateProgressFor which
+  // auto-transitions when appropriate.
   const clearRewatchFor = (sid: string) => {
     setProgress(prev => {
       const cur = prev[sid] || { s: 1, e: 1 };
-      return { ...prev, [sid]: { s: cur.s, e: cur.e, isRewatching: false } };
+      return { ...prev, [sid]: { ...cur, isRewatching: false, rewatchS: undefined, rewatchE: undefined } };
     });
     if (user) {
       clearRewatchMode(user.id, sid).catch(err =>
@@ -1196,6 +1249,9 @@ export default function App() {
                   requireConfirm={false}
                   onChangeSelected={(val) => setFirstSel(val)}
                   allowZero={progress[pickShow.id]?.s === 0}
+                  rewatchHighest={progress[pickShow.id]?.isRewatching && progress[pickShow.id]?.highestS != null && progress[pickShow.id]?.highestE != null
+                    ? { s: progress[pickShow.id]!.highestS!, e: progress[pickShow.id]!.highestE! }
+                    : null}
                 />
                 <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
                   <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}>Cancel</button>

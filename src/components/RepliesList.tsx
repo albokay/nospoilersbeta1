@@ -32,7 +32,8 @@ import type { Thread, Reply } from "../types";
 import type { CitationEntry } from "../lib/db";
 import { fetchRepliesForThread, likeReply as dbLikeReply, unlikeReply as dbUnlikeReply, editReply as dbEditReply, deleteReply as dbDeleteReply } from "../lib/db";
 import { useAuth } from "../lib/auth";
-import { canView, timeAgo } from "../lib/utils";
+import { canView, timeAgo, type ViewerProgress } from "../lib/utils";
+import EpisodeTag from "./EpisodeTag";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
 import Username from "./Username";
@@ -290,7 +291,7 @@ export default function RepliesList({
   externalReplies, onRepliesLoaded, refreshKey, groupId, departedUsernames,
 }: {
   thread: Thread;
-  progressForShow?: { s: number; e: number };
+  progressForShow?: ViewerProgress;
   riskyMode?: boolean;
   likeReply: (rid: string, baseCount?: number) => void;
   unlikeReply: (rid: string) => void;
@@ -376,7 +377,7 @@ export default function RepliesList({
   const [progressReveal, setProgressReveal] = useState<Record<string, true>>(() => freshReplyIds ?? {});
   const [promptFor, setPromptFor] = useState<Reply | null>(null);
 
-  const prevProgRef = useRef<{ s: number; e: number } | undefined>(progressForShow);
+  const prevProgRef = useRef<ViewerProgress | undefined>(progressForShow);
   useEffect(() => {
     const prev = prevProgRef.current;
     const cur = progressForShow;
@@ -778,14 +779,16 @@ export default function RepliesList({
                   {groupId && departedUsernames?.has(r.author) && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6 }}>has left the room</span>
                   )}
-                  {r.isRewatch && (
-                    <Tooltip text={`This viewer is also rewatching ${thread.showId}.`} direction="above">
-                      <span style={{ cursor: "default" }}><Heart size={14} color="var(--icon-color)" /></span>
-                    </Tooltip>
-                  )}
                   {thread.showId !== "simshow" && (
                     <span style={{ color: "var(--dos-cyan)", fontWeight: 700 }}>
-                      S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
+                      <EpisodeTag
+                        season={r.season}
+                        episode={r.episode}
+                        isRewatch={r.isRewatch}
+                        rewatchS={r.rewatchS}
+                        rewatchE={r.rewatchE}
+                        parens={false}
+                      />
                     </span>
                   )}
                   {isReplyEdited && (

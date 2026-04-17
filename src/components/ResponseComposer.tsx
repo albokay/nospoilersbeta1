@@ -25,6 +25,9 @@ interface ResponseComposerProps {
   postTagSeason?: number;
   postTagEpisode?: number;
   isRewatch?: boolean;
+  // Rewatch-position snapshot (display-only) for the badge inline tag
+  rewatchSnapshotSeason?: number;
+  rewatchSnapshotEpisode?: number;
   onSubmitted: () => void;
   onCancel: () => void;
   pendingReference: PendingReference | null;
@@ -47,6 +50,8 @@ export default function ResponseComposer({
   postTagSeason,
   postTagEpisode,
   isRewatch,
+  rewatchSnapshotSeason,
+  rewatchSnapshotEpisode,
   onSubmitted,
   onCancel,
   pendingReference,
@@ -181,6 +186,8 @@ export default function ResponseComposer({
         referencedThreadId: pendingReference?.threadId ?? null,
         quotedText: (pendingReference?.type === "quote" ? pendingReference.quotedText : null) ?? null,
         isRewatch: isRewatch ?? false,
+        rewatchSeason: isRewatch ? rewatchSnapshotSeason : undefined,
+        rewatchEpisode: isRewatch ? rewatchSnapshotEpisode : undefined,
         groupId: groupId ?? null,
       });
       // Log prompt usage (best-effort)

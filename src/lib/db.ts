@@ -87,6 +87,8 @@ function rowToThread(row: any): Thread {
     isDeleted:      row.is_deleted ?? false,
     isEdited:       row.is_edited ?? false,
     isRewatch:      row.is_rewatch ?? false,
+    rewatchS:       row.rewatch_season ?? undefined,
+    rewatchE:       row.rewatch_episode ?? undefined,
     isMoved:        row.is_moved ?? false,
     sourceThreadId: row.source_thread_id ?? undefined,
   };
@@ -134,6 +136,10 @@ export async function insertThread(data: {
   isPublic: boolean;      // true = visible on aggregated show page
   groupIds?: string[];    // friend groups to share to immediately (Phase 4)
   isRewatch?: boolean;
+  // Frozen at-time-of-writing rewatch position. Display-only — season/episode
+  // above is the filter tag (= author's highest at time of writing).
+  rewatchSeason?: number;
+  rewatchEpisode?: number;
 }): Promise<Thread> {
   await checkRateLimit('create_thread', 5, 60);
   validateLength("Title", data.title, 1, 200);
@@ -144,6 +150,9 @@ export async function insertThread(data: {
     author_id: data.authorId, author_name: data.authorName,
     title: data.title, preview: data.preview, body: data.body,
     is_public: data.isPublic, likes_count: 0,
+    is_rewatch: data.isRewatch ?? false,
+    rewatch_season: data.rewatchSeason ?? null,
+    rewatch_episode: data.rewatchEpisode ?? null,
   };
   const { data: inserted, error } = await supabase
     .from("threads").insert(row).select().single();
@@ -325,6 +334,8 @@ function rowToReply(row: any): Reply {
     isDeleted:          row.is_deleted ?? false,
     isEdited:           row.is_edited ?? false,
     isRewatch:          row.is_rewatch ?? false,
+    rewatchS:           row.rewatch_season ?? undefined,
+    rewatchE:           row.rewatch_episode ?? undefined,
     referenceType:      row.reference_type ?? null,
     referencedReplyId:  row.referenced_reply_id ?? null,
     referencedThreadId: row.referenced_thread_id ?? null,
@@ -896,6 +907,8 @@ export async function insertReply(data: {
   referencedThreadId?: string | null;
   quotedText?: string | null;
   isRewatch?: boolean;
+  rewatchSeason?: number;
+  rewatchEpisode?: number;
   groupId?: string | null;
 }): Promise<Reply> {
   await checkRateLimit('create_reply', 10, 60);
@@ -911,6 +924,9 @@ export async function insertReply(data: {
     referenced_thread_id: data.referencedThreadId ?? null,
     quoted_text: data.quotedText ?? null,
     group_id: data.groupId ?? null,
+    is_rewatch: data.isRewatch ?? false,
+    rewatch_season: data.rewatchSeason ?? null,
+    rewatch_episode: data.rewatchEpisode ?? null,
   };
   const { data: inserted, error } = await supabase
     .from("replies").insert(row).select().single();

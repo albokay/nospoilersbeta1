@@ -6,6 +6,10 @@ export type Thread = {
   isDeleted?: boolean;
   isEdited?: boolean;
   isRewatch?: boolean;
+  // For rewatch posts: the rewatch position frozen at time of writing.
+  // season/episode above is the filter tag (= highest at time of writing).
+  rewatchS?: number;
+  rewatchE?: number;
   isMoved?: boolean;      // true = entry was moved to public; stub shown in friend room
   sourceThreadId?: string; // if this IS the public clone, points to the friend-room original
 };
@@ -47,6 +51,8 @@ export type Reply = {
   isDeleted?: boolean;
   isEdited?: boolean;
   isRewatch?: boolean;
+  rewatchS?: number;
+  rewatchE?: number;
   // Reference system fields
   referenceType?: 'quote' | 'link' | null;
   referencedReplyId?: string | null;

@@ -8,6 +8,7 @@ import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLik
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
+import EpisodeTag from "./EpisodeTag";
 import Tooltip from "./Tooltip";
 import EmptyProfileWelcome from "./EmptyProfileWelcome";
 import Modal from "./Modal";
@@ -351,6 +352,8 @@ export default function ProfilePage({
         preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
         body,
         isRewatch: postProgress.isRewatching ?? false,
+        rewatchSeason: postProgress.isRewatching ? (postProgress.rewatchS ?? postProgress.s) : undefined,
+        rewatchEpisode: postProgress.isRewatching ? (postProgress.rewatchE ?? postProgress.e) : undefined,
       };
 
       let t: Awaited<ReturnType<typeof insertThread>>;
@@ -646,6 +649,9 @@ export default function ProfilePage({
                           onConfirm={(val) => updateProgressFor?.(activeTab, val)}
                           requireConfirm={true}
                           allowZero={postProgress?.s === 0}
+                          rewatchHighest={postProgress?.isRewatching && postProgress.highestS != null && postProgress.highestE != null
+                            ? { s: postProgress.highestS, e: postProgress.highestE }
+                            : null}
                         />
                       )}
                     </div>
@@ -738,7 +744,7 @@ export default function ProfilePage({
                           {t.titleBase}
                           {t.showId !== "simshow" && (
                             <span style={{ color: epColor }}>
-                              {` — S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")}`}
+                              {" — "}<EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} parens={false} useSpacing={false} />
                             </span>
                           )}
                         </div>
@@ -786,7 +792,7 @@ export default function ProfilePage({
                         <div className="muted" style={{ fontSize: 14 }}>
                           On <b>{t.titleBase}</b>{" "}
                           <span style={{ color: "var(--dos-cyan)" }}>
-                            S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
+                            <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
                           </span>{" "}
                           • {groupName
                               ? <span style={{ fontStyle: "italic" }}>in {groupName}</span>
@@ -816,7 +822,7 @@ export default function ProfilePage({
                           On <b>{t.titleBase}</b>{" "}
                           {t.showId !== "simshow" && (
                             <span style={{ color: "var(--dos-cyan)" }}>
-                              S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
+                              <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
                             </span>
                           )}
                         </div>
@@ -844,7 +850,7 @@ export default function ProfilePage({
                           {t.titleBase}
                           {t.showId !== "simshow" && (
                             <span style={{ color: "var(--dos-cyan)" }}>
-                              {` — S${String(t.season).padStart(2, "0")}E${String(t.episode).padStart(2, "0")}`}
+                              {" — "}<EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} parens={false} useSpacing={false} />
                             </span>
                           )}
                         </div>
@@ -870,7 +876,7 @@ export default function ProfilePage({
                         <div className="muted" style={{ fontSize: 14 }}>
                           On <b>{t.titleBase}</b>{" "}
                           <span style={{ color: "var(--dos-cyan)" }}>
-                            S{String(r.season).padStart(2, "0")} E{String(r.episode).padStart(2, "0")}
+                            <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
                           </span>{" "}
                           • <span className="username">@{r.author}</span>
                         </div>
