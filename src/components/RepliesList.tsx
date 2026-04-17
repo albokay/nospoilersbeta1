@@ -905,9 +905,9 @@ export default function RepliesList({
                     className="btn"
                     style={{ fontSize: 13 }}
                     onClick={() => handleLink(r)}
-                    title="Link to this response"
+                    title="Respond"
                   >
-                    Link to this response
+                    Respond
                   </button>
                 </div>
               )}
@@ -919,7 +919,7 @@ export default function RepliesList({
         )}
       </div>
 
-      {/* "Write a response" button at the very bottom — right-aligned, breathing room above */}
+      {/* "Respond to the thread" button at the very bottom — right-aligned, breathing room above */}
       <div style={{ marginTop: 40, display: "flex", justifyContent: "flex-end" }}>
         <button
           className="btn"
@@ -929,7 +929,7 @@ export default function RepliesList({
             onScrollToComposer?.();
           }}
         >
-          Write a response
+          Respond to the thread
         </button>
       </div>
     </>

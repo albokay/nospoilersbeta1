@@ -1100,6 +1100,15 @@ export default function App() {
             onGroupLeft={() => {
               if (user) fetchAllFriendGroupsWithActivity(user.id).then(setAllFriendGroups).catch(() => {});
             }}
+            onGroupCreated={(g: FriendGroup) => {
+              // Optimistically add the newly-created room to the top-nav
+              // friend-room pills so the user sees it without a refresh.
+              // lastActivityAt set to now so it sorts to the front if the
+              // bar is activity-ordered.
+              setAllFriendGroups(prev =>
+                prev.find(x => x.id === g.id) ? prev : [{ ...g, lastActivityAt: Date.now() }, ...prev]
+              );
+            }}
           />
         </div>
       )}

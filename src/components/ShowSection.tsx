@@ -82,7 +82,7 @@ export default function ShowSection({
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
   focusReplyId, onAuthRequired, onClickProfile, navLeft, navRight,
   showStaleNudge, onDismissStaleNudge,
-  clearRewatchFor, onOpenFeedback, onSwitchShow, onGroupLeft,
+  clearRewatchFor, onOpenFeedback, onSwitchShow, onGroupLeft, onGroupCreated,
 }: any) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -440,6 +440,8 @@ export default function ShowSection({
       setShowCreateGroupModal(false);
       setNewGroupName("");
       setNewRoomProgress({ s: 0, e: 0 });
+      // Surface the new room in the top-nav pills immediately, no refresh needed.
+      if (typeof onGroupCreated === "function") onGroupCreated(g);
     } catch (e: any) {
       console.error("createFriendGroup error:", e);
       alert("Failed to create room: " + (e?.message ?? String(e)));
@@ -1454,7 +1456,7 @@ export default function ShowSection({
                       }}
                       style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
                     >
-                      {activeGroupId ? "← to friend room" : "← Back to room"}
+                      {activeGroupId ? "← to friend room" : "← Back to show"}
                     </button>
                   )}
                   <button
