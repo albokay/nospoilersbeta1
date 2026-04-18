@@ -1043,8 +1043,10 @@ export default function ProfilePage({
             <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Public conversations</span>
             <Globe size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
           </button>
-          {/* 3. Divider */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.2)", margin: "2px 0" }} />
+          {/* 3. Divider — match the 2px outlines used on buttons/cards
+             elsewhere in the journal so the line reads as a real separator
+             rather than a hairline. */}
+          <div style={{ borderTop: "2px solid var(--dos-border)", margin: "2px 0" }} />
           {/* 4. New friend room */}
           <button className="btn" style={{
             fontSize: 13, whiteSpace: "nowrap", opacity: 0.75,
