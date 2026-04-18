@@ -17,7 +17,6 @@ import ProfilePage, { type ProfileTabData } from "./components/ProfilePage";
 import Modal from "./components/Modal";
 import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
-import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
 import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Filter, ShieldCheck } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
@@ -68,14 +67,8 @@ export default function App() {
   useEffect(injectDOSStyles, []);
 
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 600);
-  // Below 1134px the header stacks into two rows; the tall dynamic logo
-  // crowds that layout, so we fall back to the original static png there.
-  const [isNarrowHeader, setIsNarrowHeader] = useState(() => window.innerWidth < 1134);
   useEffect(() => {
-    const fn = () => {
-      setIsMobile(window.innerWidth <= 600);
-      setIsNarrowHeader(window.innerWidth < 1134);
-    };
+    const fn = () => setIsMobile(window.innerWidth <= 600);
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   }, []);
@@ -129,10 +122,6 @@ export default function App() {
     return params.has("signup") ? "signup" : "signin";
   });
   const [authHint, setAuthHint] = useState<string | null>(null);
-  // Bumped each time the user clicks the fixed-header logo. Used as the
-  // SidebarLogo's React key so clicking remounts it and replays the
-  // block-scatter animation. Same pattern used in HowItWorksV2 panel 5.
-  const [headerLogoResetKey, setHeaderLogoResetKey] = useState(0);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [feedbackForcedOpen, setFeedbackForcedOpen] = useState(false);
   const [feedbackPrefill, setFeedbackPrefill] = useState("");
@@ -622,40 +611,13 @@ export default function App() {
         <div className="topHeaderLeft">
           <h1
             className="brand brandLink"
-            style={{
-              margin: 0,
-              cursor: "pointer",
-              // Shift the dynamic logo right so the "sidebar" wordmark sits
-              // roughly centered over the search bar below. The static png
-              // (used at narrow widths) doesn't need this — it's already
-              // naturally left-aligned and the header stacks differently.
-              // Value on the 8/4px grid.
-              marginLeft: isNarrowHeader ? 0 : 16,
-            }}
+            style={{ margin: 0 }}
             tabIndex={0}
             aria-label={user ? "Go to journal" : "Go to homepage"}
-            onClick={() => {
-              setHeaderLogoResetKey(k => k + 1);
-              if (user) {
-                navigate("/profile");
-                requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
-              } else {
-                goHomepage();
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setHeaderLogoResetKey(k => k + 1);
-                user ? navigate("/profile") : goHomepage();
-              }
-            }}
+            onClick={user ? () => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } : goHomepage}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? navigate("/profile") : goHomepage(); } }}
           >
-            {isNarrowHeader ? (
-              <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
-            ) : (
-              <SidebarLogo key={headerLogoResetKey} scale={0.6} />
-            )}
+            <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
           </h1>
           <span className="mobileHide topHeaderSearch" style={{ display: "inline-flex" }}>
             <SearchShows
