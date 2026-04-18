@@ -1220,6 +1220,7 @@ export default function ShowSection({
                   setShowProgressCelebration(true);
                 }}
                 requireConfirm={true}
+                plain
               />
             </div>
             <p style={{ margin: "20px 0 0", fontSize: 13, opacity: 0.5, textAlign: "center" }}>
@@ -1255,6 +1256,7 @@ export default function ShowSection({
                   onConfirm={confirmPicker}
                   onChangeSelected={(val) => { pickerSelected = val; }}
                   requireConfirm={false}
+                  plain
                 />
                 <button
                   className="btn post h40"
@@ -1693,6 +1695,7 @@ export default function ShowSection({
                 onConfirm={(val) => setNewRoomProgress(val)}
                 requireConfirm={false}
                 allowZero
+                plain
               />
             </div>
           )}

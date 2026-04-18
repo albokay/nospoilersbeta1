@@ -35,7 +35,7 @@ function isWithinPreviousHighest(s: number, e: number, highest?: { s: number; e:
 }
 
 export default function OneSelectProgress({
-  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel, allowZero = false, rewatchHighest
+  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel, allowZero = false, rewatchHighest, plain = false
 }: {
   show: any;
   value: any;
@@ -50,6 +50,10 @@ export default function OneSelectProgress({
   // to "you've watched: " because the user would be entering genuinely
   // new territory (and crossing out of rewatch mode).
   rewatchHighest?: { s: number; e: number } | null;
+  // When true, render as a minimal white select ("Season X Episode X" labels,
+  // no green pill styling). Matches the other in-modal EpisodeSelectInline
+  // pickers so modals have a consistent dropdown flavor.
+  plain?: boolean;
 }) {
   const opts = buildProgressOptions(show);
   const curS = value?.s ?? 1;
@@ -179,19 +183,28 @@ export default function OneSelectProgress({
   return (
     <>
       <select
-        className="badge h40 progress-control"
+        className={plain ? "" : "badge h40 progress-control"}
         value={selectedId}
         onChange={onSelect}
-        style={{ background: "#7abd8e", color: "#fff", border: "2px solid #fff", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }}
+        style={plain
+          ? {
+              background: "#fff", color: "#000",
+              border: "1px solid var(--dos-border)", borderRadius: 6,
+              padding: "4px 8px", fontSize: 13, width: "100%",
+            }
+          : { background: "#7abd8e", color: "#fff", border: "2px solid #fff", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }
+        }
       >
         {showZeroOption && (
-          <option value={ZERO_ID}>{ZERO_LABEL}</option>
+          <option value={ZERO_ID}>{plain ? "Haven't started" : ZERO_LABEL}</option>
         )}
         {groups.map((g) => (
           <optgroup key={g.season} label={`Season ${g.season}`}>
             {g.episodes.map((ep) => (
               <option key={ep.id} value={ep.id}>
-                {`${optionPrefix(ep.s, ep.e)}${epLabel(ep.s, ep.e)}`}
+                {plain
+                  ? `Season ${ep.s} Episode ${ep.e}`
+                  : `${optionPrefix(ep.s, ep.e)}${epLabel(ep.s, ep.e)}`}
               </option>
             ))}
           </optgroup>

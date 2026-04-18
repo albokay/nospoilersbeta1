@@ -1305,6 +1305,7 @@ export default function App() {
                   rewatchHighest={progress[pickShow.id]?.isRewatching && progress[pickShow.id]?.highestS != null && progress[pickShow.id]?.highestE != null
                     ? { s: progress[pickShow.id]!.highestS!, e: progress[pickShow.id]!.highestE! }
                     : null}
+                  plain
                 />
                 <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
                   <button className="btn" onClick={() => { setPickShowId(null); setPickShowMode("set"); setPendingNewShow(null); }}>Cancel</button>
