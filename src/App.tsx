@@ -123,6 +123,10 @@ export default function App() {
     return params.has("signup") ? "signup" : "signin";
   });
   const [authHint, setAuthHint] = useState<string | null>(null);
+  // Bumped each time the user clicks the fixed-header logo. Used as the
+  // SidebarLogo's React key so clicking remounts it and replays the
+  // block-scatter animation. Same pattern used in HowItWorksV2 panel 5.
+  const [headerLogoResetKey, setHeaderLogoResetKey] = useState(0);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [feedbackForcedOpen, setFeedbackForcedOpen] = useState(false);
   const [feedbackPrefill, setFeedbackPrefill] = useState("");
@@ -612,13 +616,29 @@ export default function App() {
         <div className="topHeaderLeft">
           <h1
             className="brand brandLink"
-            style={{ margin: 0 }}
+            style={{ margin: 0, cursor: "pointer" }}
             tabIndex={0}
             aria-label={user ? "Go to journal" : "Go to homepage"}
-            onClick={user ? () => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } : goHomepage}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? navigate("/profile") : goHomepage(); } }}
+            onClick={() => {
+              // Bump resetKey so the block animation replays, then navigate.
+              // Same pattern as the HowItWorksV2 panel-5 logo.
+              setHeaderLogoResetKey(k => k + 1);
+              if (user) {
+                navigate("/profile");
+                requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+              } else {
+                goHomepage();
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setHeaderLogoResetKey(k => k + 1);
+                user ? navigate("/profile") : goHomepage();
+              }
+            }}
           >
-            <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
+            <SidebarLogo key={headerLogoResetKey} scale={0.6} />
           </h1>
           <span className="mobileHide topHeaderSearch" style={{ display: "inline-flex" }}>
             <SearchShows
