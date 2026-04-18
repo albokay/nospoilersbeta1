@@ -1026,22 +1026,24 @@ export default function ProfilePage({
             <button key={g.id} className="btn" style={{
               fontSize: 13, whiteSpace: "nowrap",
               display: "flex", alignItems: "center", width: "100%",
+              background: "#bdd4de", color: "#fff", border: "none",
             }}
               onClick={() => goToShowRoom(tabDropdownOpen, g.id)}>
-              <ArrowRight size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
+              <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>{g.name}</span>
-              <Users size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
+              <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
             </button>
           ))}
           {/* 2. Public conversations */}
           <button className="btn" style={{
             fontSize: 13, whiteSpace: "nowrap",
             display: "flex", alignItems: "center", width: "100%",
+            background: "#dea838", color: "#fff", border: "none",
           }}
             onClick={() => goToShowRoom(tabDropdownOpen)}>
-            <ArrowRight size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
+            <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
             <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Public conversations</span>
-            <Globe size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
+            <Globe size={14} color="#fff" style={{ flexShrink: 0 }} />
           </button>
           {/* 3. Divider — match the 2px outlines used on buttons/cards
              elsewhere in the journal so the line reads as a real separator
@@ -1049,18 +1051,19 @@ export default function ProfilePage({
           <div style={{ borderTop: "2px solid var(--dos-border)", margin: "2px 0" }} />
           {/* 4. New friend room */}
           <button className="btn" style={{
-            fontSize: 13, whiteSpace: "nowrap", opacity: 0.75,
+            fontSize: 13, whiteSpace: "nowrap",
             display: "flex", alignItems: "center", width: "100%",
+            background: "transparent", color: "#bdd4de", border: "2px solid #bdd4de",
           }}
             onClick={() => { setTabDropdownOpen(null); setShowCreateRoomModal(true); }}>
-            <Plus size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
+            <Plus size={14} color="#bdd4de" style={{ flexShrink: 0 }} />
             <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>new friend room</span>
             <span style={{ width: 14, flexShrink: 0 }} />
           </button>
           {/* 5. Close show tab */}
           <Tooltip text="Hides this tab from your journal view. Your entries and progress are kept. Search for the show again and choose 'Start your journal' to bring it back." direction="below">
             <button className="btn" style={{
-              fontSize: 13, whiteSpace: "nowrap", opacity: 0.6,
+              fontSize: 13, whiteSpace: "nowrap", opacity: 0.75,
               display: "flex", alignItems: "center", width: "100%",
             }}
               onClick={() => {
