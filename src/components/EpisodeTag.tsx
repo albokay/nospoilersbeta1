@@ -10,10 +10,11 @@ function pad(n: number) {
 
 // Render an episode tag for a thread or reply.
 // - Regular posts: `(S01 E04)` with optional separator glyph.
-// - Rewatch posts: hat-glasses icon (canon-red) + `(S01E04 / S03E09)` where
-//   the first number is the author's rewatch position at time of writing and
-//   the second is their highest at time of writing (= the filter tag).
-//   Tooltip on hover explains the two numbers.
+// - Rewatch posts: `(S01E04 [hat-glasses] S03E09)` — the hat-glasses icon
+//   (canon-red) sits between the two episode tags in place of a separator
+//   glyph. Both tags render at the same size/weight. First number = rewatch
+//   position at time of writing; second = author's highest at time of
+//   writing (the filter tag). Tooltip on hover explains the two numbers.
 export default function EpisodeTag({
   season,
   episode,
@@ -40,10 +41,11 @@ export default function EpisodeTag({
     return <>{regular}</>;
   }
 
-  // Rewatch: icon + (rewatch / highest) with smaller highest.
+  // Rewatch: (rewatchEp [icon] highestEp). Icon replaces the "/" separator;
+  // both labels render at the same size/weight.
   const rewatchLabel = `S${pad(rewatchS)}${sep}E${pad(rewatchE)}`;
   const tooltipText =
-    "A rewatch post. The lower number shows where they are on this rewatch. The higher number is how far they got the first time.";
+    "A rewatch post. The lower episode number is where they are on their rewatch. The higher episode number is how far they got the first time they watched the show.";
 
   return (
     <Tooltip
@@ -52,15 +54,12 @@ export default function EpisodeTag({
       tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
       portal
     >
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+        {parens && "("}
+        <span>{rewatchLabel}</span>
         <HatGlasses size={16} color={CANON_RED} style={{ flexShrink: 0 }} />
-        <span>
-          {parens && "("}
-          <span>{rewatchLabel}</span>
-          <span style={{ opacity: 0.7, margin: "0 2px" }}>/</span>
-          <span style={{ fontSize: "0.85em" }}>{mainLabel}</span>
-          {parens && ")"}
-        </span>
+        <span>{mainLabel}</span>
+        {parens && ")"}
       </span>
     </Tooltip>
   );
