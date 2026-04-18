@@ -623,7 +623,7 @@ body { -webkit-font-smoothing: antialiased; }
 }
 .explanation-card .btn:hover {
   background: rgba(0,0,0,0.08) !important;
-  color: #000 !important;
+  color: #fff !important;
   border-color: #000 !important;
 }
 

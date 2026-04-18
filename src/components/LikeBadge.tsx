@@ -26,8 +26,11 @@ export default function LikeBadge({
   const handleClick = (e: React.MouseEvent) => {
     if (!clickable) return;
     onClick?.(e);
-    // TODO before shipping: wrap in `if (!localStorage.getItem("ns_star_hint_seen"))`
-    setShowHint(true);
+    // Only show the explanation on the first ever star-click. The Got-it
+    // handler flips the flag; subsequent clicks skip the modal.
+    if (!localStorage.getItem("ns_star_hint_seen")) {
+      setShowHint(true);
+    }
   };
 
   return (
