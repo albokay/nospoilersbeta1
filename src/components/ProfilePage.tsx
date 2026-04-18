@@ -1026,7 +1026,7 @@ export default function ProfilePage({
             <button key={g.id} className="btn" style={{
               fontSize: 13, whiteSpace: "nowrap",
               display: "flex", alignItems: "center", width: "100%",
-              background: "#bdd4de", color: "#fff", border: "none",
+              background: "#adc8d7", color: "#fff", border: "none",
             }}
               onClick={() => goToShowRoom(tabDropdownOpen, g.id)}>
               <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
@@ -1051,12 +1051,12 @@ export default function ProfilePage({
           <div style={{ borderTop: "2px solid var(--dos-border)", margin: "2px 0" }} />
           {/* 4. New friend room */}
           <button className="btn" style={{
-            fontSize: 13, whiteSpace: "nowrap",
+            fontSize: 13, whiteSpace: "nowrap", opacity: 0.75,
             display: "flex", alignItems: "center", width: "100%",
-            background: "transparent", color: "#bdd4de", border: "2px solid #bdd4de",
+            background: "transparent", color: "#fff", border: "2px solid #fff",
           }}
             onClick={() => { setTabDropdownOpen(null); setShowCreateRoomModal(true); }}>
-            <Plus size={14} color="#bdd4de" style={{ flexShrink: 0 }} />
+            <Plus size={14} color="#fff" style={{ flexShrink: 0 }} />
             <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>new friend room</span>
             <span style={{ width: 14, flexShrink: 0 }} />
           </button>
