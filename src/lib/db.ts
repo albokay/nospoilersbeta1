@@ -1260,20 +1260,36 @@ export async function fetchAllFriendGroupsWithActivity(
   if (gErr) throw gErr;
   const groups = (groupData ?? []).map(rowToFriendGroup);
 
-  // 3. Fetch latest activity per group from group_threads
-  const { data: activityData, error: aErr } = await supabase
+  // 3a. Thread activity: shared_at on group_threads (a proxy for thread
+  //     creation/sharing into the room).
+  const { data: threadActivity, error: aErr } = await supabase
     .from("group_threads")
     .select("group_id, shared_at")
     .in("group_id", groupIds);
   if (aErr) throw aErr;
 
-  // Compute max shared_at per group
+  // 3b. Reply activity: replies.created_at, scoped by group_id. Replies
+  //     don't touch group_threads, so without this query reply-only
+  //     activity would never bump the pill order.
+  const { data: replyActivity, error: rErr } = await supabase
+    .from("replies")
+    .select("group_id, created_at")
+    .in("group_id", groupIds)
+    .eq("is_deleted", false);
+  if (rErr) throw rErr;
+
+  // Compute max timestamp per group across both sources. Any thread-create
+  // or reply-create qualifies; stars, progress updates, and other writes
+  // don't touch these tables so they correctly don't bump the order.
   const latestByGroup: Record<string, number> = {};
-  for (const row of activityData ?? []) {
-    const ts = new Date(row.shared_at).getTime();
-    if (!latestByGroup[row.group_id] || ts > latestByGroup[row.group_id]) {
-      latestByGroup[row.group_id] = ts;
-    }
+  const bump = (gid: string, ts: number) => {
+    if (!latestByGroup[gid] || ts > latestByGroup[gid]) latestByGroup[gid] = ts;
+  };
+  for (const row of threadActivity ?? []) {
+    bump(row.group_id, new Date(row.shared_at).getTime());
+  }
+  for (const row of replyActivity ?? []) {
+    if (row.group_id) bump(row.group_id, new Date(row.created_at).getTime());
   }
 
   // 4. Merge and sort by activity (most recent first)
