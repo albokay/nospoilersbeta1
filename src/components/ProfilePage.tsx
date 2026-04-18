@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, MapPin, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
@@ -55,6 +55,7 @@ export default function ProfilePage({
 }) {
   const { user, profile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const showName = (showId: string) => showId === "bb" ? "Breaking Bad (DEMO)" : allShows.find(s => s.id === showId)?.name || showId;
 
@@ -199,6 +200,13 @@ export default function ProfilePage({
       const tab = (requestedTab && (visibleTabOrder.includes(requestedTab) || showTabOrder.includes(requestedTab))) ? requestedTab : visibleTabOrder[0];
       setActiveTab(tab);
       setViewedTabIds(prev => new Set([...prev, tab]));
+      // Consume the one-shot navigation directive. Without this, location.state
+      // persists across renders — so any later dependency change (e.g. closing
+      // a tab shrinks visibleTabOrder.length) would re-fire this effect and
+      // re-apply the stale requestedTab, reversing the user's action.
+      if (requestedTab) {
+        navigate(location.pathname, { replace: true, state: {} });
+      }
     }
   }, [loading, location.key, visibleTabOrder.length]);
 
