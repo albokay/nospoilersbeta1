@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight, Plus, Clock, EyeOff } from "lucide-react";
+import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight, ArrowLeft, Plus, Clock, EyeOff } from "lucide-react";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -82,7 +82,7 @@ export default function ShowSection({
   likesReplies, setLikesReplies, likedByUserReplies, setLikedByUserReplies,
   focusReplyId, onAuthRequired, onClickProfile, navLeft, navRight,
   showStaleNudge, onDismissStaleNudge,
-  clearRewatchFor, onOpenFeedback, onSwitchShow, onGroupLeft, onGroupCreated,
+  clearRewatchFor, onOpenFeedback, onSwitchShow, onGroupLeft, onGroupCreated, allFriendGroups,
 }: any) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -269,9 +269,21 @@ export default function ShowSection({
   // Persist the active group in sessionStorage so a page refresh restores the
   // correct room context (and shows the right "Share to Public" button label).
   const activeGroupSessionKey = `ns_active_group_${showId}`;
+  // Session-scoped breadcrumb: which friend room the user was in before
+  // stepping out to the public conversations space for this show. Written
+  // by the "to public conversations" button, read by the new "back to room"
+  // button on the public side so it can offer a direct return.
+  const cameFromGroupSessionKey = `ns_came_from_group_${showId}`;
   const [activeGroupId, setActiveGroupId] = useState<string | null>(() =>
     sessionStorage.getItem(`ns_active_group_${showId}`) ?? null
   );
+  const [cameFromGroupId, setCameFromGroupId] = useState<string | null>(() =>
+    sessionStorage.getItem(cameFromGroupSessionKey) ?? null
+  );
+  // Public→friend-rooms dropdown state (used when user has >1 room and
+  // no direct came-from breadcrumb).
+  const [friendRoomsDropdownOpen, setFriendRoomsDropdownOpen] = useState(false);
+  const friendRoomsDropdownRef = useRef<HTMLDivElement | null>(null);
   const [groupThreadsData, setGroupThreadsData] = useState<Thread[]>([]);
   const [groupReplyCounts, setGroupReplyCounts] = useState<Record<string, number>>({});
   const [groupThreadsLoading, setGroupThreadsLoading] = useState(false);
@@ -358,10 +370,59 @@ export default function ShowSection({
   useEffect(() => {
     if (activeGroupId) {
       sessionStorage.setItem(activeGroupSessionKey, activeGroupId);
+      // Entering any room consumes the breadcrumb — we no longer need to
+      // remember where the user was before stepping out to public.
+      sessionStorage.removeItem(cameFromGroupSessionKey);
+      setCameFromGroupId(null);
     } else {
       sessionStorage.removeItem(activeGroupSessionKey);
     }
-  }, [activeGroupId, activeGroupSessionKey]);
+  }, [activeGroupId, activeGroupSessionKey, cameFromGroupSessionKey]);
+
+  // Record the group the user came from when stepping out to public. Callers
+  // (the "to public conversations" button) invoke this before clearing
+  // activeGroupId so the public-side back button can offer a direct return.
+  const stepOutToPublic = () => {
+    if (activeGroupId) {
+      sessionStorage.setItem(cameFromGroupSessionKey, activeGroupId);
+      setCameFromGroupId(activeGroupId);
+    }
+    setActiveGroupId(null);
+  };
+  // Re-enter a friend room (used by the new public-side back button and
+  // its dropdown items). Enters the room; the effect above will clear the
+  // breadcrumb automatically.
+  const enterGroup = (gid: string) => {
+    setActiveGroupId(gid);
+    setFriendRoomsDropdownOpen(false);
+  };
+
+  // Close the public-side friend-rooms dropdown on outside click.
+  useEffect(() => {
+    if (!friendRoomsDropdownOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (friendRoomsDropdownRef.current &&
+          !friendRoomsDropdownRef.current.contains(e.target as Node)) {
+        setFriendRoomsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [friendRoomsDropdownOpen]);
+
+  // Rooms for this show sorted by most recent activity, for the public-side
+  // "to friend rooms" dropdown. Falls back to userGroups order if App didn't
+  // pass allFriendGroups (e.g. in tests) or if a room is missing from it.
+  const roomsForThisShow = useMemo(() => {
+    if (!Array.isArray(allFriendGroups) || allFriendGroups.length === 0) {
+      return userGroups;
+    }
+    const byId: Record<string, number> = {};
+    for (const g of allFriendGroups) {
+      if ((g as any).showId === showId) byId[g.id] = (g as any).lastActivityAt ?? 0;
+    }
+    return [...userGroups].sort((a, b) => (byId[b.id] ?? 0) - (byId[a.id] ?? 0));
+  }, [userGroups, allFriendGroups, showId]);
 
   // Fetch group threads when the active group changes or progress changes
   useEffect(() => {
@@ -1325,7 +1386,7 @@ export default function ShowSection({
                 </div>
                 <button
                   className="btn"
-                  onClick={() => setActiveGroupId(null)}
+                  onClick={stepOutToPublic}
                   style={{
                     whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
                     padding: "3px 12px",
@@ -1338,22 +1399,93 @@ export default function ShowSection({
                 </button>
               </>
             ) : (
-              <span
-                className="bannerTitle"
-                role={thread ? "button" : "heading"}
-                title={thread ? "Back to forum" : "Show"}
-                onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
-                style={{
-                  fontSize: 22, fontWeight: 800, letterSpacing: .5,
-                  color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
-                  flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6,
-                }}
-              >
-                {!(thread && !thread.isPublic && !activeGroupId) && <Globe size={18} color="#fff" />}
-                {showId === "bb"
-                  ? "BREAKING BAD (DEMO)"
-                  : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()}
-              </span>
+              <>
+                <span
+                  className="bannerTitle"
+                  role={thread ? "button" : "heading"}
+                  title={thread ? "Back to forum" : "Show"}
+                  onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
+                  style={{
+                    fontSize: 22, fontWeight: 800, letterSpacing: .5,
+                    color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
+                    flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6,
+                  }}
+                >
+                  {!(thread && !thread.isPublic && !activeGroupId) && <Globe size={18} color="#fff" />}
+                  {showId === "bb"
+                    ? "BREAKING BAD (DEMO)"
+                    : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()}
+                </span>
+                {/* Mirror of the friend-room "to public conversations" button.
+                   Shown in the public space when the user has ≥1 room for
+                   this show. Hidden on private-thread views (where the user
+                   isn't actually in the public space). Three behaviors:
+                     - breadcrumb set → "back to [room name]" direct return
+                     - one room only → "to [room name]" direct enter
+                     - multiple rooms → "to friend rooms" toggles a dropdown */}
+                {!(thread && !thread.isPublic) && userGroups.length > 0 && (() => {
+                  const breadcrumbRoom = cameFromGroupId
+                    ? userGroups.find(g => g.id === cameFromGroupId)
+                    : null;
+                  const targetRoom = breadcrumbRoom
+                    || (userGroups.length === 1 ? userGroups[0] : null);
+                  const label = breadcrumbRoom
+                    ? `back to ${breadcrumbRoom.name}`
+                    : targetRoom
+                      ? `to ${targetRoom.name}`
+                      : "to friend rooms";
+                  return (
+                    <div ref={friendRoomsDropdownRef} style={{ position: "relative", flexShrink: 0 }}>
+                      <button
+                        className="btn"
+                        onClick={() => {
+                          if (targetRoom) enterGroup(targetRoom.id);
+                          else setFriendRoomsDropdownOpen(o => !o);
+                        }}
+                        style={{
+                          whiteSpace: "nowrap", fontSize: 13,
+                          padding: "3px 12px",
+                          background: "transparent",
+                          border: "2px solid #fff",
+                          color: "#fff",
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                        }}
+                      >
+                        <ArrowLeft size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} />
+                        {label}
+                      </button>
+                      {friendRoomsDropdownOpen && !targetRoom && (
+                        <div style={{
+                          position: "absolute", top: "calc(100% + 6px)", right: 0,
+                          background: "#dea838", border: "none", borderRadius: 10,
+                          padding: 8, minWidth: 220, zIndex: 200,
+                          display: "flex", flexDirection: "column", gap: 6,
+                          boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+                        }}>
+                          {roomsForThisShow.map(g => (
+                            <button
+                              key={g.id}
+                              className="btn"
+                              onClick={() => enterGroup(g.id)}
+                              style={{
+                                fontSize: 13, whiteSpace: "nowrap",
+                                display: "flex", alignItems: "center", gap: 6,
+                                background: "transparent",
+                                border: "2px solid #fff",
+                                color: "#fff",
+                                width: "100%", justifyContent: "center",
+                              }}
+                            >
+                              <ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} />
+                              <span style={{ flex: 1, textAlign: "center" }}>{g.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </>
             )}
           </div>
 
