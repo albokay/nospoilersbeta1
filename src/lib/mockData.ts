@@ -186,9 +186,10 @@ function makeThreads(showId: string, count: number): Thread[] {
     const titleBase = pick(TITLES[showId] || ["Craft notes", "Tone & texture", "Blocking beats"]);
     const preview = composePreview(showId);
     const body = composeLongBody(showId);
+    const ts = SEED_EPOCH - (i + 1) * 3600000;
     return {
       id: `${showId}-t${i + 1}`, showId, season, episode, author, titleBase, preview, body,
-      updatedAt: SEED_EPOCH - (i + 1) * 3600000,
+      createdAt: ts, updatedAt: ts,
       likes: randBetween(0, 60)
     };
   });
@@ -205,10 +206,11 @@ function pushPost({
   updatedAtOffsetH?: number; likes?: number; isPublic?: boolean;
 }) {
   const id = `${showId}-${author}-${season}-${episode}-${seedThreads.length}`;
+  const ts = SEED_EPOCH - updatedAtOffsetH * 3_600_000;
   seedThreads.push({
     id, showId, season, episode, author, titleBase: title,
     preview: body.length > 240 ? body.slice(0, 240) + "…" : body,
-    body, updatedAt: SEED_EPOCH - updatedAtOffsetH * 3_600_000, likes, isPublic
+    body, createdAt: ts, updatedAt: ts, likes, isPublic
   });
 }
 
@@ -220,10 +222,11 @@ function pushPostSev({
   updatedAtOffsetH?: number; likes?: number; isPublic?: boolean;
 }) {
   const id = `${showId}-${author}-${season}-${episode}-${seedThreads.length}`;
+  const ts = SEED_EPOCH - updatedAtOffsetH * 3_600_000;
   seedThreads.push({
     id, showId, season, episode, author, titleBase: title,
     preview: body.length > 240 ? body.slice(0, 240) + "…" : body,
-    body, updatedAt: SEED_EPOCH - updatedAtOffsetH * 3_600_000, likes, isPublic
+    body, createdAt: ts, updatedAt: ts, likes, isPublic
   });
 }
 

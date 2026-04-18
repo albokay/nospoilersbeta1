@@ -1,6 +1,7 @@
 export type Thread = {
   id: string; showId: string; season: number; episode: number;
-  author: string; titleBase: string; preview: string; body: string; updatedAt: number;
+  author: string; titleBase: string; preview: string; body: string;
+  createdAt: number; updatedAt: number;
   likes: number;
   isPublic?: boolean;   // true = visible on aggregated show page; false = journal-only (default)
   isDeleted?: boolean;

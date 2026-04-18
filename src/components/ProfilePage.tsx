@@ -390,7 +390,28 @@ export default function ProfilePage({
     setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   // Per-tab data is already filtered by showId via lazy-load; apply spoiler filter only
-  const tabThreads = visibleThreads;
+  // Journal entries ("your posts" — top half) are sorted by the *about
+  // episode* airdate: for rewatch posts, the rewatch position frozen at time
+  // of writing; for everything else, the post's season/episode. This is a
+  // one-off exception for the notebook metaphor — filter tags still drive
+  // spoiler visibility everywhere else on the site, and the lower-half
+  // sections (responses, stars) keep their default activity ordering.
+  const tabThreads = useMemo(() => {
+    const aboutSeason = (t: Thread) =>
+      t.isRewatch && t.rewatchS != null ? t.rewatchS : t.season;
+    const aboutEpisode = (t: Thread) =>
+      t.isRewatch && t.rewatchE != null ? t.rewatchE : t.episode;
+    return [...visibleThreads].sort((a, b) => {
+      const aS = aboutSeason(a.thread);
+      const bS = aboutSeason(b.thread);
+      if (aS !== bS) return bS - aS;
+      const aE = aboutEpisode(a.thread);
+      const bE = aboutEpisode(b.thread);
+      if (aE !== bE) return bE - aE;
+      // Tiebreaker within the same episode: newer above.
+      return b.thread.createdAt - a.thread.createdAt;
+    });
+  }, [visibleThreads]);
   const tabMyReplies = visibleMyReplies;
   const tabRepliesToMe = visibleRepliesToMe;
   const tabLikedThreads = visibleLikedThreads;

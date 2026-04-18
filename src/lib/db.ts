@@ -81,6 +81,7 @@ function rowToThread(row: any): Thread {
     titleBase:      row.title,
     preview:        row.preview ?? "",
     body:           row.body ?? "",
+    createdAt:      new Date(row.created_at).getTime(),
     updatedAt:      new Date(row.updated_at).getTime(),
     likes:          row.likes_count ?? 0,
     isPublic:       row.is_public ?? false,
