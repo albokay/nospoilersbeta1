@@ -1469,15 +1469,15 @@ export default function ShowSection({
                               onClick={() => enterGroup(g.id)}
                               style={{
                                 fontSize: 13, whiteSpace: "nowrap",
-                                display: "flex", alignItems: "center", gap: 6,
+                                display: "flex", alignItems: "center", width: "100%",
                                 background: "transparent",
                                 border: "2px solid #fff",
                                 color: "#fff",
-                                width: "100%", justifyContent: "center",
                               }}
                             >
                               <ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} />
-                              <span style={{ flex: 1, textAlign: "center" }}>{g.name}</span>
+                              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>{g.name}</span>
+                              <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
                             </button>
                           ))}
                         </div>
