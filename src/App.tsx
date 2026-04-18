@@ -118,6 +118,10 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.has("signup");
   });
+  const [authInitialMode, setAuthInitialMode] = useState<"signin" | "signup">(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has("signup") ? "signup" : "signin";
+  });
   const [authHint, setAuthHint] = useState<string | null>(null);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [feedbackForcedOpen, setFeedbackForcedOpen] = useState(false);
@@ -770,7 +774,7 @@ export default function App() {
         prefillMessage={feedbackPrefill}
         onForcedClose={() => setFeedbackForcedOpen(false)}
       />
-      {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); }} hint={authHint ?? undefined} />}
+      {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); setAuthInitialMode("signin"); }} hint={authHint ?? undefined} initialMode={authInitialMode} />}
       {showHowItWorks && (
         <div
           style={{
@@ -789,7 +793,7 @@ export default function App() {
           }}>
             <HowItWorksV2
               onClose={() => setShowHowItWorks(false)}
-              onSignup={() => { setShowHowItWorks(false); setShowAuthModal(true); }}
+              onSignup={() => { setShowHowItWorks(false); setAuthInitialMode("signup"); setShowAuthModal(true); }}
             />
           </div>
         </div>
@@ -807,6 +811,22 @@ export default function App() {
                 pointerEvents: "none",
                 zIndex: 0,
               }} />
+
+              {/* ── Top-right "Sign in" (always visible on homepage for
+                 logged-out users; parity with the sign-out button that
+                 appears on every other route for logged-in users). ── */}
+              {!authLoading && !user && (
+                <button
+                  className="btn"
+                  onClick={() => { setAuthInitialMode("signin"); setShowAuthModal(true); }}
+                  style={{
+                    position: "fixed", top: 16, right: 16, zIndex: 200,
+                    flexShrink: 0,
+                  }}
+                >
+                  Sign in
+                </button>
+              )}
 
               {/* ── Scroll-down arrow hint ── */}
               {arrowOpacity > 0 && (
@@ -955,7 +975,7 @@ export default function App() {
               {!user && (
                 <div style={{ marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: isMobile ? "min(288px, 90vw)" : "100%", maxWidth: isMobile ? undefined : 840, padding: isMobile ? 0 : "0 16px", boxSizing: "border-box" }}>
                   <button
-                    onClick={() => setShowAuthModal(true)}
+                    onClick={() => { setAuthInitialMode("signup"); setShowAuthModal(true); }}
                     style={{
                       width: "100%", maxWidth: 420,
                       background: "#fff", color: "var(--dos-bg)", border: "none",
@@ -964,7 +984,7 @@ export default function App() {
                       letterSpacing: "0.02em",
                     }}
                   >
-                    Sign in / Join
+                    Join / sign in
                   </button>
                   <button
                     onClick={() => setShowHowItWorks(true)}

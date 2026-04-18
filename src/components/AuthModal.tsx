@@ -5,9 +5,9 @@ import { useAuth } from "../lib/auth";
 
 type Mode = "signin" | "signup";
 
-export default function AuthModal({ onClose, hint }: { onClose: () => void; hint?: string }) {
+export default function AuthModal({ onClose, hint, initialMode = "signin" }: { onClose: () => void; hint?: string; initialMode?: Mode }) {
   const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<Mode>("signin");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
