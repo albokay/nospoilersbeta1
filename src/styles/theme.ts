@@ -22,10 +22,8 @@ export function injectDOSStyles() {
   */
   --site-header-h:160px;
 }
-/* Narrow widths fall back to the static png logo, so the original heights
-   still apply. */
-@media(max-width:1133px){ :root{ --site-header-h:168px; } }
-@media(max-width:600px){ :root{ --site-header-h:124px; } }
+@media(max-width:1133px){ :root{ --site-header-h:220px; } }
+@media(max-width:600px){ :root{ --site-header-h:140px; } }
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
@@ -114,8 +112,6 @@ body.public-context .expand-chip{ color:#7abd8e !important; }
 .topHeaderWrap{ position:fixed; top:14px; left:14px; right:14px; z-index:1000; }
 .topHeaderBand{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
 .topHeaderLeft{ display:flex; flex-direction:column; align-items:flex-start; gap:14px; flex-shrink:0; }
-/* Narrow-width fallback uses the small png logo — tighter gap is correct there. */
-@media(max-width:1133px){ .topHeaderLeft{ gap:6px; } }
 .topHeaderRight{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
 .topHeaderContentRow{
   width:min(672px, 92vw);

@@ -68,14 +68,8 @@ export default function App() {
   useEffect(injectDOSStyles, []);
 
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 600);
-  // Below 1134px the header stacks into two rows; the tall dynamic logo
-  // crowds that layout, so we fall back to the original static png there.
-  const [isNarrowHeader, setIsNarrowHeader] = useState(() => window.innerWidth < 1134);
   useEffect(() => {
-    const fn = () => {
-      setIsMobile(window.innerWidth <= 600);
-      setIsNarrowHeader(window.innerWidth < 1134);
-    };
+    const fn = () => setIsMobile(window.innerWidth <= 600);
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   }, []);
@@ -622,18 +616,12 @@ export default function App() {
         <div className="topHeaderLeft">
           <h1
             className="brand brandLink"
-            style={{
-              margin: 0,
-              cursor: "pointer",
-              // Shift the dynamic logo right so the "sidebar" wordmark sits
-              // roughly centered over the search bar below. The static png
-              // (used at narrow widths) doesn't need this — it's already
-              // naturally left-aligned and the header stacks differently.
-              marginLeft: isNarrowHeader ? 0 : 28,
-            }}
+            style={{ margin: 0, cursor: "pointer" }}
             tabIndex={0}
             aria-label={user ? "Go to journal" : "Go to homepage"}
             onClick={() => {
+              // Bump resetKey so the block animation replays, then navigate.
+              // Same pattern as the HowItWorksV2 panel-5 logo.
               setHeaderLogoResetKey(k => k + 1);
               if (user) {
                 navigate("/profile");
@@ -650,11 +638,7 @@ export default function App() {
               }
             }}
           >
-            {isNarrowHeader ? (
-              <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
-            ) : (
-              <SidebarLogo key={headerLogoResetKey} scale={0.6} />
-            )}
+            <SidebarLogo key={headerLogoResetKey} scale={0.6} />
           </h1>
           <span className="mobileHide topHeaderSearch" style={{ display: "inline-flex" }}>
             <SearchShows
