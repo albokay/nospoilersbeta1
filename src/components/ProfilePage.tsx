@@ -189,14 +189,27 @@ export default function ProfilePage({
   const visibleTabOrder = useMemo(() => showTabOrder.filter(sid => !hiddenTabs.has(sid)), [showTabOrder, hiddenTabs]);
 
   const [viewedTabIds, setViewedTabIds] = useState<Set<string>>(new Set());
+  // Tracks the last location.key whose state.activeTab we've already applied.
+  // Ensures the nav directive is one-shot — re-fires caused by other deps
+  // (e.g. visibleTabOrder.length shrinking when a tab is closed) don't
+  // re-apply a stale directive and override the user's action.
+  const consumedDirectiveKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!loading && visibleTabOrder.length) {
-      const requestedTab = (location.state as any)?.activeTab;
-      // If a hidden tab is being re-opened (e.g. from "Start your journal"), unhide it
-      if (requestedTab && hiddenTabs.has(requestedTab)) {
-        unhideTab(requestedTab);
-      }
-      const tab = (requestedTab && (visibleTabOrder.includes(requestedTab) || showTabOrder.includes(requestedTab))) ? requestedTab : visibleTabOrder[0];
+    if (loading || !visibleTabOrder.length) return;
+    const rawRequestedTab = (location.state as any)?.activeTab as string | undefined;
+    const isFreshDirective =
+      !!rawRequestedTab && consumedDirectiveKeyRef.current !== location.key;
+    if (isFreshDirective && rawRequestedTab) {
+      if (hiddenTabs.has(rawRequestedTab)) unhideTab(rawRequestedTab);
+      const tab = (visibleTabOrder.includes(rawRequestedTab) || showTabOrder.includes(rawRequestedTab))
+        ? rawRequestedTab
+        : visibleTabOrder[0];
+      setActiveTab(tab);
+      setViewedTabIds(prev => new Set([...prev, tab]));
+      consumedDirectiveKeyRef.current = location.key;
+    } else if (!activeTab) {
+      // Initial pick when no directive is present and no tab is selected yet.
+      const tab = visibleTabOrder[0];
       setActiveTab(tab);
       setViewedTabIds(prev => new Set([...prev, tab]));
     }
