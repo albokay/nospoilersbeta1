@@ -629,8 +629,7 @@ export default function App() {
               // roughly centered over the search bar below. The static png
               // (used at narrow widths) doesn't need this — it's already
               // naturally left-aligned and the header stacks differently.
-              // Value on the 8/4px grid.
-              marginLeft: isNarrowHeader ? 0 : 16,
+              marginLeft: isNarrowHeader ? 0 : 28,
             }}
             tabIndex={0}
             aria-label={user ? "Go to journal" : "Go to homepage"}
