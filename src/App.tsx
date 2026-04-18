@@ -181,15 +181,32 @@ export default function App() {
     }).catch(err => console.error("Failed to load progress:", err));
   }, [user?.id]);
 
-  // Navigate to journal after login
-  const prevUserRef = useRef<typeof user>(user);
+  // Navigate to journal after login — but not on page refresh.
+  //
+  // Auth boots async: on every page load, `user` starts null and then becomes
+  // the session user once supabase.auth.getSession() resolves. Without a
+  // guard, that null → user transition on boot masquerades as a fresh login
+  // and overrides the URL the user actually refreshed at.
+  //
+  // Fix: wait for authLoading to settle. The first time the effect runs with
+  // authLoading=false, we snapshot the current user as the baseline and do
+  // nothing. Subsequent null → user transitions (genuine sign-in or sign-up
+  // during the session) navigate to /profile as intended.
+  const hasSettledRef = useRef(false);
+  const prevUserRef = useRef<typeof user>(null);
   useEffect(() => {
+    if (authLoading) return;
+    if (!hasSettledRef.current) {
+      prevUserRef.current = user;
+      hasSettledRef.current = true;
+      return;
+    }
     if (prevUserRef.current === null && user !== null) {
       navigate("/profile");
       requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
     }
     prevUserRef.current = user;
-  }, [user]);
+  }, [user, authLoading]);
 
   // Replies-to-user for profile pill badge
   const [repliesToUser, setRepliesToUser] = useState<{ reply: Reply; thread: Thread }[]>([]);
