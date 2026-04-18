@@ -1087,6 +1087,12 @@ export default function App() {
           openedAtSeenAt={openedAtSeenAt}
           onTabsChange={setProfileTabData}
           updateProgressFor={updateProgressFor}
+          onGroupCreated={(g: FriendGroup) => {
+            // Mirror the ShowSection handler: optimistic add to top-nav pills.
+            setAllFriendGroups(prev =>
+              prev.find(x => x.id === g.id) ? prev : [{ ...g, lastActivityAt: Date.now() }, ...prev]
+            );
+          }}
         />
       )}
 

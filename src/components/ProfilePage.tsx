@@ -37,6 +37,7 @@ export default function ProfilePage({
   openedAtSeenAt = 0,
   onTabsChange,
   updateProgressFor,
+  onGroupCreated,
 }: {
   shows: Show[];
   username: string;
@@ -52,6 +53,7 @@ export default function ProfilePage({
   repliesToUser?: { reply: Reply; thread: Thread }[];
   openedAtSeenAt?: number;
   onTabsChange?: (data: ProfileTabData | null) => void;
+  onGroupCreated?: (g: FriendGroup) => void;
 }) {
   const { user, profile } = useAuth();
   const location = useLocation();
@@ -290,6 +292,8 @@ export default function ProfilePage({
       setTabGroups(prev => [...prev, g]);
       setNewRoomName("");
       setShowCreateRoomModal(false);
+      // Surface the new room in the top-nav pills without waiting on a refresh.
+      if (typeof onGroupCreated === "function") onGroupCreated(g);
       // Navigate into the new room
       sessionStorage.setItem(`ns_active_group_${activeTab}`, g.id);
       openShow(activeTab);
