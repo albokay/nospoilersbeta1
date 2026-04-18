@@ -47,6 +47,12 @@ body.group-context .reply-card{ color:#1a3a4a !important; --dos-accent:#1a3a4a; 
 /* In friend rooms, star button circle + star should both use the muted border color */
 body.group-context .likeWrap{ color:rgba(26,58,74,0.3) !important; border-color:rgba(26,58,74,0.3) !important; }
 body.group-context .likeWrap:hover{ background:rgba(26,58,74,0.08) !important; }
+/* In friend rooms, the default .btn:hover border-color (--dos-light = dark
+   navy) reads as a black outline against the light-blue bg. Swap to white —
+   but only outside reply-cards, where the existing dark-navy hover is
+   intentional and should stay. */
+body.group-context .btn:hover{ border-color:#fff !important; }
+body.group-context .reply-card .btn:hover{ border-color:var(--dos-light) !important; }
 
 /* ── Public room context — golden-yellow theme ─────────────────────────────── */
 body.public-context{
