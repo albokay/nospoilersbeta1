@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
+import SidebarLogo from "./SidebarLogo";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -331,6 +332,11 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
   injectKeyframes();
 
   const [step, setStep] = useState(0);
+  // Incremented on every click of the panel-5 logo to force SidebarLogo to
+  // remount and replay its block-scatter animation. The component runs its
+  // animation once in a mount-effect, so remounting via `key` is the
+  // simplest way to reset it without touching its internals.
+  const [logoResetKey, setLogoResetKey] = useState(0);
   const navigate = useNavigate();
   const isJoinStep = step === TOTAL_STEPS - 1;
   const isLastPanel = step === panelSlots.length - 1;
@@ -370,8 +376,22 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+              gap: 32,
             }}
           >
+            {/* Dynamic logo — clickable, click replays block animation.
+               key={logoResetKey} forces a remount of SidebarLogo so its
+               mount-effect reruns and re-scatters + resettles the blocks. */}
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Replay logo animation"
+              onClick={() => setLogoResetKey(k => k + 1)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLogoResetKey(k => k + 1); } }}
+              style={{ cursor: "pointer", display: "inline-block" }}
+            >
+              <SidebarLogo key={logoResetKey} scale={0.9} />
+            </div>
             <button
               onClick={handleSignup}
               style={{
