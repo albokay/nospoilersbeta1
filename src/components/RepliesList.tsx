@@ -920,10 +920,12 @@ export default function RepliesList({
       </div>
 
       {/* "Respond to the thread" button at the very bottom — only shown when
-         the thread has at least one reply. Before that, the in-entry
-         "Write a response" button is the sole entry point, so we don't
-         double up. */}
-      {replies.length > 0 && (
+         at least one reply is actually rendered. Matches the render logic
+         above: deleted stubs always show, others are gated by isVisible.
+         A friend-room thread with seed replies that don't pass the group or
+         progress filter should show no button — the in-entry "Write a
+         response" button is the sole entry point in that case. */}
+      {replies.some(r => (r.isDeleted || !!localDeleted[r.id]) || isVisible(r).show) && (
         <div style={{ marginTop: 40, display: "flex", justifyContent: "flex-end" }}>
           <button
             className="btn"
