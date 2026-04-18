@@ -1122,10 +1122,16 @@ export default function ProfilePage({
                 const sid = tabDropdownOpen;
                 setTabDropdownOpen(null);
                 hideTab(sid);
-                // Clear browse/session progress so the onboarding modal reappears
-                // when the user searches for this show again
+                // Clear every per-show session key so a later search doesn't
+                // short-circuit into a stale context (public space with
+                // preserved browse progress, friend room with preserved
+                // active-group id, etc.). Without this, searching a show
+                // whose tab was closed can bounce the user into whatever
+                // space they were last in, instead of back to a fresh tab.
                 sessionStorage.removeItem(`ns_browse_prog_${sid}`);
                 sessionStorage.removeItem(`ns_browse_show_${sid}`);
+                sessionStorage.removeItem(`ns_active_group_${sid}`);
+                sessionStorage.removeItem(`ns_came_from_group_${sid}`);
                 // Switch to another tab if the hidden one was active
                 if (sid === activeTab) {
                   const remaining = visibleTabOrder.filter(s => s !== sid);
