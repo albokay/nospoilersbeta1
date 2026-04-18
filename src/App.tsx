@@ -620,41 +620,38 @@ export default function App() {
       <div className="topHeaderBand">
         {/* Left stack: logo on top, search below */}
         <div className="topHeaderLeft">
-          <h1
-            className="brand brandLink"
-            style={{
-              margin: 0,
-              cursor: "pointer",
-              // Shift the dynamic logo right so the "sidebar" wordmark sits
-              // roughly centered over the search bar below. The static png
-              // (used at narrow widths) doesn't need this.
-              marginLeft: isNarrowHeader ? 0 : 16,
-            }}
-            tabIndex={0}
-            aria-label={user ? "Go to journal" : "Go to homepage"}
-            onClick={() => {
-              setHeaderLogoResetKey(k => k + 1);
-              if (user) {
-                navigate("/profile");
-                requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
-              } else {
-                goHomepage();
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setHeaderLogoResetKey(k => k + 1);
-                user ? navigate("/profile") : goHomepage();
-              }
-            }}
-          >
-            {isNarrowHeader ? (
+          {isNarrowHeader ? (
+            <h1
+              className="brand brandLink"
+              style={{ margin: 0 }}
+              tabIndex={0}
+              aria-label={user ? "Go to journal" : "Go to homepage"}
+              onClick={user ? () => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } : goHomepage}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? navigate("/profile") : goHomepage(); } }}
+            >
               <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
-            ) : (
+            </h1>
+          ) : (
+            // Dynamic logo: click replays the block animation only — no navigation.
+            // The static png retains its journal/home link (the common case on
+            // narrow screens where users expect a brand click to navigate).
+            <h1
+              className="brand"
+              style={{ margin: 0, cursor: "pointer", marginLeft: 16 }}
+              tabIndex={0}
+              role="button"
+              aria-label="Replay Sidebar logo animation"
+              onClick={() => setHeaderLogoResetKey(k => k + 1)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setHeaderLogoResetKey(k => k + 1);
+                }
+              }}
+            >
               <SidebarLogo key={headerLogoResetKey} scale={0.6} />
-            )}
-          </h1>
+            </h1>
+          )}
           <span className="mobileHide topHeaderSearch" style={{ display: "inline-flex" }}>
             <SearchShows
               shows={shows}
