@@ -206,6 +206,19 @@ export default function ProfilePage({
   // clear expanded state when switching tabs
   useEffect(() => { setExpandedIds(new Set()); }, [activeTab]);
 
+  // Keep the active tab in view — matters when a user searches for a show
+  // whose tab is off-screen in the horizontal tab scroller (including tabs
+  // all the way to the right past the visible window). scrollIntoView with
+  // inline: "nearest" nudges horizontally without touching vertical scroll.
+  const tabButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  useEffect(() => {
+    if (!activeTab) return;
+    const el = tabButtonRefs.current[activeTab];
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+    }
+  }, [activeTab]);
+
   const [diaryFilter, setDiaryFilter] = useState<"all" | "private">("all");
 
   // Friend-room filter for the journal
@@ -587,6 +600,7 @@ export default function ProfilePage({
                       return (
                         <button
                           key={sid}
+                          ref={(el) => { tabButtonRefs.current[sid] = el; }}
                           className={`diaryTab${active ? " active" : ""}`}
                           title={activity ? "There are new responses to you in here." : undefined}
                           onClick={(e) => {
