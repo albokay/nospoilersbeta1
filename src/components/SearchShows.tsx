@@ -166,7 +166,23 @@ export default function SearchShows({
   const [firstTimeSel, setFirstTimeSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
   const [progressTouched, setProgressTouched] = useState(false);
 
-  // All results come from TVMaze — no local filtering, no "already on sidebar"
+  // All results come from TVMaze, with one exception: The Sidebar Protocol
+  // is a seeded demo show that doesn't exist on TVmaze. When the user has
+  // a TSP progress row (they've been set up with the demo) AND their query
+  // matches the title, we inject a synthetic entry so they can find and
+  // reopen their TSP tab through the same search flow as real shows.
+  const tspMatchesQuery = (q: string) => {
+    const n = q.trim().toLowerCase();
+    if (!n) return false;
+    return (
+      "the sidebar protocol".includes(n) ||
+      "sidebar protocol".includes(n) ||
+      n === "tsp"
+    );
+  };
+  const hasTspProgress = !!progress?.["tsp"];
+  const showTspSynthetic = hasTspProgress && tspMatchesQuery(query);
+
   const tvMatches = useMemo(() => tvResults.slice(0, 8), [tvResults]);
 
   // Debounced TVmaze fetch
@@ -369,6 +385,28 @@ export default function SearchShows({
         />
         {open && !!query.trim() && (
           <div id="search-suggest" className="card dropdownPanel" role="listbox" style={{ left: 0, right: 0, width: "auto" }}>
+            {/* Synthetic TSP match pinned at the top when applicable — the
+               demo show doesn't live on TVmaze, so we surface it here and
+               route straight to onReopenJournal, bypassing the real-show
+               onboarding flow entirely. */}
+            {showTspSynthetic && (
+              <div
+                key="tsp-synthetic"
+                role="option"
+                style={{ padding: "6px 8px", cursor: "pointer" }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setQuery("The Sidebar Protocol");
+                  setOpen(false);
+                  if (onReopenJournal) onReopenJournal("tsp");
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.12)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+              >
+                <span style={{ fontWeight: 600 }}>The Sidebar Protocol</span>
+                <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>demo</span>
+              </div>
+            )}
             {tvLoading && (
               <div className="muted" style={{ fontSize: 12, padding: "4px 8px" }}>Searching…</div>
             )}
@@ -388,8 +426,8 @@ export default function SearchShows({
               </div>
             ))}
 
-            {/* Empty state */}
-            {!tvLoading && tvMatches.length === 0 && (
+            {/* Empty state — only when nothing else is on offer */}
+            {!tvLoading && tvMatches.length === 0 && !showTspSynthetic && (
               <div className="muted" style={{ padding: "8px", fontSize: 13 }}>No results found.</div>
             )}
           </div>
