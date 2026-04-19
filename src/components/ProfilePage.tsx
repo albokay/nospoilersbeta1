@@ -197,12 +197,25 @@ export default function ProfilePage({
   // re-apply a stale directive and override the user's action.
   const consumedDirectiveKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (loading || !visibleTabOrder.length) return;
+    if (loading) return;
     const rawRequestedTab = (location.state as any)?.activeTab as string | undefined;
     const isFreshDirective =
       !!rawRequestedTab && consumedDirectiveKeyRef.current !== location.key;
+
+    // Unhide a hidden tab *before* the visibleTabOrder gate. A directive for
+    // a hidden tab implies the user wants it visible again — crucially, this
+    // must run even when visibleTabOrder is currently empty (all tabs
+    // hidden), otherwise reopening a closed tab from search would be a
+    // no-op. We don't consume the directive yet; the next render re-enters
+    // this effect with an updated visibleTabOrder and applies activeTab.
+    if (isFreshDirective && rawRequestedTab && hiddenTabs.has(rawRequestedTab)) {
+      unhideTab(rawRequestedTab);
+      return;
+    }
+
+    if (!visibleTabOrder.length) return;
+
     if (isFreshDirective && rawRequestedTab) {
-      if (hiddenTabs.has(rawRequestedTab)) unhideTab(rawRequestedTab);
       const tab = (visibleTabOrder.includes(rawRequestedTab) || showTabOrder.includes(rawRequestedTab))
         ? rawRequestedTab
         : visibleTabOrder[0];
@@ -215,7 +228,7 @@ export default function ProfilePage({
       setActiveTab(tab);
       setViewedTabIds(prev => new Set([...prev, tab]));
     }
-  }, [loading, location.key, visibleTabOrder.length]);
+  }, [loading, location.key, visibleTabOrder.length, hiddenTabs]);
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   // clear expanded state when switching tabs
@@ -596,21 +609,40 @@ export default function ProfilePage({
 
       {!loading && (
         <div className="container" style={{ marginTop: 12 }}>
-          {/* Gate the welcome on visibleTabOrder rather than showTabOrder so it
-             also covers the "all tabs hidden" state. hideTab doesn't delete
-             the underlying progress row or activity, so showTabOrder stays
-             populated after closing tabs — but visibleTabOrder correctly
-             reflects what the user can see. */}
-          {visibleTabOrder.length === 0 && <EmptyProfileWelcome />}
+          {/* Journal always renders its heading. When there are no visible
+             tabs (first-time user, or all-tabs-closed state), the welcome
+             lives inside a diary card in the same spot the real entries
+             would occupy — so the page feels present, not broken.
+             When there's an active tab, the full journal (tab row, filters,
+             compose, entries) renders in its usual form. */}
+          <div className="hangLContent" style={{ paddingTop: 0 }}>
+            <section style={{ marginTop: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 0, marginBottom: 12, minHeight: 28 }}>
+                <div className="title profile-journal-heading" style={{ fontSize: 22, marginLeft: 0 }}>this is your journal</div>
+              </div>
+              {!activeTab && (
+                <div className="diaryOuter">
+                  <div className="diaryCardWrap">
+                    {([48, 32, 16] as const).map(offset => {
+                      const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
+                      return (
+                        <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
+                      );
+                    })}
+                    <div className="card" style={{ minHeight: 500, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
+                      <EmptyProfileWelcome />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
 
           {activeTab && (
             <div className="hangLContent" style={{ paddingTop: 0 }}>
             <>
               {/* Your Watch Diary */}
               <section style={{ marginTop: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 0, marginBottom: 12, minHeight: 28 }}>
-                  <div className="title profile-journal-heading" style={{ fontSize: 22, marginLeft: 0 }}>this is your journal</div>
-                </div>
                 <div className="diaryOuter">
                   {/* Folder tab row — sits flush on top of the front card */}
                   <div className="diaryTabScroller">
