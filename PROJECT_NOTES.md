@@ -104,18 +104,52 @@ State `(season=0, episode=0)` represents "haven't started the show yet" — used
 11. **Profile-load race after signup** (deferred — V-5 from 2026-04-19 audit). After `signUp`, `loadProfile` runs (`auth.tsx:23-30`) — race possibility between auth.signUp completing and the profile-row trigger. Supabase `.single()` doesn't throw (returns `{data: null, error}`), so worst case is `setProfile(null)` and components see `user !== null && profile === null` briefly. Most components guard with `profile?.username` so they degrade gracefully. Worth verifying in practice on next signup that no UI flashes empty username; not blocking.
 12. **Soft-deleted thread editing not blocked** (deferred — V-7 from 2026-04-19 audit). A soft-deleted thread (kept as a stub because it has replies) can still be reached by URL, and the edit UI in `InlineThreadView.tsx:209-244` doesn't check `thread.isDeleted` before allowing edits. Author can edit the stub's title/body via RLS. Probably harmless and possibly intentional (author can fix stub copy). Product call before fixing.
 
-## 7. Most Recent Work (last ~10 commits, 2026-04-19)
+## 7. Recent work
 
-The recent stretch is all **header/layout polish at the narrow breakpoint**:
+### 2026-04-19 audit arc
 
-- **4feb4f1** Add CLAUDE.md (the no-worktrees rule, deploy flow, git/build safety).
-- **60808a5** `--site-header-h: 56→96px` at ≤1133px so the tall logo+search column doesn't cover content. Wide and phone stay at 56.
-- **2a3d62b** Profile pill always renders inline next to sign-out; removed the dual-position absolute pill anchor.
-- **6dacde3** ProfilePage: `.journalShift` class shifts diary stack +56px right at desktop to align the front card with the fixed pill column.
-- **0a93496 / bdd2e72 / e461b52** Reverts of three earlier header experiments (single content-column row, header reservation +80, restore reservation).
-- **431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c** The series of header experiments those reverts undid.
+A four-phase regression-prevention audit was run across the codebase this day. Triggered by a user-reported broken radio button (the "First time / Rewatching" toggle in the SearchShows onboarding modal silently swallowed clicks). Each audit found additional bugs of the same or adjacent classes.
 
-Net effect of the surviving commits: the fixed header is a single right cluster (pill + sign-out + admin), the profile diary nudges right on desktop to align under the pill, and the narrow breakpoint reserves enough vertical space for the tall logo column.
+**Audits performed:**
+
+1. **Interactive components** — every form, radio, dropdown, button on the site checked for whether its handler actually wires up to the state it should mutate. Root cause of the radio bug found here: `.topHeaderWrap` has `pointer-events: none` with a narrow allowlist (`button` / `a` / `input` / `select` / `textarea` / `.brand` / `.splashSearchWrap` / `.profileChip`), and `pointer-events` inherits through the DOM past `position: fixed`. Modals nested in the header subtree silently swallowed clicks on any custom `<div>` click target (radios, click-to-close backdrops). Native form elements survived because they're allowlisted.
+
+2. **Console errors** — pattern-based sweep for unhandled rejections, React dev warnings, undefined property accesses on data that may not be populated yet, useEffect cleanup issues, and `console.error` calls that fire under normal recoverable conditions.
+
+3. **Critical user flows** — logic-trace audit of six flows: signup + onboarding (incl. TSP demo seeding), creating a friend room + inviting a friend, progress updating across all four sub-cases (first-time advance, rewatcher within highest, rewatcher transition out, zero → 1), posting in three destinations (private journal / friend room / public), accepting an invite (with/without prior progress for the show), and editing a post (re-tag interaction with spoiler filtering).
+
+4. **Rewatcher principle sweep** — codebase-wide check that anything tagging, comparing, or filtering on the writer's spoiler-relevant position goes through `effectiveProgress` (returns `highestS/E` for rewatchers), not raw `.s/.e` (the rewatch position). Compose paths were correct; six edit/visibility-check sites were not.
+
+**Commits (chronological):**
+
+| Commit | Scope |
+|---|---|
+| `623f693` | Fix SearchShows modal: `createPortal` to escape `.topHeaderWrap`; add dev-time pointer-events audit (`src/lib/devHeaderAudit.ts`); remove dead `SINGLE_PAGE` constant + `App.before-narrative.tsx.bak` |
+| `1a0953c` | Cancelled-flag pattern + `console.warn` cleanups: ProfilePage activity + per-tab fetch, SearchShows TVMaze debounce, `upsertBrowseProgress` |
+| `9df4a0a` | `key={expandedShowId}` on `<ShowSection>` to force remount on show change — fixes stale-closure cross-show state leaks |
+| `9f39153` | First HANDOFF.md / PROJECT_NOTES.md refresh of this arc |
+| `c55ace5` | Rewatcher principle: 6 edit-tag and visibility-check sites in `InlineThreadView`, `RepliesList`, `ShowSection` routed through `effectiveProgress` |
+| `0cab458` | TSP initial progress `(s=1, e=0) → (s=1, e=1)` so demo room lands populated; new migration `20260419_tsp_initial_progress.sql` includes function replacement + narrowly-filtered backfill |
+| `ac43648` | Invite auto-accept race fix (key-based gate on `progressCheckedFor`); `addThreadToGroup` silent-failure now logs `console.warn` with context |
+| `5955ce9` | Self-invite block (server-side in edge function + client-side pre-check); duplicate-invite copy updated; V-5/V-7 deferral notes added to §6 |
+
+**Deferred items (still open):**
+
+- **V-5** — profile-load race after signup. Low-confidence; worth eyeballing on next signup whether any UI flashes empty username. Documented in §6 item 11.
+- **V-7** — soft-deleted thread editing not blocked. Product call — should authors be able to edit a stub? Documented in §6 item 12.
+- **Prompt suggestion uses rewatch position** for matching ([ShowSection.tsx:1109, :1119](src/components/ShowSection.tsx:1109)). Explicitly kept as-is per product call: prompts match the user's current engagement context, not their spoiler ceiling.
+- **Dead `viewerSeason/Episode` fallback in ResponseComposer** ([InlineThreadView.tsx:546-547](src/components/InlineThreadView.tsx:546)). `postTagSeason/Episode` props are always provided so this fallback never fires. Worth a small cleanup later but not a bug.
+
+**Two-step deploys this arc required:**
+
+- `0cab458` (TSP migration): SQL migration must be run manually in Supabase SQL editor — Netlify auto-deploy doesn't apply DB migrations. Verified `0` rows remaining at sentinel after run.
+- `5955ce9` (self-invite): server-side block lives in the `send-invite` edge function and requires `supabase functions deploy send-invite` (or upload via the Supabase dashboard). Client-side pre-check ships immediately via Netlify push.
+
+**Conventions established or reinforced this arc** are documented under "Component conventions" below: portal modals out of `.topHeaderWrap`, the `cancelled` flag pattern for async useEffects, `effectiveProgress` for rewatcher spoiler-context comparisons, `key={expandedShowId}` for per-show state isolation, the dev-time pointer-events audit.
+
+### Earlier (pre-audit, header/layout polish)
+
+The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.
 
 ---
 
@@ -151,6 +185,8 @@ Net effect of the surviving commits: the fixed header is a single right cluster 
   Currently used in [ShowSection.tsx:826](src/components/ShowSection.tsx:826) (`fetchThreadsForShow`), [ProfilePage.tsx:80, :98](src/components/ProfilePage.tsx:80) (activity load + per-tab Promise.all), [SearchShows.tsx:194](src/components/SearchShows.tsx:194) (debounced TVMaze fetch), [InviteAcceptPage.tsx:95](src/components/InviteAcceptPage.tsx:95) (progress probe). New async effects should follow this pattern unless the writes are to refs only.
 
 - **Dev-time pointer-events audit.** [src/lib/devHeaderAudit.ts](src/lib/devHeaderAudit.ts) is loaded in dev only (via [src/index.tsx](src/index.tsx)) and warns when an element inside `.topHeaderWrap` ends up with computed `pointer-events: none` AND looks clickable (`cursor: pointer` or React `onClick`/`onMouseDown`). Catches the silent-click-swallow bug class — see the SearchShows onboarding-modal regression that motivated it. If you add a new clickable element to the header, either route it through one of the allowlisted tags/classes (`button`, `a`, `input`, `select`, `textarea`, `.brand`, `.splashSearchWrap`, `.profileChip`) or portal it to `document.body`.
+
+- **`effectiveProgress` for rewatcher spoiler-context comparisons.** A rewatcher's spoiler context is always their `highestS/E`, never their rewatch position (`.s/.e`). The rewatch position is display-only — where they are on this trip — and has no bearing on what they actually know. Anything that **tags** content the rewatcher writes (so spoiler filtering can hide it from the unworthy), **compares** "has the writer learned more since they wrote this", or **filters** what the rewatcher is allowed to see must reference [`effectiveProgress(progressEntry)`](src/lib/utils.ts:39) from `src/lib/utils.ts`, which returns `{s: highestS, e: highestE}` for rewatchers and `{s, e}` otherwise. Bypassing this and reading raw `.s/.e` is a spoiler-leak bug for rewatchers — see commit `c55ace5` for six sites that had this and the fix shape. Note: the `rewatchSeason`/`rewatchEpisode` snapshot fields stored on posts ARE supposed to be the raw rewatch position (display-only "written on rewatch of S2E3") — those are the exception. `canView` already routes through `effectiveProgress` internally, so any caller passing a full `ProgressEntry` is automatically correct; the bug class lives where calling code reads `.s/.e` directly for tagging or comparison.
 
 ## Watch-outs
 
