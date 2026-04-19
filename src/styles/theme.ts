@@ -134,22 +134,9 @@ body.public-context .expand-chip{ color:#7abd8e !important; }
 /* Narrow-width fallback uses the small png logo — tighter gap is correct there. */
 @media(max-width:1133px){ .topHeaderLeft{ gap:6px; } }
 .topHeaderRight{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
-/* Profile pill — two render positions, CSS picks one per breakpoint:
-   - Wide (≥1134px): .topHeaderPillAnchor absolutely positioned at the
-     content column's left edge so the pill sits vertically aligned
-     with the right cluster (sign out / admin).
-   - Narrow (<1134px): .topHeaderPillInline inside the right cluster,
-     next to the sign-out icon. The left-edge anchor would collide
-     with the stacked logo/search column on narrow widths. */
-.topHeaderPillAnchor{
-  position:absolute; top:0;
-  left:calc(50% - 336px);
-}
-.topHeaderPillInline{ display:none; }
-@media(max-width:1133px){
-  .topHeaderPillAnchor{ display:none; }
-  .topHeaderPillInline{ display:inline-flex; }
-}
+/* Profile pill — always lives in the right cluster next to sign-out,
+   at every viewport width. */
+.topHeaderPillInline{ display:inline-flex; }
 .topHeaderContentRow{
   width:min(672px, 92vw);
   margin:40px auto 0;
