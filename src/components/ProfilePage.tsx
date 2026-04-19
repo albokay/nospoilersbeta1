@@ -297,6 +297,22 @@ export default function ProfilePage({
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [createRoomSubmitting, setCreateRoomSubmitting] = useState(false);
+
+  // Show-tab header "your friend rooms" dropdown (2+ rooms case)
+  const [roomsHeaderDropdownOpen, setRoomsHeaderDropdownOpen] = useState(false);
+  const roomsHeaderDropdownRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!roomsHeaderDropdownOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (roomsHeaderDropdownRef.current && !roomsHeaderDropdownRef.current.contains(e.target as Node)) {
+        setRoomsHeaderDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [roomsHeaderDropdownOpen]);
+  // Close the dropdown when switching show tabs
+  useEffect(() => { setRoomsHeaderDropdownOpen(false); }, [activeTab]);
   const handleCreateRoom = async () => {
     if (!user || !newRoomName.trim() || !activeTab) return;
     setCreateRoomSubmitting(true);
@@ -699,7 +715,8 @@ export default function ProfilePage({
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
                     <div className="profileActionBar">
-                      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                        {/* Write */}
                         <button
                           className="btn post h40"
                           onClick={() => {
@@ -710,14 +727,105 @@ export default function ProfilePage({
                         >
                           <SquarePen size={15} /> write
                         </button>
+
+                        {/* Friend-room affordance — conditional on room count.
+                           Single: direct link. Multi: dropdown (chevron). */}
+                        {tabGroups.length === 1 && (
+                          <button
+                            className="btn h40"
+                            onClick={() => goToShowRoom(activeTab, tabGroups[0].id)}
+                            title={tabGroups[0].name}
+                            style={{
+                              lineHeight: 1.2,
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              background: "transparent",
+                              border: "2px solid #fff",
+                              color: "#fff",
+                              maxWidth: 180,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tabGroups[0].name}</span>
+                          </button>
+                        )}
+                        {tabGroups.length >= 2 && (
+                          <div ref={roomsHeaderDropdownRef} style={{ position: "relative" }}>
+                            <button
+                              className="btn h40"
+                              onClick={() => setRoomsHeaderDropdownOpen(o => !o)}
+                              style={{
+                                lineHeight: 1.2,
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                background: "transparent",
+                                border: "2px solid #fff",
+                                color: "#fff",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <span>your friend rooms</span>
+                              <ChevronDown size={14} color="#fff" style={{ flexShrink: 0 }} />
+                            </button>
+                            {roomsHeaderDropdownOpen && (
+                              <div style={{
+                                position: "absolute", top: "calc(100% + 6px)", left: 0,
+                                display: "flex", flexDirection: "column", gap: 6,
+                                background: "var(--dos-bg)", border: "none",
+                                borderRadius: 10, padding: 8, zIndex: 200,
+                                boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+                                minWidth: 240,
+                              }}>
+                                {tabGroups.map(g => (
+                                  <button
+                                    key={g.id}
+                                    className="btn"
+                                    onClick={() => {
+                                      setRoomsHeaderDropdownOpen(false);
+                                      goToShowRoom(activeTab, g.id);
+                                    }}
+                                    style={{
+                                      fontSize: 13, whiteSpace: "nowrap",
+                                      display: "flex", alignItems: "center", width: "100%",
+                                      background: "#adc8d7", color: "#fff", border: "none",
+                                    }}
+                                  >
+                                    <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                                    <span style={{ flex: 1, textAlign: "center", margin: "0 8px", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</span>
+                                    <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* + new friend room */}
+                        <button
+                          className="btn h40"
+                          onClick={() => setShowCreateRoomModal(true)}
+                          title="Create a new friend room for this show"
+                          style={{
+                            lineHeight: 1.2,
+                            display: "inline-flex", alignItems: "center", gap: 5,
+                            background: "transparent",
+                            border: "2px solid #fff",
+                            color: "#fff",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <Plus size={14} /> new friend room
+                        </button>
+
+                        {/* All / private toggle — slightly smaller */}
                         <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
                           {(["all", "private"] as const).map(opt => (
                             <button
                               key={opt}
                               onClick={() => setDiaryFilter(opt)}
                               style={{
-                                padding: "3px 10px",
-                                fontSize: 12,
+                                padding: "2px 8px",
+                                fontSize: 10,
                                 fontWeight: diaryFilter === opt ? 700 : 400,
                                 background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
                                 color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
@@ -726,7 +834,7 @@ export default function ProfilePage({
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              {opt === "all" ? "all entries" : "private entries"}
+                              {opt === "all" ? "all" : "private only"}
                             </button>
                           ))}
                         </div>
@@ -1113,46 +1221,26 @@ export default function ProfilePage({
           boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
           minWidth: 260,
         }}>
-          {/* 1. Active friend rooms */}
-          {tabGroups.map(g => (
-            <button key={g.id} className="btn" style={{
+          {/* Friend-room access lives in the show-tab header now; this
+             dropdown is simplified to just Public conversations + Close. */}
+          {/* 1. Public conversations */}
+          <Tooltip text={`See what others are writing about ${showName(tabDropdownOpen)}.`} direction="below">
+            <button className="btn" style={{
               fontSize: 13, whiteSpace: "nowrap",
               display: "flex", alignItems: "center", width: "100%",
-              background: "#adc8d7", color: "#fff", border: "none",
+              background: "#dea838", color: "#fff", border: "none",
             }}
-              onClick={() => goToShowRoom(tabDropdownOpen, g.id)}>
+              onClick={() => goToShowRoom(tabDropdownOpen)}>
               <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>{g.name}</span>
-              <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Public conversations</span>
+              <Globe size={14} color="#fff" style={{ flexShrink: 0 }} />
             </button>
-          ))}
-          {/* 2. Public conversations */}
-          <button className="btn" style={{
-            fontSize: 13, whiteSpace: "nowrap",
-            display: "flex", alignItems: "center", width: "100%",
-            background: "#dea838", color: "#fff", border: "none",
-          }}
-            onClick={() => goToShowRoom(tabDropdownOpen)}>
-            <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Public conversations</span>
-            <Globe size={14} color="#fff" style={{ flexShrink: 0 }} />
-          </button>
-          {/* 3. Divider — half-width, centered, same 2px weight as the
+          </Tooltip>
+          {/* 2. Divider — half-width, centered, same 2px weight as the
              journal-page outlines with 0.75 opacity so it reads as a soft
              separator rather than a hard rule. */}
           <div style={{ borderTop: "2px solid var(--dos-border)", width: "50%", margin: "2px auto", opacity: 0.75 }} />
-          {/* 4. New friend room */}
-          <button className="btn" style={{
-            fontSize: 13, whiteSpace: "nowrap", opacity: 0.75,
-            display: "flex", alignItems: "center", width: "100%",
-            background: "transparent", color: "#fff", border: "2px solid #fff",
-          }}
-            onClick={() => { setTabDropdownOpen(null); setShowCreateRoomModal(true); }}>
-            <Plus size={14} color="#fff" style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>new friend room</span>
-            <span style={{ width: 14, flexShrink: 0 }} />
-          </button>
-          {/* 5. Close show tab */}
+          {/* 3. Close show tab */}
           <Tooltip text="Hides this tab from your journal view. Your entries and progress are kept. Search for the show again and choose 'Start your journal' to bring it back." direction="below">
             <button className="btn" style={{
               fontSize: 13, whiteSpace: "nowrap", opacity: 0.75,

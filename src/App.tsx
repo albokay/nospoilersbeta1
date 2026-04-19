@@ -11,7 +11,6 @@ import { useAuth } from "./lib/auth";
 import ExtensionDock from "./extensions/ExtensionDock";
 import SearchShows from "./components/SearchShows";
 import YourShowsSelect from "./components/YourShowsSelect";
-import FriendRoomScroll from "./components/FriendRoomScroll";
 import ShowSection from "./components/ShowSection";
 import ProfilePage, { type ProfileTabData } from "./components/ProfilePage";
 import Modal from "./components/Modal";
@@ -736,19 +735,10 @@ export default function App() {
               : pillContent;
           })()}
 
-          {/* Friend-room scroll anchored to the right edge */}
-          <div className="mobileHide" style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "flex-end", overflow: "hidden" }}>
-            {allFriendGroups.length > 0 && (
-              <FriendRoomScroll
-                groups={allFriendGroups}
-                onNavigate={(showId, groupId) => {
-                  sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
-                  navigate(`/show/${showId}`, { state: { activeGroupId: groupId } });
-                  requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-                }}
-              />
-            )}
-          </div>
+          {/* Top-nav friend-room pills removed; friend-room access lives
+             in each show tab's header in the journal. allFriendGroups state
+             is kept because ShowSection still consumes it via a prop (for
+             the public-side "go to your friends" dropdown). */}
         </div>
       )}
     </div>
