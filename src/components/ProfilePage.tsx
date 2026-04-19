@@ -728,6 +728,28 @@ export default function ProfilePage({
                           <SquarePen size={15} /> write
                         </button>
 
+                        {/* All / private toggle — slightly smaller */}
+                        <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
+                          {(["all", "private"] as const).map(opt => (
+                            <button
+                              key={opt}
+                              onClick={() => setDiaryFilter(opt)}
+                              style={{
+                                padding: "2px 8px",
+                                fontSize: 10,
+                                fontWeight: diaryFilter === opt ? 700 : 400,
+                                background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
+                                color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
+                                border: "none",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {opt === "all" ? "all" : "private only"}
+                            </button>
+                          ))}
+                        </div>
+
                         {/* Friend-room affordance — conditional on room count.
                            Single: direct link. Multi: dropdown (chevron). */}
                         {tabGroups.length === 1 && (() => {
@@ -741,6 +763,7 @@ export default function ProfilePage({
                               title={name.length > MAX ? name : undefined}
                               style={{
                                 lineHeight: 1.2,
+                                padding: "6px 10px",
                                 display: "inline-flex", alignItems: "center", gap: 6,
                                 background: "transparent",
                                 border: "2px solid #fff",
@@ -759,6 +782,7 @@ export default function ProfilePage({
                               onClick={() => setRoomsHeaderDropdownOpen(o => !o)}
                               style={{
                                 lineHeight: 1.2,
+                                padding: "6px 10px",
                                 display: "inline-flex", alignItems: "center", gap: 6,
                                 background: "transparent",
                                 border: "2px solid #fff",
@@ -766,7 +790,7 @@ export default function ProfilePage({
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              <span>your friend rooms</span>
+                              <span>friend rooms</span>
                               <ChevronDown size={14} color="#fff" style={{ flexShrink: 0 }} />
                             </button>
                             {roomsHeaderDropdownOpen && (
@@ -802,13 +826,14 @@ export default function ProfilePage({
                           </div>
                         )}
 
-                        {/* + new friend room */}
+                        {/* + friend room */}
                         <button
                           className="btn h40"
                           onClick={() => setShowCreateRoomModal(true)}
                           title="Create a new friend room for this show"
                           style={{
                             lineHeight: 1.2,
+                            padding: "6px 10px",
                             display: "inline-flex", alignItems: "center", gap: 5,
                             background: "transparent",
                             border: "2px solid #fff",
@@ -818,28 +843,6 @@ export default function ProfilePage({
                         >
                           <Plus size={14} /> friend room
                         </button>
-
-                        {/* All / private toggle — slightly smaller */}
-                        <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
-                          {(["all", "private"] as const).map(opt => (
-                            <button
-                              key={opt}
-                              onClick={() => setDiaryFilter(opt)}
-                              style={{
-                                padding: "2px 8px",
-                                fontSize: 10,
-                                fontWeight: diaryFilter === opt ? 700 : 400,
-                                background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
-                                color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
-                                border: "none",
-                                cursor: "pointer",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {opt === "all" ? "all" : "private only"}
-                            </button>
-                          ))}
-                        </div>
                       </div>
                       {activeShow && (
                         <OneSelectProgress
