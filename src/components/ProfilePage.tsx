@@ -828,9 +828,7 @@ export default function ProfilePage({
                         </button>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-                        {/* All / private toggle — right-aligned next to progress dropdown.
-                           Padding matches the friend-related buttons so heights align;
-                           opacity 0.7 softens it relative to primary affordances. */}
+                        {/* All / private toggle — right-aligned next to progress dropdown */}
                         <div style={{
                           display: "flex", gap: 0, borderRadius: 999, overflow: "hidden",
                           border: "2px solid var(--dos-border)", flexShrink: 0,
@@ -841,8 +839,8 @@ export default function ProfilePage({
                               key={opt}
                               onClick={() => setDiaryFilter(opt)}
                               style={{
-                                padding: "4px 10px",
-                                fontSize: 13,
+                                padding: "2px 8px",
+                                fontSize: 10,
                                 fontWeight: diaryFilter === opt ? 700 : 400,
                                 background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
                                 color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
@@ -857,7 +855,7 @@ export default function ProfilePage({
                               {opt === "all"
                                 ? "all"
                                 : <>
-                                    <Lock size={12} color={diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)"} style={{ flexShrink: 0 }} />
+                                    <Lock size={10} color={diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)"} style={{ flexShrink: 0 }} />
                                     only
                                   </>}
                             </button>
