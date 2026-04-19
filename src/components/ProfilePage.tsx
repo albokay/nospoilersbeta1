@@ -850,7 +850,6 @@ export default function ProfilePage({
                         <div style={{
                           display: "flex", gap: 0, borderRadius: 999, overflow: "hidden",
                           border: "2px solid var(--dos-border)", flexShrink: 0,
-                          opacity: 0.7,
                         }}>
                           {(["all", "private"] as const).map(opt => (
                             <button
