@@ -596,7 +596,12 @@ export default function ProfilePage({
 
       {!loading && (
         <div className="container" style={{ marginTop: 12 }}>
-          {showTabOrder.length === 0 && <EmptyProfileWelcome />}
+          {/* Gate the welcome on visibleTabOrder rather than showTabOrder so it
+             also covers the "all tabs hidden" state. hideTab doesn't delete
+             the underlying progress row or activity, so showTabOrder stays
+             populated after closing tabs — but visibleTabOrder correctly
+             reflects what the user can see. */}
+          {visibleTabOrder.length === 0 && <EmptyProfileWelcome />}
 
           {activeTab && (
             <div className="hangLContent" style={{ paddingTop: 0 }}>
@@ -1135,10 +1140,14 @@ export default function ProfilePage({
                 sessionStorage.removeItem(`ns_browse_show_${sid}`);
                 sessionStorage.removeItem(`ns_active_group_${sid}`);
                 sessionStorage.removeItem(`ns_came_from_group_${sid}`);
-                // Switch to another tab if the hidden one was active
+                // Switch to another tab if the hidden one was active.
+                // If there are no remaining visible tabs, clear activeTab so
+                // the welcome renders immediately instead of the card falling
+                // back to cached data for the just-closed tab.
                 if (sid === activeTab) {
                   const remaining = visibleTabOrder.filter(s => s !== sid);
                   if (remaining.length) setActiveTab(remaining[0]);
+                  else setActiveTab("");
                 }
               }}>
               <X size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
