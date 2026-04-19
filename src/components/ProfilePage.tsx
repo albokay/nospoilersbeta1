@@ -754,7 +754,7 @@ export default function ProfilePage({
                            Single: direct link. Multi: dropdown (chevron). */}
                         {tabGroups.length === 1 && (() => {
                           const name = tabGroups[0].name;
-                          const MAX = 10;
+                          const MAX = 12;
                           const truncated = name.length > MAX ? name.slice(0, MAX) + "…" : name;
                           return (
                             <button
@@ -763,8 +763,8 @@ export default function ProfilePage({
                               title={name.length > MAX ? name : undefined}
                               style={{
                                 lineHeight: 1.2,
-                                padding: "2px 8px",
-                                display: "inline-flex", alignItems: "center", gap: 5,
+                                padding: "0 6px",
+                                display: "inline-flex", alignItems: "center", gap: 4,
                                 background: "transparent",
                                 border: "2px solid #fff",
                                 color: "#fff",
@@ -783,8 +783,8 @@ export default function ProfilePage({
                               onClick={() => setRoomsHeaderDropdownOpen(o => !o)}
                               style={{
                                 lineHeight: 1.2,
-                                padding: "2px 8px",
-                                display: "inline-flex", alignItems: "center", gap: 5,
+                                padding: "0 6px",
+                                display: "inline-flex", alignItems: "center", gap: 4,
                                 background: "transparent",
                                 border: "2px solid #fff",
                                 color: "#fff",
@@ -834,8 +834,8 @@ export default function ProfilePage({
                           title="Create a new friend room for this show"
                           style={{
                             lineHeight: 1.2,
-                            padding: "2px 8px",
-                            display: "inline-flex", alignItems: "center", gap: 5,
+                            padding: "0 6px",
+                            display: "inline-flex", alignItems: "center", gap: 4,
                             background: "transparent",
                             border: "2px solid #fff",
                             color: "#fff",
