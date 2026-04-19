@@ -22,10 +22,12 @@ export function injectDOSStyles() {
   */
   --site-header-h:56px;
 }
-/* Narrow widths fall back to the static png logo — tighter heights since
-   the profile pill now lives in the top band's right cluster, not a
-   separate row below. */
-@media(max-width:1133px){ :root{ --site-header-h:56px; } }
+/* Narrow widths fall back to the static png logo. Bump the header
+   reservation at the first breakpoint so the content column sits below
+   the fixed logo+search cluster (cluster bottom ≈ 88px: 14 top + 38 logo
+   + 6 gap + 30 search → 96px reservation, on the 8-grid).
+   Phone (≤600px) hides the search, so 56px clears the 38px logo alone. */
+@media(max-width:1133px){ :root{ --site-header-h:96px; } }
 @media(max-width:600px){ :root{ --site-header-h:56px; } }
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
