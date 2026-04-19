@@ -191,15 +191,17 @@ export default function SearchShows({
     const q = query.trim();
     if (!q) { setTvResults([]); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    let cancelled = false;
     debounceRef.current = setTimeout(async () => {
       setTvLoading(true);
       try {
         const results = await tvmazeSearch(q);
+        if (cancelled) return;
         setTvResults(results);
-      } catch { setTvResults([]); }
-      finally { setTvLoading(false); }
+      } catch { if (!cancelled) setTvResults([]); }
+      finally { if (!cancelled) setTvLoading(false); }
     }, 320);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => { cancelled = true; if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
   const resetModal = () => {
@@ -344,7 +346,9 @@ export default function SearchShows({
     if (user) {
       const existingShow = shows.find(s => s.tvmazeId === String(confirming.id) || s.id === showId);
       if (existingShow) {
-        upsertBrowseProgress(user.id, existingShow.id, entry).catch(() => {});
+        upsertBrowseProgress(user.id, existingShow.id, entry).catch(err => {
+          console.warn(`upsertBrowseProgress failed for show=${existingShow.id}, user=${user.id}:`, err);
+        });
       }
     }
 

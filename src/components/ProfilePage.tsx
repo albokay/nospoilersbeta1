@@ -77,16 +77,20 @@ export default function ProfilePage({
   // Step 1: lightweight metadata query — only show IDs + timestamps
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     setLoading(true);
     fetchUserShowActivity(user.id)
       .then(activity => {
+        if (cancelled) return;
         setActivityOrder(activity);
         setLoading(false);
       })
       .catch(err => {
-        console.error("ProfilePage activity load error:", err);
+        if (cancelled) return;
+        console.warn("ProfilePage activity load failed (recoverable):", err);
         setLoading(false);
       });
+    return () => { cancelled = true; };
   }, [user?.id]);
 
   // Step 2: fetch per-tab data when activeTab changes and isn't cached
@@ -96,6 +100,7 @@ export default function ProfilePage({
     loadingTabRef.current = activeTab;
     setTabLoading(true);
     const tabId = activeTab; // capture for closure
+    let cancelled = false;
     Promise.all([
       fetchUserThreads(user.id, tabId),
       fetchUserReplies(user.id, tabId),
@@ -103,6 +108,7 @@ export default function ProfilePage({
       fetchLikedThreads(user.id, tabId),
       fetchLikedReplies(user.id, tabId),
     ]).then(([threads, myR, replies, likedT, likedR]) => {
+      if (cancelled) return;
       setTabDataCache(prev => ({
         ...prev,
         [tabId]: {
@@ -116,10 +122,12 @@ export default function ProfilePage({
       if (loadingTabRef.current === tabId) loadingTabRef.current = null;
       setTabLoading(false);
     }).catch(err => {
-      console.error("ProfilePage tab load error:", err);
+      if (cancelled) return;
+      console.warn("ProfilePage tab load failed (recoverable):", err);
       if (loadingTabRef.current === tabId) loadingTabRef.current = null;
       setTabLoading(false);
     });
+    return () => { cancelled = true; };
   }, [user?.id, activeTab, tabDataCache]);
 
   // Derive flat lists from the active tab's cache (or empty if not yet loaded)
