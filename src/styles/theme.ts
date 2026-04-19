@@ -20,13 +20,13 @@ export function injectDOSStyles() {
      Phone (<600px): search + friend-rooms hide, leaving logo (34) + 40 gap + pill (30),
        ~118px tall → 124.
   */
-  --site-header-h:144px;
+  --site-header-h:56px;
 }
 /* Narrow widths fall back to the static png logo — tighter heights since
    the profile pill now lives in the top band's right cluster, not a
    separate row below. */
-@media(max-width:1133px){ :root{ --site-header-h:100px; } }
-@media(max-width:600px){ :root{ --site-header-h:80px; } }
+@media(max-width:1133px){ :root{ --site-header-h:56px; } }
+@media(max-width:600px){ :root{ --site-header-h:56px; } }
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
