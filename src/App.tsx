@@ -1131,6 +1131,7 @@ export default function App() {
       {!showProfile && expandedShowId && (
         <div>
           <ShowSection
+            key={expandedShowId}
             shows={shows}
             onShowUpdated={(updated: Show) => setShows(prev => prev.map(s => s.id === updated.id ? updated : s))}
             onShowCreated={(newShow: Show) => setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow])}
