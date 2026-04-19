@@ -40,6 +40,14 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   const [needsProgressPick, setNeedsProgressPick] = useState(false);
   const [progressPick, setProgressPick] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
   const [showForInvite, setShowForInvite] = useState<Show | null>(null);
+  // Tracks the user/show pair the progress check has completed for. Auto-accept
+  // gates on this matching the current pair so it can't fire before the picker
+  // decision has actually been resolved. A plain boolean wouldn't work — Effect
+  // B reads from the current render's closure, so a setState reset inside
+  // Effect A would not propagate in time. Using a key makes the gate
+  // self-resetting whenever user or show changes.
+  const [progressCheckedFor, setProgressCheckedFor] = useState<string | null>(null);
+  const currentCheckKey = user && invite?.show_id ? `${user.id}::${invite.show_id}` : null;
 
   // Load invite info (no auth needed — SECURITY DEFINER RPC)
   useEffect(() => {
@@ -93,7 +101,12 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   // existing progress is inherited untouched.
   useEffect(() => {
     let cancelled = false;
-    if (!user || !invite?.show_id) { setNeedsProgressPick(false); return; }
+    if (!user || !invite?.show_id) {
+      setNeedsProgressPick(false);
+      setProgressCheckedFor(null);
+      return;
+    }
+    const key = `${user.id}::${invite.show_id}`;
     (async () => {
       try {
         const [existing, allShows] = await Promise.all([
@@ -105,25 +118,32 @@ export default function InviteAcceptPage({ token }: { token: string }) {
         setNeedsProgressPick(!hasPrior);
         const sh = allShows.find(x => x.id === invite.show_id) || null;
         setShowForInvite(sh);
+        setProgressCheckedFor(key);
       } catch {
         // If this probe fails, fall back to not showing the picker; accept
         // will still run with the default progressPick (zero). The failure
-        // would be transient network — the UX degrades gracefully.
+        // would be transient network — the UX degrades gracefully. Mark
+        // the check as done either way so auto-accept isn't deadlocked.
+        if (cancelled) return;
+        setProgressCheckedFor(key);
       }
     })();
     return () => { cancelled = true; };
   }, [user, invite?.show_id]);
 
   // If the user just signed in / signed up via the auth modal, auto-accept.
-  // Only auto-accept if we're not still waiting for them to pick progress —
-  // otherwise we'd jump past the picker.
+  // Two gates: (1) no progress pick needed, and (2) the progress check has
+  // actually completed for the CURRENT user/show pair. The second gate
+  // prevents the race where this effect runs in the same render as the
+  // fetch effect (after sign-in) and reads the stale default
+  // needsProgressPick=false before fetchProgress has resolved.
   useEffect(() => {
-    if (user && status === "ready" && showAuth && !needsProgressPick) {
+    if (user && status === "ready" && showAuth && !needsProgressPick && progressCheckedFor === currentCheckKey) {
       setShowAuth(false);
       handleAccept();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, needsProgressPick]);
+  }, [user, needsProgressPick, progressCheckedFor, currentCheckKey]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 

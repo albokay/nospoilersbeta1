@@ -1227,7 +1227,9 @@ export default function ShowSection({
       } else {
         // group id
         t = await insertThread({ ...threadData, isPublic: false });
-        await addThreadToGroup(t.id, composeDestination).catch(() => {});
+        await addThreadToGroup(t.id, composeDestination).catch(err => {
+          console.warn(`addThreadToGroup failed for thread=${t.id}, group=${composeDestination}:`, err);
+        });
       }
 
       // Log prompt usage
