@@ -1032,6 +1032,9 @@ export default function ShowSection({
         val.s > prog.highestS ||
         (val.s === prog.highestS && val.e > prog.highestE);
       if (pastHighest) {
+        // Transitioning out of rewatch — effective progress becomes val
+        // (isRewatching flips to false, highest gets bumped to val).
+        // Bare {s,e} is the correct check for the post-update state.
         updateProgressFor(showId, val);
         if (thread && !canView({ season: thread.season, episode: thread.episode }, val)) {
           setActiveThreadId(null);
@@ -1040,8 +1043,19 @@ export default function ShowSection({
         if (showStaleNudge) onDismissStaleNudge?.();
         return;
       }
+      // Still rewatching, advancing within previous highest. Effective
+      // progress (= highest) is unchanged, so the open thread's visibility
+      // cannot have changed by this update — skip the canView check.
+      // Without this, passing bare {s,e} val to canView would treat the
+      // user as a non-rewatcher at val and incorrectly close threads
+      // tagged between val and highest that they can still see.
+      updateProgressFor(showId, val);
+      setShowProgressCelebration(true);
+      if (showStaleNudge) onDismissStaleNudge?.();
+      return;
     }
 
+    // Non-rewatcher — effective progress is just val.
     updateProgressFor(showId, val);
     if (thread && !canView({ season: thread.season, episode: thread.episode }, val)) {
       setActiveThreadId(null);

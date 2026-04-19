@@ -32,7 +32,7 @@ import type { Thread, Reply } from "../types";
 import type { CitationEntry } from "../lib/db";
 import { fetchRepliesForThread, likeReply as dbLikeReply, unlikeReply as dbUnlikeReply, editReply as dbEditReply, deleteReply as dbDeleteReply } from "../lib/db";
 import { useAuth } from "../lib/auth";
-import { canView, timeAgo, type ViewerProgress } from "../lib/utils";
+import { canView, timeAgo, effectiveProgress, type ViewerProgress } from "../lib/utils";
 import EpisodeTag from "./EpisodeTag";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
@@ -395,6 +395,12 @@ export default function RepliesList({
 
   const canSeeSelf = (r: Reply) => canView({ season: r.season, episode: r.episode }, progressForShow);
 
+  // Writer's current *effective* progress for edit-retag purposes — highest
+  // for rewatchers, raw .s/.e otherwise. See InlineThreadView's comment for
+  // the rationale (rewatchers must re-tag at their spoiler ceiling, not
+  // their rewatch position).
+  const editTag = effectiveProgress(progressForShow);
+
   const isAncestorRedacted = (r: Reply): boolean => {
     let cur = r.replyToId ? byId[r.replyToId] : null;
     while (cur) {
@@ -475,12 +481,12 @@ export default function RepliesList({
     const body = editReplyBody.trim();
     if (!body) return;
     const original = byId[rid];
-    // Determine the tag this edit will use (writer's current progress)
-    const tagS = progressForShow?.s ?? original?.season ?? 1;
-    const tagE = progressForShow?.e ?? original?.episode ?? 1;
-    const advanced = original && progressForShow != null &&
-      (progressForShow.s > original.season ||
-        (progressForShow.s === original.season && progressForShow.e > original.episode));
+    // Determine the tag this edit will use (writer's current effective progress)
+    const tagS = editTag?.s ?? original?.season ?? 1;
+    const tagE = editTag?.e ?? original?.episode ?? 1;
+    const advanced = original && editTag != null &&
+      (editTag.s > original.season ||
+        (editTag.s === original.season && editTag.e > original.episode));
     // If progress has advanced, show warning first (unless already confirmed)
     if (advanced && !confirmed) {
       setRetagWarningReplyId(rid);
@@ -836,7 +842,7 @@ export default function RepliesList({
                       <div style={{ fontWeight: 700, marginBottom: 6 }}>Heads up — this reply will be retagged</div>
                       <div style={{ opacity: 0.85, marginBottom: 10 }}>
                         Your progress has moved to{" "}
-                        <strong>S{String(progressForShow?.s ?? r.season).padStart(2,"0")} E{String(progressForShow?.e ?? r.episode).padStart(2,"0")}</strong>.
+                        <strong>S{String(editTag?.s ?? r.season).padStart(2,"0")} E{String(editTag?.e ?? r.episode).padStart(2,"0")}</strong>.
                         {" "}Saving will retag this reply to your current progress — readers below that point who could see it before will no longer see it.
                       </div>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>

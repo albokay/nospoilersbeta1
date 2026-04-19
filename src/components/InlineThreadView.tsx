@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import { MessageSquare, Hand, LockKeyhole, Globe, Users } from "lucide-react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import type { FriendGroup } from "../types";
-import { timeAgo, canView } from "../lib/utils";
+import { timeAgo, canView, effectiveProgress } from "../lib/utils";
 import EpisodeTag from "./EpisodeTag";
 import { useAuth } from "../lib/auth";
 import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, addThreadToGroup } from "../lib/db";
@@ -213,13 +213,18 @@ export default function InlineThreadView({
     setEditing(true);
   };
 
-  // The season/episode this edit will be tagged with (always writer's current progress)
-  const editTagS = progressForShow?.s ?? thread.season;
-  const editTagE = progressForShow?.e ?? thread.episode;
+  // The season/episode this edit will be tagged with — writer's current
+  // *effective* progress (highest for rewatchers, raw .s/.e otherwise).
+  // Rewatchers must re-tag at highest because that's their spoiler context;
+  // tagging at the rewatch position would expose hindsight-informed content
+  // to readers who were supposed to be protected.
+  const editTag = effectiveProgress(progressForShow);
+  const editTagS = editTag?.s ?? thread.season;
+  const editTagE = editTag?.e ?? thread.episode;
   const progressHasAdvanced =
-    progressForShow != null &&
-    (progressForShow.s > thread.season ||
-      (progressForShow.s === thread.season && progressForShow.e > thread.episode));
+    editTag != null &&
+    (editTag.s > thread.season ||
+      (editTag.s === thread.season && editTag.e > thread.episode));
 
   const handleSaveEdit = async () => {
     // If progress has advanced, show confirmation before saving
