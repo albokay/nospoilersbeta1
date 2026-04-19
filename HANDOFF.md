@@ -101,6 +101,8 @@ State `(season=0, episode=0)` represents "haven't started the show yet" — used
 8. **Friend-room → anywhere clone path is dormant.** `markThreadMovedFromGroup` and the friend-room → public clone flow have no UI callers. Either remove or document the intent if reviving.
 9. **`fetchPublicThreadsForShow` filters seed-author client-side** by author field — flagged in the doc comment as wanting an `author_is_seed` column.
 10. **Public-reply visibility on profiles** in `fetchPublicRepliesForUser` requires `t.isPublic` (`db.ts:880`). Intentional — private posts can't be replied to by others, so this filter is correct as-is.
+11. **Profile-load race after signup** (deferred — V-5 from 2026-04-19 audit). After `signUp`, `loadProfile` runs (`auth.tsx:23-30`) — race possibility between auth.signUp completing and the profile-row trigger. Supabase `.single()` doesn't throw (returns `{data: null, error}`), so worst case is `setProfile(null)` and components see `user !== null && profile === null` briefly. Most components guard with `profile?.username` so they degrade gracefully. Worth verifying in practice on next signup that no UI flashes empty username; not blocking.
+12. **Soft-deleted thread editing not blocked** (deferred — V-7 from 2026-04-19 audit). A soft-deleted thread (kept as a stub because it has replies) can still be reached by URL, and the edit UI in `InlineThreadView.tsx:209-244` doesn't check `thread.isDeleted` before allowing edits. Author can edit the stub's title/body via RLS. Probably harmless and possibly intentional (author can fix stub copy). Product call before fixing.
 
 ## 7. Most Recent Work (last ~10 commits, 2026-04-19)
 

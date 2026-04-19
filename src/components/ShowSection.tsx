@@ -613,6 +613,17 @@ export default function ShowSection({
     if (!grp) return;
     setInviteError(null);
     setInviteSuccess(false);
+
+    // Client-side self-invite pre-check for immediate feedback. Edge function
+    // also rejects this server-side (returns "self_invite") so a stale build
+    // can't bypass it.
+    const trimmedEmail = inviteEmail.trim().toLowerCase();
+    const callerEmail = user.email?.toLowerCase().trim();
+    if (callerEmail && trimmedEmail === callerEmail) {
+      setInviteError("You can't invite yourself.");
+      return;
+    }
+
     setInviteSubmitting(true);
     try {
       const result = await sendInvite({
@@ -624,9 +635,10 @@ export default function ShowSection({
       if (!result.ok) {
         const msgs: Record<string, string> = {
           rate_limit:      "You've reached the 10 invitations/day limit. Try again tomorrow.",
-          already_invited: "This email already has a pending invite to this room.",
+          already_invited: "You've already invited this person.",
           not_creator:     "Only the room creator can send invitations.",
           invalid_email:   "Please enter a valid email address.",
+          self_invite:     "You can't invite yourself.",
         };
         setInviteError(msgs[result.error] ?? result.message ?? "Something went wrong. Please try again.");
       } else {

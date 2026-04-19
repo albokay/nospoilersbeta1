@@ -64,6 +64,15 @@ serve(async (req) => {
       return jsonError("invalid_email", 400);
     }
 
+    // ── Block self-invite ────────────────────────────────────────────────────
+    // The user's own email isn't a useful invite target — accepting it would
+    // be a no-op (they're already in the group as creator/member). Reject
+    // here so we don't waste an invitation row + email send on a mistake.
+    const callerEmail = user.email?.toLowerCase().trim();
+    if (callerEmail && email === callerEmail) {
+      return jsonError("self_invite", 400, "You can't invite yourself.");
+    }
+
     // ── Verify caller is the group creator ───────────────────────────────────
     const { data: grp, error: grpErr } = await admin
       .from("friend_groups")
