@@ -808,26 +808,42 @@ export default function ProfilePage({
                           </div>
                         )}
 
-                        {/* + friends */}
-                        <button
-                          className="btn"
-                          onClick={() => setShowCreateRoomModal(true)}
-                          title={tabGroups.length > 0
+                        {/* + friends (or a circular + once the show already has ≥1 room) */}
+                        <Tooltip
+                          text={tabGroups.length > 0
                             ? "Create another friend room for this show."
                             : "Create a friend room for this show."}
-                          style={{
-                            lineHeight: 1.2,
-                            padding: "4px 10px",
-                            fontSize: 13,
-                            display: "inline-flex", alignItems: "center", gap: 4,
-                            background: "transparent",
-                            border: "2px solid #fff",
-                            color: "#fff",
-                            whiteSpace: "nowrap",
-                          }}
+                          direction="below"
                         >
-                          <Plus size={14} />{tabGroups.length === 0 && " friends"}
-                        </button>
+                          <button
+                            className="btn"
+                            onClick={() => setShowCreateRoomModal(true)}
+                            style={tabGroups.length > 0
+                              ? {
+                                  // Circular icon-only state
+                                  lineHeight: 1,
+                                  width: 28, height: 28, padding: 0,
+                                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                  background: "transparent",
+                                  border: "2px solid #fff",
+                                  borderRadius: "50%",
+                                  color: "#fff",
+                                }
+                              : {
+                                  // Pill state with "friends" label
+                                  lineHeight: 1.2,
+                                  padding: "4px 10px",
+                                  fontSize: 13,
+                                  display: "inline-flex", alignItems: "center", gap: 4,
+                                  background: "transparent",
+                                  border: "2px solid #fff",
+                                  color: "#fff",
+                                  whiteSpace: "nowrap",
+                                }}
+                          >
+                            <Plus size={14} />{tabGroups.length === 0 && " friends"}
+                          </button>
+                        </Tooltip>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
                         {/* All / private toggle — right-aligned next to progress dropdown */}
