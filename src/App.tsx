@@ -18,7 +18,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Filter, ShieldCheck } from "lucide-react";
+import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Filter, ShieldCheck, LogOut } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -661,46 +661,9 @@ export default function App() {
           </span>
         </div>
 
-        {/* Right cluster: sign out / sign in + admin gear */}
+        {/* Right cluster: profile pill + sign out / sign in + admin gear */}
         <div className="topHeaderRight">
-          {!authLoading && user && username && (
-            <button className="btn signOutBtn" style={{ flexShrink: 0 }} onClick={() => { goHomepage(); signOut(); }}>
-              <span className="signOutLabel">Sign out</span>
-              <span className="signOutX"><X size={14} /></span>
-            </button>
-          )}
-          {!authLoading && !user && (
-            <button className="btn" style={{ flexShrink: 0 }} onClick={() => setShowAuthModal(true)}>
-              Sign in / Join
-            </button>
-          )}
-          {!authLoading && isAdmin && (
-            <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
-              <button className="btn" onClick={() => navigate(showAdmin ? "/" : "/?admin")} title="Admin" style={{ fontSize: 18 }}>
-                <Settings size={18} color="currentColor" />
-              </button>
-              {feedbackUnread > 0 && (
-                <div style={{
-                  position: "absolute", top: -6, right: -6,
-                  width: 18, height: 18, borderRadius: "50%",
-                  background: "var(--danger)", color: "#fff",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 800, lineHeight: 1,
-                  pointerEvents: "none",
-                }}>
-                  {feedbackUnread > 9 ? "9+" : feedbackUnread}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Content row: pill at left edge of content column, friend-room scroll at right edge.
-          On wide screens this row is absolute-positioned to overlay the band at the content-column width. */}
-      {!authLoading && user && username && (
-        <div className="topHeaderContentRow">
-          {(() => {
+          {!authLoading && user && username && (() => {
             const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
             const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
             const pillTooltipText =
@@ -734,13 +697,44 @@ export default function App() {
               ? <Tooltip text={pillTooltipText} direction="below" align="left" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
               : pillContent;
           })()}
-
-          {/* Top-nav friend-room pills removed; friend-room access lives
-             in each show tab's header in the journal. allFriendGroups state
-             is kept because ShowSection still consumes it via a prop (for
-             the public-side "go to your friends" dropdown). */}
+          {!authLoading && user && username && (
+            <Tooltip text="Sign out" direction="below">
+              <button
+                className="btn"
+                style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "8px 10px" }}
+                onClick={() => { goHomepage(); signOut(); }}
+                aria-label="Sign out"
+              >
+                <LogOut size={16} color="currentColor" />
+              </button>
+            </Tooltip>
+          )}
+          {!authLoading && !user && (
+            <button className="btn" style={{ flexShrink: 0 }} onClick={() => setShowAuthModal(true)}>
+              Sign in / Join
+            </button>
+          )}
+          {!authLoading && isAdmin && (
+            <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+              <button className="btn" onClick={() => navigate(showAdmin ? "/" : "/?admin")} title="Admin" style={{ fontSize: 18 }}>
+                <Settings size={18} color="currentColor" />
+              </button>
+              {feedbackUnread > 0 && (
+                <div style={{
+                  position: "absolute", top: -6, right: -6,
+                  width: 18, height: 18, borderRadius: "50%",
+                  background: "var(--danger)", color: "#fff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 10, fontWeight: 800, lineHeight: 1,
+                  pointerEvents: "none",
+                }}>
+                  {feedbackUnread > 9 ? "9+" : feedbackUnread}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   ) : (
     /* Homepage — minimal auth controls only */
