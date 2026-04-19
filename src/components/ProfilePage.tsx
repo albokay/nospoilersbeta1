@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, MapPin, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
+import { SquarePen, X, Globe, Users, LockKeyhole, Lock, Sparkles, MapPin, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -728,36 +728,6 @@ export default function ProfilePage({
                           <SquarePen size={15} /> write
                         </button>
 
-                        {/* All / private toggle — slightly smaller */}
-                        <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
-                          {(["all", "private"] as const).map(opt => (
-                            <button
-                              key={opt}
-                              onClick={() => setDiaryFilter(opt)}
-                              style={{
-                                padding: "2px 8px",
-                                fontSize: 10,
-                                fontWeight: diaryFilter === opt ? 700 : 400,
-                                background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
-                                color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
-                                border: "none",
-                                cursor: "pointer",
-                                whiteSpace: "nowrap",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                              }}
-                            >
-                              {opt === "all"
-                                ? "all"
-                                : <>
-                                    <LockKeyhole size={10} color={diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)"} style={{ flexShrink: 0 }} />
-                                    only
-                                  </>}
-                            </button>
-                          ))}
-                        </div>
-
                         {/* Friend-room affordance — conditional on room count.
                            Single: direct link. Multi: dropdown (chevron). */}
                         {tabGroups.length === 1 && (() => {
@@ -857,18 +827,49 @@ export default function ProfilePage({
                           <Plus size={14} /> friends
                         </button>
                       </div>
-                      {activeShow && (
-                        <OneSelectProgress
-                          show={activeShow}
-                          value={postProgress}
-                          onConfirm={(val) => updateProgressFor?.(activeTab, val)}
-                          requireConfirm={true}
-                          allowZero={postProgress?.s === 0}
-                          rewatchHighest={postProgress?.isRewatching && postProgress.highestS != null && postProgress.highestE != null
-                            ? { s: postProgress.highestS, e: postProgress.highestE }
-                            : null}
-                        />
-                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                        {/* All / private toggle — right-aligned next to progress dropdown */}
+                        <div style={{ display: "flex", gap: 0, borderRadius: 999, overflow: "hidden", border: "2px solid var(--dos-border)", flexShrink: 0 }}>
+                          {(["all", "private"] as const).map(opt => (
+                            <button
+                              key={opt}
+                              onClick={() => setDiaryFilter(opt)}
+                              style={{
+                                padding: "2px 8px",
+                                fontSize: 10,
+                                fontWeight: diaryFilter === opt ? 700 : 400,
+                                background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
+                                color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
+                                border: "none",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                              }}
+                            >
+                              {opt === "all"
+                                ? "all"
+                                : <>
+                                    <Lock size={10} color={diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)"} style={{ flexShrink: 0 }} />
+                                    only
+                                  </>}
+                            </button>
+                          ))}
+                        </div>
+                        {activeShow && (
+                          <OneSelectProgress
+                            show={activeShow}
+                            value={postProgress}
+                            onConfirm={(val) => updateProgressFor?.(activeTab, val)}
+                            requireConfirm={true}
+                            allowZero={postProgress?.s === 0}
+                            rewatchHighest={postProgress?.isRewatching && postProgress.highestS != null && postProgress.highestE != null
+                              ? { s: postProgress.highestS, e: postProgress.highestE }
+                              : null}
+                          />
+                        )}
+                      </div>
                     </div>
                   )}
                   <div className="diaryScrollArea">

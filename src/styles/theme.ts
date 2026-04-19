@@ -404,7 +404,14 @@ header.site{
   flex-shrink:0;
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   background:var(--dos-bg);
-  padding:24px 60px 16px 60px;
+  /* Card extends 56L / 60R beyond .container via .diaryOuter's negative
+     margin and widened width. The action bar lives inside the card's
+     content box (card has a 2px border, padding:0). Padding values:
+       left  = card-outer-L-offset (56) − card-border (2) = 54
+       right = card-outer-R-offset (60) − card-border (2) = 58
+     This puts the write button's outer-left and the dropdown's outer-
+     right flush with the content column edges. */
+  padding:24px 58px 16px 54px;
   border-bottom:none;
 }
 /* Scrollable entries region that fills the remaining card height.
