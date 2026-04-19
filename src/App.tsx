@@ -661,7 +661,7 @@ export default function App() {
           </span>
         </div>
 
-        {/* Right cluster: profile pill + sign out / sign in + admin gear */}
+        {/* Right cluster: (narrow) pill + sign out / sign in + admin gear */}
         <div className="topHeaderRight">
           {!authLoading && user && username && (() => {
             const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
@@ -671,7 +671,7 @@ export default function App() {
               pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
               null;
             const pillContent = (
-              <div style={{ position: "relative", display: "inline-block", flexShrink: 0 }}>
+              <div style={{ position: "relative", display: "inline-block" }}>
                 <button
                   className="profileChip"
                   onClick={!showProfile ? () => {
@@ -693,9 +693,13 @@ export default function App() {
                 )}
               </div>
             );
-            return pillTooltipText
-              ? <Tooltip text={pillTooltipText} direction="below" align="left" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
-              : pillContent;
+            return (
+              <span className="topHeaderPillInline">
+                {pillTooltipText
+                  ? <Tooltip text={pillTooltipText} direction="below" align="left" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
+                  : pillContent}
+              </span>
+            );
           })()}
           {!authLoading && user && username && (
             <Tooltip text="Sign out" direction="below">
@@ -734,6 +738,49 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* Profile pill — anchored to the content column's left edge,
+           vertically centered in the band. Lives inside topHeaderWrap so
+           it inherits pointer-events rules, but positions independently
+           of the flex band. */}
+        {!authLoading && user && username && (() => {
+          const redExpired = !invisibleFirstSeenAt || Date.now() - invisibleFirstSeenAt >= THIRTY_SIX_HOURS;
+          const pillBadge = hasVisibleNewReplies ? "green" : (!redExpired && invisibleShowName) ? "red" : null;
+          const pillTooltipText =
+            pillBadge === "green" ? `Someone wrote you back about ${visibleShowName}! Find responses to you in here.` :
+            pillBadge === "red" ? `FYI: ${invisibleShowName} has replies beyond your progress! You'll see them once you catch up.` :
+            null;
+          const pillContent = (
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <button
+                className="profileChip"
+                onClick={!showProfile ? () => {
+                  navigate("/profile");
+                  requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+                } : undefined}
+                style={showProfile ? { cursor: "default" } : undefined}
+              >
+                {showProfile
+                  ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>you are {username}</span></>
+                  : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
+                }
+              </button>
+              {pillBadge === "green" && (
+                <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+              )}
+              {pillBadge === "red" && (
+                <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", pointerEvents: "none" }} />
+              )}
+            </div>
+          );
+          return (
+            <div className="topHeaderPillAnchor">
+              {pillTooltipText
+                ? <Tooltip text={pillTooltipText} direction="below" align="left" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
+                : pillContent}
+            </div>
+          );
+        })()}
       </div>
     </div>
   ) : (
