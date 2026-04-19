@@ -20,11 +20,10 @@ export function injectDOSStyles() {
      Phone (<600px): search + friend-rooms hide, leaving logo (34) + 40 gap + pill (30),
        ~118px tall → 124.
   */
-  --site-header-h:56px;
+  --site-header-h:104px;
 }
-/* Narrow widths fall back to the static png logo — tighter heights since
-   the profile pill now lives in the top band's right cluster, not a
-   separate row below. */
+/* Narrow widths use the smaller static png, so the header occupies
+   less vertical space — tighter reservation. */
 @media(max-width:1133px){ :root{ --site-header-h:56px; } }
 @media(max-width:600px){ :root{ --site-header-h:56px; } }
 
