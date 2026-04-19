@@ -28,7 +28,6 @@ import HowItWorksV2 from "./components/HowItWorksV2";
 import HomepageNarrative from "./components/HomepageNarrative";
 import InviteAcceptPage from "./components/InviteAcceptPage";
 
-const SINGLE_PAGE = true;
 const GLOBAL_HEADER_H = 96;
 
 // Reusable grouped episode select (used in the watch-status first-join modal)
@@ -1129,7 +1128,7 @@ export default function App() {
         />
       )}
 
-      {SINGLE_PAGE && !showProfile && expandedShowId && (
+      {!showProfile && expandedShowId && (
         <div>
           <ShowSection
             shows={shows}

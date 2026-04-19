@@ -4,6 +4,9 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./lib/auth";
 import App from "./App";
 import BetaGate from "./components/BetaGate";
+import { startHeaderClickAudit } from "./lib/devHeaderAudit";
+
+startHeaderClickAudit();
 
 declare global {
   interface Window { __reactRoot?: ReturnType<typeof createRoot> }

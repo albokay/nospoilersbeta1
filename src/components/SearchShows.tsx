@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Search } from "lucide-react";
 import type { Show } from "../lib/db";
 import { createShow, upsertBrowseProgress } from "../lib/db";
@@ -435,7 +436,10 @@ export default function SearchShows({
       </div>
 
       {/* ── Onboarding modal ─────────────────────────────────────────────── */}
-      {confirming && (
+      {/* Portaled to document.body so it escapes `.topHeaderWrap`'s
+          `pointer-events: none` rule — the modal contains custom <div>
+          click targets (radios, backdrop) that aren't in the allowlist. */}
+      {confirming && createPortal(
         <div style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
           zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center",
@@ -535,7 +539,8 @@ export default function SearchShows({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
