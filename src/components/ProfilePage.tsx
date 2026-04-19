@@ -723,7 +723,7 @@ export default function ProfilePage({
                             setComposeDestination("private");
                             setComposeOpen(true);
                           }}
-                          style={{ lineHeight: 1.2, marginLeft: 20, display: "inline-flex", alignItems: "center", gap: 5 }}
+                          style={{ lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5 }}
                         >
                           <SquarePen size={15} /> write
                         </button>
@@ -758,12 +758,13 @@ export default function ProfilePage({
                           const truncated = name.length > MAX ? name.slice(0, MAX) + "…" : name;
                           return (
                             <button
-                              className="btn h40"
+                              className="btn"
                               onClick={() => goToShowRoom(activeTab, tabGroups[0].id)}
                               title={name.length > MAX ? name : undefined}
                               style={{
                                 lineHeight: 1.2,
-                                padding: "0 6px",
+                                padding: "4px 10px",
+                                fontSize: 13,
                                 display: "inline-flex", alignItems: "center", gap: 4,
                                 background: "transparent",
                                 border: "2px solid #fff",
@@ -779,11 +780,12 @@ export default function ProfilePage({
                         {tabGroups.length >= 2 && (
                           <div ref={roomsHeaderDropdownRef} style={{ position: "relative" }}>
                             <button
-                              className="btn h40"
+                              className="btn"
                               onClick={() => setRoomsHeaderDropdownOpen(o => !o)}
                               style={{
                                 lineHeight: 1.2,
-                                padding: "0 6px",
+                                padding: "4px 10px",
+                                fontSize: 13,
                                 display: "inline-flex", alignItems: "center", gap: 4,
                                 background: "transparent",
                                 border: "2px solid #fff",
@@ -829,12 +831,13 @@ export default function ProfilePage({
 
                         {/* + friends */}
                         <button
-                          className="btn h40"
+                          className="btn"
                           onClick={() => setShowCreateRoomModal(true)}
                           title="Create a new friend room for this show"
                           style={{
                             lineHeight: 1.2,
-                            padding: "0 6px",
+                            padding: "4px 10px",
+                            fontSize: 13,
                             display: "inline-flex", alignItems: "center", gap: 4,
                             background: "transparent",
                             border: "2px solid #fff",
