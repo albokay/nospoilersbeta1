@@ -20,12 +20,12 @@ export function injectDOSStyles() {
      Phone (<600px): search + friend-rooms hide, leaving logo (34) + 40 gap + pill (30),
        ~118px tall → 124.
   */
-  --site-header-h:104px;
+  --site-header-h:184px;
 }
 /* Narrow widths use the smaller static png, so the header occupies
    less vertical space — tighter reservation. */
-@media(max-width:1133px){ :root{ --site-header-h:56px; } }
-@media(max-width:600px){ :root{ --site-header-h:56px; } }
+@media(max-width:1133px){ :root{ --site-header-h:136px; } }
+@media(max-width:600px){ :root{ --site-header-h:136px; } }
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
