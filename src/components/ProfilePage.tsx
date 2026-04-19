@@ -730,26 +730,28 @@ export default function ProfilePage({
 
                         {/* Friend-room affordance — conditional on room count.
                            Single: direct link. Multi: dropdown (chevron). */}
-                        {tabGroups.length === 1 && (
-                          <button
-                            className="btn h40"
-                            onClick={() => goToShowRoom(activeTab, tabGroups[0].id)}
-                            title={tabGroups[0].name}
-                            style={{
-                              lineHeight: 1.2,
-                              display: "inline-flex", alignItems: "center", gap: 6,
-                              background: "transparent",
-                              border: "2px solid #fff",
-                              color: "#fff",
-                              maxWidth: 180,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tabGroups[0].name}</span>
-                          </button>
-                        )}
+                        {tabGroups.length === 1 && (() => {
+                          const name = tabGroups[0].name;
+                          const MAX = 10;
+                          const truncated = name.length > MAX ? name.slice(0, MAX) + "…" : name;
+                          return (
+                            <button
+                              className="btn h40"
+                              onClick={() => goToShowRoom(activeTab, tabGroups[0].id)}
+                              title={name.length > MAX ? name : undefined}
+                              style={{
+                                lineHeight: 1.2,
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                background: "transparent",
+                                border: "2px solid #fff",
+                                color: "#fff",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <span>{truncated}</span>
+                            </button>
+                          );
+                        })()}
                         {tabGroups.length >= 2 && (
                           <div ref={roomsHeaderDropdownRef} style={{ position: "relative" }}>
                             <button
@@ -814,7 +816,7 @@ export default function ProfilePage({
                             whiteSpace: "nowrap",
                           }}
                         >
-                          <Plus size={14} /> new friend room
+                          <Plus size={14} /> friend room
                         </button>
 
                         {/* All / private toggle — slightly smaller */}
