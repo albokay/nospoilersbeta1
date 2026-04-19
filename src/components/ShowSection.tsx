@@ -1807,7 +1807,7 @@ export default function ShowSection({
         <Modal onClose={resetModal} width="min(420px,92vw)">
           <h3 className="title" style={{ margin: "0 0 12px" }}>Create a friend room</h3>
           <p style={{ margin: "0 0 16px", fontSize: 14, opacity: 0.75, lineHeight: 1.5 }}>
-            A friend room is a private space for a group of people watching this show together. Share entries there and reply in a spoiler-safe context.
+            A friend room is a private space for watching a show with specific people. Invite anyone you want to watch with. Whatever anyone writes here is only visible to room members &mdash; and only when their watch progress catches up.
           </p>
           <input
             className="badge"
