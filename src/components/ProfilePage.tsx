@@ -744,8 +744,8 @@ export default function ProfilePage({
                                 padding: "4px 10px",
                                 fontSize: 13,
                                 display: "inline-flex", alignItems: "center", gap: 6,
-                                background: "transparent",
-                                border: "2px solid #fff",
+                                background: "#adc8d7",
+                                border: "none",
                                 color: "#fff",
                                 whiteSpace: "nowrap",
                               }}
