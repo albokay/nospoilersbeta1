@@ -743,9 +743,17 @@ export default function ProfilePage({
                                 border: "none",
                                 cursor: "pointer",
                                 whiteSpace: "nowrap",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
                               }}
                             >
-                              {opt === "all" ? "all" : "private only"}
+                              {opt === "all"
+                                ? "all"
+                                : <>
+                                    <LockKeyhole size={10} color={diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)"} style={{ flexShrink: 0 }} />
+                                    only
+                                  </>}
                             </button>
                           ))}
                         </div>
@@ -765,15 +773,16 @@ export default function ProfilePage({
                                 lineHeight: 1.2,
                                 padding: "4px 10px",
                                 fontSize: 13,
-                                display: "inline-flex", alignItems: "center", gap: 4,
+                                display: "inline-flex", alignItems: "center", gap: 6,
                                 background: "transparent",
                                 border: "2px solid #fff",
                                 color: "#fff",
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
+                              <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
                               <span>{truncated}</span>
+                              <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
                             </button>
                           );
                         })()}

@@ -404,7 +404,7 @@ header.site{
   flex-shrink:0;
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   background:var(--dos-bg);
-  padding:24px 60px 16px 56px;
+  padding:24px 60px 16px 60px;
   border-bottom:none;
 }
 /* Scrollable entries region that fills the remaining card height.
