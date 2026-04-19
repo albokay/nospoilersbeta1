@@ -125,7 +125,8 @@ ON CONFLICT (id) DO NOTHING;
 --   • friend_group_members row
 --   • group_threads rows linking all 7 seed threads
 --   • 14 reply rows scoped to this group (group_id)
---   • progress row (s=1, e=0) so the show appears in their list
+--   • progress row (s=1, e=1) so the show appears in their list with
+--     the seeded S1 threads immediately visible
 
 CREATE OR REPLACE FUNCTION provision_sidebar_protocol(p_user_id uuid)
 RETURNS void
@@ -271,11 +272,13 @@ BEGIN
 
     -- (Entry G has no replies — Sarah''s final entry stands alone)
 
-  -- 5. Auto-insert a progress row (s=1, e=0) so the show appears in the
-  --    user''s show list and profile journal tabs immediately.
-  --    The user sets their real progress when they enter the show.
+  -- 5. Auto-insert a progress row (s=1, e=1) so the user opens to a
+  --    fully-populated room — canView({s:1, e:1}, {s:1, e:1}) is true,
+  --    so all seeded S1 threads are visible immediately. User can
+  --    rewind via the picker if they want; the demo is meant to land
+  --    populated, not empty.
   INSERT INTO progress (user_id, show_id, season, episode)
-  VALUES (p_user_id, 'tsp', 1, 0)
+  VALUES (p_user_id, 'tsp', 1, 1)
   ON CONFLICT (user_id, show_id) DO NOTHING;
 
 END;
