@@ -112,34 +112,43 @@ body.public-context .expand-chip{ color:#7abd8e !important; }
      Row 1: logo+search (left) ... signout+admin (right)
      Row 2: pill + friend-room scroll (centered on content column)
 */
-/* ── Fixed top header (non-homepage) ──────────────────────────────────
-   Two independent fixed elements:
-   - .topHeaderColumn — centered at .container width, holds [logo][search][pill]
-     in a single row. Transparent background; pointer-events:none on the
-     wrapper so clicks pass through empty areas.
-   - .topHeaderGutter — top-right cluster with sign-out + admin, fixed to
-     the browser viewport edge.
-*/
-.topHeaderColumn{
-  position:fixed; top:14px; left:50%; transform:translateX(-50%);
-  width:min(672px, 92vw);
-  z-index:1000;
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
+/* The fixed header wrap overlays the page — a transparent pass-through
+   for clicks on the empty gutter. Its interactive children (logo, search,
+   pill, sign-out, admin gear) re-enable pointer events individually. */
+.topHeaderWrap{
+  position:fixed; top:14px; left:14px; right:14px; z-index:1000;
   pointer-events:none;
 }
-.topHeaderColumn button,
-.topHeaderColumn a,
-.topHeaderColumn input,
-.topHeaderColumn select,
-.topHeaderColumn textarea,
-.topHeaderColumn .brand,
-.topHeaderColumn .splashSearchWrap,
-.topHeaderColumn .profileChip{
+.topHeaderWrap button,
+.topHeaderWrap a,
+.topHeaderWrap input,
+.topHeaderWrap select,
+.topHeaderWrap textarea,
+.topHeaderWrap .brand,
+.topHeaderWrap .splashSearchWrap,
+.topHeaderWrap .profileChip{
   pointer-events:auto;
 }
-.topHeaderGutter{
-  position:fixed; top:14px; right:14px; z-index:1001;
-  display:flex; align-items:center; gap:10px;
+.topHeaderBand{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.topHeaderLeft{ display:flex; flex-direction:column; align-items:flex-start; gap:14px; flex-shrink:0; }
+/* Narrow-width fallback uses the small png logo — tighter gap is correct there. */
+@media(max-width:1133px){ .topHeaderLeft{ gap:6px; } }
+.topHeaderRight{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+/* Profile pill — two render positions, CSS picks one per breakpoint:
+   - Wide (≥1134px): .topHeaderPillAnchor absolutely positioned at the
+     content column's left edge so the pill sits vertically aligned
+     with the right cluster (sign out / admin).
+   - Narrow (<1134px): .topHeaderPillInline inside the right cluster,
+     next to the sign-out icon. The left-edge anchor would collide
+     with the stacked logo/search column on narrow widths. */
+.topHeaderPillAnchor{
+  position:absolute; top:0;
+  left:calc(50% - 336px);
+}
+.topHeaderPillInline{ display:none; }
+@media(max-width:1133px){
+  .topHeaderPillAnchor{ display:none; }
+  .topHeaderPillInline{ display:inline-flex; }
 }
 .topHeaderContentRow{
   width:min(672px, 92vw);
