@@ -812,7 +812,9 @@ export default function ProfilePage({
                         <button
                           className="btn"
                           onClick={() => setShowCreateRoomModal(true)}
-                          title="Create a new friend room for this show"
+                          title={tabGroups.length > 0
+                            ? "Create another friend room for this show."
+                            : "Create a friend room for this show."}
                           style={{
                             lineHeight: 1.2,
                             padding: "4px 10px",
@@ -824,7 +826,7 @@ export default function ProfilePage({
                             whiteSpace: "nowrap",
                           }}
                         >
-                          <Plus size={14} /> friends
+                          <Plus size={14} />{tabGroups.length === 0 && " friends"}
                         </button>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
