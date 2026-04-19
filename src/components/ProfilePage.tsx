@@ -620,7 +620,7 @@ export default function ProfilePage({
   useEffect(() => { return () => { onTabsChangeRef.current?.(null); }; }, []);
 
   return (
-    <section className="container" style={{ paddingBottom: 28 }}>
+    <section className="container journalShift" style={{ paddingBottom: 28 }}>
       {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading your profile…</div>}
 
       {!loading && (
@@ -634,7 +634,7 @@ export default function ProfilePage({
           <div className="hangLContent" style={{ paddingTop: 0 }}>
             <section style={{ marginTop: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 0, marginBottom: 12, minHeight: 28 }}>
-                <div className="title profile-journal-heading" style={{ fontSize: 22, marginLeft: 0 }}>this is your journal</div>
+                <div className="title profile-journal-heading" style={{ fontSize: 22 }}>this is your journal</div>
               </div>
               {!activeTab && (
                 <div className="diaryOuter">

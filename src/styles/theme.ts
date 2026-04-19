@@ -377,6 +377,16 @@ header.site{
   margin-top:16px; margin-left:-56px; margin-bottom:24px;
   width: calc(100% + 116px);
 }
+/* Journal page only: shift the diary stack + heading +56px right so the
+   front card's left edge lands at the content column (aligning with the
+   fixed profile pill at .topHeaderPillAnchor on ≥1134px). Scoped via
+   .journalShift on ProfilePage so PublicProfilePage is unaffected.
+   Mobile (≤768px) already resets .diaryOuter to 0/100%; this rule only
+   applies above that breakpoint. */
+@media (min-width: 769px){
+  .journalShift .diaryOuter{ margin-left: 0; }
+  .journalShift .profile-journal-heading{ margin-left: 56px; }
+}
 /* background pages — visual depth only, lower-left cascade */
 .diaryBackPage{
   position:absolute; inset:0;
