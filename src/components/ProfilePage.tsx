@@ -763,14 +763,15 @@ export default function ProfilePage({
                               title={name.length > MAX ? name : undefined}
                               style={{
                                 lineHeight: 1.2,
-                                padding: "6px 10px",
-                                display: "inline-flex", alignItems: "center", gap: 6,
+                                padding: "2px 8px",
+                                display: "inline-flex", alignItems: "center", gap: 5,
                                 background: "transparent",
                                 border: "2px solid #fff",
                                 color: "#fff",
                                 whiteSpace: "nowrap",
                               }}
                             >
+                              <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
                               <span>{truncated}</span>
                             </button>
                           );
@@ -782,8 +783,8 @@ export default function ProfilePage({
                               onClick={() => setRoomsHeaderDropdownOpen(o => !o)}
                               style={{
                                 lineHeight: 1.2,
-                                padding: "6px 10px",
-                                display: "inline-flex", alignItems: "center", gap: 6,
+                                padding: "2px 8px",
+                                display: "inline-flex", alignItems: "center", gap: 5,
                                 background: "transparent",
                                 border: "2px solid #fff",
                                 color: "#fff",
@@ -826,14 +827,14 @@ export default function ProfilePage({
                           </div>
                         )}
 
-                        {/* + friend room */}
+                        {/* + friends */}
                         <button
                           className="btn h40"
                           onClick={() => setShowCreateRoomModal(true)}
                           title="Create a new friend room for this show"
                           style={{
                             lineHeight: 1.2,
-                            padding: "6px 10px",
+                            padding: "2px 8px",
                             display: "inline-flex", alignItems: "center", gap: 5,
                             background: "transparent",
                             border: "2px solid #fff",
@@ -841,7 +842,7 @@ export default function ProfilePage({
                             whiteSpace: "nowrap",
                           }}
                         >
-                          <Plus size={14} /> friend room
+                          <Plus size={14} /> friends
                         </button>
                       </div>
                       {activeShow && (
