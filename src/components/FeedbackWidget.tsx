@@ -48,8 +48,6 @@ export default function FeedbackWidget({
     prevForcedOpen.current = !!forcedOpen;
   }, [forcedOpen, prefillMessage]);
 
-  if (!user) return null;
-
   const handleOpen = () => { setOpen(true); setPhase("idle"); };
   const handleClose = () => { setOpen(false); onForcedClose?.(); };
 
@@ -59,8 +57,8 @@ export default function FeedbackWidget({
     setPhase("sending");
     try {
       await insertFeedback(
-        user.id,
-        profile?.username ?? "",
+        user?.id ?? null,
+        user ? (profile?.username ?? "") : "anon",
         location.pathname,
         message.trim()
       );

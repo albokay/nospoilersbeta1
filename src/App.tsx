@@ -774,6 +774,16 @@ export default function App() {
   ) : (
     /* Homepage — minimal auth controls only */
     <div className="fixedAuthWrap" style={{ position: "fixed", top: 14, right: 14, zIndex: 1000, display: "flex", alignItems: "center", gap: 8 }}>
+      {!authLoading && isAdmin && (
+        <button
+          className="btn"
+          onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); }}
+          title="Go to your journal"
+          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          <BookOpen size={14} color="currentColor" /> journal
+        </button>
+      )}
       {!authLoading && user && username && (
         <button className="btn signOutBtn" onClick={() => { goHomepage(); signOut(); }}>
           <span className="signOutLabel">Sign out</span>
@@ -930,12 +940,12 @@ export default function App() {
 
               {/* Feature grid — 6 steps, all white-filled with green text/icons */}
               {(() => {
-                const items: { Icon: React.ElementType; text: string }[] = [
+                const items: { Icon: React.ElementType; text: React.ReactNode }[] = [
                   { Icon: DoorOpen,          text: "Find the show you\u2019re watching and create a room." },
                   { Icon: UserPlus,          text: "Invite friends you love talking to." },
-                  { Icon: ClipboardList,     text: "Everyone logs their watch progress every time they sign in. Sidebar tags all writing to each friend\u2019s logged progress." },
-                  { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers \u2014 as if your friends have watched as far as you have." },
-                  { Icon: Blend,             text: "Sidebar filters everything according to everyone\u2019s unique watch progress." },
+                  { Icon: ClipboardList,     text: (<>Everyone logs their watch progress every time they sign in.<br />Sidebar tags all writing to each friend&rsquo;s logged progress.</>) },
+                  { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers \u2014 as if your friends have watched just as far as you have." },
+                  { Icon: Blend,             text: (<>Sidebar filters everything according to<br />everyone&rsquo;s unique watch progress.</>) },
                   { Icon: ShieldCheck,       text: "Nothing you read is ever ahead of where you are." },
                 ];
                 return (
@@ -950,7 +960,7 @@ export default function App() {
                     boxSizing: "border-box",
                   }}>
                     {items.map(({ Icon, text }, idx) => (
-                      <div key={text} style={{
+                      <div key={idx} style={{
                         borderRadius: 16,
                         padding: isMobile ? "12px 14px" : "16px 18px",
                         display: "flex",

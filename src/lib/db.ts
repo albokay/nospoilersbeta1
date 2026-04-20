@@ -1139,12 +1139,15 @@ export type FeedbackRow = {
 };
 
 export async function insertFeedback(
-  userId: string,
+  userId: string | null,
   username: string,
   pageUrl: string,
   message: string
 ): Promise<void> {
-  await checkRateLimit('feedback', 6, 60);
+  // Rate-limit via the RPC only when signed-in — check_rate_limit keys on
+  // auth.uid() and throws for anon callers. The FeedbackWidget still enforces
+  // a localStorage-based 8s cooldown on both paths.
+  if (userId) await checkRateLimit('feedback', 6, 60);
   validateLength("Feedback message", message, 1, 2000);
   const { error } = await supabase.from("feedback").insert({
     user_id: userId,
