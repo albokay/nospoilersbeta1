@@ -90,13 +90,19 @@ export default function InviteAcceptPage({ token }: { token: string }) {
     }
 
     setStatus("done");
-    // Navigate to the show's friend room after a short delay
+    // Navigate to the user's journal with the just-joined show tab selected.
+    // ProfilePage picks up `state.activeTab` to focus that tab on arrival.
+    // Also stash the group id so the show tab defaults to the friend room
+    // view once the user is there.
     const showId = invite?.show_id;
     const groupId = invite?.group_id;
     if (showId && groupId) {
       sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
     }
-    setTimeout(() => navigate(showId ? `/show/${showId}` : "/"), 1800);
+    setTimeout(() => {
+      if (showId) navigate("/profile", { state: { activeTab: showId } });
+      else navigate("/profile");
+    }, 1800);
   }
 
   // Decide whether the joiner needs to pick their progress. Only when
@@ -264,6 +270,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
                     onConfirm={(val) => setProgressPick(val)}
                     requireConfirm={false}
                     allowZero
+                    showChevron
                   />
                 </div>
               </div>
@@ -272,7 +279,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
               className="btn"
               onClick={handleAccept}
               disabled={status === "accepting" || (needsProgressPick && !showForInvite)}
-              style={{ background: "var(--green)", border: "none", color: "#fff", padding: "10px 28px", fontSize: 15 }}
+              style={{ background: "#fff", border: "none", color: "#7abd8e", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
             >
               {(status as string) === "accepting" ? "Joining…" : `Join "${invite?.group_name}"`}
             </button>
