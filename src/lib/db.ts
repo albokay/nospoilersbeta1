@@ -1658,7 +1658,34 @@ export async function sendInvite(data: {
   const { data: result, error } = await supabase.functions.invoke("send-invite", {
     body: { ...data, appUrl: window.location.origin },
   });
-  if (error) return { ok: false, error: "edge_function_error", message: error.message };
+  if (error) {
+    // FunctionsHttpError wraps non-2xx responses with a generic message
+    // ("Edge Function returned a non-2xx status code") and stashes the raw
+    // Response on `.context`. Parse the body so the real error code +
+    // message reach the UI.
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const body = await ctx.json();
+        if (body && typeof body === "object" && body.ok === false && typeof body.error === "string") {
+          return { ok: false, error: body.error, message: body.message };
+        }
+        return {
+          ok: false,
+          error: "edge_function_error",
+          message: `${error.message} (status ${ctx.status}${body ? `: ${JSON.stringify(body)}` : ""})`,
+        };
+      } catch {
+        const text = await ctx.text().catch(() => "");
+        return {
+          ok: false,
+          error: "edge_function_error",
+          message: `${error.message} (status ${ctx.status}${text ? `: ${text}` : ""})`,
+        };
+      }
+    }
+    return { ok: false, error: "edge_function_error", message: error.message };
+  }
   return result as SendInviteResult;
 }
 
