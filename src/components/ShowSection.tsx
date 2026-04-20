@@ -1521,9 +1521,11 @@ export default function ShowSection({
                         setActiveThreadId(null);
                         setTimeout(() => scrollToShowTop(), 0);
                       }}
-                      style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}
+                      style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}
                     >
-                      {activeGroupId ? "← to friend room" : "← to forum"}
+                      {activeGroupId
+                        ? (<><ArrowLeft size={12} /> back to friend room</>)
+                        : "← to forum"}
                     </button>
                   )}
                 </div>
@@ -1603,9 +1605,11 @@ export default function ShowSection({
                         setActiveThreadId(null);
                         setTimeout(() => scrollToShowTop(), 0);
                       }}
-                      style={{ lineHeight: 1.2, whiteSpace: "nowrap" }}
+                      style={{ lineHeight: 1.2, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}
                     >
-                      {activeGroupId ? "← to friend room" : "← Back to show"}
+                      {activeGroupId
+                        ? (<><ArrowLeft size={14} /> back to friend room</>)
+                        : "← Back to show"}
                     </button>
                   )}
                   <button

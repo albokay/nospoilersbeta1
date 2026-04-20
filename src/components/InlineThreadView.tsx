@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { MessageSquare, Hand, LockKeyhole, Globe, Users, ArrowRight } from "lucide-react";
+import { MessageSquare, LockKeyhole, Globe, Users } from "lucide-react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import type { FriendGroup } from "../types";
 import { timeAgo, canView, effectiveProgress } from "../lib/utils";
@@ -158,15 +158,6 @@ export default function InlineThreadView({
   // Quote hint popup on the thread entry Quote button
   const [threadQuoteHint, setThreadQuoteHint] = useState(false);
 
-  // One-time thread intro popup — shown the first time a user opens any thread.
-  const [showThreadIntro, setShowThreadIntro] = useState(
-    () => !localStorage.getItem("ns_thread_intro_seen")
-  );
-  const dismissThreadIntro = () => {
-    localStorage.setItem("ns_thread_intro_seen", "1");
-    setShowThreadIntro(false);
-  };
-
   // Open the composer then scroll to it (needs one RAF to let the DOM render first)
   const openComposer = () => {
     setComposerOpen(true);
@@ -309,27 +300,6 @@ export default function InlineThreadView({
         </Modal>
       )}
 
-      {showThreadIntro && (
-        <Modal
-          onClose={dismissThreadIntro}
-          width="min(520px,92vw)"
-          cardClassName="explanation-card"
-        >
-          <div style={{ padding: "16px 12px 12px" }}>
-            <p style={{ margin: "0 0 24px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              <Hand size={14} color="currentColor" /> Sidebar's response threads are deliberately different from typical forums. Every response goes to the bottom of the thread in the order it was written. This encourages you to react to each thread as a cohesive conversation. No indentation. No branching comment trees. No sub-heads. One conversation.
-            </p>
-            <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
-              (But you'll see a couple unexpected ways to interact when you look around…)
-            </p>
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={dismissThreadIntro}>
-                Got it
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
       <div id="thread-entry" className="card" style={{ marginTop: 12 }}>
         {editing ? (
           /* ── Edit form ── */
@@ -485,16 +455,16 @@ export default function InlineThreadView({
                         <button
                           className="btn"
                           style={{
-                            fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4,
+                            fontSize: 13,
                             ...(showMoveOptions ? { background: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.8)" } : {})
                           }}
                           onClick={() => setShowMoveOptions(v => !v)}
                         >
-                          Convert to <ArrowRight size={14} color="currentColor" />
+                          Convert to…
                         </button>
                         {showMoveOptions && (
                           <div className="move-to-dropdown" style={{
-                            position: "absolute", bottom: "calc(100% + 6px)", right: 0,
+                            position: "absolute", bottom: "calc(100% + 6px)", left: 0,
                             display: "flex", flexDirection: "column", gap: 6,
                             background: "var(--dos-bg)", border: "none",
                             borderRadius: 10, padding: "8px", zIndex: 10,
@@ -518,7 +488,7 @@ export default function InlineThreadView({
                     )}
                   </>
                 )}
-                <button className="btn" style={{ fontSize: 13 }} onClick={handleQuoteThread}>Quote</button>
+                <button className="btn" style={{ fontSize: 13 }} onClick={handleQuoteThread}>Quote…</button>
                 <button className="btn" onClick={openComposer}>
                   {isOwn && !thread.isPublic && !inGroupContext ? "more thoughts to add?" : "Write a response"}
                 </button>

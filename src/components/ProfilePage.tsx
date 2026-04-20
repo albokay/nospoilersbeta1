@@ -751,24 +751,28 @@ export default function ProfilePage({
                           const MAX = 12;
                           const truncated = name.length > MAX ? name.slice(0, MAX) + "…" : name;
                           return (
-                            <Tooltip text="Go to friend room." direction="below" align="center" portal>
+                            <Tooltip
+                              text="(go to friend room)"
+                              direction="below"
+                              align="center"
+                              portal
+                              tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
+                            >
                               <button
-                                className="btn"
+                                className="btn h40"
                                 onClick={() => goToShowRoom(activeTab, tabGroups[0].id)}
                                 style={{
                                   lineHeight: 1.2,
-                                  padding: "4px 10px",
-                                  fontSize: 13,
-                                  display: "inline-flex", alignItems: "center", gap: 6,
+                                  display: "inline-flex", alignItems: "center", gap: 5,
                                   background: "#adc8d7",
                                   border: "2px solid #adc8d7",
                                   color: "#fff",
                                   whiteSpace: "nowrap",
                                 }}
                               >
-                                <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                                <ArrowRight size={15} color="#fff" style={{ flexShrink: 0 }} />
                                 <span>{truncated}</span>
-                                <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
+                                <Users size={15} color="#fff" style={{ flexShrink: 0 }} />
                               </button>
                             </Tooltip>
                           );

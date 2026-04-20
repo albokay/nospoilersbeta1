@@ -81,6 +81,11 @@ body.public-context .reply-card .likeWrap{ color:#7abd8e !important; border-colo
 body.public-context .reply-card .likeWrap:hover{ background:#7abd8e !important; color:#fff !important; border-color:#7abd8e !important; }
 body.public-context .blockquote-ref .blockquote-author,
 body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
+/* Friend-room quote blocks pick up the same dark-blue-transparent tone as
+   the thread action button outlines (rgba(26,58,74,0.3)) — readable on the
+   white reply card without overpowering the body copy. */
+body.group-context .blockquote-ref .blockquote-author,
+body.group-context .blockquote-ref .blockquote-text{ color:rgba(26,58,74,0.55); opacity:1; }
 body.public-context .responding-to-label{ color:#7abd8e; }
 body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
 body.public-context .progress-control{ border-color:#7abd8e !important; }

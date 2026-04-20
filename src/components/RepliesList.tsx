@@ -904,7 +904,7 @@ export default function RepliesList({
                       onClick={() => handleQuote(r)}
                       title="Quote this response"
                     >
-                      Quote
+                      Quote…
                     </button>
                   </div>
                   <button
@@ -920,9 +920,6 @@ export default function RepliesList({
             </div>
           );
         })}
-        {!repliesLoading && replies.length === 0 && (
-          <div className="muted" style={{ fontSize: 14 }}>No responses yet.</div>
-        )}
       </div>
 
       {/* "Respond to the thread" button at the very bottom — only shown when

@@ -573,6 +573,30 @@ export default function App() {
     if (showAdmin && isAdmin) setFeedbackUnread(0);
   }, [showAdmin, isAdmin]);
 
+  // Auth-gated routing:
+  //   • Signed-out users are redirected off signed-in-only routes (/profile)
+  //     to the homepage. Also covers the "OS signed me out / session expired"
+  //     case — as soon as auth resolves with user=null, the tab is bounced.
+  //     Invite links (/invite/:token) are intentionally exempt: they need
+  //     the signed-out path so the recipient can sign in to accept.
+  //   • Signed-in non-admin users are redirected off the homepage (/) to
+  //     their journal. Admins are exempt so they can navigate to / to reach
+  //     the admin panel (via ?admin in the query).
+  useEffect(() => {
+    if (authLoading) return;
+    const p = location.pathname;
+    if (!user && p === "/profile") {
+      navigate("/", { replace: true });
+      return;
+    }
+    // Wait for the profile row to arrive before redirecting signed-in users
+    // off /. Otherwise admin sign-in briefly sees profile=null → isAdmin=false
+    // and bounces them off / before the profile load settles.
+    if (user && profile && !isAdmin && p === "/") {
+      navigate("/profile", { replace: true });
+    }
+  }, [authLoading, user, profile, isAdmin, location.pathname, navigate]);
+
   const fixedHelp = null;
 
   // ── Shared SearchShows handler (used in both header and homepage) ─
