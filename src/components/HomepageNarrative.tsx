@@ -221,7 +221,7 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
 
       {/* 2 — Copy (38svh) */}
       <section style={{ minHeight: "38svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
-        <Copy>You're an episode behind your friend.</Copy>
+        <Copy>You're an episode<br />behind your friend.</Copy>
       </section>
 
       {/* 3 — Friend white bubble, pushed well below copy */}
@@ -231,7 +231,7 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
 
       {/* 4 — Copy (38svh) */}
       <section style={{ minHeight: "38svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
-        <Copy>Another friend is two episodes behind you.</Copy>
+        <Copy>Another friend is two<br />episodes behind you.</Copy>
       </section>
 
       {/* 5 — Cloud: 14 bubbles, high parallax rates for z-depth, wide space around copy */}
@@ -244,7 +244,7 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
           width: "min(520px, 80vw)", zIndex: 10,
           padding: "0 0 40px",
         }}>
-          <Copy>You're all dying to talk about your favorite show right now.</Copy>
+          <Copy>You're all dying to talk about<br />your favorite show right now.</Copy>
         </div>
 
         {/* Above copy — spread evenly across full width, no right-side clustering */}
@@ -273,7 +273,7 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
         justifyContent: "flex-end",
       }}>
         <div style={{ marginBottom: 450, display: "flex", justifyContent: "center" }}>
-          <Copy size={38}>Sidebar is where you can talk freely.</Copy>
+          <Copy size={38}>Sidebar is where<br />you can talk freely.</Copy>
         </div>
         <div style={{ display: "flex", justifyContent: "center" }}>
           <AnimatedLogo headerHeight={headerHeight} />

@@ -10,7 +10,6 @@ import type { Reply, Thread, ProgressEntry, FriendGroup } from "./types";
 import { useAuth } from "./lib/auth";
 import ExtensionDock from "./extensions/ExtensionDock";
 import SearchShows from "./components/SearchShows";
-import YourShowsSelect from "./components/YourShowsSelect";
 import ShowSection from "./components/ShowSection";
 import ProfilePage, { type ProfileTabData } from "./components/ProfilePage";
 import Modal from "./components/Modal";
@@ -18,7 +17,7 @@ import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
 import AdminPage from "./components/AdminPage";
-import { Tv, EyeClosed, Eye, EyeOff, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Filter, ShieldCheck, LogOut } from "lucide-react";
+import { Tv, EyeClosed, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Blend, ShieldCheck, LogOut } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -355,7 +354,6 @@ export default function App() {
   }, [pickShowId]);
 
   const [betaOpen, setBetaOpen] = useState(false);
-  const [showsEmojiHover, setShowsEmojiHover] = useState(false);
   const narrativeRef = useRef<HTMLDivElement>(null);
   const [gradientOpacity, setGradientOpacity] = useState(0);
   const [arrowOpacity, setArrowOpacity] = useState(0.6);
@@ -922,66 +920,22 @@ export default function App() {
                 )}
               </p>
 
-              {/* Logged-in shortcuts — journal + shows, no SearchShows */}
-              {user && (
-                <div style={{
-                  display: "flex", flexDirection: isMobile ? "column" : "row",
-                  alignItems: "stretch", gap: 8,
-                  width: isMobile ? "min(288px, 90vw)" : "100%",
-                  maxWidth: isMobile ? undefined : 960,
-                  padding: isMobile ? 0 : "0 16px",
-                  boxSizing: "border-box", marginBottom: 16,
-                }}>
-                  <button
-                    className="btn"
-                    onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" })); }}
-                    style={{
-                      flex: isMobile ? undefined : 1, background: "var(--dos-user)", color: "#fff", border: "none",
-                      borderRadius: 9999, height: 40, boxSizing: "border-box",
-                      fontSize: 16, fontWeight: 700, letterSpacing: "0.01em",
-                      position: "relative", whiteSpace: "nowrap",
-                    }}
-                  >
-                    <span style={{ position: "absolute", left: "12%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1 }}><BookOpen size={16} color="var(--icon-color)" /></span>
-                    read your journal
-                  </button>
-                  <div style={{ flex: isMobile ? undefined : 1, position: "relative", height: 40, boxSizing: "border-box" }}>
-                    <YourShowsSelect
-                      shows={shows}
-                      progress={progress}
-                      value={""}
-                      onChange={(id) => {
-                        if (!id) return;
-                        setPickShowMode("confirm");
-                        setPickShowId(id);
-                      }}
-                      placeholder="START HERE"
-                      wrapperStyle={{ width: "100%", height: "100%" }}
-                      onMouseEnter={() => setShowsEmojiHover(true)}
-                      onMouseLeave={() => setShowsEmojiHover(false)}
-                      excludeIds={hiddenTabs}
-                    />
-                    <span style={{ position: "absolute", right: "8%", top: "50%", transform: "translateY(-50%)", fontSize: 20, lineHeight: 1, pointerEvents: "none" }}>{showsEmojiHover ? <Eye size={16} color="currentColor" /> : <EyeOff size={16} color="currentColor" />}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* "How?" */}
+              {/* "Here's how it works:" */}
               <p style={{
                 fontSize: isMobile ? 20 : 26, fontWeight: 800,
-                color: "#fff", margin: "8px 16px 16px", textAlign: "center",
+                color: "#fff", margin: "8px 16px 40px", textAlign: "center",
               }}>
-                How?
+                Here&rsquo;s how it works:
               </p>
 
               {/* Feature grid — 6 steps, all white-filled with green text/icons */}
               {(() => {
                 const items: { Icon: React.ElementType; text: string }[] = [
                   { Icon: DoorOpen,          text: "Find the show you\u2019re watching and create a room." },
-                  { Icon: UserPlus,          text: "Invite the friends you love talking TV with." },
-                  { Icon: ClipboardList,     text: "Everyone logs their progress each time they watch." },
-                  { Icon: MessageSquareText, text: "Post and reply freely." },
-                  { Icon: Filter,            text: "Sidebar filters everyone\u2019s writing to everyone\u2019s unique watch progress." },
+                  { Icon: UserPlus,          text: "Invite friends you love talking to." },
+                  { Icon: ClipboardList,     text: "Everyone logs their watch progress every time they sign in. Sidebar tags all writing to each friend\u2019s logged progress." },
+                  { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers \u2014 as if your friends have watched as far as you have." },
+                  { Icon: Blend,             text: "Sidebar filters everything according to everyone\u2019s unique watch progress." },
                   { Icon: ShieldCheck,       text: "Nothing you read is ever ahead of where you are." },
                 ];
                 return (
@@ -1050,7 +1004,7 @@ export default function App() {
                       letterSpacing: "0.02em",
                     }}
                   >
-                    Learn more
+                    Want more details?
                   </button>
                 </div>
               )}
@@ -1099,7 +1053,7 @@ export default function App() {
               </button>
 
               {betaOpen && (
-                <div style={{ maxWidth: 460, width: "100%", padding: "0 16px", marginTop: 28, marginBottom: 60 }}>
+                <div style={{ maxWidth: 690, width: "100%", padding: "0 16px", marginTop: 28, marginBottom: 60 }}>
                   <div style={{
                     background: "#fff",
                     borderRadius: 12,
@@ -1110,12 +1064,11 @@ export default function App() {
                     fontWeight: 700,
                   }}>
                     Thank you for your time and mind.<br /><br />
-                    I'm making this site because I love stories and I love thinking about them. If you're reading this right now, you are probably the same way and I probably love talking to you about said stories. That's the whole point here: to make it easier to have ongoing conversations about the TV shows that we love (or love to hate).<br /><br />
-                    Considering how easy it is these days to watch shows new or old at different paces, I'm frankly surprised why something like Sidebar doesn't already exist. I hope you agree.<br /><br />
-                    Hopefully everything on this beta version of the site is functional, even if not in its final form. Use the 'feedback' tab on the right to send your thoughts (large or small). Don't overthink it — your gut reactions are as important as your more considered thoughts. Just fire messages off as they occur to you.<br /><br />
-                    The 'Breaking Bad (DEMO FORUM)' is where you can begin to get a sense of how things work. Have at it. You can't break anything and if you post anything that gives you deep existential regrets, I can remove / reset / delete it.<br /><br />
-                    I'm excited to see how you use the site.<br /><br />
-                    — Alborz
+                    I&rsquo;m making this site because I love stories and I love thinking about them. If you&rsquo;re reading this right now, you&rsquo;re probably the same way and I probably love talking to you about said stories. That&rsquo;s the whole point here: to make it easier to have ongoing conversations about the TV shows we love (or love to hate).<br /><br />
+                    Hopefully everything on this beta version works, even if not in its final form. There are some features that might not make sense in this early stage (like public conversations), but I wanted to include them so you have an idea of where things could head. Use the &lsquo;feedback&rsquo; tab on the right to send your thoughts &mdash; large or small. Don&rsquo;t overthink it. Your gut reactions are as important as your more considered thoughts. Just fire messages off as they occur to you.<br /><br />
+                    You&rsquo;ll find a pretend show called &ldquo;The Sidebar Protocol&rdquo; already in your journal when you sign in. It&rsquo;s there to help you see how the site works. Poke around &mdash; you can&rsquo;t break anything, and anything you post can be reset or deleted if you want a clean slate.<br /><br />
+                    Excited to see how you use the site.<br /><br />
+                    &mdash; Alborz
                   </div>
                 </div>
               )}
