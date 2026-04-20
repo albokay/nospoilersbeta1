@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { MessageSquare, Hand, LockKeyhole, Globe, Users } from "lucide-react";
+import { MessageSquare, Hand, LockKeyhole, Globe, Users, ArrowRight } from "lucide-react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import type { FriendGroup } from "../types";
 import { timeAgo, canView, effectiveProgress } from "../lib/utils";
@@ -468,7 +468,15 @@ export default function InlineThreadView({
                         <button className="btn" style={{ fontSize: 13, opacity: 0.45, pointerEvents: "none" }} disabled>Edit</button>
                       </Tooltip>
                     ) : (
-                      <button className="btn" style={{ fontSize: 13 }} onClick={handleStartEdit}>Edit</button>
+                      <Tooltip
+                        text="Just a heads up: if you've watched more episodes since you first wrote this, editing will mean the entry's progress tag will be updated to your current progress."
+                        direction="above"
+                        align="right"
+                        useAbsolute={true}
+                        width={260}
+                      >
+                        <button className="btn" style={{ fontSize: 13 }} onClick={handleStartEdit}>Edit</button>
+                      </Tooltip>
                     )}
                     <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={handleDelete}>Delete</button>
                     {/* Private posts (non-group context) can be moved to public or a friend room */}
@@ -477,12 +485,12 @@ export default function InlineThreadView({
                         <button
                           className="btn"
                           style={{
-                            fontSize: 13,
+                            fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4,
                             ...(showMoveOptions ? { background: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.8)" } : {})
                           }}
                           onClick={() => setShowMoveOptions(v => !v)}
                         >
-                          Move to →
+                          Convert to <ArrowRight size={14} color="currentColor" />
                         </button>
                         {showMoveOptions && (
                           <div className="move-to-dropdown" style={{
@@ -492,7 +500,13 @@ export default function InlineThreadView({
                             borderRadius: 10, padding: "8px", zIndex: 10,
                             boxShadow: "0 2px 10px rgba(0,0,0,0.18)"
                           }}>
-                            <button className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }} onClick={handleMakePublic}><Globe size={14} color="var(--icon-color)" /> Public Room</button>
+                            <button
+                              className="btn"
+                              style={{ fontSize: 13, whiteSpace: "nowrap", background: "#dea838", border: "none", color: "#fff" }}
+                              onClick={handleMakePublic}
+                            >
+                              <Globe size={14} color="#fff" /> Public Post
+                            </button>
                             {(userGroups ?? []).map(g => (
                               <button key={g.id} className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }} onClick={() => handleMoveToGroup(g.id)}>
                                 <Users size={14} color="var(--icon-color)" /> {g.name}
@@ -505,7 +519,9 @@ export default function InlineThreadView({
                   </>
                 )}
                 <button className="btn" style={{ fontSize: 13 }} onClick={handleQuoteThread}>Quote</button>
-                <button className="btn" onClick={openComposer}>Write a response</button>
+                <button className="btn" onClick={openComposer}>
+                  {isOwn && !thread.isPublic && !inGroupContext ? "more thoughts to add?" : "Write a response"}
+                </button>
               </div>
             )}
           </>

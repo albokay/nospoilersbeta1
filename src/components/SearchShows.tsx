@@ -253,10 +253,31 @@ export default function SearchShows({
     setConfirming(tv);
     setConfirmingSeasons(null);
     setCreateError(null);
-    setWatchChoice(null);
-    setHighestSel({ s: 1, e: 1 });
-    setRewatchSel({ s: 1, e: 1 });
-    setFirstTimeSel({ s: 1, e: 1 });
+
+    // Session pre-pop: if the user already filled out this modal earlier in
+    // the session (and exited via "See public conversations"), restore their
+    // prior selection instead of resetting. Cancel paths leave nothing in
+    // sessionStorage, so a cancel won't trigger pre-pop.
+    let prior: ProgressEntry | null = null;
+    try {
+      prior = JSON.parse(sessionStorage.getItem(`ns_browse_prog_${showId}`) || "null");
+    } catch {}
+    if (prior && prior.isRewatching && prior.highestS != null && prior.highestE != null) {
+      setWatchChoice("rewatch");
+      setRewatchSel({ s: prior.rewatchS ?? prior.s, e: prior.rewatchE ?? prior.e });
+      setHighestSel({ s: prior.highestS, e: prior.highestE });
+      setProgressTouched(true);
+    } else if (prior && !prior.isRewatching) {
+      setWatchChoice("first");
+      setFirstTimeSel({ s: prior.s, e: prior.e });
+      setProgressTouched(true);
+    } else {
+      setWatchChoice(null);
+      setHighestSel({ s: 1, e: 1 });
+      setRewatchSel({ s: 1, e: 1 });
+      setFirstTimeSel({ s: 1, e: 1 });
+    }
+
     // Fetch episode data so the selects are ready
     setSeasonsLoading(true);
     try {

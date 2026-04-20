@@ -12,7 +12,7 @@ export default function EmptyProfileWelcome({ isTsp = false, showName }: { isTsp
 
   if (isTsp) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "150px 0 48px" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 0 48px" }}>
         <div style={{ width: "min(400px, 100%)" }}>
           <p style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 700, lineHeight: 1.4, color: "var(--dos-fg)", textAlign: "left" }}>
             Welcome to Sidebar.
@@ -26,7 +26,7 @@ export default function EmptyProfileWelcome({ isTsp = false, showName }: { isTsp
           <p style={bodyStyle}>
             You&rsquo;ve been set up with a demo journal and friend room for a pretend show called The Sidebar Protocol. The friends in there aren&rsquo;t real either. Click around, write something, change your watch progress at the top &mdash; that&rsquo;s the heart of how Sidebar works.
           </p>
-          <p style={{ ...bodyStyle, margin: 0, opacity: 0.65, fontStyle: "italic" }}>
+          <p style={{ ...bodyStyle, margin: 0, fontWeight: 700 }}>
             When you&rsquo;re ready, search for a show you&rsquo;re actually watching and get started.
           </p>
         </div>

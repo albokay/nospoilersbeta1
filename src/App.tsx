@@ -127,9 +127,9 @@ export default function App() {
     return params.has("signup") ? "signup" : "signin";
   });
   const [authHint, setAuthHint] = useState<string | null>(null);
-  // Bumped each time the user clicks the fixed-header logo. Used as the
+  // Bumped each time the user clicks the dynamic header logo. Used as the
   // SidebarLogo's React key so clicking remounts it and replays the
-  // block-scatter animation.
+  // block-scatter animation (the click also navigates to /profile).
   const [headerLogoResetKey, setHeaderLogoResetKey] = useState(0);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [feedbackForcedOpen, setFeedbackForcedOpen] = useState(false);
@@ -630,20 +630,26 @@ export default function App() {
               <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
             </h1>
           ) : (
-            // Dynamic logo: click replays the block animation only — no navigation.
-            // The static png retains its journal/home link (the common case on
-            // narrow screens where users expect a brand click to navigate).
+            // Click navigates to journal AND bumps the React key on
+            // SidebarLogo so it remounts and replays the block-scatter
+            // animation (since the fixed header doesn't unmount on route
+            // change, navigation alone wouldn't trigger the replay).
             <h1
               className="brand"
               style={{ margin: 0, cursor: "pointer", marginLeft: 16 }}
               tabIndex={0}
               role="button"
-              aria-label="Replay Sidebar logo animation"
-              onClick={() => setHeaderLogoResetKey(k => k + 1)}
+              aria-label="Go to journal"
+              onClick={() => {
+                setHeaderLogoResetKey(k => k + 1);
+                navigate("/profile");
+                requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   setHeaderLogoResetKey(k => k + 1);
+                  navigate("/profile");
                 }
               }}
             >
@@ -701,7 +707,7 @@ export default function App() {
             );
           })()}
           {!authLoading && user && username && (
-            <Tooltip text="Sign out" direction="below">
+            <Tooltip text="Sign out" direction="below" tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}>
               <button
                 className="btn"
                 style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "8px 10px" }}

@@ -154,7 +154,7 @@ export default function OneSelectProgress({
           </Modal>
         )}
         {requireConfirm && confirmOpen && (
-          <Modal onClose={cancelSelection}>
+          <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: "#f45028" } : undefined}>
             <div style={{ marginBottom: 12 }}>
               <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
             </div>
@@ -212,7 +212,7 @@ export default function OneSelectProgress({
       </select>
 
       {requireConfirm && confirmOpen && (
-        <Modal onClose={cancelSelection}>
+        <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: "#f45028" } : undefined}>
           <div style={{ marginBottom: 12 }}>
             <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
           </div>
