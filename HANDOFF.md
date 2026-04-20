@@ -1,12 +1,12 @@
-# Sidebar — Technical State (2026-04-19)
+# Sidebar — Technical State (2026-04-20)
 
-> Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made.
+> Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
 ---
 
 ## 1. Stack & Architecture
 
-- **Frontend:** React 18 + TypeScript + Vite, single `App.tsx` shell that derives view state from URL via `react-router-dom` wildcard route.
+- **Frontend:** React 18 + TypeScript + Vite, single `App.tsx` shell that derives view state from URL via `react-router-dom` wildcard route. Top-level rendering is gated by (a) the **mobile lockout** (`isMobileLocked && !isAdmin` short-circuits everything at `window.innerWidth < 768`) and (b) **auth-routing effects** that redirect signed-out users off `/profile` → `/` and signed-in non-admins off `/` → `/profile` (admins exempt; `/invite/:token` exempt). See §8.
 - **Backend:** Supabase (Postgres + Auth + Realtime + Edge Functions). One Edge Function: `send-invite` (Resend email).
 - **Styling:** Single CSS string injected at boot from `src/styles/theme.ts`. DOS/canon palette, body-class context theming (`has-header`, `group-context`, `public-context`).
 - **Hosting:** Netlify auto-deploy on push to `main` (see `CLAUDE.md`, `netlify.toml`).
@@ -33,7 +33,7 @@
 | `invitations` | Single-use, expiring tokens for room invites | RPCs `get_invitation_by_token` + `accept_invitation` (SECURITY DEFINER) |
 | `response_citations` | (citing_reply_id, cited_reply_id?, cited_thread_id?) — quote/link references | Best-effort inserts |
 | `prompts` / `thread_prompts` | Writing prompts shown in composer + audit log | Admin-only writes; thread_prompts is best-effort |
-| `feedback` | FeedbackWidget submissions | RLS: admin-only reads |
+| `feedback` | FeedbackWidget submissions. `user_id` nullable (anon submissions use `null` + `username="anon"`) | RLS: admin-only reads; `role anon` can insert rows where `user_id IS NULL` (`20260420_anon_feedback.sql`) |
 | `rate_limits` (implied) | Backing the `check_rate_limit*` RPCs | |
 
 ## 3. Three Publishing Destinations
@@ -103,6 +103,10 @@ State `(season=0, episode=0)` represents "haven't started the show yet" — used
 10. **Public-reply visibility on profiles** in `fetchPublicRepliesForUser` requires `t.isPublic` (`db.ts:880`). Intentional — private posts can't be replied to by others, so this filter is correct as-is.
 11. **Profile-load race after signup** (deferred — V-5 from 2026-04-19 audit). After `signUp`, `loadProfile` runs (`auth.tsx:23-30`) — race possibility between auth.signUp completing and the profile-row trigger. Supabase `.single()` doesn't throw (returns `{data: null, error}`), so worst case is `setProfile(null)` and components see `user !== null && profile === null` briefly. Most components guard with `profile?.username` so they degrade gracefully. Worth verifying in practice on next signup that no UI flashes empty username; not blocking.
 12. **Soft-deleted thread editing not blocked** (deferred — V-7 from 2026-04-19 audit). A soft-deleted thread (kept as a stub because it has replies) can still be reached by URL, and the edit UI in `InlineThreadView.tsx:209-244` doesn't check `thread.isDeleted` before allowing edits. Author can edit the stub's title/body via RLS. Probably harmless and possibly intentional (author can fix stub copy). Product call before fixing.
+13. **`fetchUserShowActivity` reimplements `effectiveProgress` + `canView` inline** (`db.ts:400-424`). Rebuilds the rewatcher rule (`is_rewatching ? highest : current`) and the visibility comparison (`s < eff.s || (s === eff.s && e <= eff.e)`) locally instead of importing `effectiveProgress`/`canView` from `utils.ts`. Currently correct, but drift risk: if the rewatcher rule in `utils.ts` ever changes (e.g. new clause for "rewatcher past highest"), this site won't pick it up silently. Route through the shared helpers when next touched.
+14. **Anon-feedback rate limit is client-side only** (`d680725`). On the anon path `insertFeedback` skips the auth-keyed `check_rate_limit` RPC because there's no `user_id` to key on; only the localStorage 8s cooldown in `FeedbackWidget` gates submissions. A caller who clears localStorage (or uses the Supabase client directly) can spam the `feedback` table with `user_id=null` rows. Accepted for beta traffic volumes — the RLS policy still scopes inserts to `user_id IS NULL`, so it can't impersonate real users. If abuse becomes an issue, add an IP-keyed rate limit via edge function or upstream (Supabase rate limit policy / CDN).
+15. **Profile-load failure leaves signed-in non-admin on homepage** (`b0fe122`). The `/` → `/profile` redirect is gated on `user && profile && !isAdmin`. If the profile row never loads (network error, RLS failure, trigger race), the redirect never fires and the user stays on `/` viewing the anonymous homepage. Not an infinite loop and not a blank page — just a degraded state. Combined with the removal of the signed-in shortcut block on `/` (`3e77025`), such a user has no in-UI path to `/profile` except typing the URL. Escape hatch: `/profile` loads directly because the `!user` redirect fires only when user is truly null. If observed in practice, add a "still loading your profile… [retry]" fallback or stop gating the redirect on `profile`.
+16. **Mobile lockout is viewport-based and has a small admin flash** (`bcf4589`). `isMobileLocked` tracks `window.innerWidth < 768`; the gate short-circuits rendering when `isMobileLocked && !isAdmin`. Admins signing in on mobile see ~200ms of the lockout screen before `profile` loads and `is_admin` resolves true. Phone-in-landscape slips through by design. Viewport threshold intentionally separate from the existing `isMobile` (≤600px, layout density only).
 
 ## 7. Recent work
 
@@ -127,7 +131,7 @@ A four-phase regression-prevention audit was run across the codebase this day. T
 | `623f693` | Fix SearchShows modal: `createPortal` to escape `.topHeaderWrap`; add dev-time pointer-events audit (`src/lib/devHeaderAudit.ts`); remove dead `SINGLE_PAGE` constant + `App.before-narrative.tsx.bak` |
 | `1a0953c` | Cancelled-flag pattern + `console.warn` cleanups: ProfilePage activity + per-tab fetch, SearchShows TVMaze debounce, `upsertBrowseProgress` |
 | `9df4a0a` | `key={expandedShowId}` on `<ShowSection>` to force remount on show change — fixes stale-closure cross-show state leaks |
-| `9f39153` | First HANDOFF.md / PROJECT_NOTES.md refresh of this arc |
+| `9f39153` | First HANDOFF.md refresh of this arc (at the time HANDOFF.md and PROJECT_NOTES.md were kept in sync; PROJECT_NOTES.md removed 2026-04-20 — HANDOFF.md is now the sole doc) |
 | `c55ace5` | Rewatcher principle: 6 edit-tag and visibility-check sites in `InlineThreadView`, `RepliesList`, `ShowSection` routed through `effectiveProgress` |
 | `0cab458` | TSP initial progress `(s=1, e=0) → (s=1, e=1)` so demo room lands populated; new migration `20260419_tsp_initial_progress.sql` includes function replacement + narrowly-filtered backfill |
 | `ac43648` | Invite auto-accept race fix (key-based gate on `progressCheckedFor`); `addThreadToGroup` silent-failure now logs `console.warn` with context |
@@ -146,6 +150,44 @@ A four-phase regression-prevention audit was run across the codebase this day. T
 - `5955ce9` (self-invite): server-side block lives in the `send-invite` edge function and requires `supabase functions deploy send-invite` (or upload via the Supabase dashboard). Client-side pre-check ships immediately via Netlify push.
 
 **Conventions established or reinforced this arc** are documented under "Component conventions" below: portal modals out of `.topHeaderWrap`, the `cancelled` flag pattern for async useEffects, `effectiveProgress` for rewatcher spoiler-context comparisons, `key={expandedShowId}` for per-show state isolation, the dev-time pointer-events audit.
+
+### 2026-04-20 product-polish arc
+
+A stretch of product-polish + routing-hardening commits landed the day after the audit arc. No single organizing theme — mix of UI copy/layout tweaks, new top-level gates (auth redirects + mobile lockout), a new auxiliary signal for show-tab ordering, and anonymous feedback support.
+
+**Commits (chronological, doc-worthy only):**
+
+| Commit | Scope |
+|---|---|
+| `248db55` | Docs: completed the 2026-04-19 audit arc recap (HANDOFF.md + PROJECT_NOTES.md — still two files at that point) |
+| `546ec97` | Show-search modal now **session-pre-pops** first/rewatch + progress from `sessionStorage` when the modal is re-opened for a show the user previously exited via "See public conversations". New `sessionStorage` key family. Cancel paths still leave nothing stored. (Rest of the commit — welcome-copy, header-logo nav, tooltips, composer CTA, "Convert to →" rename — is cosmetic; not documented.) |
+| `abaad8d` | **Show-tab ordering now includes visibility-gated friend activity.** `fetchUserShowActivity` ([db.ts:400-480](src/lib/db.ts:400)) folds in two new signals: (3) replies on user's own threads by others, (4) threads in user's friend rooms by others. Both filtered per-show through the user's effective progress (`is_rewatching ? highest : current`, with `canView`-equivalent visibility check). Extension queries wrapped in try/catch so any failure falls back to prior behavior. Plus new `markTabCreated`/`readTabCreated` localStorage helpers ([db.ts:534-552](src/lib/db.ts:534)) writing `ns_tab_created_<userId>_<showId>` on journal/friend-room creation + invite accept — `ProfilePage`'s `showTabOrder` uses this as the fallback when a show has no activity yet, so new tabs land at the front. Pre-existing tabs without a mark still fall back to 0 (unchanged behavior). See §6 item 13 for the drift-risk note (rewatcher logic reimplemented inline instead of imported from `utils.ts`). |
+| `b0fe122` | **Auth-gated routing.** New `useEffect` in `App.tsx` ([App.tsx:576-596](src/App.tsx:576)): signed-out users on `/profile` → `/` (covers OS-signs-me-out / session expiry); signed-in non-admins on `/` → `/profile` (admins exempt so they can reach `/?admin`). `/invite/:token` exempt from the signed-out redirect so invite recipients can sign in to accept. Signed-in redirect gated on profile-row having loaded to avoid bouncing admins through `/profile` while `is_admin` resolves. See §6 item 15 for the failure-mode caveat (if profile never loads, user stays on `/` — not a loop, but degraded). Also: removed the one-time threads-explainer modal + its localStorage gate; removed "No responses yet." empty state inside open threads (kept in profile sections). |
+| `d680725` | **Anonymous feedback.** `FeedbackWidget` no longer early-returns when `!user`; anon submitters send `user_id=null`, `username="anon"`. `insertFeedback` ([db.ts](src/lib/db.ts)) accepts `userId: string \| null` and **skips the auth-keyed `check_rate_limit` RPC on the anon path** (localStorage 8s cooldown in the widget still applies on both paths — see §6 item 14 for the bypassability caveat, accepted for beta). New migration `supabase/migrations/20260420_anon_feedback.sql` adds RLS policy allowing `role anon` to insert `feedback` rows where `user_id IS NULL`. SQL already run in Supabase dashboard per commit message. Also: admin-only BookOpen "journal" button added to the homepage fixed auth cluster (so admins can hop to `/profile` without typing the URL). Panel items prop type relaxed `string → React.ReactNode`. |
+| `bcf4589` | **Mobile lockout.** Viewport `< 768px` shows a full-screen "not ready for your phone" screen (`src/components/MobileLockout.tsx`, canon-green fill + SidebarLogo + tagline) for non-admins. Admins (via `profile.is_admin`) bypass. New `isMobileLocked` state tracks the threshold; gate at the top of App's return short-circuits all other rendering when `isMobileLocked && !isAdmin`. **Introduces a second viewport breakpoint** (`768px`) distinct from the existing `isMobile` (≤600px, layout density only). Detection uses `window.innerWidth`, not user-agent — a desktop with a narrow window also sees the lockout (accepted edge case). Phone-in-landscape slips through by design. ~200ms lockout flash possible for admins while profile loads (§6 item 16). See §8 below for the top-level rendering-gate order. |
+
+**Intentionally skipped (not doc-worthy):**
+
+- `3e77025` — homepage narrative/panel copy rewrite + beta-letter widening + removal of dead signed-in-shortcut block on `/`. Pure copy/layout. Dead-block removal is consistent with `b0fe122`'s redirect rule (no signed-in non-admin should land on `/` anymore).
+- `a5a5b9e` — one-line CSS tweak (`text-wrap: balance` on homepage panel text). Pure polish.
+- Portions of `546ec97` (welcome-copy, header-logo click-to-profile, composer CTA, tooltip tightening, "Convert to →" rename, backward-progress confirm red) — copy/style only. Only the modal session pre-pop is documented.
+
+**Deferred items added this arc (still open):**
+
+- Drift risk in `fetchUserShowActivity` (rewatcher logic reimplemented inline — §6 item 13).
+- Anon-feedback rate-limit bypassability (§6 item 14).
+- Profile-load-failure → stuck on `/` (§6 item 15).
+- Mobile-lockout admin-flash (§6 item 16).
+
+**Two-step deploys this arc required:**
+
+- `d680725` (anon feedback): RLS migration `20260420_anon_feedback.sql` must be run in Supabase SQL editor. Already applied per commit message.
+
+**Conventions established or reinforced this arc:**
+
+- **Top-level rendering gates** in `App.tsx` now run in a fixed order: (1) mobile lockout short-circuits everything when `isMobileLocked && !isAdmin`; (2) auth-routing effects redirect off `/profile` or `/` based on `user`/`profile`/`isAdmin`/`pathname`; (3) normal route rendering. Any new top-level gate should be added with awareness of this order — see §8.
+- **Show-tab ordering signal model:** 4 DB-sourced signals (own threads, own replies, visible replies-to-user-by-others, visible group-threads-by-others) + 1 client-local signal (`markTabCreated` localStorage timestamp on creation). New creation paths should call `markTabCreated(userId, showId)` so the tab lands at the front before any real activity exists.
+- **Feedback is now dual-path.** Auth path uses `check_rate_limit` RPC; anon path uses localStorage cooldown only. `insertFeedback`'s `userId` parameter is `string | null` — callers must pass `null` (not omit) on the anon path.
 
 ### Earlier (pre-audit, header/layout polish)
 
@@ -186,7 +228,22 @@ The stretch of commits before this audit arc landed a series of header/layout ad
 
 - **Dev-time pointer-events audit.** [src/lib/devHeaderAudit.ts](src/lib/devHeaderAudit.ts) is loaded in dev only (via [src/index.tsx](src/index.tsx)) and warns when an element inside `.topHeaderWrap` ends up with computed `pointer-events: none` AND looks clickable (`cursor: pointer` or React `onClick`/`onMouseDown`). Catches the silent-click-swallow bug class — see the SearchShows onboarding-modal regression that motivated it. If you add a new clickable element to the header, either route it through one of the allowlisted tags/classes (`button`, `a`, `input`, `select`, `textarea`, `.brand`, `.splashSearchWrap`, `.profileChip`) or portal it to `document.body`.
 
-- **`effectiveProgress` for rewatcher spoiler-context comparisons.** A rewatcher's spoiler context is always their `highestS/E`, never their rewatch position (`.s/.e`). The rewatch position is display-only — where they are on this trip — and has no bearing on what they actually know. Anything that **tags** content the rewatcher writes (so spoiler filtering can hide it from the unworthy), **compares** "has the writer learned more since they wrote this", or **filters** what the rewatcher is allowed to see must reference [`effectiveProgress(progressEntry)`](src/lib/utils.ts:39) from `src/lib/utils.ts`, which returns `{s: highestS, e: highestE}` for rewatchers and `{s, e}` otherwise. Bypassing this and reading raw `.s/.e` is a spoiler-leak bug for rewatchers — see commit `c55ace5` for six sites that had this and the fix shape. Note: the `rewatchSeason`/`rewatchEpisode` snapshot fields stored on posts ARE supposed to be the raw rewatch position (display-only "written on rewatch of S2E3") — those are the exception. `canView` already routes through `effectiveProgress` internally, so any caller passing a full `ProgressEntry` is automatically correct; the bug class lives where calling code reads `.s/.e` directly for tagging or comparison.
+- **`effectiveProgress` for rewatcher spoiler-context comparisons.** A rewatcher's spoiler context is always their `highestS/E`, never their rewatch position (`.s/.e`). The rewatch position is display-only — where they are on this trip — and has no bearing on what they actually know. Anything that **tags** content the rewatcher writes (so spoiler filtering can hide it from the unworthy), **compares** "has the writer learned more since they wrote this", or **filters** what the rewatcher is allowed to see must reference [`effectiveProgress(progressEntry)`](src/lib/utils.ts:39) from `src/lib/utils.ts`, which returns `{s: highestS, e: highestE}` for rewatchers and `{s, e}` otherwise. Bypassing this and reading raw `.s/.e` is a spoiler-leak bug for rewatchers — see commit `c55ace5` for six sites that had this and the fix shape. Note: the `rewatchSeason`/`rewatchEpisode` snapshot fields stored on posts ARE supposed to be the raw rewatch position (display-only "written on rewatch of S2E3") — those are the exception. `canView` already routes through `effectiveProgress` internally, so any caller passing a full `ProgressEntry` is automatically correct; the bug class lives where calling code reads `.s/.e` directly for tagging or comparison. **Drift watch:** `fetchUserShowActivity` ([db.ts:400-424](src/lib/db.ts:400)) reimplements this rule inline instead of importing the helpers — if `utils.ts` ever changes the rewatcher rule, update `fetchUserShowActivity` in the same pass (or route it through the shared helpers).
+
+- **`markTabCreated(userId, showId)` on new-tab creation paths.** Journal creation, friend-room creation, and invite-accept all call `markTabCreated` ([db.ts:540](src/lib/db.ts:540)) to write a localStorage timestamp (`ns_tab_created_<userId>_<showId>`). `ProfilePage`'s `showTabOrder` uses this as the fallback when a show has no DB-side activity yet, so a just-created tab floats to the front. Any new path that creates a show-scoped tab for the user must call this helper or the new tab will sort to the back behind every pre-existing tab.
+
+## 8. Top-level rendering gates (order matters)
+
+`App.tsx` applies these gates in order before rendering any route content. Any new top-level gate should be added with awareness of where it sits in the chain:
+
+1. **Mobile lockout** (`bcf4589`). If `isMobileLocked && !isAdmin`, render `<MobileLockout />` and short-circuit everything else — no header, no feedback widget, no sign-in, no invite-accept. Threshold: `window.innerWidth < 768`. Admins bypass. ~200ms flash possible for admins while profile loads (§6 item 16).
+2. **Auth-routing redirects** (`b0fe122`, [App.tsx:576-596](src/App.tsx:576)). As an effect (doesn't block render on the first paint, but fires as soon as `authLoading` resolves): signed-out users on `/profile` → `/`; signed-in non-admins on `/` → `/profile`. Admins exempt. `/invite/:token` exempt. Signed-in redirect gated on `profile` being loaded (§6 item 15 for failure mode).
+3. **Route rendering** — wildcard route in `App.tsx` derives view from `location.pathname`.
+
+When adding new routes or gates:
+- **Signed-in-only routes** should be added to the `/profile` family (the `!user` redirect already covers them collectively only if you wire up a similar check; do NOT copy the redirect inline without thinking about the `/invite/:token` exemption pattern).
+- **Public-no-account routes** (like `/invite/:token`) must be exempted from the signed-out redirect explicitly.
+- **Admin-only views** should gate on `profile?.is_admin` after profile loads; don't assume `user` alone means admin.
 
 ## Watch-outs
 
@@ -194,6 +251,7 @@ The stretch of commits before this audit arc landed a series of header/layout ad
 - **`scrollToShowTop`** uses `window.scrollTo({ top: 0 })` — do NOT use `bannerRef.getBoundingClientRect()` (sticky element returns wrong position when stuck).
 - **`maximum-scale=1`** set in viewport meta to prevent iOS auto-zoom on input focus.
 - **Modals inside `.topHeaderWrap` must be portaled.** `.topHeaderWrap` has `pointer-events: none` with a narrow allowlist; an inline modal will silently swallow clicks on any custom `<div>` click target. Use `createPortal(..., document.body)` (see [SearchShows.tsx:438](src/components/SearchShows.tsx:438)) or the `Modal` component (which portals automatically).
+- **Two viewport breakpoints, different purposes.** `isMobile` (≤600px) governs layout density (stacking, font sizes, padding). `isMobileLocked` (<768px) is the full site-gate for non-admins — at that width non-admins see only `<MobileLockout />`. Don't conflate them or add new behavior that assumes one implies the other. Phone-in-landscape (>768px) passes `isMobileLocked` but may still trigger `isMobile` layout.
 
 ## Deploy & git/build rules (from CLAUDE.md)
 
@@ -203,3 +261,7 @@ The stretch of commits before this audit arc landed a series of header/layout ad
 - Verify current file state on `main` before editing.
 - Deploy: `git push origin main` → Netlify auto-deploys.
 - Revert: `git revert <sha> && git push origin main`.
+
+## Outstanding action items (carry across sessions)
+
+- **`send-invite` edge function deploy** (from `5955ce9`, 2026-04-19). Server-side self-invite block lives in `supabase/functions/send-invite/index.ts` and still needs `supabase functions deploy send-invite` (or upload via the Supabase dashboard). `git status` shows the file as modified-and-undeployed. Client-side pre-check has shipped via Netlify, so self-invite is blocked client-side today — but a caller hitting the edge function directly would succeed until this deploys.
