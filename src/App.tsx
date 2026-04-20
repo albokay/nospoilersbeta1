@@ -21,6 +21,7 @@ import { Tv, EyeClosed, UsersRound, ListCheck, Globe, Search, Rocket, X, Setting
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
+import MobileLockout from "./components/MobileLockout";
 import HomepageLab from "./components/HomepageLab";
 import HowItWorks from "./components/HowItWorks";
 import HowItWorksV2 from "./components/HowItWorksV2";
@@ -65,12 +66,17 @@ export default function App() {
   useEffect(injectDOSStyles, []);
 
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 600);
+  // Viewports narrower than 768px see the mobile lockout screen (admins
+  // exempted — checked at render time). Separate from isMobile, which only
+  // governs layout density for signed-in users.
+  const [isMobileLocked, setIsMobileLocked] = useState(() => window.innerWidth < 768);
   // Below 1134px the header stacks into two rows; the tall dynamic logo
   // crowds that layout, so we fall back to the original static png there.
   const [isNarrowHeader, setIsNarrowHeader] = useState(() => window.innerWidth < 1134);
   useEffect(() => {
     const fn = () => {
       setIsMobile(window.innerWidth <= 600);
+      setIsMobileLocked(window.innerWidth < 768);
       setIsNarrowHeader(window.innerWidth < 1134);
     };
     window.addEventListener("resize", fn);
@@ -821,6 +827,14 @@ export default function App() {
 
   // Show tabs are now integrated directly into the diary graphic on the profile page.
   const fixedProfileTabs = null;
+
+  // Mobile lockout: viewports <768px get a single "not ready for your phone
+  // yet" screen instead of the app. Admins bypass so I can QA from a phone.
+  // During auth load / profile load the gate stays closed — a brief flash
+  // only affects admins signing in on mobile, which is the edge case.
+  if (isMobileLocked && !isAdmin) {
+    return <MobileLockout />;
+  }
 
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
