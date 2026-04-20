@@ -264,4 +264,9 @@ When adding new routes or gates:
 
 ## Outstanding action items (carry across sessions)
 
-- **`send-invite` edge function deploy** (from `5955ce9`, 2026-04-19). Server-side self-invite block lives in `supabase/functions/send-invite/index.ts` and still needs `supabase functions deploy send-invite` (or upload via the Supabase dashboard). `git status` shows the file as modified-and-undeployed. Client-side pre-check has shipped via Netlify, so self-invite is blocked client-side today — but a caller hitting the edge function directly would succeed until this deploys.
+_None currently._
+
+## Edge function deploy notes
+
+- **`send-invite`** is deployed with **`--no-verify-jwt`**. Reason: the Supabase project is on asymmetric JWT signing keys (ES256) and the Edge Functions gateway on this runtime only accepts HS256 — gateway-level JWT verification was blocking every invocation with `UNSUPPORTED_TOKEN_ALGORITHM: Unsupported JWT algorithm ES256`. The function already does its own JWT verification inside the code via `admin.auth.getUser(jwt)` ([index.ts:78](supabase/functions/send-invite/index.ts:78)), so gateway-level checking was redundant. **Any future redeploy of `send-invite` must include the `--no-verify-jwt` flag** (or set `verify_jwt = false` in `supabase/config.toml` if one gets added), otherwise the function will 401 on every call. Deployed 2026-04-20 as version 10.
+- If the project later migrates back to HS256 legacy keys (or Supabase's runtime adds ES256 support at the gateway), `--no-verify-jwt` can be revisited. Until then, do not remove.
