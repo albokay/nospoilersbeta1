@@ -943,7 +943,7 @@ export default function App() {
                 const items: { Icon: React.ElementType; text: React.ReactNode }[] = [
                   { Icon: DoorOpen,          text: "Find the show you\u2019re watching and create a room." },
                   { Icon: UserPlus,          text: "Invite friends you love talking to." },
-                  { Icon: ClipboardList,     text: (<>Everyone logs their watch progress every time they sign in.<br />Sidebar tags all writing to each friend&rsquo;s logged progress.</>) },
+                  { Icon: ClipboardList,     text: "Everyone logs their watch progress every time they sign in. Sidebar tags all writing to each friend\u2019s logged progress." },
                   { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers \u2014 as if your friends have watched just as far as you have." },
                   { Icon: Blend,             text: (<>Sidebar filters everything according to<br />everyone&rsquo;s unique watch progress.</>) },
                   { Icon: ShieldCheck,       text: "Nothing you read is ever ahead of where you are." },
@@ -976,11 +976,13 @@ export default function App() {
                           <Icon size={isMobile ? 18 : 22} color="var(--dos-bg)" strokeWidth={1.5} />
                         </div>
                         <span style={{
+                          width: isMobile ? "auto" : "100%",
                           fontSize: isMobile ? 12 : 13,
                           color: "var(--dos-bg)",
                           fontWeight: 600,
                           lineHeight: 1.4,
                           textAlign: isMobile ? "left" : "center",
+                          textWrap: "balance" as React.CSSProperties["textWrap"],
                         }}>{text}</span>
                       </div>
                     ))}
