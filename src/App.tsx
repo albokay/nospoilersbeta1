@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
-import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount, fetchAllFriendGroupsWithActivity } from "./lib/db";
+import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount, fetchAllFriendGroupsWithActivity, markTabCreated } from "./lib/db";
 import { supabase } from "./lib/supabaseClient";
 import type { Show } from "./lib/db";
 import type { Reply, Thread, ProgressEntry, FriendGroup } from "./types";
@@ -580,6 +580,9 @@ export default function App() {
     onShowCreated: (newShow: Show, entry: ProgressEntry, action?: string) => {
       setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow]);
       setWatchStatusFor(newShow.id, entry);
+      // Mark the new tab so ProfilePage's showTabOrder floats it to the front
+      // even before any real activity accumulates for it.
+      if (user) markTabCreated(user.id, newShow.id);
       if (action === "journal") {
         navigate("/profile", { state: { activeTab: newShow.id } });
         requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));

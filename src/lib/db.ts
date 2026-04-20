@@ -395,33 +395,155 @@ export async function deleteReply(replyId: string): Promise<void> {
 
 // ── Profile page queries ──────────────────────────────────────────────────────
 
-/** Lightweight query: get show IDs + latest activity timestamp for tab ordering. */
+/**
+ * Lightweight query: get show IDs + latest activity timestamp for tab ordering.
+ *
+ * Signals that count as "activity" for a show tab (all fold into a single
+ * per-show max(latestAt)):
+ *   1. User's own thread on this show (any destination)
+ *   2. User's own reply on any thread on this show
+ *   3. Reply on one of the user's own threads, by anyone else — IF that reply
+ *      is visible to the user given their current effective progress
+ *   4. Thread in a friend room the user is a member of, by anyone else — IF
+ *      that thread is visible to the user given their current effective
+ *      progress
+ *
+ * Signals 3 and 4 are spoiler-gated by the user's own progress (using
+ * effective progress semantics — highestS/E for rewatchers, s/e otherwise)
+ * so spoilers don't move a tab to the top. Signal 5 (new-tab creation)
+ * is handled client-side via localStorage; see markTabCreated/readTabCreated.
+ *
+ * Tabs live on the client as "any show with a progress row" — so a brand-new
+ * tab with no activity yet won't appear in this result; ProfilePage fills
+ * that gap by falling back to the localStorage tab-creation timestamp.
+ */
 export async function fetchUserShowActivity(userId: string): Promise<{ showId: string; latestAt: number }[]> {
-  // Fetch just show_id and updated_at from user's threads (lightweight — no body/preview)
+  // Progress rows drive the visibility filter for signals 3 and 4.
+  const { data: progressRows } = await supabase
+    .from("progress")
+    .select("show_id, season, episode, is_rewatching, highest_season, highest_episode")
+    .eq("user_id", userId);
+  const effByShow: Record<string, { s: number; e: number }> = {};
+  for (const p of progressRows ?? []) {
+    const useHighest = (p as any).is_rewatching && (p as any).highest_season != null && (p as any).highest_episode != null;
+    effByShow[(p as any).show_id] = {
+      s: useHighest ? (p as any).highest_season : (p as any).season,
+      e: useHighest ? (p as any).highest_episode : (p as any).episode,
+    };
+  }
+  const isVisible = (sid: string, s: number, e: number): boolean => {
+    const eff = effByShow[sid];
+    if (!eff) return false;
+    return s < eff.s || (s === eff.s && e <= eff.e);
+  };
+
+  // (1) User's own threads
   const { data: threadData } = await supabase
     .from("threads")
-    .select("show_id, updated_at")
+    .select("id, show_id, updated_at")
     .eq("author_id", userId)
     .eq("is_deleted", false);
-  // Fetch show_id from user's replies via their parent threads
+
+  // (2) User's own replies
   const { data: replyData } = await supabase
     .from("replies")
     .select("updated_at, threads!inner(show_id)")
     .eq("author_id", userId)
     .eq("is_deleted", false);
 
+  // (3) Visible replies on user's own threads by others
+  const userThreadIds = (threadData ?? []).map((t: any) => t.id);
+  let repliesToUser: any[] = [];
+  if (userThreadIds.length > 0) {
+    try {
+      const { data } = await supabase
+        .from("replies")
+        .select("updated_at, season, episode, threads!inner(show_id)")
+        .in("thread_id", userThreadIds)
+        .neq("author_id", userId)
+        .eq("is_deleted", false);
+      repliesToUser = data ?? [];
+    } catch (err) {
+      console.warn("fetchUserShowActivity: replies-to-user fetch failed (recoverable):", err);
+    }
+  }
+
+  // (4) Visible threads in user's friend rooms by others
+  let groupThreadsData: any[] = [];
+  try {
+    const { data: memberRows } = await supabase
+      .from("friend_group_members")
+      .select("group_id")
+      .eq("user_id", userId);
+    const groupIds = (memberRows ?? []).map((r: any) => r.group_id);
+    if (groupIds.length > 0) {
+      const { data: linkRows } = await supabase
+        .from("group_threads")
+        .select("thread_id")
+        .in("group_id", groupIds);
+      const threadIds = Array.from(new Set((linkRows ?? []).map((r: any) => r.thread_id)));
+      if (threadIds.length > 0) {
+        const { data } = await supabase
+          .from("threads")
+          .select("show_id, updated_at, season, episode")
+          .in("id", threadIds)
+          .neq("author_id", userId)
+          .eq("is_deleted", false);
+        groupThreadsData = data ?? [];
+      }
+    }
+  } catch (err) {
+    console.warn("fetchUserShowActivity: group-threads fetch failed (recoverable):", err);
+  }
+
   const latest: Record<string, number> = {};
   const bump = (sid: string, ts: number) => {
     if (!latest[sid] || ts > latest[sid]) latest[sid] = ts;
   };
-  for (const row of threadData ?? []) bump(row.show_id, new Date(row.updated_at).getTime());
+  for (const row of threadData ?? []) bump((row as any).show_id, new Date((row as any).updated_at).getTime());
   for (const row of replyData ?? []) {
     const sid = (row as any).threads?.show_id;
-    if (sid) bump(sid, new Date(row.updated_at).getTime());
+    if (sid) bump(sid, new Date((row as any).updated_at).getTime());
   }
+  for (const row of repliesToUser) {
+    const sid = (row as any).threads?.show_id;
+    if (sid && isVisible(sid, (row as any).season, (row as any).episode)) {
+      bump(sid, new Date((row as any).updated_at).getTime());
+    }
+  }
+  for (const row of groupThreadsData) {
+    const sid = (row as any).show_id;
+    if (sid && isVisible(sid, (row as any).season, (row as any).episode)) {
+      bump(sid, new Date((row as any).updated_at).getTime());
+    }
+  }
+
   return Object.entries(latest)
     .map(([showId, latestAt]) => ({ showId, latestAt }))
     .sort((a, b) => b.latestAt - a.latestAt);
+}
+
+/**
+ * Mark a show tab as newly created for a given user. Writes a timestamp to
+ * localStorage so ProfilePage's showTabOrder can float new tabs to the front
+ * even before any real activity exists for them. Called from journal / friend
+ * room / invite-accept creation paths.
+ */
+export function markTabCreated(userId: string, showId: string): void {
+  try {
+    localStorage.setItem(`ns_tab_created_${userId}_${showId}`, String(Date.now()));
+  } catch {}
+}
+
+/** Read the tab-creation timestamp written by markTabCreated. Returns 0 if not set. */
+export function readTabCreated(userId: string, showId: string): number {
+  try {
+    const raw = localStorage.getItem(`ns_tab_created_${userId}_${showId}`);
+    const n = raw ? Number(raw) : 0;
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export async function fetchUserThreads(

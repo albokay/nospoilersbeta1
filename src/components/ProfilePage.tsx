@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, LockKeyhole, Lock, Sparkles, MapPin, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
+import { SquarePen, X, Globe, Users, LockKeyhole, Lock, Sparkles, CircleDot, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -162,14 +162,22 @@ export default function ProfilePage({
       canView({ season: r.season, episode: r.episode }, progress[t.showId])),
     [likedRepliesList, progress]);
 
-  // Compute show tab order from lightweight activity data + progress keys
+  // Compute show tab order from lightweight activity data + progress keys.
+  // Fallback for shows with no activity yet: the localStorage tab-creation
+  // timestamp (written by markTabCreated when the user starts a journal,
+  // creates a friend room, or accepts an invite). This ensures new tabs
+  // land at the top of the tab list; pre-existing tabs without a creation
+  // mark fall back to 0 as before.
   const showTabOrder = useMemo(() => {
     const latest: Record<string, number> = {};
     for (const { showId, latestAt } of activityOrder) latest[showId] = latestAt;
-    // include shows from progress even if no posts yet
-    Object.keys(progress).forEach(sid => { if (!latest[sid]) latest[sid] = 0; });
+    Object.keys(progress).forEach(sid => {
+      if (!latest[sid]) {
+        latest[sid] = user ? readTabCreated(user.id, sid) : 0;
+      }
+    });
     return Object.keys(latest).sort((a, b) => latest[b] - latest[a]);
-  }, [activityOrder, progress]);
+  }, [activityOrder, progress, user?.id]);
 
   // Hidden tabs: user can close tabs to declutter their private profile view.
   // Entries and progress remain — purely a UI preference stored in localStorage.
@@ -699,7 +707,7 @@ export default function ProfilePage({
                         >
                           {showName(sid)}
                           {active && (
-                            <span data-hamburger style={{ marginLeft: 8, opacity: 0.8, lineHeight: 1, display: "inline-flex", verticalAlign: "middle" }}><MapPin size={20} color="currentColor" /></span>
+                            <span data-hamburger style={{ marginLeft: 8, opacity: 0.8, lineHeight: 1, display: "inline-flex", verticalAlign: "middle" }}><CircleDot size={20} color="currentColor" /></span>
                           )}
                           {!viewed && activity && (
                             <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: activity === "green" ? "var(--green)" : "var(--danger)", pointerEvents: "none" }} />
@@ -743,25 +751,26 @@ export default function ProfilePage({
                           const MAX = 12;
                           const truncated = name.length > MAX ? name.slice(0, MAX) + "…" : name;
                           return (
-                            <button
-                              className="btn"
-                              onClick={() => goToShowRoom(activeTab, tabGroups[0].id)}
-                              title={name.length > MAX ? name : undefined}
-                              style={{
-                                lineHeight: 1.2,
-                                padding: "4px 10px",
-                                fontSize: 13,
-                                display: "inline-flex", alignItems: "center", gap: 6,
-                                background: "#adc8d7",
-                                border: "2px solid #adc8d7",
-                                color: "#fff",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
-                              <span>{truncated}</span>
-                              <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
-                            </button>
+                            <Tooltip text="Go to friend room." direction="below" align="center" portal>
+                              <button
+                                className="btn"
+                                onClick={() => goToShowRoom(activeTab, tabGroups[0].id)}
+                                style={{
+                                  lineHeight: 1.2,
+                                  padding: "4px 10px",
+                                  fontSize: 13,
+                                  display: "inline-flex", alignItems: "center", gap: 6,
+                                  background: "#adc8d7",
+                                  border: "2px solid #adc8d7",
+                                  color: "#fff",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                                <span>{truncated}</span>
+                                <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
+                              </button>
+                            </Tooltip>
                           );
                         })()}
                         {tabGroups.length >= 2 && (

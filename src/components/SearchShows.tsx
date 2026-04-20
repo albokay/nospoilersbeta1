@@ -5,6 +5,7 @@ import type { Show } from "../lib/db";
 import { createShow, upsertBrowseProgress } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import type { ProgressEntry } from "../types";
+import Tooltip from "./Tooltip";
 
 // ── TVmaze helpers ─────────────────────────────────────────────────────────
 
@@ -490,14 +491,31 @@ export default function SearchShows({
                 Are you rewatching <strong>{confirming.name}</strong>, or is this your first time through?
               </p>
               <div style={{ display: "flex", gap: 16 }}>
-                {(["first", "rewatch"] as const).map(choice => (
-                  <div key={choice} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchChoice(choice)}>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {watchChoice === choice && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
+                {(["first", "rewatch"] as const).map(choice => {
+                  const row = (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchChoice(choice)}>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {watchChoice === choice && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
+                      </div>
+                      {choice === "first" ? "First time" : "Rewatching"}
                     </div>
-                    {choice === "first" ? "First time" : "Rewatching"}
-                  </div>
-                ))}
+                  );
+                  if (choice === "rewatch") {
+                    return (
+                      <Tooltip
+                        key={choice}
+                        text="You've seen the show before? Pick this. Your posts will be filtered to protect first-time viewers from anything you might give away."
+                        direction="above"
+                        align="center"
+                        portal
+                        width={260}
+                      >
+                        {row}
+                      </Tooltip>
+                    );
+                  }
+                  return <React.Fragment key={choice}>{row}</React.Fragment>;
+                })}
               </div>
             </div>
 

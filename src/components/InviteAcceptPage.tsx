@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Link2, Clock, CircleCheck, PartyPopper, AlertTriangle, Clapperboard } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../lib/auth";
-import { upsertProgress, fetchProgress, fetchShows } from "../lib/db";
+import { upsertProgress, fetchProgress, fetchShows, markTabCreated } from "../lib/db";
 import type { Show } from "../lib/db";
 import AuthModal from "./AuthModal";
 import OneSelectProgress from "./OneSelectProgress";
@@ -82,6 +82,9 @@ export default function InviteAcceptPage({ token }: { token: string }) {
         const existing = await fetchProgress(user.id);
         if (!existing[invite.show_id]) {
           await upsertProgress(user.id, invite.show_id, progressPick.s, progressPick.e);
+          // Accepting an invite into a show the user hasn't got a progress row
+          // for creates a new tab — float it to the front like a journal create.
+          markTabCreated(user.id, invite.show_id);
         }
       } catch {}
     }

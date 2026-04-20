@@ -172,7 +172,7 @@ export default function ShowSection({
     return () => window.removeEventListener("resize", fn);
   }, []);
 
-  const [sortBy, setSortBy] = useState<"relevance" | "post" | "episode" | "hot">("relevance");
+  const [sortBy, setSortBy] = useState<"relevance" | "post" | "episode">("relevance");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [mode, setMode] = useState<"standard" | "risky">("standard");
@@ -957,22 +957,9 @@ export default function ShowSection({
         if (a.episode !== b.episode) return b.episode - a.episode;
         return b.updatedAt - a.updatedAt;
       });
-    } else if (sortBy === "hot") {
-      list = [...list].sort((a, b) => {
-        const la = likesThreads[a.id] ?? a.likes;
-        const lb = likesThreads[b.id] ?? b.likes;
-        if (lb !== la) return lb - la;
-        return b.updatedAt - a.updatedAt;
-      });
-    } else if (sortBy === "rewatchers") {
-      list = list.filter(t => t.isRewatch).sort((a, b) => {
-        if (a.season !== b.season) return b.season - a.season;
-        if (a.episode !== b.episode) return b.episode - a.episode;
-        return b.updatedAt - a.updatedAt;
-      });
     }
     return list;
-  }, [allThreads, progress, searchQuery, sortBy, likesThreads, newHighlights, showId, reWatchOnly]);
+  }, [allThreads, progress, searchQuery, sortBy, newHighlights, showId, reWatchOnly]);
 
   // ── Green-tab: compute newly visible threads ──
   const prevProgRef = useRef<{ s: number; e: number } | undefined>(undefined);
@@ -1643,8 +1630,6 @@ export default function ShowSection({
                       <option value="relevance">Relevance</option>
                       <option value="post">Post date</option>
                       <option value="episode">Episode order</option>
-                      <option value="hot">Hot</option>
-                      <option value="rewatchers">Rewatchers</option>
                     </select>
                     <ChevronDown size={14} color="var(--dos-border)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
                   </div>
