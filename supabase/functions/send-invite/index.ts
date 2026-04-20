@@ -19,18 +19,46 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin":  "https://beta.sidebar.com",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Browsers only honor Access-Control-Allow-Origin when it echoes the request's
+// Origin exactly (or is "*"). We keep a small allowlist and echo the match
+// back — covers prod + local dev without loosening security to a wildcard.
+const ALLOWED_ORIGINS = new Set([
+  "https://beta.sidebar.watch",
+  "http://localhost:5173",
+]);
+
+function corsHeaders(origin: string | null): Record<string, string> {
+  const allow = origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://beta.sidebar.watch";
+  return {
+    "Access-Control-Allow-Origin":  allow,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Vary":                         "Origin",
+  };
+}
 
 const RATE_LIMIT_PER_DAY = 10;
 const FROM_ADDRESS       = "No Spoilers <invites@sidebar.watch>";
 
 serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const cors = corsHeaders(origin);
+
+  // Closure so the helpers can reference the request-scoped cors headers
+  // without threading them through every call site.
+  const jsonOk = (body: Record<string, unknown>) =>
+    new Response(JSON.stringify({ ok: true, ...body }), {
+      status: 200,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+  const jsonError = (code: string, status: number, message?: string) =>
+    new Response(JSON.stringify({ ok: false, error: code, ...(message ? { message } : {}) }), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: CORS_HEADERS });
+    return new Response("ok", { headers: cors });
   }
 
   try {
@@ -181,18 +209,3 @@ serve(async (req) => {
   }
 });
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function jsonOk(body: Record<string, unknown>) {
-  return new Response(JSON.stringify({ ok: true, ...body }), {
-    status:  200,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-  });
-}
-
-function jsonError(code: string, status: number, message?: string) {
-  return new Response(JSON.stringify({ ok: false, error: code, ...(message ? { message } : {}) }), {
-    status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-  });
-}
