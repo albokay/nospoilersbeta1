@@ -141,14 +141,14 @@ body.public-context .expand-chip{ color:#7abd8e !important; }
 /* Narrow-width fallback uses the small png logo — tighter gap is correct there. */
 @media(max-width:1133px){ .topHeaderLeft{ gap:6px; } }
 .topHeaderRight{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
-/* At <=1133px the profile pill (fixed, aligned to journal right edge via
-   calc(50vw - 452px)) starts to crowd the right cluster (sign-out + admin
-   gear) because the journal-math value approaches the viewport-right edge.
-   Drop the cluster down by (pill height 34 + 8 gap) = 42px so it slips
-   cleanly under the pill. Matches the same breakpoint that transitions
-   --site-header-h from 56 to 96, so the header already reserves vertical
-   space for the extra row. */
-@media(max-width:1133px){
+/* At <=1077px the profile pill (fixed, aligned to journal right edge via
+   calc(50vw - 452px)) crowds the right cluster (sign-out + admin gear)
+   enough to visually overlap. Drop the cluster down by (pill height 34 +
+   8 gap) = 42px so it slips cleanly under the pill. Threshold set 56px
+   narrower than the --site-header-h transition at 1133px per user — the
+   extra vertical space for the dropped cluster is covered by the wider
+   header band once --site-header-h hits 96 at 1133. */
+@media(max-width:1077px){
   .topHeaderRight{ margin-top:42px; }
 }
 /* Profile pill — used to live inline in the right cluster next to sign-out.
