@@ -418,7 +418,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "center",
-                padding: "24px 24px 24px 4px",
+                padding: "24px 32px",
               }}
             >
               {panelTitles[step] && (

@@ -2331,8 +2331,11 @@ export default function ShowSection({
               style={{ width: "100%", height: 40, fontWeight: 700, ...(openedFromGroup ? { border: "none" } : {}) }}
             />
             <div className="muted" style={{ fontSize: 13 }}>
-              Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> and will only show to people who've watched at least that far.
-              {postProgress.isRewatching && <span> (tagged at your highest prior progress as a re-watcher)</span>}
+              {postProgress.isRewatching ? (
+                <>Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> — your highest prior progress as a re-watcher. It will only show to people who've watched at least that far.</>
+              ) : (
+                <>Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> and will only show to people who've watched at least that far.</>
+              )}
             </div>
             <textarea
               ref={postBodyRef}
