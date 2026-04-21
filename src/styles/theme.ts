@@ -141,9 +141,25 @@ body.public-context .expand-chip{ color:#7abd8e !important; }
 /* Narrow-width fallback uses the small png logo — tighter gap is correct there. */
 @media(max-width:1133px){ .topHeaderLeft{ gap:6px; } }
 .topHeaderRight{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
-/* Profile pill — always lives in the right cluster next to sign-out,
-   at every viewport width. */
+/* Profile pill — used to live inline in the right cluster next to sign-out.
+   Now renders as its own position:fixed element so its right edge aligns
+   with the journal's right edge instead of the viewport's right edge.
+   Math: .container is min(672px, 92vw) centered. At viewports >=731px
+   container hits the 672 cap. On the journal page, .diaryOuter with
+   .journalShift extends 116px past the container's right edge (width:
+   calc(100% + 116px) with margin-left:0), so diary right edge =
+   viewport/2 + (672/2) + (116 - 56) = viewport/2 + 452. Distance from
+   viewport right = viewport/2 - 452. Below ~932px viewport the value
+   goes negative, so max() clamps it back to 14px (old behavior). Works
+   across all non-homepage views because the math is viewport-based. */
 .topHeaderPillInline{ display:inline-flex; }
+.topHeaderPillFixed{
+  position:fixed;
+  top:14px;
+  right:max(14px, calc(50vw - 452px));
+  z-index:1001;
+  pointer-events:auto;
+}
 .topHeaderContentRow{
   width:min(672px, 92vw);
   margin:40px auto 0;
