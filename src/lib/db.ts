@@ -1652,6 +1652,7 @@ export async function sendInvite(data: {
   groupName: string;
   inviteeEmail: string;
   inviterName: string;
+  showName?: string;
 }): Promise<SendInviteResult> {
   await checkRateLimit('send_invite', 4, 60);
   await checkRateLimitDaily('send_invite', 10);

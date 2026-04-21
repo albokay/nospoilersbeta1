@@ -37,7 +37,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
 }
 
 const RATE_LIMIT_PER_DAY = 10;
-const FROM_ADDRESS       = "No Spoilers <invites@sidebar.watch>";
+const FROM_ADDRESS       = "Sidebar <invites@sidebar.watch>";
 
 serve(async (req) => {
   const origin = req.headers.get("origin");
@@ -82,7 +82,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => null);
     if (!body) return jsonError("invalid_body", 400);
 
-    const { groupId, inviteeEmail, groupName, inviterName, appUrl } = body as Record<string, string>;
+    const { groupId, inviteeEmail, groupName, inviterName, appUrl, showName } = body as Record<string, string>;
     if (!groupId || !inviteeEmail || !groupName) {
       return jsonError("missing_fields", 400);
     }
@@ -154,37 +154,49 @@ serve(async (req) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not configured");
 
-    const baseUrl   = (appUrl ?? "https://nospoilers.app").replace(/\/$/, "");
-    const inviteUrl = `${baseUrl}/invite/${token}`;
-    const sender    = inviterName ?? "Someone";
-    const subject   = `${sender} invited you to "${groupName}" on No Spoilers`;
+    const baseUrl    = (appUrl ?? "https://beta.sidebar.watch").replace(/\/$/, "");
+    const inviteUrl  = `${baseUrl}/invite/${token}`;
+    const sender     = inviterName ?? "Someone";
+    // Show name is optional on the inbound payload — older clients may not
+    // send it. Fall back to a generic phrasing if missing so the email still
+    // renders cleanly.
+    const showLabel  = showName?.trim() || "a show";
+    const subject    = `${sender} invited you to watch ${showLabel} together on Sidebar`;
 
+    // Email HTML: dark outer bg with a framed canon-light-blue card. All
+    // styling is inline for cross-client compatibility (Gmail / Outlook /
+    // Apple Mail). Heading in canon-dark-blue for contrast on light-blue;
+    // CTA button canon-yellow. 📺 emoji avoids the SVG-icon cross-client
+    // problem.
     const html = `
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#0e0e10;font-family:system-ui,-apple-system,sans-serif">
-<div style="max-width:480px;margin:40px auto;padding:32px 28px;background:#18181b;border-radius:12px;border:1px solid rgba(255,255,255,0.08)">
-  <p style="margin:0 0 4px;font-size:13px;color:#71717a;text-transform:uppercase;letter-spacing:0.08em">No Spoilers</p>
-  <h1 style="margin:0 0 20px;font-size:24px;color:#fafafa;font-weight:700">You're invited 🎬</h1>
-  <p style="margin:0 0 24px;font-size:15px;color:#a1a1aa;line-height:1.6">
-    <strong style="color:#fafafa">${sender}</strong> invited you to join the private watch room
-    <strong style="color:#fafafa">"${groupName}"</strong> — a spoiler-safe space to discuss episodes
-    with friends as you watch.
+<div style="max-width:560px;margin:40px auto;padding:36px 32px;background:#adc8d7;border-radius:12px">
+  <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
+    📺 <strong>${sender}</strong> has started a friend room on Sidebar to watch and discuss <strong>${showLabel}</strong>. They want you to join!
+  </h1>
+  <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
+    Sidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress.
+  </p>
+  <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;font-style:italic">
+    talk. together. whenever.
   </p>
   <a href="${inviteUrl}"
-     style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;
-            padding:12px 28px;border-radius:8px;font-size:15px;font-weight:600">
+     style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;
+            padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
     Accept invitation →
   </a>
-  <p style="margin:28px 0 0;font-size:12px;color:#52525b;line-height:1.6">
+  <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
     This link expires in 48 hours and can only be used once.<br>
+    New to Sidebar? You'll be able to create an account when you accept.<br>
     If you weren't expecting this, you can safely ignore it.
   </p>
 </div>
 </body>
 </html>`;
 
-    const text = `${sender} invited you to join "${groupName}" on No Spoilers.\n\nAccept here: ${inviteUrl}\n\nThis link expires in 48 hours and can only be used once.\nIf you weren't expecting this, you can safely ignore it.`;
+    const text = `${sender} has started a friend room on Sidebar to watch and discuss ${showLabel}. They want you to join!\n\nSidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress.\n\ntalk. together. whenever.\n\nAccept here: ${inviteUrl}\n\nThis link expires in 48 hours and can only be used once.\nNew to Sidebar? You'll be able to create an account when you accept.\nIf you weren't expecting this, you can safely ignore it.`;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",
