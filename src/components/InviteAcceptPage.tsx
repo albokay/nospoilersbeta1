@@ -90,18 +90,21 @@ export default function InviteAcceptPage({ token }: { token: string }) {
     }
 
     setStatus("done");
-    // Navigate to the user's journal with the just-joined show tab selected.
-    // ProfilePage picks up `state.activeTab` to focus that tab on arrival.
-    // Also stash the group id so the show tab defaults to the friend room
-    // view once the user is there.
+    // Navigate to the user's journal. Hard reload (not SPA navigate) so
+    // App remounts and re-runs fetchProgress — otherwise App's progress
+    // state is stale (empty for a brand-new signup whose fetchProgress
+    // already ran before handleAccept wrote the row), ProfilePage's
+    // showTabOrder is empty, and the user lands on a blank screen until
+    // they refresh. No `state.activeTab` directive is needed: markTabCreated
+    // above floats the just-accepted show to position 0 in showTabOrder,
+    // which ProfilePage's default-pick selects.
     const showId = invite?.show_id;
     const groupId = invite?.group_id;
     if (showId && groupId) {
       sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
     }
     setTimeout(() => {
-      if (showId) navigate("/profile", { state: { activeTab: showId } });
-      else navigate("/profile");
+      window.location.assign("/profile");
     }, 1800);
   }
 
