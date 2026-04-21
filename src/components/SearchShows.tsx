@@ -164,8 +164,14 @@ export default function SearchShows({
   // Watch-status questionnaire state
   const [watchChoice, setWatchChoice] = useState<"first" | "rewatch" | null>(null);
   const [highestSel, setHighestSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
-  const [rewatchSel, setRewatchSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
-  const [firstTimeSel, setFirstTimeSel] = useState<{ s: number; e: number }>({ s: 1, e: 1 });
+  // Rewatch-position and first-time-progress default to "haven't started"
+  // (0,0) so a new user can start a journal / join a friend room before
+  // watching anything. allowZero is enabled on both selects so the option
+  // is visible and re-selectable. highestSel stays at (1,1) because the
+  // rewatch validation requires highest > rewatch, and (1,1) is the
+  // minimum allowable highest when rewatch is (0,0).
+  const [rewatchSel, setRewatchSel] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
+  const [firstTimeSel, setFirstTimeSel] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
   const [progressTouched, setProgressTouched] = useState(false);
 
   // All results come from TVMaze, with one exception: The Sidebar Protocol
@@ -211,8 +217,8 @@ export default function SearchShows({
     setCreateError(null);
     setWatchChoice(null);
     setHighestSel({ s: 1, e: 1 });
-    setRewatchSel({ s: 1, e: 1 });
-    setFirstTimeSel({ s: 1, e: 1 });
+    setRewatchSel({ s: 0, e: 0 });
+    setFirstTimeSel({ s: 0, e: 0 });
     setProgressTouched(false);
   };
 
@@ -275,8 +281,8 @@ export default function SearchShows({
     } else {
       setWatchChoice(null);
       setHighestSel({ s: 1, e: 1 });
-      setRewatchSel({ s: 1, e: 1 });
-      setFirstTimeSel({ s: 1, e: 1 });
+      setRewatchSel({ s: 0, e: 0 });
+      setFirstTimeSel({ s: 0, e: 0 });
     }
 
     // Fetch episode data so the selects are ready
@@ -548,6 +554,7 @@ export default function SearchShows({
                     onChange={(v) => { setRewatchSel(v); setProgressTouched(true); }}
                     // Rewatch must be strictly less than highest.
                     disableAtOrAbove={progressTouched ? highestSel : undefined}
+                    allowZero
                   />
                 </div>
               </div>
