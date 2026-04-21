@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, LockKeyhole, Lock, Sparkles, CircleDot, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
+import { SquarePen, X, Globe, Users, LockKeyhole, Lock, Sparkles, CircleChevronDown, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -707,7 +707,7 @@ export default function ProfilePage({
                         >
                           {showName(sid)}
                           {active && (
-                            <span data-hamburger style={{ marginLeft: 8, opacity: 0.8, lineHeight: 1, display: "inline-flex", verticalAlign: "middle" }}><CircleDot size={20} color="currentColor" /></span>
+                            <span data-hamburger style={{ marginLeft: 8, opacity: 0.8, lineHeight: 1, display: "inline-flex", verticalAlign: "middle" }}><CircleChevronDown size={20} color="currentColor" /></span>
                           )}
                           {!viewed && activity && (
                             <span style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: activity === "green" ? "var(--green)" : "var(--danger)", pointerEvents: "none" }} />

@@ -35,7 +35,7 @@ function isWithinPreviousHighest(s: number, e: number, highest?: { s: number; e:
 }
 
 export default function OneSelectProgress({
-  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel, allowZero = false, rewatchHighest, plain = false, showChevron = false
+  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel, allowZero = false, rewatchHighest, plain = false
 }: {
   show: any;
   value: any;
@@ -54,10 +54,6 @@ export default function OneSelectProgress({
   // no green pill styling). Matches the other in-modal EpisodeSelectInline
   // pickers so modals have a consistent dropdown flavor.
   plain?: boolean;
-  // When true (non-plain, non-compactLabel path only), strip the native
-  // browser select chevron and overlay a ChevronDown icon on the right
-  // so the affordance is consistent across browsers.
-  showChevron?: boolean;
 }) {
   const opts = buildProgressOptions(show);
   const curS = value?.s ?? 1;
@@ -195,9 +191,11 @@ export default function OneSelectProgress({
             border: "1px solid var(--dos-border)", borderRadius: 6,
             padding: "4px 8px", fontSize: 13, width: "100%",
           }
-        : showChevron
-          ? { background: "#7abd8e", color: "#fff", border: "2px solid #fff", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", paddingRight: 28 }
-          : { background: "#7abd8e", color: "#fff", border: "2px solid #fff", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center" }
+        // Non-plain (default pill) path always strips the native arrow and
+        // reserves right-padding for the overlay ChevronDown rendered below.
+        // Keeps the affordance consistent across browsers (Safari in
+        // particular hides the native arrow at this font-size + padding).
+        : { background: "#7abd8e", color: "#fff", border: "2px solid #fff", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", paddingRight: 28 }
       }
     >
       {showZeroOption && (
@@ -219,7 +217,9 @@ export default function OneSelectProgress({
 
   return (
     <>
-      {showChevron && !plain ? (
+      {plain ? (
+        selectElement
+      ) : (
         <span style={{ position: "relative", display: "inline-block" }}>
           {selectElement}
           <ChevronDown
@@ -228,8 +228,6 @@ export default function OneSelectProgress({
             style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
           />
         </span>
-      ) : (
-        selectElement
       )}
 
       {requireConfirm && confirmOpen && (

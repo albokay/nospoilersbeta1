@@ -279,7 +279,6 @@ export default function InviteAcceptPage({ token }: { token: string }) {
                     onConfirm={(val) => setProgressPick(val)}
                     requireConfirm={false}
                     allowZero
-                    showChevron
                   />
                 </div>
               </div>
