@@ -737,7 +737,7 @@ export default function App() {
               </span>
             );
           })()}
-          {!authLoading && user && username && (
+          {!authLoading && user && (
             <Tooltip text="Sign out" direction="below" tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}>
               <button
                 className="btn"
@@ -790,7 +790,7 @@ export default function App() {
           <BookOpen size={14} color="currentColor" /> journal
         </button>
       )}
-      {!authLoading && user && username && (
+      {!authLoading && user && (
         <button className="btn signOutBtn" onClick={() => { goHomepage(); signOut(); }}>
           <span className="signOutLabel">Sign out</span>
           <span className="signOutX"><X size={14} /></span>
