@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function EmptyProfileWelcome({ isTsp = false, showName }: { isTsp?: boolean; showName?: string }) {
+export default function EmptyProfileWelcome({ isTsp = false, showName, invitedMode = false }: { isTsp?: boolean; showName?: string; invitedMode?: boolean }) {
   const bodyStyle: React.CSSProperties = {
     margin: "0 0 14px",
     fontSize: 16,
@@ -28,6 +28,29 @@ export default function EmptyProfileWelcome({ isTsp = false, showName }: { isTsp
           </p>
           <p style={{ ...bodyStyle, margin: 0, fontWeight: 700 }}>
             When you&rsquo;re ready, search for a show you&rsquo;re actually watching and get started.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Invited-mode variant: rendered when the user arrived at this show
+  // tab from an invitation accept (session-scoped flag set by
+  // InviteAcceptPage.handleAccept). Takes precedence over the generic
+  // show-name welcome because the user's context is specifically "just
+  // arrived from an invite link," not "I started a journal here."
+  if (invitedMode && showName) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 0 48px" }}>
+        <div style={{ width: "min(400px, 100%)" }}>
+          <p style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 700, lineHeight: 1.4, color: "var(--dos-fg)", textAlign: "left" }}>
+            You&rsquo;ve been invited to a friend room for {showName}.
+          </p>
+          <p style={bodyStyle}>
+            Click the friend room button above and join your friends.
+          </p>
+          <p style={{ ...bodyStyle, margin: 0 }}>
+            If you&rsquo;re brand new to Sidebar, you should click over to the tab for &ldquo;The Sidebar Protocol&rdquo; &mdash; where you can find a demo room for a pretend show. Spend some time there to get your bearings.
           </p>
         </div>
       </div>

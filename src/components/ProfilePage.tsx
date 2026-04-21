@@ -934,10 +934,19 @@ export default function ProfilePage({
                           </div>
                         );
                       }
-                      // No entries at all (including new users on private filter) — show welcome
+                      // No entries at all (including new users on private filter) — show welcome.
+                      // isTsp fires whenever the user is on the TSP tab and it's empty,
+                      // regardless of how many other tabs exist or how the tab was created.
+                      // invitedMode is session-scoped: InviteAcceptPage.handleAccept sets
+                      // ns_invite_welcome_<showId> on accept, which this reads to show the
+                      // "You've been invited..." copy on the user's first session at the
+                      // invited show tab. Cleared naturally on browser close (sessionStorage)
+                      // or when the user writes their first post (empty state stops rendering).
+                      const invitedMode = !!activeTab && typeof window !== "undefined" && !!sessionStorage.getItem(`ns_invite_welcome_${activeTab}`);
                       return <EmptyProfileWelcome
-                        isTsp={activeTab === "tsp" && visibleTabOrder.length === 1}
+                        isTsp={activeTab === "tsp"}
                         showName={activeTab ? showName(activeTab) : undefined}
+                        invitedMode={invitedMode}
                       />;
                     }
                     return filtered.map(({ thread: t, groupId, groupName }) => {

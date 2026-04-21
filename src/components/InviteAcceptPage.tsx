@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Link2, Clock, CircleCheck, PartyPopper, AlertTriangle, Clapperboard } from "lucide-react";
+import { Link2, Clock, CircleCheck, PartyPopper, AlertTriangle, MonitorPlay } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../lib/auth";
 import { upsertProgress, fetchProgress, fetchShows, markTabCreated } from "../lib/db";
@@ -102,6 +102,12 @@ export default function InviteAcceptPage({ token }: { token: string }) {
     const groupId = invite?.group_id;
     if (showId && groupId) {
       sessionStorage.setItem(`ns_active_group_${showId}`, groupId);
+      // Session-scoped marker that ProfilePage reads to render the
+      // invite-specific empty-state welcome on the show tab. Cleared
+      // naturally on browser close or when the user writes their first
+      // post (empty state stops rendering). See EmptyProfileWelcome.tsx
+      // invitedMode variant.
+      sessionStorage.setItem(`ns_invite_welcome_${showId}`, "1");
     }
     setTimeout(() => {
       window.location.assign("/profile");
@@ -241,7 +247,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   return (
     <>
       <Page>
-        <Emoji><Clapperboard size={44} color="var(--icon-color)" /></Emoji>
+        <Emoji><MonitorPlay size={44} color="var(--icon-color)" /></Emoji>
         <h2 className="title" style={{ marginBottom: 6 }}>You're invited!</h2>
         <p style={{ fontSize: 15, color: "rgba(255,255,255,0.65)", marginBottom: 28, lineHeight: 1.5 }}>
           Join the private watch room{" "}
@@ -256,7 +262,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
             <button
               className="btn"
               onClick={() => setShowAuth(true)}
-              style={{ background: "var(--green)", border: "none", color: "#fff", padding: "10px 28px", fontSize: 15 }}
+              style={{ background: "#fff", border: "none", color: "#7abd8e", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
             >
               Sign in to accept
             </button>
