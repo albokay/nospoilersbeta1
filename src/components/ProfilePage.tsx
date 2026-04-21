@@ -752,7 +752,7 @@ export default function ProfilePage({
                           const truncated = name.length > MAX ? name.slice(0, MAX) + "…" : name;
                           return (
                             <Tooltip
-                              text="(go to friend room)"
+                              text="Go to friend room."
                               direction="below"
                               align="center"
                               portal
@@ -832,9 +832,10 @@ export default function ProfilePage({
                         {/* + friends (or a circular + once the show already has ≥1 room) */}
                         <Tooltip
                           text={tabGroups.length > 0
-                            ? "Create another friend room for this show."
+                            ? <>Create another friend room<br />for this show.</>
                             : "Create a friend room for this show."}
                           direction="below"
+                          tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
                         >
                           <button
                             className="btn"

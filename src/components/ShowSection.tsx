@@ -1930,7 +1930,7 @@ export default function ShowSection({
                     className="btn"
                     onClick={handleSendInvite}
                     disabled={inviteSubmitting || !inviteEmail.trim()}
-                    style={{ background: "var(--dos-user)", border: "none", color: "#fff", whiteSpace: "nowrap" }}
+                    style={{ background: "var(--dos-user)", border: "none", color: "#fff", whiteSpace: "nowrap", minWidth: 120 }}
                   >
                     {inviteSubmitting ? "Sending…" : "Send invite"}
                   </button>
@@ -1969,7 +1969,7 @@ export default function ShowSection({
 
             {/* Danger zone */}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button className="btn" onClick={initiateLeaveGroup} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Leave room</button>
+              <button className="btn" onClick={initiateLeaveGroup} style={{ background: "var(--danger)", border: "none", color: "#fff", minWidth: 120 }}>Leave room</button>
             </div>
           </Modal>
         );

@@ -910,7 +910,7 @@ export default function App() {
                   opacity: arrowOpacity, pointerEvents: "none", zIndex: 10,
                   transition: "opacity 0.15s ease",
                 }}>
-                  <ArrowDown size={28} color="#fff" strokeWidth={2} />
+                  <ArrowDown size={49} color="#fff" strokeWidth={2} />
                 </div>
               )}
 
