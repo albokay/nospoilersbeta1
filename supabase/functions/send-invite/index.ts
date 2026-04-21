@@ -82,7 +82,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => null);
     if (!body) return jsonError("invalid_body", 400);
 
-    const { groupId, inviteeEmail, groupName, inviterName, appUrl, showName } = body as Record<string, string>;
+    const { groupId, inviteeEmail, groupName, inviterName, appUrl } = body as Record<string, string>;
     if (!groupId || !inviteeEmail || !groupName) {
       return jsonError("missing_fields", 400);
     }
@@ -109,6 +109,24 @@ serve(async (req) => {
       .single();
     if (grpErr || !grp)          return jsonError("group_not_found", 404);
     if (grp.created_by !== user.id) return jsonError("not_creator", 403);
+
+    // ── Look up show name for the email copy ─────────────────────────────────
+    // Authoritative source is the shows table — avoids relying on whatever
+    // the client happened to have in React state when it fired the request.
+    // Best-effort: if the lookup fails (show row missing, race with TVMaze
+    // sync, etc.), fall back to the generic "a show" phrasing in the
+    // template. Not worth blocking the invite over.
+    let showName: string | null = null;
+    try {
+      const { data: showRow } = await admin
+        .from("shows")
+        .select("name")
+        .eq("id", grp.show_id)
+        .single();
+      if (showRow?.name) showName = showRow.name;
+    } catch {
+      // swallow — template handles null
+    }
 
     // ── Rate limit ───────────────────────────────────────────────────────────
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -157,9 +175,8 @@ serve(async (req) => {
     const baseUrl    = (appUrl ?? "https://beta.sidebar.watch").replace(/\/$/, "");
     const inviteUrl  = `${baseUrl}/invite/${token}`;
     const sender     = inviterName ?? "Someone";
-    // Show name is optional on the inbound payload — older clients may not
-    // send it. Fall back to a generic phrasing if missing so the email still
-    // renders cleanly.
+    // showName is looked up server-side above; fall back to generic phrasing
+    // if the lookup failed so the email still renders cleanly.
     const showLabel  = showName?.trim() || "a show";
     const subject    = `${sender} invited you to watch ${showLabel} together on Sidebar`;
 

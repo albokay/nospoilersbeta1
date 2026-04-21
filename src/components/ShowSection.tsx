@@ -626,13 +626,11 @@ export default function ShowSection({
 
     setInviteSubmitting(true);
     try {
-      const show = showsProp?.find((s: any) => s.id === grp.showId);
       const result = await sendInvite({
         groupId:      settingsGroupId,
         groupName:    grp.name,
         inviteeEmail: inviteEmail.trim(),
         inviterName:  profile?.username ?? "Someone",
-        showName:     show?.name ?? undefined,
       });
       if (!result.ok) {
         const msgs: Record<string, string> = {
