@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-04-20)
+# Sidebar — Technical State (2026-04-21)
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -234,6 +234,32 @@ Triggered by a chain of failures that emerged while testing the end-to-end invit
 - **`EmptyProfileWelcome` variant precedence** ([EmptyProfileWelcome.tsx](src/components/EmptyProfileWelcome.tsx)). Order: `isTsp` → `invitedMode && showName` → `showName` → generic. The TSP variant is the canonical first-run copy for the demo show — always renders on the empty TSP tab regardless of entry path. The invited variant is session-scoped via `sessionStorage.ns_invite_welcome_<showId>` set in `InviteAcceptPage.handleAccept`. New empty-state variants should slot into this precedence chain, not parallel to it.
 - **Prefer server-side authoritative lookups for email / edge-function copy** over client-passed strings. When the function already has a foreign key (e.g. `grp.show_id`), one extra indexed SELECT is cheaper than the risk of the client's React state being stale or empty at invoke time. Reference: `send-invite` server-side `showName` lookup added in `de0b5b7` after `6061651`'s client-passed version failed silently for TVMaze-synced shows not in the client's active shows array. Fall back gracefully if the lookup misses — don't block the user action.
 - **Onboarding defaults lean toward "zero friction"** — first-time and rewatch progress both default to `{s:0, e:0}` ("haven't started"), so a user can start a journal, create a friend room, or accept an invite before watching anything. This is intentional: Sidebar is pitched as a place friends can get excited together ahead of watching, not just after catching up. The `allowZero` prop on progress selects controls visibility of the option; `canView` already returns false at zero-progress so there's no spoiler risk.
+
+### 2026-04-21 polish arc — rewatcher copy parity, email refinements, invite-modal UX
+
+Small-scale refinements building on the invite/onboarding work from the evening arc.
+
+**Commits (chronological):**
+
+| Commit | Scope |
+|---|---|
+| `7894cea` | (1) Rewatcher tag-warning copy on the compose modal restructured in `ShowSection.tsx`: the parenthetical "(tagged at your highest prior progress as a re-watcher)" trailer replaced with a full sentence rewrite — "Your post is automatically marked to S/E — your highest prior progress as a re-watcher. It will only show to people who've watched at least that far." Conditional on `postProgress.isRewatching`; non-rewatch copy untouched. (2) Invite email outer body bg flipped `#0e0e10` → `#adc8d7` + dropped inner card border-radius/bg so the entire email space is canon-light-blue (Gmail was rendering the dark surround as black around the framed card). Added `Your friend room is called "${groupName}."` to the explainer paragraph. (3) HowItWorksV2 panel left-caption padding `"24px 24px 24px 4px"` → `"24px 32px"` (horizontal breathing room on both sides of the text block). |
+| `2672028` | Three follow-ups to `7894cea` after user testing. (1) The rewatcher copy fix was missing in `ProfilePage.tsx`'s separate journal-compose modal — rewatchers writing in their private journal saw the non-rewatch copy. Mirror the same `isRewatching` ternary there. (2) Invite email body bg `#adc8d7` → `#ffffff` (Gmail was stripping the light-blue on `<body>`, rendering white in practice; make code match prod). Heading "to watch and discuss" → "to discuss" (shortened). (3) Group-settings invite modal polish: success text `var(--green)` → `#fff`; footer row changed from right-aligned Leave to space-between (Leave left, OK right — OK only after `inviteSuccess`, transparent bg + 2px white outline + white text + matches Leave's minWidth:120, closes modal); animated ellipsis during `inviteSubmitting` — three `<span class="invite-dot">` with staggered opacity keyframes (0s / 0.2s / 0.4s delays) in the spot the success message eventually replaces. Keyframe CSS added to `theme.ts` alongside the existing `flash-blink` block. |
+| `2bfdd05` | Invite email: show name `<strong>` → `<strong><em>` (bold + italic). Subject unchanged — mail clients don't render HTML in subjects. Plain-text fallback unchanged (no italic in plain text). |
+
+**Deferred items added this arc (still open):** none.
+
+**Two-step deploys this arc required:**
+
+- `7894cea` (send-invite): `--no-verify-jwt`. Version 13.
+- `2672028` (send-invite): `--no-verify-jwt`. Version 14.
+- `2bfdd05` (send-invite): `--no-verify-jwt`. Version 15.
+
+**Conventions established or reinforced this arc:**
+
+- **Rewatcher copy lives in two separate compose modals.** `ShowSection.tsx` (show-view / friend-room / public compose) and `ProfilePage.tsx` (journal-view private-entry compose) each have their own post-tag warning. Any change to one should cross-check the other. The pattern to match: a `postProgress.isRewatching` ternary, not a trailing conditional parenthetical, so the full sentence reads cleanly in both branches.
+- **Email subjects are plain text** — no HTML, no CSS, no bold/italic. Any visual emphasis goes in the body only. Unicode italic characters are a technically-possible hack but cost screen-reader accessibility + search-match reliability; avoid.
+- **Animated ellipsis pattern** — `.invite-dot` class with staggered `animation-delay` via `:nth-child(2)` / `:nth-child(3)` selectors, `invite-dot-fade` keyframes in `theme.ts`. Assumes three siblings under a common parent. Reusable for any "work in progress, success eventually" indicator — white, 12px, slot in where the terminal message will appear.
 
 ### Earlier (pre-audit, header/layout polish)
 
