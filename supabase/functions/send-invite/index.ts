@@ -180,20 +180,19 @@ serve(async (req) => {
     const showLabel  = showName?.trim() || "a show";
     const subject    = `${sender} invited you to watch ${showLabel} together on Sidebar`;
 
-    // Email HTML: body fills entire message space with canon-light-blue so
-    // Gmail (and others) can't reinterpret the surround as black around a
-    // framed card. No border-radius or contrasting card bg — just a centered
-    // content column with comfortable padding. All styling inline for
-    // cross-client compatibility (Gmail / Outlook / Apple Mail). Heading in
-    // canon-dark-blue for contrast; CTA button canon-yellow. 📺 emoji
-    // avoids the SVG-icon cross-client problem.
+    // Email HTML: plain white body (Gmail was stripping the canon-light-blue
+    // bg on the body element anyway, and the user prefers the white look).
+    // Centered content column with comfortable padding. All styling inline
+    // for cross-client compatibility (Gmail / Outlook / Apple Mail). Heading
+    // in canon-dark-blue; CTA button canon-yellow. 📺 emoji avoids the
+    // SVG-icon cross-client problem.
     const html = `
 <!DOCTYPE html>
 <html>
-<body style="margin:0;padding:0;background:#adc8d7;font-family:system-ui,-apple-system,sans-serif">
+<body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    📺 <strong>${sender}</strong> has started a friend room on Sidebar to watch and discuss <strong>${showLabel}</strong>. They want you to join!
+    📺 <strong>${sender}</strong> has started a friend room on Sidebar to discuss <strong>${showLabel}</strong>. They want you to join!
   </h1>
   <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
     Sidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress. Your friend room is called &ldquo;${groupName}.&rdquo;
@@ -215,7 +214,7 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    const text = `${sender} has started a friend room on Sidebar to watch and discuss ${showLabel}. They want you to join!\n\nSidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress. Your friend room is called "${groupName}."\n\ntalk. together. whenever.\n\nAccept here: ${inviteUrl}\n\nThis link expires in 48 hours and can only be used once.\nNew to Sidebar? You'll be able to create an account when you accept.\nIf you weren't expecting this, you can safely ignore it.`;
+    const text = `${sender} has started a friend room on Sidebar to discuss ${showLabel}. They want you to join!\n\nSidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress. Your friend room is called "${groupName}."\n\ntalk. together. whenever.\n\nAccept here: ${inviteUrl}\n\nThis link expires in 48 hours and can only be used once.\nNew to Sidebar? You'll be able to create an account when you accept.\nIf you weren't expecting this, you can safely ignore it.`;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",

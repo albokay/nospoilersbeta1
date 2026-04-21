@@ -1935,8 +1935,15 @@ export default function ShowSection({
                     {inviteSubmitting ? "Sending…" : "Send invite"}
                   </button>
                 </div>
-                {inviteSuccess && (
-                  <div style={{ fontSize: 12, color: "var(--green)", marginTop: 6 }}>
+                {inviteSubmitting && (
+                  <div style={{ fontSize: 12, color: "#fff", marginTop: 6 }} aria-live="polite">
+                    <span className="invite-dot">.</span>
+                    <span className="invite-dot">.</span>
+                    <span className="invite-dot">.</span>
+                  </div>
+                )}
+                {inviteSuccess && !inviteSubmitting && (
+                  <div style={{ fontSize: 12, color: "#fff", marginTop: 6 }}>
                     ✓ Invite sent! They'll receive an email with a link.
                   </div>
                 )}
@@ -1967,9 +1974,20 @@ export default function ShowSection({
               </div>
             )}
 
-            {/* Danger zone */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            {/* Footer row: Leave room on the left; OK on the right once an
+                invite has been successfully sent (gives the sender a clean
+                way to dismiss the modal after the confirmation appears). */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <button className="btn" onClick={initiateLeaveGroup} style={{ background: "var(--danger)", border: "none", color: "#fff", minWidth: 120 }}>Leave room</button>
+              {inviteSuccess && (
+                <button
+                  className="btn"
+                  onClick={() => setShowGroupSettings(false)}
+                  style={{ background: "transparent", border: "2px solid #fff", color: "#fff", minWidth: 120 }}
+                >
+                  OK
+                </button>
+              )}
             </div>
           </Modal>
         );

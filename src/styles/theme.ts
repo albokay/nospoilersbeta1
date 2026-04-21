@@ -387,6 +387,16 @@ header.site{
 }
 .flash-cover{ position:absolute; inset:0; background:rgba(122,189,142,0.55); pointer-events:none; border-radius:inherit; animation:flash-blink 1.2s ease forwards; }
 
+/* Animated ellipsis dots (e.g. "sending invite" indicator in the group
+   settings modal). Three dots fade in sequence, then all fade, loop. */
+@keyframes invite-dot-fade{
+  0%, 80%, 100% { opacity: 0; }
+  40%          { opacity: 1; }
+}
+.invite-dot{ display:inline-block; animation: invite-dot-fade 1.2s infinite; }
+.invite-dot:nth-child(2){ animation-delay: 0.2s; }
+.invite-dot:nth-child(3){ animation-delay: 0.4s; }
+
 /* like badge */
 .likeWrap{ display:inline-flex; align-items:baseline; gap:4px; user-select:none; }
 .likeThis{ font-style:italic; font-weight:700; }
