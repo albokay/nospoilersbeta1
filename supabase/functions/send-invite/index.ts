@@ -192,7 +192,7 @@ serve(async (req) => {
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    📺 <strong>${sender}</strong> has started a friend room on Sidebar to discuss <strong>${showLabel}</strong>. They want you to join!
+    📺 <strong>${sender}</strong> has started a friend room on Sidebar to discuss <strong><em>${showLabel}</em></strong>. They want you to join!
   </h1>
   <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
     Sidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress. Your friend room is called &ldquo;${groupName}.&rdquo;
