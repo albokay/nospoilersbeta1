@@ -356,7 +356,7 @@ export default function InlineThreadView({
           /* ── Normal view ── */
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: 22, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }} className="title">
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 400, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }} className="title">
                 {!thread.isPublic && <span><LockKeyhole size={14} color="var(--icon-color)" /></span>}
                 <span>{thread.titleBase}</span>
                 {thread.showId !== "simshow" && (
