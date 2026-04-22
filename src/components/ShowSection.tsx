@@ -1379,12 +1379,12 @@ export default function ShowSection({
               <>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "0 0 auto" }}>
                   <span
-                    className="bannerTitle"
+                    className="bannerTitle editorial"
                     role={thread ? "button" : "heading"}
                     title={thread ? "Back to room" : "Room"}
                     onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
                     style={{
-                      fontSize: 22, fontWeight: 800, letterSpacing: .5,
+                      fontSize: 22, fontWeight: 700, letterSpacing: .5,
                       color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
                       display: "inline-flex", alignItems: "center", gap: 6,
                     }}
@@ -1416,12 +1416,12 @@ export default function ShowSection({
             ) : (
               <>
                 <span
-                  className="bannerTitle"
+                  className="bannerTitle editorial"
                   role={thread ? "button" : "heading"}
                   title={thread ? "Back to forum" : "Show"}
                   onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
                   style={{
-                    fontSize: 22, fontWeight: 800, letterSpacing: .5,
+                    fontSize: 22, fontWeight: 700, letterSpacing: .5,
                     color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
                     flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6,
                   }}

@@ -650,7 +650,7 @@ export default function ProfilePage({
           <div className="hangLContent" style={{ paddingTop: 0 }}>
             <section style={{ marginTop: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 0, marginBottom: 12, minHeight: 28 }}>
-                <div className="title profile-journal-heading" style={{ fontSize: 22 }}>this is your journal</div>
+                <div className="title editorial profile-journal-heading" style={{ fontSize: 22 }}>this is your journal</div>
               </div>
               {!activeTab && (
                 <div className="diaryOuter">
@@ -1050,7 +1050,7 @@ export default function ProfilePage({
 
               {/* Responses to you — moved above "your responses" */}
               <section className="profile-responses-section" style={{ marginTop: 144 }}>
-                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
+                <div className="title editorial" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No responses yet.</div>}
                   {tabRepliesToMe.map(({ reply: r, thread: t, groupId, groupName }) => (
@@ -1082,7 +1082,7 @@ export default function ProfilePage({
 
               {/* your responses */}
               <section style={{ marginTop: 24 }}>
-                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your responses</div>
+                <div className="title editorial" style={{ fontSize: 18, marginBottom: 8 }}>your responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabMyReplies.length === 0 && <div className="muted">No responses yet.</div>}
                   {tabMyReplies.map(({ reply: r, thread: t }) => (
@@ -1109,7 +1109,7 @@ export default function ProfilePage({
 
               {/* Starred posts */}
               <section style={{ marginTop: 24 }}>
-                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your starred entries</div>
+                <div className="title editorial" style={{ fontSize: 18, marginBottom: 8 }}>your starred entries</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabLikedThreads.length === 0 && <div className="muted">No starred entries yet.</div>}
                   {tabLikedThreads.map(t => (
@@ -1137,7 +1137,7 @@ export default function ProfilePage({
 
               {/* Starred replies */}
               <section style={{ marginTop: 24 }}>
-                <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your starred responses</div>
+                <div className="title editorial" style={{ fontSize: 18, marginBottom: 8 }}>your starred responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabLikedReplies.length === 0 && <div className="muted">No starred responses yet.</div>}
                   {tabLikedReplies.map(({ reply: r, thread: t }) => (

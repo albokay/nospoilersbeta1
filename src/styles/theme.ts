@@ -216,6 +216,7 @@ body.has-header{
 .container{ width:min(672px, 92vw); margin:0 auto; background:transparent; }
 hr{ display:none; }
 .title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; font-size:var(--t2); }
+.editorial{ font-family: "Lora", Georgia, "Palatino Linotype", Palatino, serif; }
 .muted{ color:var(--dos-gray); font-size:var(--t4); }
 .card{ background:transparent; border:none; padding:12px; border-radius:24px; }
 

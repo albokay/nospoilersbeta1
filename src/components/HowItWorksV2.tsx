@@ -424,9 +424,8 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
               {panelTitles[step] && (
                 <div
                   style={{
-                    fontFamily: '"Lora",Georgia,"Palatino Linotype",Palatino,serif',
-                    fontSize: 28,
-                    fontWeight: 700,
+                    fontSize: 24,
+                    fontWeight: 900,
                     lineHeight: 1.2,
                     color: "#fff",
                     marginBottom: 32,
