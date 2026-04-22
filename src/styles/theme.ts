@@ -421,7 +421,7 @@ header.site{
 /* background pages — visual depth only, lower-left cascade */
 .diaryBackPage{
   position:absolute; inset:0;
-  border:1px solid rgba(255,255,255,0.55);
+  border:2px solid rgba(255,255,255,0.55);
   background:var(--dos-bg);
 }
 /* Scroll wrapper around the tab row — lets tabs scroll horizontally while
@@ -449,7 +449,7 @@ header.site{
 .diaryTab{
   padding:4px 12px;
   background:rgba(0,0,0,0.22);
-  border:1px solid rgba(255,255,255,0.85); border-bottom:none;
+  border:2px solid rgba(255,255,255,0.85); border-bottom:none;
   border-radius:8px 8px 0 0;
   color:#fff; font-family:"Lora",Georgia,"Palatino Linotype",Palatino,serif;
   font-size:var(--t4); font-weight:500;
@@ -459,7 +459,7 @@ header.site{
   padding:8px 24px;
   background:var(--dos-bg);
   border-color:#fff;
-  border-bottom:1px solid var(--dos-bg);
+  border-bottom:2px solid var(--dos-bg);
   font-size:var(--t3); font-weight:700;
   text-decoration:none;
   margin-bottom:-3px;
@@ -468,7 +468,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
 }
-.diaryCardWrap > .card{ border:1px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:2px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
@@ -533,7 +533,7 @@ header.site{
   /* Flush first tab with the card's left border line */
   .diaryTabRow{ padding-left:0; }
   /* Keep border, zero padding — action bar + scroll area handle their own padding */
-  .diaryCardWrap > .card{ border:1px solid #fff !important; padding:0 !important; }
+  .diaryCardWrap > .card{ border:2px solid #fff !important; padding:0 !important; }
   .profileActionBar{ padding:10px 16px; }
   .diaryScrollArea{ padding:8px 16px 24px 16px; }
   /* Entry cards: remove the desktop left-margin offset so they're centred in the box */

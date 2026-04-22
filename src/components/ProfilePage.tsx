@@ -650,7 +650,7 @@ export default function ProfilePage({
           <div className="hangLContent" style={{ paddingTop: 0 }}>
             <section style={{ marginTop: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 0, marginBottom: 12, minHeight: 28 }}>
-                <div className="title editorial profile-journal-heading" style={{ fontSize: 28 }}>this is your journal</div>
+                <div className="title editorial profile-journal-heading" style={{ fontSize: 28, fontWeight: 600 }}>this is your journal</div>
               </div>
               {!activeTab && (
                 <div className="diaryOuter">

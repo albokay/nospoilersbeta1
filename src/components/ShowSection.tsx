@@ -1384,7 +1384,7 @@ export default function ShowSection({
                     title={thread ? "Back to room" : "Room"}
                     onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
                     style={{
-                      fontSize: 28, fontWeight: 400, letterSpacing: .5,
+                      fontSize: 28, fontWeight: 600, letterSpacing: .5,
                       color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
                       display: "inline-flex", alignItems: "center", gap: 6,
                     }}
@@ -1421,7 +1421,7 @@ export default function ShowSection({
                   title={thread ? "Back to forum" : "Show"}
                   onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
                   style={{
-                    fontSize: 28, fontWeight: 400, letterSpacing: .5,
+                    fontSize: 28, fontWeight: 600, letterSpacing: .5,
                     color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
                     flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6,
                   }}
@@ -2192,7 +2192,7 @@ export default function ShowSection({
                   position: "relative",
                   paddingTop: 12,
                   paddingBottom: 36,
-                  border: isNew ? "2px solid #4b8f6c" : isOwn ? "2px solid var(--dos-user)" : "2px solid var(--dos-border)"
+                  border: isNew ? "4px solid #4b8f6c" : isOwn ? "4px solid var(--dos-user)" : "4px solid var(--dos-border)"
                 }}
                 onClick={() => {
                   markThreadVisited(t.id);
