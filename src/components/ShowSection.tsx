@@ -4,6 +4,16 @@ import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, Aler
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
+// Banner titles: prevent the last word from wrapping alone onto line 2.
+// Replaces the last space with U+00A0 so the final two words stay glued;
+// browser wraps at the previous space instead, guaranteeing ≥2 words on
+// the last line whenever wrapping occurs.
+function preventLastWordOrphan(s: string): string {
+  const lastSpace = s.lastIndexOf(" ");
+  if (lastSpace === -1) return s;
+  return s.slice(0, lastSpace) + "\u00A0" + s.slice(lastSpace + 1);
+}
+
 // Returns true if the thread's red dot should still be shown.
 // Starts the 36h expiry clock on first call with hasDot=true; clears on hasDot=false.
 function threadDotActive(threadId: string, hasDot: boolean): boolean {
@@ -1377,24 +1387,25 @@ export default function ShowSection({
           <div className="bannerRow1">
             {activeGroupId && activeGroup ? (
               <>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "0 0 auto" }}>
+                <div style={{ display: "inline-flex", alignItems: "flex-start", gap: 6, flex: "0 1 auto", minWidth: 0 }}>
                   <span
                     className="bannerTitle editorial"
                     role={thread ? "button" : "heading"}
                     title={thread ? "Back to room" : "Room"}
                     onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
                     style={{
-                      fontSize: 34, fontWeight: 600, letterSpacing: .5,
+                      fontSize: 34, fontWeight: 600, letterSpacing: .5, lineHeight: 1.05,
                       color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
-                      display: "inline-flex", alignItems: "center", gap: 6,
+                      flex: "0 1 auto", minWidth: 0, overflowWrap: "break-word",
+                      display: "inline-flex", alignItems: "flex-start", gap: 6,
                     }}
                   >
-                    <Users size={22} color="var(--dos-light)" /> {activeGroup.name.toUpperCase()}
+                    <Users size={22} color="var(--dos-light)" style={{ flexShrink: 0, marginTop: 7 }} /> {preventLastWordOrphan(activeGroup.name.toUpperCase())}
                   </span>
                   <span
                     onClick={() => openGroupSettings(activeGroupId)}
                     title="Room settings"
-                    style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
+                    style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", marginTop: 8, flexShrink: 0 }}
                   >
                     <Settings size={20} color="#fff" />
                   </span>
@@ -1421,15 +1432,16 @@ export default function ShowSection({
                   title={thread ? "Back to forum" : "Show"}
                   onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
                   style={{
-                    fontSize: 34, fontWeight: 600, letterSpacing: .5,
+                    fontSize: 34, fontWeight: 600, letterSpacing: .5, lineHeight: 1.05,
                     color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
-                    flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6,
+                    flex: "0 1 auto", minWidth: 0, overflowWrap: "break-word",
+                    display: "inline-flex", alignItems: "flex-start", gap: 6,
                   }}
                 >
-                  {!(thread && !thread.isPublic && !activeGroupId) && <Globe size={18} color="#fff" />}
-                  {showId === "bb"
+                  {!(thread && !thread.isPublic && !activeGroupId) && <Globe size={18} color="#fff" style={{ flexShrink: 0, marginTop: 9 }} />}
+                  {preventLastWordOrphan(showId === "bb"
                     ? "BREAKING BAD (DEMO)"
-                    : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase()}
+                    : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase())}
                 </span>
                 {/* Mirror of the friend-room "to public conversations" button.
                    Shown in the public space when the user has ≥1 room for
