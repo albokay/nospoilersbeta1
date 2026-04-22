@@ -344,7 +344,7 @@ header.site{
   text-align:center; padding:0 36px;
   font-size:16px; font-weight:600; letter-spacing:0.01em; color:inherit;
 }
-.splashSearch::placeholder{ color:#f45028; opacity:1; font-family: "Lora", Georgia, "Palatino Linotype", Palatino, serif; }
+.splashSearch::placeholder{ color:#f45028; opacity:1; }
 .splashSearchIcon{ font-size:18px; opacity:.85; flex-shrink:0; line-height:1; position:relative; z-index:1; }
 .dropdownPanel{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
@@ -451,7 +451,8 @@ header.site{
   background:rgba(0,0,0,0.22);
   border:2px solid rgba(255,255,255,0.85); border-bottom:none;
   border-radius:8px 8px 0 0;
-  color:#fff; font-size:var(--t4); font-weight:500;
+  color:#fff; font-family:"Lora",Georgia,"Palatino Linotype",Palatino,serif;
+  font-size:var(--t4); font-weight:500;
   cursor:pointer; white-space:nowrap; position:relative;
 }
 .diaryTab.active{
@@ -459,7 +460,7 @@ header.site{
   background:var(--dos-bg);
   border-color:#fff;
   border-bottom:2px solid var(--dos-bg);
-  font-size:var(--t3); font-weight:800;
+  font-size:var(--t3); font-weight:700;
   text-decoration:none;
   margin-bottom:-3px;
 }
