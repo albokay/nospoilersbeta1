@@ -768,8 +768,8 @@ export default function App() {
               style={showProfile ? { cursor: "default" } : undefined}
             >
               {showProfile
-                ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>you are {username}</span></>
-                : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
+                ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel editorial" style={{ fontWeight: 700, color: "#fff" }}>you are {username}</span></>
+                : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel editorial" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
               }
             </button>
             {pillBadge === "green" && (
