@@ -30,7 +30,7 @@ const panel2SlideMap: Record<number, number> = { 6: 3, 7: 4, 9: 5, 11: 6 };
 // ── Captions & titles ─────────────────────────────────────────────────────
 
 const panelTitles: (string | undefined)[] = [
-  "HOW DO THE NO-SPOILER\nMECHANICS WORK?",
+  "HOW DO THE NO\u2011SPOILER\nMECHANICS WORK?",
   undefined,
   undefined,
   undefined,
