@@ -261,6 +261,27 @@ Small-scale refinements building on the invite/onboarding work from the evening 
 - **Email subjects are plain text** — no HTML, no CSS, no bold/italic. Any visual emphasis goes in the body only. Unicode italic characters are a technically-possible hack but cost screen-reader accessibility + search-match reliability; avoid.
 - **Animated ellipsis pattern** — `.invite-dot` class with staggered `animation-delay` via `:nth-child(2)` / `:nth-child(3)` selectors, `invite-dot-fade` keyframes in `theme.ts`. Assumes three siblings under a common parent. Reusable for any "work in progress, success eventually" indicator — white, 12px, slot in where the terminal message will appear.
 
+### 2026-04-21 — send-invite deploy hardening + DMARC cleanup
+
+Small infra pass after the polish arc. Two pieces: a DMARC DNS cleanup (no code change) and a Supabase CLI config pin that removes the `--no-verify-jwt` footgun on `send-invite` deploys.
+
+**Commits:**
+
+| Commit | Scope |
+|---|---|
+| `<pending>` | Add `supabase/config.toml` with `[functions.send-invite] verify_jwt = false`. Pins the setting the CLI previously required via the `--no-verify-jwt` flag on every deploy. Future `supabase functions deploy send-invite` reads the config and applies `verify_jwt = false` automatically, eliminating the "forgot the flag → invites silently 401 in prod" failure mode that had bitten redeploys repeatedly (see 2026-04-20 evening arc). §"Edge function deploy notes" updated to reflect the new deploy command. |
+
+**DMARC DNS (not a commit — external DNS change):** `_dmarc.sidebar.watch` had accumulated two redundant/bad TXT records (GoDaddy's `p=quarantine` default pointing at `onsecureserver.net`, plus a placeholder `rua=mailto:dmarc@sidebar.watch` with no real mailbox). Per RFC 7489, more than one `_dmarc` record at a domain is treated as no policy at all — which is exactly what Gmail was reporting as DMARC FAIL. Cleaned up to a single record: `v=DMARC1; p=none; rua=mailto:akamalizad@gmail.com; aspf=r; adkim=r`. `p=none` is deliberate during rollout (reports without punishing edge-case legitimate mail); can escalate to `p=quarantine`/`p=reject` after a few weeks of clean reports. Verified via `dig TXT _dmarc.sidebar.watch +short` returning exactly one line.
+
+**Deferred items added this arc:** none.
+
+**Two-step deploys this arc required:** none. The config.toml change takes effect on the *next* `send-invite` deploy; no deploy was done in this pass. When the function is next edited, `supabase functions deploy send-invite` will pick up the setting.
+
+**Conventions established or reinforced this arc:**
+
+- **Per-function edge config belongs in `supabase/config.toml`,** not in deploy-time flags. Any future edge function that needs non-default gateway behavior (JWT off, custom import map, timeouts) should be configured there. Flags are fragile because they depend on human memory across deploys; config files are durable because they're checked in.
+- **Single `_dmarc` record only.** If DMARC-related DNS ever needs a change (new reporting address, policy escalation), *edit* the existing record — don't add a second one. Multiple records at `_dmarc.<domain>` are spec-treated as no policy.
+
 ### Earlier (pre-audit, header/layout polish)
 
 The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.
@@ -340,5 +361,12 @@ _None currently._
 
 ## Edge function deploy notes
 
-- **`send-invite`** is deployed with **`--no-verify-jwt`**. Reason: the Supabase project is on asymmetric JWT signing keys (ES256) and the Edge Functions gateway on this runtime only accepts HS256 — gateway-level JWT verification was blocking every invocation with `UNSUPPORTED_TOKEN_ALGORITHM: Unsupported JWT algorithm ES256`. The function already does its own JWT verification inside the code via `admin.auth.getUser(jwt)` ([index.ts:78](supabase/functions/send-invite/index.ts:78)), so gateway-level checking was redundant. **Any future redeploy of `send-invite` must include the `--no-verify-jwt` flag** (or set `verify_jwt = false` in `supabase/config.toml` if one gets added), otherwise the function will 401 on every call. Deployed 2026-04-20 as version 10.
-- If the project later migrates back to HS256 legacy keys (or Supabase's runtime adds ES256 support at the gateway), `--no-verify-jwt` can be revisited. Until then, do not remove.
+- **`send-invite`** runs with gateway JWT verification off. The setting is pinned in [`supabase/config.toml`](supabase/config.toml):
+  ```toml
+  [functions.send-invite]
+  verify_jwt = false
+  ```
+  Reason: the Supabase project is on asymmetric JWT signing keys (ES256) and the Edge Functions gateway on this runtime only accepts HS256 — gateway-level JWT verification was blocking every invocation with `UNSUPPORTED_TOKEN_ALGORITHM: Unsupported JWT algorithm ES256`. The function does its own JWT verification inside the code via `admin.auth.getUser(jwt)` ([index.ts:78](supabase/functions/send-invite/index.ts:78)), so the gateway check is redundant.
+- **Deploy command:** `supabase functions deploy send-invite` — no flags needed. CLI ≥ 1.x reads `supabase/config.toml` and applies `verify_jwt = false` automatically. Verified on CLI 2.90.0.
+- **Prior state (historical context):** before `supabase/config.toml` existed, each deploy required `supabase functions deploy send-invite --no-verify-jwt`. Several redeploys forgot the flag and had to be redone (see 2026-04-20 evening arc in §7). The config file eliminates that failure mode.
+- If the project later migrates back to HS256 legacy keys (or Supabase's runtime adds ES256 support at the gateway), the `verify_jwt = false` pin in `config.toml` can be revisited. Until then, do not remove.

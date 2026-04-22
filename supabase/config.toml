@@ -1,0 +1,10 @@
+# Supabase CLI per-function config.
+# Read on every `supabase functions deploy <name>`.
+
+[functions.send-invite]
+# Project is on ES256 JWT signing keys; the Edge Functions gateway runtime
+# only accepts HS256 and would 401 every call with UNSUPPORTED_TOKEN_ALGORITHM.
+# The function verifies the JWT itself via admin.auth.getUser(jwt), so the
+# gateway check is redundant. Pinning here so future deploys don't have to
+# remember --no-verify-jwt. See HANDOFF.md §"Edge function deploy notes".
+verify_jwt = false
