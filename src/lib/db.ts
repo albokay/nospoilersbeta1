@@ -173,31 +173,19 @@ export async function editThread(threadId: string, title: string, body: string, 
 }
 
 export async function deleteThread(threadId: string): Promise<void> {
-  // Check if thread has any (non-deleted) replies
-  const { count: replyCount } = await supabase
-    .from("replies")
-    .select("id", { count: "exact", head: true })
-    .eq("thread_id", threadId)
-    .eq("is_deleted", false);
-
-  if (replyCount && replyCount > 0) {
-    // Soft delete — keep stub so replies remain anchored
-    const { error } = await supabase
-      .from("threads")
-      .update({ is_deleted: true })
-      .eq("id", threadId);
-    if (error) throw error;
-  } else {
-    // Hard delete — no responses, remove entirely
-    // Clean up any citation references first
-    await supabase.from("response_citations").delete().eq("cited_thread_id", threadId);
-    // Remove any soft-deleted replies that may linger
-    await supabase.from("replies").delete().eq("thread_id", threadId);
-    // Remove group_threads linkage
-    await supabase.from("group_threads").delete().eq("thread_id", threadId);
-    const { error } = await supabase.from("threads").delete().eq("id", threadId);
-    if (error) throw error;
-  }
+  // Soft-delete only. The threads_delete RLS policy is admin-only by design
+  // (20260413_enable_rls_all_tables.sql:87-89, "hard delete reserved for admin
+  // cascade"). A prior hard-delete branch for no-reply threads silently no-op'd
+  // against RLS; for friend-room posts it ran group_threads.delete() first and
+  // succeeded, then threads.delete() silently failed, orphaning the thread as
+  // a bogus private journal entry. Read paths filter is_deleted=true or render
+  // a stub when the thread has replies (fetchUserThreads, fetchGroupThreads,
+  // ShowSection render, fetchPublic*).
+  const { error } = await supabase
+    .from("threads")
+    .update({ is_deleted: true })
+    .eq("id", threadId);
+  if (error) throw error;
 }
 
 /** Set a thread's public visibility. false = journal-only; true = visible on aggregated show page. */
