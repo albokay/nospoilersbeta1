@@ -275,11 +275,24 @@ Small infra pass after the polish arc. Two pieces: a DMARC DNS cleanup (no code 
 
 **Deferred items added this arc:** none.
 
-**Two-step deploys this arc required:** none. The config.toml change takes effect on the *next* `send-invite` deploy; no deploy was done in this pass. When the function is next edited, `supabase functions deploy send-invite` will pick up the setting.
+**Two-step deploys this arc required:**
+
+- `029c4d2` (send-invite): a no-op "touch deploy" of the function was run in-session to verify `config.toml` is actually read by the CLI. Command: `supabase functions deploy send-invite --project-ref haepqyykmwnyyijkbvci` (no `--no-verify-jwt` flag). Succeeded; function is now version 16. **Verification:** `curl -X POST https://haepqyykmwnyyijkbvci.supabase.co/functions/v1/send-invite -H 'Content-Type: application/json' -d '{}'` returned `{"ok":false,"error":"missing_auth"}` (HTTP 401). That JSON shape is the function's own output from [index.ts:67](supabase/functions/send-invite/index.ts:67) — if the gateway were still verifying JWTs, the request would have been rejected before the function ran and we'd have seen a generic gateway error instead. So `verify_jwt = false` from `config.toml` is confirmed applied. Future deploys can drop the flag.
+
+**Verification status:**
+
+- ✅ `supabase/config.toml` → `verify_jwt = false` applied (confirmed via curl probe above).
+- ✅ DMARC DNS cleanup → `dig TXT _dmarc.sidebar.watch +short` returns exactly one clean line.
+- ⏳ DMARC: PASS in Gmail → pending a test invite to a fresh Gmail address (one that's never received from `invites@sidebar.watch`). Not yet verified at session close.
+
+**Observations (no action needed):**
+
+- **Gmail "trim quoted text" clipping on repeat test-invites.** After many test invites to the same Gmail inbox during this arc, Gmail started hiding the static bottom half of the email template (`talk. together. whenever.` tagline, CTA button, footer) behind a three-dots expand button. The dynamic top half (inviter name, show name, group name) stays visible. This is Gmail's per-sender-per-recipient cross-message content-dedup heuristic — it kicks in after repeated near-identical emails. Yahoo doesn't do this. **Not expected to affect real first-time recipients**, who have no prior content for Gmail to compare against. If a fresh-recipient test ever shows the clip, the standard fix is to add recipient-unique content near the footer (e.g., the invitee's email) to break the dedup. Parked pending that signal.
 
 **Conventions established or reinforced this arc:**
 
 - **Per-function edge config belongs in `supabase/config.toml`,** not in deploy-time flags. Any future edge function that needs non-default gateway behavior (JWT off, custom import map, timeouts) should be configured there. Flags are fragile because they depend on human memory across deploys; config files are durable because they're checked in.
+- **Verify config-file changes by probing the live function after deploy.** After a CLI-config change that alters gateway behavior, a curl against the function endpoint (no auth, expect the function's own error shape, not a generic gateway reject) confirms the config was read. Much faster than sending a real invite through the UI.
 - **Single `_dmarc` record only.** If DMARC-related DNS ever needs a change (new reporting address, policy escalation), *edit* the existing record — don't add a second one. Multiple records at `_dmarc.<domain>` are spec-treated as no policy.
 
 ### Earlier (pre-audit, header/layout polish)
