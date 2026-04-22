@@ -312,8 +312,11 @@ header.site{
 }
 
 /* banner row 1: title + sort — stacks on mobile */
+/* align-items: flex-end so the right-side button drops to the second
+   line of the title when the title wraps; on one-line titles it sits
+   at the title's baseline, roughly where center alignment was before. */
 .bannerRow1{
-  display:flex; align-items:center; justify-content:space-between;
+  display:flex; align-items:flex-end; justify-content:space-between;
   gap:12px; padding:8px 0;
 }
 /* subtle "hang left" headers */
