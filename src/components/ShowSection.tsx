@@ -1388,28 +1388,40 @@ export default function ShowSection({
           <div className="bannerRow1">
             {activeGroupId && activeGroup ? (
               <>
-                <div style={{ display: "inline-flex", alignItems: "flex-start", gap: 6, flex: "0 1 auto", minWidth: 0 }}>
-                  <span
-                    className="bannerTitle editorial"
-                    role={thread ? "button" : "heading"}
-                    title={thread ? "Back to room" : "Room"}
-                    onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
-                    style={{
-                      fontSize: 34, fontWeight: 600, letterSpacing: .5, lineHeight: 1.05,
-                      color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
-                      flex: "0 1 auto", minWidth: 0, overflowWrap: "break-word",
-                      display: "inline-flex", alignItems: "flex-start", gap: 6,
-                    }}
-                  >
-                    <Users size={22} color="var(--dos-light)" style={{ flexShrink: 0, marginTop: 7 }} /> {preventLastWordOrphan(activeGroup.name.toUpperCase())}
-                  </span>
-                  <span
-                    onClick={() => openGroupSettings(activeGroupId)}
-                    title="Room settings"
-                    style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", marginTop: 8, flexShrink: 0 }}
-                  >
-                    <Settings size={20} color="#fff" />
-                  </span>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", flex: "0 1 auto", minWidth: 0 }}>
+                  {/* Eyebrow — always shown in the friend-room context (forum
+                     view or inside a friend-room thread). Left-aligned with
+                     the title's text by offsetting the Users-icon width + gap
+                     (22 + 6 = 28). */}
+                  <div style={{
+                    fontSize: 13, fontWeight: 400, lineHeight: 1.2,
+                    color: "var(--dos-light)", marginLeft: 28,
+                  }}>
+                    your friend room:
+                  </div>
+                  <div style={{ display: "inline-flex", alignItems: "flex-start", gap: 6, minWidth: 0 }}>
+                    <span
+                      className="bannerTitle editorial"
+                      role={thread ? "button" : "heading"}
+                      title={thread ? "Back to room" : "Room"}
+                      onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
+                      style={{
+                        fontSize: 34, fontWeight: 600, letterSpacing: .5, lineHeight: 1.05,
+                        color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
+                        flex: "0 1 auto", minWidth: 0, overflowWrap: "break-word",
+                        display: "inline-flex", alignItems: "flex-start", gap: 6,
+                      }}
+                    >
+                      <Users size={22} color="var(--dos-light)" style={{ flexShrink: 0, marginTop: 7 }} /> {preventLastWordOrphan(activeGroup.name.toUpperCase())}
+                    </span>
+                    <span
+                      onClick={() => openGroupSettings(activeGroupId)}
+                      title="Room settings"
+                      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", marginTop: 8, flexShrink: 0 }}
+                    >
+                      <Settings size={20} color="#fff" />
+                    </span>
+                  </div>
                 </div>
                 {!thread && (
                   <button
@@ -1430,18 +1442,26 @@ export default function ShowSection({
             ) : (
               <>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", flex: "0 1 auto", minWidth: 0 }}>
-                  {/* Eyebrow — shown whenever we're in the public space (forum
-                     view or a public thread). Hidden inside a private journal
-                     thread (same gate as the Globe icon). Left-aligned with
-                     the title's text by offsetting the Globe-width + gap. */}
-                  {!(thread && !thread.isPublic && !activeGroupId) && (
-                    <div style={{
-                      fontSize: 13, fontWeight: 400, lineHeight: 1.2,
-                      color: "var(--dos-light)", marginLeft: 24,
-                    }}>
-                      public writing about:
-                    </div>
-                  )}
+                  {/* Eyebrow — always shown. Text varies by context:
+                       - private thread (no group, thread not public) →
+                         "your private thoughts on:", no icon offset since
+                         the Globe is hidden in this case and the title
+                         starts at x=0.
+                       - public forum view or public thread →
+                         "public writing about:", offset 24 (Globe 18 + gap 6)
+                         to left-align with the title's text past the icon. */}
+                  {(() => {
+                    const isPrivateThread = !!(thread && !thread.isPublic);
+                    return (
+                      <div style={{
+                        fontSize: 13, fontWeight: 400, lineHeight: 1.2,
+                        color: "var(--dos-light)",
+                        marginLeft: isPrivateThread ? 0 : 24,
+                      }}>
+                        {isPrivateThread ? "your private thoughts on:" : "public writing about:"}
+                      </div>
+                    );
+                  })()}
                   <span
                     className="bannerTitle editorial"
                     role={thread ? "button" : "heading"}
