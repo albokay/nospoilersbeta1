@@ -1384,7 +1384,7 @@ export default function ShowSection({
                     title={thread ? "Back to room" : "Room"}
                     onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
                     style={{
-                      fontSize: 22, fontWeight: 700, letterSpacing: .5,
+                      fontSize: 28, fontWeight: 400, letterSpacing: .5,
                       color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
                       display: "inline-flex", alignItems: "center", gap: 6,
                     }}
@@ -1421,7 +1421,7 @@ export default function ShowSection({
                   title={thread ? "Back to forum" : "Show"}
                   onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
                   style={{
-                    fontSize: 22, fontWeight: 700, letterSpacing: .5,
+                    fontSize: 28, fontWeight: 400, letterSpacing: .5,
                     color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
                     flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6,
                   }}
