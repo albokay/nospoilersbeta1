@@ -9,6 +9,7 @@ import {
 } from "../lib/db";
 import { canView, timeAgo, type ViewerProgress } from "../lib/utils";
 import EpisodeTag from "./EpisodeTag";
+import LoadingDots from "./LoadingDots";
 import type { ProfileTabData } from "./ProfilePage";
 
 const GLOBAL_HEADER_H = 72;
@@ -118,7 +119,7 @@ export default function PublicProfilePage({
 
   return (
     <section className="container" style={{ paddingBottom: 28 }}>
-      {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading profile…</div>}
+      {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading profile<LoadingDots /></div>}
 
       {!loading && notFound && (
         <div className="muted" style={{ padding: "24px 0" }}>Profile not found.</div>

@@ -36,6 +36,7 @@ import { canView, timeAgo, effectiveProgress, type ViewerProgress } from "../lib
 import EpisodeTag from "./EpisodeTag";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
+import LoadingDots from "./LoadingDots";
 import Username from "./Username";
 import Tooltip from "./Tooltip";
 import type { PendingReference } from "./ResponseComposer";
@@ -682,7 +683,7 @@ export default function RepliesList({
         </Modal>
       )}
 
-      {repliesLoading && <div className="muted" style={{ fontSize: 14 }}>Loading replies…</div>}
+      {repliesLoading && <div className="muted" style={{ fontSize: 14 }}>Loading replies<LoadingDots /></div>}
       <div style={{ display: "grid", gap: 12 }}>
         {replies.map((r) => {
           const isReplyDeleted = r.isDeleted || !!localDeleted[r.id];

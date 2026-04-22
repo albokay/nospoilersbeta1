@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import Modal from "./Modal";
+import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
 
 type Mode = "signin" | "signup";
@@ -84,7 +85,7 @@ export default function AuthModal({ onClose, hint, initialMode = "signin" }: { o
           disabled={loading}
           style={{ height: 40, marginTop: 4 }}
         >
-          {loading ? "…" : mode === "signin" ? "Sign in" : "Create account"}
+          {loading ? <LoadingDots /> : mode === "signin" ? "Sign in" : "Create account"}
         </button>
       </form>
 

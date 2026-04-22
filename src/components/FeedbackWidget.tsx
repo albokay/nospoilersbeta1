@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useLocation } from "react-router-dom";
 import { insertFeedback } from "../lib/db";
+import LoadingDots from "./LoadingDots";
 
 const MAX_CHARS = 2000;
 const PROMPT_LINES = [
@@ -206,7 +207,7 @@ export default function FeedbackWidget({
               className="btn primary"
               style={{ width: "100%", fontWeight: 700, fontSize: 14, opacity: (!message.trim() || phase === "sending") ? 0.5 : 1 }}
             >
-              {phase === "sending" ? "Sending…" : "Send"}
+              {phase === "sending" ? <>Sending<LoadingDots /></> : "Send"}
             </button>
           )}
         </div>

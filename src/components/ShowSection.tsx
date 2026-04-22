@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight, ArrowLeft, Plus, Clock, EyeOff } from "lucide-react";
+import LoadingDots from "./LoadingDots";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
 
@@ -2052,7 +2053,7 @@ export default function ShowSection({
       {/* CONTENT */}
       {/* If a thread ID is in the URL but threads haven't loaded yet, wait — don't flash the room */}
       {activeThreadId && !thread && threadsLoading ? (
-        <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading…</div>
+        <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading<LoadingDots /></div>
       ) : thread ? (
         <InlineThreadView
           thread={{ ...thread, likes: likesThreads[thread.id] ?? thread.likes }}
@@ -2123,7 +2124,7 @@ export default function ShowSection({
       ) : (
         <div style={{ marginTop: 8 }}>
           {activeLoading && (
-            <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading…</div>
+            <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading<LoadingDots /></div>
           )}
           {!activeLoading && activeList.map((t) => {
             const isNew = !!newHighlights[showId]?.[t.id];
@@ -2414,7 +2415,7 @@ export default function ShowSection({
                 }}
               >
                 {!formReady && !postSubmitting ? "\u00A0"
-                  : postSubmitting ? "Posting…"
+                  : postSubmitting ? <>Posting<LoadingDots /></>
                   : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
                   : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> post</>
                   : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}

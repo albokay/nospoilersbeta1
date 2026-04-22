@@ -497,6 +497,35 @@ When adding new routes or gates:
 - Deploy: `git push origin main` → Netlify auto-deploys.
 - Revert: `git revert <sha> && git push origin main`.
 
+## Future polish backlog
+
+Non-urgent UI polish items captured but intentionally deferred. Pick up as spot-fixes or batch later.
+
+### Animated loading ellipsis — remaining candidates
+
+Reusable `<LoadingDots />` component lives at [src/components/LoadingDots.tsx](src/components/LoadingDots.tsx) and wraps the existing `.invite-dot` CSS. Applied in the first pass to: AuthModal sign-in/create button, `Loading your profile…`, both "Posting…" composer buttons (journal + show-view), FeedbackWidget `Sending…`, show-view thread-list + main-area `Loading…`, `Loading replies…`, `Loading profile…` (public profile). Remaining candidates from the 2026-04-22 audit — apply `<LoadingDots />` by keeping the verb/label and replacing the trailing `…` glyph with the component:
+
+**Pattern A (pending-action button labels):**
+- [ResponseComposer.tsx:289](src/components/ResponseComposer.tsx:289) — `Posting…` (inline thread reply)
+- [ShowSection.tsx:1866](src/components/ShowSection.tsx:1866) — `Creating…` (friend-room create)
+- [ShowSection.tsx:1920](src/components/ShowSection.tsx:1920) — `Saving…` (room rename)
+- [ShowSection.tsx:2019](src/components/ShowSection.tsx:2019), [:2041](src/components/ShowSection.tsx:2041) — `Leaving…` (leave / delete-and-leave)
+- [InlineThreadView.tsx:337](src/components/InlineThreadView.tsx:337), [:350](src/components/InlineThreadView.tsx:350) — `Saving…` (edit thread, both retag + no-retag variants)
+- [ProfilePage.tsx:1283](src/components/ProfilePage.tsx:1283) — `Creating…` (room create from journal)
+- [RepliesList.tsx:851](src/components/RepliesList.tsx:851), [:863](src/components/RepliesList.tsx:863) — `Saving…` (edit reply, both retag + no-retag variants)
+- [AdminPage.tsx:683](src/components/AdminPage.tsx:683) — `Saving…` (prompt edit, admin-only — include if natural, not as a special case)
+
+**Pattern B (standalone "Loading…" messages):**
+- [SearchShows.tsx:530](src/components/SearchShows.tsx:530) — `Loading episode data…` (TVMaze season fetch in picker modal)
+- [ShowSection.tsx:1888](src/components/ShowSection.tsx:1888), [:1971](src/components/ShowSection.tsx:1971) — `Loading…` (group settings modal body, member list)
+- [InviteAcceptPage.tsx:171](src/components/InviteAcceptPage.tsx:171) — `Loading…` (invite token verification)
+- [ProfilePage.tsx:920](src/components/ProfilePage.tsx:920) — `Loading…` (journal per-tab data)
+- [AdminPage.tsx:350](src/components/AdminPage.tsx:350), [:578](src/components/AdminPage.tsx:578) — `Loading…` (admin feedback list, prompts list — same admin caveat as above)
+
+**Explicitly out of scope:**
+- Invite-send modal ([ShowSection.tsx:1950-1956](src/components/ShowSection.tsx:1950)) — already has the below-button three-dot block; product-approved, don't touch.
+- BetaGate `checking…` ([BetaGate.tsx:55](src/components/BetaGate.tsx:55)) — leave as-is.
+
 ## Outstanding action items (carry across sessions)
 
 _None currently._

@@ -13,6 +13,7 @@ import Tooltip from "./Tooltip";
 import EmptyProfileWelcome from "./EmptyProfileWelcome";
 import Modal from "./Modal";
 import OneSelectProgress from "./OneSelectProgress";
+import LoadingDots from "./LoadingDots";
 import PromptCard from "./PromptCard";
 import type { PromptEntry } from "../lib/promptData";
 import { getFragment, getPromptSuggestion } from "../lib/prompts";
@@ -637,7 +638,7 @@ export default function ProfilePage({
 
   return (
     <section className="container journalShift" style={{ paddingBottom: 28 }}>
-      {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading your profile…</div>}
+      {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading your profile<LoadingDots /></div>}
 
       {!loading && (
         <div className="container" style={{ marginTop: 12 }}>
@@ -1248,7 +1249,7 @@ export default function ProfilePage({
                     }}
                   >
                     {!formReady && !postSubmitting ? "\u00A0"
-                      : postSubmitting ? "Posting…"
+                      : postSubmitting ? <>Posting<LoadingDots /></>
                       : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
                       : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> post</>
                       : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}
