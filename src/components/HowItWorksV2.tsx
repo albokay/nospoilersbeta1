@@ -424,6 +424,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
               {panelTitles[step] && (
                 <div
                   style={{
+                    fontFamily: '"Nunito",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
                     fontSize: 24,
                     fontWeight: 900,
                     lineHeight: 1.2,
