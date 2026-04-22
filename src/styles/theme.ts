@@ -196,7 +196,7 @@ body{
   font-size:var(--t3);
   line-height:1.5;
   letter-spacing:0.01em;
-  font-family: "Inter","Nunito",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-family: "Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   font-weight:400;
 }
 /* On the homepage the narrative controls the gradient via a React overlay — kill the CSS one */

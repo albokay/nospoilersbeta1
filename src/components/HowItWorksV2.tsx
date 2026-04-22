@@ -351,7 +351,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
       style={{
         minHeight: onClose ? undefined : "100vh",
         background: PAGE_BG,
-        fontFamily: '"Inter","Nunito",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+        fontFamily: '"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
         color: "#fff",
         padding: "24px 16px 40px",
         display: "flex",
