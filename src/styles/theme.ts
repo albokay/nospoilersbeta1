@@ -451,8 +451,7 @@ header.site{
   background:rgba(0,0,0,0.22);
   border:2px solid rgba(255,255,255,0.85); border-bottom:none;
   border-radius:8px 8px 0 0;
-  color:#fff; font-family:"Lora",Georgia,"Palatino Linotype",Palatino,serif;
-  font-size:var(--t4); font-weight:500;
+  color:#fff; font-size:var(--t4); font-weight:500;
   cursor:pointer; white-space:nowrap; position:relative;
 }
 .diaryTab.active{
@@ -460,7 +459,7 @@ header.site{
   background:var(--dos-bg);
   border-color:#fff;
   border-bottom:2px solid var(--dos-bg);
-  font-size:var(--t3); font-weight:700;
+  font-size:var(--t3); font-weight:800;
   text-decoration:none;
   margin-bottom:-3px;
 }
