@@ -1411,19 +1411,21 @@ export default function ShowSection({
                     <Settings size={20} color="#fff" />
                   </span>
                 </div>
-                <button
-                  className="btn"
-                  onClick={stepOutToPublic}
-                  style={{
-                    whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
-                    padding: "3px 12px",
-                    background: "transparent",
-                    border: "2px solid #fff",
-                    color: "#fff",
-                  }}
-                >
-                  to public conversations <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} />
-                </button>
+                {!thread && (
+                  <button
+                    className="btn"
+                    onClick={stepOutToPublic}
+                    style={{
+                      whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
+                      padding: "3px 12px",
+                      background: "transparent",
+                      border: "2px solid #fff",
+                      color: "#fff",
+                    }}
+                  >
+                    to public conversations <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} />
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -1445,13 +1447,13 @@ export default function ShowSection({
                     : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase())}
                 </span>
                 {/* Mirror of the friend-room "to public conversations" button.
-                   Shown in the public space when the user has ≥1 room for
-                   this show. Hidden on private-thread views (where the user
-                   isn't actually in the public space). Three behaviors:
+                   Shown in the public space (forum view only — hidden inside
+                   any thread; thread-level back-nav is handled by the thread
+                   toolbar's "Back to show" button). Three behaviors:
                      - breadcrumb set → "back to [room name]" direct return
                      - one room only → "to [room name]" direct enter
                      - multiple rooms → "to friend rooms" toggles a dropdown */}
-                {!(thread && !thread.isPublic) && userGroups.length > 0 && (() => {
+                {!thread && userGroups.length > 0 && (() => {
                   const breadcrumbRoom = cameFromGroupId
                     ? userGroups.find(g => g.id === cameFromGroupId)
                     : null;
@@ -1479,7 +1481,7 @@ export default function ShowSection({
                           display: "inline-flex", alignItems: "center", gap: 6,
                         }}
                       >
-                        <ArrowLeft size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} />
+                        <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} />
                         {label}
                       </button>
                       {friendRoomsDropdownOpen && !targetRoom && (
@@ -1503,7 +1505,7 @@ export default function ShowSection({
                                 color: "#fff",
                               }}
                             >
-                              <ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} />
+                              <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
                               <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>{g.name}</span>
                               <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
                             </button>
