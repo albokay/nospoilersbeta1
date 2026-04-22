@@ -833,30 +833,36 @@ body { -webkit-font-smoothing: antialiased; }
 .pending-ref-chip button:hover { opacity: 1; }
 
 /* ── Prompt reference (rendered in thread body) ─────────────────────────────
-   Editorial blockquote — no border, serif font, PROMPT: label via ::before  */
+   Editorial blockquote — Lora serif italic, PROMPT: label via ::before.
+   Color is per-context (body.group-context / body.public-context overrides
+   below) so the prompt reads as "a couple shades darker than the current
+   space bg" rather than a universal green.  */
 .prompt-ref {
   background: transparent;
   padding: 6px 0 6px 0;
   margin: 10px 0;
   border: none;
   font-style: italic;
-  font-family: Georgia, 'Palatino Linotype', Palatino, serif;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #4b8f6c;
+  font-family: "Lora", Georgia, 'Palatino Linotype', Palatino, serif;
+  font-size: 18px;
+  line-height: 1.5;
+  color: #3a6f56;
   opacity: 1;
 }
 .prompt-ref::before {
   content: "PROMPT:";
   display: block;
-  font-family: Georgia, 'Palatino Linotype', Palatino, serif;
+  font-family: "Lora", Georgia, 'Palatino Linotype', Palatino, serif;
   font-style: normal;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: #4b8f6c;
+  color: inherit;
   margin-bottom: 3px;
 }
+/* Per-context darker-shade-of-bg color overrides. */
+body.group-context .prompt-ref { color: rgba(26,58,74,0.72); }
+body.public-context .prompt-ref { color: #8a6420; }
 
 /* ── Prompt card (the floating suggestion card) ─────────────────────────── */
 .prompt-card {

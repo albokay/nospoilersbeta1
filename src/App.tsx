@@ -762,7 +762,7 @@ export default function App() {
             <button
               className="profileChip"
               onClick={!showProfile ? () => {
-                navigate("/profile");
+                navigate("/profile", expandedShowId ? { state: { activeTab: expandedShowId } } : undefined);
                 requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
               } : undefined}
               style={showProfile ? { cursor: "default" } : undefined}

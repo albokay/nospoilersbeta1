@@ -2079,12 +2079,24 @@ export default function ShowSection({
           onThreadUpdate={(updated: Thread) => setDbThreads(prev => prev.map(t => t.id === updated.id ? updated : t))}
           onThreadDelete={() => {
             const tid = activeThreadId!;
+            // Classify from the viewer's context at delete-time: a thread that's
+            // not public AND is being viewed outside any friend-room context
+            // (activeGroupId unset) is a journal-private post. Deleting one
+            // should send the user back to their journal (with this show's
+            // tab preselected) instead of dropping them into the show's
+            // public forum — where they weren't viewing from in the first
+            // place. Friend-room and public deletes stay in-place.
+            const wasPrivateJournalPost = thread && !thread.isPublic && !activeGroupId;
             // Always mark deleted — the thread list decides at render time whether
             // to show a stub (has replies) or hide entirely (no replies) using replyMeta,
             // which is kept fresh by the realtime subscription.
             setDbThreads(prev => prev.map(t => t.id === tid ? { ...t, isDeleted: true } : t));
             setActiveThreadId(null);
-            setTimeout(() => scrollToShowTop(), 0);
+            if (wasPrivateJournalPost) {
+              navigate("/profile", { state: { activeTab: showId } });
+            } else {
+              setTimeout(() => scrollToShowTop(), 0);
+            }
           }}
           onThreadMakePrivate={() => {
             // Mark not-public in state — owner still sees it with lock icon, others see nothing
