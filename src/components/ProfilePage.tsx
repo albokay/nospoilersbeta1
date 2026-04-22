@@ -1003,7 +1003,7 @@ export default function ProfilePage({
                         </Tooltip>
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div className="title" style={{ fontSize: 18, ...((isGroup || isPub) ? { color: cardFg } : {}) }}>
+                        <div className="title" style={{ fontSize: 20, fontWeight: 400, ...((isGroup || isPub) ? { color: cardFg } : {}) }}>
                           {!t.isPublic && !groupId && <span title="Private" style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><LockKeyhole size={14} color="var(--icon-color)" /></span>}
                           {isPub && <span title="Public" style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><Globe size={14} color="var(--icon-color)" /></span>}
                           {isGroup && <span title={`Friend room: ${groupName ?? ""}`} style={{ marginRight: 8, display: "inline-flex", verticalAlign: "middle" }}><Users size={14} color="var(--icon-color)" /></span>}
@@ -1117,7 +1117,7 @@ export default function ProfilePage({
                       style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id)}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div className="title" style={{ fontSize: 18 }}>
+                        <div className="title" style={{ fontSize: 20, fontWeight: 400 }}>
                           {t.titleBase}
                           {t.showId !== "simshow" && (
                             <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
