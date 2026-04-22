@@ -1423,29 +1423,43 @@ export default function ShowSection({
                       color: "#fff",
                     }}
                   >
-                    to public conversations <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} />
+                    to public conversation <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} />
                   </button>
                 )}
               </>
             ) : (
               <>
-                <span
-                  className="bannerTitle editorial"
-                  role={thread ? "button" : "heading"}
-                  title={thread ? "Back to forum" : "Show"}
-                  onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
-                  style={{
-                    fontSize: 34, fontWeight: 600, letterSpacing: .5, lineHeight: 1.05,
-                    color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
-                    flex: "0 1 auto", minWidth: 0, overflowWrap: "break-word",
-                    display: "inline-flex", alignItems: "flex-start", gap: 6,
-                  }}
-                >
-                  {!(thread && !thread.isPublic && !activeGroupId) && <Globe size={18} color="#fff" style={{ flexShrink: 0, marginTop: 9 }} />}
-                  {preventLastWordOrphan(showId === "bb"
-                    ? "BREAKING BAD (DEMO)"
-                    : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase())}
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", flex: "0 1 auto", minWidth: 0 }}>
+                  {/* Eyebrow — shown whenever we're in the public space (forum
+                     view or a public thread). Hidden inside a private journal
+                     thread (same gate as the Globe icon). Left-aligned with
+                     the title's text by offsetting the Globe-width + gap. */}
+                  {!(thread && !thread.isPublic && !activeGroupId) && (
+                    <div style={{
+                      fontSize: 13, fontWeight: 400, lineHeight: 1.2,
+                      color: "var(--dos-light)", marginLeft: 24,
+                    }}>
+                      public writing about:
+                    </div>
+                  )}
+                  <span
+                    className="bannerTitle editorial"
+                    role={thread ? "button" : "heading"}
+                    title={thread ? "Back to forum" : "Show"}
+                    onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
+                    style={{
+                      fontSize: 34, fontWeight: 600, letterSpacing: .5, lineHeight: 1.05,
+                      color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
+                      minWidth: 0, overflowWrap: "break-word",
+                      display: "inline-flex", alignItems: "flex-start", gap: 6,
+                    }}
+                  >
+                    {!(thread && !thread.isPublic && !activeGroupId) && <Globe size={18} color="#fff" style={{ flexShrink: 0, marginTop: 9 }} />}
+                    {preventLastWordOrphan(showId === "bb"
+                      ? "BREAKING BAD (DEMO)"
+                      : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase())}
+                  </span>
+                </div>
                 {/* Mirror of the friend-room "to public conversations" button.
                    Shown in the public space (forum view only — hidden inside
                    any thread; thread-level back-nav is handled by the thread
@@ -1540,7 +1554,7 @@ export default function ShowSection({
                     >
                       {activeGroupId
                         ? (<><ArrowLeft size={12} /> back to friend room</>)
-                        : "← to forum"}
+                        : "← more entries"}
                     </button>
                   )}
                 </div>
@@ -1624,7 +1638,7 @@ export default function ShowSection({
                     >
                       {activeGroupId
                         ? (<><ArrowLeft size={14} /> back to friend room</>)
-                        : "← Back to show"}
+                        : "← more entries"}
                     </button>
                   )}
                   <button
