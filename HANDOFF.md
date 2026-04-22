@@ -295,6 +295,33 @@ Small infra pass after the polish arc. Two pieces: a DMARC DNS cleanup (no code 
 - **Verify config-file changes by probing the live function after deploy.** After a CLI-config change that alters gateway behavior, a curl against the function endpoint (no auth, expect the function's own error shape, not a generic gateway reject) confirms the config was read. Much faster than sending a real invite through the UI.
 - **Single `_dmarc` record only.** If DMARC-related DNS ever needs a change (new reporting address, policy escalation), *edit* the existing record — don't add a second one. Multiple records at `_dmarc.<domain>` are spec-treated as no policy.
 
+### 2026-04-21 late — homepage panel polish + font-stack audit
+
+Small-scale follow-ups after the DMARC/deploy-hardening pass.
+
+**Commits:**
+
+| Commit | Scope |
+|---|---|
+| `b4b9345` | HowItWorksV2 left-caption right padding 32 → 48px. More breathing room between the caption text's right edge and the white diagram card. Applies to all 5 explanation panels (shared style block at [HowItWorksV2.tsx:421](src/components/HowItWorksV2.tsx:421)). |
+| `a53cc71` | Homepage panel 1 title "NO-SPOILER": regular hyphen replaced with non-breaking hyphen (U+2011, `\u2011`) at [HowItWorksV2.tsx:33](src/components/HowItWorksV2.tsx:33) so the token can't wrap mid-word. Now breaks at the preceding space: "HOW DO THE / NO-SPOILER / MECHANICS WORK?" |
+
+**Font-stack audit finding (pre-Option-B):** The site loads **Inter + Nunito** from Google Fonts via a `<link>` in [index.html:11](index.html:11), and the body font stack at [theme.ts:199](src/styles/theme.ts:199) is `"Inter","Nunito",system-ui,-apple-system,...`. Per-element inspection in the running preview (`document.fonts` enumeration + `getComputedStyle` on the weight-900 panel title) confirmed that **Nunito never actually renders anywhere on the site today.** Every Nunito `@font-face` entry is `"status":"unloaded"`; only Inter 400 and Inter 600 have ever been fetched. Reason: CSS font-matching picks **family before weight** — Inter is first in every stack and at least partially loaded, so every element resolves to Inter. When a heavier weight (700-900) is requested for which Inter isn't loaded, the browser renders Inter 600 with *synthetic bold* rather than falling through to Nunito. Nunito would only render if Inter were entirely unavailable.
+
+**Net effect today:** Nunito is dead weight in the CSS — declared, requested from Google Fonts' CSS response, but never produces a rendered pixel. Current bold/heavy display type is actually synthetic-bold Inter 600 (Chrome's faux-bold algorithm).
+
+**Follow-up (coming in the next commit — Option B):** flip specific display-type selectors (panel titles, likely other h1-scale text) to a Nunito-first stack so Nunito actually renders on display elements. Gives the site two real typefaces: Inter for body/UI, Nunito for display. Alborz wants to see how Nunito reads in headings before deciding whether to keep it or instead drop Nunito entirely and add real Inter 700/800/900 weights (Option A).
+
+**Deferred items added this arc:** none.
+
+**Two-step deploys this arc required:** none.
+
+**Conventions established or reinforced this arc:**
+
+- **CSS font-matching = family-wins-over-weight.** When multiple families are in a stack and the first one is loaded for *any* weight, the browser locks to that family even if the *requested* weight isn't available — it synthesizes missing weights rather than falling through to later families. So a fallback font in the stack doesn't work as "use this for different weights"; fallbacks only kick in when the primary family fails entirely. To actually use a second typeface, declare it first in a targeted selector (heading-specific), not as a same-stack fallback.
+- **Non-breaking hyphen (U+2011, `\u2011`)** is the minimal-change way to keep a hyphenated token from wrapping mid-word. Displays identically to a regular hyphen. Reach for it over `white-space: nowrap` spans when the hyphen lives inside a larger text block you don't want to restructure.
+- **Verify "what's actually rendered" via `document.fonts` enumeration,** not just screenshots. Screenshots can't tell you whether a visibly-bold glyph is a real heavy-weight file or the browser's synthetic faux-bold. `document.fonts.check()` + iterating `document.fonts` for loaded-status is the definitive read. Useful any time you're reasoning about font stacks, fallback behavior, or "why doesn't X render."
+
 ### Earlier (pre-audit, header/layout polish)
 
 The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.
