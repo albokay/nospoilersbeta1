@@ -236,23 +236,20 @@ export default function InviteAcceptPage({ token }: { token: string }) {
           . Sign out and sign in with that address to accept, or ask the inviter
           to send a new one to the email you're using now.
         </p>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            className="btn"
-            onClick={async () => { await signOut(); navigate("/"); }}
-          >
-            Sign out
-          </button>
-          {/* Destination is /profile, not /, because hitting wrong_recipient
-             requires being signed in; signed-in users get redirected off /
-             to /profile anyway (unless admin, who'd land on a blank homepage
-             since the signed-in shortcut block was removed). Going straight
-             to /profile sidesteps the redirect round-trip + the admin-blank
-             edge case. */}
-          <button className="btn" onClick={() => navigate("/profile")}>
-            to my journal
-          </button>
-        </div>
+        <button
+          className="btn"
+          onClick={async () => {
+            await signOut();
+            // Hard reload — SPA navigate out of InviteAcceptPage was
+            // producing a blank-green state in practice (same class of
+            // issue as a9bbc81's fix for the accept-success path). A
+            // full reload rehydrates App cleanly with the now-signed-out
+            // session and lands on the anonymous homepage.
+            window.location.assign("/");
+          }}
+        >
+          Sign out
+        </button>
       </Page>
     );
   }
