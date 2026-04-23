@@ -243,8 +243,14 @@ export default function InviteAcceptPage({ token }: { token: string }) {
           >
             Sign out
           </button>
-          <button className="btn" onClick={() => navigate("/")}>
-            Go home
+          {/* Destination is /profile, not /, because hitting wrong_recipient
+             requires being signed in; signed-in users get redirected off /
+             to /profile anyway (unless admin, who'd land on a blank homepage
+             since the signed-in shortcut block was removed). Going straight
+             to /profile sidesteps the redirect round-trip + the admin-blank
+             edge case. */}
+          <button className="btn" onClick={() => navigate("/profile")}>
+            to my journal
           </button>
         </div>
       </Page>
