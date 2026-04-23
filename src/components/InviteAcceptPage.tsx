@@ -21,18 +21,20 @@ type Status =
   | "invalid"
   | "expired"
   | "already_accepted"
+  | "wrong_recipient"
   | "ready"
   | "accepting"
   | "done"
   | "error";
 
 export default function InviteAcceptPage({ token }: { token: string }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
 
   const [status, setStatus]   = useState<Status>("loading");
   const [invite, setInvite]   = useState<InviteInfo | null>(null);
   const [errMsg, setErrMsg]   = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
   const [showAuth, setShowAuth] = useState(false);
   // Zero-progress: when the joiner has no prior progress for this show,
   // they pick it here (including "haven't started"). If they already
@@ -70,6 +72,10 @@ export default function InviteAcceptPage({ token }: { token: string }) {
       const code = (data as any)?.error ?? error?.message ?? "unknown";
       if      (code === "already_accepted") setStatus("already_accepted");
       else if (code === "expired")          setStatus("expired");
+      else if (code === "wrong_recipient") {
+        setMaskedEmail((data as any)?.invitee_email_masked ?? "");
+        setStatus("wrong_recipient");
+      }
       else { setErrMsg(code); setStatus("error"); }
       return;
     }
@@ -213,6 +219,34 @@ export default function InviteAcceptPage({ token }: { token: string }) {
         >
           Go to show
         </button>
+      </Page>
+    );
+  }
+
+  if (status === "wrong_recipient") {
+    return (
+      <Page>
+        <Emoji><AlertTriangle size={44} color="var(--icon-color)" /></Emoji>
+        <h2 className="title" style={{ marginBottom: 8 }}>Wrong email</h2>
+        <p className="muted" style={{ marginBottom: 24, maxWidth: 480 }}>
+          This invite was sent to{" "}
+          {maskedEmail
+            ? <strong style={{ color: "var(--fg)" }}>{maskedEmail}</strong>
+            : "a different email"}
+          . Sign out and sign in with that address to accept, or ask the inviter
+          to send a new one to the email you're using now.
+        </p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="btn"
+            onClick={async () => { await signOut(); navigate("/"); }}
+          >
+            Sign out
+          </button>
+          <button className="btn" onClick={() => navigate("/")}>
+            Go home
+          </button>
+        </div>
       </Page>
     );
   }
