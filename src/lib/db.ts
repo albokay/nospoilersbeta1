@@ -120,7 +120,7 @@ export async function fetchThreadsForShow(showId: string): Promise<{
 }> {
   const { data, error } = await supabase
     .from("threads")
-    .select("*, replies!thread_id(id, season, episode, created_at, author_id, reply_to_id, referenced_reply_id)")
+    .select("*, replies!thread_id(id, season, episode, created_at, author_id, referenced_reply_id)")
     .eq("show_id", showId)
     .order("updated_at", { ascending: false });
   if (error) throw error;
@@ -137,7 +137,10 @@ export async function fetchThreadsForShow(showId: string): Promise<{
       episode: r.episode,
       createdAt: new Date(r.created_at).getTime(),
       authorId: r.author_id,
-      replyToId: r.reply_to_id ?? undefined,
+      // reply_to_id was dropped from the replies table in
+      // response-system-migration.sql:14 — only referenced_reply_id
+      // exists on real DB rows. replyToId is still populated for seed
+      // data in-memory by ShowSection's seedRm mapping.
       referencedReplyId: r.referenced_reply_id ?? undefined,
     }));
     hasExternalReplies[row.id] = replies.some((r: any) => r.author_id !== row.author_id);
