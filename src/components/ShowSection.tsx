@@ -921,7 +921,7 @@ export default function ShowSection({
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "replies", filter: `show_id=eq.${showId}` }, (payload) => {
         const r = payload.new as any;
         if (!r) return;
-        const meta = { id: r.id, season: r.season, episode: r.episode, createdAt: new Date(r.created_at).getTime(), authorId: r.author_id, referencedReplyId: r.referenced_reply_id ?? undefined };
+        const meta = { id: r.id, season: r.season, episode: r.episode, createdAt: new Date(r.created_at).getTime(), authorId: r.author_id, replyToId: r.reply_to_id ?? undefined, referencedReplyId: r.referenced_reply_id ?? undefined };
         setReplyMeta(prev => ({ ...prev, [r.thread_id]: [...(prev[r.thread_id] ?? []), meta] }));
         setReplyCounts(prev => ({ ...prev, [r.thread_id]: (prev[r.thread_id] ?? 0) + 1 }));
         setHasExternalReplies(prev => ({ ...prev, [r.thread_id]: true }));
