@@ -323,34 +323,52 @@ export default function InlineThreadView({
             {editError && (
               <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{editError}</div>
             )}
-            {showRetagWarning && (
-              <div className="retag-warning" style={{ background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 6, padding: "12px 14px", marginTop: 10, fontSize: 13 }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Heads up — this post will be retagged</div>
-                <div style={{ opacity: 0.85, marginBottom: 10 }}>
-                  Your progress has moved to{" "}
-                  <strong>S{String(editTagS).padStart(2,"0")} E{String(editTagE).padStart(2,"0")}</strong>.
-                  {" "}Saving will retag this post to your current progress — readers below that point who could see it before will no longer see it.
-                </div>
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button className="btn" onClick={() => setShowRetagWarning(false)} disabled={editSubmitting}>Go back</button>
-                  <button className="btn primary" onClick={handleSaveEdit} disabled={editSubmitting}>
-                    {editSubmitting ? "Saving…" : "Save & retag"}
-                  </button>
-                </div>
-              </div>
-            )}
-            {!showRetagWarning && (
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
-                <button className="btn" onClick={() => setEditing(false)} disabled={editSubmitting}>Cancel</button>
-                <button
-                  className="btn primary"
-                  onClick={handleSaveEdit}
-                  disabled={editSubmitting || !editTitle.trim()}
-                >
-                  {editSubmitting ? "Saving…" : "Save"}
-                </button>
-              </div>
-            )}
+            {(() => {
+              // Thread-edit Save button, styled per context:
+              //   friend room → canon green fill, white text
+              //   private     → white fill, canon green text
+              //   public      → canon green fill, white text (matches the
+              //                 prior body.public-context .btn.primary
+                //               override, kept as the "unchanged" spec)
+              // All three carry a 2px canon-green border.
+              const savePrivate = !inGroupContext && !thread.isPublic;
+              const saveStyle: React.CSSProperties = savePrivate
+                ? { background: "#fff", color: "#7abd8e", border: "2px solid #7abd8e" }
+                : { background: "#7abd8e", color: "#fff", border: "2px solid #7abd8e" };
+              return (
+                <>
+                  {showRetagWarning && (
+                    <div className="retag-warning" style={{ background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 6, padding: "12px 14px", marginTop: 10, fontSize: 13 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 6 }}>Heads up — this post will be retagged</div>
+                      <div style={{ opacity: 0.85, marginBottom: 10 }}>
+                        Your progress has moved to{" "}
+                        <strong>S{String(editTagS).padStart(2,"0")} E{String(editTagE).padStart(2,"0")}</strong>.
+                        {" "}Saving will retag this post to your current progress — readers below that point who could see it before will no longer see it.
+                      </div>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button className="btn" onClick={() => setShowRetagWarning(false)} disabled={editSubmitting}>Go back</button>
+                        <button className="btn" onClick={handleSaveEdit} disabled={editSubmitting} style={saveStyle}>
+                          {editSubmitting ? "Saving…" : "Save & retag"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {!showRetagWarning && (
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
+                      <button className="btn" onClick={() => setEditing(false)} disabled={editSubmitting}>Cancel</button>
+                      <button
+                        className="btn"
+                        onClick={handleSaveEdit}
+                        disabled={editSubmitting || !editTitle.trim()}
+                        style={saveStyle}
+                      >
+                        {editSubmitting ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         ) : (
           /* ── Normal view ── */
