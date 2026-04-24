@@ -57,6 +57,24 @@ export const canView = (
 export const isZeroProgress = (p?: { s: number; e: number } | null) =>
   !!p && p.s === 0 && p.e === 0;
 
+// Partial email mask for display surfaces where the address shouldn't be
+// flaunted but the owner should still recognize it at a glance.
+// "bob@example.com" → "b***@e***.com". Matches the server-side mask in
+// accept_invitation's wrong_recipient response (20260423_invite_recipient_check.sql).
+// Returns the raw input for malformed addresses rather than throwing.
+export const maskEmail = (email: string): string => {
+  if (!email) return email;
+  const atIdx = email.indexOf('@');
+  if (atIdx < 1) return email;
+  const local = email.slice(0, atIdx);
+  const parts = email.slice(atIdx + 1).split('.');
+  if (parts.length < 2) return email;
+  const firstLabel = parts[0];
+  const tld = parts[parts.length - 1];
+  if (!firstLabel || !tld) return email;
+  return `${local[0]}***@${firstLabel[0]}***.${tld}`;
+};
+
 export const visibleRepliesCount = (
   threadId: string,
   repliesByThread: { [threadId: string]: Reply[] },

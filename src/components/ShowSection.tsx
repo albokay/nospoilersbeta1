@@ -69,7 +69,7 @@ import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
 import type { ReplyMeta } from "../lib/db";
 import { useAuth } from "../lib/auth";
-import { canView, timeAgo } from "../lib/utils";
+import { canView, timeAgo, maskEmail } from "../lib/utils";
 import EpisodeTag from "./EpisodeTag";
 import Modal from "./Modal";
 import LikeBadge from "./LikeBadge";
@@ -2010,7 +2010,7 @@ export default function ShowSection({
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         {pendingInvites.map(inv => (
                           <div key={inv.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, opacity: 0.7 }}>
-                            <span>{inv.inviteeEmail}</span>
+                            <span>{maskEmail(inv.inviteeEmail)}</span>
                             <span style={{ opacity: 0.5, fontSize: 11 }}>
                               expires {new Date(inv.expiresAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                             </span>
