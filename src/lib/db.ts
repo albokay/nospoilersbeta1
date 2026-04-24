@@ -700,40 +700,55 @@ export async function createShow(show: {
   tvmazeId?: string;
   status?: string;
 }): Promise<Show> {
-  const row = {
+  const now = new Date().toISOString();
+  const insertRow = {
     id: show.id,
     name: show.name,
     seasons: show.seasons,
     tvmaze_id: show.tvmazeId ?? null,
     status: show.status ?? "Ended",
     is_hidden: false,
-    last_synced_at: new Date().toISOString(),
+    last_synced_at: now,
   };
-  // Idempotent: if the show already exists, return the existing row unchanged
-  const { data, error } = await supabase
-    .from("shows").upsert(row, { onConflict: "id", ignoreDuplicates: true }).select().single();
-  if (error) {
-    // ignoreDuplicates may not return data on conflict — fall back to fetch
-    const { data: existing, error: fetchErr } = await supabase
-      .from("shows").select().eq("id", show.id).single();
-    if (fetchErr || !existing) throw error;
-    return {
-      id: existing.id,
-      name: existing.name,
-      seasons: existing.seasons,
-      tvmazeId: existing.tvmaze_id ?? undefined,
-      status: existing.status ?? "Ended",
-      isHidden: existing.is_hidden ?? false,
-    };
-  }
-  return {
-    id: data.id,
-    name: data.name,
-    seasons: data.seasons,
-    tvmazeId: data.tvmaze_id ?? undefined,
-    status: data.status ?? "Ended",
-    isHidden: data.is_hidden ?? false,
-  };
+
+  // Try fresh INSERT first. On unique-key conflict (row already exists)
+  // we fall through to a targeted UPDATE that refreshes only seasons +
+  // last_synced_at. That keeps the caller's current TVMaze episode
+  // snapshot in sync without clobbering identity fields (name, tvmaze_id,
+  // status, is_hidden) — some callers (ShowSection auto-onboard paths)
+  // pass only partial info and would null out tvmaze_id / change status
+  // if we used a blanket upsert.
+  const mapRow = (r: any): Show => ({
+    id: r.id,
+    name: r.name,
+    seasons: r.seasons,
+    tvmazeId: r.tvmaze_id ?? undefined,
+    status: r.status ?? "Ended",
+    isHidden: r.is_hidden ?? false,
+  });
+
+  const { data: inserted, error: insertErr } = await supabase
+    .from("shows").insert(insertRow).select().single();
+  if (inserted) return mapRow(inserted);
+
+  // Insert failed — most commonly a unique-key conflict because the row
+  // already exists. Targeted UPDATE refreshes the TVMaze-sourced seasons
+  // and sync timestamp. If this also fails, throw the original insert
+  // error for the caller.
+  const { data: updated, error: updateErr } = await supabase
+    .from("shows")
+    .update({ seasons: show.seasons, last_synced_at: now })
+    .eq("id", show.id)
+    .select().single();
+  if (updated) return mapRow(updated);
+
+  // Last resort: return whatever is in the DB so onboarding can still
+  // proceed even if both writes failed (e.g. transient network error).
+  const { data: existing } = await supabase
+    .from("shows").select().eq("id", show.id).single();
+  if (existing) return mapRow(existing);
+
+  throw insertErr ?? updateErr ?? new Error("createShow failed");
 }
 
 // ── Staleness refresh ─────────────────────────────────────────────────────────
@@ -747,9 +762,13 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
   // status gate lets unreleased shows transition cleanly. Extra API cost is
   // trivial (TVMaze is free + unauth + our cadence is weekly).
   if (!show.tvmazeId) return null;
-  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+  // Twelve-hour cadence strikes a balance between "new episode options
+  // appear within half a day of airing" and "don't hammer TVMaze with
+  // redundant calls." Refresh is async / non-blocking so the page-load
+  // cost of a cadence hit is invisible to the user.
+  const TWELVE_HOURS = 12 * 60 * 60 * 1000;
   const lastSync = show.lastSyncedAt ? new Date(show.lastSyncedAt).getTime() : 0;
-  if (Date.now() - lastSync < SEVEN_DAYS) return null;
+  if (Date.now() - lastSync < TWELVE_HOURS) return null;
 
   // Fetch show metadata (genres, type, status) and episodes from TVmaze in parallel
   const [showRes, epRes] = await Promise.all([
