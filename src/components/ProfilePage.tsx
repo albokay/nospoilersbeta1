@@ -4,7 +4,7 @@ import { SquarePen, X, Globe, Users, LockKeyhole, Lock, Sparkles, CircleChevronD
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated, refreshShowIfStale } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -39,6 +39,7 @@ export default function ProfilePage({
   onTabsChange,
   updateProgressFor,
   onGroupCreated,
+  onShowUpdated,
 }: {
   shows: Show[];
   username: string;
@@ -55,6 +56,7 @@ export default function ProfilePage({
   openedAtSeenAt?: number;
   onTabsChange?: (data: ProfileTabData | null) => void;
   onGroupCreated?: (g: FriendGroup) => void;
+  onShowUpdated?: (updated: Show) => void;
 }) {
   const { user, profile } = useAuth();
   const location = useLocation();
@@ -408,6 +410,22 @@ export default function ProfilePage({
   };
 
   const activeShow = useMemo(() => allShows.find(s => s.id === activeTab), [allShows, activeTab]);
+
+  // Background staleness refresh for the active tab's show. Mirrors the
+  // same effect in ShowSection so the journal-side progress picker stays
+  // current with newly-aired episodes. 12-hour cadence is enforced inside
+  // refreshShowIfStale — within that window this is a fast no-op. Cancelled
+  // flag guards against state writes after a tab switch.
+  useEffect(() => {
+    if (!activeShow) return;
+    let cancelled = false;
+    refreshShowIfStale(activeShow).then(updated => {
+      if (cancelled || !updated) return;
+      onShowUpdated?.(updated);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
   const postProgress = progress[activeTab] || { s: 1, e: 1 };
   const postTagS = postProgress.isRewatching && postProgress.highestS ? postProgress.highestS : postProgress.s;
   const postTagE = postProgress.isRewatching && postProgress.highestE ? postProgress.highestE : postProgress.e;
