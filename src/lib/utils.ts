@@ -58,9 +58,15 @@ export const isZeroProgress = (p?: { s: number; e: number } | null) =>
   !!p && p.s === 0 && p.e === 0;
 
 // Partial email mask for display surfaces where the address shouldn't be
-// flaunted but the owner should still recognize it at a glance.
-// "bob@example.com" → "b***@e***.com". Matches the server-side mask in
-// accept_invitation's wrong_recipient response (20260423_invite_recipient_check.sql).
+// flaunted but the owner should still recognize it at a glance. Keeps the
+// first character of the local part and the first character of the first
+// domain label; hides the remaining characters of each with asterisks,
+// one per hidden letter so the length matches the original. Last TLD
+// segment is shown in full. "bob@example.com" → "b**@e******.com".
+// (The server-side mask in the accept_invitation wrong_recipient response
+// uses a fixed three-star shape — different surface, different audience;
+// this version is client-side only and safe to make length-accurate
+// because the pending-invites list is visible only to the room creator.)
 // Returns the raw input for malformed addresses rather than throwing.
 export const maskEmail = (email: string): string => {
   if (!email) return email;
@@ -72,7 +78,8 @@ export const maskEmail = (email: string): string => {
   const firstLabel = parts[0];
   const tld = parts[parts.length - 1];
   if (!firstLabel || !tld) return email;
-  return `${local[0]}***@${firstLabel[0]}***.${tld}`;
+  const maskChunk = (s: string) => s[0] + '*'.repeat(Math.max(0, s.length - 1));
+  return `${maskChunk(local)}@${maskChunk(firstLabel)}.${tld}`;
 };
 
 export const visibleRepliesCount = (
