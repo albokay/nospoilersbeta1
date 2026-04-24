@@ -989,16 +989,21 @@ export default function ProfilePage({
                       // below (unchanged).
                       if (activeFilter !== "all") {
                         const sName = showName(activeTab);
-                        const copy =
+                        const copy: React.ReactNode =
                           activeFilter === "public"
-                            ? `You haven't published anything publicly yet. When you do, your public entries about ${sName} will live here. They will be findable by anyone who reaches the episodes you've written about.`
+                            ? <>You haven't written publicly yet. When you do, your public entries about <em>{sName}</em> will become part of a durable archive of good TV writing, waiting to be found by anyone who reaches the episodes you've written about.</>
                             : activeFilter === "friends"
-                              ? `You haven't written to your friends about ${sName} yet.`
-                              : `You haven't written any private entries about ${sName} yet.`;
+                              ? <>You haven't written for any friends yet. They're waiting to know your thoughts!</>
+                              : <>No private entries about <em>{sName}</em> yet. Sometimes the best thinking happens when you write just for yourself…</>;
                         return (
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "150px 0 48px" }}>
                             <div style={{ width: "min(400px, 100%)" }}>
-                              <p style={{ margin: 0, fontSize: 16, fontWeight: 400, lineHeight: 1.6, color: "var(--dos-fg)", opacity: 0.65, fontStyle: "italic", textAlign: "left" }}>
+                              {/* Wrapper font-style kept "normal" so the <em>
+                                 show-name markup actually renders italic against
+                                 roman body copy. If the body should be italic
+                                 overall, swap to bold for show-name emphasis
+                                 instead. */}
+                              <p style={{ margin: 0, fontSize: 16, fontWeight: 400, lineHeight: 1.6, color: "var(--dos-fg)", opacity: 0.65, textAlign: "left" }}>
                                 {copy}
                               </p>
                             </div>
