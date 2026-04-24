@@ -792,15 +792,20 @@ export default function RepliesList({
 
               {isCurrentlyEditing ? (
                 <div style={{ marginTop: 8 }}>
+                  {/* Styled to match ResponseComposer's write-response UI:
+                     white textarea, var(--danger) red buttons regardless of
+                     context. Previously used .edit-textarea class + .btn
+                     primary, which picked up public-context green
+                     overrides (theme.ts public-context block) and rendered
+                     inconsistently with the write box alongside it. */}
                   <textarea
-                    className="edit-textarea"
                     value={editReplyBody}
                     onChange={e => setEditReplyBody(e.target.value)}
                     rows={3}
                     style={{
                       width: "100%", boxSizing: "border-box",
-                      background: "var(--dos-bg)", color: "var(--dos-fg)",
-                      border: "1px solid var(--dos-border)", borderRadius: 4,
+                      background: "#fff", color: "#000",
+                      border: "none", borderRadius: 8,
                       padding: "8px 10px", fontSize: 14, resize: "vertical",
                       fontFamily: "inherit",
                     }}
@@ -818,19 +823,39 @@ export default function RepliesList({
                         {" "}Saving will retag this reply to your current progress — readers below that point who could see it before will no longer see it.
                       </div>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                        <button className="btn" onClick={() => setRetagWarningReplyId(null)} disabled={editReplySubmitting}>Go back</button>
-                        <button className="btn primary" onClick={() => handleSaveEditReply(r.id, true)} disabled={editReplySubmitting}>
+                        <button
+                          className="btn"
+                          onClick={() => setRetagWarningReplyId(null)}
+                          disabled={editReplySubmitting}
+                          style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
+                        >
+                          Go back
+                        </button>
+                        <button
+                          className="btn"
+                          onClick={() => handleSaveEditReply(r.id, true)}
+                          disabled={editReplySubmitting}
+                          style={{ background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff" }}
+                        >
                           {editReplySubmitting ? "Saving…" : "Save & retag"}
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
-                      <button className="btn" onClick={handleCancelEditReply} disabled={editReplySubmitting}>Cancel</button>
                       <button
-                        className="btn primary"
+                        className="btn"
+                        onClick={handleCancelEditReply}
+                        disabled={editReplySubmitting}
+                        style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="btn"
                         onClick={() => handleSaveEditReply(r.id)}
                         disabled={editReplySubmitting || !editReplyBody.trim()}
+                        style={{ background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff" }}
                       >
                         {editReplySubmitting ? "Saving…" : "Save"}
                       </button>
