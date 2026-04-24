@@ -354,8 +354,6 @@ export default function RepliesList({
   const [localLiked, setLocalLiked] = useState<Record<string, boolean>>({});
   const [quoteHintId, setQuoteHintId] = useState<string | null>(null);
   // Link hint: show once on first-ever click; user must click again to use it
-  const [linkHintPending, setLinkHintPending] = useState(false);
-  const [linkPendingReply, setLinkPendingReply] = useState<Reply | null>(null);
 
   const [localEditedBody, setLocalEditedBody] = useState<Record<string, string>>({});
   const [localDeleted, setLocalDeleted] = useState<Record<string, boolean>>({});
@@ -402,8 +400,16 @@ export default function RepliesList({
   // their rewatch position).
   const editTag = effectiveProgress(progressForShow);
 
+  // Walk up the reply-parent chain. Parent can be either the legacy
+  // replyToId (reply-to-reply threading) or the modern referencedReplyId
+  // (quote / link reference set by the composer). Current UI only sets
+  // referencedReplyId, so walking only replyToId — which was the prior
+  // behavior — meant orphan-hiding never actually fired for real replies.
+  const getParentReply = (r: Reply): Reply | null =>
+    (r.replyToId && byId[r.replyToId]) || (r.referencedReplyId && byId[r.referencedReplyId]) || null;
+
   const isAncestorRedacted = (r: Reply): boolean => {
-    let cur = r.replyToId ? byId[r.replyToId] : null;
+    let cur = getParentReply(r);
     while (cur) {
       const curWithin = canSeeSelf(cur);
       const curRevealed = !!revealed[cur.id];
@@ -412,7 +418,7 @@ export default function RepliesList({
       } else {
         if (!curWithin && !curRevealed) return true;
       }
-      cur = cur.replyToId ? byId[cur.replyToId] : null;
+      cur = getParentReply(cur);
     }
     return false;
   };
@@ -540,15 +546,11 @@ export default function RepliesList({
     onScrollToComposer?.();
   };
 
-  // Handle Link action on a reply
+  // Handle Link action on a reply. The one-time explainer modal was
+  // removed along with the "link" nomenclature — the feature still works
+  // the same way, we just don't pop an explainer on first use anymore.
   const handleLink = (r: Reply) => {
     if (!user) { onAuthRequired(); return; }
-    // Show one-time explanation on first-ever click; store reply to execute after "Got it"
-    if (!localStorage.getItem("ns_link_hint_seen")) {
-      setLinkPendingReply(r);
-      setLinkHintPending(true);
-      return;
-    }
     onSetPendingReference?.({
       type: "link",
       replyId: r.id,
@@ -598,38 +600,7 @@ export default function RepliesList({
         </Modal>
       )}
 
-      {linkHintPending && (
-        <Modal onClose={() => setLinkHintPending(false)} width="min(520px,92vw)" cardClassName="explanation-card">
-          <div style={{ padding: "16px 12px 12px" }}>
-            <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
-              <Link2 size={14} color="currentColor" /> Linking connects your response back to this entry. Your post will link back here and vice versa.
-            </p>
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button
-                className="btn"
-                style={{ fontSize: 15, padding: "8px 24px" }}
-                onClick={() => {
-                  localStorage.setItem("ns_link_hint_seen", "1");
-                  setLinkHintPending(false);
-                  if (linkPendingReply) {
-                    onSetPendingReference?.({
-                      type: "link",
-                      replyId: linkPendingReply.id,
-                      authorName: linkPendingReply.author,
-                    });
-                    onScrollToComposer?.();
-                    setLinkPendingReply(null);
-                  }
-                }}
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {promptFor && riskyMode && (
+{promptFor && riskyMode && (
         <Modal onClose={() => setPromptFor(null)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <h3 className="title" style={{ margin: 0 }}>Are you sure?</h3>

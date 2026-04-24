@@ -91,12 +91,18 @@ export const visibleRepliesCount = (
   const list = repliesByThread[threadId] || [];
   const byId: Record<string, Reply> = {};
   list.forEach(r => (byId[r.id] = r));
+  // Parent can be either the legacy replyToId (reply-to-reply threading) or
+  // the modern referencedReplyId (quote / link reference from the composer).
+  // Current UI sets referencedReplyId only; walking replyToId alone missed
+  // every real-world orphan — count was over-inclusive in standard mode.
+  const getParent = (r: Reply): Reply | null =>
+    (r.replyToId && byId[r.replyToId]) || (r.referencedReplyId && byId[r.referencedReplyId]) || null;
   const chainVisible = (r: Reply) => {
     if (!canView({ season: r.season, episode: r.episode }, prog)) return false;
-    let cur = r.replyToId ? byId[r.replyToId] : null;
+    let cur = getParent(r);
     while (cur) {
       if (!canView({ season: cur.season, episode: cur.episode }, prog)) return false;
-      cur = cur.replyToId ? byId[cur.replyToId] : null;
+      cur = getParent(cur);
     }
     return true;
   };
