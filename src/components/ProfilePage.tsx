@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, LockKeyhole, Lock, Sparkles, CircleChevronDown, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
+import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, CircleChevronDown, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -266,7 +266,14 @@ export default function ProfilePage({
     }
   }, [activeTab]);
 
-  const [diaryFilter, setDiaryFilter] = useState<"all" | "private">("all");
+  // Per-show journal filter. Each show keeps its own current selection;
+  // switching tabs preserves each tab's state. Navigation away from
+  // /profile or a full page refresh resets the whole map (ProfilePage
+  // unmounts → useState re-initializes). Default for any untouched
+  // show is "all".
+  type JournalFilter = "all" | "friends" | "private" | "public";
+  const [filterByShow, setFilterByShow] = useState<Record<string, JournalFilter>>({});
+  const activeFilter: JournalFilter = filterByShow[activeTab] ?? "all";
 
   // Friend-room filter for the journal
   const [tabGroups, setTabGroups] = useState<FriendGroup[]>([]);
@@ -887,37 +894,46 @@ export default function ProfilePage({
                         </Tooltip>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-                        {/* All / private toggle — right-aligned next to progress dropdown */}
+                        {/* Journal mode filter — four-segment radio pill, per-show
+                           state (preserved across tab switches within ProfilePage,
+                           reset on navigation away or refresh). Label order: all /
+                           friends / private / public. Tooltips on the three non-all
+                           segments. Visual style matches the old two-segment pill. */}
                         <div style={{
                           display: "flex", gap: 0, borderRadius: 999, overflow: "hidden",
                           border: "2px solid var(--dos-border)", flexShrink: 0,
                         }}>
-                          {(["all", "private"] as const).map(opt => (
-                            <button
-                              key={opt}
-                              onClick={() => setDiaryFilter(opt)}
-                              style={{
-                                padding: "2px 8px",
-                                fontSize: 10,
-                                fontWeight: diaryFilter === opt ? 700 : 400,
-                                background: diaryFilter === opt ? "var(--dos-border)" : "transparent",
-                                color: diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)",
-                                border: "none",
-                                cursor: "pointer",
-                                whiteSpace: "nowrap",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                              }}
-                            >
-                              {opt === "all"
-                                ? "all"
-                                : <>
-                                    <Lock size={10} color={diaryFilter === opt ? "var(--dos-bg)" : "var(--dos-fg)"} style={{ flexShrink: 0 }} />
-                                    only
-                                  </>}
-                            </button>
-                          ))}
+                          {([
+                            { val: "all",     label: "all",     tooltip: null },
+                            { val: "friends", label: "friends", tooltip: "What you've written for friends." },
+                            { val: "private", label: "private", tooltip: "Your private thoughts." },
+                            { val: "public",  label: "public",  tooltip: "What the public sees." },
+                          ] as const).map(({ val, label, tooltip }) => {
+                            const btn = (
+                              <button
+                                key={val}
+                                onClick={() => setFilterByShow(prev => ({ ...prev, [activeTab]: val }))}
+                                style={{
+                                  padding: "2px 8px",
+                                  fontSize: 10,
+                                  fontWeight: activeFilter === val ? 700 : 400,
+                                  background: activeFilter === val ? "var(--dos-border)" : "transparent",
+                                  color: activeFilter === val ? "var(--dos-bg)" : "var(--dos-fg)",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  whiteSpace: "nowrap",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                }}
+                              >
+                                {label}
+                              </button>
+                            );
+                            return tooltip
+                              ? <Tooltip key={val} text={tooltip} direction="below" tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}>{btn}</Tooltip>
+                              : btn;
+                          })}
                         </div>
                         {activeShow && (
                           <OneSelectProgress
@@ -939,16 +955,31 @@ export default function ProfilePage({
                     <div className="muted" style={{ padding: "80px 20px", textAlign: "center" }}>Loading…</div>
                   )}
                   {(!tabLoading || currentTabData) && (() => {
-                    const byDiary = diaryFilter === "private" ? tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !groupId) : tabThreads;
+                    const byDiary =
+                      activeFilter === "all"     ? tabThreads
+                      : activeFilter === "public"  ? tabThreads.filter(({ thread: t }) => t.isPublic)
+                      : activeFilter === "friends" ? tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !!groupId)
+                      : /* private */              tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !groupId);
                     const filtered = journalGroupFilter ? byDiary.filter(({ groupId }) => groupId === journalGroupFilter) : byDiary;
                     if (filtered.length === 0) {
-                      if (diaryFilter === "private" && tabThreads.length > 0) {
-                        // Has public entries but no private ones
+                      // Mode-specific empty-state copy for non-"all" filters.
+                      // Shows even when the whole tab is otherwise empty — the
+                      // filter is the active lens and we reinforce it. "all"
+                      // falls through to the existing TSP/generic welcome
+                      // below (unchanged).
+                      if (activeFilter !== "all") {
+                        const sName = showName(activeTab);
+                        const copy =
+                          activeFilter === "public"
+                            ? `You haven't published anything publicly yet. When you do, your public entries about ${sName} will live here. They will be findable by anyone who reaches the episodes you've written about.`
+                            : activeFilter === "friends"
+                              ? `You haven't written to your friends about ${sName} yet.`
+                              : `You haven't written any private entries about ${sName} yet.`;
                         return (
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "150px 0 48px" }}>
                             <div style={{ width: "min(400px, 100%)" }}>
                               <p style={{ margin: 0, fontSize: 16, fontWeight: 400, lineHeight: 1.6, color: "var(--dos-fg)", opacity: 0.65, fontStyle: "italic", textAlign: "left" }}>
-                                You don't have any private entries yet.
+                                {copy}
                               </p>
                             </div>
                           </div>
