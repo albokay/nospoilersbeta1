@@ -1313,9 +1313,14 @@ export default function ProfilePage({
                     onClick={submitPost}
                     disabled={postSubmitting || !formReady}
                     style={{
-                      background: promptBtnBg,
+                      background: "#fff",
                       border: "none",
-                      color: "#fff",
+                      // Text color tracks destination; icons use currentColor
+                      // so they track automatically. Journal compose modal
+                      // only offers private + public — the friend-room branch
+                      // below is unreachable from this surface but left in
+                      // place as defensive fallback.
+                      color: composeDestination === "public" ? "#dea838" : "#7abd8e",
                       whiteSpace: "nowrap",
                       fontSize: 13,
                       minWidth: 130,
@@ -1325,7 +1330,7 @@ export default function ProfilePage({
                     {!formReady && !postSubmitting ? "\u00A0"
                       : postSubmitting ? <>Posting<LoadingDots /></>
                       : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
-                      : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> post</>
+                      : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> publish</>
                       : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}
                   </button>
                 );
