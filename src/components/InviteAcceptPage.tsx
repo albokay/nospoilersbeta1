@@ -319,7 +319,14 @@ export default function InviteAcceptPage({ token }: { token: string }) {
                   <OneSelectProgress
                     show={showForInvite}
                     value={progressPick}
-                    onConfirm={(val) => setProgressPick(val)}
+                    // OneSelectProgress fires onConfirm only from the
+                    // confirm-modal flow, which is disabled here via
+                    // requireConfirm={false}. Use onChangeSelected — which
+                    // fires on every select change regardless of
+                    // requireConfirm — to track the value, and keep a
+                    // no-op onConfirm for the required prop.
+                    onConfirm={() => {}}
+                    onChangeSelected={(val) => setProgressPick(val)}
                     requireConfirm={false}
                     allowZero
                   />

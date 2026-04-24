@@ -1890,7 +1890,14 @@ export default function ShowSection({
               <OneSelectProgress
                 show={allShows.find(s => s.id === showId) || { seasons: [10] }}
                 value={newRoomProgress}
-                onConfirm={(val) => setNewRoomProgress(val)}
+                // OneSelectProgress fires onConfirm only from the
+                // confirm-modal flow, which is disabled here via
+                // requireConfirm={false}. Use onChangeSelected — which
+                // fires on every select change regardless of
+                // requireConfirm — to track the value, and keep a
+                // no-op onConfirm for the required prop.
+                onConfirm={() => {}}
+                onChangeSelected={(val) => setNewRoomProgress(val)}
                 requireConfirm={false}
                 allowZero
                 plain
