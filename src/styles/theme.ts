@@ -910,16 +910,13 @@ body.public-context .prompt-ref { color: #8a6420; }
   font-weight: 500;
   cursor: pointer;
   color: #fff;
-  opacity: 0.75;
+  opacity: 1;
   font-family: inherit;
   border-radius: 9999px;
   letter-spacing: 0.01em;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-.prompt-btn:hover {
-  opacity: 1;
 }
 
 `;
