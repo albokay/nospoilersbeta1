@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect } from "react";
 import { useAuth } from "../lib/auth";
 import { insertReply, fetchPrompts, logThreadPrompt } from "../lib/db";
 import type { PromptRow } from "../lib/db";
-import Tooltip from "./Tooltip";
 import PromptCard from "./PromptCard";
 import type { PromptEntry } from "../lib/promptData";
 import { getPromptSuggestion } from "../lib/prompts";
@@ -40,6 +39,10 @@ interface ResponseComposerProps {
   progress?: { s: number; e: number };
   inGroupContext?: boolean;
   groupId?: string | null;
+  // Whether the thread being responded to is public. Combined with
+  // inGroupContext this resolves the three contexts the submit button
+  // styles against: friend room / public thread / private thread.
+  threadIsPublic: boolean;
 }
 
 export default function ResponseComposer({
@@ -64,6 +67,7 @@ export default function ResponseComposer({
   progress,
   inGroupContext,
   groupId,
+  threadIsPublic,
 }: ResponseComposerProps) {
   // Re-watchers tag replies at their highest prior progress; others use viewerSeason/Episode
   const replyTagS = postTagSeason ?? viewerSeason;
@@ -270,25 +274,33 @@ export default function ResponseComposer({
         >
           Cancel
         </button>
-        <Tooltip
-          text={inGroupContext
-            ? "Post to this friend room. Visible only to members of this room."
-            : "Post publicly. Visible to anyone in this show room who has watched at least as far as you. They won't see spoilers from ahead of your progress, and neither will you see theirs."}
-          direction="above"
-          align="right"
-          useAbsolute={true}
-          width={280}
-          tooltipStyle={{ background: "#adc8d7", color: "#000", textAlign: "left", borderRadius: 10, fontSize: 13, fontWeight: 400, lineHeight: 1.5 }}
-        >
-          <button
-            className="btn"
-            onClick={() => handleSubmit(false)}
-            disabled={submitting || !body.trim()}
-            style={{ background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff" }}
-          >
-            {submitting ? "Posting…" : "Send to the room"}
-          </button>
-        </Tooltip>
+        {(() => {
+          // Three-way context resolves from (inGroupContext, threadIsPublic).
+          // Each context gets a white-fill submit button with its canon
+          // accent color as text + border, and a context-specific label.
+          // Canon palette: #dea838 yellow (public), #7abd8e green
+          // (private / default), #1a3a4a navy (friend room).
+          const accent = inGroupContext
+            ? "#1a3a4a"
+            : threadIsPublic
+              ? "#dea838"
+              : "#7abd8e";
+          const label = inGroupContext
+            ? "Send to the room"
+            : threadIsPublic
+              ? "Share response"
+              : "Add your thoughts";
+          return (
+            <button
+              className="btn"
+              onClick={() => handleSubmit(false)}
+              disabled={submitting || !body.trim()}
+              style={{ background: "#fff", border: `2px solid ${accent}`, color: accent }}
+            >
+              {submitting ? "Posting…" : label}
+            </button>
+          );
+        })()}
       </div>
     </div>
   );

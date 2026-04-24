@@ -553,6 +553,7 @@ export default function InlineThreadView({
         progress={progressForShow}
         inGroupContext={inGroupContext}
         groupId={groupIdProp}
+        threadIsPublic={!!thread.isPublic}
       />}
     </section>
   );
