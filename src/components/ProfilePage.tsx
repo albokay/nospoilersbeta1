@@ -911,10 +911,9 @@ export default function ProfilePage({
                           ] as const).map(({ val, label, tooltip }) => {
                             const btn = (
                               <button
-                                key={val}
                                 onClick={() => setFilterByShow(prev => ({ ...prev, [activeTab]: val }))}
                                 style={{
-                                  padding: "2px 8px",
+                                  padding: "1px 6px",
                                   fontSize: 10,
                                   fontWeight: activeFilter === val ? 700 : 400,
                                   background: activeFilter === val ? "var(--dos-border)" : "transparent",
@@ -922,17 +921,38 @@ export default function ProfilePage({
                                   border: "none",
                                   cursor: "pointer",
                                   whiteSpace: "nowrap",
-                                  display: "inline-flex",
+                                  display: "flex",
                                   alignItems: "center",
+                                  justifyContent: "center",
                                   gap: 4,
+                                  width: "100%",
+                                  height: "100%",
                                 }}
                               >
                                 {label}
                               </button>
                             );
+                            // Pass display: flex to Tooltip's wrapper span so it
+                            // becomes a flex container — inner button then stretches
+                            // to the wrapper's full height (the wrapper, as a flex
+                            // item of the outer pill, already stretches to pill
+                            // height). Without this the tooltip-wrapped segments'
+                            // backgrounds don't reach top-to-bottom and they sit
+                            // at a different vertical baseline than the bare "all"
+                            // segment.
                             return tooltip
-                              ? <Tooltip key={val} text={tooltip} direction="below" tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}>{btn}</Tooltip>
-                              : btn;
+                              ? (
+                                <Tooltip
+                                  key={val}
+                                  text={tooltip}
+                                  direction="below"
+                                  tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
+                                  style={{ display: "flex" }}
+                                >
+                                  {btn}
+                                </Tooltip>
+                              )
+                              : <React.Fragment key={val}>{btn}</React.Fragment>;
                           })}
                         </div>
                         {activeShow && (
