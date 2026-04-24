@@ -739,12 +739,19 @@ export async function createShow(show: {
 // ── Staleness refresh ─────────────────────────────────────────────────────────
 
 export async function refreshShowIfStale(show: Show): Promise<Show | null> {
-  if (show.status !== "Running" || !show.tvmazeId) return null;
+  // Gate only on having a tvmazeId + the 7-day cadence. Previously this also
+  // required show.status === "Running", but the create paths normalize any
+  // non-Running status to "Ended" (SearchShows.tsx, ShowSection.tsx) — which
+  // meant unreleased shows ("To Be Determined" on TVMaze) got stored as
+  // "Ended" and then never refreshed when they started airing. Lifting the
+  // status gate lets unreleased shows transition cleanly. Extra API cost is
+  // trivial (TVMaze is free + unauth + our cadence is weekly).
+  if (!show.tvmazeId) return null;
   const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
   const lastSync = show.lastSyncedAt ? new Date(show.lastSyncedAt).getTime() : 0;
   if (Date.now() - lastSync < SEVEN_DAYS) return null;
 
-  // Fetch show metadata (genres, type) and episodes from TVmaze in parallel
+  // Fetch show metadata (genres, type, status) and episodes from TVmaze in parallel
   const [showRes, epRes] = await Promise.all([
     fetch(`https://api.tvmaze.com/shows/${show.tvmazeId}`),
     fetch(`https://api.tvmaze.com/shows/${show.tvmazeId}/episodes`),
@@ -752,33 +759,50 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
   if (!epRes.ok) return null;
 
   const episodes: any[] = await epRes.json();
+  const nowIso = new Date().toISOString();
   const bySeason: Record<number, number> = {};
   for (const ep of episodes) {
-    if (ep.type === "regular" || !ep.type) {
+    const isRegular = ep.type === "regular" || !ep.type;
+    // Only count episodes that have actually aired. airstamp is ISO 8601
+    // with timezone; lexicographic compare against now-ISO is correct.
+    const hasAired = typeof ep.airstamp === "string" && ep.airstamp <= nowIso;
+    if (isRegular && hasAired) {
       bySeason[ep.season] = (bySeason[ep.season] ?? 0) + 1;
     }
   }
-  const maxSeason = Math.max(...Object.keys(bySeason).map(Number));
+  const seasonKeys = Object.keys(bySeason).map(Number);
+  const maxSeason = seasonKeys.length ? Math.max(...seasonKeys) : 0;
   const seasons: number[] = [];
-  for (let i = 1; i <= maxSeason; i++) seasons.push(bySeason[i] ?? 1);
-  if (!seasons.length) return null;
+  for (let i = 1; i <= maxSeason; i++) seasons.push(bySeason[i] ?? 0);
+  // seasons may be empty for unreleased shows — that's a valid state. Still
+  // proceed with the update so last_synced_at + status get refreshed and the
+  // next weekly check picks up the show's transition to airing.
 
   let genres: string[] = show.genres ?? [];
   let tvmazeType: string | undefined = show.tvmazeType;
+  let tvmazeStatus: string | undefined = undefined;
   if (showRes.ok) {
     const showData = await showRes.json();
     if (Array.isArray(showData.genres)) genres = showData.genres;
     if (showData.type) tvmazeType = showData.type;
+    if (showData.status) tvmazeStatus = showData.status;
   }
+  // Normalize to Running|Ended to match the create-path convention used by
+  // SearchShows.tsx and ShowSection.tsx. Keeps prompts.ts's status === "Running"
+  // checks consistent across create + refresh. Falls back to the existing
+  // stored status when TVMaze metadata isn't available in this round.
+  const normalizedStatus = tvmazeStatus
+    ? (tvmazeStatus === "Running" ? "Running" : "Ended")
+    : (show.status ?? "Ended");
 
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("shows")
-    .update({ seasons, last_synced_at: now, genres, tvmaze_type: tvmazeType ?? null })
+    .update({ seasons, last_synced_at: now, genres, tvmaze_type: tvmazeType ?? null, status: normalizedStatus })
     .eq("id", show.id);
   if (error) return null;
 
-  return { ...show, seasons, lastSyncedAt: now, genres, tvmazeType };
+  return { ...show, seasons, lastSyncedAt: now, genres, tvmazeType, status: normalizedStatus };
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
