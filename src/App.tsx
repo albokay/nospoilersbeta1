@@ -969,7 +969,7 @@ export default function App() {
                 const items: { Icon: React.ElementType; text: React.ReactNode }[] = [
                   { Icon: DoorOpen,          text: "Find the show you\u2019re watching and create a room." },
                   { Icon: UserPlus,          text: "Invite friends you love talking to." },
-                  { Icon: ClipboardList,     text: "Everyone logs their watch progress every time they sign in. Sidebar tags all writing to each friend\u2019s logged progress." },
+                  { Icon: ClipboardList,     text: "Everyone logs their watch progress every time they sign in. Sidebar tags all writing to each user\u2019s logged progress." },
                   { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers \u2014 as if your friends have watched just as far as you have." },
                   { Icon: Blend,             text: (<>Sidebar filters everything according to<br />everyone&rsquo;s unique watch progress.</>) },
                   { Icon: ShieldCheck,       text: "Nothing you read is ever ahead of where you are." },
