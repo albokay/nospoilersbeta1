@@ -95,7 +95,22 @@ function rowToThread(row: any): Thread {
   };
 }
 
-export type ReplyMeta = { id: string; season: number; episode: number; createdAt: number; authorId: string };
+// ReplyMeta is the lightweight shape used by thread-card reply counters
+// (no body, no author name — just what the counter needs). replyToId and
+// referencedReplyId are included so the counter can walk the parent chain
+// and hide orphan replies (a reply whose parent is hidden at the viewer's
+// progress should not count). Current composer sets referencedReplyId;
+// legacy / seed replies may use replyToId — getNewCounts in ShowSection
+// falls back between the two.
+export type ReplyMeta = {
+  id: string;
+  season: number;
+  episode: number;
+  createdAt: number;
+  authorId: string;
+  replyToId?: string;
+  referencedReplyId?: string;
+};
 
 export async function fetchThreadsForShow(showId: string): Promise<{
   threads: Thread[];
@@ -105,7 +120,7 @@ export async function fetchThreadsForShow(showId: string): Promise<{
 }> {
   const { data, error } = await supabase
     .from("threads")
-    .select("*, replies!thread_id(id, season, episode, created_at, author_id)")
+    .select("*, replies!thread_id(id, season, episode, created_at, author_id, reply_to_id, referenced_reply_id)")
     .eq("show_id", showId)
     .order("updated_at", { ascending: false });
   if (error) throw error;
@@ -122,6 +137,8 @@ export async function fetchThreadsForShow(showId: string): Promise<{
       episode: r.episode,
       createdAt: new Date(r.created_at).getTime(),
       authorId: r.author_id,
+      replyToId: r.reply_to_id ?? undefined,
+      referencedReplyId: r.referenced_reply_id ?? undefined,
     }));
     hasExternalReplies[row.id] = replies.some((r: any) => r.author_id !== row.author_id);
   }
