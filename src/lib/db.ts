@@ -95,7 +95,22 @@ function rowToThread(row: any): Thread {
   };
 }
 
-export type ReplyMeta = { id: string; season: number; episode: number; createdAt: number; authorId: string };
+// ReplyMeta is the lightweight shape used by thread-card reply counters.
+// Includes parent-pointer fields so the counter can walk up the chain and
+// exclude orphan replies (a reply whose parent is hidden at the viewer's
+// progress). replyToId is populated only by seed data in-memory — the
+// reply_to_id DB column was dropped in response-system-migration.sql when
+// the reference system replaced it; real DB rows carry only
+// referenced_reply_id (set by the composer via Quote / Link).
+export type ReplyMeta = {
+  id: string;
+  season: number;
+  episode: number;
+  createdAt: number;
+  authorId: string;
+  replyToId?: string;
+  referencedReplyId?: string;
+};
 
 export async function fetchThreadsForShow(showId: string): Promise<{
   threads: Thread[];
@@ -105,7 +120,7 @@ export async function fetchThreadsForShow(showId: string): Promise<{
 }> {
   const { data, error } = await supabase
     .from("threads")
-    .select("*, replies!thread_id(id, season, episode, created_at, author_id)")
+    .select("*, replies!thread_id(id, season, episode, created_at, author_id, referenced_reply_id)")
     .eq("show_id", showId)
     .order("updated_at", { ascending: false });
   if (error) throw error;
@@ -122,6 +137,7 @@ export async function fetchThreadsForShow(showId: string): Promise<{
       episode: r.episode,
       createdAt: new Date(r.created_at).getTime(),
       authorId: r.author_id,
+      referencedReplyId: r.referenced_reply_id ?? undefined,
     }));
     hasExternalReplies[row.id] = replies.some((r: any) => r.author_id !== row.author_id);
   }
@@ -1502,7 +1518,7 @@ export async function fetchGroupThreads(
   //  counts would include replies from every user's room)
   const { data, error } = await supabase
     .from("group_threads")
-    .select("threads(*, replies!thread_id(id, group_id, season, episode, is_deleted))")
+    .select("threads(*, replies!thread_id(id, group_id, season, episode, is_deleted, referenced_reply_id))")
     .eq("group_id", groupId)
     .order("shared_at", { ascending: false });
   if (error) throw error;
@@ -1512,12 +1528,27 @@ export async function fetchGroupThreads(
   for (const row of data ?? []) {
     const t = (row as any).threads;
     if (!t) continue;
-    // Count only replies scoped to this group AND visible at viewer's progress
+    // Count only replies that are chain-visible at the viewer's progress:
+    // scoped to this group, not deleted, self passes progress check, AND
+    // every ancestor via referenced_reply_id also passes. An orphan reply
+    // (self visible, parent hidden) must NOT count, or the card number
+    // will drift from the in-thread render which applies the same rule.
     const allReplies = ((t.replies as any[]) ?? []);
-    const replyCount = allReplies.filter(
-      (r: any) => r.group_id === groupId && !r.is_deleted &&
-        (r.season < maxS || (r.season === maxS && r.episode <= maxE))
-    ).length;
+    const byId: Record<string, any> = {};
+    for (const r of allReplies) byId[r.id] = r;
+    const selfVisible = (r: any) =>
+      r.group_id === groupId && !r.is_deleted &&
+      (r.season < maxS || (r.season === maxS && r.episode <= maxE));
+    const chainVisible = (r: any): boolean => {
+      if (!selfVisible(r)) return false;
+      let cur = r.referenced_reply_id ? byId[r.referenced_reply_id] : null;
+      while (cur) {
+        if (!selfVisible(cur)) return false;
+        cur = cur.referenced_reply_id ? byId[cur.referenced_reply_id] : null;
+      }
+      return true;
+    };
+    const replyCount = allReplies.filter(chainVisible).length;
     if (t.is_deleted && replyCount === 0) continue;
     const thread = rowToThread(t);
     if (thread.season > maxS || (thread.season === maxS && thread.episode > maxE)) continue;

@@ -825,9 +825,29 @@ export default function ShowSection({
     const prog = effectiveProgress;
     const openedAt = lastOpenedAt[threadId] ?? Date.now();
     const baseAt = hiddenBaseAt[threadId] ?? Date.now();
+    // Build an id lookup so chain-visibility can walk the parent chain.
+    // A reply counts as "chain-visible" only if it passes canView AND
+    // every ancestor (via replyToId for seed data, referencedReplyId for
+    // real replies) does too. Matches the orphan-hide rule in the
+    // in-thread render (RepliesList.isAncestorRedacted); without the
+    // chain walk the card number drifts above the number of rendered
+    // replies whenever a user has posted in response to a risky reply.
+    const metaById: Record<string, typeof meta[number]> = {};
+    for (const r of meta) metaById[r.id] = r;
+    const getParent = (r: typeof meta[number]): typeof meta[number] | null =>
+      (r.replyToId && metaById[r.replyToId]) || (r.referencedReplyId && metaById[r.referencedReplyId]) || null;
+    const chainVisible = (r: typeof meta[number]): boolean => {
+      if (!canView({ season: r.season, episode: r.episode }, prog)) return false;
+      let cur = getParent(r);
+      while (cur) {
+        if (!canView({ season: cur.season, episode: cur.episode }, prog)) return false;
+        cur = getParent(cur);
+      }
+      return true;
+    };
     let visibleNew = 0, hiddenNew = 0, totalVisible = 0;
     for (const r of meta) {
-      const visible = canView({ season: r.season, episode: r.episode }, prog);
+      const visible = chainVisible(r);
       if (visible) totalVisible++;
       if (r.authorId === user?.id) continue; // own replies don't trigger indicators
       if (visible && r.createdAt > openedAt) visibleNew++;
@@ -859,7 +879,11 @@ export default function ShowSection({
         const isSeedForShow = seedThreads.some(t => t.id === tid && t.showId === showId);
         if (isSeedForShow) {
           seedRc[tid] = replies.length;
-          seedRm[tid] = replies.map((r: any) => ({ id: r.id, season: r.season, episode: r.episode, createdAt: r.updatedAt ?? Date.now(), authorId: r.author }));
+          // Seed replies use replyToId in-memory; real DB replies use
+          // referencedReplyId (reply_to_id was dropped from the table).
+          // Keep both so the chain walker in getNewCounts can handle
+          // either source without special-casing.
+          seedRm[tid] = replies.map((r: any) => ({ id: r.id, season: r.season, episode: r.episode, createdAt: r.updatedAt ?? Date.now(), authorId: r.author, replyToId: r.replyToId }));
         }
       }
       setReplyCounts({ ...seedRc, ...rc });
@@ -902,7 +926,7 @@ export default function ShowSection({
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "replies", filter: `show_id=eq.${showId}` }, (payload) => {
         const r = payload.new as any;
         if (!r) return;
-        const meta = { id: r.id, season: r.season, episode: r.episode, createdAt: new Date(r.created_at).getTime(), authorId: r.author_id };
+        const meta = { id: r.id, season: r.season, episode: r.episode, createdAt: new Date(r.created_at).getTime(), authorId: r.author_id, referencedReplyId: r.referenced_reply_id ?? undefined };
         setReplyMeta(prev => ({ ...prev, [r.thread_id]: [...(prev[r.thread_id] ?? []), meta] }));
         setReplyCounts(prev => ({ ...prev, [r.thread_id]: (prev[r.thread_id] ?? 0) + 1 }));
         setHasExternalReplies(prev => ({ ...prev, [r.thread_id]: true }));
