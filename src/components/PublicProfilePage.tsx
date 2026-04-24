@@ -40,6 +40,18 @@ export default function PublicProfilePage({
   const [replies, setReplies] = useState<{ reply: Reply; thread: Thread }[]>([]);
   const [targetProgress, setTargetProgress] = useState<Record<string, { s: number; e: number }>>({});
 
+  // Theme the page with the canon yellow "public" palette while mounted.
+  // Pairs with has-header for the gradient-anchor logic used everywhere
+  // else context theming runs (matches ShowSection's public-forum view).
+  // Cleans up on unmount so navigating back to /profile or / gets the
+  // default green palette.
+  useEffect(() => {
+    document.body.classList.add("public-context", "has-header");
+    return () => {
+      document.body.classList.remove("public-context", "has-header");
+    };
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     setNotFound(false);
