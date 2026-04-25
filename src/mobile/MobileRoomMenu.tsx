@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Users, UserPlus } from "lucide-react";
+import { X, Users, UserPlus, LogOut } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchAllFriendGroupsWithActivity,
@@ -18,22 +18,27 @@ type RoomRow = FriendGroup & { lastActivityAt: number };
 // S7 — Fullscreen room dropdown. Triggered by the chevron next to the
 // room name on <MobileRoom />.
 //
-// Three sections per spec:
-//   1. Switch rooms — list of OTHER rooms the user is in (current room
-//      excluded; TSP filtered same as MobileRooms). Tap → progress gate
-//      for that room → enter.
-//   2. Find a show — same TVMaze search as the room list's bottom search.
-//      Tap result → /m/rooms/new (progress gate, new mode).
-//   3. Invite friends — opens MobileInvite for the current room. The
-//      empty-room invite button on <MobileRoom /> covers the "alone"
-//      case prominently; this is the universal entry point regardless
-//      of room population.
+// Section order (top → bottom):
+//   1. Invite a friend — opens MobileInvite for the current room. Top
+//      placement since it's the most action-y of the three sections;
+//      a user opening the menu often does so to invite someone. The
+//      empty-room invite button on <MobileRoom /> still covers the
+//      "alone" case prominently; this is the universal entry point.
+//   2. Find a show — same TVMaze search as the room list's bottom
+//      search. Tap result → /m/rooms/new (progress gate, new mode).
+//   3. Switch rooms — list of OTHER rooms the user is in (current
+//      room excluded; TSP filtered same as MobileRooms). Tap →
+//      progress gate for that room → enter.
+//   4. Sign out — bottom anchor, mirrors the rooms-list top-right
+//      sign-out as a redundant entry point. Both surfaces remain
+//      because signout is critical and never bad to have multiple
+//      paths to.
 //
 // Routed (not modal) so the back button closes the menu cleanly without
 // popstate gymnastics. Same pattern as the rest of /m's screens.
 export default function MobileRoomMenu({ groupId }: { groupId: string }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   const [currentRoom, setCurrentRoom] = useState<RoomRow | null>(null);
   const [otherRooms, setOtherRooms] = useState<RoomRow[]>([]);
@@ -198,7 +203,39 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
           </button>
         </div>
 
-        {/* ── Section 1: Switch rooms ── */}
+        {/* ── Section 1: Invite friends to current room ── */}
+        <h2 style={sectionLabelStyle}>Invite</h2>
+        <button
+          onClick={() => navigate(`/m/rooms/${groupId}/invite`)}
+          style={{
+            width: "100%",
+            padding: "14px 16px",
+            fontSize: 15,
+            fontWeight: 800,
+            fontFamily: "inherit",
+            background: "#fff",
+            color: "var(--dos-bg, #2a4a36)",
+            border: "none",
+            borderRadius: 9999,
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            marginBottom: 32,
+          }}
+        >
+          <UserPlus size={18} strokeWidth={2.2} />
+          Invite a friend to {currentRoom?.name}
+        </button>
+
+        {/* ── Section 2: Find a show ── */}
+        <h2 style={sectionLabelStyle}>Find a show</h2>
+        <div style={{ marginBottom: 32 }}>
+          <MobileShowSearch onPickResult={onPickSearchResult} />
+        </div>
+
+        {/* ── Section 3: Switch rooms ── */}
         <h2 style={sectionLabelStyle}>Switch rooms</h2>
         {otherRooms.length === 0 ? (
           <div style={{
@@ -211,7 +248,7 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
             textAlign: "center",
             marginBottom: 32,
           }}>
-            You don&rsquo;t have any other rooms yet. Find a show below to start one.
+            You don&rsquo;t have any other rooms yet. Find a show above to start one.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 32 }}>
@@ -280,35 +317,35 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
           </div>
         )}
 
-        {/* ── Section 2: Find a show ── */}
-        <h2 style={sectionLabelStyle}>Find a show</h2>
-        <div style={{ marginBottom: 32 }}>
-          <MobileShowSearch onPickResult={onPickSearchResult} />
-        </div>
-
-        {/* ── Section 3: Invite friends to current room ── */}
-        <h2 style={sectionLabelStyle}>Invite</h2>
+        {/* ── Section 4: Sign out ── */}
+        {/* Anchored at the bottom of the menu. Mirrors the rooms-list */}
+        {/* top-right sign-out — both surfaces coexist as redundant     */}
+        {/* entry points per user spec.                                  */}
         <button
-          onClick={() => navigate(`/m/rooms/${groupId}/invite`)}
+          onClick={async () => {
+            await signOut();
+            navigate("/m");
+          }}
           style={{
             width: "100%",
-            padding: "14px 16px",
-            fontSize: 15,
-            fontWeight: 800,
+            padding: "12px 16px",
+            fontSize: 14,
+            fontWeight: 700,
             fontFamily: "inherit",
-            background: "#fff",
-            color: "var(--dos-bg, #2a4a36)",
-            border: "none",
+            background: "transparent",
+            color: "#fff",
+            border: "2px solid rgba(255,255,255,0.4)",
             borderRadius: 9999,
             cursor: "pointer",
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
             gap: 8,
+            opacity: 0.9,
           }}
         >
-          <UserPlus size={18} strokeWidth={2.2} />
-          Invite a friend to {currentRoom?.name}
+          <LogOut size={16} strokeWidth={2.2} />
+          Sign out
         </button>
       </div>
     </div>
