@@ -138,8 +138,10 @@ DECLARE
   v_group_id uuid;
 BEGIN
   -- 1. Create the group owned by the user
+  --    Default room name is "TSP friends" (renamed from
+  --    "The Sidebar Protocol" in 20260425_tsp_friends_rename.sql).
   INSERT INTO friend_groups (show_id, name, created_by)
-  VALUES ('tsp', 'The Sidebar Protocol', p_user_id)
+  VALUES ('tsp', 'TSP friends', p_user_id)
   RETURNING id INTO v_group_id;
 
   -- 2. Add the user as a member
