@@ -62,9 +62,24 @@ function EpisodeSelect({ show, value, onChange }: { show: any; value: { s: numbe
   );
 }
 
+// Top-level router. Keeps useEffect + useLocation as the only hooks called here,
+// in a fixed order on every render, so the early-return special routes don't
+// change the hook count between renders. The full desktop UI lives in
+// <AppShell /> below, which mounts only when none of the special routes match.
+// See HANDOFF.md §6 item 19 for the bug class this refactor addresses.
 export default function App() {
   useEffect(injectDOSStyles, []);
+  const location = useLocation();
+  const pathParts = location.pathname.split("/").filter(Boolean);
+  if (pathParts[0] === "lab") return <HomepageLab />;
+  if (pathParts[0] === "how-it-works") return <HowItWorksV2 />;
+  if (pathParts[0] === "how-it-works-v1") return <HowItWorks />;
+  if (pathParts[0] === "how-it-works-v2") return <HowItWorksV2 />;
+  if (pathParts[0] === "invite" && pathParts[1]) return <InviteAcceptPage token={pathParts[1]} />;
+  return <AppShell />;
+}
 
+function AppShell() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 600);
   // Viewports narrower than 768px see the mobile lockout screen (admins
   // exempted — checked at render time). Separate from isMobile, which only
@@ -152,11 +167,8 @@ export default function App() {
   //   /profile                  → own profile
   //   /user/:username           → public profile
   const pathParts = location.pathname.split("/").filter(Boolean);
-  if (pathParts[0] === "lab") return <HomepageLab />;
-  if (pathParts[0] === "how-it-works") return <HowItWorksV2 />;
-  if (pathParts[0] === "how-it-works-v1") return <HowItWorks />;
-  if (pathParts[0] === "how-it-works-v2") return <HowItWorksV2 />;
-  if (pathParts[0] === "invite" && pathParts[1]) return <InviteAcceptPage token={pathParts[1]} />;
+  // Special routes (/lab, /how-it-works*, /invite/:token) are handled by the
+  // top-level <App /> router above and never reach this component.
   const expandedShowId   = pathParts[0] === "show" ? (pathParts[1] ?? null) : null;
   const activeThreadId   = pathParts[0] === "show" && pathParts[2] === "thread" ? (pathParts[3] ?? null) : null;
   const showProfile      = location.pathname === "/profile";
