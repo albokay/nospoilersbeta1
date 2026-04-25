@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function EmptyProfileWelcome({ isTsp = false, showName, invitedMode = false }: { isTsp?: boolean; showName?: string; invitedMode?: boolean }) {
+export default function EmptyProfileWelcome({ isTsp = false, showName, invitedMode = false, selfCreatedRoom = false }: { isTsp?: boolean; showName?: string; invitedMode?: boolean; selfCreatedRoom?: boolean }) {
   const bodyStyle: React.CSSProperties = {
     margin: "0 0 14px",
     fontSize: 16,
@@ -51,6 +51,34 @@ export default function EmptyProfileWelcome({ isTsp = false, showName, invitedMo
           </p>
           <p style={{ ...bodyStyle, margin: 0 }}>
             If you&rsquo;re brand new to Sidebar, you should click over to the tab for &ldquo;The Sidebar Protocol&rdquo; &mdash; where you can find a demo room for a pretend show. Spend some time there to get your bearings.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Self-created-room variant: fires on the friends-filtered empty tab
+  // when the user has at least one friend room they created for this
+  // show (regardless of whether they've invited anyone yet). Sits
+  // BELOW invitedMode in precedence — invitees keep their own copy,
+  // room creators get this one. New since the search-creates-room
+  // flow (chunk 1) made every newly-started show have a friend room
+  // by default.
+  if (selfCreatedRoom && showName) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 0 48px" }}>
+        <div style={{ width: "min(400px, 100%)" }}>
+          <p style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 700, lineHeight: 1.4, color: "var(--dos-fg)", textAlign: "left" }}>
+            You&rsquo;ve started a friend room for <em>{showName}</em>.
+          </p>
+          <p style={bodyStyle}>
+            Click that blue button up top to enter the room and invite your friends. They&rsquo;re waiting to dig in with you!
+          </p>
+          <p style={bodyStyle}>
+            And if you&rsquo;re not quite ready for that yet, you can also use this space to write private posts. Only you will see them. Sometimes the best thinking happens when you write just for yourself&hellip;
+          </p>
+          <p style={{ ...bodyStyle, margin: 0 }}>
+            All of your entries will appear in this space, creating an ongoing journal of all of your own writing.
           </p>
         </div>
       </div>

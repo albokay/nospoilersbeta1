@@ -271,9 +271,15 @@ export default function ProfilePage({
   // /profile or a full page refresh resets the whole map (ProfilePage
   // unmounts → useState re-initializes). Default for any untouched
   // show is "all".
-  type JournalFilter = "all" | "friends" | "private" | "public";
+  // Three-segment journal filter — friend rooms are the default lens
+  // since the desktop refocus toward friend rooms (chunk 2 of refocus).
+  // The previous "all" segment was removed; per-mode empty-states now
+  // own the empty-tab welcome surface (with TSP / invitedMode /
+  // selfCreatedRoom precedence inside the friends branch — see
+  // EmptyProfileWelcome).
+  type JournalFilter = "friends" | "private" | "public";
   const [filterByShow, setFilterByShow] = useState<Record<string, JournalFilter>>({});
-  const activeFilter: JournalFilter = filterByShow[activeTab] ?? "all";
+  const activeFilter: JournalFilter = filterByShow[activeTab] ?? "friends";
 
   // Friend-room filter for the journal
   const [tabGroups, setTabGroups] = useState<FriendGroup[]>([]);
@@ -894,17 +900,17 @@ export default function ProfilePage({
                         </Tooltip>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-                        {/* Journal mode filter — four-segment radio pill, per-show
-                           state (preserved across tab switches within ProfilePage,
-                           reset on navigation away or refresh). Label order: all /
-                           friends / private / public. Tooltips on the three non-all
-                           segments. Visual style matches the old two-segment pill. */}
+                        {/* Journal mode filter — three-segment radio pill,
+                           per-show state (preserved across tab switches
+                           within ProfilePage, reset on navigation away
+                           or refresh). Label order: friends / private /
+                           public. Default = friends per desktop refocus
+                           (chunk 2). All three segments carry tooltips. */}
                         <div style={{
                           display: "flex", gap: 0, borderRadius: 999, overflow: "hidden",
                           border: "2px solid var(--dos-border)", flexShrink: 0,
                         }}>
                           {([
-                            { val: "all",     label: "all",     tooltip: null },
                             { val: "friends", label: "friends", tooltip: "What you've written for friends." },
                             { val: "private", label: "private", tooltip: "Your private thoughts." },
                             { val: "public",  label: "public",  tooltip: "What the public sees." },
@@ -976,54 +982,61 @@ export default function ProfilePage({
                   )}
                   {(!tabLoading || currentTabData) && (() => {
                     const byDiary =
-                      activeFilter === "all"     ? tabThreads
-                      : activeFilter === "public"  ? tabThreads.filter(({ thread: t }) => t.isPublic)
+                      activeFilter === "public"  ? tabThreads.filter(({ thread: t }) => t.isPublic)
                       : activeFilter === "friends" ? tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !!groupId)
                       : /* private */              tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !groupId);
                     const filtered = journalGroupFilter ? byDiary.filter(({ groupId }) => groupId === journalGroupFilter) : byDiary;
                     if (filtered.length === 0) {
-                      // Mode-specific empty-state copy for non-"all" filters.
-                      // Shows even when the whole tab is otherwise empty — the
-                      // filter is the active lens and we reinforce it. "all"
-                      // falls through to the existing TSP/generic welcome
-                      // below (unchanged).
-                      if (activeFilter !== "all") {
-                        const sName = showName(activeTab);
-                        const copy: React.ReactNode =
-                          activeFilter === "public"
-                            ? <>You haven't written publicly yet. When you do, your public entries about <em>{sName}</em> will become part of a durable archive of good TV writing, waiting to be found by anyone who reaches the episodes you've written about.</>
-                            : activeFilter === "friends"
-                              ? <>You haven't written for any friends yet. They're waiting to know your thoughts!</>
-                              : <>No private entries about <em>{sName}</em> yet. Sometimes the best thinking happens when you write just for yourself…</>;
-                        return (
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "150px 0 48px" }}>
-                            <div style={{ width: "min(400px, 100%)" }}>
-                              {/* Wrapper font-style kept "normal" so the <em>
-                                 show-name markup actually renders italic against
-                                 roman body copy. If the body should be italic
-                                 overall, swap to bold for show-name emphasis
-                                 instead. */}
-                              <p style={{ margin: 0, fontSize: 16, fontWeight: 400, lineHeight: 1.6, color: "var(--dos-fg)", opacity: 0.65, textAlign: "left" }}>
-                                {copy}
-                              </p>
-                            </div>
-                          </div>
-                        );
+                      // Empty-state precedence on the friends filter (the new
+                      // default after the desktop refocus). Order:
+                      //   1. TSP — canonical demo welcome
+                      //   2. invitedMode — session flag set by
+                      //      InviteAcceptPage.handleAccept (sessionStorage:
+                      //      ns_invite_welcome_<showId>). Cleared on browser
+                      //      close or first post.
+                      //   3. selfCreatedRoom — user has at least one friend
+                      //      room they created for this show. Discriminator:
+                      //      tabGroups.some(g => g.createdBy === user.id).
+                      //   4. Fallthrough → legacy "you haven't written for
+                      //      any friends yet" copy below (covers users with
+                      //      a journal tab but no friend room).
+                      // The private + public branches keep their existing
+                      // per-mode copy unchanged.
+                      if (activeFilter === "friends") {
+                        if (activeTab === "tsp") {
+                          return <EmptyProfileWelcome isTsp={true} />;
+                        }
+                        const invitedMode = !!activeTab && typeof window !== "undefined" && !!sessionStorage.getItem(`ns_invite_welcome_${activeTab}`);
+                        if (invitedMode) {
+                          return <EmptyProfileWelcome invitedMode={true} showName={activeTab ? showName(activeTab) : undefined} />;
+                        }
+                        const hasSelfCreatedRoom = !!user && tabGroups.some(g => g.createdBy === user.id);
+                        if (hasSelfCreatedRoom) {
+                          return <EmptyProfileWelcome selfCreatedRoom={true} showName={activeTab ? showName(activeTab) : undefined} />;
+                        }
+                        // else: fall through to per-mode "haven't written for friends yet" copy below.
                       }
-                      // No entries at all (including new users on private filter) — show welcome.
-                      // isTsp fires whenever the user is on the TSP tab and it's empty,
-                      // regardless of how many other tabs exist or how the tab was created.
-                      // invitedMode is session-scoped: InviteAcceptPage.handleAccept sets
-                      // ns_invite_welcome_<showId> on accept, which this reads to show the
-                      // "You've been invited..." copy on the user's first session at the
-                      // invited show tab. Cleared naturally on browser close (sessionStorage)
-                      // or when the user writes their first post (empty state stops rendering).
-                      const invitedMode = !!activeTab && typeof window !== "undefined" && !!sessionStorage.getItem(`ns_invite_welcome_${activeTab}`);
-                      return <EmptyProfileWelcome
-                        isTsp={activeTab === "tsp"}
-                        showName={activeTab ? showName(activeTab) : undefined}
-                        invitedMode={invitedMode}
-                      />;
+                      const sName = showName(activeTab);
+                      const copy: React.ReactNode =
+                        activeFilter === "public"
+                          ? <>You haven't written publicly yet. When you do, your public entries about <em>{sName}</em> will become part of a durable archive of good TV writing, waiting to be found by anyone who reaches the episodes you've written about.</>
+                          : activeFilter === "friends"
+                            ? <>You haven't written for any friends yet. They're waiting to know your thoughts!</>
+                            : <>No private entries about <em>{sName}</em> yet. Sometimes the best thinking happens when you write just for yourself…</>;
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "150px 0 48px" }}>
+                          <div style={{ width: "min(400px, 100%)" }}>
+                            {/* Wrapper font-style kept "normal" so the <em>
+                               show-name markup actually renders italic against
+                               roman body copy. If the body should be italic
+                               overall, swap to bold for show-name emphasis
+                               instead. */}
+                            <p style={{ margin: 0, fontSize: 16, fontWeight: 400, lineHeight: 1.6, color: "var(--dos-fg)", opacity: 0.65, textAlign: "left" }}>
+                              {copy}
+                            </p>
+                          </div>
+                        </div>
+                      );
                     }
                     return filtered.map(({ thread: t, groupId, groupName }) => {
                     const isGroup = !!groupId;
