@@ -9,6 +9,7 @@ import {
   fetchProgress,
   fetchFriendGroupMembers,
   fetchGroupThreads,
+  fetchRoomLastSeen,
   markRoomSeen,
 } from "../lib/db";
 import type { Show } from "../lib/db";
@@ -44,8 +45,18 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
   const [memberCount, setMemberCount] = useState(0);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+  const [latestVisibleReplyAt, setLatestVisibleReplyAt] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // At-mount snapshot of last_seen_at — captured BEFORE markRoomSeen stamps
+  // it forward, then used as the threshold for thread-card "new" indicators
+  // throughout this visit. Three states:
+  //   loading — fetch in progress (suppress dots)
+  //   ready   — snapshot is the value (or null = "never visited this room")
+  //   error   — column doesn't exist yet (graceful degrade: no dots)
+  const [snapshotStatus, setSnapshotStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [snapshot, setSnapshot] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -83,6 +94,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
         if (cancelled || !result) return;
         setThreads(result.threads);
         setReplyCounts(result.replyCounts);
+        setLatestVisibleReplyAt(result.latestVisibleReplyAt);
       })
       .catch(err => {
         if (cancelled) return;
@@ -96,16 +108,41 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
     return () => { cancelled = true; };
   }, [groupId, user?.id]);
 
-  // Stamp the room as seen on mount. Best-effort — if the
-  // 20260425_room_last_seen migration isn't applied yet, the RPC throws
-  // and we just log + move on. Indicator render also degrades cleanly
-  // in that case (no indicators ever fire), so the failure mode is
-  // benign.
+  // Snapshot last_seen_at, then stamp it forward.
+  //
+  // Order of operations matters: the snapshot must be captured BEFORE
+  // markRoomSeen updates last_seen_at to NOW(), otherwise every thread-
+  // card indicator would resolve to "older than now" = never fires.
+  // Sequencing them in a single async block guarantees the right order.
+  //
+  // Graceful degradation:
+  //   - fetchRoomLastSeen throws (migration not applied / column missing)
+  //     → snapshotStatus="error" → indicators don't render. Mobile UI
+  //     otherwise unaffected.
+  //   - markRoomSeen throws → log + move on. Snapshot still set so dots
+  //     work for this visit; only the room-button dot won't clear next
+  //     time, which the user can fix by re-entering.
   useEffect(() => {
     if (!user) return;
-    markRoomSeen(groupId).catch(err => {
-      console.warn("markRoomSeen failed (migration may not be applied yet):", err);
-    });
+    let cancelled = false;
+    (async () => {
+      try {
+        const ts = await fetchRoomLastSeen(user.id, groupId);
+        if (cancelled) return;
+        setSnapshot(ts);
+        setSnapshotStatus("ready");
+      } catch (err) {
+        if (cancelled) return;
+        console.warn("fetchRoomLastSeen failed (column may not exist yet):", err);
+        setSnapshotStatus("error");
+      }
+      if (!cancelled) {
+        markRoomSeen(groupId).catch(err => {
+          console.warn("markRoomSeen failed:", err);
+        });
+      }
+    })();
+    return () => { cancelled = true; };
   }, [groupId, user?.id]);
 
   // Realtime: while the user is viewing this room, subscribe to inserts
@@ -134,6 +171,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
           if (cancelled) return;
           setThreads(result.threads);
           setReplyCounts(result.replyCounts);
+          setLatestVisibleReplyAt(result.latestVisibleReplyAt);
         })
         .catch(() => { /* transient — next interaction will refetch */ });
     };
@@ -316,14 +354,27 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {sortedThreads.map(t => (
-              <ThreadCard
-                key={t.id}
-                thread={t}
-                replyCount={replyCounts[t.id] ?? 0}
-                onTap={() => navigate(`/m/rooms/${groupId}/thread/${t.id}`)}
-              />
-            ))}
+            {sortedThreads.map(t => {
+              // hasNewActivity: thread or any chain-visible reply newer
+              // than the at-mount snapshot. Suppressed entirely when the
+              // snapshot fetch is loading (avoid flicker) or errored
+              // (graceful degradation when the migration isn't applied).
+              const replyTs = latestVisibleReplyAt[t.id] ?? 0;
+              const latest = Math.max(t.updatedAt, replyTs);
+              const hasNewActivity =
+                snapshotStatus === "ready" &&
+                latest > 0 &&
+                (snapshot === null || latest > snapshot);
+              return (
+                <ThreadCard
+                  key={t.id}
+                  thread={t}
+                  replyCount={replyCounts[t.id] ?? 0}
+                  hasNewActivity={hasNewActivity}
+                  onTap={() => navigate(`/m/rooms/${groupId}/thread/${t.id}`)}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -361,7 +412,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
 // reply count + relative timestamp. Tombstones soft-deleted-with-replies
 // threads with a "[deleted]" body so the conversation chain remains
 // readable when chunk 6 lands the thread view.
-function ThreadCard({ thread, replyCount, onTap }: { thread: Thread; replyCount: number; onTap: () => void }) {
+function ThreadCard({ thread, replyCount, hasNewActivity, onTap }: { thread: Thread; replyCount: number; hasNewActivity: boolean; onTap: () => void }) {
   const tag = `S${String(thread.season).padStart(2, "0")} E${String(thread.episode).padStart(2, "0")}`;
   const ts = formatRelativeShort(thread.updatedAt || thread.createdAt);
   const deleted = !!thread.isDeleted;
@@ -433,7 +484,20 @@ function ThreadCard({ thread, replyCount, onTap }: { thread: Thread; replyCount:
           <MessageSquareText size={12} />
           {replyCount} {replyCount === 1 ? "response" : "responses"}
         </span>
-        <span>{ts}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {hasNewActivity && (
+            <span
+              aria-label="New activity"
+              style={{
+                width: 10, height: 10,
+                borderRadius: 999,
+                background: "#dea838",
+                opacity: 1,
+              }}
+            />
+          )}
+          {ts}
+        </span>
       </div>
     </button>
   );

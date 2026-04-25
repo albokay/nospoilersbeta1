@@ -1518,6 +1518,29 @@ export async function markRoomSeen(groupId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Read the calling user's last_seen_at for a single room. Returns null if
+ * the user has never visited the room (column exists but value is null).
+ *
+ * THROWS on error so the caller can distinguish "fetch failed" (e.g.
+ * 20260425_room_last_seen migration not applied — column doesn't exist)
+ * from "fetched fine, value is null." Mobile thread-card indicators use
+ * this distinction to fall back gracefully (no dots) when the migration
+ * isn't applied, vs. firing dots on first visit when the column is there
+ * but the user hasn't entered the room before.
+ */
+export async function fetchRoomLastSeen(userId: string, groupId: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from("friend_group_members")
+    .select("last_seen_at")
+    .eq("group_id", groupId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || !data.last_seen_at) return null;
+  return new Date(data.last_seen_at).getTime();
+}
+
 export type RoomVisibility = {
   groupId: string;
   /** ms since epoch, or null if the user has never entered the room. */
@@ -1579,19 +1602,33 @@ export async function fetchGroupThreads(
   groupId: string,
   maxS: number,
   maxE: number
-): Promise<{ threads: Thread[]; replyCounts: Record<string, number> }> {
+): Promise<{
+  threads: Thread[];
+  replyCounts: Record<string, number>;
+  /**
+   * Per-thread max created_at among chain-visible replies (ms since epoch).
+   * Mobile thread-card indicators use this together with the room's at-mount
+   * last_seen snapshot to decide "this thread has new activity since you
+   * last saw the room." Threads with no visible replies don't appear in
+   * the map (caller defaults to 0).
+   */
+  latestVisibleReplyAt: Record<string, number>;
+}> {
   // Fetch threads linked to this group, with reply count scoped to this group_id
   // (shared seed threads have per-room reply copies — without the group_id filter,
-  //  counts would include replies from every user's room)
+  //  counts would include replies from every user's room).
+  // `created_at` added to the embedded reply select so the per-thread "newest
+  // visible reply" timestamp can be computed alongside the count.
   const { data, error } = await supabase
     .from("group_threads")
-    .select("threads(*, replies!thread_id(id, group_id, season, episode, is_deleted, referenced_reply_id))")
+    .select("threads(*, replies!thread_id(id, group_id, season, episode, is_deleted, referenced_reply_id, created_at))")
     .eq("group_id", groupId)
     .order("shared_at", { ascending: false });
   if (error) throw error;
 
   const threads: Thread[] = [];
   const replyCounts: Record<string, number> = {};
+  const latestVisibleReplyAt: Record<string, number> = {};
   for (const row of data ?? []) {
     const t = (row as any).threads;
     if (!t) continue;
@@ -1615,14 +1652,23 @@ export async function fetchGroupThreads(
       }
       return true;
     };
-    const replyCount = allReplies.filter(chainVisible).length;
+    const visibleReplies = allReplies.filter(chainVisible);
+    const replyCount = visibleReplies.length;
     if (t.is_deleted && replyCount === 0) continue;
     const thread = rowToThread(t);
     if (thread.season > maxS || (thread.season === maxS && thread.episode > maxE)) continue;
     threads.push(thread);
     replyCounts[thread.id] = replyCount;
+    // Track per-thread newest visible reply timestamp for thread-card
+    // "new since last visit" indicators.
+    let maxAt = 0;
+    for (const r of visibleReplies) {
+      const ts = r.created_at ? new Date(r.created_at).getTime() : 0;
+      if (ts > maxAt) maxAt = ts;
+    }
+    if (maxAt > 0) latestVisibleReplyAt[thread.id] = maxAt;
   }
-  return { threads, replyCounts };
+  return { threads, replyCounts, latestVisibleReplyAt };
 }
 
 /** Rename a friend group. */
