@@ -90,6 +90,14 @@ export default function MobileEditReply({
     ? `S${String(eff.s).padStart(2, "0")} E${String(eff.e).padStart(2, "0")}`
     : null;
 
+  // "Progress has moved past where you were when you first wrote this":
+  // current effective > stored reply tag. Same shape as MobileEditThread —
+  // see comment there for the rewatcher / first-timer monotonicity note.
+  const progressAdvanced = !!(eff && reply && (
+    eff.s > reply.season ||
+    (eff.s === reply.season && eff.e > reply.episode)
+  ));
+
   const canSubmit =
     !!user && !!reply && !!eff &&
     body.trim().length > 0 &&
@@ -224,6 +232,28 @@ export default function MobileEditReply({
           </span>
         </div>
 
+        {/* ── Retag warning banner ── */}
+        {/* Same pattern as MobileEditThread — fires only when the user's */}
+        {/* current effective progress is past the reply's stored tag.    */}
+        {/* Bottom button switches to "Confirm" when shown.                */}
+        {progressAdvanced && (
+          <div style={{
+            margin: "0 0 16px",
+            padding: "12px 14px",
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.14)",
+            border: "1px solid rgba(255,255,255,0.35)",
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: "#fff",
+          }}>
+            <strong style={{ display: "block", fontWeight: 800, marginBottom: 4 }}>
+              Heads up
+            </strong>
+            Your progress has moved past where you were when you first wrote this. Editing it will retag it to your current watch progress.
+          </div>
+        )}
+
         {/* ── Body textarea ── */}
         <textarea
           className="m-input"
@@ -283,7 +313,7 @@ export default function MobileEditReply({
             letterSpacing: "0.02em",
           }}
         >
-          {submitting ? <LoadingDots /> : "Save"}
+          {submitting ? <LoadingDots /> : (progressAdvanced ? "Confirm" : "Save")}
         </button>
       </div>
     </div>

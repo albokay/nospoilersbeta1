@@ -82,6 +82,16 @@ export default function MobileEditThread({ groupId, threadId }: { groupId: strin
     ? `S${String(eff.s).padStart(2, "0")} E${String(eff.e).padStart(2, "0")}`
     : null;
 
+  // "Progress has moved past where you were when you first wrote this":
+  // current effective > stored thread tag. Defensive against the
+  // theoretical eff < stored case (shouldn't happen — rewatcher's
+  // highestS/E is monotonic and first-timers can only move forward — but
+  // if it ever did, no banner since the retag wouldn't be "advancing").
+  const progressAdvanced = !!(eff && thread && (
+    eff.s > thread.season ||
+    (eff.s === thread.season && eff.e > thread.episode)
+  ));
+
   const canSubmit =
     !!user && !!thread && !!eff &&
     title.trim().length > 0 &&
@@ -198,7 +208,7 @@ export default function MobileEditThread({ groupId, threadId }: { groupId: strin
 
         <h1 style={{ fontSize: 18, fontWeight: 800, margin: "8px 0 6px" }}>Edit entry</h1>
 
-        {/* ── Tag pill (rewatcher note left for chunk 4's banner work) ── */}
+        {/* ── Tag pill ── */}
         <div style={{
           fontSize: 12,
           opacity: 0.85,
@@ -218,6 +228,30 @@ export default function MobileEditThread({ groupId, threadId }: { groupId: strin
             tag {tag}
           </span>
         </div>
+
+        {/* ── Retag warning banner ── */}
+        {/* Shown only when current effective progress is past the entry's */}
+        {/* stored season/episode. Informational — the retag happens on    */}
+        {/* save regardless, but the banner makes it explicit. The bottom  */}
+        {/* button label switches to "Confirm" when this banner shows so   */}
+        {/* the user is clearly committing to the retag.                    */}
+        {progressAdvanced && (
+          <div style={{
+            margin: "0 0 16px",
+            padding: "12px 14px",
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.14)",
+            border: "1px solid rgba(255,255,255,0.35)",
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: "#fff",
+          }}>
+            <strong style={{ display: "block", fontWeight: 800, marginBottom: 4 }}>
+              Heads up
+            </strong>
+            Your progress has moved past where you were when you first wrote this. Editing it will retag it to your current watch progress.
+          </div>
+        )}
 
         {/* ── Title input ── */}
         <input
@@ -302,7 +336,7 @@ export default function MobileEditThread({ groupId, threadId }: { groupId: strin
             letterSpacing: "0.02em",
           }}
         >
-          {submitting ? <LoadingDots /> : "Save"}
+          {submitting ? <LoadingDots /> : (progressAdvanced ? "Confirm" : "Save")}
         </button>
       </div>
     </div>
