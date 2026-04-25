@@ -1143,6 +1143,37 @@ export default function ProfilePage({
                               {groupName} ·{" "}
                             </span>
                           )}
+                          {/* Public-card show-name prefix link (chunk 4 of
+                             desktop refocus). Mirrors the friend-room-name
+                             prefix style above (fontSize 13, opacity 0.7,
+                             roman weight, separator dot) but adds an
+                             underline and click handler on the show-name
+                             token itself so it reads as a link to the
+                             public aggregate space. White color is
+                             inherited from the public card's cardFg.
+                             stopPropagation prevents the parent card
+                             onClick from firing when the show name is
+                             tapped — card click still opens the thread,
+                             show-name click goes to the show forum.
+                             Sessionstorage active-group key is cleared
+                             before navigating so the user lands on the
+                             public forum view, not whatever room context
+                             they last had for this show. */}
+                          {isPub && (
+                            <span style={{ fontSize: 13, opacity: 0.7, fontWeight: 400, marginRight: 6 }}>
+                              <a
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  try { sessionStorage.removeItem(`ns_active_group_${t.showId}`); } catch {}
+                                  openShow(t.showId);
+                                }}
+                                style={{ color: "inherit", textDecoration: "underline", cursor: "pointer" }}
+                              >
+                                {showName(t.showId)}
+                              </a>
+                              {" "}·{" "}
+                            </span>
+                          )}
                           {t.titleBase}
                           {t.showId !== "simshow" && (
                             <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
