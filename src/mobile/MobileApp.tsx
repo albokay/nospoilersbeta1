@@ -11,6 +11,7 @@ import MobileCompose from "./MobileCompose";
 import MobileRespond from "./MobileRespond";
 import MobileInvite from "./MobileInvite";
 import MobileInviteAccept from "./MobileInviteAccept";
+import MobileRoomMenu from "./MobileRoomMenu";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Bypasses the desktop mobile lockout automatically
@@ -30,6 +31,7 @@ import MobileInviteAccept from "./MobileInviteAccept";
 //   /m/rooms/:groupId/thread/:threadId               → thread view
 //   /m/rooms/:groupId/compose                        → new-entry composer
 //   /m/rooms/:groupId/invite                         → invite friend (creator only, server-enforced)
+//   /m/rooms/:groupId/menu                           → S7 dropdown (other rooms / search / invite)
 //   /m/rooms/:groupId                                → room view (S6)
 //
 // Auto-redirect rule: signed-in users on bare /m get bounced to /m/rooms so
@@ -67,6 +69,9 @@ export default function MobileApp() {
   }
   if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "invite") {
     return <MobileInvite groupId={subParts[1]} />;
+  }
+  if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "menu") {
+    return <MobileRoomMenu groupId={subParts[1]} />;
   }
   if (subParts[0] === "rooms" && subParts[1]) {
     return <MobileRoom groupId={subParts[1]} />;

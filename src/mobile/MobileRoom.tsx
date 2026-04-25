@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, MessageSquareText, Plus, UserPlus } from "lucide-react";
+import { Users, MessageSquareText, Plus, UserPlus, ChevronDown } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchAllFriendGroupsWithActivity,
@@ -162,15 +162,35 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
           ← Rooms
         </button>
 
-        {/* ── Header (room name + show + member count) ── */}
+        {/* ── Header (room name + chevron-to-menu, show + member count) ── */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{
-            fontSize: 24, fontWeight: 800, margin: "0 0 4px",
-            lineHeight: 1.2,
-            overflowWrap: "break-word",
-          }}>
-            {room.name}
-          </h1>
+          <button
+            onClick={() => navigate(`/m/rooms/${groupId}/menu`)}
+            aria-label="Open room menu"
+            style={{
+              background: "transparent",
+              color: "#fff",
+              border: "none",
+              padding: 0,
+              margin: "0 0 4px",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              maxWidth: "100%",
+            }}
+          >
+            <h1 style={{
+              fontSize: 24, fontWeight: 800, margin: 0,
+              lineHeight: 1.2,
+              overflowWrap: "break-word",
+              textAlign: "left",
+            }}>
+              {room.name}
+            </h1>
+            <ChevronDown size={22} strokeWidth={2.4} style={{ flexShrink: 0, opacity: 0.85 }} />
+          </button>
           <div style={{ fontSize: 13, opacity: 0.85, display: "flex", alignItems: "center", gap: 8 }}>
             <span>{show.name}</span>
             <span style={{ opacity: 0.6 }}>·</span>
