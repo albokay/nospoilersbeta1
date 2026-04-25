@@ -386,26 +386,40 @@ export async function editReply(replyId: string, body: string, season: number, e
 }
 
 export async function deleteReply(replyId: string): Promise<void> {
-  // Check if this reply is cited by another reply
-  const { count: citedCount } = await supabase
-    .from("response_citations")
-    .select("id", { count: "exact", head: true })
-    .eq("cited_reply_id", replyId);
-
-  if (citedCount && citedCount > 0) {
-    // Soft delete — keep stub so citation chain remains intact
-    const { error } = await supabase
-      .from("replies")
-      .update({ is_deleted: true })
-      .eq("id", replyId);
-    if (error) throw error;
-  } else {
-    // Hard delete — not referenced anywhere, remove entirely
-    // Clean up any citations this reply made
-    await supabase.from("response_citations").delete().eq("citing_reply_id", replyId);
-    const { error } = await supabase.from("replies").delete().eq("id", replyId);
-    if (error) throw error;
-  }
+  // Soft-delete only. Same RLS-driven silent-failure class as the threads
+  // delete bug from baa3c9f (HANDOFF §6 item 17): the replies_delete RLS
+  // policy at 20260413_enable_rls_all_tables.sql:109-111 is admin-only
+  // (USING (public.is_admin())), while replies_update is owner-allowed.
+  // The previous branch tried hard-delete on non-cited replies, which
+  // silently no-op'd against RLS for regular users — UI optimistically
+  // removed the reply, refresh brought it back. Reported 2026-04-25 by a
+  // beta tester who tried to delete their own response.
+  //
+  // Switching to always-soft-delete (single UPDATE that the owner-can-update
+  // policy permits) makes the call work for both authors and admins. Read
+  // paths already filter is_deleted correctly:
+  //   - MobileThread chainVisible drops is_deleted replies entirely
+  //   - fetchGroupThreads selfVisible (db.ts:1542) excludes is_deleted from
+  //     reply counts
+  //   - utils.visibleRepliesCount applies the same filter (via canView +
+  //     parent walk; though it doesn't gate on is_deleted directly, the
+  //     desktop side already filters at the render layer)
+  //
+  // Trade-off: tombstones accumulate in `replies` for non-cited replies
+  // nobody can see anymore. Same accepted compromise as threads soft-
+  // delete tombstones (§6 item 18). Read paths filter; UX clean. If
+  // tombstone volume ever becomes a storage concern, an admin sweep over
+  // is_deleted=true rows older than N days handles it.
+  //
+  // The previous response_citations cleanup is no longer needed: with the
+  // reply still in the DB (just flagged is_deleted), citations remain
+  // resolvable but the rendered surfaces don't reach them via filtered
+  // read paths.
+  const { error } = await supabase
+    .from("replies")
+    .update({ is_deleted: true })
+    .eq("id", replyId);
+  if (error) throw error;
 }
 
 // ── Profile page queries ──────────────────────────────────────────────────────
