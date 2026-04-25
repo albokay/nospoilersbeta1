@@ -125,9 +125,14 @@ BEGIN
            OR (r.season = up.eff_season AND r.episode <= up.eff_episode))
   ),
   combined_activity AS (
-    SELECT group_id, activity_at FROM visible_thread_activity
+    -- Aliased + qualified because the function's RETURNS TABLE column
+    -- `group_id` is in scope as a PL/pgSQL OUT variable, and an
+    -- unqualified `group_id` here would be ambiguous (Postgres
+    -- raises 42702). Same applies if more OUT names ever overlap
+    -- with column names down the chain.
+    SELECT vta.group_id, vta.activity_at FROM visible_thread_activity vta
     UNION ALL
-    SELECT group_id, activity_at FROM visible_reply_activity
+    SELECT vra.group_id, vra.activity_at FROM visible_reply_activity vra
   )
   SELECT
     ur.group_id,
