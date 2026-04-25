@@ -630,19 +630,20 @@ function AppShell() {
 
   // ── Shared SearchShows handler (used in both header and homepage) ─
   const searchShowsHandlers = {
-    onShowCreated: (newShow: Show, entry: ProgressEntry, action?: string) => {
+    onShowCreated: (newShow: Show, entry: ProgressEntry, action: "friendRoom", friendGroup: FriendGroup) => {
       setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow]);
       setWatchStatusFor(newShow.id, entry);
       // Mark the new tab so ProfilePage's showTabOrder floats it to the front
       // even before any real activity accumulates for it.
       if (user) markTabCreated(user.id, newShow.id);
-      if (action === "journal") {
-        navigate("/profile", { state: { activeTab: newShow.id } });
-        requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
-      } else {
-        navigate(`/show/${newShow.id}`, { state: { openCreateGroup: true } });
-        requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
-      }
+      // SearchShows now creates the friend room itself (combined onboarding
+      // flow). Optimistically add it to the top-nav pills, then drop the
+      // user straight into the new room — no second modal bounce.
+      setAllFriendGroups(prev =>
+        prev.find(x => x.id === friendGroup.id) ? prev : [{ ...friendGroup, lastActivityAt: Date.now() }, ...prev]
+      );
+      navigate(`/show/${newShow.id}`, { state: { activeGroupId: friendGroup.id } });
+      requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
     },
     onBrowsePublic: (showId: string, showName: string, _entry: ProgressEntry, seasons: number[]) => {
       setShows(prev => prev.find(s => s.id === showId) ? prev : [...prev, {

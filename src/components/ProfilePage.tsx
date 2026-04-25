@@ -1346,11 +1346,11 @@ export default function ProfilePage({
         <Modal onClose={() => { setShowCreateRoomModal(false); setNewRoomName(""); }} width="min(420px,92vw)">
           <h3 className="title" style={{ margin: "0 0 12px" }}>Create a friend room</h3>
           <p style={{ margin: "0 0 16px", fontSize: 14, opacity: 0.75, lineHeight: 1.5 }}>
-            A friend room is a private space for watching a show with specific people. Invite anyone you want to watch with. Whatever anyone writes here is only visible to room members &mdash; and only when their watch progress catches up.
+            This will be where you and your friends talk about <strong>{activeTab ? showName(activeTab) : "this show"}</strong>. Whatever anyone writes here will only be visible to you and your friends. You can decide who to invite later.
           </p>
           <input
             className="badge"
-            placeholder={'Room name (e.g. "Sunday watch crew")'}
+            placeholder="give your room a unique name"
             value={newRoomName}
             onChange={e => setNewRoomName(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") handleCreateRoom(); }}
