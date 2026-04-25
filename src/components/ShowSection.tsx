@@ -1538,6 +1538,14 @@ export default function ShowSection({
                       color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
                       minWidth: 0, overflowWrap: "break-word",
                       display: "inline-flex", alignItems: "flex-start", gap: 6,
+                      // Underline when the title is acting as a link back to
+                      // the show forum (chunk 5 of desktop refocus). The
+                      // "more entries" back button was removed in the same
+                      // chunk so this is now the primary back affordance
+                      // from inside a public thread; the underline makes
+                      // the link affordance explicit.
+                      textDecoration: thread ? "underline" : "none",
+                      textUnderlineOffset: 4,
                     }}
                   >
                     {!(thread && !thread.isPublic && !activeGroupId) && <Globe size={18} color="#fff" style={{ flexShrink: 0, marginTop: 9 }} />}
@@ -1629,7 +1637,16 @@ export default function ShowSection({
                   button — users return to the journal via the top-nav pill. */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {!(!activeGroupId && thread && !thread.isPublic) && (
+                  {/* Friend-room threads keep their explicit back button —
+                     it points back to a different forum than the banner
+                     show-name link does (room forum vs. public forum), so
+                     the affordance can't fold into the banner. Public
+                     threads' "more entries" button was removed in chunk 5
+                     of the desktop refocus; the now-underlined banner
+                     show-name is the primary back-to-forum affordance.
+                     Private threads continue to skip the back button —
+                     users return to the journal via the top-nav pill. */}
+                  {activeGroupId && (
                     <button
                       className="btn"
                       onClick={() => {
@@ -1638,9 +1655,7 @@ export default function ShowSection({
                       }}
                       style={{ fontSize: 12, padding: "5px 9px", lineHeight: 1.2, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}
                     >
-                      {activeGroupId
-                        ? (<><ArrowLeft size={12} /> back to friend room</>)
-                        : "← more entries"}
+                      <ArrowLeft size={12} /> back to friend room
                     </button>
                   )}
                 </div>
@@ -1709,11 +1724,15 @@ export default function ShowSection({
                   )}
                 </div>
               ) : (
-                /* Thread view: back button (public / friend-room only) + write.
-                   Private threads skip the back button — users return to the
+                /* Thread view: back button (friend-room threads only) +
+                   write. Public threads' "more entries" button was
+                   removed in chunk 5 of the desktop refocus — the
+                   banner show-name (now underlined) is the primary
+                   back-to-forum affordance. Private threads continue
+                   to skip the back button — users return to the
                    journal via the top-nav pill. */
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {!(!activeGroupId && !thread.isPublic) && (
+                  {activeGroupId && (
                     <button
                       className="btn h40"
                       onClick={() => {
@@ -1722,9 +1741,7 @@ export default function ShowSection({
                       }}
                       style={{ lineHeight: 1.2, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}
                     >
-                      {activeGroupId
-                        ? (<><ArrowLeft size={14} /> back to friend room</>)
-                        : "← more entries"}
+                      <ArrowLeft size={14} /> back to friend room
                     </button>
                   )}
                   <button
