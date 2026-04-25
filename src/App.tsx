@@ -27,6 +27,7 @@ import HowItWorks from "./components/HowItWorks";
 import HowItWorksV2 from "./components/HowItWorksV2";
 import HomepageNarrative from "./components/HomepageNarrative";
 import InviteAcceptPage from "./components/InviteAcceptPage";
+import MobileApp from "./mobile/MobileApp";
 
 const GLOBAL_HEADER_H = 96;
 
@@ -76,6 +77,7 @@ export default function App() {
   if (pathParts[0] === "how-it-works-v1") return <HowItWorks />;
   if (pathParts[0] === "how-it-works-v2") return <HowItWorksV2 />;
   if (pathParts[0] === "invite" && pathParts[1]) return <InviteAcceptPage token={pathParts[1]} />;
+  if (pathParts[0] === "m") return <MobileApp />;
   return <AppShell />;
 }
 
