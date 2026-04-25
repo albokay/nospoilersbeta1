@@ -171,9 +171,7 @@ export default function SearchShows({
   const [seasonsLoading, setSeasonsLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  // Two-step modal: progress questionnaire → room naming. Step state is
-  // local to the modal and resets on close.
-  const [step, setStep] = useState<"progress" | "naming">("progress");
+  // Single-screen modal: progress questionnaire + room name on one form.
   const [roomName, setRoomName] = useState("");
 
   // Watch-status questionnaire state
@@ -235,7 +233,6 @@ export default function SearchShows({
     setRewatchSel({ s: 0, e: 0 });
     setFirstTimeSel({ s: 0, e: 0 });
     setProgressTouched(false);
-    setStep("progress");
     setRoomName("");
   };
 
@@ -330,16 +327,7 @@ export default function SearchShows({
 
   // ── Action handlers ────────────────────────────────────────────────────
 
-  // Step-1 advance: validate progress, require auth, move to room-naming step.
-  // The actual show + room creation happens in handleCreateRoom on step 2.
-  const handleAdvanceToNaming = () => {
-    if (!user) { onAuthRequired?.(); return; }
-    const entry = buildEntry();
-    if (!confirming || !entry) return;
-    setStep("naming");
-  };
-
-  // Step-2 submit: create the show, create the friend room, then notify
+  // Single submit: create the show, create the friend room, then notify
   // App which sets progress + navigates the user into the new room.
   const handleCreateRoom = async () => {
     if (!user) { onAuthRequired?.(); return; }
@@ -470,131 +458,121 @@ export default function SearchShows({
               </div>
             </div>
 
-            {/* Step 1: progress questionnaire + episode picker */}
-            {step === "progress" && (
-              <>
-                <div>
-                  <p className="muted" style={{ fontSize: 14, margin: "0 0 10px" }}>
-                    Are you rewatching <strong>{confirming.name}</strong>, or is this your first time through?
-                  </p>
-                  <div style={{ display: "flex", gap: 16 }}>
-                    {(["first", "rewatch"] as const).map(choice => {
-                      const row = (
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchChoice(choice)}>
-                          <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {watchChoice === choice && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
-                          </div>
-                          {choice === "first" ? "First time" : "Rewatching"}
-                        </div>
-                      );
-                      if (choice === "rewatch") {
-                        return (
-                          <Tooltip
-                            key={choice}
-                            text="You've seen the show before? Pick this. Your posts will be filtered to protect first-time viewers from anything you might give away."
-                            direction="above"
-                            align="center"
-                            portal
-                            width={260}
-                          >
-                            {row}
-                          </Tooltip>
-                        );
-                      }
-                      return <React.Fragment key={choice}>{row}</React.Fragment>;
-                    })}
-                  </div>
-                </div>
+            {/* "Create a friend room" subheader + new copy — sets the
+                user's intent before they fill out progress + room name. */}
+            <div>
+              <h3 className="title" style={{ margin: "0 0 8px", fontSize: 16 }}>Create a friend room</h3>
+              <p style={{ margin: 0, fontSize: 14, opacity: 0.85, lineHeight: 1.5 }}>
+                This will be where you and your friends talk about <strong>{confirming.name}</strong>. Whatever anyone writes here will only be visible to you and your friends. You can decide who to invite later.
+              </p>
+            </div>
 
-                {/* Episode selects */}
-                {seasonsLoading && (
-                  <div className="muted" style={{ fontSize: 13 }}>Loading episode data…</div>
-                )}
-
-                {!seasonsLoading && confirmingSeasons && watchChoice === "rewatch" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
-                        What's the furthest you watched last time?
-                      </label>
-                      <EpisodeSelectInline
-                        seasons={confirmingSeasons}
-                        value={highestSel}
-                        onChange={(v) => { setHighestSel(v); setProgressTouched(true); }}
-                        // Highest must be strictly greater than rewatch position.
-                        disableAtOrBelow={progressTouched ? rewatchSel : undefined}
-                      />
+            {/* Watch-status questionnaire */}
+            <div>
+              <p className="muted" style={{ fontSize: 14, margin: "0 0 10px" }}>
+                Are you rewatching <strong>{confirming.name}</strong>, or is this your first time through?
+              </p>
+              <div style={{ display: "flex", gap: 16 }}>
+                {(["first", "rewatch"] as const).map(choice => {
+                  const row = (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchChoice(choice)}>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {watchChoice === choice && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
+                      </div>
+                      {choice === "first" ? "First time" : "Rewatching"}
                     </div>
-                    <div>
-                      <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
-                        How far are you on your rewatch?
-                      </label>
-                      <EpisodeSelectInline
-                        seasons={confirmingSeasons}
-                        value={rewatchSel}
-                        onChange={(v) => { setRewatchSel(v); setProgressTouched(true); }}
-                        // Rewatch must be strictly less than highest.
-                        disableAtOrAbove={progressTouched ? highestSel : undefined}
-                        allowZero
-                      />
-                    </div>
-                  </div>
-                )}
+                  );
+                  if (choice === "rewatch") {
+                    return (
+                      <Tooltip
+                        key={choice}
+                        text="You've seen the show before? Pick this. Your posts will be filtered to protect first-time viewers from anything you might give away."
+                        direction="above"
+                        align="center"
+                        portal
+                        width={260}
+                      >
+                        {row}
+                      </Tooltip>
+                    );
+                  }
+                  return <React.Fragment key={choice}>{row}</React.Fragment>;
+                })}
+              </div>
+            </div>
 
-                {!seasonsLoading && confirmingSeasons && watchChoice === "first" && (
-                  <div>
-                    <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
-                      How far have you watched?
-                    </label>
-                    <EpisodeSelectInline seasons={confirmingSeasons} value={firstTimeSel} onChange={(v) => { setFirstTimeSel(v); setProgressTouched(true); }} allowZero />
-                  </div>
-                )}
-
-                {/* Step-1 buttons: advance to room-naming, or cancel */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-                  <button className="btn post" onClick={handleAdvanceToNaming} disabled={!canSubmit} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#fff", opacity: canSubmit ? 1 : 0.4 }}>
-                    Start a friend room
-                  </button>
-                  <button className="btn" onClick={resetModal} style={{ width: "100%", opacity: 0.7 }}>
-                    Cancel
-                  </button>
-                </div>
-              </>
+            {/* Episode selects */}
+            {seasonsLoading && (
+              <div className="muted" style={{ fontSize: 13 }}>Loading episode data…</div>
             )}
 
-            {/* Step 2: room naming + new copy */}
-            {step === "naming" && (
-              <>
+            {!seasonsLoading && confirmingSeasons && watchChoice === "rewatch" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
-                  <h3 className="title" style={{ margin: "0 0 8px", fontSize: 16 }}>Create a friend room</h3>
-                  <p style={{ margin: "0 0 12px", fontSize: 14, opacity: 0.85, lineHeight: 1.5 }}>
-                    This will be where you and your friends talk about <strong>{confirming.name}</strong>. Whatever anyone writes here will only be visible to you and your friends. You can decide who to invite later.
-                  </p>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
+                    What's the furthest you watched last time?
+                  </label>
+                  <EpisodeSelectInline
+                    seasons={confirmingSeasons}
+                    value={highestSel}
+                    onChange={(v) => { setHighestSel(v); setProgressTouched(true); }}
+                    // Highest must be strictly greater than rewatch position.
+                    disableAtOrBelow={progressTouched ? rewatchSel : undefined}
+                  />
                 </div>
-                <input
-                  className="badge"
-                  placeholder="give your room a unique name"
-                  value={roomName}
-                  onChange={e => setRoomName(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && roomName.trim() && !creating) handleCreateRoom(); }}
-                  style={{ width: "100%", height: 40 }}
-                  autoFocus
-                />
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
+                    How far are you on your rewatch?
+                  </label>
+                  <EpisodeSelectInline
+                    seasons={confirmingSeasons}
+                    value={rewatchSel}
+                    onChange={(v) => { setRewatchSel(v); setProgressTouched(true); }}
+                    // Rewatch must be strictly less than highest.
+                    disableAtOrAbove={progressTouched ? highestSel : undefined}
+                    allowZero
+                  />
+                </div>
+              </div>
+            )}
 
-                {createError && (
-                  <div style={{ color: "var(--danger)", fontSize: 13 }}>{createError}</div>
-                )}
+            {!seasonsLoading && confirmingSeasons && watchChoice === "first" && (
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4 }}>
+                  How far have you watched?
+                </label>
+                <EpisodeSelectInline seasons={confirmingSeasons} value={firstTimeSel} onChange={(v) => { setFirstTimeSel(v); setProgressTouched(true); }} allowZero />
+              </div>
+            )}
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-                  <button className="btn post" onClick={handleCreateRoom} disabled={creating || !roomName.trim()} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#fff", opacity: (creating || !roomName.trim()) ? 0.4 : 1 }}>
+            {/* Room name input */}
+            <input
+              className="badge"
+              placeholder="give your room a unique name"
+              value={roomName}
+              onChange={e => setRoomName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && canSubmit && roomName.trim()) handleCreateRoom(); }}
+              style={{ width: "100%", height: 40 }}
+            />
+
+            {createError && (
+              <div style={{ color: "var(--danger)", fontSize: 13 }}>{createError}</div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+              {(() => {
+                const submitDisabled = !canSubmit || !roomName.trim();
+                return (
+                  <button className="btn post" onClick={handleCreateRoom} disabled={submitDisabled} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#fff", opacity: submitDisabled ? 0.4 : 1 }}>
                     {creating ? "Creating…" : "Create room"}
                   </button>
-                  <button className="btn" onClick={resetModal} disabled={creating} style={{ width: "100%", opacity: 0.7 }}>
-                    Cancel
-                  </button>
-                </div>
-              </>
-            )}
+                );
+              })()}
+              <button className="btn" onClick={resetModal} disabled={creating} style={{ width: "100%", opacity: 0.7 }}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>,
         document.body
