@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchThreadById,
@@ -31,6 +32,7 @@ import LoadingDots from "../components/LoadingDots";
 // rooms-list path) and we already know the threadId from the URL.
 export default function MobileThread({ groupId, threadId }: { groupId: string; threadId: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
   const [thread, setThread] = useState<Thread | null>(null);
@@ -81,7 +83,11 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
       });
 
     return () => { cancelled = true; };
-  }, [groupId, threadId, user?.id]);
+    // location.key included so navigating back from
+    // /m/rooms/:id/thread/:tid/respond → /m/rooms/:id/thread/:tid (with
+    // replace:true) refetches the reply list and the new response shows up.
+    // Same trick will handle any future "edit reply" return path.
+  }, [groupId, threadId, user?.id, location.key]);
 
   // Filter replies through canView + chain-visibility. Same shape as
   // utils.visibleRepliesCount (and as fetchGroupThreads's chainVisible),
@@ -252,7 +258,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
             opacity: 0.85,
             lineHeight: 1.5,
           }}>
-            No responses visible at your progress yet. Posting + responding land in the next mobile commit.
+            No responses yet. Tap the + to start the thread.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -262,6 +268,32 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
           </div>
         )}
       </div>
+
+      {/* ── Floating respond button ── */}
+      <button
+        onClick={() => navigate(`/m/rooms/${groupId}/thread/${threadId}/respond`)}
+        aria-label="Respond"
+        style={{
+          position: "fixed",
+          right: 20,
+          bottom: 24,
+          width: 56,
+          height: 56,
+          borderRadius: 9999,
+          background: "#fff",
+          color: "var(--dos-bg, #2a4a36)",
+          border: "none",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "inherit",
+          zIndex: 50,
+        }}
+      >
+        <Plus size={28} strokeWidth={2.5} />
+      </button>
     </div>
   );
 }

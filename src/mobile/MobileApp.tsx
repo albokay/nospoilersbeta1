@@ -8,6 +8,7 @@ import MobileProgressGate from "./MobileProgressGate";
 import MobileRoom from "./MobileRoom";
 import MobileThread from "./MobileThread";
 import MobileCompose from "./MobileCompose";
+import MobileRespond from "./MobileRespond";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Bypasses the desktop mobile lockout automatically
@@ -20,10 +21,11 @@ import MobileCompose from "./MobileCompose";
 //   /m/auth                         → full-screen sign-in / create-account
 //   /m/rooms                              → room list + show search (S3)
 //   /m/rooms/new                          → progress gate, new-room mode (S5)
-//   /m/rooms/:groupId/progress            → progress gate, existing-room (S5)
-//   /m/rooms/:groupId/thread/:threadId    → thread view
-//   /m/rooms/:groupId/compose             → new-entry composer
-//   /m/rooms/:groupId                     → room view (S6)
+//   /m/rooms/:groupId/progress                       → progress gate, existing-room (S5)
+//   /m/rooms/:groupId/thread/:threadId/respond       → reply composer
+//   /m/rooms/:groupId/thread/:threadId               → thread view
+//   /m/rooms/:groupId/compose                        → new-entry composer
+//   /m/rooms/:groupId                                → room view (S6)
 //
 // Auto-redirect rule: signed-in users on bare /m get bounced to /m/rooms so
 // they don't have to scroll past the narrative pitch every time. Mirrors the
@@ -45,6 +47,9 @@ export default function MobileApp() {
   if (subParts[0] === "rooms" && subParts[1] === "new") return <MobileProgressGate mode="new" />;
   if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "progress") {
     return <MobileProgressGate mode="existing" groupId={subParts[1]} />;
+  }
+  if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "thread" && subParts[3] && subParts[4] === "respond") {
+    return <MobileRespond groupId={subParts[1]} threadId={subParts[3]} />;
   }
   if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "thread" && subParts[3]) {
     return <MobileThread groupId={subParts[1]} threadId={subParts[3]} />;
