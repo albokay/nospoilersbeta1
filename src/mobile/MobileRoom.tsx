@@ -8,6 +8,7 @@ import {
   fetchProgress,
   fetchFriendGroupMembers,
   fetchGroupThreads,
+  markRoomSeen,
 } from "../lib/db";
 import type { Show } from "../lib/db";
 import type { FriendGroup, Thread, ProgressEntry } from "../types";
@@ -92,6 +93,18 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
       });
 
     return () => { cancelled = true; };
+  }, [groupId, user?.id]);
+
+  // Stamp the room as seen on mount. Best-effort — if the
+  // 20260425_room_last_seen migration isn't applied yet, the RPC throws
+  // and we just log + move on. Indicator render also degrades cleanly
+  // in that case (no indicators ever fire), so the failure mode is
+  // benign.
+  useEffect(() => {
+    if (!user) return;
+    markRoomSeen(groupId).catch(err => {
+      console.warn("markRoomSeen failed (migration may not be applied yet):", err);
+    });
   }, [groupId, user?.id]);
 
   const sortedThreads = useMemo(() => {

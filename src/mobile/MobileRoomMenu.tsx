@@ -2,8 +2,13 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Users, UserPlus } from "lucide-react";
 import { useAuth } from "../lib/auth";
-import { fetchAllFriendGroupsWithActivity, fetchShows } from "../lib/db";
-import type { Show } from "../lib/db";
+import {
+  fetchAllFriendGroupsWithActivity,
+  fetchShows,
+  fetchRoomActivityVisibility,
+  roomHasNewVisibleActivity,
+} from "../lib/db";
+import type { Show, RoomVisibility } from "../lib/db";
 import type { FriendGroup } from "../types";
 import LoadingDots from "../components/LoadingDots";
 import MobileShowSearch, { networkLabel, type TVmazeShow } from "./MobileShowSearch";
@@ -33,6 +38,7 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
   const [currentRoom, setCurrentRoom] = useState<RoomRow | null>(null);
   const [otherRooms, setOtherRooms] = useState<RoomRow[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
+  const [visibilityByGroup, setVisibilityByGroup] = useState<Record<string, RoomVisibility>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -63,6 +69,20 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+
+    // Visibility fetch in parallel; failure is silent (no indicators) per
+    // the same graceful-degradation pattern used in MobileRooms.
+    fetchRoomActivityVisibility(user.id)
+      .then(rows => {
+        if (cancelled) return;
+        const map: Record<string, RoomVisibility> = {};
+        for (const r of rows) map[r.groupId] = r;
+        setVisibilityByGroup(map);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        console.warn("Room visibility fetch failed (migration may not be applied):", err);
       });
 
     return () => { cancelled = true; };
@@ -244,6 +264,17 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
                     {showName(r.showId)}
                   </div>
                 </div>
+                {visibilityByGroup[r.id] && roomHasNewVisibleActivity(visibilityByGroup[r.id]) && (
+                  <span
+                    aria-label="New activity"
+                    style={{
+                      flexShrink: 0,
+                      width: 10, height: 10,
+                      borderRadius: 999,
+                      background: "#dea838",
+                    }}
+                  />
+                )}
               </button>
             ))}
           </div>

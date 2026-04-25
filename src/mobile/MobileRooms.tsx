@@ -2,8 +2,13 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, LogOut } from "lucide-react";
 import { useAuth } from "../lib/auth";
-import { fetchAllFriendGroupsWithActivity, fetchShows } from "../lib/db";
-import type { Show } from "../lib/db";
+import {
+  fetchAllFriendGroupsWithActivity,
+  fetchShows,
+  fetchRoomActivityVisibility,
+  roomHasNewVisibleActivity,
+} from "../lib/db";
+import type { Show, RoomVisibility } from "../lib/db";
 import type { FriendGroup } from "../types";
 import LoadingDots from "../components/LoadingDots";
 import MobileShowSearch, { networkLabel, type TVmazeShow } from "./MobileShowSearch";
@@ -44,6 +49,9 @@ export default function MobileRooms() {
 
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
+  // Visibility map keyed by groupId. Empty when not yet loaded OR when the
+  // migration isn't applied yet — both produce the same render (no indicators).
+  const [visibilityByGroup, setVisibilityByGroup] = useState<Record<string, RoomVisibility>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,6 +74,22 @@ export default function MobileRooms() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
+    // Visibility fetch is independent of the rooms list — kicked off in
+    // parallel, doesn't gate the list render. If it fails (migration not
+    // applied), the map stays empty and no indicators show. Best-effort.
+    fetchRoomActivityVisibility(user.id)
+      .then(rows => {
+        if (cancelled) return;
+        const map: Record<string, RoomVisibility> = {};
+        for (const r of rows) map[r.groupId] = r;
+        setVisibilityByGroup(map);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        console.warn("Room visibility fetch failed (migration may not be applied):", err);
+      });
+
     return () => { cancelled = true; };
   }, [user?.id]);
 
@@ -195,10 +219,25 @@ export default function MobileRooms() {
                 </div>
                 <div style={{
                   flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                   fontSize: 12,
                   opacity: 0.6,
                   fontVariantNumeric: "tabular-nums",
                 }}>
+                  {visibilityByGroup[r.id] && roomHasNewVisibleActivity(visibilityByGroup[r.id]) && (
+                    <span
+                      aria-label="New activity"
+                      style={{
+                        width: 10, height: 10,
+                        borderRadius: 999,
+                        background: "#dea838",
+                        flexShrink: 0,
+                        opacity: 1,
+                      }}
+                    />
+                  )}
                   {formatRelative(r.lastActivityAt)}
                 </div>
               </button>

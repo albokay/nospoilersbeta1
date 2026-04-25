@@ -1500,6 +1500,62 @@ export async function fetchFriendGroupMembers(
   }));
 }
 
+// ── Mobile: per-room last-seen + new-activity visibility ─────────────────────
+//
+// Backed by 20260425_room_last_seen.sql. Mobile renders an indicator dot on
+// room buttons when there's canView-visible content the user hasn't seen
+// since their last_seen_at stamp. The visibility query does the canView join
+// server-side via the user's per-show effective progress so a list view
+// doesn't pay N round-trips.
+//
+// Both functions degrade gracefully if the migration isn't applied yet — RPC
+// calls throw, the caller's catch logs and moves on without indicators. The
+// rest of the mobile UI is unaffected.
+
+/** Stamp the calling user's last_seen_at to NOW() for a given room. */
+export async function markRoomSeen(groupId: string): Promise<void> {
+  const { error } = await supabase.rpc("mark_room_seen", { p_group_id: groupId });
+  if (error) throw error;
+}
+
+export type RoomVisibility = {
+  groupId: string;
+  /** ms since epoch, or null if the user has never entered the room. */
+  lastSeenAt: number | null;
+  /** ms since epoch, or null if no canView-visible activity exists yet. */
+  latestVisibleActivityAt: number | null;
+};
+
+/**
+ * Per-room visibility state for the calling user. Returns one entry per
+ * friend group the user is a member of. Compare `latestVisibleActivityAt`
+ * against `lastSeenAt` (via roomHasNewVisibleActivity) to decide whether
+ * to render a "new" indicator.
+ */
+export async function fetchRoomActivityVisibility(userId: string): Promise<RoomVisibility[]> {
+  const { data, error } = await supabase.rpc("get_room_activity_visibility", { p_user_id: userId });
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    groupId: r.group_id,
+    lastSeenAt: r.last_seen_at ? new Date(r.last_seen_at).getTime() : null,
+    latestVisibleActivityAt: r.latest_visible_activity_at
+      ? new Date(r.latest_visible_activity_at).getTime()
+      : null,
+  }));
+}
+
+/**
+ * "Has new visible activity since the user last saw the room?"
+ * - NULL lastSeenAt + non-NULL activity → true (never visited; new content exists)
+ * - NULL activity → false (nothing visible at the user's progress)
+ * - Both set → true iff activity is newer than seen
+ */
+export function roomHasNewVisibleActivity(v: RoomVisibility): boolean {
+  if (!v.latestVisibleActivityAt) return false;
+  if (!v.lastSeenAt) return true;
+  return v.latestVisibleActivityAt > v.lastSeenAt;
+}
+
 /** Share a thread to a friend group (creates group_threads row). */
 export async function addThreadToGroup(threadId: string, groupId: string): Promise<void> {
   const { error } = await supabase
