@@ -4,7 +4,8 @@ import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, CircleChevronDown, C
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated, refreshShowIfStale } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated, refreshShowIfStale, fetchRoomActivityVisibility } from "../lib/db";
+import type { RoomVisibility } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
@@ -290,6 +291,44 @@ export default function ProfilePage({
   }, [user?.id, activeTab]);
   // Reset group filter when switching show tabs
   useEffect(() => { setJournalGroupFilter(null); }, [activeTab]);
+
+  // canView-aware per-room visibility lookup. Used to pick the
+  // most-recently-active friend room as the compose-default destination
+  // (chunk 3 of desktop refocus). Reuses the SECURITY DEFINER RPC
+  // shipped for mobile (20260425_room_last_seen.sql); the server-side
+  // join against effective progress means we don't surface activity
+  // the user can't view, which would otherwise leak its existence as
+  // a sort signal. Fetched once per user; refetches on activeTab
+  // change so newly-created rooms (chunk 1's flow) are picked up
+  // without requiring a navigation round-trip. Failures degrade
+  // gracefully: an empty map → fall back to FriendGroup.createdAt
+  // for ordering.
+  const [roomVisibility, setRoomVisibility] = useState<RoomVisibility[]>([]);
+  useEffect(() => {
+    if (!user) { setRoomVisibility([]); return; }
+    let cancelled = false;
+    fetchRoomActivityVisibility(user.id)
+      .then(rows => { if (!cancelled) setRoomVisibility(rows); })
+      .catch(() => { if (!cancelled) setRoomVisibility([]); });
+    return () => { cancelled = true; };
+  }, [user?.id, activeTab]);
+
+  // Pick the most-recently-active room from a list. Order:
+  // (1) latestVisibleActivityAt desc, NULL last; (2) createdAt desc
+  // tiebreaker. Returns null when the list is empty.
+  const pickMostActiveRoom = (groups: FriendGroup[]): string | null => {
+    if (!groups.length) return null;
+    const visMap = new Map(roomVisibility.map(v => [v.groupId, v.latestVisibleActivityAt]));
+    const sorted = [...groups].sort((a, b) => {
+      const av = visMap.get(a.id) ?? null;
+      const bv = visMap.get(b.id) ?? null;
+      if (av != null && bv != null) return bv - av;
+      if (av != null) return -1;  // a has activity, b doesn't → a first
+      if (bv != null) return 1;
+      return b.createdAt - a.createdAt;  // both null → most-recently-created first
+    });
+    return sorted[0].id;
+  };
 
   // Compose state
   const [composeOpen, setComposeOpen] = useState(false);
@@ -764,11 +803,15 @@ export default function ProfilePage({
                   {activeTab && (
                     <div className="profileActionBar">
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                        {/* Write */}
+                        {/* Write — defaults to most-recently-active friend
+                           room for this show (canView-aware) per desktop
+                           refocus (chunk 3). Falls back to "private" when
+                           the user has no rooms for this tab (legacy show). */}
                         <button
                           className="btn post h40"
                           onClick={() => {
-                            setComposeDestination("private");
+                            const defaultRoom = pickMostActiveRoom(tabGroups);
+                            setComposeDestination(defaultRoom ?? "private");
                             setComposeOpen(true);
                           }}
                           style={{ lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5 }}
@@ -1255,13 +1298,40 @@ export default function ProfilePage({
       )}
       {/* Compose modal */}
       {composeOpen && (() => {
-        const composeBg = composeDestination === "public" ? "#dea838" : "#7abd8e";
-        const promptBtnBg = composeDestination === "public" ? "#7abd8e" : "#dea838";
+        // Group destination = a friend-room id (anything that's not
+        // "private" or "public" or the empty disabled placeholder).
+        const isGroupDest = composeDestination !== "" && composeDestination !== "private" && composeDestination !== "public";
+        // Modal frame color tracks destination per chunk 3:
+        //   friend room → canon light-blue, public → canon yellow,
+        //   private → canon green (default journal fill).
+        const composeBg = isGroupDest ? "#adc8d7" : composeDestination === "public" ? "#dea838" : "#7abd8e";
+        // Prompt-button accent: opposite axis of the modal so the CTA
+        // pops. For room context, fall back to canon green (the
+        // default journal accent).
+        const promptBtnBg = isGroupDest ? "#7abd8e" : composeDestination === "public" ? "#7abd8e" : "#dea838";
+        // Sorted rooms list for the dropdown — most-recently-active
+        // first, matching the default-destination signal so the chosen
+        // default sits at the top of the list (predictable mapping).
+        const sortedRooms = (() => {
+          const visMap = new Map(roomVisibility.map(v => [v.groupId, v.latestVisibleActivityAt]));
+          return [...tabGroups].sort((a, b) => {
+            const av = visMap.get(a.id) ?? null;
+            const bv = visMap.get(b.id) ?? null;
+            if (av != null && bv != null) return bv - av;
+            if (av != null) return -1;
+            if (bv != null) return 1;
+            return b.createdAt - a.createdAt;
+          });
+        })();
         return (
         <Modal onClose={closeCompose} width="min(720px,92vw)" cardStyle={{ background: composeBg }}>
           <button className="close-x" onClick={closeCompose} style={{ position: "absolute", top: 12, right: 16 }}><X size={14} /></button>
           <div style={{ display: "grid", gap: 10 }}>
             {/* ── Destination dropdown ── */}
+            {/* Order: friend rooms (most-recently-active first) →
+               private → public. Per spec, profile compose surfaces
+               all three destination types. The default selection is
+               wired in the "write" button click handler above. */}
             <div>
               <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                 <select
@@ -1271,6 +1341,9 @@ export default function ProfilePage({
                   style={{ fontSize: 13, fontWeight: 600, paddingRight: 30, appearance: "none", WebkitAppearance: "none", cursor: "pointer", width: "100%" }}
                 >
                   <option value="" disabled>where do you want to write?</option>
+                  {sortedRooms.map(g => (
+                    <option key={g.id} value={g.id}>{g.name} friend room</option>
+                  ))}
                   <option value="private">private entry</option>
                   <option value="public">public entry</option>
                 </select>
@@ -1329,11 +1402,12 @@ export default function ProfilePage({
                       background: "#fff",
                       border: "none",
                       // Text color tracks destination; icons use currentColor
-                      // so they track automatically. Journal compose modal
-                      // only offers private + public — the friend-room branch
-                      // below is unreachable from this surface but left in
-                      // place as defensive fallback.
-                      color: composeDestination === "public" ? "#dea838" : "#7abd8e",
+                      // so they track automatically. Friend-room destination
+                      // (chunk 3 of desktop refocus) uses canon navy text
+                      // on white to match the room theme's dark-on-light
+                      // styling pattern (canon-light-blue bg → canon-navy
+                      // foreground).
+                      color: isGroupDest ? "#1a3a4a" : composeDestination === "public" ? "#dea838" : "#7abd8e",
                       whiteSpace: "nowrap",
                       fontSize: 13,
                       minWidth: 130,

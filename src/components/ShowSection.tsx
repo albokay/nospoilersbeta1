@@ -63,7 +63,8 @@ function ThreadRedDot({ count, threadId, onDismiss }: { count: number; threadId:
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, createShow, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, transferGroupOwnership, softDeleteFriendGroup, recordDepartedMember, fetchDepartedMembers, sendInvite, fetchSentInvitations, fetchBrowseProgress } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, createShow, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, transferGroupOwnership, softDeleteFriendGroup, recordDepartedMember, fetchDepartedMembers, sendInvite, fetchSentInvitations, fetchBrowseProgress, fetchRoomActivityVisibility } from "../lib/db";
+import type { RoomVisibility } from "../lib/db";
 import type { Invitation } from "../types";
 import type { PromptRow } from "../lib/db";
 import { supabase } from "../lib/supabaseClient";
@@ -269,6 +270,24 @@ export default function ShowSection({
   const [composeDestination, setComposeDestination] = useState<"private" | "public" | string>("private");
   const [userGroups, setUserGroups] = useState<FriendGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
+
+  // canView-aware per-room visibility lookup. Used to pick the
+  // most-recently-active room as the compose-default destination
+  // (chunk 3 of desktop refocus). Reuses the SECURITY DEFINER RPC
+  // shipped for mobile (20260425_room_last_seen.sql); server-side
+  // join against effective progress means we don't surface activity
+  // the user can't view, which would otherwise leak its existence.
+  // Failures degrade gracefully — empty map → fall back to
+  // FriendGroup.createdAt for ordering.
+  const [roomVisibility, setRoomVisibility] = useState<RoomVisibility[]>([]);
+  useEffect(() => {
+    if (!user) { setRoomVisibility([]); return; }
+    let cancelled = false;
+    fetchRoomActivityVisibility(user.id)
+      .then(rows => { if (!cancelled) setRoomVisibility(rows); })
+      .catch(() => { if (!cancelled) setRoomVisibility([]); });
+    return () => { cancelled = true; };
+  }, [user?.id, showId]);
 
   // Hidden tabs (read from localStorage so switch-shows dropdown excludes them)
   const hiddenTabs = useMemo<Set<string>>(() => {
@@ -667,16 +686,39 @@ export default function ShowSection({
     }
   };
 
+  // Pick the most-recently-active room from a list (chunk 3).
+  // Order: latestVisibleActivityAt desc (NULL last); createdAt desc
+  // tiebreaker. Returns null when the list is empty.
+  const pickMostActiveRoom = (groups: FriendGroup[]): string | null => {
+    if (!groups.length) return null;
+    const visMap = new Map(roomVisibility.map(v => [v.groupId, v.latestVisibleActivityAt]));
+    const sorted = [...groups].sort((a, b) => {
+      const av = visMap.get(a.id) ?? null;
+      const bv = visMap.get(b.id) ?? null;
+      if (av != null && bv != null) return bv - av;
+      if (av != null) return -1;
+      if (bv != null) return 1;
+      return b.createdAt - a.createdAt;
+    });
+    return sorted[0].id;
+  };
+
   const openCompose = () => {
     setComposeOpen(true);
-    // Default based on context: friend room → that room, public view → public, otherwise → private
+    // Defaults per chunk 3 of the desktop refocus:
+    //   - In a friend room → that specific room.
+    //   - In public forum / public thread → "public" (per spec B —
+    //     contextual to the public space, but other destinations
+    //     remain available in the dropdown).
+    //   - In a private thread → most-recently-active room, falling
+    //     back to "private" if the user has no rooms (legacy).
     if (activeGroupId) {
       setComposeDestination(activeGroupId);
     } else if (!activeThreadId || dbThreads.find(t => t.id === activeThreadId)?.isPublic) {
-      // In public forum view or viewing a public thread
       setComposeDestination("public");
     } else {
-      setComposeDestination("private");
+      const defaultRoom = pickMostActiveRoom(userGroups);
+      setComposeDestination(defaultRoom ?? "private");
     }
   };
   const closeCompose = () => {
@@ -2393,7 +2435,6 @@ export default function ShowSection({
         const isGroupDest = composeDestination !== "" && composeDestination !== "private" && composeDestination !== "public";
         // Was the modal opened from a friend room context?
         const openedFromGroup = !!activeGroupId;
-        const activeGrp = openedFromGroup ? userGroups.find(g => g.id === activeGroupId) : null;
 
         // Color scheme: public → yellow, friend room → light-blue, private → green
         const composeBg = composeDestination === "public" ? "#dea838" : isGroupDest ? "#adc8d7" : "#7abd8e";
@@ -2407,11 +2448,42 @@ export default function ShowSection({
         const dropdownColor = openedFromGroup ? "#fff" : undefined;
         const dropdownBorder = openedFromGroup ? "2px solid #fff" : undefined;
 
+        // Sorted rooms list — most-recently-active first, matching the
+        // default-destination signal so the chosen default sits at the
+        // top of the dropdown. Inside a friend room the current room
+        // moves to the very top regardless of activity (you're writing
+        // here right now — predictable mapping).
+        const sortedRooms = (() => {
+          const visMap = new Map(roomVisibility.map(v => [v.groupId, v.latestVisibleActivityAt]));
+          const arr = [...userGroups].sort((a, b) => {
+            const av = visMap.get(a.id) ?? null;
+            const bv = visMap.get(b.id) ?? null;
+            if (av != null && bv != null) return bv - av;
+            if (av != null) return -1;
+            if (bv != null) return 1;
+            return b.createdAt - a.createdAt;
+          });
+          if (openedFromGroup && activeGroupId) {
+            const idx = arr.findIndex(g => g.id === activeGroupId);
+            if (idx > 0) {
+              const [cur] = arr.splice(idx, 1);
+              arr.unshift(cur);
+            }
+          }
+          return arr;
+        })();
+
         return (
         <Modal onClose={() => closeCompose()} width="min(720px,92vw)" cardStyle={{ background: composeBg }}>
           <button className="close-x" onClick={() => closeCompose()} style={{ position: "absolute", top: 12, right: 16 }}><X size={14} /></button>
           <div style={{ display: "grid", gap: 10 }}>
             {/* ── Destination dropdown ── */}
+            {/* Order per chunk 3 of desktop refocus:
+                  friend rooms (most-recently-active first, current room
+                  pinned top when in friend-room view) → private →
+                  public. Inside a friend room the public option is
+                  hidden — the spec scopes friend-room writes to rooms
+                  + private only. */}
             <div>
               <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                 <select
@@ -2421,10 +2493,10 @@ export default function ShowSection({
                   style={{ fontSize: 13, fontWeight: 600, paddingRight: 30, appearance: "none", WebkitAppearance: "none", cursor: "pointer", width: "100%", ...(dropdownColor ? { color: dropdownColor, border: dropdownBorder } : {}) }}
                 >
                   <option value="" disabled>where do you want to write?</option>
+                  {sortedRooms.map(g => (
+                    <option key={g.id} value={g.id}>{g.name} friend room</option>
+                  ))}
                   <option value="private">private entry</option>
-                  {openedFromGroup && activeGrp && (
-                    <option value={activeGrp.id}>{activeGrp.name} friend room</option>
-                  )}
                   {!openedFromGroup && (
                     <option value="public">public entry</option>
                   )}
