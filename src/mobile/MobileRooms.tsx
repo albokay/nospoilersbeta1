@@ -11,6 +11,7 @@ import {
 import type { Show, RoomVisibility } from "../lib/db";
 import type { FriendGroup } from "../types";
 import LoadingDots from "../components/LoadingDots";
+import SidebarLogo from "../components/SidebarLogo";
 import MobileShowSearch, { networkLabel, type TVmazeShow } from "./MobileShowSearch";
 
 type RoomRow = FriendGroup & { lastActivityAt: number };
@@ -116,6 +117,14 @@ export default function MobileRooms() {
       boxSizing: "border-box",
     }}>
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
+        {/* ── Dynamic logo (block-scatter animation on mount) ── */}
+        {/* Scale 0.6 → 168×89 fits comfortably at any mobile width.    */}
+        {/* Replays on every mount of MobileRooms (i.e. every entry to  */}
+        {/* the rooms list); same behavior as desktop's homepage logo.   */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <SidebarLogo scale={0.6} />
+        </div>
+
         {/* ── Header ── */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <div>

@@ -250,6 +250,18 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
   return (
     <div style={wrapper}>
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
+        {/* ── Static sidebar logotype mark (no animation) ── */}
+        {/* Smaller and quieter than MobileRooms' dynamic logo —  */}
+        {/* this is a per-room screen, the logo's just a brand    */}
+        {/* anchor, not a finale animation worth replaying.       */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+          <img
+            src="/sidebar-logo.png"
+            alt="sidebar"
+            style={{ height: 32, width: "auto", display: "block", opacity: 0.95 }}
+          />
+        </div>
+
         {/* ── Back link ── */}
         <button
           onClick={() => navigate("/m/rooms")}
