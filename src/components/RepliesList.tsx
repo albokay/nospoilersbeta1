@@ -372,6 +372,34 @@ export default function RepliesList({
     return map;
   }, [replies]);
 
+  // "Has been responded to" set for soft-delete tombstone gating.
+  // A soft-deleted reply persists as a tombstone iff some other
+  // non-deleted reply (or non-deleted citation) references it; otherwise
+  // it's filtered out entirely on render. Per user spec 2026-04-25:
+  // "the tombstone should not persist on refresh / after navigating
+  // away. UNLESS the deleted response has been responded to." Excluding
+  // deleted replies from the responder set prevents cascading-delete
+  // chains from leaving orphan tombstones.
+  const respondedToIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const r of replies) {
+      if (r.isDeleted) continue;
+      if (r.replyToId) ids.add(r.replyToId);
+      if (r.referencedReplyId) ids.add(r.referencedReplyId);
+    }
+    if (citations) {
+      // Citations whose citing reply is itself non-deleted count too.
+      for (const [citedId, entries] of citations) {
+        const hasVisibleCiter = entries.some(e => {
+          const cr = byId[e.citingReplyId];
+          return cr && !cr.isDeleted;
+        });
+        if (hasVisibleCiter) ids.add(citedId);
+      }
+    }
+    return ids;
+  }, [replies, citations, byId]);
+
   const [revealed, setRevealed] = useState<Record<string, true>>({});
   const [progressReveal, setProgressReveal] = useState<Record<string, true>>(() => freshReplyIds ?? {});
   const [promptFor, setPromptFor] = useState<Reply | null>(null);
@@ -632,7 +660,7 @@ export default function RepliesList({
             <h3 className="title" style={{ margin: 0 }}>Delete this response?</h3>
             <button className="close-x" onClick={() => setDeleteConfirmId(null)}><X size={14} /></button>
           </div>
-          <p className="muted" style={{ marginTop: 6 }}>It will turn into a stub visible to others. This can't be undone.</p>
+          <p className="muted" style={{ marginTop: 6 }}>If anyone has responded to it, it'll stay as a stub so the chain remains readable. Otherwise it'll vanish entirely. This can't be undone.</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
             <button className="btn" onClick={() => setDeleteConfirmId(null)}>Nevermind</button>
             <button
@@ -661,8 +689,15 @@ export default function RepliesList({
           const isReplyEdited = r.isEdited;
           const isReplyOwn = !!profile && r.author === profile.username;
 
-          // Deleted stubs always show
+          // Soft-delete handling: only persist as a tombstone if someone
+          // has responded to the deleted reply (chain preservation).
+          // Otherwise filter entirely so the reply truly vanishes on
+          // refresh. See respondedToIds construction above for the rule.
+          // localDeleted[r.id] (optimistic UI flag) always renders as a
+          // tombstone too — keeps the just-clicked-delete UX feedback
+          // consistent before the refetch lands and the rule applies.
           if (isReplyDeleted) {
+            if (!respondedToIds.has(r.id) && !localDeleted[r.id]) return null;
             return (
               <div
                 key={r.id}

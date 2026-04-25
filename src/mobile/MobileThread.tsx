@@ -150,16 +150,34 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
   // does the same dual walk via DB-side referenced_reply_id only. Mobile
   // does it client-side here because we already have the full reply list
   // in memory.
+  //
+  // Soft-deleted reply rule (per user spec 2026-04-25):
+  //   - Has been responded to → keep as a tombstone so the chain remains
+  //     readable (rendered with "(@author) deleted their response.")
+  //   - Has NOT been responded to → filter entirely; on the next refetch
+  //     it stays gone.
+  // "Responded to" means another non-deleted reply in this thread has
+  // replyToId or referencedReplyId pointing at this one. Excluding deleted
+  // replies from the responder set prevents cascading-delete chains from
+  // leaving orphan tombstones.
   const visibleReplies = useMemo(() => {
     if (!thread) return [];
     const byId: Record<string, Reply> = {};
     replies.forEach(r => (byId[r.id] = r));
+
+    const respondedToIds = new Set<string>();
+    for (const r of replies) {
+      if (r.isDeleted) continue;
+      if (r.replyToId) respondedToIds.add(r.replyToId);
+      if (r.referencedReplyId) respondedToIds.add(r.referencedReplyId);
+    }
+
     const getParent = (r: Reply): Reply | null =>
       (r.replyToId && byId[r.replyToId]) ||
       (r.referencedReplyId && byId[r.referencedReplyId]) ||
       null;
     const chainVisible = (r: Reply): boolean => {
-      if (r.isDeleted) return false;
+      if (r.isDeleted && !respondedToIds.has(r.id)) return false;
       if (!canView({ season: r.season, episode: r.episode }, progress)) return false;
       let cur = getParent(r);
       while (cur) {
@@ -472,7 +490,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
             <p style={{ fontSize: 13, opacity: 0.75, margin: "0 0 18px", lineHeight: 1.45 }}>
               {confirmDelete.type === "thread"
                 ? "This entry will be removed from the room. If anyone has responded, the thread will stay as a tombstone so the conversation chain remains readable."
-                : "This response will be removed. If it's been quoted in another reply, it'll stay as a tombstone so citations still resolve."}
+                : "If anyone has responded to it, it'll stay as a stub so the chain remains readable. Otherwise it'll vanish entirely."}
             </p>
             {deleteError && (
               <div style={{
@@ -520,8 +538,16 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
                       navigate(`/m/rooms/${groupId}`, { replace: true });
                     } else {
                       await deleteReply(confirmDelete.id);
-                      // Stay on thread; refetch via location.key bump.
-                      setReplies(prev => prev.filter(x => x.id !== confirmDelete.id));
+                      // Optimistically flag isDeleted=true (NOT filter from
+                      // state) so the visibleReplies useMemo runs the same
+                      // respondedToIds logic against the optimistic state.
+                      // Without this, a responded-to reply would vanish
+                      // immediately then a tombstone would reappear on the
+                      // next refetch — jarring. With this, the optimistic
+                      // state matches the eventual fetched state.
+                      setReplies(prev => prev.map(x =>
+                        x.id === confirmDelete.id ? { ...x, isDeleted: true } : x
+                      ));
                       setConfirmDelete(null);
                     }
                   } catch (err) {
@@ -595,6 +621,27 @@ function sheetItemStyle(opts?: { danger?: boolean; subtle?: boolean }): React.CS
 function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boolean; onKebab: () => void }) {
   const tag = `S${String(reply.season).padStart(2, "0")} E${String(reply.episode).padStart(2, "0")}`;
   const ts = formatRelativeShort(reply.updatedAt);
+
+  // Tombstone rendering for soft-deleted replies that survived the
+  // chainVisible filter (i.e. someone responded to them — chain
+  // preservation). Minimal card, faded, italic, single-line — matches
+  // desktop RepliesList's tombstone shape.
+  if (reply.isDeleted) {
+    return (
+      <div style={{
+        background: "rgba(255,255,255,0.85)",
+        color: "var(--dos-bg, #2a4a36)",
+        borderRadius: 10,
+        padding: "10px 14px",
+        opacity: 0.55,
+        fontStyle: "italic",
+        fontSize: 13,
+      }}>
+        @{reply.author} deleted their response.
+      </div>
+    );
+  }
+
   return (
     <div style={{
       background: "rgba(255,255,255,0.95)",
