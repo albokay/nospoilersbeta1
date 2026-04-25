@@ -10,6 +10,7 @@ import MobileThread from "./MobileThread";
 import MobileCompose from "./MobileCompose";
 import MobileRespond from "./MobileRespond";
 import MobileInvite from "./MobileInvite";
+import MobileInviteAccept from "./MobileInviteAccept";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Bypasses the desktop mobile lockout automatically
@@ -20,6 +21,8 @@ import MobileInvite from "./MobileInvite";
 //   /m                              → narrative + sign-in CTA (signed out)
 //                                     | redirect to /m/rooms (signed in)
 //   /m/auth                         → full-screen sign-in / create-account
+//                                     (?returnTo= supported for invite flow)
+//   /m/invite/:token                → mobile invite-accept screen
 //   /m/rooms                              → room list + show search (S3)
 //   /m/rooms/new                          → progress gate, new-room mode (S5)
 //   /m/rooms/:groupId/progress                       → progress gate, existing-room (S5)
@@ -42,10 +45,13 @@ export default function MobileApp() {
 
   useEffect(() => {
     if (authLoading) return;
+    // Bare /m for signed-in users → /m/rooms. Don't bounce away from
+    // /m/invite/:token even if signed in — that's the active flow.
     if (user && subPath === "/") navigate("/m/rooms", { replace: true });
   }, [user, authLoading, subPath, navigate]);
 
   if (subParts[0] === "auth") return <MobileAuth />;
+  if (subParts[0] === "invite" && subParts[1]) return <MobileInviteAccept token={subParts[1]} />;
   if (subParts[0] === "rooms" && subParts[1] === "new") return <MobileProgressGate mode="new" />;
   if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "progress") {
     return <MobileProgressGate mode="existing" groupId={subParts[1]} />;

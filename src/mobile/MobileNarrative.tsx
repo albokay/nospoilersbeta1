@@ -13,7 +13,14 @@ import HomepageNarrative from "../components/HomepageNarrative";
 //
 // Sign-in CTA routes to /m/auth (full-screen mobile auth, S2). Existing
 // auth flow is unchanged; only the UI is mobile-friendly.
-export default function MobileNarrative() {
+//
+// hideBottom: drops the "desktop-only" callout + the "Join / sign in"
+// CTA. Used by MobileInviteAccept to wrap the narrative pitch with its
+// own invite-specific accept flow at the bottom (per spec: invitees see
+// "a version of the homepage narrative scroll, with an 'accept invite'
+// button and flow at the bottom"). Default behavior — `hideBottom`
+// omitted — is the standard signed-out homepage.
+export default function MobileNarrative({ hideBottom = false }: { hideBottom?: boolean }) {
   const navigate = useNavigate();
 
   const items: { Icon: React.ElementType; text: React.ReactNode }[] = [
@@ -89,42 +96,46 @@ export default function MobileNarrative() {
           ))}
         </div>
 
-        {/* ── Mobile-only callout ── */}
-        <div style={{
-          marginTop: 32,
-          width: "min(288px, 90vw)",
-          padding: "14px 16px",
-          borderRadius: 12,
-          border: "2px solid #fff",
-          background: "transparent",
-          color: "#fff",
-          fontSize: 13,
-          fontWeight: 600,
-          lineHeight: 1.5,
-          textAlign: "center",
-          textWrap: "balance" as React.CSSProperties["textWrap"],
-        }}>
-          Sidebar&rsquo;s full experience is on desktop —<br />
-          mobile is for your friend rooms only.
-        </div>
+        {!hideBottom && (
+          <>
+            {/* ── Mobile-only callout ── */}
+            <div style={{
+              marginTop: 32,
+              width: "min(288px, 90vw)",
+              padding: "14px 16px",
+              borderRadius: 12,
+              border: "2px solid #fff",
+              background: "transparent",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              lineHeight: 1.5,
+              textAlign: "center",
+              textWrap: "balance" as React.CSSProperties["textWrap"],
+            }}>
+              Sidebar&rsquo;s full experience is on desktop —<br />
+              mobile is for your friend rooms only.
+            </div>
 
-        {/* ── CTA: sign in / create account (single button — auth screen toggles modes) ── */}
-        <div style={{ marginTop: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "min(288px, 90vw)" }}>
-          <button
-            onClick={() => navigate("/m/auth")}
-            style={{
-              width: "100%", maxWidth: 420,
-              background: "#fff", color: "var(--dos-bg)", border: "none",
-              borderRadius: 9999, padding: "14px 0",
-              fontSize: 18, fontWeight: 800, cursor: "pointer",
-              letterSpacing: "0.02em",
-            }}
-          >
-            Join / sign in
-          </button>
-        </div>
+            {/* ── CTA: sign in / create account (single button — auth screen toggles modes) ── */}
+            <div style={{ marginTop: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "min(288px, 90vw)" }}>
+              <button
+                onClick={() => navigate("/m/auth")}
+                style={{
+                  width: "100%", maxWidth: 420,
+                  background: "#fff", color: "var(--dos-bg)", border: "none",
+                  borderRadius: 9999, padding: "14px 0",
+                  fontSize: 18, fontWeight: 800, cursor: "pointer",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Join / sign in
+              </button>
+            </div>
 
-        <div style={{ height: 64 }} />
+            <div style={{ height: 64 }} />
+          </>
+        )}
       </div>
     </div>
   );

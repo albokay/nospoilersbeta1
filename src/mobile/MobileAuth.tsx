@@ -1,23 +1,42 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import LoadingDots from "../components/LoadingDots";
 
 type Mode = "signin" | "signup";
+
+// Sanitize a returnTo query parameter — only allow paths inside /m/* so a
+// crafted invite URL can't bounce the user to an external origin or to a
+// desktop route after auth. Falls back to /m/rooms on any anomaly.
+function safeReturnTo(raw: string | null): string {
+  if (!raw) return "/m/rooms";
+  if (!raw.startsWith("/m/")) return "/m/rooms";
+  // Defense: reject protocol-relative URLs and backslash variants. Both
+  // are well-known open-redirect smuggling patterns.
+  if (raw.includes("//") || raw.includes("\\")) return "/m/rooms";
+  return raw;
+}
 
 // S2 — Full-screen mobile auth. Mirrors AuthModal's flow exactly (same
 // signIn/signUp calls, same validation, same error shape) — only the UI
 // is rebuilt for mobile: full-viewport layout, large touch targets,
 // 16px font on inputs to avoid iOS focus-zoom.
 //
-// On success: navigate to /m/rooms with replace so back-button doesn't
-// return to the auth screen. The desktop App-level "navigate to /profile
-// on null→user transition" effect lives in <AppShell> and is not mounted
-// on /m/*, so there's no conflict — MobileAuth owns its own post-success
-// navigation.
+// On success: navigate to ?returnTo or /m/rooms (default), with replace
+// so back-button doesn't return to the auth screen. returnTo is used by
+// the invite-accept flow so a signed-out invitee can sign in / create an
+// account and return to the invite-accept page to finish joining the
+// room. Validated to /m/* paths only (see safeReturnTo above) to prevent
+// open-redirect smuggling.
+//
+// The desktop App-level "navigate to /profile on null→user transition"
+// effect lives in <AppShell> and is not mounted on /m/*, so there's no
+// conflict — MobileAuth owns its own post-success navigation.
 export default function MobileAuth() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signIn, signUp } = useAuth();
+  const returnTo = safeReturnTo(new URLSearchParams(location.search).get("returnTo"));
 
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
@@ -42,7 +61,7 @@ export default function MobileAuth() {
 
     setLoading(false);
     if (err) { setError(err); return; }
-    navigate("/m/rooms", { replace: true });
+    navigate(returnTo, { replace: true });
   }
 
   const inputStyle: React.CSSProperties = {
@@ -179,7 +198,13 @@ export default function MobileAuth() {
         <div style={{ marginTop: "auto", paddingTop: 32, textAlign: "center" }}>
           <button
             type="button"
-            onClick={() => navigate("/m")}
+            onClick={() => {
+              // If the user arrived via ?returnTo (typically the invite
+              // flow), Back returns to that origin so they don't lose the
+              // invite context. Default Back goes to /m (the narrative).
+              const back = new URLSearchParams(location.search).get("returnTo");
+              navigate(back && back.startsWith("/m/") && !back.includes("//") ? back : "/m");
+            }}
             style={{
               background: "transparent",
               color: "#fff",

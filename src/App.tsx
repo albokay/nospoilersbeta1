@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
@@ -76,7 +76,18 @@ export default function App() {
   if (pathParts[0] === "how-it-works") return <HowItWorksV2 />;
   if (pathParts[0] === "how-it-works-v1") return <HowItWorks />;
   if (pathParts[0] === "how-it-works-v2") return <HowItWorksV2 />;
-  if (pathParts[0] === "invite" && pathParts[1]) return <InviteAcceptPage token={pathParts[1]} />;
+  if (pathParts[0] === "invite" && pathParts[1]) {
+    // Viewport-detect: redirect mobile users to the mobile invite-accept
+    // route. The email link is a single static URL; the front-end forks
+    // here on viewport so mobile recipients land in /m's UI rather than
+    // hitting the desktop modal-style InviteAcceptPage on a phone.
+    // Admins included in the redirect by design — mobile invite-accept
+    // is the correct UX at <768px regardless of role.
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      return <Navigate to={`/m/invite/${pathParts[1]}`} replace />;
+    }
+    return <InviteAcceptPage token={pathParts[1]} />;
+  }
   if (pathParts[0] === "m") return <MobileApp />;
   return <AppShell />;
 }
