@@ -4,7 +4,7 @@ import { useAuth } from "../lib/auth";
 import MobileNarrative from "./MobileNarrative";
 import MobileAuth from "./MobileAuth";
 import MobileRooms from "./MobileRooms";
-import MobileRoomCreate from "./MobileRoomCreate";
+import MobileProgressGate from "./MobileProgressGate";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Bypasses the desktop mobile lockout automatically
@@ -16,8 +16,8 @@ import MobileRoomCreate from "./MobileRoomCreate";
 //                                     | redirect to /m/rooms (signed in)
 //   /m/auth                         → full-screen sign-in / create-account
 //   /m/rooms                        → room list + show search (S3)
-//   /m/rooms/new                    → create-room confirm (S3 hand-off → S5)
-//   /m/rooms/:groupId/progress      → progress gate (S5 — placeholder)
+//   /m/rooms/new                    → progress gate, new-room mode (S5)
+//   /m/rooms/:groupId/progress      → progress gate, existing-room mode (S5)
 //   /m/rooms/:groupId               → room view (S6 — placeholder)
 //
 // Auto-redirect rule: signed-in users on bare /m get bounced to /m/rooms so
@@ -37,9 +37,9 @@ export default function MobileApp() {
   }, [user, authLoading, subPath, navigate]);
 
   if (subParts[0] === "auth") return <MobileAuth />;
-  if (subParts[0] === "rooms" && subParts[1] === "new") return <MobileRoomCreate />;
+  if (subParts[0] === "rooms" && subParts[1] === "new") return <MobileProgressGate mode="new" />;
   if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "progress") {
-    return <RoomSubrouteStub groupId={subParts[1]} variant="progress" />;
+    return <MobileProgressGate mode="existing" groupId={subParts[1]} />;
   }
   if (subParts[0] === "rooms" && subParts[1]) {
     return <RoomSubrouteStub groupId={subParts[1]} variant="room" />;
