@@ -669,7 +669,110 @@ Standalone refactor done before any mobile-feature work, to clear §6 item 19 fr
 - **Top-level `<App>` is now a thin router.** Any new special route should go in the early-return block of `<App>`, not in `<AppShell>`. The contract: `<App>` calls a fixed set of hooks (currently `useEffect(injectDOSStyles)` + `useLocation()`) and then the early-return chain. Adding hooks to `<App>` is fine as long as they run unconditionally on every render. Adding hooks *below* an early return inside `<App>` re-introduces the bug class. If a route needs its own state/effects, it lives in its own component (rendered from the early-return arm), not as inline hooks in `<App>`.
 - **Refactors that unblock larger feature work ship as their own commits.** The hooks refactor was a 17-line diff against `App.tsx`; bundling it into mobile Phase 0 would have made any regression in either dimension hard to bisect. Cheap to split, expensive to entangle. Pattern to follow when a structural change is a prerequisite for a feature: ship the structural change first, verify, then build the feature on top of stable ground.
 
-### Earlier (pre-audit, header/layout polish)
+### 2026-04-25 — mobile build, Phase 0 + Phase 1 (read-only loop)
+
+First mobile-build arc. Spec was a separate front-end at `/m/*` on the same Netlify site, sharing the same Supabase backend — friend rooms only, no journaling / public posting / profile views. Phase 0 set up routing scaffolding; Phase 1 shipped the read-only end-to-end loop (sign in → list → progress gate → room → thread + responses) across six chunks. Compose, respond, invite, and the S7 chevron-dropdown are deferred to Phase 2+.
+
+**Architecture decisions ratified at start of arc** (locked before coding):
+
+- **Path-prefix at `/m/*` on the same Netlify site**, single React app. New early-return arm in top-level `<App>` returns `<MobileApp />` for any path under `/m`. Existing Netlify config (`/* → /index.html`) handles the SPA fallback unchanged.
+- **Shared backend, separate front-end**. Mobile components live under `src/mobile/`. Reuses `src/lib/db.ts`, `src/lib/auth.tsx`, `src/lib/utils.ts`, `src/lib/supabaseClient.ts`, `src/types.ts`. Does NOT import desktop UI components (`ShowSection`, `ProfilePage`, `AuthModal`, etc.) — mobile renders its own UI from primitives.
+- **Lockout bypass automatic from the App.tsx hooks refactor** ([§7 entry above](HANDOFF.md), commit `3e147b9`). `/m/*` returns from `<App>` before `<AppShell>` (which holds the `isMobileLocked && !isAdmin` gate) is ever mounted. No additional gate change needed.
+- **Auth session shared across desktop and mobile on the same origin**. Supabase localStorage is origin-scoped, not path-scoped. A user signed in on `beta.sidebar.watch` is signed in everywhere on `beta.sidebar.watch`, including under `/m/*`.
+- **Auto-redirect: signed-in users on `/m` → `/m/rooms`**. Mirrors the desktop redirect rule for signed-in non-admins on `/` → `/profile`. Implemented as a `useEffect` inside `<MobileApp>`, gated on `!authLoading && user`.
+- **TSP filtered client-side from mobile room list** (`r.showId !== "tsp"` in MobileRooms). The desktop onboarding fixture is provisioned on signup via DB trigger and stays — mobile just hides it. Avoids touching the seed flow + keeps the desktop onboarding intact.
+- **Per-room ordering reuses `fetchAllFriendGroupsWithActivity`** unchanged. The function already returns rooms with `lastActivityAt = max(group_threads.shared_at, replies.created_at by group_id)`, sorted descending. No new function needed despite the design proposal flagging one — the existing function's return shape already keys per-room, not per-show.
+- **Per-room `last_seen_at` column on `friend_group_members`** approved (option (a)) but DEFERRED to Phase 4 since new-activity indicators aren't built yet.
+- **Realtime subscription narrowing** approved for Phase 1 or 2 but DEFERRED — Phase 1 read-only doesn't need realtime; lands with the compose/respond chunks where stale views matter more.
+
+**Phase 0 (foundation, three commits before Phase 1):**
+
+| Commit | Scope |
+|---|---|
+| `3e147b9` | App.tsx hooks refactor — split `<App>` (router) from `<AppShell>` (body). Closed §6 item 19. Documented in its own §7 entry above. |
+| `bd31097` | `/m/*` route + minimal `<MobileApp>` skeleton confirming routing, shared auth context, and lockout bypass all work. |
+| `c0b8f3c` | Docs-only: §6 item 19 marked RESOLVED + §7 entry for the refactor. |
+
+**Phase 1 (read-only loop, six chunks):**
+
+| Commit | Scope |
+|---|---|
+| `984ee8c` | (1/N) Sub-routing inside `<MobileApp>` + S1 narrative (`<MobileNarrative>`). Reuses `<HomepageNarrative headerHeight={0}>` for the parallax bubble pitch + mirrors the desktop hero + 6-step grid + "full experience is on desktop — mobile is for your friend rooms only" callout + single "Join / sign in" CTA. WMD button dropped per spec. `<MobileAuth>` and `<MobileRooms>` placeholders this commit. |
+| `25344c2` | (2/N) Real `<MobileAuth>` (S2). Mirrors `AuthModal`'s flow exactly (same `signIn`/`signUp` calls, same validation, same error shape) — only the UI is mobile-rebuilt. 16px font on inputs to avoid iOS focus-zoom; `LoadingDots` inside the submit button; "← Back" bottom-anchored. On success: `navigate("/m/rooms", { replace: true })` so back-button doesn't return to auth. The desktop App-level "navigate to /profile on null→user" effect lives in `<AppShell>` and isn't mounted on `/m/*` — no double-navigation conflict. |
+| `a9efadf` | (3a/N) Real `<MobileRooms>` list. Loads via `fetchAllFriendGroupsWithActivity` + `fetchShows`. TSP filter (`r.showId !== "tsp"`). Each row: room name + show name + compact relative timestamp ("3h"/"2d"/"3w"). Sign-out top-right. Search field at the bottom — placeholder this commit. |
+| `3597992` | (3b/N) TVMaze search inline in `<MobileRooms>`. 320ms debounce, max 8 results. Tap result → `navigate("/m/rooms/new", { state: { selectedShow: {...} } })`. New `<MobileRoomCreate>` (placeholder) at `/m/rooms/new`. |
+| `908dd3d` | (4/N) `<MobileProgressGate>` (S5) — first mobile chunk that writes data. Single component, two modes via prop: `mode="new"` reads `selectedShow` from router state, fetches TVMaze episodes via inline `tvmazeEpisodesAired` (airstamp ≤ now, regular-type only), submission runs `createShow` + `createFriendGroup` + `upsertProgress` + `markTabCreated`; `mode="existing"` fetches the room/show/progress in parallel, pre-fills the picker. Deletes `<MobileRoomCreate>` (placeholder it replaced). Picker is a single native `<select>` grouped by season — explicitly NOT `OneSelectProgress` (footgun: §6 item 23). Rewatch state intentionally not exposed in mobile UI; DB triggers protect the invariants regardless of which client wrote. |
+| `55a9024` | (5/N) `<MobileRoom>` (S6, read-only). Parallel fetch (rooms / shows / progress / members) → `fetchGroupThreads(groupId, eff.s, eff.e)` with `effectiveProgress(progress)`. Same server-side `canView` filter + chain-visible reply count as desktop. Thread cards: author + episode-tag eyebrow, title, 3-line preview, response count + relative timestamp. Tombstones soft-deleted-with-replies threads. Empty-state branches on `memberCount` (alone vs. has-other-members). Tap card → `/m/rooms/:groupId/thread/:threadId`. New `<MobileThread>` placeholder. Inline `RoomSubrouteStub` deleted. |
+| `176ea52` | (6/N) Real `<MobileThread>`. New `fetchThreadById(threadId)` getter in `db.ts` (additive). Parallel fetch (thread / replies / progress / membership). Defense-in-depth membership check (RLS already gates the data path; explicit check gives clearer UX message). Client-side `chainVisible` filter — walks BOTH `replyToId` (legacy/seed) and `referencedReplyId` (current composer field) for symmetry with `utils.visibleRepliesCount`. Render: thread article (full body, whitespace-preserved) + responses list. Empty state: "No responses visible at your progress yet. Posting + responding land in the next mobile commit." |
+
+**Routing model (final state at end of Phase 1):**
+
+```
+/m                                    → MobileNarrative (signed out) | redirect /m/rooms (signed in)
+/m/auth                               → MobileAuth
+/m/rooms                              → MobileRooms (list + show search)
+/m/rooms/new                          → MobileProgressGate (mode=new)
+/m/rooms/:groupId/progress            → MobileProgressGate (mode=existing)
+/m/rooms/:groupId/thread/:threadId    → MobileThread
+/m/rooms/:groupId                     → MobileRoom (read-only)
+```
+
+Order matters in the parser: the `:groupId/thread/:threadId` arm must match before the bare `:groupId` arm; the `new` arm must match before the bare `:groupId` arm. Both ordering constraints captured in `<MobileApp>` directly above each branch.
+
+**Files added under `src/mobile/`:**
+
+- `MobileApp.tsx` — sub-route parser. Single source of truth for path → component mapping under `/m/*`.
+- `MobileNarrative.tsx` — S1 (signed-out home).
+- `MobileAuth.tsx` — S2 (full-screen auth form).
+- `MobileRooms.tsx` — S3 (room list + show search). Inline `tvmazeSearch` + `networkLabel` helpers.
+- `MobileProgressGate.tsx` — S5 (both modes). Inline `tvmazeEpisodesAired` + `slugify` helpers.
+- `MobileRoom.tsx` — S6 (read-only room view). Inline `formatRelativeShort`, `ThreadCard`.
+- `MobileThread.tsx` — single thread + responses (read-only). Inline `formatRelativeShort`, `ReplyCard`.
+
+**One backend addition this arc:**
+
+- `fetchThreadById(threadId)` in `src/lib/db.ts` — small single-row getter using `maybeSingle()` (returns null if not found rather than throwing). Sits next to `fetchRepliesForThread`. Used only by `MobileThread` currently; available to desktop if a use case appears.
+
+**No backend changes beyond that.** No SQL migrations, no edge function changes, no schema modifications. All data writes go through existing functions used by desktop.
+
+**Reused from desktop without changes:**
+
+- `src/lib/db.ts` — every relevant function: `fetchAllFriendGroupsWithActivity`, `fetchShows`, `fetchProgress`, `fetchFriendGroupMembers`, `fetchGroupThreads`, `fetchRepliesForThread`, `createShow`, `createFriendGroup`, `upsertProgress`, `markTabCreated`.
+- `src/lib/auth.tsx` — `useAuth`, `signIn`, `signUp`, `signOut`. Same `AuthProvider` mounted at the React root covers both desktop and mobile subtrees.
+- `src/lib/utils.ts` — `canView`, `effectiveProgress`.
+- `src/components/LoadingDots.tsx` — reused as-is for all loading/submitting states on mobile.
+- `src/components/HomepageNarrative.tsx` — embedded inside `MobileNarrative` with `headerHeight={0}`. The component is already responsive via `vw` units; no fork needed.
+- All edge functions (`send-invite` etc.) — mobile will use them directly when the relevant features land in Phase 2+.
+
+**What's deferred (to Phase 2+):**
+
+- **Compose new entry** (Phase 2). Will use `insertThread` + `addThreadToGroup` with `is_public: false` + `group_id` set; tag with `effectiveProgress`'s `s/e` (rewatcher-correct).
+- **Respond to entry** (Phase 2). Will use `insertReply` with `group_id` set to the room.
+- **Invite-friends UI + real `last_seen_at` indicator** (Phase 3 or 4 — invite likely paired with compose for new-room useful-from-day-1). Mobile invite flow uses `sendInvite` edge function. Recipient binding (`accept_invitation` RPC's `wrong_recipient` error path) needs mobile rendering too.
+- **Mobile invite-accept route** (`/m/invite/:token`). Strategy decided: `InviteAcceptPage` detects mobile viewport (`window.innerWidth < 768`) and redirects to `/m/invite/:token` so the email link stays a single static URL. Build alongside the invite-send UI.
+- **S7 fullscreen chevron-dropdown** (Phase 4). Other-rooms list + show search + invite button. Chevron not even rendered yet on the room screen — will land in this chunk.
+- **Per-room `last_seen_at` column + new-activity indicators on room buttons** (Phase 4 backend). Migration adds the column to `friend_group_members`; render layer reads it for the visible-content-since-last-visit dot. Already approved (option (a)).
+- **Realtime subscription narrowing** to user's rooms via `group_id IN (...)` filter (Phase 1 or 2 follow-up). Mobile bandwidth/battery sensitivity matters more than on desktop.
+- **Code-splitting** (any phase, eventual). Bundle is at ~713 kB raw / 200 kB gzip; warning fires at 500 kB raw. Not blocking but a code-split between `<AppShell>` and `<MobileApp>` would let mobile users skip the desktop bundle entirely.
+
+**Two-step deploys this arc required:** none.
+
+**Conventions established or reinforced this arc:**
+
+- **Mobile entry is a single early-return arm in `<App>`.** Sub-routing happens inside `<MobileApp>` via `location.pathname` parsing. Don't add per-mobile-screen routes to `<App>`'s top-level early-return block — they all collapse into the `/m` arm. This keeps the desktop router unchanged while the mobile tree is internally rich.
+- **Mobile components live under `src/mobile/` and never import desktop UI components.** Sharing happens through `src/lib/`, `src/types.ts`, and tiny shared primitives like `LoadingDots`. The discipline is what makes mobile a "separate front-end" rather than a desktop fork.
+- **Inline-style mobile UI**, with the canon palette referenced by named hex (`#7abd8e` canon green via `var(--dos-bg)`, `#fff`, `rgba(244,80,40,0.9)` red-fill error banners). No mobile-specific class system — direct inline styles for now. Costs more per-component verbosity; saves a styling layer to maintain. Revisit if a third copy of the same pattern appears.
+- **Mobile post-auth navigation owns its destination.** `<MobileAuth>` calls `navigate("/m/rooms", { replace: true })` after success rather than relying on the desktop App-level null→user navigation effect (which lives in `<AppShell>` and isn't mounted on `/m/*`). Replace so back-button doesn't return to auth. Same pattern for any future mobile auth-success surface.
+- **Mobile progress picker is a single native `<select>` grouped by season — don't reuse `OneSelectProgress`.** Per HANDOFF §6 item 23, that component's `onConfirm` silently no-ops with `requireConfirm={false}`. Building the select directly avoids the footgun and keeps mobile picker visual style consistent with the rest of `/m`.
+- **Rewatch state intentionally not exposed in mobile UI** for now. Mobile is for active social flow; rewatch is desktop complexity. Users in rewatch mode can still set progress on mobile; the DB triggers (`progress_no_rewatch_rollback`, `progress_no_rollback_to_zero`) protect the invariants regardless of which client wrote. Revisit if user feedback says otherwise.
+- **TVMaze helpers duplicated inline in mobile** (`tvmazeSearch` in `MobileRooms`, `tvmazeEpisodesAired` in `MobileProgressGate`). Each is ~15 lines and mirrors the desktop versions in `SearchShows.tsx`. Lift to `src/lib/tvmaze.ts` if a third caller appears; for two callers the duplication is cheaper than the refactor + extra import surface.
+- **Client-side `chainVisible` filter on mobile thread view walks BOTH `replyToId` and `referencedReplyId`.** Mirrors `utils.visibleRepliesCount`'s dual walk because the in-memory reply list includes seed data with `replyToId` set. Server-side `fetchGroupThreads` walks only `referenced_reply_id`; that's correct because seed data is in-memory not in DB. Two surfaces, same effective filter, slightly different walks for the surface they read from.
+- **Client-side TSP filter** (`r.showId !== "tsp"` in `MobileRooms`). The desktop seed flow stays untouched. Filtering in the mobile view is cheaper than coupling to the seed trigger — and reversible if mobile TSP support is ever wanted.
+- **Inline placeholder components for transient routes are kept inside `MobileApp.tsx`** (e.g. the `RoomSubrouteStub` that lived there for chunks 3–4 before being deleted in chunk 5). Promoting transient stubs to their own files just adds files we'd delete next chunk. Real components, on the other hand, always get their own file.
+- **Build verification + live spot-check, no preview workflow** for Sidebar work. Stored in user feedback memory; mobile follows the same rule. `npm run build` between chunks is mandatory; preview servers aren't used.
+- **Each Phase 1 chunk shipped as its own commit + push, with explicit "OK to commit + push?" confirmation each time.** Rule: ask before every commit. Six chunks, six explicit confirmations. Slower than batch shipping; produces a much cleaner bisect surface and a navigable history of mobile state at every milestone.
+
+
 
 The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.
 
