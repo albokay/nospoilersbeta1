@@ -1035,6 +1035,30 @@ Non-destructive: only mutates the `name` column on matching `friend_groups` rows
 
 **Convention established:** room-name defaults (and any other config-shaped values that need to land on existing users) have a two-part shape: `UPDATE` for existing rows filtered to the literal old default, plus `CREATE OR REPLACE` the provision function for future ones. The literal-match WHERE clause is what preserves user customizations. Apply this pattern when any other auto-provisioned default needs to change.
 
+### 2026-04-25 late night — second mobile polish pass + finale logo dissolve
+
+A short batch following live-testing of the mobile build after the desktop refocus arc landed. Two commits: six small mobile UX adjustments shipped in one batch, plus a homepage finale-animation polish that affects both desktop and mobile.
+
+**Commits:**
+
+| Commit | Scope |
+|---|---|
+| `d398bed` | Six mobile tweaks in one commit. (1) `<MobileRoomMenu>` — new "Update progress" section at the top with a `ClipboardList` icon button routing to `/m/rooms/<id>/progress` (MobileProgressGate `existing` mode). (2) `<MobileNarrative>` fixed Sign-in shortcut moves from `left: 14` to `right: 14`. (3) `<MobileInviteAccept>` drops the `<MobileNarrative hideBottom />` wrapper from the signed-out path; both signed-in and signed-out invitees now get the same focused `<CenteredPage>` layout. (4) `<MobileEditThread>` + `<MobileEditReply>` retag warning banner relocated from above the form fields to directly above the Confirm button + border/text flipped to canon-red (`#f45028`); border thickened 1px → 2px. (5) `<MobileThread>` ReplyCard background opacity drops `0.95` → `0.80` (live) and `0.85` → `0.65` (tombstone) so responses visually differentiate from the parent thread article (which stays at `0.95`). (6) `<MobileNarrative>` full-experience callout border + text flipped from white to canon-red. |
+| `218424e` | `<SidebarLogo>` gets a new `blocksOpacity?: number = 1` prop applied to each colored block's `opacity`; the wordmark PNG (zIndex 6) is unaffected. `<HomepageNarrative>` AnimatedLogo computes `blocksOpacity = 1 - eased` and passes it through, so the 5 scatter blocks dissolve in lockstep with the scroll-shrink animation. End state at progress=1: only the wordmark visible at scale 0.6 in the top-left header position. Affects both desktop `/` and mobile `/m` (both render `<HomepageNarrative>`). Other SidebarLogo callsites (MobileRooms, SidebarLogoCanvasOverlap) use the default `blocksOpacity=1` and behave unchanged. |
+
+**Behavior reversal worth flagging.** Mobile post-spec polish chunk 4 (`ed74442`) explicitly added the `<MobileNarrative hideBottom />` wrapper to the signed-out invite-accept path per the original mobile spec. `d398bed` reverses that: live-testing showed the narrative scroll was burying the accept action below the fold for users who clicked through from email intending to accept, not browse. Brand-new invitees can still reach the homepage pitch via the top-right "Sign in" button on `/m` or by browsing there directly — they're just not forced through it on the invite path. Documenting the reversal so a future reader doesn't unwind it.
+
+**Conventions established or reinforced:**
+
+- **Banner-relocation pattern for action-coupled warnings.** A heads-up banner about what a specific button is about to do should sit DIRECTLY ABOVE that button, not at the top of the form. The retag banner moved from above the title input to immediately above the Confirm button — same content, different placement. Lands at the moment of commit instead of at form-load, when the user's intent has crystallized. Rule: warnings tied to a specific commit action go adjacent to the trigger.
+- **Opacity-delta as visual hierarchy for sibling cards.** Parent thread article: `rgba(255,255,255,0.95)`. Live response card: `0.80`. Tombstone: `0.65`. The 0.15 delta between thread and live-response — plus the further drop to tombstone — maps to "headline / conversation / deleted" without changing color or layout. Reusable for any parent/child card pair where the child should feel "around" the parent rather than equal weight.
+- **Canon-red on canon-green page bg as non-shouty heads-up color.** Border + text in `#f45028` over the canon-green default page bg pops without needing a fill or shadow. Used in three new spots in this arc (retag banner × 2, full-experience callout). Rule: heads-up elements that need visibility on the canon-green default surface get canon-red border + text. Reserve filled red boxes for danger/destructive surfaces (e.g. error banners with `rgba(244,80,40,0.9)` fill).
+- **Layered-logo per-layer opacity prop pattern.** `SidebarLogo`'s new `blocksOpacity` prop lets the finale animation dissolve the playful colored blocks while leaving the wordmark intact. Default (`1`) preserves full-dynamic behavior for static callsites — no behavior change for the rooms-list logo or any other usage. The wordmark PNG sits at `zIndex: 6` above all blocks, so it's naturally unaffected by the per-block opacity. Generalizes: when a layered visual element needs partial-dissolve animation tied to scroll or some other progress signal, add a per-layer opacity prop with default `1` so existing callers don't change behavior.
+
+**Deferred items added this arc:** none.
+
+**Two-step deploys this arc required:** none.
+
 ### Earlier (pre-audit, header/layout polish)
 
 The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.
