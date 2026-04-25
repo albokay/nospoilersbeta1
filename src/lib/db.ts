@@ -348,6 +348,17 @@ function rowToReply(row: any): Reply {
   };
 }
 
+/** Single thread by id. Returns null if not found. */
+export async function fetchThreadById(threadId: string): Promise<Thread | null> {
+  const { data, error } = await supabase
+    .from("threads")
+    .select("*")
+    .eq("id", threadId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? rowToThread(data) : null;
+}
+
 export async function fetchRepliesForThread(threadId: string, groupId?: string | null): Promise<Reply[]> {
   // Seed threads live in memory — return them directly without hitting Supabase
   if (repliesByThread[threadId]) return repliesByThread[threadId];
