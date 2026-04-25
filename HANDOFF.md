@@ -772,7 +772,83 @@ Order matters in the parser: the `:groupId/thread/:threadId` arm must match befo
 - **Build verification + live spot-check, no preview workflow** for Sidebar work. Stored in user feedback memory; mobile follows the same rule. `npm run build` between chunks is mandatory; preview servers aren't used.
 - **Each Phase 1 chunk shipped as its own commit + push, with explicit "OK to commit + push?" confirmation each time.** Rule: ask before every commit. Six chunks, six explicit confirmations. Slower than batch shipping; produces a much cleaner bisect surface and a navigable history of mobile state at every milestone.
 
+### 2026-04-25 continued — mobile Phase 2 (social actions: compose, respond, invite, accept, switch rooms)
 
+Phase 2 closes the agreed mobile feature scope. Five chunks bring mobile from "read-only loop" (Phase 1) to "rooms-only social client" — users can post, respond, invite friends, accept invites end-to-end, and switch between rooms via the chevron-dropdown. After this arc the only remaining work in the agreed scope is the Phase 4 backend (`last_seen_at` migration + new-activity indicators) and the realtime-subscription narrowing follow-up.
+
+**Architecture decisions that landed during the arc** (none ratified up-front; each chunk made these choices and the next chunks reused them):
+
+- **Full-screen composers, not inline.** Compose, respond, and invite all live at their own routes (`/m/rooms/:id/compose`, `.../thread/:tid/respond`, `.../invite`) rather than as inline forms or modals on the room/thread screens. Sidebar entries are reflective writing, not chat — full-screen gives breathing room and matches the spec's "discussion-starters, not chat messages" framing. Modal-style was avoided so the back button always closes the composer cleanly without popstate gymnastics.
+- **Floating "+" FAB pattern** for "create something new in this context." White 56×56 pill with drop shadow, canon-bg glyph, `position: fixed`, `right: 20`, `bottom: 24`, `z-index: 50`. Used on `<MobileRoom>` (→ compose) and `<MobileThread>` (→ respond). Same icon (`Plus`) on both — universal "add" gesture; the destination depends on context.
+- **`location.key` refetch hook** for return-from-respond. `<MobileThread>`'s effect deps include `location.key` so when `<MobileRespond>` navigates back with `replace: true` (same URL, new history entry), the thread re-pulls and the new reply appears immediately. Same mechanism would handle any future "edit reply" return path. Cheap; no need for optimistic updates or router-state passing for the simple "write → return → see your write" loop.
+- **`returnTo` query parameter on `<MobileAuth>`** for the invite-accept flow. Signed-out invitee taps "Sign in to accept" → `/m/auth?returnTo=/m/invite/:token` → after auth success, MobileAuth navigates to `returnTo` (with replace) → user lands back on the invite page authed. `safeReturnTo()` guard restricts to `/m/*` paths and rejects `//` or `\\` to prevent open-redirect smuggling. Back button on `<MobileAuth>` also honors `returnTo` so cancelling auth-via-invite returns to the invite page rather than dumping the user on the narrative.
+- **Viewport-detect at the desktop `/invite/:token` arm.** Email link is a single static URL; the front-end forks at `App.tsx`'s early-return arm: `window.innerWidth < 768` → `<Navigate to="/m/invite/:token" replace />`. Admins included in the redirect (no real use case for desktop `/invite` UX on a phone). Uses `<Navigate>` from react-router rather than imperative `window.location.assign` because the redirect happens at render time inside an early-return — declarative is the safe choice. Doesn't violate the special-route hook count (still 2 hooks per render in `<App>`).
+- **`<MobileNarrative hideBottom />` prop** so the invite-accept screen can wrap the full mobile homepage scroll with its own invite-specific accept flow at the bottom (per spec: invitees see "a version of the homepage narrative scroll, with an 'accept invite' button and flow at the bottom"). Default behavior (homepage with the desktop-only callout + "Join / sign in" CTA) unchanged. Terminal/error invite states (invalid, expired, wrong_recipient, etc.) skip the narrative — the user is no longer in "I'm being invited" mode at that point.
+- **`<MobileShowSearch />` extraction at the third-caller threshold.** TVMaze search appeared in `<MobileRooms>` (chunk 3b) and `<MobileRoomMenu>` was about to add a third copy (chunk 5). Per HANDOFF convention, extract on third caller. Mobile-internal — desktop's local copies in `SearchShows.tsx` left untouched to avoid a cross-surface refactor here. Exports `tvmazeSearch` + `networkLabel` alongside the component for any future caller that wants just the helpers.
+- **Routed S7 dropdown rather than modal.** `<MobileRoomMenu>` lives at `/m/rooms/:id/menu` so the close-X just navigates back to `/m/rooms/:id`. Same routing-over-modal pattern used for compose/respond — back-button closes cleanly without popstate handling.
+
+**Commits (chronological):**
+
+| Commit | Scope |
+|---|---|
+| `27c803f` | (1/N) `<MobileCompose />` — write a new entry into a room. Full-screen at `/m/rooms/:id/compose`. Tag uses `effectiveProgress(progress)` so rewatchers post at their highest (rewatch position preserved in `rewatch_season/episode`). `is_public: false` + `addThreadToGroup`. No destination dropdown (mobile is rooms-only) and no quote feature (per spec). On submit: lands directly in the new thread view with `replace: true` so back returns to the room. Floating "+" FAB added to `<MobileRoom>` (56×56 white pill bottom-right). |
+| `b8e4a9c` | (2/N) `<MobileRespond />` — reply to a thread, body-only. Same shape as compose. `group_id` set to the room (per HANDOFF §3 — replies must be room-scoped). `<MobileThread>` adds `location.key` to its refetch effect deps so the new reply appears on return. Plus a "+" FAB on `<MobileThread>` with the same shape as `<MobileRoom>`'s. |
+| `49853d8` | (3/N) `<MobileInvite />` — full-screen invite form. Wraps `sendInvite` edge-function call without changes. Client-side self-invite pre-check + same error-code map as desktop (`rate_limit` / `already_invited` / `not_creator` / `invalid_email` / `self_invite`). Success state: white card with `CheckCircle2` + masked recipient via `utils.maskEmail` + "Send another" / "Back to room" CTAs. Prominent "Invite a friend" pill button added to `<MobileRoom>` when `memberCount <= 1` per spec; hidden when room has multiple members (S7 will hold it for those). |
+| `4b4ebd3` | (4/N) Mobile invite-accept end-to-end. Three-part change: (a) `App.tsx` `/invite/:token` arm viewport-detects and redirects mobile to `/m/invite/:token`; (b) `<MobileAuth>` gains `returnTo` query support with `safeReturnTo` guard, used by both Submit success and the Back button; (c) new `<MobileInviteAccept />` mirrors desktop `InviteAcceptPage` flow exactly (same RPCs, same status states including `wrong_recipient` with masked email, same progress-picker logic for users with no prior progress for the show), wrapped in `<MobileNarrative hideBottom />` for the "ready" state per spec. Terminal/error states stay centered. SPA `navigate` on success — mobile doesn't have desktop's App-level state-racing problem (see desktop commit `a9bbc81` for that history). |
+| `43ad712` | (5/N) `<MobileRoomMenu />` (S7) — chevron next to room name on `<MobileRoom>` opens a fullscreen dropdown at `/m/rooms/:id/menu`. Three sections: switch rooms (other rooms list, current excluded, TSP filtered, tap → progress gate), find a show (`<MobileShowSearch />`, tap → `/m/rooms/new`), invite to current room (button → `<MobileInvite>` for current `groupId`). Plus the `<MobileShowSearch>` extraction (refactor of `<MobileRooms>` chunk 3b inline search into a shared component). |
+
+**Routing model (final state at end of Phase 2):**
+
+```
+/m                                                    → MobileNarrative (signed out) | redirect /m/rooms (signed in)
+/m/auth (?returnTo=)                                  → MobileAuth
+/m/invite/:token                                      → MobileInviteAccept (mobile fork of /invite/:token)
+/m/rooms                                              → MobileRooms (list + show search)
+/m/rooms/new                                          → MobileProgressGate (mode=new)
+/m/rooms/:groupId/progress                            → MobileProgressGate (mode=existing)
+/m/rooms/:groupId/thread/:threadId/respond            → MobileRespond
+/m/rooms/:groupId/thread/:threadId                    → MobileThread
+/m/rooms/:groupId/compose                             → MobileCompose
+/m/rooms/:groupId/invite                              → MobileInvite
+/m/rooms/:groupId/menu                                → MobileRoomMenu (S7)
+/m/rooms/:groupId                                     → MobileRoom
+```
+
+Order matters in the parser: `/menu`, `/invite`, `/compose`, `/progress`, and `/thread/:tid` arms must each match before the bare `:groupId` arm; `/thread/:tid/respond` (4 segments) must match before `/thread/:tid` (3 segments); `/new` must match before `:groupId` since "new" is otherwise valid as a groupId. All ordering constraints captured in `<MobileApp>` directly above each branch.
+
+**Files added under `src/mobile/` this arc:**
+
+- `MobileCompose.tsx` — chunk 1
+- `MobileRespond.tsx` — chunk 2
+- `MobileInvite.tsx` — chunk 3
+- `MobileInviteAccept.tsx` — chunk 4
+- `MobileRoomMenu.tsx` — chunk 5
+- `MobileShowSearch.tsx` — chunk 5 (extracted from `MobileRooms`)
+
+**Desktop touch this arc (one minor change to `src/App.tsx`):** added `Navigate` import and the viewport-detect arm at `/invite/:token`. Pure additive — desktop invitees still see `<InviteAcceptPage>` as before; only mobile invitees fork off. Doesn't violate the §6 item 19 hook-count constraint.
+
+**No backend changes.** All RPCs (`sendInvite`, `accept_invitation`, `get_invitation_by_token`) and edge functions reused as-is. `insertThread` / `addThreadToGroup` / `insertReply` reused as-is.
+
+**What's deferred (the agreed scope's remainder):**
+
+- **`last_seen_at` column on `friend_group_members`** + new-activity indicators on room buttons. Migration adds the column (additive, nullable); render layer reads it for the visible-content-since-last-visit dot. Mobile spec is clear that these indicators must respect `canView` — never show counts/dots for content the user can't see yet. Will land in its own focused chunk; user already approved option (a) (DB column rather than localStorage-only).
+- **Realtime subscription narrowing** to user's rooms via `group_id IN (...)` filter. Mobile bandwidth/battery sensitivity matters more than on desktop. Small follow-up; can land alongside or after the indicator work.
+
+**Two-step deploys this arc required:** none. (No SQL migrations, no edge function changes.)
+
+**Conventions established or reinforced this arc:**
+
+- **FAB pattern for "create new in this context"** is now consistent across mobile screens. Same shape (56×56 white pill, canon-bg glyph, `Plus` icon, `position: fixed; right: 20; bottom: 24`, drop shadow, `z-index: 50`). Used on `<MobileRoom>` (→ compose new entry) and `<MobileThread>` (→ respond). Any future "create" action inside a context should use this shape.
+- **Compose-flow tag rule** is `effectiveProgress(progress).{s,e}` — same as the desktop composer. Rewatchers tag at their highest (spoiler ceiling), with the rewatch position preserved in `rewatch_season/rewatch_episode` for display. `isRewatch: true` set when `progress.isRewatching`. Don't let a future mobile compose surface bypass this — read `effectiveProgress` from `utils.ts`, don't roll a local rule.
+- **`location.key` for refetch on same-URL navigate-back.** When a child screen submits and navigates to the parent with `replace: true` (e.g. `<MobileRespond>` → `<MobileThread>`), include `location.key` in the parent's `useEffect` deps. The key changes on every navigation, so the effect re-runs and pulls fresh data. Same trick will work for any future write-and-return path on mobile (edit thread, edit reply, etc.).
+- **`returnTo` query parameter pattern** for any cross-screen flow that loops through auth. Signed-out → "Sign in to accept" → `/m/auth?returnTo=<encoded>` → auth success → land back at `returnTo`. Always validate via `safeReturnTo()` (must start with `/m/`, no `//` or `\\`) before navigating. The Back button should also honor `returnTo` so cancelling preserves the original context.
+- **Viewport-detect for static-URL forks.** When a single static URL needs to render different UIs by viewport (the email link case), detect at the top of the routing arm and redirect via `<Navigate replace />`. Don't try to render different components from the same arm — keeps the component tree simple and the URL as the source of truth.
+- **`<MobileNarrative hideBottom />`** as the wrapper pattern. When a flow needs the homepage narrative pitch followed by its own bottom CTA (currently only invite-accept; could be future "welcome back" or "rebrand demo" surfaces), pass `hideBottom` and append the custom flow below. Don't fork `<MobileNarrative>` — the prop is enough.
+- **Third-caller-extraction threshold for cross-mobile components.** When the same UI shape (e.g. show search) appears on a third surface, extract to `src/mobile/<ComponentName>.tsx`. Two callers: keep duplicated. Three: extract. Mobile-only — don't reach across to refactor desktop in the same pass; track desktop's copies separately if the helper drifts.
+- **Routed dropdowns/menus rather than modals.** `<MobileRoomMenu>` lives at `/m/rooms/:id/menu` instead of being a modal toggled by state on `<MobileRoom>`. The win is back-button predictability: closing the menu is just `navigate(...)`, no popstate handling, no modal-on-modal stacking edge cases. Same pattern as compose/respond/invite. Reach for a modal only when the surface genuinely doesn't need its own URL (e.g. confirm dialogs).
+- **Each Phase 2 chunk shipped as its own commit + push, with explicit "OK to commit + push?" confirmation each time.** Same discipline as Phase 1 — five chunks, five explicit confirmations. Plus one in-arc course-correction (chunk 4 had a spec deviation caught mid-build: original draft was a centered invite-accept page, spec called for narrative-wrapped — fixed before commit by adding `<MobileNarrative hideBottom />`). The "ask before commit" rule made the deviation cheap to fix because no commit had landed yet.
+
+### Earlier (pre-audit, header/layout polish)
 
 The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.
 
