@@ -37,10 +37,25 @@ import MobileRoomMenu from "./MobileRoomMenu";
 // Auto-redirect rule: signed-in users on bare /m get bounced to /m/rooms so
 // they don't have to scroll past the narrative pitch every time. Mirrors the
 // desktop redirect rule for signed-in non-admins on / → /profile.
+// Mobile-scoped placeholder color. Class-scoped (.m-input) so it doesn't
+// bleed into desktop's input styling. Injected once into document.head
+// the first time MobileApp mounts; idempotent via the element id check.
+function injectMobileStyles() {
+  if (typeof document === "undefined") return;
+  const id = "mobile-input-placeholder";
+  if (document.getElementById(id)) return;
+  const styleEl = document.createElement("style");
+  styleEl.id = id;
+  styleEl.textContent = `.m-input::placeholder { color: rgba(255,255,255,0.55); }`;
+  document.head.appendChild(styleEl);
+}
+
 export default function MobileApp() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => { injectMobileStyles(); }, []);
 
   const subPath = location.pathname.replace(/^\/m/, "") || "/";
   const subParts = subPath.split("/").filter(Boolean);

@@ -182,13 +182,12 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
   return (
     <div style={wrapper}>
       <div style={{ maxWidth: 480, margin: "0 auto" }}>
-        {/* ── Header bar ── */}
+        {/* ── Top bar (Cancel only — Send moved below the body) ── */}
         <div style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent: "flex-start",
           alignItems: "center",
           marginBottom: 12,
-          gap: 12,
         }}>
           <button
             onClick={() => navigate(`/m/rooms/${groupId}/thread/${threadId}`)}
@@ -202,23 +201,6 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
             }}
           >
             Cancel
-          </button>
-          <button
-            onClick={onSubmit}
-            disabled={!canSubmit}
-            style={{
-              background: canSubmit ? "#fff" : "rgba(255,255,255,0.4)",
-              color: "var(--dos-bg)",
-              border: "none",
-              borderRadius: 9999,
-              padding: "10px 22px",
-              fontSize: 15, fontWeight: 800,
-              cursor: canSubmit ? "pointer" : "default",
-              fontFamily: "inherit",
-              minWidth: 88,
-            }}
-          >
-            {submitting ? <LoadingDots /> : "Send"}
           </button>
         </div>
 
@@ -271,6 +253,7 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
 
         {/* ── Body textarea ── */}
         <textarea
+          className="m-input"
           value={body}
           onChange={e => setBody(e.target.value)}
           placeholder="Your response"
@@ -308,6 +291,28 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
             {submitError}
           </div>
         )}
+
+        {/* ── Submit (moved from header to under the body field) ── */}
+        <button
+          onClick={onSubmit}
+          disabled={!canSubmit}
+          style={{
+            marginTop: 16,
+            width: "100%",
+            padding: "16px 0",
+            fontSize: 18,
+            fontWeight: 800,
+            fontFamily: "inherit",
+            background: canSubmit ? "#fff" : "rgba(255,255,255,0.4)",
+            color: "var(--dos-bg)",
+            border: "none",
+            borderRadius: 9999,
+            cursor: canSubmit ? "pointer" : "default",
+            letterSpacing: "0.02em",
+          }}
+        >
+          {submitting ? <LoadingDots /> : "Send"}
+        </button>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { DoorOpen, UserPlus, ClipboardList, MessageSquareText, Blend, ShieldCheck } from "lucide-react";
 import HomepageNarrative from "../components/HomepageNarrative";
 
@@ -22,6 +22,19 @@ import HomepageNarrative from "../components/HomepageNarrative";
 // omitted — is the standard signed-out homepage.
 export default function MobileNarrative({ hideBottom = false }: { hideBottom?: boolean }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // The fixed top-left "Sign in" button routes to /m/auth, with returnTo
+  // preserved when the narrative is wrapped inside the invite-accept flow.
+  // Without the dynamic returnTo, an invitee tapping the top-left button
+  // would lose the invite context (auth success → /m/rooms instead of
+  // back to /m/invite/:token where they can hit Join). The bottom invite
+  // CTA remains the primary entry point on the invite path; the top-left
+  // button is a redundant shortcut that still works correctly.
+  const onInvitePath = location.pathname.startsWith("/m/invite/");
+  const signInTarget = onInvitePath
+    ? `/m/auth?returnTo=${encodeURIComponent(location.pathname)}`
+    : "/m/auth";
 
   const items: { Icon: React.ElementType; text: React.ReactNode }[] = [
     { Icon: DoorOpen,          text: "Find the show you\u2019re watching and create a room." },
@@ -34,6 +47,31 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--dos-bg, #7abd8e)", color: "#fff" }}>
+      {/* ── Fixed top-left sign-in shortcut ── */}
+      {/* z-index 100 keeps it above the parallax narrative's fixed-position */}
+      {/* AnimatedLogo (z-index 96 in HomepageNarrative). */}
+      <button
+        onClick={() => navigate(signInTarget)}
+        style={{
+          position: "fixed",
+          top: 14,
+          left: 14,
+          zIndex: 100,
+          background: "transparent",
+          color: "#fff",
+          border: "2px solid #fff",
+          borderRadius: 9999,
+          padding: "8px 18px",
+          fontSize: 14,
+          fontWeight: 700,
+          cursor: "pointer",
+          fontFamily: "inherit",
+          letterSpacing: "0.02em",
+        }}
+      >
+        Sign in
+      </button>
+
       {/* ── Parallax narrative scroll (reused from desktop, headerHeight=0) ── */}
       <HomepageNarrative headerHeight={0} />
 

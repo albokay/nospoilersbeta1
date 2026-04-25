@@ -273,6 +273,7 @@ export default function MobileInvite({ groupId }: { groupId: string }) {
                 }}
               />
               <input
+                className="m-input"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"

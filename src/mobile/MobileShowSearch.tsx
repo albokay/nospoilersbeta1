@@ -84,6 +84,7 @@ export default function MobileShowSearch({
           }}
         />
         <input
+          className="m-input"
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder={placeholder}

@@ -335,6 +335,7 @@ export default function MobileProgressGate(props: Props) {
           Your progress
         </label>
         <select
+          className="m-input"
           value={currentSelectionId}
           onChange={e => onSelectChange(e.target.value)}
           style={{

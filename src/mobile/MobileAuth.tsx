@@ -108,7 +108,8 @@ export default function MobileAuth() {
               autoComplete="off"
               autoCapitalize="none"
               autoCorrect="off"
-              style={inputStyle}
+              className="m-input"
+            style={inputStyle}
             />
           )}
           <input
@@ -121,6 +122,7 @@ export default function MobileAuth() {
             autoComplete="email"
             autoCapitalize="none"
             autoCorrect="off"
+            className="m-input"
             style={inputStyle}
           />
           <input
@@ -129,6 +131,7 @@ export default function MobileAuth() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            className="m-input"
             style={inputStyle}
           />
 

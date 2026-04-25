@@ -366,6 +366,7 @@ export default function MobileInviteAccept({ token }: { token: string }) {
                   Where are you in the show?
                 </label>
                 <select
+                  className="m-input"
                   value={currentSelectionId}
                   onChange={e => onSelectChange(e.target.value)}
                   style={{
