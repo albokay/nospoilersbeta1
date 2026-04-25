@@ -204,51 +204,80 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
           </button>
         </div>
 
-        {/* ── Context: thread title + tag ── */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            opacity: 0.65,
-            marginBottom: 4,
-          }}>
-            Responding to
-          </div>
-          <div style={{
-            fontSize: 14,
-            fontWeight: 700,
-            lineHeight: 1.35,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-          }}>
-            {thread?.titleBase || "Untitled"}
-          </div>
-          <div style={{
-            marginTop: 8,
-            fontSize: 12,
-            opacity: 0.85,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}>
-            <span style={{
-              fontVariantNumeric: "tabular-nums",
-              background: "rgba(255,255,255,0.18)",
-              padding: "2px 8px",
-              borderRadius: 999,
-              fontWeight: 700,
+        {/* ── Full thread context (mirrors the article card on            */}
+        {/*    MobileThread so the user sees the entry they're responding */}
+        {/*    to, not just its title). Soft-deleted threads tombstone to */}
+        {/*    "[deleted by author]" same as MobileThread.                 */}
+        {thread && (() => {
+          const threadTag = `S${String(thread.season).padStart(2, "0")} E${String(thread.episode).padStart(2, "0")}`;
+          const threadDeleted = !!thread.isDeleted;
+          return (
+            <article style={{
+              background: "rgba(255,255,255,0.95)",
+              color: "var(--dos-bg, #2a4a36)",
+              borderRadius: 12,
+              padding: "16px 16px",
+              marginBottom: 16,
             }}>
-              tag {tag}
-            </span>
-            {progress?.isRewatching && (
-              <span style={{ opacity: 0.85 }}>(your highest, since you&rsquo;re rewatching)</span>
-            )}
-          </div>
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                opacity: 0.65,
+                marginBottom: 8,
+              }}>
+                <span>{thread.author}</span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>{threadTag}</span>
+              </div>
+              <h2 style={{
+                fontSize: 18,
+                fontWeight: 800,
+                margin: "0 0 10px",
+                lineHeight: 1.25,
+                overflowWrap: "break-word",
+              }}>
+                {thread.titleBase || "Untitled"}
+              </h2>
+              <div style={{
+                fontSize: 14,
+                lineHeight: 1.55,
+                opacity: threadDeleted ? 0.55 : 1,
+                fontStyle: threadDeleted ? "italic" : "normal",
+                whiteSpace: "pre-wrap",
+                overflowWrap: "break-word",
+              }}>
+                {threadDeleted ? "[deleted by author]" : (thread.body || "")}
+              </div>
+            </article>
+          );
+        })()}
+
+        {/* ── Tag pill + rewatcher note (your reply's context) ── */}
+        <div style={{
+          marginBottom: 12,
+          fontSize: 12,
+          opacity: 0.85,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          flexWrap: "wrap",
+        }}>
+          <span style={{
+            fontVariantNumeric: "tabular-nums",
+            background: "rgba(255,255,255,0.18)",
+            padding: "2px 8px",
+            borderRadius: 999,
+            fontWeight: 700,
+          }}>
+            your reply tag {tag}
+          </span>
+          {progress?.isRewatching && (
+            <span style={{ opacity: 0.85 }}>(your highest, since you&rsquo;re rewatching)</span>
+          )}
         </div>
 
         {/* ── Body textarea ── */}
