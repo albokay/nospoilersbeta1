@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, MessageSquareText } from "lucide-react";
+import { Users, MessageSquareText, Plus } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchAllFriendGroupsWithActivity,
@@ -193,8 +193,8 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
             <p style={{ fontSize: 15, fontWeight: 700, margin: "0 0 6px" }}>No entries yet</p>
             <p style={{ fontSize: 13, opacity: 0.85, margin: 0, lineHeight: 1.5 }}>
               {memberCount <= 1
-                ? "You're alone in here. Posting and inviting friends are coming in the next mobile commits."
-                : "Nothing visible at your current progress yet, or no one has posted. Posting + responding are coming in the next mobile commits."}
+                ? "You're alone in here. Tap the + to post your first entry. Inviting friends comes next."
+                : "Nothing visible at your current progress yet, or no one has posted. Tap the + to start the conversation."}
             </p>
           </div>
         ) : (
@@ -210,6 +210,32 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
           </div>
         )}
       </div>
+
+      {/* ── Floating compose button ── */}
+      <button
+        onClick={() => navigate(`/m/rooms/${groupId}/compose`)}
+        aria-label="New entry"
+        style={{
+          position: "fixed",
+          right: 20,
+          bottom: 24,
+          width: 56,
+          height: 56,
+          borderRadius: 9999,
+          background: "#fff",
+          color: "var(--dos-bg, #2a4a36)",
+          border: "none",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "inherit",
+          zIndex: 50,
+        }}
+      >
+        <Plus size={28} strokeWidth={2.5} />
+      </button>
     </div>
   );
 }
