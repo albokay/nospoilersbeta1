@@ -314,7 +314,110 @@ export default function MobileInviteAccept({ token }: { token: string }) {
     );
   }
 
-  // ── "ready" state ── narrative scroll up top, accept flow at the bottom
+  // ── "ready" state ──
+  //
+  // Two layouts, branched on auth state:
+  //   - Signed out: narrative scroll up top, accept flow at the bottom
+  //     (per spec: invitees see "a version of the homepage narrative
+  //     scroll, with an accept invite button at the bottom").
+  //   - Signed in: bare centered "You're invited!" screen — they already
+  //     have a Sidebar account, the pitch is redundant. Per #5 in the
+  //     2026-04-25 polish spec.
+  //
+  // The inviteContent fragment is shared between both layouts; only the
+  // outer wrapper differs.
+  const inviteContent = (
+    <>
+      <MonitorPlay size={44} color="#fff" />
+      <h1 style={titleStyle}>You&rsquo;re invited!</h1>
+      <p style={{ ...mutedStyle, lineHeight: 1.5 }}>
+        Join the private watch room{" "}
+        <strong style={{ color: "#fff" }}>&ldquo;{invite?.group_name}&rdquo;</strong>
+      </p>
+
+      {!user ? (
+        <>
+          <p style={{ ...mutedStyle, fontSize: 13, opacity: 0.7, marginBottom: 4 }}>
+            Sign in or create a free account to join.
+          </p>
+          <button
+            onClick={() =>
+              navigate(`/m/auth?returnTo=${encodeURIComponent(`/m/invite/${token}`)}`)
+            }
+            style={primaryBtnStyle()}
+          >
+            Sign in to accept
+          </button>
+        </>
+      ) : (
+        <>
+          {needsProgressPick && showForInvite && (
+            <div style={{ width: "100%", maxWidth: 360, marginBottom: 8, textAlign: "left" }}>
+              <label style={{
+                display: "block",
+                fontSize: 12, fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                opacity: 0.85,
+                marginBottom: 6,
+                textAlign: "center",
+              }}>
+                Where are you in the show?
+              </label>
+              <select
+                className="m-input"
+                value={currentSelectionId}
+                onChange={e => onSelectChange(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "14px 16px",
+                  fontSize: 16,
+                  fontFamily: "inherit",
+                  border: "2px solid rgba(255,255,255,0.4)",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,0.08)",
+                  color: "#fff",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  WebkitAppearance: "none",
+                  appearance: "none",
+                }}
+              >
+                {allowZero && <option value={ZERO_ID}>Haven&rsquo;t started</option>}
+                {groups.map(g => (
+                  <optgroup key={g.season} label={`Season ${g.season}`}>
+                    {g.episodes.map(ep => (
+                      <option key={ep.id} value={ep.id}>{`Season ${ep.s} Episode ${ep.e}`}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            onClick={handleAccept}
+            disabled={status === "accepting"}
+            style={primaryBtnStyle(status !== "accepting")}
+          >
+            {status === "accepting" ? <LoadingDots /> : `Join "${invite?.group_name}"`}
+          </button>
+        </>
+      )}
+
+      {invite && (
+        <p style={{ fontSize: 11, opacity: 0.55, marginTop: 12 }}>
+          Expires {new Date(invite.expires_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+        </p>
+      )}
+    </>
+  );
+
+  // Signed in → bare CenteredPage. Skip the narrative pitch.
+  if (user) {
+    return <CenteredPage>{inviteContent}</CenteredPage>;
+  }
+
+  // Signed out → narrative scroll + invite accept controls below.
   return (
     <div style={{ background: "var(--dos-bg, #7abd8e)", color: "#fff", minHeight: "100vh" }}>
       <MobileNarrative hideBottom />
@@ -329,87 +432,7 @@ export default function MobileInviteAccept({ token }: { token: string }) {
         maxWidth: 480,
         margin: "0 auto",
       }}>
-        <MonitorPlay size={44} color="#fff" />
-        <h1 style={titleStyle}>You&rsquo;re invited!</h1>
-        <p style={{ ...mutedStyle, lineHeight: 1.5 }}>
-          Join the private watch room{" "}
-          <strong style={{ color: "#fff" }}>&ldquo;{invite?.group_name}&rdquo;</strong>
-        </p>
-
-        {!user ? (
-          <>
-            <p style={{ ...mutedStyle, fontSize: 13, opacity: 0.7, marginBottom: 4 }}>
-              Sign in or create a free account to join.
-            </p>
-            <button
-              onClick={() =>
-                navigate(`/m/auth?returnTo=${encodeURIComponent(`/m/invite/${token}`)}`)
-              }
-              style={primaryBtnStyle()}
-            >
-              Sign in to accept
-            </button>
-          </>
-        ) : (
-          <>
-            {needsProgressPick && showForInvite && (
-              <div style={{ width: "100%", maxWidth: 360, marginBottom: 8, textAlign: "left" }}>
-                <label style={{
-                  display: "block",
-                  fontSize: 12, fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  opacity: 0.85,
-                  marginBottom: 6,
-                  textAlign: "center",
-                }}>
-                  Where are you in the show?
-                </label>
-                <select
-                  className="m-input"
-                  value={currentSelectionId}
-                  onChange={e => onSelectChange(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "14px 16px",
-                    fontSize: 16,
-                    fontFamily: "inherit",
-                    border: "2px solid rgba(255,255,255,0.4)",
-                    borderRadius: 10,
-                    background: "rgba(255,255,255,0.08)",
-                    color: "#fff",
-                    outline: "none",
-                    boxSizing: "border-box",
-                    WebkitAppearance: "none",
-                    appearance: "none",
-                  }}
-                >
-                  {allowZero && <option value={ZERO_ID}>Haven&rsquo;t started</option>}
-                  {groups.map(g => (
-                    <optgroup key={g.season} label={`Season ${g.season}`}>
-                      {g.episodes.map(ep => (
-                        <option key={ep.id} value={ep.id}>{`Season ${ep.s} Episode ${ep.e}`}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-            )}
-            <button
-              onClick={handleAccept}
-              disabled={status === "accepting"}
-              style={primaryBtnStyle(status !== "accepting")}
-            >
-              {status === "accepting" ? <LoadingDots /> : `Join "${invite?.group_name}"`}
-            </button>
-          </>
-        )}
-
-        {invite && (
-          <p style={{ fontSize: 11, opacity: 0.55, marginTop: 12 }}>
-            Expires {new Date(invite.expires_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-          </p>
-        )}
+        {inviteContent}
       </div>
     </div>
   );
