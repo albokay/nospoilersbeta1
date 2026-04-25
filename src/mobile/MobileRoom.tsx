@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, MessageSquareText, Plus } from "lucide-react";
+import { Users, MessageSquareText, Plus, UserPlus } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchAllFriendGroupsWithActivity,
@@ -181,6 +181,39 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
           </div>
         </div>
 
+        {/* ── Prominent invite button (only when alone in the room) ── */}
+        {/* Per spec: "'Invite friends' button — prominent if room is empty */}
+        {/* (no other members yet), otherwise lives in S7." S7 (chevron      */}
+        {/* dropdown) hasn't shipped yet, so for memberCount > 1 the invite */}
+        {/* affordance is temporarily unavailable on mobile — that lands     */}
+        {/* with the dropdown chunk. Users with multi-member rooms can      */}
+        {/* invite from desktop in the meantime.                            */}
+        {memberCount <= 1 && (
+          <button
+            onClick={() => navigate(`/m/rooms/${groupId}/invite`)}
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              fontSize: 15,
+              fontWeight: 800,
+              fontFamily: "inherit",
+              background: "#fff",
+              color: "var(--dos-bg, #2a4a36)",
+              border: "none",
+              borderRadius: 9999,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              marginBottom: 24,
+            }}
+          >
+            <UserPlus size={18} strokeWidth={2.2} />
+            Invite a friend
+          </button>
+        )}
+
         {/* ── Entries ── */}
         {sortedThreads.length === 0 ? (
           <div style={{
@@ -193,7 +226,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
             <p style={{ fontSize: 15, fontWeight: 700, margin: "0 0 6px" }}>No entries yet</p>
             <p style={{ fontSize: 13, opacity: 0.85, margin: 0, lineHeight: 1.5 }}>
               {memberCount <= 1
-                ? "You're alone in here. Tap the + to post your first entry. Inviting friends comes next."
+                ? "You're alone in here. Invite friends above, or tap the + to post your first entry while you wait."
                 : "Nothing visible at your current progress yet, or no one has posted. Tap the + to start the conversation."}
             </p>
           </div>
