@@ -11,7 +11,6 @@ import {
 } from "../lib/db";
 import type { Show } from "../lib/db";
 import LoadingDots from "../components/LoadingDots";
-import MobileNarrative from "./MobileNarrative";
 
 type InviteInfo = {
   id: string;
@@ -43,15 +42,13 @@ const ZERO_ID = "0-0";
 // front-end forks at the desktop /invite/:token arm in src/App.tsx, which
 // detects mobile viewport and redirects here via <Navigate replace />.
 //
-// Layout per spec: invitees see a "version of the homepage narrative
-// scroll, with an 'accept invite' button and flow at the bottom." So
-// the "ready" state wraps <MobileNarrative hideBottom /> at the top,
-// then renders the invite controls below. Terminal/error states
-// (invalid, expired, wrong_recipient, etc.) skip the narrative —
-// the user is no longer in "I'm being invited" mode and a bare
-// centered error screen is the right UX. Per spec note, future
-// iteration may shorten the scroll for invitees specifically; for
-// now we use the full mobile homepage scroll.
+// Layout: focused centered page in every state. The invite-accept
+// flow no longer wraps <MobileNarrative /> at the top — the homepage
+// scroll was getting in the way of the action invitees actually came
+// here for (clicking Accept from email). Brand-new invitees who want
+// to learn about Sidebar can hit the top-right "Sign in" button on
+// MobileNarrative or browse to /m directly; this screen stays focused
+// on accept/sign-in/error states.
 //
 // Auth flow for unauthed invitees: the "Sign in to accept" CTA routes
 // to /m/auth?returnTo=/m/invite/:token. MobileAuth honors returnTo on
@@ -412,30 +409,15 @@ export default function MobileInviteAccept({ token }: { token: string }) {
     </>
   );
 
-  // Signed in → bare CenteredPage. Skip the narrative pitch.
-  if (user) {
-    return <CenteredPage>{inviteContent}</CenteredPage>;
-  }
-
-  // Signed out → narrative scroll + invite accept controls below.
-  return (
-    <div style={{ background: "var(--dos-bg, #7abd8e)", color: "#fff", minHeight: "100vh" }}>
-      <MobileNarrative hideBottom />
-
-      <div style={{
-        padding: "8px 24px 56px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        textAlign: "center",
-        gap: 12,
-        maxWidth: 480,
-        margin: "0 auto",
-      }}>
-        {inviteContent}
-      </div>
-    </div>
-  );
+  // Both signed-in and signed-out invitees see a focused centered
+  // page with the invite controls. The earlier signed-out variant
+  // wrapped <MobileNarrative hideBottom /> at the top to give brand-
+  // new invitees the homepage pitch first; that wrapper was dropped
+  // per polish feedback — invitees clicking through from email want
+  // the accept flow up front, not the homepage scroll. The narrative
+  // is still reachable via the top-right "Sign in" button if a fresh
+  // invitee wants to learn what Sidebar is before signing in.
+  return <CenteredPage>{inviteContent}</CenteredPage>;
 }
 
 // ── Layout helpers (mobile-tuned versions of desktop Page/Emoji) ──

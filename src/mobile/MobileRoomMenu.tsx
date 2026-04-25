@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Users, UserPlus, LogOut } from "lucide-react";
+import { X, Users, UserPlus, LogOut, ClipboardList } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchAllFriendGroupsWithActivity,
@@ -203,7 +203,37 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
           </button>
         </div>
 
-        {/* ── Section 1: Invite friends to current room ── */}
+        {/* ── Section 1: Update progress ── */}
+        {/* Routes to MobileProgressGate in `existing` mode for the
+            current room. Top-of-menu placement because watch progress
+            is the most-changed user state — easy to bump from here
+            without leaving the room context. */}
+        <h2 style={sectionLabelStyle}>Update progress</h2>
+        <button
+          onClick={() => navigate(`/m/rooms/${groupId}/progress`)}
+          style={{
+            width: "100%",
+            padding: "14px 16px",
+            fontSize: 15,
+            fontWeight: 800,
+            fontFamily: "inherit",
+            background: "#fff",
+            color: "var(--dos-bg, #2a4a36)",
+            border: "none",
+            borderRadius: 9999,
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            marginBottom: 32,
+          }}
+        >
+          <ClipboardList size={18} strokeWidth={2.2} />
+          Update your watch progress
+        </button>
+
+        {/* ── Section 2: Invite friends to current room ── */}
         <h2 style={sectionLabelStyle}>Invite</h2>
         <button
           onClick={() => navigate(`/m/rooms/${groupId}/invite`)}

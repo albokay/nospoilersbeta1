@@ -24,12 +24,12 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
   const navigate = useNavigate();
   const location = useLocation();
 
-  // The fixed top-left "Sign in" button routes to /m/auth, with returnTo
+  // The fixed top-right "Sign in" button routes to /m/auth, with returnTo
   // preserved when the narrative is wrapped inside the invite-accept flow.
-  // Without the dynamic returnTo, an invitee tapping the top-left button
+  // Without the dynamic returnTo, an invitee tapping the top-right button
   // would lose the invite context (auth success → /m/rooms instead of
   // back to /m/invite/:token where they can hit Join). The bottom invite
-  // CTA remains the primary entry point on the invite path; the top-left
+  // CTA remains the primary entry point on the invite path; the top-right
   // button is a redundant shortcut that still works correctly.
   const onInvitePath = location.pathname.startsWith("/m/invite/");
   const signInTarget = onInvitePath
@@ -47,7 +47,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--dos-bg, #7abd8e)", color: "#fff" }}>
-      {/* ── Fixed top-left sign-in shortcut ── */}
+      {/* ── Fixed top-right sign-in shortcut ── */}
       {/* z-index 100 keeps it above the parallax narrative's fixed-position */}
       {/* AnimatedLogo (z-index 96 in HomepageNarrative). */}
       <button
@@ -55,7 +55,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
         style={{
           position: "fixed",
           top: 14,
-          left: 14,
+          right: 14,
           zIndex: 100,
           background: "transparent",
           color: "#fff",
@@ -137,21 +137,24 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
         {!hideBottom && (
           <>
             {/* ── Mobile-only callout ── */}
+            {/* Canon-red border + text per refocus polish — the line
+                is informational but worth flagging visibly so users
+                don't expect the desktop feature surface here. */}
             <div style={{
               marginTop: 32,
               width: "min(288px, 90vw)",
               padding: "14px 16px",
               borderRadius: 12,
-              border: "2px solid #fff",
+              border: "2px solid #f45028",
               background: "transparent",
-              color: "#fff",
+              color: "#f45028",
               fontSize: 13,
               fontWeight: 600,
               lineHeight: 1.5,
               textAlign: "center",
               textWrap: "balance" as React.CSSProperties["textWrap"],
             }}>
-              Sidebar&rsquo;s full experience is on desktop —<br />
+              Sidebar&rsquo;s full experience is on desktop &mdash;<br />
               mobile is for your friend rooms only.
             </div>
 

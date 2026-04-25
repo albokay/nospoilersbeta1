@@ -229,30 +229,6 @@ export default function MobileEditThread({ groupId, threadId }: { groupId: strin
           </span>
         </div>
 
-        {/* ── Retag warning banner ── */}
-        {/* Shown only when current effective progress is past the entry's */}
-        {/* stored season/episode. Informational — the retag happens on    */}
-        {/* save regardless, but the banner makes it explicit. The bottom  */}
-        {/* button label switches to "Confirm" when this banner shows so   */}
-        {/* the user is clearly committing to the retag.                    */}
-        {progressAdvanced && (
-          <div style={{
-            margin: "0 0 16px",
-            padding: "12px 14px",
-            borderRadius: 10,
-            background: "rgba(255,255,255,0.14)",
-            border: "1px solid rgba(255,255,255,0.35)",
-            fontSize: 13,
-            lineHeight: 1.5,
-            color: "#fff",
-          }}>
-            <strong style={{ display: "block", fontWeight: 800, marginBottom: 4 }}>
-              Heads up
-            </strong>
-            Your progress has moved past where you were when you first wrote this. Editing it will retag it to your current watch progress.
-          </div>
-        )}
-
         {/* ── Title input ── */}
         <input
           className="m-input"
@@ -315,6 +291,32 @@ export default function MobileEditThread({ groupId, threadId }: { groupId: strin
             fontWeight: 600,
           }}>
             {submitError}
+          </div>
+        )}
+
+        {/* ── Retag warning banner ── */}
+        {/* Shown only when current effective progress is past the entry's */}
+        {/* stored season/episode. Informational — the retag happens on    */}
+        {/* save regardless, but the banner makes it explicit. Sits        */}
+        {/* directly above the Confirm button (relocated from above the   */}
+        {/* form fields) so the warning lands at the moment of commit.    */}
+        {/* Canon-red border + text since the message is a heads-up the   */}
+        {/* user shouldn't miss before tapping Confirm.                    */}
+        {progressAdvanced && (
+          <div style={{
+            margin: "16px 0 0",
+            padding: "12px 14px",
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.08)",
+            border: "2px solid #f45028",
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: "#f45028",
+          }}>
+            <strong style={{ display: "block", fontWeight: 800, marginBottom: 4 }}>
+              Heads up
+            </strong>
+            Your progress has moved past where you were when you first wrote this. Editing it will retag it to your current watch progress.
           </div>
         )}
 

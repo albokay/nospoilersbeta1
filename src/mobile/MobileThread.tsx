@@ -629,7 +629,7 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
   if (reply.isDeleted) {
     return (
       <div style={{
-        background: "rgba(255,255,255,0.85)",
+        background: "rgba(255,255,255,0.65)",
         color: "var(--dos-bg, #2a4a36)",
         borderRadius: 10,
         padding: "10px 14px",
@@ -642,9 +642,13 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
     );
   }
 
+  // Live response card. Background opacity intentionally lower than the
+  // parent thread's article (0.95) so the response visually distinguishes
+  // from the entry it sits beneath — the thread is the headline event,
+  // responses are the conversation around it.
   return (
     <div style={{
-      background: "rgba(255,255,255,0.95)",
+      background: "rgba(255,255,255,0.80)",
       color: "var(--dos-bg, #2a4a36)",
       borderRadius: 10,
       padding: "12px 14px",
