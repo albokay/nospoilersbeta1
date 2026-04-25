@@ -4,6 +4,7 @@ import { useAuth } from "../lib/auth";
 import MobileNarrative from "./MobileNarrative";
 import MobileAuth from "./MobileAuth";
 import MobileRooms from "./MobileRooms";
+import MobileRoomCreate from "./MobileRoomCreate";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Bypasses the desktop mobile lockout automatically
@@ -14,7 +15,8 @@ import MobileRooms from "./MobileRooms";
 //   /m                              → narrative + sign-in CTA (signed out)
 //                                     | redirect to /m/rooms (signed in)
 //   /m/auth                         → full-screen sign-in / create-account
-//   /m/rooms                        → room list (S3)
+//   /m/rooms                        → room list + show search (S3)
+//   /m/rooms/new                    → create-room confirm (S3 hand-off → S5)
 //   /m/rooms/:groupId/progress      → progress gate (S5 — placeholder)
 //   /m/rooms/:groupId               → room view (S6 — placeholder)
 //
@@ -35,6 +37,7 @@ export default function MobileApp() {
   }, [user, authLoading, subPath, navigate]);
 
   if (subParts[0] === "auth") return <MobileAuth />;
+  if (subParts[0] === "rooms" && subParts[1] === "new") return <MobileRoomCreate />;
   if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "progress") {
     return <RoomSubrouteStub groupId={subParts[1]} variant="progress" />;
   }

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, LogOut, Search } from "lucide-react";
+import { Users, LogOut, Search, Tv } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { fetchAllFriendGroupsWithActivity, fetchShows } from "../lib/db";
 import type { Show } from "../lib/db";
@@ -9,8 +9,28 @@ import LoadingDots from "../components/LoadingDots";
 
 type RoomRow = FriendGroup & { lastActivityAt: number };
 
+type TVmazeShow = {
+  id: number;
+  name: string;
+  network?: { name: string } | null;
+  webChannel?: { name: string } | null;
+  premiered?: string | null;
+};
+
+async function tvmazeSearch(q: string): Promise<TVmazeShow[]> {
+  const res = await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(q)}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data ?? []).map((r: any) => r.show).filter(Boolean);
+}
+
+function networkLabel(s: TVmazeShow): string {
+  const net = s.network?.name || s.webChannel?.name || "";
+  const year = s.premiered ? s.premiered.slice(0, 4) : "";
+  return [net, year].filter(Boolean).join(", ");
+}
+
 // Compact relative-time formatter for mobile room list.
-// "just now" / "5m" / "3h" / "2d" / "3w" / "Mar 12" (older than ~30d).
 function formatRelative(ts: number): string {
   const now = Date.now();
   const delta = Math.max(0, now - ts);
@@ -28,14 +48,16 @@ function formatRelative(ts: number): string {
 }
 
 // S3 — Mobile post-signin landing. Lists the user's friend rooms in
-// activity-sorted order (matching the desktop friend-group scroll's ordering
-// via fetchAllFriendGroupsWithActivity). TSP demo rooms (show_id = "tsp")
+// activity-sorted order (matching desktop ordering via
+// fetchAllFriendGroupsWithActivity). TSP demo rooms (show_id = "tsp")
 // are filtered out — TSP is the desktop onboarding fixture and doesn't
-// belong in the mobile room-only experience.
+// belong in the mobile rooms-only experience.
 //
-// Phase 1 (3a/N): list + empty state. Show search ships in 3b. Tapping a
-// room routes to /m/rooms/:groupId/progress (the progress gate, S5 — also
-// a placeholder until the next chunks).
+// Show search lives at the bottom of the screen, visible whether the user
+// has rooms or not. Tapping a result navigates to /m/rooms/new with the
+// chosen show in router state. The actual show + room creation happens
+// in MobileRoomCreate / the progress gate (S5) — this screen only does
+// list + search, no DB writes.
 export default function MobileRooms() {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
@@ -43,6 +65,12 @@ export default function MobileRooms() {
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Search state — query, results, loading flag, debounce ref.
+  const [query, setQuery] = useState("");
+  const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
+  const [tvLoading, setTvLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -67,7 +95,43 @@ export default function MobileRooms() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
+  // Debounced TVMaze search (mirrors SearchShows.tsx pattern at 320ms).
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) { setTvResults([]); setTvLoading(false); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    let cancelled = false;
+    debounceRef.current = setTimeout(async () => {
+      setTvLoading(true);
+      try {
+        const results = await tvmazeSearch(q);
+        if (cancelled) return;
+        setTvResults(results.slice(0, 8));
+      } catch {
+        if (!cancelled) setTvResults([]);
+      } finally {
+        if (!cancelled) setTvLoading(false);
+      }
+    }, 320);
+    return () => {
+      cancelled = true;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query]);
+
   const showName = (showId: string) => shows.find(s => s.id === showId)?.name ?? showId;
+
+  const onPickResult = (tv: TVmazeShow) => {
+    navigate("/m/rooms/new", {
+      state: {
+        selectedShow: {
+          name: tv.name,
+          tvmazeId: tv.id,
+          networkLabel: networkLabel(tv),
+        },
+      },
+    });
+  };
 
   return (
     <div style={{
@@ -109,7 +173,7 @@ export default function MobileRooms() {
           </button>
         </div>
 
-        {/* ── Body ── */}
+        {/* ── Room list ── */}
         {loading ? (
           <div style={{ textAlign: "center", padding: "48px 0", fontSize: 14, opacity: 0.85 }}>
             Loading<LoadingDots />
@@ -119,17 +183,17 @@ export default function MobileRooms() {
             background: "rgba(255,255,255,0.10)",
             border: "2px dashed rgba(255,255,255,0.4)",
             borderRadius: 12,
-            padding: "28px 20px",
+            padding: "24px 20px",
             textAlign: "center",
+            marginBottom: 28,
           }}>
             <p style={{ fontSize: 15, fontWeight: 700, margin: "0 0 6px" }}>No rooms yet</p>
             <p style={{ fontSize: 13, opacity: 0.85, margin: 0, lineHeight: 1.5 }}>
-              Find a show to start your first friend room.<br />
-              <span style={{ opacity: 0.7 }}>(Show search lands in the next commit.)</span>
+              Find a show below to start your first friend room.
             </p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
             {rooms.map(r => (
               <button
                 key={r.id}
@@ -192,23 +256,112 @@ export default function MobileRooms() {
           </div>
         )}
 
-        {/* ── Search placeholder ── */}
-        <div style={{
-          marginTop: 28,
-          padding: "16px",
-          borderRadius: 12,
-          border: "2px dashed rgba(255,255,255,0.35)",
-          background: "transparent",
-          color: "rgba(255,255,255,0.85)",
-          fontSize: 13,
-          textAlign: "center",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-        }}>
-          <Search size={16} />
-          Find a show to start a new room — coming next
+        {/* ── Show search ── */}
+        <div>
+          <h2 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.06em", opacity: 0.85 }}>
+            {rooms.length === 0 ? "Find a show" : "Start another room"}
+          </h2>
+          <div style={{ position: "relative" }}>
+            <Search
+              size={18}
+              style={{
+                position: "absolute",
+                left: 14, top: "50%", transform: "translateY(-50%)",
+                opacity: 0.55,
+                pointerEvents: "none",
+              }}
+            />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search a TV show…"
+              autoComplete="off"
+              autoCapitalize="words"
+              autoCorrect="off"
+              style={{
+                width: "100%",
+                padding: "14px 14px 14px 40px",
+                fontSize: 16,
+                fontFamily: "inherit",
+                border: "2px solid rgba(255,255,255,0.4)",
+                borderRadius: 10,
+                background: "rgba(255,255,255,0.08)",
+                color: "#fff",
+                outline: "none",
+                boxSizing: "border-box",
+                WebkitAppearance: "none",
+              }}
+            />
+          </div>
+
+          {/* ── Search results / state ── */}
+          {query.trim() !== "" && (
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              {tvLoading ? (
+                <div style={{ padding: "12px 4px", fontSize: 13, opacity: 0.85 }}>
+                  Searching<LoadingDots />
+                </div>
+              ) : tvResults.length === 0 ? (
+                <div style={{ padding: "12px 4px", fontSize: 13, opacity: 0.7 }}>
+                  No results for &ldquo;{query.trim()}&rdquo;.
+                </div>
+              ) : (
+                tvResults.map(tv => (
+                  <button
+                    key={tv.id}
+                    onClick={() => onPickResult(tv)}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      background: "rgba(255,255,255,0.95)",
+                      color: "var(--dos-bg, #2a4a36)",
+                      border: "none",
+                      borderRadius: 10,
+                      padding: "12px 14px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <div style={{
+                      flexShrink: 0,
+                      width: 32, height: 32,
+                      borderRadius: 8,
+                      background: "rgba(0,0,0,0.06)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <Tv size={16} strokeWidth={2} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}>
+                        {tv.name}
+                      </div>
+                      {networkLabel(tv) && (
+                        <div style={{
+                          fontSize: 11,
+                          opacity: 0.65,
+                          marginTop: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}>
+                          {networkLabel(tv)}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
