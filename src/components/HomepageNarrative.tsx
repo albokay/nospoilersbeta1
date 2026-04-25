@@ -164,6 +164,12 @@ function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
 
   const scale = 1 + (TARGET_SCALE - 1) * eased;
   const taglineOpacity = (1 - eased) * 0.85;
+  // The 5 colored blocks dissolve in lockstep with the shrink, so by
+  // the time the logo has settled into its small header position,
+  // only the type-only wordmark PNG remains visible. Linear in eased
+  // (which is itself progress * progress) — feels coupled to the
+  // shrink without a separate easing curve to reason about.
+  const blocksOpacity = 1 - eased;
 
   // GPU-composited positioning: fixed at origin, transform handles all movement.
   // translate(x,y) positions the top-left; scale(s) shrinks from that corner.
@@ -197,7 +203,7 @@ function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
         opacity: visible ? 1 : 0,
         transition: (!animating && visible) ? "opacity 0.9s ease 0.2s" : "none",
       }}>
-        <SidebarLogo scale={1} />
+        <SidebarLogo scale={1} blocksOpacity={blocksOpacity} />
         <p style={{
           margin: 0, fontSize: 13, fontWeight: 700,
           letterSpacing: "0.12em", textTransform: "lowercase",

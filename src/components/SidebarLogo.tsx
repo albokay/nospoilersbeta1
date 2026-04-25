@@ -69,12 +69,21 @@ export interface SidebarLogoProps {
   scale?: number;
   duration?: number;
   stagger?: number;
+  /**
+   * Opacity applied to the 5 colored blocks (0..1). The wordmark PNG
+   * (z-index 6) is unaffected. Used by the homepage AnimatedLogo
+   * scroll-shrink animation to dissolve the playful blocks as the
+   * logo settles into the smaller header form, leaving just the
+   * type-only wordmark. Default: 1 (no fade — full dynamic logo).
+   */
+  blocksOpacity?: number;
 }
 
 export default function SidebarLogo({
   scale = 1,
   duration = 750,
   stagger = 40,
+  blocksOpacity = 1,
 }: SidebarLogoProps) {
   const [layout, setLayout] = useState<Layout | null>(null);
   const [settled, setSettled] = useState(false);
@@ -143,6 +152,11 @@ export default function SidebarLogo({
                 zIndex: block.z,
                 mixBlendMode: block.blend as React.CSSProperties["mixBlendMode"],
                 transform: `translate(${layout[block.id].x}px, ${layout[block.id].y}px)`,
+                // Block opacity tracks the blocksOpacity prop directly —
+                // no CSS transition so scroll-tied updates (from
+                // HomepageNarrative's AnimatedLogo) follow the scroll
+                // smoothly without animation lag.
+                opacity: blocksOpacity,
                 transition: settled
                   ? `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) ${i * stagger}ms`
                   : "none",
