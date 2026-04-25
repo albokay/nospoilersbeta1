@@ -12,6 +12,8 @@ import MobileRespond from "./MobileRespond";
 import MobileInvite from "./MobileInvite";
 import MobileInviteAccept from "./MobileInviteAccept";
 import MobileRoomMenu from "./MobileRoomMenu";
+import MobileEditThread from "./MobileEditThread";
+import MobileEditReply from "./MobileEditReply";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Bypasses the desktop mobile lockout automatically
@@ -26,9 +28,11 @@ import MobileRoomMenu from "./MobileRoomMenu";
 //   /m/invite/:token                → mobile invite-accept screen
 //   /m/rooms                              → room list + show search (S3)
 //   /m/rooms/new                          → progress gate, new-room mode (S5)
-//   /m/rooms/:groupId/progress                       → progress gate, existing-room (S5)
-//   /m/rooms/:groupId/thread/:threadId/respond       → reply composer
-//   /m/rooms/:groupId/thread/:threadId               → thread view
+//   /m/rooms/:groupId/progress                                   → progress gate, existing-room (S5)
+//   /m/rooms/:groupId/thread/:threadId/reply/:replyId/edit       → edit a reply
+//   /m/rooms/:groupId/thread/:threadId/respond                   → reply composer
+//   /m/rooms/:groupId/thread/:threadId/edit                      → edit a thread
+//   /m/rooms/:groupId/thread/:threadId                           → thread view
 //   /m/rooms/:groupId/compose                        → new-entry composer
 //   /m/rooms/:groupId/invite                         → invite friend (creator only, server-enforced)
 //   /m/rooms/:groupId/menu                           → S7 dropdown (other rooms / search / invite)
@@ -73,8 +77,18 @@ export default function MobileApp() {
   if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "progress") {
     return <MobileProgressGate mode="existing" groupId={subParts[1]} />;
   }
+  if (
+    subParts[0] === "rooms" && subParts[1] &&
+    subParts[2] === "thread" && subParts[3] &&
+    subParts[4] === "reply" && subParts[5] && subParts[6] === "edit"
+  ) {
+    return <MobileEditReply groupId={subParts[1]} threadId={subParts[3]} replyId={subParts[5]} />;
+  }
   if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "thread" && subParts[3] && subParts[4] === "respond") {
     return <MobileRespond groupId={subParts[1]} threadId={subParts[3]} />;
+  }
+  if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "thread" && subParts[3] && subParts[4] === "edit") {
+    return <MobileEditThread groupId={subParts[1]} threadId={subParts[3]} />;
   }
   if (subParts[0] === "rooms" && subParts[1] && subParts[2] === "thread" && subParts[3]) {
     return <MobileThread groupId={subParts[1]} threadId={subParts[3]} />;

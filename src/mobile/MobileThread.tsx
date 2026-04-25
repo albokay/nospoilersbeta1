@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
@@ -8,6 +8,8 @@ import {
   fetchRepliesForThread,
   fetchProgress,
   fetchAllFriendGroupsWithActivity,
+  deleteThread,
+  deleteReply,
 } from "../lib/db";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import { canView } from "../lib/utils";
@@ -34,13 +36,25 @@ import LoadingDots from "../components/LoadingDots";
 export default function MobileThread({ groupId, threadId }: { groupId: string; threadId: string }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const [thread, setThread] = useState<Thread | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
   const [progress, setProgress] = useState<ProgressEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Kebab + delete state.
+  // kebabOpenFor: which post id has its action menu open (null = none).
+  //   Threaded id is thread.id; replies use reply.id. Either-or, only one
+  //   menu can be open at a time.
+  // confirmDelete: which post is being confirmed for deletion.
+  //   { type, id } so the confirm modal can dispatch the right delete call.
+  // deleting: locks the confirm button while the request is in flight.
+  const [kebabFor, setKebabFor] = useState<{ type: "thread" | "reply"; id: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ type: "thread" | "reply"; id: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -223,6 +237,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
           borderRadius: 12,
           padding: "18px 18px",
           marginBottom: 24,
+          position: "relative",
         }}>
           <div style={{
             display: "flex",
@@ -236,7 +251,18 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
             marginBottom: 8,
           }}>
             <span>{thread.author}</span>
-            <span style={{ fontVariantNumeric: "tabular-nums" }}>{tag}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>{tag}</span>
+              {profile?.username && thread.author === profile.username && !threadDeleted && (
+                <button
+                  onClick={() => setKebabFor({ type: "thread", id: thread.id })}
+                  aria-label="More actions"
+                  style={kebabButtonStyle}
+                >
+                  <MoreVertical size={18} strokeWidth={2.2} />
+                </button>
+              )}
+            </span>
           </div>
 
           <h1 style={{
@@ -303,7 +329,12 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {visibleReplies.map(r => (
-              <ReplyCard key={r.id} reply={r} />
+              <ReplyCard
+                key={r.id}
+                reply={r}
+                isAuthor={!!profile?.username && r.author === profile.username && !r.isDeleted}
+                onKebab={() => setKebabFor({ type: "reply", id: r.id })}
+              />
             ))}
           </div>
         )}
@@ -334,11 +365,234 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
       >
         <Plus size={28} strokeWidth={2.5} />
       </button>
+
+      {/* ── Action sheet (kebab → Edit / Delete) ── */}
+      {/* Top-level overlay rendered once. Tapping the dim backdrop closes;  */}
+      {/* the sheet sits above it. Same shape regardless of whether the    */}
+      {/* kebab fired from the parent thread or one of the reply cards —    */}
+      {/* dispatch happens at the button click using kebabFor.type.         */}
+      {kebabFor && (
+        <>
+          <div
+            onClick={() => setKebabFor(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.42)",
+              zIndex: 100,
+            }}
+          />
+          <div style={{
+            position: "fixed",
+            left: 16,
+            right: 16,
+            bottom: 24,
+            zIndex: 101,
+            background: "#fff",
+            color: "var(--dos-bg, #2a4a36)",
+            borderRadius: 14,
+            padding: 6,
+            boxShadow: "0 -6px 24px rgba(0,0,0,0.35)",
+            maxWidth: 480,
+            margin: "0 auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}>
+            <button
+              onClick={() => {
+                const target = kebabFor;
+                setKebabFor(null);
+                if (target.type === "thread") {
+                  navigate(`/m/rooms/${groupId}/thread/${threadId}/edit`);
+                } else {
+                  navigate(`/m/rooms/${groupId}/thread/${threadId}/reply/${target.id}/edit`);
+                }
+              }}
+              style={sheetItemStyle()}
+            >
+              <Pencil size={17} strokeWidth={2} />
+              Edit
+            </button>
+            <button
+              onClick={() => {
+                const target = kebabFor;
+                setKebabFor(null);
+                setConfirmDelete(target);
+              }}
+              style={sheetItemStyle({ danger: true })}
+            >
+              <Trash2 size={17} strokeWidth={2} />
+              Delete
+            </button>
+            <div style={{ height: 4 }} />
+            <button
+              onClick={() => setKebabFor(null)}
+              style={sheetItemStyle({ subtle: true })}
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── Delete confirmation modal ── */}
+      {/* Two-step flow: kebab → action sheet → tap Delete → THIS modal.    */}
+      {/* Confirms before the destructive call lands. Cancel returns to    */}
+      {/* the thread view with no DB write.                                  */}
+      {confirmDelete && (
+        <>
+          <div
+            onClick={deleting ? undefined : () => { setConfirmDelete(null); setDeleteError(null); }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.5)",
+              zIndex: 110,
+            }}
+          />
+          <div style={{
+            position: "fixed",
+            top: "50%",
+            left: 16,
+            right: 16,
+            transform: "translateY(-50%)",
+            zIndex: 111,
+            background: "#fff",
+            color: "var(--dos-bg, #2a4a36)",
+            borderRadius: 14,
+            padding: "20px 18px",
+            boxShadow: "0 12px 36px rgba(0,0,0,0.35)",
+            maxWidth: 360,
+            margin: "0 auto",
+          }}>
+            <h2 style={{ fontSize: 17, fontWeight: 800, margin: "0 0 8px" }}>
+              {confirmDelete.type === "thread" ? "Delete this entry?" : "Delete this response?"}
+            </h2>
+            <p style={{ fontSize: 13, opacity: 0.75, margin: "0 0 18px", lineHeight: 1.45 }}>
+              {confirmDelete.type === "thread"
+                ? "This entry will be removed from the room. If anyone has responded, the thread will stay as a tombstone so the conversation chain remains readable."
+                : "This response will be removed. If it's been quoted in another reply, it'll stay as a tombstone so citations still resolve."}
+            </p>
+            {deleteError && (
+              <div style={{
+                color: "#fff",
+                background: "#f45028",
+                padding: "8px 12px",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                marginBottom: 14,
+              }}>
+                {deleteError}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => { setConfirmDelete(null); setDeleteError(null); }}
+                disabled={deleting}
+                style={{
+                  background: "transparent",
+                  color: "var(--dos-bg, #2a4a36)",
+                  border: "2px solid rgba(0,0,0,0.18)",
+                  borderRadius: 9999,
+                  padding: "9px 18px",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: deleting ? "default" : "pointer",
+                  fontFamily: "inherit",
+                  opacity: deleting ? 0.55 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!confirmDelete) return;
+                  setDeleting(true);
+                  setDeleteError(null);
+                  try {
+                    if (confirmDelete.type === "thread") {
+                      await deleteThread(confirmDelete.id);
+                      // Soft-delete leaves a tombstone if there are replies, vanishes
+                      // if not. Either way, route back to the room so the user isn't
+                      // staring at the entry they just deleted.
+                      navigate(`/m/rooms/${groupId}`, { replace: true });
+                    } else {
+                      await deleteReply(confirmDelete.id);
+                      // Stay on thread; refetch via location.key bump.
+                      setReplies(prev => prev.filter(x => x.id !== confirmDelete.id));
+                      setConfirmDelete(null);
+                    }
+                  } catch (err) {
+                    console.warn("Delete failed:", err);
+                    setDeleteError(err instanceof Error ? err.message : "Delete failed. Try again.");
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                disabled={deleting}
+                style={{
+                  background: "#f45028",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 9999,
+                  padding: "9px 18px",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: deleting ? "default" : "pointer",
+                  fontFamily: "inherit",
+                  opacity: deleting ? 0.85 : 1,
+                  minWidth: 90,
+                }}
+              >
+                {deleting ? <LoadingDots /> : "Delete"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function ReplyCard({ reply }: { reply: Reply }) {
+const kebabButtonStyle: React.CSSProperties = {
+  background: "transparent",
+  color: "var(--dos-bg, #2a4a36)",
+  border: "none",
+  padding: 2,
+  margin: 0,
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  opacity: 0.7,
+  fontFamily: "inherit",
+};
+
+function sheetItemStyle(opts?: { danger?: boolean; subtle?: boolean }): React.CSSProperties {
+  const danger = opts?.danger;
+  const subtle = opts?.subtle;
+  return {
+    width: "100%",
+    background: "transparent",
+    color: danger ? "#f45028" : "var(--dos-bg, #2a4a36)",
+    border: "none",
+    borderRadius: 10,
+    padding: "14px 16px",
+    fontSize: 16,
+    fontWeight: subtle ? 600 : 700,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: subtle ? "center" : "flex-start",
+    gap: 12,
+    opacity: subtle ? 0.7 : 1,
+  };
+}
+
+function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boolean; onKebab: () => void }) {
   const tag = `S${String(reply.season).padStart(2, "0")} E${String(reply.episode).padStart(2, "0")}`;
   const ts = formatRelativeShort(reply.updatedAt);
   return (
@@ -360,7 +614,14 @@ function ReplyCard({ reply }: { reply: Reply }) {
         marginBottom: 6,
       }}>
         <span>{reply.author}</span>
-        <span style={{ fontVariantNumeric: "tabular-nums" }}>{tag}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>{tag}</span>
+          {isAuthor && (
+            <button onClick={onKebab} aria-label="More actions" style={kebabButtonStyle}>
+              <MoreVertical size={16} strokeWidth={2.2} />
+            </button>
+          )}
+        </span>
       </div>
       <div style={{
         fontSize: 14,
