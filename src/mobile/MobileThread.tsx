@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { useAuth } from "../lib/auth";
+import { supabase } from "../lib/supabaseClient";
 import {
   fetchThreadById,
   fetchRepliesForThread,
@@ -88,6 +89,45 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
     // replace:true) refetches the reply list and the new response shows up.
     // Same trick will handle any future "edit reply" return path.
   }, [groupId, threadId, user?.id, location.key]);
+
+  // Realtime: while viewing this thread, subscribe to reply inserts/
+  // updates filtered to thread_id=eq.${threadId}. Peers' replies appear
+  // without a manual refresh. Narrowed per spec ("mobile bandwidth /
+  // battery sensitivity matters more than on desktop") — only events for
+  // this specific thread reach the client.
+  //
+  // refetch pulls the full reply list group-scoped to the room. The
+  // canView + chainVisible filter is applied client-side in
+  // visibleReplies, so a peer's spoiler-tagged reply that the viewer
+  // can't see will fetch but not render — same shape as the initial
+  // load. No leaked spoiler.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    const refetch = () => {
+      fetchRepliesForThread(threadId, groupId)
+        .then(rs => {
+          if (cancelled) return;
+          setReplies(rs);
+        })
+        .catch(() => { /* transient — next interaction will refetch */ });
+    };
+
+    const channel = supabase
+      .channel(`mobile-thread-${user.id}-${threadId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "replies", filter: `thread_id=eq.${threadId}` },
+        refetch
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [groupId, threadId, user?.id]);
 
   // Filter replies through canView + chain-visibility. Same shape as
   // utils.visibleRepliesCount (and as fetchGroupThreads's chainVisible),

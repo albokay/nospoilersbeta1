@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, MessageSquareText, Plus, UserPlus, ChevronDown } from "lucide-react";
 import { useAuth } from "../lib/auth";
+import { supabase } from "../lib/supabaseClient";
 import {
   fetchAllFriendGroupsWithActivity,
   fetchShows,
@@ -106,6 +107,56 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
       console.warn("markRoomSeen failed (migration may not be applied yet):", err);
     });
   }, [groupId, user?.id]);
+
+  // Realtime: while the user is viewing this room, subscribe to inserts
+  // and updates on replies + group_threads scoped to this group_id. On any
+  // event, refetch the thread list (and therefore reply counts) so peers'
+  // posts and replies appear without a manual refresh.
+  //
+  // Narrowed via filter=`group_id=eq.${groupId}` to keep mobile bandwidth
+  // / battery cost minimal — only events for this room reach the client,
+  // not the full replies firehose. Filter syntax mirrors Supabase's
+  // postgres_changes spec.
+  //
+  // The handler closure captures `progress` from the render where the
+  // subscription was created. progress is included in the effect deps so
+  // the subscription re-creates when it changes — which is rare in
+  // practice (progress is set at the gate before entering, and not edited
+  // from inside the room view), but the safety is cheap.
+  useEffect(() => {
+    if (!user) return;
+    const eff = effectiveProgress(progress) ?? { s: 0, e: 0 };
+    let cancelled = false;
+
+    const refetch = () => {
+      fetchGroupThreads(groupId, eff.s, eff.e)
+        .then(result => {
+          if (cancelled) return;
+          setThreads(result.threads);
+          setReplyCounts(result.replyCounts);
+        })
+        .catch(() => { /* transient — next interaction will refetch */ });
+    };
+
+    const channel = supabase
+      .channel(`mobile-room-${user.id}-${groupId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "replies", filter: `group_id=eq.${groupId}` },
+        refetch
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "group_threads", filter: `group_id=eq.${groupId}` },
+        refetch
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [groupId, user?.id, progress]);
 
   const sortedThreads = useMemo(() => {
     // fetchGroupThreads already orders by shared_at descending (newest
