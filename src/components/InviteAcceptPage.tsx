@@ -193,7 +193,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
         <p className="muted" style={{ marginBottom: 24 }}>
           This invite link doesn't exist, has already been used, or has expired.
         </p>
-        <button className="btn" onClick={() => window.location.assign(goHomeTarget)}>Go home</button>
+        <button className="btn" onClick={() => navigate(goHomeTarget)}>Go home</button>
       </Page>
     );
   }
@@ -206,7 +206,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
         <p className="muted" style={{ marginBottom: 24 }}>
           This invite link expired. Ask the room creator to send a new one.
         </p>
-        <button className="btn" onClick={() => window.location.assign(goHomeTarget)}>Go home</button>
+        <button className="btn" onClick={() => navigate(goHomeTarget)}>Go home</button>
       </Page>
     );
   }
@@ -221,7 +221,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
         </p>
         <button
           className="btn"
-          onClick={() => window.location.assign(invite?.show_id ? `/show/${invite.show_id}` : "/")}
+          onClick={() => navigate(invite?.show_id ? `/show/${invite.show_id}` : "/")}
         >
           Go to show
         </button>
@@ -281,7 +281,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
         <p className="muted" style={{ marginBottom: 24 }}>
           {errMsg || "Could not accept the invitation. Please try again."}
         </p>
-        <button className="btn" onClick={() => window.location.assign(goHomeTarget)}>Go home</button>
+        <button className="btn" onClick={() => navigate(goHomeTarget)}>Go home</button>
       </Page>
     );
   }
