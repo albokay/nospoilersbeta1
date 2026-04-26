@@ -1439,7 +1439,11 @@ export default function ProfilePage({
               placeholder="Title"
               value={postTitle}
               onChange={(e) => setPostTitle(e.target.value)}
-              style={{ width: "100%", height: 40, fontWeight: 700 }}
+              // Width trimmed by 60px so the title stops short of the
+              // absolute-positioned close X button (at top:12 right:16,
+              // 28px wide). Reserves ~60px on the right (16+28+16
+              // breathing room) so the input never sits underneath the X.
+              style={{ width: "calc(100% - 60px)", height: 40, fontWeight: 700 }}
             />
             {activeShow && (
               <div className="muted" style={{ fontSize: 13 }}>
@@ -1499,8 +1503,8 @@ export default function ProfilePage({
                   >
                     {!formReady && !postSubmitting ? "\u00A0"
                       : postSubmitting ? <>Posting<LoadingDots /></>
-                      : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save to journal</>
-                      : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> publish</>
+                      : composeDestination === "private" ? <><LockKeyhole size={14} style={{verticalAlign:"middle"}} /> save for yourself</>
+                      : composeDestination === "public" ? <><Globe size={14} style={{verticalAlign:"middle"}} /> publish publicly</>
                       : <><Users size={14} style={{verticalAlign:"middle"}} /> send to friends</>}
                   </button>
                 );
