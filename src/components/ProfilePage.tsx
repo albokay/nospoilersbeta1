@@ -989,7 +989,7 @@ export default function ProfilePage({
                           </button>
                         </Tooltip>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 24, flexShrink: 0 }}>
                         {/* Journal mode filter — radio buttons styled like
                            the SearchShows onboarding "First time / Rewatching"
                            radios (white circle, canon-green dot when active),
