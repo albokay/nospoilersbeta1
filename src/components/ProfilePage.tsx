@@ -990,65 +990,70 @@ export default function ProfilePage({
                         </Tooltip>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-                        {/* Journal mode filter — three-segment radio pill,
-                           per-show state (preserved across tab switches
-                           within ProfilePage, reset on navigation away
-                           or refresh). Label order: friends / private /
-                           public. Default = friends per desktop refocus
-                           (chunk 2). All three segments carry tooltips. */}
-                        <div style={{
-                          display: "flex", gap: 0, borderRadius: 999, overflow: "hidden",
-                          border: "2px solid var(--dos-border)", flexShrink: 0,
-                        }}>
+                        {/* Journal mode filter — radio buttons styled like
+                           the SearchShows onboarding "First time / Rewatching"
+                           radios (white circle, canon-green dot when active),
+                           with the label set BENEATH the button so the unit
+                           reads as a compact icon-with-caption. Per-show
+                           state (preserved across tab switches within
+                           ProfilePage, reset on navigation away or refresh).
+                           Order: friends / private / public. Default =
+                           friends per desktop refocus (chunk 2). All three
+                           carry tooltips. Sized to roughly match the prior
+                           segmented-pill footprint so the surrounding nav
+                           controls don't shift. */}
+                        <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
                           {([
                             { val: "friends", label: "friends", tooltip: "What you've written for friends." },
                             { val: "private", label: "private", tooltip: "Your private thoughts." },
                             { val: "public",  label: "public",  tooltip: "What the public sees." },
                           ] as const).map(({ val, label, tooltip }) => {
-                            const btn = (
+                            const active = activeFilter === val;
+                            const cell = (
                               <button
                                 onClick={() => setFilterByShow(prev => ({ ...prev, [activeTab]: val }))}
                                 style={{
-                                  padding: "1px 6px",
-                                  fontSize: 10,
-                                  fontWeight: activeFilter === val ? 700 : 400,
-                                  background: activeFilter === val ? "var(--dos-border)" : "transparent",
-                                  color: activeFilter === val ? "var(--dos-bg)" : "var(--dos-fg)",
+                                  background: "transparent",
                                   border: "none",
+                                  padding: 0,
                                   cursor: "pointer",
-                                  whiteSpace: "nowrap",
                                   display: "flex",
+                                  flexDirection: "column",
                                   alignItems: "center",
-                                  justifyContent: "center",
-                                  gap: 4,
-                                  width: "100%",
-                                  height: "100%",
+                                  gap: 3,
+                                  fontFamily: "inherit",
+                                  lineHeight: 1,
                                 }}
                               >
-                                {label}
+                                <div style={{
+                                  width: 14, height: 14, borderRadius: "50%",
+                                  background: "#fff",
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  flexShrink: 0,
+                                }}>
+                                  {active && (
+                                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#7abd8e" }} />
+                                  )}
+                                </div>
+                                <span style={{
+                                  fontSize: 10,
+                                  lineHeight: 1.2,
+                                  fontWeight: active ? 700 : 500,
+                                  color: "#fff",
+                                  whiteSpace: "nowrap",
+                                }}>{label}</span>
                               </button>
                             );
-                            // Pass display: flex to Tooltip's wrapper span so it
-                            // becomes a flex container — inner button then stretches
-                            // to the wrapper's full height (the wrapper, as a flex
-                            // item of the outer pill, already stretches to pill
-                            // height). Without this the tooltip-wrapped segments'
-                            // backgrounds don't reach top-to-bottom and they sit
-                            // at a different vertical baseline than the bare "all"
-                            // segment.
-                            return tooltip
-                              ? (
-                                <Tooltip
-                                  key={val}
-                                  text={tooltip}
-                                  direction="below"
-                                  tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
-                                  style={{ display: "flex" }}
-                                >
-                                  {btn}
-                                </Tooltip>
-                              )
-                              : <React.Fragment key={val}>{btn}</React.Fragment>;
+                            return (
+                              <Tooltip
+                                key={val}
+                                text={tooltip}
+                                direction="below"
+                                tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
+                              >
+                                {cell}
+                              </Tooltip>
+                            );
                           })}
                         </div>
                         {activeShow && (
