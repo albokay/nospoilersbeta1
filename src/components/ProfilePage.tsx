@@ -875,15 +875,12 @@ export default function ProfilePage({
                                 style={{
                                   lineHeight: 1.2,
                                   display: "inline-flex", alignItems: "center", gap: 5,
-                                  // Canon-green fill (#7abd8e) across all
-                                  // filter states. Stands out clearly against
-                                  // each tabBg surface (light-blue, green, or
-                                  // yellow) — on the green/private surface
-                                  // the fill matches the surface and the
-                                  // button reads as a white-outlined ghost,
-                                  // matching the write button's behavior on
-                                  // the same surface.
-                                  background: "#7abd8e",
+                                  // Transparent fill across all filter
+                                  // states — matches the multi-room dropdown
+                                  // variant for consistency. White outline +
+                                  // white content reads on every tabBg
+                                  // surface (light-blue, green, yellow).
+                                  background: "transparent",
                                   border: "2px solid #fff",
                                   color: "#fff",
                                   whiteSpace: "nowrap",
