@@ -295,7 +295,13 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
 
       {/* 4 — Copy (38svh) */}
       <section style={{ minHeight: "38svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
-        <Copy>Another friend is two<br />episodes behind you.</Copy>
+        <Copy>
+          {headerHeight === 0 ? (
+            <>Another friend<br />is two episodes<br />behind you.</>
+          ) : (
+            <>Another friend is two<br />episodes behind you.</>
+          )}
+        </Copy>
       </section>
 
       {/* 5 — Cloud: 14 bubbles, high parallax rates for z-depth, wide space around copy */}

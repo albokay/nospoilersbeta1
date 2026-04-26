@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import {
   insertReply,
   fetchThreadById,
+  fetchRepliesForThread,
   fetchAllFriendGroupsWithActivity,
   fetchProgress,
 } from "../lib/db";
-import type { Thread, ProgressEntry } from "../types";
-import { effectiveProgress } from "../lib/utils";
+import type { Thread, Reply, ProgressEntry } from "../types";
+import { canView, effectiveProgress } from "../lib/utils";
 import LoadingDots from "../components/LoadingDots";
 
 // /m/rooms/:groupId/thread/:threadId/respond — write a response to a
@@ -28,6 +29,7 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
   const { user, profile } = useAuth();
 
   const [thread, setThread] = useState<Thread | null>(null);
+  const [replies, setReplies] = useState<Reply[]>([]);
   const [progress, setProgress] = useState<ProgressEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -35,6 +37,12 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Ref + initial-scroll effect: after data loads, scroll the textarea into
+  // view so the user lands ready to type. The full thread + responses sit
+  // above the textarea — they can scroll up to reread while writing.
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const didInitialScrollRef = useRef(false);
 
   useEffect(() => {
     if (!user) return;
@@ -44,10 +52,11 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
 
     Promise.all([
       fetchThreadById(threadId),
+      fetchRepliesForThread(threadId, groupId),
       fetchAllFriendGroupsWithActivity(user.id),
       fetchProgress(user.id),
     ])
-      .then(([t, rooms, progressMap]) => {
+      .then(([t, rs, rooms, progressMap]) => {
         if (cancelled) return;
         if (!t) { setLoadError("not_found"); return; }
         const room = rooms.find(r => r.id === groupId);
@@ -55,6 +64,7 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
         // Membership matches the room; the show_id path goes via thread,
         // not via room, so use thread.showId to pull progress.
         setThread(t);
+        setReplies(rs);
         setProgress(progressMap[t.showId] ?? null);
       })
       .catch(err => {
@@ -68,6 +78,54 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
 
     return () => { cancelled = true; };
   }, [groupId, threadId, user?.id]);
+
+  // After initial render with data, scroll the textarea into view. One-shot
+  // (didInitialScrollRef) so subsequent re-renders don't yank the page if
+  // the user has scrolled up to reread the thread.
+  useEffect(() => {
+    if (loading || loadError || didInitialScrollRef.current) return;
+    if (!textareaRef.current) return;
+    didInitialScrollRef.current = true;
+    // requestAnimationFrame so the DOM has settled (response cards rendered,
+    // page height final) before we measure + scroll.
+    requestAnimationFrame(() => {
+      textareaRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+  }, [loading, loadError]);
+
+  // Chain-visible reply filter (mirrors MobileThread): a reply is shown iff
+  // canView(reply, viewer) AND every ancestor in the parent chain is also
+  // canView'able. Walks both replyToId (legacy/seed) and referencedReplyId
+  // (current composer). Soft-deleted replies render as tombstones only when
+  // they've been responded to — otherwise filtered entirely.
+  const visibleReplies = useMemo(() => {
+    if (!thread) return [];
+    const byId: Record<string, Reply> = {};
+    replies.forEach(r => (byId[r.id] = r));
+
+    const respondedToIds = new Set<string>();
+    for (const r of replies) {
+      if (r.isDeleted) continue;
+      if (r.replyToId) respondedToIds.add(r.replyToId);
+      if (r.referencedReplyId) respondedToIds.add(r.referencedReplyId);
+    }
+
+    const getParent = (r: Reply): Reply | null =>
+      (r.replyToId && byId[r.replyToId]) ||
+      (r.referencedReplyId && byId[r.referencedReplyId]) ||
+      null;
+    const chainVisible = (r: Reply): boolean => {
+      if (r.isDeleted && !respondedToIds.has(r.id)) return false;
+      if (!canView({ season: r.season, episode: r.episode }, progress)) return false;
+      let cur = getParent(r);
+      while (cur) {
+        if (!canView({ season: cur.season, episode: cur.episode }, progress)) return false;
+        cur = getParent(cur);
+      }
+      return true;
+    };
+    return replies.filter(chainVisible);
+  }, [replies, progress, thread]);
 
   const eff = effectiveProgress(progress);
   const tag = eff
@@ -256,6 +314,67 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
           );
         })()}
 
+        {/* ── Existing responses (mirrors MobileThread's stream so the user */}
+        {/*    can scroll up and reread the full conversation while writing. */}
+        {/*    Same chainVisible filter — orphans hidden, soft-deleted shown */}
+        {/*    as tombstones only when responded to. Lighter card than the   */}
+        {/*    MobileThread version: drops the edited/timestamp footer since */}
+        {/*    the user is composing, not browsing.                          */}
+        {visibleReplies.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+            {visibleReplies.map(r => {
+              if (r.isDeleted) {
+                return (
+                  <div key={r.id} style={{
+                    background: "transparent",
+                    border: "2px dashed rgba(255,255,255,0.4)",
+                    color: "rgba(255,255,255,0.6)",
+                    borderRadius: 10,
+                    padding: "10px 14px",
+                    fontStyle: "italic",
+                    fontSize: 13,
+                  }}>
+                    @{r.author} deleted their response.
+                  </div>
+                );
+              }
+              const replyTag = `S${String(r.season).padStart(2, "0")} E${String(r.episode).padStart(2, "0")}`;
+              return (
+                <div key={r.id} style={{
+                  background: "transparent",
+                  border: "2px solid #fff",
+                  color: "#fff",
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                }}>
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                    opacity: 0.85,
+                    marginBottom: 6,
+                  }}>
+                    <span>{r.author}</span>
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>{replyTag}</span>
+                  </div>
+                  <div style={{
+                    fontSize: 14,
+                    lineHeight: 1.5,
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "break-word",
+                  }}>
+                    {r.body}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* ── Tag pill + rewatcher note (your reply's context) ── */}
         <div style={{
           marginBottom: 12,
@@ -282,6 +401,7 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
 
         {/* ── Body textarea ── */}
         <textarea
+          ref={textareaRef}
           className="m-input"
           value={body}
           onChange={e => setBody(e.target.value)}
