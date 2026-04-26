@@ -1196,11 +1196,22 @@ export default function ProfilePage({
                              stopPropagation on the link click preserves the
                              parent card-click → open-thread behavior. */}
                           {t.titleBase}
+                          {/* Meta unit — icon, name link, and episode tag
+                             are wrapped in one inline-flex container so
+                             they always wrap to the next line as a single
+                             unit if the title's line can't fit them.
+                             whiteSpace: nowrap belt-and-suspenders prevents
+                             any internal break between the three children.
+                             Without this, the tag could orphan to its own
+                             line while the icon + name stayed beside the
+                             title. */}
                           <span style={{
-                            fontSize: 13, fontWeight: 400, opacity: 0.7,
                             marginLeft: 8,
                             display: "inline-flex", alignItems: "center", gap: 6,
                             verticalAlign: "middle",
+                            whiteSpace: "nowrap",
+                            opacity: 0.7,
+                            fontWeight: 400,
                           }}>
                             {!t.isPublic && !groupId && <LockKeyhole size={14} color="var(--icon-color)" />}
                             {isPub && <Globe size={14} color="var(--icon-color)" />}
@@ -1210,16 +1221,16 @@ export default function ProfilePage({
                                 e.stopPropagation();
                                 goToShowRoom(t.showId, groupId);
                               }}
-                              style={{ color: "inherit", textDecoration: "underline", cursor: "pointer" }}
+                              style={{ color: "inherit", textDecoration: "underline", cursor: "pointer", fontSize: 13 }}
                             >
                               {isGroup ? (groupName ?? showName(t.showId)) : showName(t.showId)}
                             </a>
+                            {t.showId !== "simshow" && (
+                              <span style={{ fontSize: 14 }}>
+                                <EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} />
+                              </span>
+                            )}
                           </span>
-                          {t.showId !== "simshow" && (
-                            <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
-                              <EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} />
-                            </span>
-                          )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {t.body !== t.preview && (
