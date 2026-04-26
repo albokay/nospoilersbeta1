@@ -875,18 +875,15 @@ export default function ProfilePage({
                                 style={{
                                   lineHeight: 1.2,
                                   display: "inline-flex", alignItems: "center", gap: 5,
-                                  // Bg stays canon-light-blue (#adc8d7) regardless
-                                  // of filter. On the friends filter the bg
-                                  // matches tabBg and the button blends into
-                                  // the surface (only content reads); on
-                                  // private/public filters the light-blue fill
-                                  // stands out as a colored pill on green/yellow.
-                                  // White outline added across all states for
-                                  // consistency with the multi-room dropdown
-                                  // variant below — the button shape always
-                                  // reads even on the friends filter where
-                                  // the fill blends with the surface.
-                                  background: "#adc8d7",
+                                  // Canon-green fill (#7abd8e) across all
+                                  // filter states. Stands out clearly against
+                                  // each tabBg surface (light-blue, green, or
+                                  // yellow) — on the green/private surface
+                                  // the fill matches the surface and the
+                                  // button reads as a white-outlined ghost,
+                                  // matching the write button's behavior on
+                                  // the same surface.
+                                  background: "#7abd8e",
                                   border: "2px solid #fff",
                                   color: "#fff",
                                   whiteSpace: "nowrap",
