@@ -876,17 +876,18 @@ export default function ProfilePage({
                                   lineHeight: 1.2,
                                   display: "inline-flex", alignItems: "center", gap: 5,
                                   // Bg stays canon-light-blue (#adc8d7) regardless
-                                  // of filter. On the friends filter (tabBg also
-                                  // light-blue) the button's bg matches the
-                                  // surface and the button visually disappears
-                                  // into it — only the white content reads.
-                                  // On private/public filters the light-blue fill
+                                  // of filter. On the friends filter the bg
+                                  // matches tabBg and the button blends into
+                                  // the surface (only content reads); on
+                                  // private/public filters the light-blue fill
                                   // stands out as a colored pill on green/yellow.
-                                  // No filter-aware override needed; the
-                                  // disappearing-on-friends behavior falls out
-                                  // of the existing fill matching tabBg there.
+                                  // White outline added across all states for
+                                  // consistency with the multi-room dropdown
+                                  // variant below — the button shape always
+                                  // reads even on the friends filter where
+                                  // the fill blends with the surface.
                                   background: "#adc8d7",
-                                  border: "2px solid #adc8d7",
+                                  border: "2px solid #fff",
                                   color: "#fff",
                                   whiteSpace: "nowrap",
                                 }}
