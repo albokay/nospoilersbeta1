@@ -872,15 +872,28 @@ function AppShell() {
   // Mobile redirect: viewports <768px get sent into the /m/* mobile app
   // surface, which is now the canonical mobile experience (replaces the
   // earlier "not ready for your phone yet" lockout screen). Admins bypass
-  // so they can QA the desktop UI from a phone if needed. During auth /
-  // profile load the gate stays closed — a brief flash only affects
-  // admins signing in on mobile, which is the edge case.
+  // so they can QA the desktop UI from a phone if needed.
   //
   // /m/* paths early-return in <App> before reaching <AppShell>, so this
   // gate only fires for mobile users on desktop-shaped paths (/, /profile,
   // /show/:id, etc.) — sending them into /m, which then routes signed-in
   // users to /m/rooms and signed-out users to MobileNarrative.
+  //
+  // Race-guard: wait for auth + profile to fully resolve before committing
+  // to the redirect. Without these guards, an admin signing in on mobile
+  // races: the gate fires on first render with profile=null → isAdmin=false
+  // → Navigate to /m fires → by the time isAdmin resolves true, the
+  // navigation already happened and admin is stuck on /m. The two `return
+  // null` branches cover the gaps:
+  //   - authLoading: initial session resolution.
+  //   - user && !profile: session resolved, profile row still loading.
+  // Brief blank flash possible during profile-load on mobile admin
+  // sign-in (sub-second) — preferred over routing admins out of the
+  // desktop QA path. Unauthed mobile users skip the guard naturally
+  // (user is null after authLoading=false → falls through to the redirect).
   if (isMobileLocked && !isAdmin) {
+    if (authLoading) return null;
+    if (user && !profile) return null;
     return <Navigate to="/m" replace />;
   }
 
