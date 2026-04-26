@@ -281,6 +281,20 @@ export default function ProfilePage({
   type JournalFilter = "friends" | "private" | "public";
   const [filterByShow, setFilterByShow] = useState<Record<string, JournalFilter>>({});
   const activeFilter: JournalFilter = filterByShow[activeTab] ?? "friends";
+  // Tab surface bg follows the active filter — extends the existing
+  // "private cards on green diary surface" pattern (where the cards
+  // already match the surface and visually disappear into it) to
+  // friends + public modes. Cards retain their per-mode bg, so on a
+  // matching-color surface they read as the same headline-typography
+  // treatment as private has had all along. Filter-as-destination
+  // also keys off this — see write-button onClick + compose modal
+  // dropdown gating below.
+  //   friends → canon light-blue (#adc8d7)
+  //   private → canon green (#7abd8e, same as var(--dos-bg))
+  //   public  → canon yellow (#dea838)
+  const tabBg = activeFilter === "friends" ? "#adc8d7"
+              : activeFilter === "public"  ? "#dea838"
+              : "#7abd8e";
 
   // Friend-room filter for the journal
   const [tabGroups, setTabGroups] = useState<FriendGroup[]>([]);
@@ -798,23 +812,35 @@ export default function ProfilePage({
                       <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
                     );
                   })}
-                <div className="card" style={{ height: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
+                <div className="card" style={{ height: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1, background: tabBg }}>
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
-                    <div className="profileActionBar">
+                    <div className="profileActionBar" style={{ background: tabBg }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                        {/* Write — defaults to most-recently-active friend
-                           room for this show (canView-aware) per desktop
-                           refocus (chunk 3). Falls back to "private" when
-                           the user has no rooms for this tab (legacy show). */}
+                        {/* Write — destination derives from activeFilter
+                           (filter-as-destination model). Bg tracks tabBg so
+                           the button reads as a white-outlined ghost on
+                           every filter, matching the existing canon-green
+                           ghost effect that's been live on private. */}
                         <button
                           className="btn post h40"
                           onClick={() => {
-                            const defaultRoom = pickMostActiveRoom(tabGroups);
-                            setComposeDestination(defaultRoom ?? "private");
+                            let dest: string;
+                            if (activeFilter === "private") dest = "private";
+                            else if (activeFilter === "public") dest = "public";
+                            else {
+                              // filter === "friends" — pick the
+                              // most-recently-active room. Legacy users
+                              // with no rooms fall back to "private" so
+                              // the write button still works (their
+                              // journal-only experience is preserved).
+                              const room = pickMostActiveRoom(tabGroups);
+                              dest = room ?? "private";
+                            }
+                            setComposeDestination(dest);
                             setComposeOpen(true);
                           }}
-                          style={{ lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5 }}
+                          style={{ lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5, background: tabBg }}
                         >
                           <SquarePen size={15} /> write
                         </button>
@@ -839,6 +865,16 @@ export default function ProfilePage({
                                 style={{
                                   lineHeight: 1.2,
                                   display: "inline-flex", alignItems: "center", gap: 5,
+                                  // Bg stays canon-light-blue (#adc8d7) regardless
+                                  // of filter. On the friends filter (tabBg also
+                                  // light-blue) the button's bg matches the
+                                  // surface and the button visually disappears
+                                  // into it — only the white content reads.
+                                  // On private/public filters the light-blue fill
+                                  // stands out as a colored pill on green/yellow.
+                                  // No filter-aware override needed; the
+                                  // disappearing-on-friends behavior falls out
+                                  // of the existing fill matching tabBg there.
                                   background: "#adc8d7",
                                   border: "2px solid #adc8d7",
                                   color: "#fff",
@@ -1014,6 +1050,7 @@ export default function ProfilePage({
                             rewatchHighest={postProgress?.isRewatching && postProgress.highestS != null && postProgress.highestE != null
                               ? { s: postProgress.highestS, e: postProgress.highestE }
                               : null}
+                            pillBg={tabBg}
                           />
                         )}
                       </div>
@@ -1359,28 +1396,33 @@ export default function ProfilePage({
           <button className="close-x" onClick={closeCompose} style={{ position: "absolute", top: 12, right: 16 }}><X size={14} /></button>
           <div style={{ display: "grid", gap: 10 }}>
             {/* ── Destination dropdown ── */}
-            {/* Order: friend rooms (most-recently-active first) →
-               private → public. Per spec, profile compose surfaces
-               all three destination types. The default selection is
-               wired in the "write" button click handler above. */}
-            <div>
-              <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
-                <select
-                  className="badge"
-                  value={composeDestination}
-                  onChange={(e) => setComposeDestination(e.target.value)}
-                  style={{ fontSize: 13, fontWeight: 600, paddingRight: 30, appearance: "none", WebkitAppearance: "none", cursor: "pointer", width: "100%" }}
-                >
-                  <option value="" disabled>where do you want to write?</option>
-                  {sortedRooms.map(g => (
-                    <option key={g.id} value={g.id}>{g.name} friend room</option>
-                  ))}
-                  <option value="private">private entry</option>
-                  <option value="public">public entry</option>
-                </select>
-                <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
+            {/* Per the filter-as-destination model: the destination
+               type is determined by the journal's active filter
+               (friends / private / public), set on the write
+               button's click handler. The dropdown only appears
+               in one specific case — when the filter is "friends"
+               AND the user has multiple friend rooms for this show
+               — so they can pick which room. Single-room and
+               non-friends filter states get a clean modal with no
+               destination selector. List shows rooms only;
+               private / public are not selectable here. */}
+            {activeFilter === "friends" && tabGroups.length > 1 && (
+              <div>
+                <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                  <select
+                    className="badge"
+                    value={composeDestination}
+                    onChange={(e) => setComposeDestination(e.target.value)}
+                    style={{ fontSize: 13, fontWeight: 600, paddingRight: 30, appearance: "none", WebkitAppearance: "none", cursor: "pointer", width: "100%" }}
+                  >
+                    {sortedRooms.map(g => (
+                      <option key={g.id} value={g.id}>{g.name} friend room</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} color="var(--dos-fg)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
+                </div>
               </div>
-            </div>
+            )}
 
             <input
               className="badge"
