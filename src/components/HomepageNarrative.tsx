@@ -20,22 +20,46 @@ function useReveal(threshold = 0.2) {
 }
 
 // ── Parallax ──────────────────────────────────────────────────────────────────
+// Imperative-write hook — writes the transform directly to the element
+// via ref instead of via React state. Avoids one re-render per scroll
+// event per parallax instance (the cloud section has ~20 instances, so
+// the win compounds). rAF-throttled so multiple scroll events per frame
+// only schedule one DOM write. translate3d(0, y, 0) forces a GPU layer
+// so the compositor can move the element without involving the main
+// thread. Critical for mobile where scroll events fire irregularly and
+// state-driven transforms produced visible stutter on iOS Safari.
 function useParallax(rate = 0.12) {
   const ref = useRef<HTMLDivElement>(null);
-  const [offset, setOffset] = useState(0);
   useEffect(() => {
-    function onScroll() {
+    let raf = 0;
+    let lastTransform = "";
+    function update() {
+      raf = 0;
       const el = ref.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const center = rect.top + rect.height / 2 - window.innerHeight / 2;
-      setOffset(center * rate);
+      // Round to integer px to avoid sub-pixel jitter and skip writes
+      // when the transform value hasn't changed.
+      const offset = Math.round(center * rate);
+      const transform = `translate3d(0, ${offset}px, 0)`;
+      if (transform !== lastTransform) {
+        el.style.transform = transform;
+        lastTransform = transform;
+      }
+    }
+    function onScroll() {
+      if (raf) return;  // already scheduled this frame
+      raf = requestAnimationFrame(update);
     }
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+    update();  // initial position
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [rate]);
-  return { ref, offset };
+  return { ref };
 }
 
 // ── Full-screen section ───────────────────────────────────────────────────────
@@ -60,7 +84,7 @@ function Bubble({ src, rate = 0.1, align = "center", offset: inset = "0%", scale
   src: string; rate?: number;
   align?: "left" | "center" | "right"; offset?: string; scale?: number;
 }) {
-  const { ref: parallaxRef, offset } = useParallax(rate);
+  const { ref: parallaxRef } = useParallax(rate);
   const { ref: revealRef, visible } = useReveal(0.1);
   const justifyMap = { left: "flex-start", center: "center", right: "flex-end" } as const;
   const padding = align === "right" ? { paddingLeft: inset }
@@ -71,7 +95,10 @@ function Bubble({ src, rate = 0.1, align = "center", offset: inset = "0%", scale
       boxSizing: "border-box", ...padding,
       opacity: visible ? 1 : 0, transition: "opacity 0.8s ease",
     }}>
-      <div ref={parallaxRef} style={{ transform: `translateY(${offset}px)` }}>
+      {/* Transform is written imperatively by useParallax; willChange
+         hints the browser to keep this on its own GPU layer so scroll
+         doesn't punt to the main thread. */}
+      <div ref={parallaxRef} style={{ willChange: "transform" }}>
         <img src={src} alt=""
           style={{ width: `min(${Math.round(BUBBLE_MAX * scale)}px, 90vw)`, height: "auto", display: "block" }} />
       </div>
@@ -84,7 +111,7 @@ function Bubble({ src, rate = 0.1, align = "center", offset: inset = "0%", scale
 function CloudBubble({ src, top, left, width, rate = 0 }: {
   src: string; top: string; left: string; width: string; rate?: number;
 }) {
-  const { ref: parallaxRef, offset } = useParallax(rate);
+  const { ref: parallaxRef } = useParallax(rate);
   const { ref: revealRef, visible } = useReveal(0.05);
   return (
     <div ref={revealRef} style={{
@@ -92,7 +119,9 @@ function CloudBubble({ src, top, left, width, rate = 0 }: {
       opacity: visible ? 1 : 0, transition: "opacity 0.9s ease",
       pointerEvents: "none",
     }}>
-      <div ref={parallaxRef} style={{ transform: `translateY(${offset}px)` }}>
+      {/* Transform written imperatively by useParallax; willChange
+         keeps this on its own GPU layer (mobile-critical). */}
+      <div ref={parallaxRef} style={{ willChange: "transform" }}>
         <img src={src} alt="" style={{ width: "100%", height: "auto", display: "block" }} />
       </div>
     </div>
@@ -130,13 +159,15 @@ const UNIT_H = LOGO_H + LOGO_GAP + TAGLINE_H;
 // It runs its scatter animation silently on page load (off-screen / opacity 0)
 // so by the time the user scrolls to the finale, blocks are already settled.
 // The in-flow placeholder is an empty invisible div — layout space + reveal hook only.
-function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
+function AnimatedLogo() {
   const placeholderRef = useRef<HTMLDivElement>(null);
   const [anim, setAnim] = useState({ progress: 0, left: 0, top: 0, measured: false });
   const { ref: revealRef, visible } = useReveal(0.15);
 
   useEffect(() => {
-    function onScroll() {
+    let raf = 0;
+    function update() {
+      raf = 0;
       const el = placeholderRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
@@ -149,18 +180,45 @@ function AnimatedLogo({ headerHeight = 56 }: { headerHeight?: number }) {
       const progress = Math.min(Math.max(rawProgress, 0), 1);
       setAnim({ progress, left: rect.left, top: rect.top, measured: true });
     }
+    function onScroll() {
+      // rAF-throttle so multiple scroll events per frame collapse into
+      // one setState. Major mobile-stutter mitigation; before this the
+      // hook fired setState on every scroll event (often 60+ per
+      // visible-frame on iOS Safari momentum scroll), causing a cascade
+      // of re-renders down through SidebarLogo's 5 block divs.
+      if (raf) return;
+      raf = requestAnimationFrame(update);
+    }
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [headerHeight]);
+    update();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   const { progress, left: natLeft, top: natTop, measured } = anim;
   // Ease-in: barely moves at first, then snaps quickly into corner
   const eased = progress * progress;
 
+  // Final-rest position. The wordmark inside the SidebarLogo canvas
+  // sits at (left:45, bottom:0, height:52) within a 280×148 canvas, so
+  // its top-left in canvas coordinates is (45, LOGO_H - 52) = (45, 96).
+  // At TARGET_SCALE=0.6 those coordinates become (27, 57.6) of the
+  // visually-rendered canvas. To land the wordmark's top-left at
+  // viewport (14, 14) — symmetric with MobileNarrative's Sign-in
+  // button at (top:14, right:14) — the canvas top-left must sit at
+  // (14 - 27, 14 - 57.6) ≈ (-13, -44). The negative values mean the
+  // canvas's top-left extends above and left of the viewport during
+  // the final phase of the animation; that's fine because by then
+  // blocksOpacity≈0 (they fade in lockstep with the shrink), so
+  // nothing visible is clipped.
   const TARGET_SCALE = 0.6;
-  const TARGET_LEFT = 32;
-  const TARGET_TOP = Math.max(4, (headerHeight - LOGO_H * TARGET_SCALE) / 2) + 16;
+  const WORDMARK_LEFT_IN_CANVAS = 45;
+  const WORDMARK_TOP_IN_CANVAS = LOGO_H - 52;  // 96
+  const TARGET_CORNER = 14;
+  const TARGET_LEFT = TARGET_CORNER - WORDMARK_LEFT_IN_CANVAS * TARGET_SCALE;
+  const TARGET_TOP = TARGET_CORNER - WORDMARK_TOP_IN_CANVAS * TARGET_SCALE;
 
   const scale = 1 + (TARGET_SCALE - 1) * eased;
   const taglineOpacity = (1 - eased) * 0.85;
@@ -282,7 +340,7 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
           <Copy size={38}>Sidebar is where<br />you can talk freely.</Copy>
         </div>
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <AnimatedLogo headerHeight={headerHeight} />
+          <AnimatedLogo />
         </div>
       </section>
     </>
