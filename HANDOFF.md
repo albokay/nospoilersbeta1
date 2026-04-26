@@ -1144,6 +1144,13 @@ A meaningful UX shift on the journal page: the friends/private/public filter tog
 
 **Two-step deploys this arc required:** none.
 
+**Follow-ups (same-day, small polish on top of the filter-as-destination land):**
+
+| Commit | Scope |
+|---|---|
+| `48832a4` → `c915b22` | Single-room friend-room button styling iterations. Briefly tried canon-green fill (`48832a4`) for parity with the write button's ghost-on-green effect; reverted same-session to transparent fill (`c915b22`) so the single-room button matches the multi-room dropdown variant which has been transparent + white outline + white content all along. End state: both variants of the friend-room button (single + multi-room) are visually identical except for the dropdown chevron. |
+| `413ab80` | Compose-modal copy + title field clearance. Submit button labels: `"save to journal"` → `"save for yourself"` (private), `"publish"` → `"publish publicly"` (public). Friend-room label `"send to friends"` unchanged. Icons (LockKeyhole / Globe / Users) all unchanged. Title input width trimmed to `calc(100% - 60px)` so it stops short of the absolute-positioned close X button (top:12, right:16, 28px wide) — the 60px reserves X width + position offsets + breathing room. |
+
 ### Earlier (pre-audit, header/layout polish)
 
 The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.
