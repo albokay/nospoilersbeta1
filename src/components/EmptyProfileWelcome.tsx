@@ -72,7 +72,7 @@ export default function EmptyProfileWelcome({ isTsp = false, showName, invitedMo
             You&rsquo;ve started a friend room for <em>{showName}</em>.
           </p>
           <p style={bodyStyle}>
-            Click that blue button up top to enter the room and invite your friends. They&rsquo;re waiting to dig in with you!
+            Click that button with the custom name you picked to enter the room and invite your friends. They&rsquo;re waiting to dig in with you!
           </p>
           <p style={bodyStyle}>
             And if you&rsquo;re not quite ready for that yet, you can also use this space to write private posts. Only you will see them. Sometimes the best thinking happens when you write just for yourself&hellip;
