@@ -1002,7 +1002,7 @@ export default function ProfilePage({
                            carry tooltips. Sized to roughly match the prior
                            segmented-pill footprint so the surrounding nav
                            controls don't shift. */}
-                        <div style={{ display: "flex", gap: 12, flexShrink: 0, marginTop: 14 }}>
+                        <div style={{ display: "flex", gap: 12, flexShrink: 0, marginTop: 18 }}>
                           {([
                             { val: "friends", label: "friends", tooltip: "What you've written for friends." },
                             { val: "private", label: "private", tooltip: "Your private thoughts." },
@@ -1032,7 +1032,7 @@ export default function ProfilePage({
                                   flexShrink: 0,
                                 }}>
                                   {active && (
-                                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#7abd8e" }} />
+                                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: tabBg }} />
                                   )}
                                 </div>
                                 <span style={{
