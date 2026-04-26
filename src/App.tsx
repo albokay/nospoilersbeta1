@@ -21,7 +21,10 @@ import { Tv, EyeClosed, UsersRound, ListCheck, Globe, Search, Rocket, X, Setting
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
-import MobileLockout from "./components/MobileLockout";
+// MobileLockout component is no longer rendered — mobile users on any
+// non-/m/* path now redirect into the /m/* mobile app surface (which
+// itself handles signed-in vs signed-out routing). The component file
+// stays in src/components/ as a fallback if we ever want to revert.
 import HomepageLab from "./components/HomepageLab";
 import HowItWorks from "./components/HowItWorks";
 import HowItWorksV2 from "./components/HowItWorksV2";
@@ -866,12 +869,19 @@ function AppShell() {
   // Show tabs are now integrated directly into the diary graphic on the profile page.
   const fixedProfileTabs = null;
 
-  // Mobile lockout: viewports <768px get a single "not ready for your phone
-  // yet" screen instead of the app. Admins bypass so I can QA from a phone.
-  // During auth load / profile load the gate stays closed — a brief flash
-  // only affects admins signing in on mobile, which is the edge case.
+  // Mobile redirect: viewports <768px get sent into the /m/* mobile app
+  // surface, which is now the canonical mobile experience (replaces the
+  // earlier "not ready for your phone yet" lockout screen). Admins bypass
+  // so they can QA the desktop UI from a phone if needed. During auth /
+  // profile load the gate stays closed — a brief flash only affects
+  // admins signing in on mobile, which is the edge case.
+  //
+  // /m/* paths early-return in <App> before reaching <AppShell>, so this
+  // gate only fires for mobile users on desktop-shaped paths (/, /profile,
+  // /show/:id, etc.) — sending them into /m, which then routes signed-in
+  // users to /m/rooms and signed-out users to MobileNarrative.
   if (isMobileLocked && !isAdmin) {
-    return <MobileLockout />;
+    return <Navigate to="/m" replace />;
   }
 
   return (

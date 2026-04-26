@@ -624,16 +624,18 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
 
   // Tombstone rendering for soft-deleted replies that survived the
   // chainVisible filter (i.e. someone responded to them — chain
-  // preservation). Minimal card, faded, italic, single-line — matches
-  // desktop RepliesList's tombstone shape.
+  // preservation). Minimal card, faded, italic, single-line — uses
+  // the same flipped styling axis as the live response card (transparent
+  // fill on the canon-green page, white outline) but with a dashed
+  // border + lower-alpha text so it reads as the deleted state.
   if (reply.isDeleted) {
     return (
       <div style={{
-        background: "rgba(255,255,255,0.65)",
-        color: "var(--dos-bg, #2a4a36)",
+        background: "transparent",
+        border: "2px dashed rgba(255,255,255,0.4)",
+        color: "rgba(255,255,255,0.6)",
         borderRadius: 10,
         padding: "10px 14px",
-        opacity: 0.55,
         fontStyle: "italic",
         fontSize: 13,
       }}>
@@ -642,14 +644,18 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
     );
   }
 
-  // Live response card. Background opacity intentionally lower than the
-  // parent thread's article (0.95) so the response visually distinguishes
-  // from the entry it sits beneath — the thread is the headline event,
-  // responses are the conversation around it.
+  // Live response card. Flipped from the previous white-fill / dark-text
+  // shape: transparent fill (canon-green page shows through), white
+  // outline, white text. Visually demarks responses as part of the page
+  // surface itself, not as separate "white cards" — the parent thread
+  // article remains the only filled white card on the screen, anchoring
+  // it as the headline event while the responses feel like the
+  // conversation happening around it on the same green ground.
   return (
     <div style={{
-      background: "rgba(255,255,255,0.80)",
-      color: "var(--dos-bg, #2a4a36)",
+      background: "transparent",
+      border: "2px solid #fff",
+      color: "#fff",
       borderRadius: 10,
       padding: "12px 14px",
     }}>
@@ -661,14 +667,14 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
         fontWeight: 700,
         textTransform: "uppercase",
         letterSpacing: "0.04em",
-        opacity: 0.65,
+        opacity: 0.85,
         marginBottom: 6,
       }}>
         <span>{reply.author}</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontVariantNumeric: "tabular-nums" }}>{tag}</span>
           {isAuthor && (
-            <button onClick={onKebab} aria-label="More actions" style={kebabButtonStyle}>
+            <button onClick={onKebab} aria-label="More actions" style={{ ...kebabButtonStyle, color: "#fff" }}>
               <MoreVertical size={16} strokeWidth={2.2} />
             </button>
           )}
@@ -685,7 +691,7 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
       <div style={{
         marginTop: 8,
         fontSize: 11,
-        opacity: 0.55,
+        opacity: 0.7,
         textAlign: "right",
         fontVariantNumeric: "tabular-nums",
       }}>
