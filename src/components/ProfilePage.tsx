@@ -773,6 +773,16 @@ export default function ProfilePage({
                           key={sid}
                           ref={(el) => { tabButtonRefs.current[sid] = el; }}
                           className={`diaryTab${active ? " active" : ""}`}
+                          // Active tab bg tracks tabBg so the show tab and
+                          // the diary surface below it read as one continuous
+                          // panel per filter. border-bottom-color also tracks
+                          // tabBg — the CSS sets it to var(--dos-bg) for the
+                          // seamless connection, and the inline override
+                          // keeps that connection on light-blue/yellow
+                          // surfaces too. Inactive tabs use the existing
+                          // dark semi-transparent fill from CSS, which
+                          // reads on all 3 surfaces without modification.
+                          style={active ? { background: tabBg, borderBottomColor: tabBg } : undefined}
                           title={activity ? "There are new responses to you in here." : undefined}
                           onClick={(e) => {
                             if (sid !== activeTab) {
