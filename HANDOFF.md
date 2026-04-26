@@ -1192,6 +1192,49 @@ Two small commits to retire long-standing stale-doc / stale-workaround flags fro
 - **Deferred-cleanup notes in §6 should describe the work shape, not just "could revert."** §6 item 19's pre-cleanup wording said the calls were "redundant" and a "future cleanup commit can convert them back to navigate(...) if desired." That wording invited the wrong fix (blanket revert). The replacement wording names the four-and-keep-two split explicitly, with reasons. Apply the same shape to any future "could clean up later" §6 entries: name the precise scope of what's safe to touch and what's load-bearing.
 - **React fiber dispatch as a verification tool for hard-to-reproduce render states.** When a component has multiple status branches that depend on DB state you can't easily fabricate locally, walk the fiber tree from `document.getElementById('root')[__reactContainer*]`, find the component by `fiber.type.name`, iterate `fiber.memoizedState` to collect each hook's `queue.dispatch`, and call the right setter directly. Lets you test render+nav behavior of any branch in seconds without touching source. Useful for limited verification when the state matrix is wider than your test fixtures.
 
+### 2026-04-26 — profile show-tab red dot: 24h time gate + room-visit dismissal
+
+The 8×8 indicator at the top-right of unselected show tabs in /profile already had two-color logic: green = "new visible reply-to-you since you last opened /profile," red = "any invisible (above-progress) reply-to-you exists in this show." Green was already gated against `openedAtSeenAt`. Red had no gate — it would show indefinitely for any old above-progress reply-to-you, and the `viewedTabIds` click-suppression was session-scoped only (not durable). On reload the red dot returned regardless.
+
+User-driven change: tighten the red branch with two new dismissal rules. Localized to /profile's per-tab indicator; doesn't touch the App-level pill badge (which has its own separate `invisibleSeenAt` / `invisibleFirstSeenAt` machinery in App.tsx).
+
+**The two new rules:**
+
+1. **24h time gate, anchored to first-seen-by-user.** When a show first acquires active-invisible-replies state, ProfilePage stamps a per-show timestamp in localStorage (`ns_red_seen_<userId>_<showId>`). The dot renders for that show only while `Date.now() - stamp < 24h`. Stamp clears when the show drops back to no active invisible activity (so a fresh batch later restarts the 24h clock).
+
+2. **Per-reply visit dismissal, precise to the reply's room/forum.** When the user enters a friend-room view (or the public-forum view) of a show, ShowSection writes `ns_room_visited_<userId>_<groupId>` (or `ns_show_public_visited_<userId>_<showId>`). The red branch then ignores any invisible reply whose `updatedAt` is older than the corresponding visit stamp. Visiting friend room A doesn't dismiss replies in friend room B for the same show — precise, not show-coarse. Visiting a thread inside a room counts as visiting the room (the stamp fires on any ShowSection mount with the right activeGroupId/showId combination).
+
+Both gates are dismissals — they OR together. Show's red dot renders iff there's at least one invisible reply NOT dismissed by visit AND the 24h window hasn't expired.
+
+**Storage: localStorage only, per-device.** Asked-and-answered: cross-device sync isn't worth the DB-column / migration cost for an indicator. The mobile-side `friend_group_members.last_seen_at` machinery exists but is intentionally NOT reused here — the red-dot signal is desktop-/profile-scoped, and forking a per-device localStorage path keeps the implementation contained.
+
+**Commit:**
+
+| Commit | Scope |
+|---|---|
+| (this commit) | [App.tsx:257](src/App.tsx:257) widens `repliesToUser` state typing to preserve the `groupId?` field that `fetchRepliesToUserThreads` already returns. [ProfilePage.tsx](src/components/ProfilePage.tsx) widens the same prop type, replaces the `tabActivity` memo with the new logic (green branch unchanged; red branch reads visit stamps + 24h time gate), adds a `redSeenStamps` state initialized from localStorage and a useEffect that manages the per-show stamp lifecycle. [ShowSection.tsx](src/components/ShowSection.tsx) adds a small useEffect that writes the visit stamp on `(showId, activeGroupId)` change. Net ~130 lines across 3 files. No DB / RPC / schema changes. |
+
+**Edge case knowingly accepted:** the 24h check uses `Date.now()` inside a memo whose deps don't include "current time," so a tab left open past the 24h boundary wouldn't see the dot disappear without another deps change. Per user call: no `setInterval` workaround. Realistic users mount /profile fresh frequently enough that the staleness is theoretical; if it ever surfaces in practice, the fix is a small interval bumping a tick state into the memo deps.
+
+**What's NOT changed:**
+- Green-dot logic — untouched.
+- App-level pill-badge logic in App.tsx — untouched (different machinery, different state).
+- `viewedTabIds` click-the-tab suppression in ProfilePage — still in place as a session-scoped visual hide on top of everything else. Now mostly redundant with the new dismissal rules but harmless.
+- Mobile new-activity dots — different mechanism (`get_room_activity_visibility` RPC + DB-side `last_seen_at`), not affected.
+- The `title` tooltip on the dot is now color-aware: green → "There are new responses to you in here." (unchanged); red → "New responses ahead of where you are." Accurate for both states; replaces the prior single-string tooltip that conflated the two.
+
+**Verification:** build clean. Live verification of the red-dot rendering deferred to post-deploy spot-check (per standing "skip preview eval for Sidebar" rule; user didn't authorize override for this task). The change is structurally simple — TypeScript validated all type-level concerns; runtime behavior of localStorage writes inside `user?.id`-gated effects is straightforward.
+
+**Deferred items added this arc:** none beyond the knowingly-accepted edge case above.
+
+**Two-step deploys this arc required:** none.
+
+**Conventions established:**
+
+- **Per-device localStorage as the right tool for indicator-state dismissal.** Indicator dismissal that doesn't need cross-device sync should live in localStorage even when DB-side equivalents exist. The mobile `last_seen_at` column is the right tool for mobile's room-list activity dots (which need to feel current across devices); the desktop /profile red dot is per-device by design (one user, one /profile session, dismissal scoped to the device they're acting on). Don't reach for a shared mechanism just because it exists.
+- **Per-show "first-seen" stamp lifecycle = stamp on appearance + clear on disappearance.** When implementing a "dismiss N hours after first seen" rule for a recurring condition, the cleanest pattern is: write the stamp the first time the condition holds and there's no existing stamp; clear the stamp when the condition stops holding. Re-emergence of the condition gets a fresh stamp. Avoids the "stamp set forever, never re-fires" trap, and avoids the "stamp constantly resets, time gate never expires" trap. See `redSeenStamps` lifecycle in [ProfilePage.tsx](src/components/ProfilePage.tsx) for the pattern.
+- **Visit stamps belong on the surface that does the visiting.** The visit stamp (`ns_room_visited_*`, `ns_show_public_visited_*`) lives in ShowSection's mount effect, not in some centralized App-level navigation listener. Co-locates the write with the surface whose mounting defines "visit." Generalizes to any "user has been here" tracking — write where the being-here is rendered, not at the routing edge.
+
 ### Earlier (pre-audit, header/layout polish)
 
 The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.

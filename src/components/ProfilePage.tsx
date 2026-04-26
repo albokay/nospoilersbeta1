@@ -53,7 +53,7 @@ export default function ProfilePage({
   openShow: (showId: string) => void;
   onClose: () => void;
   updateProgressFor?: (showId: string, val: { s: number; e: number }) => void;
-  repliesToUser?: { reply: Reply; thread: Thread }[];
+  repliesToUser?: { reply: Reply; thread: Thread; groupId?: string }[];
   openedAtSeenAt?: number;
   onTabsChange?: (data: ProfileTabData | null) => void;
   onGroupCreated?: (g: FriendGroup) => void;
@@ -688,19 +688,123 @@ export default function ProfilePage({
     return r;
   }, [repliesToUser, progress, openedAtSeenAt]);
 
-  // Per-tab activity: "green" if new visible replies, "red" if only invisible
-  const tabActivity = useMemo(() => {
-    const r: Record<string, "green" | "red"> = {};
-    for (const { reply, thread: t } of repliesToUser) {
-      const sid = t.showId;
-      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) {
-        if (reply.updatedAt > openedAtSeenAt) r[sid] = "green";
-      } else {
-        if (!r[sid]) r[sid] = "red";
+  // Red-dot dismissal rules (2026-04-26):
+  //   1. 24h time gate, anchored to when the user first sees the dot for that show
+  //      (per-show timestamp written to localStorage on first appearance, cleared
+  //      when the underlying invisible activity goes to zero).
+  //   2. Per-reply visit dismissal — a reply is dismissed if the user has visited
+  //      the friend room (for group_id replies) or public forum (for public-thread
+  //      replies) since the reply's updatedAt. ShowSection writes those visit
+  //      stamps on mount; this code reads them.
+  // Both gates dismiss; the show's red dot only renders if it has at least one
+  // invisible reply that's NOT dismissed by visit AND the 24h window hasn't
+  // expired. localStorage-only, per-device — no DB.
+  //
+  // Edge case knowingly accepted: 24h check uses Date.now() inside a memo whose
+  // deps don't include "current time", so a tab left open past the 24h boundary
+  // wouldn't see the dot disappear without another deps change. No interval —
+  // realistic users mount /profile fresh frequently enough that the staleness
+  // is theoretical.
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+  const [redSeenStamps, setRedSeenStamps] = useState<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    if (!user?.id) return map;
+    const prefix = `ns_red_seen_${user.id}_`;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(prefix)) {
+        const ts = parseInt(localStorage.getItem(k) ?? "0", 10);
+        if (ts > 0) map[k.slice(prefix.length)] = ts;
       }
     }
+    return map;
+  });
+
+  // Per-tab activity: "green" if new visible replies, "red" if invisible activity
+  // remains undismissed and within the 24h window. Green takes precedence.
+  const tabActivity = useMemo(() => {
+    const r: Record<string, "green" | "red"> = {};
+    if (!user?.id) return r;
+    const now = Date.now();
+    const roomPrefix = `ns_room_visited_${user.id}_`;
+    const publicPrefix = `ns_show_public_visited_${user.id}_`;
+
+    // Green: any visible reply newer than the last profile open
+    for (const { reply, thread: t } of repliesToUser) {
+      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId])
+          && reply.updatedAt > openedAtSeenAt) {
+        r[t.showId] = "green";
+      }
+    }
+
+    // Red: invisible reply not dismissed by visit, show stamp <24h old
+    for (const item of repliesToUser) {
+      const { reply, thread: t, groupId } = item;
+      if (r[t.showId] === "green") continue;
+      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) continue;
+      let visitTs = 0;
+      if (groupId) {
+        visitTs = parseInt(localStorage.getItem(roomPrefix + groupId) ?? "0", 10) || 0;
+      } else if (t.isPublic) {
+        visitTs = parseInt(localStorage.getItem(publicPrefix + t.showId) ?? "0", 10) || 0;
+      } else {
+        continue;
+      }
+      if (visitTs >= reply.updatedAt) continue;
+      const stamp = redSeenStamps[t.showId];
+      if (!stamp) continue; // effect below will write it; next render renders the dot
+      if (now - stamp >= TWENTY_FOUR_HOURS) continue;
+      r[t.showId] = "red";
+    }
     return r;
-  }, [repliesToUser, progress, openedAtSeenAt]);
+  }, [repliesToUser, progress, openedAtSeenAt, user?.id, redSeenStamps, TWENTY_FOUR_HOURS]);
+
+  // Manage the per-show red-seen stamp lifecycle: write on first appearance of
+  // active invisible activity, clear when activity goes to zero. Effect (not
+  // memo) so the localStorage writes don't run during render.
+  useEffect(() => {
+    if (!user?.id) return;
+    const prefix = `ns_red_seen_${user.id}_`;
+    const roomPrefix = `ns_room_visited_${user.id}_`;
+    const publicPrefix = `ns_show_public_visited_${user.id}_`;
+
+    const showsWithActive = new Set<string>();
+    for (const item of repliesToUser) {
+      const { reply, thread: t, groupId } = item;
+      if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId])) continue;
+      let visitTs = 0;
+      if (groupId) {
+        visitTs = parseInt(localStorage.getItem(roomPrefix + groupId) ?? "0", 10) || 0;
+      } else if (t.isPublic) {
+        visitTs = parseInt(localStorage.getItem(publicPrefix + t.showId) ?? "0", 10) || 0;
+      } else {
+        continue;
+      }
+      if (visitTs >= reply.updatedAt) continue;
+      showsWithActive.add(t.showId);
+    }
+
+    setRedSeenStamps(prev => {
+      const next = { ...prev };
+      let changed = false;
+      const now = Date.now();
+      for (const sid of showsWithActive) {
+        if (!next[sid]) {
+          localStorage.setItem(prefix + sid, String(now));
+          next[sid] = now;
+          changed = true;
+        }
+      }
+      for (const sid of Object.keys(next)) {
+        if (!showsWithActive.has(sid)) {
+          localStorage.removeItem(prefix + sid);
+          delete next[sid];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [repliesToUser, progress, user?.id]);
 
   // Push tab data up to App.tsx so it can render tabs in the fixed global header
   const onTabsChangeRef = useRef(onTabsChange);
@@ -783,7 +887,7 @@ export default function ProfilePage({
                           // dark semi-transparent fill from CSS, which
                           // reads on all 3 surfaces without modification.
                           style={active ? { background: tabBg, borderBottomColor: tabBg } : undefined}
-                          title={activity ? "There are new responses to you in here." : undefined}
+                          title={activity === "red" ? "New responses ahead of where you are." : activity === "green" ? "There are new responses to you in here." : undefined}
                           onClick={(e) => {
                             if (sid !== activeTab) {
                               // First click: just select the tab

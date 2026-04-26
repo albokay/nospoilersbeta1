@@ -254,7 +254,7 @@ function AppShell() {
   }, [user, authLoading]);
 
   // Replies-to-user for profile pill badge
-  const [repliesToUser, setRepliesToUser] = useState<{ reply: Reply; thread: Thread }[]>([]);
+  const [repliesToUser, setRepliesToUser] = useState<{ reply: Reply; thread: Thread; groupId?: string }[]>([]);
 
   // Fetch on login + whenever the user navigates to a show or the profile
   useEffect(() => {

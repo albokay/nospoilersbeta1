@@ -310,6 +310,22 @@ export default function ShowSection({
   const [cameFromGroupId, setCameFromGroupId] = useState<string | null>(() =>
     sessionStorage.getItem(cameFromGroupSessionKey) ?? null
   );
+
+  // Visit stamp for ProfilePage's per-tab red-dot dismissal (2026-04-26).
+  // Writes a localStorage timestamp whenever the user enters a friend-room view
+  // or the public-forum view of this show. Dismisses red-dot notifications for
+  // invisible replies whose updatedAt is older than the visit. Per-device only;
+  // no DB write. Public/private threads inside a friend room context still
+  // count as visiting that room.
+  useEffect(() => {
+    if (!user?.id) return;
+    const now = String(Date.now());
+    if (activeGroupId) {
+      localStorage.setItem(`ns_room_visited_${user.id}_${activeGroupId}`, now);
+    } else {
+      localStorage.setItem(`ns_show_public_visited_${user.id}_${showId}`, now);
+    }
+  }, [user?.id, showId, activeGroupId]);
   // Public→friend-rooms dropdown state (used when user has >1 room and
   // no direct came-from breadcrumb).
   const [friendRoomsDropdownOpen, setFriendRoomsDropdownOpen] = useState(false);
