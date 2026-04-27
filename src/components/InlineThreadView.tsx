@@ -178,7 +178,7 @@ export default function InlineThreadView({
       const rect = bar.getBoundingClientRect();
       // rect.bottom is the bar's bottom edge in viewport coords. While the
       // bar is sticky (pinned at the top), this equals header + bar height.
-      setToggleTop(Math.max(0, Math.round(rect.bottom)) + 64);
+      setToggleTop(Math.max(0, Math.round(rect.bottom)) + 24);
     };
     measure();
     window.addEventListener("resize", measure);
