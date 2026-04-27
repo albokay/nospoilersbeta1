@@ -37,6 +37,10 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
           fontWeight: !isRisky ? 700 : 400,
           background: isRisky ? "var(--toggle-off-fill)" : "transparent",
           color: isRisky ? "var(--dos-bg)" : "var(--toggle-on-text)",
+          // 1px outset shadow on the filled segment closes the hairline
+          // anti-aliasing gap between fill and outline. Clipped to the pill
+          // shape by the parent's overflow:hidden + 999 borderRadius.
+          boxShadow: isRisky ? "0 0 0 1px var(--toggle-off-fill)" : "none",
           whiteSpace: "nowrap",
         }}>
           {compact ? "std" : "standard"}
@@ -47,6 +51,7 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
           fontWeight: isRisky ? 700 : 400,
           background: !isRisky ? "var(--toggle-off-fill)" : "transparent",
           color: !isRisky ? "var(--dos-bg)" : "var(--toggle-on-text)",
+          boxShadow: !isRisky ? "0 0 0 1px var(--toggle-off-fill)" : "none",
           whiteSpace: "nowrap",
         }}>
           {compact ? "risk" : "risky"}

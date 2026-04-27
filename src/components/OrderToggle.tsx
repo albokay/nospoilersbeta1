@@ -50,13 +50,18 @@ export default function OrderToggle({ value, onToggle }: {
               gap: 0,
             }}
           >
-            {/* Pre-rotation left → post-rotation bottom: "time" */}
+            {/* Pre-rotation left → post-rotation bottom: "time".
+                When filled, a 1px outset box-shadow extends the fill so it
+                meets the outer 2px outline cleanly (closes the hairline
+                anti-aliasing gap). The button's overflow:hidden + 999
+                borderRadius clips the shadow to the pill shape. */}
             <span style={{
               padding: "3px 10px",
               fontSize: 12,
               fontWeight: isTime ? 700 : 400,
               background: !isTime ? "var(--toggle-off-fill)" : "transparent",
               color: !isTime ? "var(--dos-bg)" : "var(--toggle-on-text)",
+              boxShadow: !isTime ? "0 0 0 1px var(--toggle-off-fill)" : "none",
               whiteSpace: "nowrap",
             }}>
               time
@@ -68,6 +73,7 @@ export default function OrderToggle({ value, onToggle }: {
               fontWeight: !isTime ? 700 : 400,
               background: isTime ? "var(--toggle-off-fill)" : "transparent",
               color: isTime ? "var(--dos-bg)" : "var(--toggle-on-text)",
+              boxShadow: isTime ? "0 0 0 1px var(--toggle-off-fill)" : "none",
               whiteSpace: "nowrap",
             }}>
               episode

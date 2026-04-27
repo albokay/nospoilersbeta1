@@ -546,24 +546,27 @@ export default function InlineThreadView({
             element itself is in flow with height: 0 so it doesn't displace
             replies; its visible content overflows into the negative-left
             offset and sticks at viewport-top + header on scroll. Hidden on
-            narrow viewports via .order-toggle-col rule (theme.ts). */}
-        <div
-          className="order-toggle-col"
-          style={{
-            position: "sticky",
-            // Measured at runtime from the live .stickybar (header + banner)
-            // so the toggle stops short of the full fixed band — never
-            // passes behind it.
-            top: toggleTop,
-            width: 64,
-            height: 0,
-            marginLeft: -88,
-            overflow: "visible",
-            zIndex: 5,
-          }}
-        >
-          <OrderToggle value={orderMode} onToggle={() => setOrderMode(m => m === "episode" ? "time" : "episode")} />
-        </div>
+            narrow viewports via .order-toggle-col rule (theme.ts). Only
+            shown when there are 2+ replies — a single reply has no order. */}
+        {loadedReplies.length >= 2 && (
+          <div
+            className="order-toggle-col"
+            style={{
+              position: "sticky",
+              // Measured at runtime from the live .stickybar (header +
+              // banner) so the toggle stops short of the full fixed band —
+              // never passes behind it.
+              top: toggleTop,
+              width: 64,
+              height: 0,
+              marginLeft: -88,
+              overflow: "visible",
+              zIndex: 5,
+            }}
+          >
+            <OrderToggle value={orderMode} onToggle={() => setOrderMode(m => m === "episode" ? "time" : "episode")} />
+          </div>
+        )}
         <RepliesList
           thread={thread}
           groupId={groupIdProp}
