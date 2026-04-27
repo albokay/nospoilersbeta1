@@ -117,6 +117,14 @@ export default function InlineThreadView({
 
   // Store full loaded replies so we can build inline sups for the thread entry body
   const [loadedReplies, setLoadedReplies] = useState<Reply[]>([]);
+  // Track locally-deleted reply ids so the OrderToggle visibility check
+  // (>= 2 active replies) reacts to optimistic deletes before refetch.
+  const [locallyDeletedIds, setLocallyDeletedIds] = useState<Set<string>>(new Set());
+  useEffect(() => { setLocallyDeletedIds(new Set()); }, [thread.id]);
+  const activeRepliesCount = useMemo(
+    () => loadedReplies.filter(r => !r.isDeleted && !locallyDeletedIds.has(r.id)).length,
+    [loadedReplies, locallyDeletedIds]
+  );
 
   // Build inline citation sups for the original thread entry body
   const threadQuoteSups: SupEntry[] = useMemo(() => {
@@ -548,7 +556,7 @@ export default function InlineThreadView({
             offset and sticks at viewport-top + header on scroll. Hidden on
             narrow viewports via .order-toggle-col rule (theme.ts). Only
             shown when there are 2+ replies — a single reply has no order. */}
-        {loadedReplies.length >= 2 && (
+        {activeRepliesCount >= 2 && (
           <div
             className="order-toggle-col"
             style={{
@@ -581,7 +589,10 @@ export default function InlineThreadView({
           onAuthRequired={onAuthRequired}
           onRiskyReveal={onRiskyReveal}
           onExternalReplyAdded={onExternalReplyAdded ? () => onExternalReplyAdded(thread.id) : undefined}
-          onReplyDeleted={onReplyDeleted}
+          onReplyDeleted={(rid) => {
+            setLocallyDeletedIds(prev => { const next = new Set(prev); next.add(rid); return next; });
+            onReplyDeleted?.(rid);
+          }}
           freshReplyIds={freshReplyIds}
           onClickProfile={onClickProfile}
           onSetPendingReference={onSetPendingReference}
