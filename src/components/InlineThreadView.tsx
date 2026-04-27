@@ -532,15 +532,17 @@ export default function InlineThreadView({
           className="order-toggle-col"
           style={{
             position: "sticky",
-            // Clear the fixed top header at every breakpoint. --site-header-h
-            // is 56 / 96 / 56 across wide / narrow / phone. +20 keeps a small
-            // visual gap so the toggle never tucks under the translucent band.
-            top: "calc(var(--site-header-h) + 20px)",
+            // Pin below the site header AND the .stickybar (z-index 70) that
+            // ShowSection renders above the thread view. +44px sits the
+            // toggle clear of both bands at every breakpoint.
+            top: "calc(var(--site-header-h) + 44px)",
             width: 64,
             height: 0,
             marginLeft: -88,
             overflow: "visible",
-            zIndex: 5,
+            // Above the .stickybar (70) so the toggle never disappears
+            // behind it, below the header (90) so the header still wins.
+            zIndex: 80,
           }}
         >
           <OrderToggle value={orderMode} onToggle={() => setOrderMode(m => m === "episode" ? "time" : "episode")} />
