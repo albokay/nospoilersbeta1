@@ -550,11 +550,11 @@ export default function InlineThreadView({
       </div>
 
       <div style={{ marginTop: 12, position: "relative" }}>
-        {/* Vertical order toggle — sticky in the page's RIGHT margin. The
+        {/* Vertical order toggle — sticky in the page's left margin. The
             element itself is in flow with height: 0 so it doesn't displace
-            replies; its visible content overflows past the container's
-            right edge and sticks at viewport-top + header on scroll. Hidden
-            on narrow viewports via .order-toggle-col rule (theme.ts). Only
+            replies; its visible content overflows into the negative-left
+            offset and sticks at viewport-top + header on scroll. Hidden on
+            narrow viewports via .order-toggle-col rule (theme.ts). Only
             shown when there are 2+ replies — a single reply has no order. */}
         {activeRepliesCount >= 2 && (
           <div
@@ -567,12 +567,7 @@ export default function InlineThreadView({
               top: toggleTop,
               width: 64,
               height: 0,
-              // Push the wrapper past the container's right edge: 100% +
-              // 64px puts the wrapper.left at parent_right + 64. Combined
-              // with width:64, the toggle (24px child at wrapper x=0) sits
-              // 64–88px right of the replies column — mirror of the prior
-              // -88 left-margin offset.
-              marginLeft: "calc(100% + 64px)",
+              marginLeft: -88,
               overflow: "visible",
               zIndex: 5,
             }}
