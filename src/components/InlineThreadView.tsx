@@ -178,11 +178,7 @@ export default function InlineThreadView({
       const rect = bar.getBoundingClientRect();
       // rect.bottom is the bar's bottom edge in viewport coords. While the
       // bar is sticky (pinned at the top), this equals header + bar height.
-      // The OrderToggle is offset 24px down inside the sticky wrapper (see
-      // marginTop on the inner div in the toggle column), so the wrapper
-      // pins 24 above its visible toggle. Net visible resting position is
-      // still stickybar.bottom + 24 — unchanged from the prior behavior.
-      setToggleTop(Math.max(0, Math.round(rect.bottom)));
+      setToggleTop(Math.max(0, Math.round(rect.bottom)) + 24);
     };
     measure();
     window.addEventListener("resize", measure);
@@ -575,18 +571,15 @@ export default function InlineThreadView({
               // and reply cards have marginLeft:8 → 32px total gap from
               // toggle right to the reply-card left edge.
               marginLeft: -48,
+              // Push the toggle's in-flow starting position down so it
+              // begins a bit below the first reply's top edge before the
+              // sticky pin engages on scroll.
+              marginTop: 24,
               overflow: "visible",
               zIndex: 5,
             }}
           >
-            {/* Inner offset only — pushes the toggle's render 24px below the
-                sticky wrapper's top edge WITHOUT affecting RepliesList flow.
-                (A marginTop on the sticky wrapper itself shifted the replies
-                column down equally, defeating the lower-relative-to-first-
-                reply intent.) */}
-            <div style={{ marginTop: 24 }}>
-              <OrderToggle value={orderMode} onToggle={() => setOrderMode(m => m === "episode" ? "time" : "episode")} />
-            </div>
+            <OrderToggle value={orderMode} onToggle={() => setOrderMode(m => m === "episode" ? "time" : "episode")} />
           </div>
         )}
         <RepliesList
