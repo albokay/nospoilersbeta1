@@ -2,11 +2,13 @@ import React from "react";
 import Tooltip from "./Tooltip";
 
 /**
- * Vertical "order responses by:" toggle. Rotated -90deg so it reads
- * bottom-to-top. Pre-rotation order is [time][episode] so after rotation
- * "episode" sits on top. Wrapper is sized to the post-rotation bounding box
- * (rotate doesn't change layout dims). Hover tooltip ("order responses by:")
- * sits to the LEFT of the pill so the cursor never covers it.
+ * Vertical "order responses by:" toggle. Rotated +90deg so it reads
+ * top-to-bottom (mounted to the RIGHT of the replies column). Pre-rotation
+ * order is [episode][time] so after +90deg rotation "episode" sits on top.
+ * Wrapper is sized to the post-rotation bounding box (rotate doesn't change
+ * layout dims). Hover tooltip sits to the RIGHT of the pill so the cursor
+ * never covers it (pill is now in the right margin, so the tooltip extends
+ * into empty viewport space rather than back over the replies).
  *
  * Fill convention: SELECTED = transparent (page bg shows through), DE-SELECTED
  * = filled with --toggle-off-fill (white in default/public, navy in friend
@@ -24,11 +26,11 @@ export default function OrderToggle({ value, onToggle }: {
         position: "absolute",
         top: "50%",
         left: "50%",
-        transform: "translate(-50%, -50%) rotate(-90deg)",
+        transform: "translate(-50%, -50%) rotate(90deg)",
       }}>
         <Tooltip
           text="Order responses by:"
-          direction="left"
+          direction="right"
           width={180}
           portal
           tooltipStyle={{ whiteSpace: "nowrap" }}
@@ -50,23 +52,11 @@ export default function OrderToggle({ value, onToggle }: {
               gap: 0,
             }}
           >
-            {/* Pre-rotation left → post-rotation bottom: "time".
+            {/* Pre-rotation left → post-rotation top (with +90deg): "episode".
                 When filled, a 1px outset box-shadow extends the fill so it
                 meets the outer 2px outline cleanly (closes the hairline
                 anti-aliasing gap). The button's overflow:hidden + 999
                 borderRadius clips the shadow to the pill shape. */}
-            <span style={{
-              padding: "3px 10px",
-              fontSize: 12,
-              fontWeight: isTime ? 700 : 400,
-              background: !isTime ? "var(--toggle-off-fill)" : "transparent",
-              color: !isTime ? "var(--dos-bg)" : "var(--toggle-on-text)",
-              boxShadow: !isTime ? "0 0 0 1px var(--toggle-off-fill)" : "none",
-              whiteSpace: "nowrap",
-            }}>
-              time
-            </span>
-            {/* Pre-rotation right → post-rotation top: "episode" */}
             <span style={{
               padding: "3px 10px",
               fontSize: 12,
@@ -77,6 +67,18 @@ export default function OrderToggle({ value, onToggle }: {
               whiteSpace: "nowrap",
             }}>
               episode
+            </span>
+            {/* Pre-rotation right → post-rotation bottom: "time" */}
+            <span style={{
+              padding: "3px 10px",
+              fontSize: 12,
+              fontWeight: isTime ? 700 : 400,
+              background: !isTime ? "var(--toggle-off-fill)" : "transparent",
+              color: !isTime ? "var(--dos-bg)" : "var(--toggle-on-text)",
+              boxShadow: !isTime ? "0 0 0 1px var(--toggle-off-fill)" : "none",
+              whiteSpace: "nowrap",
+            }}>
+              time
             </span>
           </button>
         </Tooltip>
