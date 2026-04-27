@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, CircleChevronDown, ChevronDown, Mail, ArrowRight, Plus } from "lucide-react";
+import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, CircleChevronDown, ChevronDown, Mail, ArrowLeft, ArrowRight, Plus } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
@@ -1554,12 +1554,22 @@ export default function ProfilePage({
               style={{ width: "calc(100% - 60px)", height: 40, fontWeight: 700 }}
             />
             {activeShow && (
-              <div className="muted" style={{ fontSize: 13 }}>
-                {postProgress.isRewatching ? (
-                  <>Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> — your highest prior progress as a re-watcher. It will only show to people who've watched at least that far.</>
-                ) : (
-                  <>Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> and will only show to people who've watched at least that far.</>
-                )}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <OneSelectProgress
+                  show={activeShow}
+                  value={postProgress}
+                  onConfirm={(val) => updateProgressFor?.(activeTab, val)}
+                  requireConfirm={true}
+                  allowZero={postProgress?.s === 0}
+                  rewatchHighest={postProgress?.isRewatching && postProgress.highestS != null && postProgress.highestE != null
+                    ? { s: postProgress.highestS, e: postProgress.highestE }
+                    : null}
+                  pillBg="transparent"
+                />
+                <div className="muted" style={{ fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <ArrowLeft size={14} />
+                  Are you sure your watch progress is up to date?
+                </div>
               </div>
             )}
             <textarea

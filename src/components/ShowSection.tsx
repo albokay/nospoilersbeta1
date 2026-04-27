@@ -2545,12 +2545,22 @@ export default function ShowSection({
               onChange={(e) => setPostTitle(e.target.value)}
               style={{ width: "100%", height: 40, fontWeight: 700, ...(openedFromGroup ? { border: "none" } : {}) }}
             />
-            <div className="muted" style={{ fontSize: 13 }}>
-              {postProgress.isRewatching ? (
-                <>Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> — your highest prior progress as a re-watcher. It will only show to people who've watched at least that far.</>
-              ) : (
-                <>Your post is automatically marked to <b>Season {postTagS} Episode {postTagE}</b> and will only show to people who've watched at least that far.</>
-              )}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <OneSelectProgress
+                show={allShows.find(s => s.id === showId) || { seasons: [10] }}
+                value={effectiveProgress || { s: 1, e: 1 }}
+                onConfirm={handleProgressConfirm}
+                requireConfirm={true}
+                allowZero={effectiveProgress?.s === 0}
+                rewatchHighest={effectiveProgress?.isRewatching && effectiveProgress.highestS != null && effectiveProgress.highestE != null
+                  ? { s: effectiveProgress.highestS, e: effectiveProgress.highestE }
+                  : null}
+                pillBg="transparent"
+              />
+              <div className="muted" style={{ fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <ArrowLeft size={14} />
+                Are you sure your watch progress is up to date?
+              </div>
             </div>
             <textarea
               ref={postBodyRef}
