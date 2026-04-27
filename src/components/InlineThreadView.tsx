@@ -532,7 +532,10 @@ export default function InlineThreadView({
           className="order-toggle-col"
           style={{
             position: "sticky",
-            top: 76,
+            // Clear the fixed top header at every breakpoint. --site-header-h
+            // is 56 / 96 / 56 across wide / narrow / phone. +20 keeps a small
+            // visual gap so the toggle never tucks under the translucent band.
+            top: "calc(var(--site-header-h) + 20px)",
             width: 64,
             height: 0,
             marginLeft: -88,

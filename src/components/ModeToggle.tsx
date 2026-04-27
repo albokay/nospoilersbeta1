@@ -36,7 +36,7 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
           fontSize: compact ? 11 : 12,
           fontWeight: !isRisky ? 700 : 400,
           background: isRisky ? "var(--toggle-off-fill)" : "transparent",
-          color: isRisky ? "var(--dos-bg)" : "var(--dos-fg)",
+          color: isRisky ? "var(--dos-bg)" : "var(--toggle-on-text)",
           whiteSpace: "nowrap",
         }}>
           {compact ? "std" : "standard"}
@@ -46,7 +46,7 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
           fontSize: compact ? 11 : 12,
           fontWeight: isRisky ? 700 : 400,
           background: !isRisky ? "var(--toggle-off-fill)" : "transparent",
-          color: !isRisky ? "var(--dos-bg)" : "var(--dos-fg)",
+          color: !isRisky ? "var(--dos-bg)" : "var(--toggle-on-text)",
           whiteSpace: "nowrap",
         }}>
           {compact ? "risk" : "risky"}

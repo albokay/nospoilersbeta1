@@ -26,7 +26,13 @@ export default function OrderToggle({ value, onToggle }: {
         left: "50%",
         transform: "translate(-50%, -50%) rotate(-90deg)",
       }}>
-        <Tooltip text="order responses by:" direction="left" width={150} portal>
+        <Tooltip
+          text="Order responses by:"
+          direction="left"
+          width={180}
+          portal
+          tooltipStyle={{ whiteSpace: "nowrap" }}
+        >
           <button
             onClick={onToggle}
             aria-label={`Order responses by ${isTime ? "time" : "episode"}`}
@@ -50,7 +56,7 @@ export default function OrderToggle({ value, onToggle }: {
               fontSize: 12,
               fontWeight: isTime ? 700 : 400,
               background: !isTime ? "var(--toggle-off-fill)" : "transparent",
-              color: !isTime ? "var(--dos-bg)" : "var(--dos-fg)",
+              color: !isTime ? "var(--dos-bg)" : "var(--toggle-on-text)",
               whiteSpace: "nowrap",
             }}>
               time
@@ -61,7 +67,7 @@ export default function OrderToggle({ value, onToggle }: {
               fontSize: 12,
               fontWeight: !isTime ? 700 : 400,
               background: isTime ? "var(--toggle-off-fill)" : "transparent",
-              color: isTime ? "var(--dos-bg)" : "var(--dos-fg)",
+              color: isTime ? "var(--dos-bg)" : "var(--toggle-on-text)",
               whiteSpace: "nowrap",
             }}>
               episode
