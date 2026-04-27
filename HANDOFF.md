@@ -1235,6 +1235,78 @@ Both gates are dismissals — they OR together. Show's red dot renders iff there
 - **Per-show "first-seen" stamp lifecycle = stamp on appearance + clear on disappearance.** When implementing a "dismiss N hours after first seen" rule for a recurring condition, the cleanest pattern is: write the stamp the first time the condition holds and there's no existing stamp; clear the stamp when the condition stops holding. Re-emergence of the condition gets a fresh stamp. Avoids the "stamp set forever, never re-fires" trap, and avoids the "stamp constantly resets, time gate never expires" trap. See `redSeenStamps` lifecycle in [ProfilePage.tsx](src/components/ProfilePage.tsx) for the pattern.
 - **Visit stamps belong on the surface that does the visiting.** The visit stamp (`ns_room_visited_*`, `ns_show_public_visited_*`) lives in ShowSection's mount effect, not in some centralized App-level navigation listener. Co-locates the write with the surface whose mounting defines "visit." Generalizes to any "user has been here" tracking — write where the being-here is rendered, not at the routing edge.
 
+### 2026-04-26 — mobile narrative line-break + full thread above respond input
+
+Two unrelated mobile tweaks bundled in one commit.
+
+**Commit:**
+
+| Commit | Scope |
+|---|---|
+| `d912d1d` | (1) `HomepageNarrative` copy block 4 ("Another friend is two episodes behind you.") gates line-break shape on `headerHeight === 0`, the existing mobile signal — `MobileNarrative` passes `headerHeight={0}`, desktop App.tsx passes `96`. Mobile renders three lines: "Another friend / is two episodes / behind you." Desktop unchanged at the prior 2-line shape. Other copy blocks not touched. (2) `MobileRespond` shows the full thread (parent article + visible response cards) above the body textarea — same `chainVisible` filter as `MobileThread` (parent walk via `replyToId` + `referencedReplyId`; soft-deleted replies tombstone only when responded to). On first render-with-data, a one-shot `scrollIntoView({ block: "start" })` fires on the textarea ref so the user lands ready to type with the thread scrollable above. `didInitialScrollRef` gate prevents subsequent re-renders from yanking scroll if the user manually scrolls up. Response cards use the lighter mobile-thread shape (no edited/timestamp footer) since the user is composing, not browsing. |
+
+**Conventions established or reinforced:**
+
+- **`headerHeight` as the desktop-vs-mobile signal in `HomepageNarrative`.** The component is shared across surfaces. `MobileNarrative` calls it with `headerHeight={0}`; desktop App.tsx calls it with `96`. Either inside-component conditionals or per-block JSX branches can gate on `headerHeight === 0` to apply mobile-only adjustments without forking the component. Cleaner than threading a separate `mobile` prop.
+- **One-shot scroll gates for "land ready to type" UX.** When a screen mounts with both context content and an input the user wants ready, the scroll target should fire ONCE on first render-with-data and not retrigger. `didInitialScrollRef` (a `useRef<boolean>(false)` set on first scroll) is the simplest lock; it survives across re-renders without tying into React state. Pattern reusable for any future "open with focus on X but allow scrolling away" surface.
+- **`chainVisible` filter — duplicated at 2 callsites mobile-side, extract at 3rd.** Per the established mobile convention. `MobileThread` and `MobileRespond` both run the same parent-walk + soft-delete-tombstone filter inline. Acceptable duplication for now; lift to `src/lib/utils.ts` (or a shared mobile module) when a third caller appears. Same drift-watch as desktop's `fetchUserShowActivity` (§6 item 13) — if the rule changes, both sites need the update in the same pass.
+
+### 2026-04-26 — compose modal progress picker + "are you sure?" prompt
+
+Replaces the rewatcher-warning copy in every desktop entry composer with an interactive picker row. The user can verify and update their stored watch progress inline before posting, instead of just being told "your post is automatically marked to S/E…" — which was informational with no action affordance.
+
+**Spec walk-through before code paid off again** (same pattern as the filter-as-destination + post-spec mobile polish arcs). Six clarifications surfaced before any code: (1) submit-time behavior — picker updates stored progress, doesn't override single-post tag; (2) rewatcher path — show the rewatch-position picker (the same one they use everywhere for the show), not a "highest" picker; (3) backward-confirm — same modal as everywhere else (`requireConfirm={true}`); (4) reuse `OneSelectProgress` rather than build custom; (5) ArrowLeft icon points at the picker; (6) scope is desktop new-post composers only — edit modals retag automatically already, reply composers are a separate surface.
+
+**Commits (chronological):**
+
+| Commit | Scope |
+|---|---|
+| `d487084` | Replace the rewatcher-warning `<div className="muted">` block in both desktop compose modals (ProfilePage compose modal at [ProfilePage.tsx:1556](src/components/ProfilePage.tsx:1556); ShowSection compose modal at [ShowSection.tsx:2548](src/components/ShowSection.tsx:2548)) with a flex row containing `OneSelectProgress` (configured exactly like the show-tab picker — `requireConfirm={true}`, `allowZero` gated on currently-zero, `rewatchHighest` threaded for rewatchers, `onConfirm` calling the surface's existing progress-update callback) plus `<ArrowLeft size={14} /> Are you sure your watch progress is up to date?` text. Picker uses `pillBg="transparent"` per spec; white text + chevron + outline come from `OneSelectProgress`'s defaults. Behavior inherited entirely: picking → confirm modal → progress updates via the regular path → post tagged at new `effectiveProgress` on submit. |
+| `309345e` | Two visual followups. (1) Picker outline rendered canon-green inside friend-room/public-context modals because [theme.ts:91, :93](src/styles/theme.ts:91) overrides `.progress-control` border-color to canon-green when body has `group-context` or `public-context` — modals are portaled but body class still applies. Fix: a more-specific override scoped to `[data-modal-root] .progress-control` (the attribute Modal sets on its portal wrapper) restores white inside modals only. Non-modal pickers in those contexts keep their existing green outline — the fix is modal-scoped. (2) The "Are you sure…" prompt had `className="muted"` which sets `color: var(--dos-gray)`; dropped the class so the text inherits the modal's white color. |
+| `0ad9997` | Followup to 309345e. Dropping `muted` was insufficient in friend-room view: `body.group-context` flips `--dos-fg` to canon navy (`#1a3a4a`), so a bare `<div>` inherits navy by default. Explicit `color: "#fff"` on the prompt div in both compose modals locks it to white regardless of body context. No-op on `/profile` and public-context (both already inherit white) but defensive. |
+
+**Out of scope per user call:** mobile composers, edit modals (thread + reply — both retag automatically already), reply composers (`ResponseComposer` desktop, `MobileRespond`).
+
+**Conventions established or reinforced:**
+
+- **Reuse the canonical picker, don't rebuild.** The show-tab progress picker at [ProfilePage.tsx:1158](src/components/ProfilePage.tsx:1158) is the reference configuration for any "let user fix their show progress" surface. Same `OneSelectProgress` props (`requireConfirm`, `allowZero`, `rewatchHighest`, `onConfirm`), same backward-confirm semantics, same rewatch-position handling for rewatchers. New surfaces should mirror that config exactly and only override `pillBg` for visual context. Going custom risks divergent behavior for rewatchers + the `onConfirm` footgun (§6 item 23).
+- **Modal-scoped overrides for body-class theming rules.** `body.group-context` / `body.public-context` selectors propagate to every descendant — including portaled modal content (the modal's `[data-modal-root]` wrapper sits as a direct child of `<body>`, so the body class still inherits). When a modal needs to escape one of those theming overrides, scope a more-specific rule via `[data-modal-root]` rather than overriding inline. Specificity: `body.X [data-modal-root] .progress-control` = (0,3,1) beats `body.X .progress-control` = (0,2,1); with both `!important`, more specific wins.
+- **Default text color in modals: don't inherit, declare.** `body.group-context` flips `--dos-fg` to canon navy. Any modal text that should be white needs explicit `color: "#fff"`. Inheritance from body is safe in default + public contexts but breaks in group context. New modal text rendered as a bare `<div>` should declare its color rather than rely on cascade — at minimum cheap insurance, at most the difference between readable and broken.
+
+### 2026-04-26 — admin: collapsible sections + per-user activity overview
+
+Two changes to the admin panel. Both desktop-only (admin route).
+
+**(1) Collapsible sections.** Forums / Feedback / Prompt Library / new Activity (4 total) each get a clickable header with a chevron and an expand/collapse body. Default state on first load: all collapsed. State persists to localStorage under `ns_admin_section_expanded`. Per-section state, not global — toggling one doesn't affect others.
+
+**(2) Activity section.** A per-user overview table with sortable columns and a row-click drill-down modal showing the chronological per-user activity log. Spec walk-through and design ratification happened in chat before code touched.
+
+Two new SECURITY DEFINER RPCs (migration `20260426_admin_user_overview.sql`), both gated on `public.is_admin()`:
+
+- **`get_admin_user_overview()`** returns one row per real user (excludes `is_seed=true` profiles). Columns: username, email (from `auth.users`), signup date, `last_sign_in_at` (from `auth.users` — free "last seen" signal, login-tracking not in-product activity), rooms member of, distinct co-members across all rooms, invites sent, threads count, replies count, threads-in-TSP count, replies-in-TSP count, last activity timestamp (`MAX(updated_at)` across non-deleted threads + replies), posts/week (clamped to ≥1 week denominator). TSP threads/replies are split into separate columns rather than mixed in — distinguishes demo-only users from real-engagement users at a glance.
+- **`get_admin_user_activity(p_user_id uuid)`** returns the chronological log: threads + replies UNIONed, joined to `friend_groups` for room name, includes soft-deleted items with a flag. UI shows them faded with a `DELETED` badge.
+
+Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-thread `EXISTS` subqueries — linear in thread count at any scale. The self-join for distinct co-members relies on existing `friend_group_members(group_id, user_id)` indexes from the RLS pass. Comfortable at beta scale (5–10 users); flagged for revisit at 1000+ if needed (materialized view with hourly refresh would absorb any growth).
+
+**Commits:**
+
+| Commit | Scope |
+|---|---|
+| `0152c9d` | New migration `supabase/migrations/20260426_admin_user_overview.sql` adds the two RPCs (no schema changes — functions only). New types in `db.ts`: `AdminUserOverviewRow`, `AdminUserActivityRow`. New fetchers: `fetchAdminUserOverview()`, `fetchAdminUserActivity(userId)`. `AdminPage.tsx`: collapse state for all 4 sections (default collapsed, persisted to localStorage); chevron-prefixed clickable headers; new Activity section with sortable 13-column table + Refresh button + drill-down modal. Default sort: `lastActivityAt DESC NULLS LAST`. Click any column header to sort; click active column flips direction. Numeric/date columns default-sort `desc` on switch; text columns default-sort `asc`. Click any user row → fetch + open drill-down modal. Backdrop click closes. Activity fetches once on first expand; explicit Refresh button re-fetches. |
+| `ef2b569` | Owner/test account exclusion. `fetchAdminUserOverview()` filters out two emails (`akamalizad@gmail.com`, `alkamalizad@yahoo.com`) client-side via a `Set<string>` constant in `db.ts`, before the rows are returned. Case-insensitive + trimmed match. Edit the Set to add/remove exclusions; no SQL re-run needed. Filter is client-side because the panel is already admin-gated and bypassing it via DevTools doesn't expose anything the admin doesn't already have. If the panel ever opens to other admin roles, the SQL RPC can grow a NOT IN clause or a parameterized exclusion list. |
+
+**Two-step deploy required (one-time):**
+
+- `0152c9d` (migration): `supabase/migrations/20260426_admin_user_overview.sql` must be run in the Supabase SQL editor before the client code calls the RPCs. Until applied, the Activity section shows a `unauthorized` / missing-function error on first expand. Applied in-session per user confirmation.
+
+**Conventions established or reinforced:**
+
+- **SECURITY DEFINER RPCs gated on `public.is_admin()` are the right tool for admin-only data joins across schemas.** `auth.users.email` and `auth.users.last_sign_in_at` aren't reachable by the regular client-side Supabase REST API (auth schema is RLS-isolated); the admin overview needs both. SECURITY DEFINER lets the function read across schemas while the admin gate at the function entry keeps it locked. Same pattern as `accept_invitation` (recipient masking) and `get_room_activity_visibility` (mobile new-activity dots). Always include `SET search_path = public` (or `public, auth` when the function reads auth) — drift-prevention vs the search-path-mutable advisor warnings (§6 item 21).
+- **Pre-aggregate filter sets in CTEs to avoid per-row subqueries.** `tsp_groups` + `tsp_thread_ids` materialize once and become hash-join targets, replacing what would otherwise be N `EXISTS` subqueries (one per thread). Linear-in-N stays linear-in-N rather than potentially N×M. Pattern applies any time a filter's predicate depends on a join condition that's stable across the row set.
+- **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
+- **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
+- **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
 ### Earlier (pre-audit, header/layout polish)
 
 The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.
