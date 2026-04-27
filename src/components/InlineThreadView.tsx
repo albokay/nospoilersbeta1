@@ -10,6 +10,7 @@ import type { CitationEntry } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import Modal from "./Modal";
 import RepliesList from "./RepliesList";
+import OrderToggle from "./OrderToggle";
 import Username from "./Username";
 import ResponseComposer from "./ResponseComposer";
 import type { PendingReference } from "./ResponseComposer";
@@ -151,6 +152,11 @@ export default function InlineThreadView({
 
   // Increment to force RepliesList to re-fetch after a new reply is submitted
   const [repliesKey, setRepliesKey] = useState(0);
+
+  // Reply ordering — defaults to "episode" (sort by season/episode tag, then
+  // post time within the same tag). Resets to default on every thread change.
+  const [orderMode, setOrderMode] = useState<"episode" | "time">("episode");
+  useEffect(() => { setOrderMode("episode"); }, [thread.id]);
 
   // Composer is hidden until the user explicitly opens it
   const [composerOpen, setComposerOpen] = useState(false);
@@ -516,12 +522,30 @@ export default function InlineThreadView({
         )}
       </div>
 
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 12, position: "relative" }}>
+        {/* Vertical order toggle — floats in the left margin, sticky on scroll. */}
+        {/* Hidden on narrow viewports via .order-toggle-col CSS rule (theme.ts). */}
+        <div
+          className="order-toggle-col"
+          style={{
+            position: "absolute",
+            left: -88,
+            top: 0,
+            bottom: 0,
+            width: 64,
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ position: "sticky", top: 76, pointerEvents: "auto", display: "flex", justifyContent: "center" }}>
+            <OrderToggle value={orderMode} onToggle={() => setOrderMode(m => m === "episode" ? "time" : "episode")} />
+          </div>
+        </div>
         <RepliesList
           thread={thread}
           groupId={groupIdProp}
           progressForShow={progressForShow}
           riskyMode={mode === "risky"}
+          orderMode={orderMode}
           likeReply={likeReply}
           unlikeReply={unlikeReply}
           likesReplies={likesReplies}

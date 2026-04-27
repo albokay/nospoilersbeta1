@@ -333,6 +333,7 @@ function rowToReply(row: any): Reply {
     episode:            row.episode,
     author:             row.author_name,
     body:               row.body,
+    createdAt:          new Date(row.created_at).getTime(),
     updatedAt:          new Date(row.updated_at).getTime(),
     likes:              row.likes_count ?? 0,
     replyToId:          row.reply_to_id ?? undefined,

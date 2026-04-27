@@ -290,10 +290,12 @@ export default function RepliesList({
   threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile,
   onSetPendingReference, pendingReference, citations, threadCitations, composerRef, onScrollToComposer,
   externalReplies, onRepliesLoaded, refreshKey, groupId, departedUsernames,
+  orderMode = "episode",
 }: {
   thread: Thread;
   progressForShow?: ViewerProgress;
   riskyMode?: boolean;
+  orderMode?: "episode" | "time";
   likeReply: (rid: string, baseCount?: number) => void;
   unlikeReply: (rid: string) => void;
   likesReplies: Record<string, number>;
@@ -371,6 +373,19 @@ export default function RepliesList({
     for (const r of replies) map[r.id] = r;
     return map;
   }, [replies]);
+
+  // Default render order is by season/episode tag ascending (S00 first), with
+  // post time ascending as the tiebreaker within the same tag. Toggling to
+  // "time" mode falls back to pure post-time ascending — the order replies
+  // are returned by the DB.
+  const sortedReplies = useMemo(() => {
+    if (orderMode === "time") return replies;
+    return [...replies].sort((a, b) => {
+      if (a.season !== b.season) return a.season - b.season;
+      if (a.episode !== b.episode) return a.episode - b.episode;
+      return a.createdAt - b.createdAt;
+    });
+  }, [replies, orderMode]);
 
   // "Has been responded to" set for soft-delete tombstone gating.
   // A soft-deleted reply persists as a tombstone iff some other
@@ -684,7 +699,7 @@ export default function RepliesList({
 
       {repliesLoading && <div className="muted" style={{ fontSize: 14 }}>Loading replies<LoadingDots /></div>}
       <div style={{ display: "grid", gap: 12 }}>
-        {replies.map((r) => {
+        {sortedReplies.map((r) => {
           const isReplyDeleted = r.isDeleted || !!localDeleted[r.id];
           const isReplyEdited = r.isEdited;
           const isReplyOwn = !!profile && r.author === profile.username;

@@ -221,6 +221,12 @@ body.has-header{
 /* layout primitives */
 .container{ width:min(672px, 92vw); margin:0 auto; background:transparent; }
 hr{ display:none; }
+
+/* Vertical "order responses by:" toggle in the thread-view left margin.
+   Below 900px the .container takes ~92vw and the left margin shrinks to
+   nothing — hide rather than overlap reply cards. Mobile is addressed
+   separately. */
+@media(max-width:900px){ .order-toggle-col{ display:none !important; } }
 .title{ color:var(--dos-light); font-weight:600; letter-spacing:0.005em; font-size:var(--t2); }
 .editorial{ font-family: "Lora", Georgia, "Palatino Linotype", Palatino, serif; font-weight: 400; }
 .muted{ color:var(--dos-gray); font-size:var(--t4); }

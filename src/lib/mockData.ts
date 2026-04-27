@@ -339,7 +339,7 @@ export const repliesByThread: { [threadId: string]: Reply[] } = {};
       const body = composeReply(t.showId);
       const updatedAt = t.updatedAt + (i + 1) * 15 * 60 * 1000;
       const maybeParent = i > 0 && Math.random() < 0.4 ? replies[randBetween(0, i - 1)].id : undefined;
-      replies.push({ id, threadId: t.id, showId: t.showId, season: s, episode: e, author, body, updatedAt, replyToId: maybeParent, likes: randBetween(0, 35) });
+      replies.push({ id, threadId: t.id, showId: t.showId, season: s, episode: e, author, body, createdAt: updatedAt, updatedAt, replyToId: maybeParent, likes: randBetween(0, 35) });
     }
     repliesByThread[t.id] = replies;
   }
@@ -370,7 +370,7 @@ export const repliesByThread: { [threadId: string]: Reply[] } = {};
         id: `${thread.id}-sim-${idx + 1}`, threadId: thread.id, showId,
         season: p.season, episode: p.episode, author: d.author,
         body: `${d.author} — ${String(subjectSeason).padStart(2,"0")}/${String(subjectEpisode).padStart(2,"0")} - REPLY about ${String(subjectSeason).padStart(2,"0")}/${String(subjectEpisode).padStart(2,"0")}.`,
-        updatedAt: thread.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 20),
+        createdAt: thread.updatedAt + (idx + 1) * 15 * 60_000, updatedAt: thread.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 20),
       } as Reply;
     });
   }
@@ -402,7 +402,7 @@ export const repliesByThread: { [threadId: string]: Reply[] } = {};
     repliesByThread[t.id] = defs.map((d, idx) => ({
       id: `${t.id}-pc${idx + 1}`, threadId: t.id, showId: t.showId,
       season: d.season, episode: d.episode, author: d.author, body: d.body,
-      updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 28),
+      createdAt: t.updatedAt + (idx + 1) * 15 * 60_000, updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 28),
     }));
   }
   setCuratedReplies(findPopcornThread(1, 2, "A Perfect Setup"), [
@@ -464,7 +464,7 @@ export const repliesByThread: { [threadId: string]: Reply[] } = {};
       repliesByThread[t.id] = defs.map((d, idx) => ({
         id: `${t.id}-sc${idx + 1}`, threadId: t.id, showId: t.showId,
         season: d.season, episode: d.episode, author: d.author, body: d.body,
-        updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 28),
+        createdAt: t.updatedAt + (idx + 1) * 15 * 60_000, updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 28),
       }));
     }
   }
@@ -512,7 +512,7 @@ export const repliesByThread: { [threadId: string]: Reply[] } = {};
       repliesByThread[t.id] = defs.map((d, idx) => ({
         id: `${t.id}-lc${idx + 1}`, threadId: t.id, showId: t.showId,
         season: d.season, episode: d.episode, author: d.author, body: d.body,
-        updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 28),
+        createdAt: t.updatedAt + (idx + 1) * 15 * 60_000, updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 28),
       }));
     }
   }
@@ -575,7 +575,7 @@ export const repliesByThread: { [threadId: string]: Reply[] } = {};
       repliesByThread[t.id] = defs.map((d, idx) => ({
         id: `${t.id}-qc${idx + 1}`, threadId: t.id, showId: t.showId,
         season: d.season, episode: d.episode, author: d.author, body: d.body,
-        updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 28),
+        createdAt: t.updatedAt + (idx + 1) * 15 * 60_000, updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 28),
       }));
     }
   }
@@ -628,7 +628,7 @@ export const repliesByThread: { [threadId: string]: Reply[] } = {};
       repliesByThread[t.id] = defs.map((d, idx) => ({
         id: `${t.id}-dc${idx + 1}`, threadId: t.id, showId: t.showId,
         season: d.season, episode: d.episode, author: d.author, body: d.body,
-        updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 30),
+        createdAt: t.updatedAt + (idx + 1) * 15 * 60_000, updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 30),
       }));
     }
   }
@@ -681,7 +681,7 @@ export const repliesByThread: { [threadId: string]: Reply[] } = {};
       repliesByThread[t.id] = defs.map((d, idx) => ({
         id: `${t.id}-ec${idx + 1}`, threadId: t.id, showId: t.showId,
         season: d.season, episode: d.episode, author: d.author, body: d.body,
-        updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 28),
+        createdAt: t.updatedAt + (idx + 1) * 15 * 60_000, updatedAt: t.updatedAt + (idx + 1) * 15 * 60_000, likes: randBetween(0, 28),
       }));
     }
   }

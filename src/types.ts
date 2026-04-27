@@ -47,7 +47,7 @@ export type Invitation = {
 
 export type Reply = {
   id: string; threadId: string; showId: string; season: number; episode: number;
-  author: string; body: string; updatedAt: number; replyToId?: string;
+  author: string; body: string; createdAt: number; updatedAt: number; replyToId?: string;
   likes: number;
   isDeleted?: boolean;
   isEdited?: boolean;
