@@ -567,7 +567,14 @@ export default function InlineThreadView({
               top: toggleTop,
               width: 64,
               height: 0,
-              marginLeft: -88,
+              // -48 puts the toggle's right edge 24px left of the container,
+              // and reply cards have marginLeft:8 → 32px total gap from
+              // toggle right to the reply-card left edge.
+              marginLeft: -48,
+              // Push the toggle's in-flow starting position down so it
+              // begins a bit below the first reply's top edge before the
+              // sticky pin engages on scroll.
+              marginTop: 24,
               overflow: "visible",
               zIndex: 5,
             }}
