@@ -915,10 +915,25 @@ export type AdminUserOverviewRow = {
   postsPerWeek: number;             // (threads + replies) / max(1 week, weeks since signup)
 };
 
+// Owner / test accounts excluded from the admin overview. Self-filter so
+// the panel reflects real-user activity. Comparison is case-insensitive +
+// trimmed to defend against any whitespace / casing oddities at the
+// auth.users.email source. Edit this list to add/remove exclusions; no SQL
+// re-run required (filter is client-side).
+const ADMIN_OVERVIEW_EXCLUDED_EMAILS = new Set([
+  "akamalizad@gmail.com",
+  "alkamalizad@yahoo.com",
+]);
+
 export async function fetchAdminUserOverview(): Promise<AdminUserOverviewRow[]> {
   const { data, error } = await supabase.rpc("get_admin_user_overview");
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({
+  return (data ?? [])
+    .filter((r: any) => {
+      const email = (r.email ?? "").toLowerCase().trim();
+      return !ADMIN_OVERVIEW_EXCLUDED_EMAILS.has(email);
+    })
+    .map((r: any) => ({
     userId:             r.user_id,
     username:           r.username ?? null,
     email:              r.email ?? null,
