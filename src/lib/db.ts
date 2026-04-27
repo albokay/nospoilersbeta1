@@ -893,6 +893,85 @@ export async function adminToggleHidden(showId: string, isHidden: boolean): Prom
   if (error) throw error;
 }
 
+// ── Admin: per-user overview + drill-down activity ────────────────────────────
+// Both call SECURITY DEFINER RPCs gated on public.is_admin(). The RPCs surface
+// auth.users.email + last_sign_in_at to admins only — RLS still hides the
+// auth schema from regular clients. Migration: 20260426_admin_user_overview.sql.
+
+export type AdminUserOverviewRow = {
+  userId: string;
+  username: string | null;
+  email: string | null;
+  signupAt: number | null;          // ms
+  lastSignInAt: number | null;      // ms — Supabase auth.users.last_sign_in_at
+  roomsCount: number;
+  distinctCoMembers: number;
+  invitesSent: number;
+  threadsCount: number;             // real-room threads (excl. soft-deleted)
+  repliesCount: number;             // real-room replies (excl. soft-deleted)
+  threadsCountTsp: number;          // TSP-room threads (excl. soft-deleted)
+  repliesCountTsp: number;          // TSP-room replies (excl. soft-deleted)
+  lastActivityAt: number | null;    // ms — MAX(updated_at) across threads + replies
+  postsPerWeek: number;             // (threads + replies) / max(1 week, weeks since signup)
+};
+
+export async function fetchAdminUserOverview(): Promise<AdminUserOverviewRow[]> {
+  const { data, error } = await supabase.rpc("get_admin_user_overview");
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    userId:             r.user_id,
+    username:           r.username ?? null,
+    email:              r.email ?? null,
+    signupAt:           r.signup_at ? new Date(r.signup_at).getTime() : null,
+    lastSignInAt:       r.last_sign_in_at ? new Date(r.last_sign_in_at).getTime() : null,
+    roomsCount:         r.rooms_count ?? 0,
+    distinctCoMembers:  r.distinct_co_members ?? 0,
+    invitesSent:        r.invites_sent ?? 0,
+    threadsCount:       r.threads_count ?? 0,
+    repliesCount:       r.replies_count ?? 0,
+    threadsCountTsp:    r.threads_count_tsp ?? 0,
+    repliesCountTsp:    r.replies_count_tsp ?? 0,
+    lastActivityAt:     r.last_activity_at ? new Date(r.last_activity_at).getTime() : null,
+    postsPerWeek:       Number(r.posts_per_week ?? 0),
+  }));
+}
+
+export type AdminUserActivityRow = {
+  kind: "thread" | "reply";
+  threadId: string;
+  replyId: string | null;
+  showId: string;
+  groupId: string | null;
+  groupName: string | null;
+  isPublic: boolean | null;        // thread-only — null on replies
+  isDeleted: boolean;
+  season: number;
+  episode: number;
+  body: string;                     // truncated to 200 chars server-side
+  title: string | null;             // thread-only — null on replies
+  createdAt: number;                // ms
+};
+
+export async function fetchAdminUserActivity(userId: string): Promise<AdminUserActivityRow[]> {
+  const { data, error } = await supabase.rpc("get_admin_user_activity", { p_user_id: userId });
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    kind:       r.kind,
+    threadId:   r.thread_id,
+    replyId:    r.reply_id ?? null,
+    showId:     r.show_id,
+    groupId:    r.group_id ?? null,
+    groupName:  r.group_name ?? null,
+    isPublic:   r.is_public ?? null,
+    isDeleted:  !!r.is_deleted,
+    season:     r.season,
+    episode:    r.episode,
+    body:       r.body ?? "",
+    title:      r.title ?? null,
+    createdAt:  r.created_at ? new Date(r.created_at).getTime() : 0,
+  }));
+}
+
 // ── Progress ──────────────────────────────────────────────────────────────────
 
 export async function fetchProgress(userId: string): Promise<Record<string, import("../types").ProgressEntry>> {
