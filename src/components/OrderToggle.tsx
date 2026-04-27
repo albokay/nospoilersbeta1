@@ -1,10 +1,16 @@
 import React from "react";
+import Tooltip from "./Tooltip";
 
 /**
- * Vertical "order responses by:" toggle. Each rotated element lives in a
- * fixed-size wrapper sized to its post-rotation bounding box so siblings
- * don't overlap (transform: rotate doesn't change layout dimensions).
- * Label sits above the pill; both rotated -90deg so they read bottom-to-top.
+ * Vertical "order responses by:" toggle. Rotated -90deg so it reads
+ * bottom-to-top. Pre-rotation order is [time][episode] so after rotation
+ * "episode" sits on top. Wrapper is sized to the post-rotation bounding box
+ * (rotate doesn't change layout dims). Hover tooltip ("order responses by:")
+ * sits to the LEFT of the pill so the cursor never covers it.
+ *
+ * Fill convention: SELECTED = transparent (page bg shows through), DE-SELECTED
+ * = filled with --toggle-off-fill (white in default/public, navy in friend
+ * room).
  */
 export default function OrderToggle({ value, onToggle }: {
   value: "episode" | "time";
@@ -13,37 +19,14 @@ export default function OrderToggle({ value, onToggle }: {
   const isTime = value === "time";
 
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: 10,
-    }}>
-      {/* Label — wrapper height ≈ rotated text width so it occupies real space */}
-      <div style={{ width: 14, height: 132, position: "relative" }}>
-        <div style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%) rotate(-90deg)",
-          whiteSpace: "nowrap",
-          fontSize: 12,
-          color: "var(--dos-fg)",
-          opacity: 0.7,
-          letterSpacing: 0.2,
-        }}>
-          order responses by:
-        </div>
-      </div>
-
-      {/* Pill — wrapper height ≈ rotated pill width */}
-      <div style={{ width: 24, height: 110, position: "relative" }}>
-        <div style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%) rotate(-90deg)",
-        }}>
+    <div style={{ width: 24, height: 110, position: "relative" }}>
+      <div style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%) rotate(-90deg)",
+      }}>
+        <Tooltip text="order responses by:" direction="left" width={150} portal>
           <button
             onClick={onToggle}
             aria-label={`Order responses by ${isTime ? "time" : "episode"}`}
@@ -61,28 +44,30 @@ export default function OrderToggle({ value, onToggle }: {
               gap: 0,
             }}
           >
-            <span style={{
-              padding: "3px 10px",
-              fontSize: 12,
-              fontWeight: !isTime ? 700 : 400,
-              background: !isTime ? "var(--dos-border)" : "transparent",
-              color: !isTime ? "var(--dos-bg)" : "var(--dos-fg)",
-              whiteSpace: "nowrap",
-            }}>
-              episode
-            </span>
+            {/* Pre-rotation left → post-rotation bottom: "time" */}
             <span style={{
               padding: "3px 10px",
               fontSize: 12,
               fontWeight: isTime ? 700 : 400,
-              background: isTime ? "var(--dos-border)" : "transparent",
-              color: isTime ? "var(--dos-bg)" : "var(--dos-fg)",
+              background: !isTime ? "var(--toggle-off-fill)" : "transparent",
+              color: !isTime ? "var(--dos-bg)" : "var(--dos-fg)",
               whiteSpace: "nowrap",
             }}>
               time
             </span>
+            {/* Pre-rotation right → post-rotation top: "episode" */}
+            <span style={{
+              padding: "3px 10px",
+              fontSize: 12,
+              fontWeight: !isTime ? 700 : 400,
+              background: isTime ? "var(--toggle-off-fill)" : "transparent",
+              color: isTime ? "var(--dos-bg)" : "var(--dos-fg)",
+              whiteSpace: "nowrap",
+            }}>
+              episode
+            </span>
           </button>
-        </div>
+        </Tooltip>
       </div>
     </div>
   );

@@ -6,6 +6,10 @@ export function injectDOSStyles() {
   --dos-bg:#7abd8e; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
   --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#355eb8; --dos-border:#ffffff;
+  /* Toggle "off" fill — segments that aren't currently selected. White in
+     default/public; overridden to solid navy in the friend-room context so
+     the de-selected segment reads cleanly on the light-blue page bg. */
+  --toggle-off-fill:#ffffff;
   --icon-color:#fff;
   /* canonical accent blue */
   --blue-light:#adc8d7;
@@ -35,6 +39,7 @@ body.group-context{
   --dos-bg:#adc8d7; --dos-fg:#1a3a4a; --dos-cyan:#1a3a4a;
   --dos-gray:rgba(26,58,74,0.65); --dos-light:#1a3a4a;
   --dos-accent:#1a3a4a; --dos-border:rgba(26,58,74,0.3);
+  --toggle-off-fill:#1a3a4a;
   --dos-blue:rgba(26,58,74,0.08);
   --icon-color:#fff;
   --progress-bg:#7abd8e; --progress-fg:#fff;

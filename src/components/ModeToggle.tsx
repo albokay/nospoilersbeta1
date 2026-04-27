@@ -35,8 +35,8 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
           padding: compact ? "3px 8px" : "3px 10px",
           fontSize: compact ? 11 : 12,
           fontWeight: !isRisky ? 700 : 400,
-          background: !isRisky ? "var(--dos-border)" : "transparent",
-          color: !isRisky ? "var(--dos-bg)" : "var(--dos-fg)",
+          background: isRisky ? "var(--toggle-off-fill)" : "transparent",
+          color: isRisky ? "var(--dos-bg)" : "var(--dos-fg)",
           whiteSpace: "nowrap",
         }}>
           {compact ? "std" : "standard"}
@@ -45,8 +45,8 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
           padding: compact ? "3px 8px" : "3px 10px",
           fontSize: compact ? 11 : 12,
           fontWeight: isRisky ? 700 : 400,
-          background: isRisky ? "var(--dos-border)" : "transparent",
-          color: isRisky ? "var(--dos-bg)" : "var(--dos-fg)",
+          background: !isRisky ? "var(--toggle-off-fill)" : "transparent",
+          color: !isRisky ? "var(--dos-bg)" : "var(--dos-fg)",
           whiteSpace: "nowrap",
         }}>
           {compact ? "risk" : "risky"}
