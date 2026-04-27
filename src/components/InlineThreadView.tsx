@@ -158,6 +158,25 @@ export default function InlineThreadView({
   const [orderMode, setOrderMode] = useState<"episode" | "time">("episode");
   useEffect(() => { setOrderMode("episode"); }, [thread.id]);
 
+  // Toggle column sticky top — measured from the live .stickybar element so
+  // the toggle pins below the entire fixed band (header + show banner) at
+  // every viewport. +24px keeps a visible gap; falls back to a sane default
+  // if the stickybar isn't mounted yet.
+  const [toggleTop, setToggleTop] = useState<number>(180);
+  useEffect(() => {
+    const measure = () => {
+      const bar = document.querySelector(".stickybar") as HTMLElement | null;
+      if (!bar) return;
+      const rect = bar.getBoundingClientRect();
+      // rect.bottom is the bar's bottom edge in viewport coords. While the
+      // bar is sticky (pinned at the top), this equals header + bar height.
+      setToggleTop(Math.max(0, Math.round(rect.bottom)) + 24);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
   // Composer is hidden until the user explicitly opens it
   const [composerOpen, setComposerOpen] = useState(false);
 
@@ -532,17 +551,15 @@ export default function InlineThreadView({
           className="order-toggle-col"
           style={{
             position: "sticky",
-            // Pin below the site header AND the .stickybar (z-index 70) that
-            // ShowSection renders above the thread view. +44px sits the
-            // toggle clear of both bands at every breakpoint.
-            top: "calc(var(--site-header-h) + 44px)",
+            // Measured at runtime from the live .stickybar (header + banner)
+            // so the toggle stops short of the full fixed band — never
+            // passes behind it.
+            top: toggleTop,
             width: 64,
             height: 0,
             marginLeft: -88,
             overflow: "visible",
-            // Above the .stickybar (70) so the toggle never disappears
-            // behind it, below the header (90) so the header still wins.
-            zIndex: 80,
+            zIndex: 5,
           }}
         >
           <OrderToggle value={orderMode} onToggle={() => setOrderMode(m => m === "episode" ? "time" : "episode")} />
