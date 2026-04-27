@@ -2557,7 +2557,7 @@ export default function ShowSection({
                   : null}
                 pillBg="transparent"
               />
-              <div style={{ fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <div style={{ fontSize: 13, color: "#fff", display: "inline-flex", alignItems: "center", gap: 4 }}>
                 <ArrowLeft size={14} />
                 Are you sure your watch progress is up to date?
               </div>
