@@ -91,6 +91,12 @@ body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd
 body.public-context .progress-control{ border-color:#7abd8e !important; }
 body.group-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
 body.group-context .progress-control{ border-color:#7abd8e !important; }
+/* Inside modals (portaled, with [data-modal-root]), the .progress-control
+   keeps its white outline regardless of body context. The compose modal's
+   in-modal picker sits on the modal's own colored frame and reads against
+   white outline. Specificity beats the body-class rules above. */
+body.public-context [data-modal-root] .progress-control,
+body.group-context [data-modal-root] .progress-control{ border-color:#fff !important; }
 body.public-context .btn.primary{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
 /* New-reply badge in thread list — green instead of yellow in public context */
 body.public-context .newReplyBadge{ background:#7abd8e !important; }
