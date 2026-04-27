@@ -523,22 +523,24 @@ export default function InlineThreadView({
       </div>
 
       <div style={{ marginTop: 12, position: "relative" }}>
-        {/* Vertical order toggle — floats in the left margin, sticky on scroll. */}
-        {/* Hidden on narrow viewports via .order-toggle-col CSS rule (theme.ts). */}
+        {/* Vertical order toggle — sticky in the page's left margin. The
+            element itself is in flow with height: 0 so it doesn't displace
+            replies; its visible content overflows into the negative-left
+            offset and sticks at viewport-top + header on scroll. Hidden on
+            narrow viewports via .order-toggle-col rule (theme.ts). */}
         <div
           className="order-toggle-col"
           style={{
-            position: "absolute",
-            left: -88,
-            top: 0,
-            bottom: 0,
+            position: "sticky",
+            top: 76,
             width: 64,
-            pointerEvents: "none",
+            height: 0,
+            marginLeft: -88,
+            overflow: "visible",
+            zIndex: 5,
           }}
         >
-          <div style={{ position: "sticky", top: 76, pointerEvents: "auto", display: "flex", justifyContent: "center" }}>
-            <OrderToggle value={orderMode} onToggle={() => setOrderMode(m => m === "episode" ? "time" : "episode")} />
-          </div>
+          <OrderToggle value={orderMode} onToggle={() => setOrderMode(m => m === "episode" ? "time" : "episode")} />
         </div>
         <RepliesList
           thread={thread}
