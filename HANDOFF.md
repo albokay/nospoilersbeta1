@@ -1377,9 +1377,31 @@ User's response after the fix: "errors like that CANNOT happen at this stage. be
 
 **Pending follow-up (under investigation, not yet implemented):**
 
-- **Per-thread mobile read-tracking.** Current behavior: `MobileRoom` calls `markRoomSeen(groupId)` on every mount, advancing `last_seen_at` to NOW. Returning from a thread → MobileRoom remounts → uses the just-stamped NOW as the new snapshot → all per-thread dots disappear, even on threads the user didn't visit. User reported this as "looking at one thread clears all the other notifications." The smaller fix (sessionStorage-cache the snapshot per `(userId, groupId)` and only stamp once per session) would keep the dots persistent within a room visit, but doesn't clear the read-thread's own dot. The user has chosen to invest in per-thread `last_seen_at` tracking instead. Design report pending — not yet implemented.
+- **Per-thread mobile read-tracking.** Current behavior: `MobileRoom` calls `markRoomSeen(groupId)` on every mount, advancing `last_seen_at` to NOW. Returning from a thread → MobileRoom remounts → uses the just-stamped NOW as the new snapshot → all per-thread dots disappear, even on threads the user didn't visit. User reported this as "looking at one thread clears all the other notifications." Per-thread `last_seen_at` tracking landed as a two-step deploy — see the next arc.
 
 **Two-step deploys this arc required:** none.
+
+### 2026-04-27 — Per-thread mobile read-tracking (migration only; client lands in follow-up)
+
+Fix for the regression captured in the prior arc's pending follow-up: viewing one thread on mobile cleared every dot, because `MobileRoom`'s mount-time `markRoomSeen(groupId)` advances the single per-room snapshot to NOW. Returning from a thread re-snapshots NOW and wipes every per-thread comparison.
+
+**Why a new table instead of patching the existing snapshot.** `friend_group_members.last_seen_at` is a single cell per `(user, group)` and powers the rooms-list room-button dot via `get_room_activity_visibility` (`20260425_room_last_seen.sql`). Reusing it for per-thread state requires either (a) a separate column per thread (won't scale) or (b) decoupling the room-snapshot from the per-thread snapshot anyway. We took (b): leave the existing room-level system intact, add an additive per-`(user, group, thread)` table alongside it.
+
+**Schema decisions worth pinning:**
+
+- **Composite PK `(user_id, group_id, thread_id)`.** A thread can be shared to multiple rooms via `group_threads`; reading it in room A must not clear the dot in room B. The PK reflects that.
+- **`thread_id TEXT`, not UUID.** Caught during pre-write column verification. Seed thread ids like `'tsp-seed-a'` aren't UUID-shaped, and `get_admin_user_activity` already declares its return column as `thread_id text`. The other two FKs (`auth.users.id`, `friend_groups.id`) are UUID. Mixed types in one PK is fine.
+- **ON DELETE CASCADE on all three FKs.** Hard-delete cleanup is automatic. Soft-deleted threads leave inert rows behind, which is fine — invisible threads are filtered upstream.
+- **Owner-only RLS, same shape as `progress` and `likes_threads`.** Even though the RPCs are SECURITY DEFINER and gate on `auth.uid()` directly, the policies still matter for any direct PostgREST access.
+- **`mark_thread_seen` does a membership check; `get_thread_view_state` does not.** The mark function could otherwise accumulate dead rows for arbitrary `group_id` values. The fetch function only returns the caller's own rows, so a membership gate would be redundant — confirming "you are a member" is already implicit in the existing `friend_group_members` RLS.
+
+**Two-step deploy required (one-time):** `supabase/migrations/20260428_thread_views.sql` must be applied in the Supabase SQL editor before client code calls `mark_thread_seen` / `get_thread_view_state`. Until applied, the new RPC calls fail and the per-thread dot logic falls back to "no dots" rather than breaking the room view (graceful degrade).
+
+**Convention reinforced:**
+
+- **Verify column types AND names before writing migrations or queries.** The new memory file `feedback_verify_db_columns.md` was the trigger; the `thread_id UUID → TEXT` catch was the immediate payoff. Pattern: grep `supabase/migrations/` for the table's CREATE/ALTER, OR grep `src/lib/db.ts` for an existing query that already references the column. Even seemingly-obvious column-name conventions (`user_id`, `id`) can be wrong.
+
+**Client code (pending, separate commit after migration applied):** `markThreadSeen` + `fetchThreadViewState` wrappers in `db.ts`; `MobileThread` fires `markThreadSeen` on mount; `MobileRoom` replaces the room-level snapshot with a per-thread `Record<threadId, last_seen_at>` and computes dots as `latestVisibleReplyAt[t.id] > (lastSeenByThreadId[t.id] ?? -Infinity)`.
 
 ### Earlier (pre-audit, header/layout polish)
 
