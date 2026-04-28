@@ -10,6 +10,7 @@ import {
   fetchAllFriendGroupsWithActivity,
   deleteThread,
   deleteReply,
+  markThreadSeen,
 } from "../lib/db";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import { canView } from "../lib/utils";
@@ -141,6 +142,17 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
       cancelled = true;
       supabase.removeChannel(channel);
     };
+  }, [groupId, threadId, user?.id]);
+
+  // Stamp the per-thread last_seen_at on mount. Fire-and-forget — a failure
+  // here just means the thread-card dot in MobileRoom won't clear when the
+  // user backs out, which is recoverable on the next visit. Backed by
+  // 20260428_thread_views.sql; fails silently when migration isn't applied.
+  useEffect(() => {
+    if (!user) return;
+    markThreadSeen(groupId, threadId).catch(err => {
+      console.warn("markThreadSeen failed:", err);
+    });
   }, [groupId, threadId, user?.id]);
 
   // Filter replies through canView + chain-visibility. Same shape as

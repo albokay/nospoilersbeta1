@@ -1401,7 +1401,13 @@ Fix for the regression captured in the prior arc's pending follow-up: viewing on
 
 - **Verify column types AND names before writing migrations or queries.** The new memory file `feedback_verify_db_columns.md` was the trigger; the `thread_id UUID → TEXT` catch was the immediate payoff. Pattern: grep `supabase/migrations/` for the table's CREATE/ALTER, OR grep `src/lib/db.ts` for an existing query that already references the column. Even seemingly-obvious column-name conventions (`user_id`, `id`) can be wrong.
 
-**Client code (pending, separate commit after migration applied):** `markThreadSeen` + `fetchThreadViewState` wrappers in `db.ts`; `MobileThread` fires `markThreadSeen` on mount; `MobileRoom` replaces the room-level snapshot with a per-thread `Record<threadId, last_seen_at>` and computes dots as `latestVisibleReplyAt[t.id] > (lastSeenByThreadId[t.id] ?? -Infinity)`.
+**Client code wiring (landed in follow-up commit after migration applied):**
+
+- `markThreadSeen(groupId, threadId)` and `fetchThreadViewState(groupId)` wrappers in `db.ts`. Both throw on error so callers can degrade.
+- `MobileRoom` replaces the per-room snapshot fetch with `fetchThreadViewState`, storing a `Record<threadId, last_seen_at>` and three-state status (loading/ready/error). `markRoomSeen` still fires alongside, in parallel — it's now scoped to clearing the rooms-list room-button dot only. Per-thread dot check: `latest > (lastSeenByThreadId[t.id] ?? undefined)`, with absence treated as "never seen" so first-visit users still get dots on every active thread (matches prior first-visit behavior).
+- `MobileThread` fires `markThreadSeen` on mount, fire-and-forget. A failure leaves the dot to clear on the next visit; the page itself is unaffected.
+
+**Behavioral consequence to remember:** the rooms-list room-button dot and the per-thread thread-card dots now move on different schedules. Entering a room still clears the room-button dot via `markRoomSeen` — even if the user doesn't open any individual threads. Per-thread dots persist until the user actually taps each thread. This is intentional; "I've acknowledged the room exists" and "I've read this specific thread" are different signals. Don't unify them without a clear UX reason.
 
 ### Earlier (pre-audit, header/layout polish)
 

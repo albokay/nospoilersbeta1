@@ -9,7 +9,7 @@ import {
   fetchProgress,
   fetchFriendGroupMembers,
   fetchGroupThreads,
-  fetchRoomLastSeen,
+  fetchThreadViewState,
   markRoomSeen,
 } from "../lib/db";
 import type { Show } from "../lib/db";
@@ -49,14 +49,20 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // At-mount snapshot of last_seen_at — captured BEFORE markRoomSeen stamps
-  // it forward, then used as the threshold for thread-card "new" indicators
-  // throughout this visit. Three states:
+  // Per-thread last_seen_at map — fetched once at mount and used as the
+  // threshold for thread-card "new" indicators throughout this visit.
+  // Threads absent from the map are treated as "never seen" (-Infinity), so
+  // first-visit users see dots on every thread that has visible activity.
+  // Three states:
   //   loading — fetch in progress (suppress dots)
-  //   ready   — snapshot is the value (or null = "never visited this room")
-  //   error   — column doesn't exist yet (graceful degrade: no dots)
-  const [snapshotStatus, setSnapshotStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [snapshot, setSnapshot] = useState<number | null>(null);
+  //   ready   — map is populated
+  //   error   — RPC missing (migration not applied) → graceful degrade: no dots
+  //
+  // Independent of markRoomSeen below: that still drives the rooms-list
+  // room-button dot via the per-room last_seen_at column. Per-thread
+  // tracking lives in friend_group_thread_views (20260428 migration).
+  const [viewStateStatus, setViewStateStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [lastSeenByThreadId, setLastSeenByThreadId] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -108,40 +114,41 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
     return () => { cancelled = true; };
   }, [groupId, user?.id]);
 
-  // Snapshot last_seen_at, then stamp it forward.
+  // Two independent on-mount actions:
   //
-  // Order of operations matters: the snapshot must be captured BEFORE
-  // markRoomSeen updates last_seen_at to NOW(), otherwise every thread-
-  // card indicator would resolve to "older than now" = never fires.
-  // Sequencing them in a single async block guarantees the right order.
+  // 1. fetchThreadViewState — populates the per-thread last_seen_at map
+  //    used by thread-card dots. Fetched fresh on each mount so navigating
+  //    thread → back gets the post-mark_thread_seen state and clears the
+  //    visited thread's dot without stale-rendering.
   //
-  // Graceful degradation:
-  //   - fetchRoomLastSeen throws (migration not applied / column missing)
-  //     → snapshotStatus="error" → indicators don't render. Mobile UI
-  //     otherwise unaffected.
-  //   - markRoomSeen throws → log + move on. Snapshot still set so dots
-  //     work for this visit; only the room-button dot won't clear next
-  //     time, which the user can fix by re-entering.
+  // 2. markRoomSeen — stamps the per-room last_seen_at to NOW() so the
+  //    rooms-list room-button dot clears. This is the legacy room-level
+  //    snapshot from 20260425; it no longer drives thread-card dots (the
+  //    per-thread state above does), but still powers the rooms list.
+  //
+  // Both run in parallel since they touch different tables. Errors degrade
+  // gracefully — viewStateStatus="error" suppresses thread-card dots; a
+  // markRoomSeen failure leaves the room-button dot unchanged.
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const ts = await fetchRoomLastSeen(user.id, groupId);
+
+    fetchThreadViewState(groupId)
+      .then(map => {
         if (cancelled) return;
-        setSnapshot(ts);
-        setSnapshotStatus("ready");
-      } catch (err) {
+        setLastSeenByThreadId(map);
+        setViewStateStatus("ready");
+      })
+      .catch(err => {
         if (cancelled) return;
-        console.warn("fetchRoomLastSeen failed (column may not exist yet):", err);
-        setSnapshotStatus("error");
-      }
-      if (!cancelled) {
-        markRoomSeen(groupId).catch(err => {
-          console.warn("markRoomSeen failed:", err);
-        });
-      }
-    })();
+        console.warn("fetchThreadViewState failed (RPC may not exist yet):", err);
+        setViewStateStatus("error");
+      });
+
+    markRoomSeen(groupId).catch(err => {
+      console.warn("markRoomSeen failed:", err);
+    });
+
     return () => { cancelled = true; };
   }, [groupId, user?.id]);
 
@@ -368,15 +375,18 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {sortedThreads.map(t => {
               // hasNewActivity: thread or any chain-visible reply newer
-              // than the at-mount snapshot. Suppressed entirely when the
-              // snapshot fetch is loading (avoid flicker) or errored
-              // (graceful degradation when the migration isn't applied).
+              // than the caller's per-thread last_seen_at. Threads the
+              // caller has never opened are absent from the map → treated
+              // as "never seen" → dot fires whenever there's any visible
+              // activity. Suppressed entirely while the view-state fetch
+              // is loading (avoid flicker) or errored (graceful degrade).
               const replyTs = latestVisibleReplyAt[t.id] ?? 0;
               const latest = Math.max(t.updatedAt, replyTs);
+              const lastSeen = lastSeenByThreadId[t.id];
               const hasNewActivity =
-                snapshotStatus === "ready" &&
+                viewStateStatus === "ready" &&
                 latest > 0 &&
-                (snapshot === null || latest > snapshot);
+                (lastSeen === undefined || latest > lastSeen);
               return (
                 <ThreadCard
                   key={t.id}

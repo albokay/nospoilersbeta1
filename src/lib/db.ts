@@ -1688,6 +1688,43 @@ export function roomHasNewVisibleActivity(v: RoomVisibility): boolean {
   return v.latestVisibleActivityAt > v.lastSeenAt;
 }
 
+// ── Mobile: per-thread last-seen ─────────────────────────────────────────────
+//
+// Backed by 20260428_thread_views.sql. Independent of the per-room
+// last_seen_at system (which still drives the rooms-list room-button dot).
+// Mobile thread cards compare a thread's latest visible reply timestamp
+// against the caller's per-(user, group, thread) last_seen_at to decide
+// whether to render the new-activity dot. Threads the caller has never
+// opened are absent from the map and treated as "never seen" — first
+// visit shows dots on everything, matching prior behavior.
+//
+// Both functions throw on error so callers can degrade gracefully (no dots)
+// when the migration hasn't been applied yet.
+
+/** Stamp the calling user's per-thread last_seen_at to NOW(). */
+export async function markThreadSeen(groupId: string, threadId: string): Promise<void> {
+  const { error } = await supabase.rpc("mark_thread_seen", {
+    p_group_id: groupId,
+    p_thread_id: threadId,
+  });
+  if (error) throw error;
+}
+
+/**
+ * Per-thread last_seen_at map for the calling user in one room. Threads
+ * the caller has never opened are absent from the result. Caller defaults
+ * absence to "never seen" (-Infinity) when comparing against latest reply.
+ */
+export async function fetchThreadViewState(groupId: string): Promise<Record<string, number>> {
+  const { data, error } = await supabase.rpc("get_thread_view_state", { p_group_id: groupId });
+  if (error) throw error;
+  const out: Record<string, number> = {};
+  for (const r of (data ?? []) as Array<{ thread_id: string; last_seen_at: string }>) {
+    out[r.thread_id] = new Date(r.last_seen_at).getTime();
+  }
+  return out;
+}
+
 /** Share a thread to a friend group (creates group_threads row). */
 export async function addThreadToGroup(threadId: string, groupId: string): Promise<void> {
   const { error } = await supabase
