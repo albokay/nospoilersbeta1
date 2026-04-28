@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 const KEY = "ns_beta_access";
@@ -12,6 +12,22 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
   const [input, setInput] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Mobile redirect: when the gate triggers on a mobile viewport, send the
+  // user to /m before rendering the password form. Without this, returning
+  // to a backgrounded mobile tab after the gate re-arms could leave the
+  // desktop shell stuck on "Loading..."; /m's mobile shell renders cleanly.
+  // BetaGate sits outside the RouterProvider so we use window.location
+  // rather than useNavigate.
+  useEffect(() => {
+    if (unlocked) return;
+    if (typeof window === "undefined") return;
+    const isMobile = window.innerWidth < 768;
+    const onMobilePath = window.location.pathname.startsWith("/m");
+    if (isMobile && !onMobilePath) {
+      window.location.replace("/m");
+    }
+  }, [unlocked]);
 
   if (unlocked) return <>{children}</>;
 

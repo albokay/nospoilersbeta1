@@ -88,7 +88,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
         // visible for users who never set progress, which is the correct
         // safe default (the gate should always populate before this view).
         const eff = effectiveProgress(p) ?? { s: 0, e: 0 };
-        return fetchGroupThreads(groupId, eff.s, eff.e);
+        return fetchGroupThreads(groupId, eff.s, eff.e, user?.id);
       })
       .then(result => {
         if (cancelled || !result) return;
@@ -166,7 +166,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
     let cancelled = false;
 
     const refetch = () => {
-      fetchGroupThreads(groupId, eff.s, eff.e)
+      fetchGroupThreads(groupId, eff.s, eff.e, user.id)
         .then(result => {
           if (cancelled) return;
           setThreads(result.threads);

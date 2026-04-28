@@ -186,7 +186,14 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
       }
       return true;
     };
-    return replies.filter(chainVisible);
+    // Mobile thread view has no order toggle — always sort by episode tag
+    // ascending (season → episode), with createdAt as the tiebreaker. Mirrors
+    // desktop's default order (RepliesList.tsx orderMode="episode").
+    return replies.filter(chainVisible).sort((a, b) => {
+      if (a.season !== b.season) return a.season - b.season;
+      if (a.episode !== b.episode) return a.episode - b.episode;
+      return a.createdAt - b.createdAt;
+    });
   }, [replies, progress, thread]);
 
   // ── Render ──
