@@ -1370,30 +1370,46 @@ export default function ProfilePage({
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No responses yet.</div>}
-                  {tabRepliesToMe.map(({ reply: r, thread: t, groupId, groupName }) => (
+                  {tabRepliesToMe.map(({ reply: r, thread: t, groupId, groupName }) => {
+                    const showExpand = r.body.length > 140 || r.body.includes("\n");
+                    const isExpanded = expandedIds.has(r.id);
+                    return (
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", position: "relative", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id, groupId)}>
                       {newVisibleReplyIds[r.id] && (
                         <div style={{ position: "absolute", left: -10, top: -2, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div className="muted" style={{ fontSize: 14 }}>
-                          On <b>{t.titleBase}</b>{" "}
-                          <span style={{ color: "var(--dos-cyan)" }}>
-                            <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
-                          </span>{" "}
-                          • {groupName
-                              ? <span style={{ fontStyle: "italic" }}>in {groupName}</span>
-                              : <span style={{ fontStyle: "italic" }}>publicly</span>}{" "}
-                          • <span className="username">@{r.author}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="muted" style={{ fontSize: 14 }}>
+                            On <b>{t.titleBase}</b>
+                          </div>
+                          <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
+                            <span style={{ color: "var(--dos-cyan)" }}>
+                              <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
+                            </span>{" "}
+                            • {groupName
+                                ? <span style={{ fontStyle: "italic" }}>in {groupName}</span>
+                                : <span style={{ fontStyle: "italic" }}>publicly</span>}{" "}
+                            • <span className="username">@{r.author}</span>
+                          </div>
                         </div>
-                        <div className="muted" style={{ fontSize: 13, flexShrink: 0 }}>{timeAgo(r.updatedAt)}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                          {showExpand && (
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#fff", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                              onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
+                              {isExpanded ? "▴ less" : "▾ expand"}
+                            </div>
+                          )}
+                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(r.updatedAt)}</div>
+                        </div>
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 15 }} className="clamp3">
+                      <div style={{ marginTop: 6, fontSize: 15, whiteSpace: isExpanded ? "pre-wrap" : undefined }}
+                        className={isExpanded ? undefined : "clamp3"}>
                         {r.body}
                       </div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </section>
 
@@ -1402,25 +1418,41 @@ export default function ProfilePage({
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabMyReplies.length === 0 && <div className="muted">No responses yet.</div>}
-                  {tabMyReplies.map(({ reply: r, thread: t }) => (
+                  {tabMyReplies.map(({ reply: r, thread: t }) => {
+                    const showExpand = r.body.length > 140 || r.body.includes("\n");
+                    const isExpanded = expandedIds.has(r.id);
+                    return (
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div className="muted" style={{ fontSize: 14 }}>
-                          On <b>{t.titleBase}</b>{" "}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="muted" style={{ fontSize: 14 }}>
+                            On <b>{t.titleBase}</b>
+                          </div>
                           {t.showId !== "simshow" && (
-                            <span style={{ color: "var(--dos-cyan)" }}>
-                              <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
-                            </span>
+                            <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
+                              <span style={{ color: "var(--dos-cyan)" }}>
+                                <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
+                              </span>
+                            </div>
                           )}
                         </div>
-                        <div className="muted" style={{ fontSize: 13, flexShrink: 0 }}>{timeAgo(r.updatedAt)}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                          {showExpand && (
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#fff", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                              onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
+                              {isExpanded ? "▴ less" : "▾ expand"}
+                            </div>
+                          )}
+                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(r.updatedAt)}</div>
+                        </div>
                       </div>
-                      <div style={{ marginTop: 6, fontSize: 15 }} className="clamp3">
+                      <div style={{ marginTop: 6, fontSize: 15, whiteSpace: isExpanded ? "pre-wrap" : undefined }}
+                        className={isExpanded ? undefined : "clamp3"}>
                         {r.body}
                       </div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </section>
 
@@ -1429,26 +1461,40 @@ export default function ProfilePage({
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your starred entries</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabLikedThreads.length === 0 && <div className="muted">No starred entries yet.</div>}
-                  {tabLikedThreads.map(t => (
+                  {tabLikedThreads.map(t => {
+                    const showExpand = t.body !== t.preview;
+                    const isExpanded = expandedIds.has(t.id);
+                    return (
                     <div key={t.id} className="card threadCard"
                       style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id)}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div className="title" style={{ fontSize: 18 }}>
-                          {t.titleBase}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="title" style={{ fontSize: 18 }}>
+                            {t.titleBase}
+                          </div>
                           {t.showId !== "simshow" && (
-                            <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: 13, fontWeight: 400, opacity: 0.7, marginTop: 2 }}>
                               <EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} />
-                            </span>
+                            </div>
                           )}
                         </div>
-                        <div className="muted" style={{ fontSize: 13, flexShrink: 0 }}>{timeAgo(t.updatedAt)}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                          {showExpand && (
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#fff", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                              onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
+                              {isExpanded ? "▴ less" : "▾ expand"}
+                            </div>
+                          )}
+                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(t.updatedAt)}</div>
+                        </div>
                       </div>
-                      <div style={{ marginTop: 6 }} className="clamp3">
-                        {t.preview}
+                      <div style={{ marginTop: 6, whiteSpace: isExpanded ? "pre-wrap" : undefined }}
+                        className={isExpanded ? undefined : "clamp3"}>
+                        {isExpanded ? t.body : t.preview}
                       </div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </section>
 
@@ -1457,24 +1503,40 @@ export default function ProfilePage({
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your starred responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabLikedReplies.length === 0 && <div className="muted">No starred responses yet.</div>}
-                  {tabLikedReplies.map(({ reply: r, thread: t }) => (
+                  {tabLikedReplies.map(({ reply: r, thread: t }) => {
+                    const showExpand = r.body.length > 140 || r.body.includes("\n");
+                    const isExpanded = expandedIds.has(r.id);
+                    return (
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
                       onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div className="muted" style={{ fontSize: 14 }}>
-                          On <b>{t.titleBase}</b>{" "}
-                          <span style={{ color: "var(--dos-cyan)" }}>
-                            <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
-                          </span>{" "}
-                          • <span className="username">@{r.author}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="muted" style={{ fontSize: 14 }}>
+                            On <b>{t.titleBase}</b>
+                          </div>
+                          <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
+                            <span style={{ color: "var(--dos-cyan)" }}>
+                              <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
+                            </span>{" "}
+                            • <span className="username">@{r.author}</span>
+                          </div>
                         </div>
-                        <div className="muted" style={{ fontSize: 13, flexShrink: 0 }}>{timeAgo(r.updatedAt)}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                          {showExpand && (
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#fff", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                              onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
+                              {isExpanded ? "▴ less" : "▾ expand"}
+                            </div>
+                          )}
+                          <div className="muted" style={{ fontSize: 13 }}>{timeAgo(r.updatedAt)}</div>
+                        </div>
                       </div>
-                      <div style={{ marginTop: 6 }} className="clamp3">
+                      <div style={{ marginTop: 6, whiteSpace: isExpanded ? "pre-wrap" : undefined }}
+                        className={isExpanded ? undefined : "clamp3"}>
                         {r.body}
                       </div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </section>
             </>
