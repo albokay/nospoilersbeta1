@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-04-26)
+# Sidebar — Technical State (2026-04-27)
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -1306,6 +1306,80 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-04-27 — InlineThreadView replies-column OrderToggle (vertical episode/time pill)
+
+A new affordance in the left margin of the replies column on desktop thread view: a vertical pill toggle (rotated −90deg so it reads bottom-to-top) that switches reply ordering between **episode** (season → episode → createdAt, the new default) and **time** (DB return order, the prior behavior). Iterated across many small commits in a single afternoon — captured here in end state, not chronologically.
+
+**Architecture decisions:**
+
+- **Episode order is the default.** Replies sort by `season → episode → createdAt` ascending. Toggling to "time" returns the original post-time order. Same default lives in `MobileThread.visibleReplies` (no toggle UI on mobile — see the mobile-follow-ups arc below).
+- **Sticky pin uses live `getBoundingClientRect()` measurement, not z-index hacks.** Toggle stops short of the translucent stickybar by reading `.stickybar.getBoundingClientRect().bottom` on mount + window resize, then setting `top: bottom + 24`. An earlier attempt that bumped toggle z-index above the stickybar was rejected on the basis "I want it to STOP BEFORE the header, not float over it." `getBoundingClientRect`-driven offsets are now the load-bearing pattern for any sticky element that must stay clear of the header band.
+- **Visibility gate is `activeRepliesCount >= 2`, where active = non-deleted + not in the local optimistic-delete set.** Toggle vanishes when there's only one (or zero) replies — there's nothing to reorder. Tracking optimistic deletes via `Set<string>` (cleared on `thread.id` change) means the gate reacts immediately when the user deletes a reply down to one, not on the next refetch.
+- **Friend-room palette is TWO colors only — transparent + the outline color.** No darker navy fill in the friend room. Default/public use white fill (`--toggle-off-fill: #ffffff`); friend-room override sets `--toggle-off-fill: rgba(26,58,74,0.3)` AND `--toggle-on-text` to the same value, so the deselected fill and the selected text both match the outline. The selected segment is always transparent (page bg shows through). Don't add a third color anywhere.
+- **Hairline gap fix is a 1px outset `box-shadow` on the filled segment, clipped by parent `overflow: hidden + borderRadius: 999`.** Closes the anti-aliasing seam between fill and outline that was visible on white. The same trick is applied symmetrically in `ModeToggle.tsx`.
+- **Layout uses negative margin + sticky height-zero wrapper.** `position: sticky; height: 0; overflow: visible; marginLeft: -48` floats the toggle in the page's left gutter without affecting the replies column's flow. `marginLeft: -48` produces a 32px gap from toggle right edge to reply card left edge (8px reply-card marginLeft + 24px from the toggle column width).
+
+**Commit summary (chronological, end state matters more than the sequence):**
+
+| Commit | Scope |
+|---|---|
+| `e5aeee1` | Initial land. New `OrderToggle.tsx`, `orderMode` state in `InlineThreadView`, `orderMode` prop on `RepliesList` with episode-default sort. |
+| `2deaab2`, `fedb1c5` | Tooltip text "Order responses by:" (sentence caps, one line, nowrap, left direction). Friend-room palette finalized. Sticky offset clears the header band. |
+| `14ca0ce`, `191e6e5` | Sticky-pin work: dropped a brief z-index hack and replaced with live `getBoundingClientRect()`-driven offset against `.stickybar`'s actual bottom edge. |
+| `0d09dbd`, `23d43e5` | `>= 2 active replies` visibility gate; optimistic-delete tracking. Hairline gap closed via 1px outset shadow. |
+| `61e7c7c` → `5596f65` | Right-side relocation experiment, reverted same session. The +90deg orientation + tooltip-right + segment swap "felt weird"; the left-margin position is the load-bearing one. |
+| `97619ca` → `e1e97d0` | Sticky-pin "lower by 40px" attempt was a wrong-axis miscommunication — reverted. The user wanted the in-flow start lower relative to the first reply, not the resting sticky position. |
+| `75cacce` | Tightened horizontal gap to 32px (marginLeft: -88 → -48) + bumped marginTop:24 on the sticky wrapper. |
+| `bc3ec3d` → `e23d8f7` | Attempted to lower the toggle's in-flow start relative to the first reply WITHOUT shifting the RepliesList. The wrapper's `marginTop:24` shifts both equally because the sticky div has `height:0`; moving marginTop to an inner div + reducing `toggleTop` by 24 to compensate was rejected ("got worse"). End state still has the alignment-with-first-reply visual; flagged as parked, not blocking. |
+
+**Convention surfaced by this arc:**
+
+- **Sticky elements that must stay clear of a translucent overlay header should derive their `top` from the header's measured `getBoundingClientRect().bottom`, not from a CSS variable + guessed offset.** Variables can drift, header heights can change at breakpoints, and z-index workarounds (raising the sticky element above the header) trade one visual problem for another. A measured offset adapts automatically and reads as "stop before the header" rather than "float in front of it."
+- **For visibility gates that depend on derived state (active count, etc.) and react to optimistic UI updates, track the optimistic mutations in a `Set<string>` keyed by id and clear it on the parent identity change.** The set lives next to the existing optimistic-update plumbing; the derived count is a `useMemo` filtering by `!isDeleted && !locallyDeletedSet.has(id)`. Reactive without a refetch round-trip.
+
+**Parked / known issue.** The toggle's in-flow start position is still visually aligned with the top of the first reply card, because `marginTop` on the sticky wrapper shifts both the wrapper and the next-sibling RepliesList by the same amount (the wrapper has `height:0`). Lowering the toggle's apparent start without shifting the replies column requires either an absolute-positioned wrapper that doesn't participate in flow, or a different layout model entirely. Spent two attempts on it; both were reverted. Acceptable to leave at parity for now; revisit if it bothers anyone.
+
+### 2026-04-27 — Mobile follow-ups + ProfilePage bottom-section expand chips + a column-name regression that bit prod
+
+Three loosely related landings on the same day, plus a self-inflicted prod outage that's worth documenting candidly so the column-verification habit sticks.
+
+**(1) Mobile follow-ups (`f399cb6`).**
+
+- **Mobile thread view defaults to episode-tag order, no toggle.** `MobileThread.visibleReplies` runs the same `season → episode → createdAt` sort as desktop's default. The toggle UI is desktop-only (the responses column has different layout density on mobile and the toggle wouldn't fit comfortably). Mirrors `RepliesList`'s `orderMode="episode"` default.
+- **BetaGate redirects to `/m` on mobile when locked.** `BetaGate.tsx` adds a `useEffect` that fires when `unlocked === false` AND `window.innerWidth < 768` AND `window.location.pathname` doesn't start with `/m`: `window.location.replace("/m")`. Reasoning: a backgrounded mobile tab returning after the gate re-arms could leave the desktop AppShell stuck on "Loading..." while waiting for auth; redirecting to `/m` first means the password form renders inside the mobile shell with a clean state. Sits outside RouterProvider in `main.tsx`, so the redirect uses `window.location.replace` instead of `useNavigate`.
+- **`fetchGroupThreads` accepts an optional `viewerId` argument that excludes own replies from `latestVisibleReplyAt`.** Reply *counts* are unaffected — own posts still count toward the "(N)" total on the thread card. Only the per-thread "newest visible reply timestamp" used for the mobile new-activity dot is filtered. `MobileRoom` passes `user.id` at both call sites (initial fetch + realtime refetch handler). `ShowSection`'s desktop caller doesn't use `latestVisibleReplyAt` at all and is unchanged.
+
+**(2) ProfilePage bottom-section expand chips (`528ab86`).**
+
+The four bottom sections of the activity tab (`responses to you`, `your responses`, `your starred entries`, `your starred responses`) previously rendered each card with a single-line headline ("On **{titleBase}** {EpisodeTag} • in {room} • @{author}") and a clamp-3 body with no expand affordance. Updated to a two-line headline + canon-green expand chip pattern that mirrors the journal cards' chip on the main activity feed:
+
+- **Two-line headline.** Line 1: `"On <b>{titleBase}</b>"` (or just `{titleBase}` for starred entries). Line 2: episode tag + remaining meta (room/publicly + @author).
+- **Canon-green chip on the right.** `background: #7abd8e`, `color: #fff`, `padding: 7px 14px`, `borderRadius: 999`, `fontSize: 12`, `fontWeight: 600`. Same shape/size as the journal's existing chip, fixed canon-green fill (vs the journal's per-card-type accent fill). Sits to the LEFT of the timeAgo on the same right-side stack.
+- **Expand-state reuse.** Same `expandedIds: Set<string>` + `toggleExpand` already in use for the journal cards; reply IDs and thread IDs don't collide.
+- **Conditional visibility.** Threads (starred entries) gate on the existing `t.body !== t.preview` rule. Replies (the other three sections) lack a preview field on the type, so they gate on a `body.length > 140 || body.includes("\n")` heuristic — approximates 3 visual lines at the card width.
+
+**(3) A column-name regression that broke friend rooms in prod.**
+
+`f399cb6` added `user_id` to the embedded reply select inside `fetchGroupThreads`:
+
+```ts
+.select("threads(*, replies!thread_id(id, group_id, user_id, season, episode, ...))")
+```
+
+The replies table column is **`author_id`**, not `user_id`. The malformed PostgREST select caused the whole query to fail silently — `data` came back empty/error, friend rooms rendered as empty stream in production. The user noticed within a few hours and reported it; hotfixed in `046f390` by correcting both the select string and the `viewerId === r.user_id` → `r.author_id` comparison. Total prod-regression window: ~46 minutes from `f399cb6` push to `046f390` push.
+
+User's response after the fix: "errors like that CANNOT happen at this stage. be very careful please."
+
+**Convention enforced by this regression (also saved to claude memory):**
+
+- **Verify any column name against migrations or an existing `.from("<table>")` query before adding it to a Supabase `.select / .eq / .insert / .update`.** PostgREST select strings are unverified by the TypeScript compiler — a typo or wrong-column-name produces a runtime error that's silent at the call site (returns empty data) and visible only when the affected page renders empty. Inferring column names from convention ("the user FK is probably called `user_id`") is exactly the failure mode that bit prod here. The replies table uses `author_id`; check before referencing. The 30 seconds spent grepping the table's CREATE migration or an existing insert in `db.ts` is cheaper than the prod outage.
+
+**Pending follow-up (under investigation, not yet implemented):**
+
+- **Per-thread mobile read-tracking.** Current behavior: `MobileRoom` calls `markRoomSeen(groupId)` on every mount, advancing `last_seen_at` to NOW. Returning from a thread → MobileRoom remounts → uses the just-stamped NOW as the new snapshot → all per-thread dots disappear, even on threads the user didn't visit. User reported this as "looking at one thread clears all the other notifications." The smaller fix (sessionStorage-cache the snapshot per `(userId, groupId)` and only stamp once per session) would keep the dots persistent within a room visit, but doesn't clear the read-thread's own dot. The user has chosen to invest in per-thread `last_seen_at` tracking instead. Design report pending — not yet implemented.
+
+**Two-step deploys this arc required:** none.
 
 ### Earlier (pre-audit, header/layout polish)
 
