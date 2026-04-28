@@ -1737,7 +1737,7 @@ export async function fetchGroupThreads(
   // visible reply" timestamp can be computed alongside the count.
   const { data, error } = await supabase
     .from("group_threads")
-    .select("threads(*, replies!thread_id(id, group_id, user_id, season, episode, is_deleted, referenced_reply_id, created_at))")
+    .select("threads(*, replies!thread_id(id, group_id, author_id, season, episode, is_deleted, referenced_reply_id, created_at))")
     .eq("group_id", groupId)
     .order("shared_at", { ascending: false });
   if (error) throw error;
@@ -1781,7 +1781,7 @@ export async function fetchGroupThreads(
     for (const r of visibleReplies) {
       // Skip viewer's own replies — own posts shouldn't trigger the
       // "new since last visit" indicator on mobile thread cards.
-      if (viewerId && r.user_id === viewerId) continue;
+      if (viewerId && r.author_id === viewerId) continue;
       const ts = r.created_at ? new Date(r.created_at).getTime() : 0;
       if (ts > maxAt) maxAt = ts;
     }
