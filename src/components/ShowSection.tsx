@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight, ArrowLeft, Plus, Clock, EyeOff } from "lucide-react";
+import { SquarePen, X, Globe, Users, Settings, Mail, Sparkles, LockKeyhole, AlertTriangle, Crown, FlaskConical, Heart, ChevronDown, ArrowRight, ArrowLeft, Plus, Clock, EyeOff, CirclePlus } from "lucide-react";
 import LoadingDots from "./LoadingDots";
 
 const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
@@ -368,11 +368,17 @@ export default function ShowSection({
   const [groupMembersLoading, setGroupMembersLoading] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [renameSubmitting, setRenameSubmitting] = useState(false);
-  // Invite form (inside group settings modal)
-  const [inviteEmail, setInviteEmail] = useState("");
+  // Invite form (inside group settings modal). Multi-row: each row tracks
+  // its own email + post-submit status so we can show per-row ✓ / error
+  // messages after a partial-failure batch send. Cap at 5 rows; sends
+  // beyond that require starting a fresh batch.
+  type InviteRow = { email: string; status: "idle" | "success" | "error"; errorMsg?: string };
+  const MAX_INVITE_ROWS = 5;
+  const [inviteRows, setInviteRows] = useState<InviteRow[]>([{ email: "", status: "idle" }]);
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
-  const [inviteError, setInviteError] = useState<string | null>(null);
-  const [inviteSuccess, setInviteSuccess] = useState(false);
+  // Batch-level error (e.g. rate-limit blocked the whole submission before
+  // any row was sent). Per-row errors live on the row itself.
+  const [inviteBatchError, setInviteBatchError] = useState<string | null>(null);
   const [pendingInvites, setPendingInvites] = useState<Invitation[]>([]);
   const [pendingInvitesLoading, setPendingInvitesLoading] = useState(false);
   // Leave room modal
@@ -499,9 +505,8 @@ export default function ShowSection({
       .catch(() => {})
       .finally(() => setGroupMembersLoading(false));
     // Reset invite form state
-    setInviteEmail("");
-    setInviteError(null);
-    setInviteSuccess(false);
+    setInviteRows([{ email: "", status: "idle" }]);
+    setInviteBatchError(null);
     // Load pending invitations for this group (creator only)
     if (user) {
       setPendingInvites([]);
@@ -653,53 +658,124 @@ export default function ShowSection({
     }
   };
 
-  const handleSendInvite = async () => {
-    if (!user || !settingsGroupId || !inviteEmail.trim()) return;
+  const ERROR_MESSAGES: Record<string, string> = {
+    rate_limit:      "You've reached the 10 invitations/day limit. Try again tomorrow.",
+    already_invited: "Already invited.",
+    not_creator:     "Only the room creator can send invitations.",
+    invalid_email:   "Not a valid email address.",
+    self_invite:     "You can't invite yourself.",
+  };
+
+  const handleSendInvites = async () => {
+    if (!user || !settingsGroupId) return;
     const grp = userGroups.find(g => g.id === settingsGroupId);
     if (!grp) return;
-    setInviteError(null);
-    setInviteSuccess(false);
+    setInviteBatchError(null);
 
-    // Client-side self-invite pre-check for immediate feedback. Edge function
-    // also rejects this server-side (returns "self_invite") so a stale build
-    // can't bypass it.
-    const trimmedEmail = inviteEmail.trim().toLowerCase();
+    // Build the list of rows to actually submit. Rules:
+    // - Skip rows already in success state (don't re-send already-confirmed
+    //   invites if the user clicks Send again after fixing a failed row).
+    // - Skip empty rows (user added a row but didn't fill it).
+    // - Dedupe within the batch by lowercase-trim — first occurrence wins;
+    //   later duplicates get marked as errors so the user sees what happened.
+    // - Self-invite check happens client-side per-row for immediate feedback;
+    //   edge function rejects again server-side as a safety net.
     const callerEmail = user.email?.toLowerCase().trim();
-    if (callerEmail && trimmedEmail === callerEmail) {
-      setInviteError("You can't invite yourself.");
-      return;
+    const seen = new Set<string>();
+    const nextRows: InviteRow[] = inviteRows.map(r => ({ ...r }));
+    const indicesToSend: number[] = [];
+
+    for (let i = 0; i < nextRows.length; i++) {
+      const row = nextRows[i];
+      if (row.status === "success") continue;
+      const trimmed = row.email.trim();
+      if (!trimmed) continue;
+      const lower = trimmed.toLowerCase();
+      if (callerEmail && lower === callerEmail) {
+        nextRows[i] = { ...row, status: "error", errorMsg: ERROR_MESSAGES.self_invite };
+        continue;
+      }
+      if (seen.has(lower)) {
+        nextRows[i] = { ...row, status: "error", errorMsg: "Duplicate email in this batch." };
+        continue;
+      }
+      seen.add(lower);
+      // Reset any prior error on this row before re-sending.
+      nextRows[i] = { ...row, status: "idle", errorMsg: undefined };
+      indicesToSend.push(i);
     }
+
+    setInviteRows(nextRows);
+    if (indicesToSend.length === 0) return;
 
     setInviteSubmitting(true);
     try {
-      const result = await sendInvite({
-        groupId:      settingsGroupId,
-        groupName:    grp.name,
-        inviteeEmail: inviteEmail.trim(),
-        inviterName:  profile?.username ?? "Someone",
+      // Send all in parallel. Per-row outcomes update only their own row.
+      // sendInvite resolves with { ok: false, error } rather than throwing
+      // for known errors, so allSettled is mostly belt-and-suspenders for
+      // unexpected throws (network failure, etc).
+      const results = await Promise.allSettled(
+        indicesToSend.map(i =>
+          sendInvite({
+            groupId:      settingsGroupId,
+            groupName:    grp.name,
+            inviteeEmail: nextRows[i].email.trim(),
+            inviterName:  profile?.username ?? "Someone",
+          })
+        )
+      );
+
+      const finalRows = nextRows.map(r => ({ ...r }));
+      let anySuccess = false;
+      let rateLimitedBatch = false;
+
+      results.forEach((res, k) => {
+        const idx = indicesToSend[k];
+        if (res.status === "fulfilled") {
+          if (res.value.ok) {
+            finalRows[idx] = { ...finalRows[idx], status: "success", errorMsg: undefined };
+            anySuccess = true;
+          } else {
+            const msg = ERROR_MESSAGES[res.value.error] ?? res.value.message ?? "Failed to send.";
+            finalRows[idx] = { ...finalRows[idx], status: "error", errorMsg: msg };
+            if (res.value.error === "rate_limit") rateLimitedBatch = true;
+          }
+        } else {
+          finalRows[idx] = { ...finalRows[idx], status: "error", errorMsg: "Failed to send." };
+        }
       });
-      if (!result.ok) {
-        const msgs: Record<string, string> = {
-          rate_limit:      "You've reached the 10 invitations/day limit. Try again tomorrow.",
-          already_invited: "You've already invited this person.",
-          not_creator:     "Only the room creator can send invitations.",
-          invalid_email:   "Please enter a valid email address.",
-          self_invite:     "You can't invite yourself.",
-        };
-        setInviteError(msgs[result.error] ?? result.message ?? "Something went wrong. Please try again.");
-      } else {
-        setInviteSuccess(true);
-        setInviteEmail("");
-        // Refresh pending invites
+
+      setInviteRows(finalRows);
+      if (rateLimitedBatch) {
+        setInviteBatchError(ERROR_MESSAGES.rate_limit);
+      }
+
+      if (anySuccess) {
+        // Refresh pending invites once (any number of new rows landed).
         fetchSentInvitations(user.id)
           .then(all => setPendingInvites(all.filter(i => i.groupId === settingsGroupId)))
           .catch(() => {});
       }
     } catch {
-      setInviteError("Something went wrong. Please try again.");
+      setInviteBatchError("Something went wrong. Please try again.");
     } finally {
       setInviteSubmitting(false);
     }
+  };
+
+  const addInviteRow = () => {
+    setInviteRows(rows =>
+      rows.length >= MAX_INVITE_ROWS ? rows : [...rows, { email: "", status: "idle" }]
+    );
+  };
+
+  const updateInviteRowEmail = (index: number, email: string) => {
+    // Editing a row resets its status — a sent-then-edited row should
+    // re-arm rather than stay stuck on its old success/error state.
+    setInviteRows(rows =>
+      rows.map((r, i) => (i === index ? { email, status: "idle", errorMsg: undefined } : r))
+    );
+    setInviteBatchError(null);
   };
 
   // Pick the most-recently-active room from a list (chunk 3).
@@ -2066,30 +2142,91 @@ export default function ShowSection({
               </div>
             )}
 
-            {/* Invite by email (creator only) */}
+            {/* Invite by email (creator only) — multi-row, up to 5 at once.
+                The Send button always sits on the LAST row so the visual
+                hierarchy stays clear regardless of how many rows are open.
+                A circle-plus below the rows adds another field; it
+                disappears at MAX_INVITE_ROWS so the cap is implicit in the
+                UI rather than gated by an error message. */}
             {isCreator && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.5, marginBottom: 8 }}>Invite by email</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    className="badge"
-                    type="email"
-                    placeholder="friend@example.com"
-                    value={inviteEmail}
-                    onChange={e => { setInviteEmail(e.target.value); setInviteError(null); setInviteSuccess(false); }}
-                    onKeyDown={e => { if (e.key === "Enter") handleSendInvite(); }}
-                    style={{ flex: 1, height: 36 }}
-                    disabled={inviteSubmitting}
-                  />
-                  <button
-                    className="btn"
-                    onClick={handleSendInvite}
-                    disabled={inviteSubmitting || !inviteEmail.trim()}
-                    style={{ background: "var(--dos-user)", border: "none", color: "#fff", whiteSpace: "nowrap", minWidth: 120 }}
-                  >
-                    {inviteSubmitting ? "Sending…" : "Send invite"}
-                  </button>
-                </div>
+                {(() => {
+                  const totalRows = inviteRows.length;
+                  const isPlural = totalRows > 1;
+                  const anyNonEmpty = inviteRows.some(r => r.email.trim() && r.status !== "success");
+                  const sendLabel = inviteSubmitting
+                    ? "Sending…"
+                    : isPlural ? "Send invites" : "Send invite";
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {inviteRows.map((row, i) => {
+                        const isLast = i === totalRows - 1;
+                        return (
+                          <div key={i}>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <input
+                                className="badge"
+                                type="email"
+                                placeholder="friend@example.com"
+                                value={row.email}
+                                onChange={e => updateInviteRowEmail(i, e.target.value)}
+                                onKeyDown={e => { if (e.key === "Enter") handleSendInvites(); }}
+                                style={{ flex: 1, height: 36 }}
+                                disabled={inviteSubmitting || row.status === "success"}
+                              />
+                              {isLast && (
+                                <button
+                                  className="btn"
+                                  onClick={handleSendInvites}
+                                  disabled={inviteSubmitting || !anyNonEmpty}
+                                  style={{ background: "var(--dos-user)", border: "none", color: "#fff", whiteSpace: "nowrap", minWidth: 120 }}
+                                >
+                                  {sendLabel}
+                                </button>
+                              )}
+                            </div>
+                            {row.status === "success" && (
+                              <div style={{ fontSize: 12, color: "#fff", marginTop: 4 }}>
+                                ✓ Invite sent.
+                              </div>
+                            )}
+                            {row.status === "error" && row.errorMsg && (
+                              <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 4 }}>
+                                {row.errorMsg}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {totalRows < MAX_INVITE_ROWS && (
+                        <button
+                          type="button"
+                          onClick={addInviteRow}
+                          disabled={inviteSubmitting}
+                          aria-label="Add another email"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "#fff",
+                            opacity: 0.85,
+                            cursor: "pointer",
+                            padding: 4,
+                            alignSelf: "flex-start",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontSize: 12,
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          <CirclePlus size={18} strokeWidth={2} />
+                          <span>Add another</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
                 {inviteSubmitting && (
                   <div style={{ fontSize: 12, color: "#fff", marginTop: 6 }} aria-live="polite">
                     <span className="invite-dot">.</span>
@@ -2097,13 +2234,8 @@ export default function ShowSection({
                     <span className="invite-dot">.</span>
                   </div>
                 )}
-                {inviteSuccess && !inviteSubmitting && (
-                  <div style={{ fontSize: 12, color: "#fff", marginTop: 6 }}>
-                    ✓ Invite sent! They'll receive an email with a link.
-                  </div>
-                )}
-                {inviteError && (
-                  <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>{inviteError}</div>
+                {inviteBatchError && (
+                  <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>{inviteBatchError}</div>
                 )}
 
                 {/* Pending invitations */}
@@ -2129,12 +2261,12 @@ export default function ShowSection({
               </div>
             )}
 
-            {/* Footer row: Leave room on the left; OK on the right once an
-                invite has been successfully sent (gives the sender a clean
-                way to dismiss the modal after the confirmation appears). */}
+            {/* Footer row: Leave room on the left; OK on the right once at
+                least one invite has been successfully sent (gives the sender
+                a clean way to dismiss the modal after confirmation appears). */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <button className="btn" onClick={initiateLeaveGroup} style={{ background: "var(--danger)", border: "none", color: "#fff", minWidth: 120 }}>Leave room</button>
-              {inviteSuccess && (
+              {inviteRows.some(r => r.status === "success") && (
                 <button
                   className="btn"
                   onClick={() => setShowGroupSettings(false)}

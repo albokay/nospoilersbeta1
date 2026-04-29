@@ -1409,6 +1409,22 @@ Fix for the regression captured in the prior arc's pending follow-up: viewing on
 
 **Behavioral consequence to remember:** the rooms-list room-button dot and the per-thread thread-card dots now move on different schedules. Entering a room still clears the room-button dot via `markRoomSeen` — even if the user doesn't open any individual threads. Per-thread dots persist until the user actually taps each thread. This is intentional; "I've acknowledged the room exists" and "I've read this specific thread" are different signals. Don't unify them without a clear UX reason.
 
+### 2026-04-27 — Multi-invite (desktop): up to 5 emails per batch, per-row results
+
+The room-settings invite-by-email field is now a multi-row form. A `CirclePlus` button below the rows opens a new email field; the Send button always sits on the last row and reads `Send invite` (singular) or `Send invites` (plural). Cap is 5 rows — when reached, the `+` button disappears (implicit cap, no nag). Mobile (`MobileInvite.tsx`) is intentionally untouched for now.
+
+**Architecture decisions:**
+
+- **Per-row `{ email, status, errorMsg }` rather than separate parallel arrays.** State is `InviteRow[]` co-locating the email value with its post-submit status. Cleaner than tracking errors and successes in two separate `Record<index, …>` maps that have to stay in sync with the input array.
+- **Partial-failure UX, no all-or-nothing.** Sends fire in parallel via `Promise.allSettled`. Each row's outcome updates only its own row — successful rows show `✓ Invite sent.` and lock; failed rows show their inline error message and stay editable. Rationale: pre-validating duplicates server-side would cost N round-trips, and the edge function already returns per-call `already_invited` / `invalid_email` codes the UI can surface directly.
+- **Editing a row resets its status to `idle`.** Without this, a sent-then-edited row would stay locked on its prior `success` state. The reset is in `updateInviteRowEmail`.
+- **Client-side guards mirror the existing single-row flow.** Self-invite check (caller's email matches), within-batch dedupe (lowercase-trim, first occurrence wins; later duplicates marked `Duplicate email in this batch.`), empty-row skip. Already-sent (`success`) rows are skipped on re-submit so a follow-up Send (after fixing one failed row) doesn't re-fire successful ones.
+- **Per-minute rate limit bumped 4 → 6 in `db.ts:1987` (`checkRateLimit('send_invite', 6, 60)`).** Previously 4 calls/60s would have rejected the 5th send in a max-5 batch. 6 leaves a one-call buffer for an immediate retry on a fixed-up row. Daily 10/day cap untouched — that's the real spam guard, enforced both client-side (RPC) and server-side (edge function row count). The numeric arg is just a parameter to the `check_rate_limit` Postgres function — no migration, no edge-function deploy.
+
+**Behavioral consequence:** the daily 10/24h cap is unchanged. A user who sends a batch of 5 has 5 daily invites remaining; if they try a 5-row batch and the day-cap kicks in mid-batch, each affected row shows the rate-limit message and `inviteBatchError` surfaces it once at the bottom of the form too. The "OK" footer button appears as soon as *any* row succeeds, so a partial-success batch can still be dismissed cleanly.
+
+**Files touched:** `src/lib/db.ts` (rate limit bump only), `src/components/ShowSection.tsx` (state refactor + handler rewrite + UI). Mobile invite path unchanged.
+
 ### Earlier (pre-audit, header/layout polish)
 
 The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.

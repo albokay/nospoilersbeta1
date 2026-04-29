@@ -1984,7 +1984,7 @@ export async function sendInvite(data: {
   inviteeEmail: string;
   inviterName: string;
 }): Promise<SendInviteResult> {
-  await checkRateLimit('send_invite', 4, 60);
+  await checkRateLimit('send_invite', 6, 60);
   await checkRateLimitDaily('send_invite', 10);
   const { data: result, error } = await supabase.functions.invoke("send-invite", {
     body: { ...data, appUrl: window.location.origin },
