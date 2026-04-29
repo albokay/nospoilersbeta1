@@ -152,7 +152,7 @@ export default function PublicProfilePage({
                 opacity: 0.8,
               }}
             >
-              <span style={{ opacity: 0.7 }}>@{username}</span> hasn't written anything publicly yet.
+              <span style={{ opacity: 0.7 }}>@{username}</span> hasn't<br />written anything publicly yet.
             </div>
           )}
 
