@@ -140,7 +140,19 @@ export default function PublicProfilePage({
       {!loading && !notFound && (
         <div className="container" style={{ marginTop: 12 }}>
           {showTabOrder.length === 0 && !loading && (
-            <div className="muted" style={{ padding: "24px 0" }}>Nothing to show yet.</div>
+            <div
+              className="editorial"
+              style={{
+                padding: "32px 0",
+                fontSize: 28,
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                lineHeight: 1.05,
+                color: "#fff",
+              }}
+            >
+              {username} hasn't written anything publicly.
+            </div>
           )}
 
           {activeTab && (
