@@ -17,6 +17,7 @@ import type { PendingReference } from "./ResponseComposer";
 import { useScrollHighlight } from "../hooks/useScrollHighlight";
 import Tooltip from "./Tooltip";
 import { annotateTextWithSups, UnmatchedSups } from "../lib/citationUtils";
+import { linkifyNodes } from "../lib/linkify";
 import type { SupEntry } from "../lib/citationUtils";
 
 // Matches [PROMPT: any text including newlines]
@@ -458,7 +459,8 @@ export default function InlineThreadView({
                     if (typeof part === "string") {
                       const { nodes, matchedIndices } = annotateTextWithSups(part, remainingSups);
                       remainingSups = remainingSups.filter(s => !matchedIndices.has(s.index));
-                      renderedParts.push(...nodes.map((n, i) => <React.Fragment key={`tp-${pkIdx}-${i}`}>{n}</React.Fragment>));
+                      const linkified = linkifyNodes(nodes);
+                      renderedParts.push(...linkified.map((n, i) => <React.Fragment key={`tp-${pkIdx}-${i}`}>{n}</React.Fragment>));
                     } else {
                       renderedParts.push(<React.Fragment key={`tf-${pkIdx}`}>{part}</React.Fragment>);
                     }

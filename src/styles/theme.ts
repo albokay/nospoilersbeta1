@@ -242,6 +242,11 @@ hr{ display:none; }
 .editorial{ font-family: "Lora", Georgia, "Palatino Linotype", Palatino, serif; font-weight: 400; }
 .muted{ color:var(--dos-gray); font-size:var(--t4); }
 .card{ background:transparent; border:none; padding:12px; border-radius:24px; }
+/* Auto-linkified URLs in post / reply bodies. Inherits color from the
+   surrounding body so green/blue/page contexts all look correct, with an
+   underline to make the link affordance explicit. */
+.auto-link{ color: inherit; text-decoration: underline; text-underline-offset: 2px; word-break: break-word; }
+.auto-link:hover{ opacity: 0.8; }
 
 /* controls */
 .badge{

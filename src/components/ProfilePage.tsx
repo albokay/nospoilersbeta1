@@ -9,6 +9,7 @@ import type { RoomVisibility } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
+import { linkifyText } from "../lib/linkify";
 import EpisodeTag from "./EpisodeTag";
 import Tooltip from "./Tooltip";
 import EmptyProfileWelcome from "./EmptyProfileWelcome";
@@ -1348,7 +1349,7 @@ export default function ProfilePage({
                       </div>
                       <div style={{ marginTop: 6, whiteSpace: expandedIds.has(t.id) ? "pre-wrap" : undefined, ...((isGroup || isPub) ? { color: cardFg } : {}) }}
                         className={expandedIds.has(t.id) ? undefined : "clamp3"}>
-                        {expandedIds.has(t.id) ? t.body : t.preview}
+                        {expandedIds.has(t.id) ? linkifyText(t.body) : t.preview}
                       </div>
                       {(isGroup || isPub) && visibleReplyCountByThreadId[t.id] > 0 && (
                         <div style={{ position: "absolute", right: 12, bottom: 8, fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
@@ -1406,7 +1407,7 @@ export default function ProfilePage({
                       </div>
                       <div style={{ marginTop: 6, fontSize: 15, whiteSpace: isExpanded ? "pre-wrap" : undefined }}
                         className={isExpanded ? undefined : "clamp3"}>
-                        {r.body}
+                        {linkifyText(r.body)}
                       </div>
                     </div>
                   );})}
@@ -1449,7 +1450,7 @@ export default function ProfilePage({
                       </div>
                       <div style={{ marginTop: 6, fontSize: 15, whiteSpace: isExpanded ? "pre-wrap" : undefined }}
                         className={isExpanded ? undefined : "clamp3"}>
-                        {r.body}
+                        {linkifyText(r.body)}
                       </div>
                     </div>
                   );})}
@@ -1533,7 +1534,7 @@ export default function ProfilePage({
                       </div>
                       <div style={{ marginTop: 6, whiteSpace: isExpanded ? "pre-wrap" : undefined }}
                         className={isExpanded ? undefined : "clamp3"}>
-                        {r.body}
+                        {linkifyText(r.body)}
                       </div>
                     </div>
                   );})}

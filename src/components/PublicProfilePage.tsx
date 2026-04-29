@@ -8,6 +8,7 @@ import {
   fetchPublicProgressForUser,
 } from "../lib/db";
 import { canView, timeAgo, type ViewerProgress } from "../lib/utils";
+import { linkifyText } from "../lib/linkify";
 import EpisodeTag from "./EpisodeTag";
 import LoadingDots from "./LoadingDots";
 import type { ProfileTabData } from "./ProfilePage";
@@ -267,7 +268,7 @@ export default function PublicProfilePage({
                       </div>
                       <div style={{ marginTop: 6, fontSize: 15 }}
                         className={expandedIds.has(r.id) ? undefined : "clamp3"}>
-                        {r.body}
+                        {linkifyText(r.body)}
                       </div>
                     </div>
                   ))}

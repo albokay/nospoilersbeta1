@@ -1425,6 +1425,38 @@ The room-settings invite-by-email field is now a multi-row form. A `CirclePlus` 
 
 **Files touched:** `src/lib/db.ts` (rate limit bump only), `src/components/ShowSection.tsx` (state refactor + handler rewrite + UI). Mobile invite path unchanged.
 
+### 2026-04-27 — Auto-linkify URLs in post / reply bodies
+
+URLs in post and reply bodies are now rendered as clickable links that open in a new tab. Plain-text storage is unchanged — linkification is render-time only, fully reversible by removing the helper. New runtime dep: `linkify-it` (~9 KB), the matcher used by `markdown-it`. Battle-tested edge handling (trailing punctuation, parens-in-URLs, bare domains, emails) matters at the body-text scale users actually paste links at.
+
+**Architecture:**
+
+- New helper at `src/lib/linkify.tsx` exports two functions:
+  - `linkifyText(text)` — for raw body strings; returns a single React fragment.
+  - `linkifyNodes(nodes)` — for already-mixed React.ReactNode arrays (e.g. citation-annotated bodies). Walks the array and linkifies only the string entries; JSX elements (citation spans, sup buttons, prompt fragments) pass through untouched.
+- All anchors use `target="_blank" rel="noopener noreferrer ugc"`. The `noopener noreferrer` pair is mandatory for `_blank` (prevents tabnabbing). `ugc` signals to search engines that user-generated links shouldn't transfer trust — light SEO hygiene now while it's cheap.
+- `onClick={e => e.stopPropagation()}` on the anchor so clicking a link in a card doesn't also trigger the card's tap-handler (matters on profile cards which are themselves clickable).
+- New CSS class `.auto-link` (`color: inherit; text-decoration: underline; text-underline-offset: 2px; word-break: break-word`). Inheriting color means green / blue / page contexts all keep their look — no new context-specific overrides needed.
+
+**Render sites covered:**
+
+| Surface | File:line |
+|---|---|
+| Desktop public/private thread body | `InlineThreadView.tsx:451-470` (wraps `annotateTextWithSups` output via `linkifyNodes`) |
+| Desktop reply bodies (with citations) | `RepliesList.tsx:84-130` (linkify applied inside the local `annotateTextWithSups` so all 7 callsites get it) |
+| Profile starred entries (expanded body) | `ProfilePage.tsx:1352` |
+| Profile your responses / starred responses / responses to you | `ProfilePage.tsx:1410, 1453, 1537` |
+| Public profile responses | `PublicProfilePage.tsx:270` |
+| Mobile thread body | `MobileThread.tsx:323` |
+| Mobile reply card body | `MobileThread.tsx:709` |
+| Mobile compose quote-preview | `MobileRespond.tsx:370` |
+
+**Notes for future work:**
+
+- **Two `annotateTextWithSups` implementations.** There's a module-private one in `RepliesList.tsx:84-130` and an exported one in `lib/citationUtils.tsx:31`. They've drifted (or never converged). I patched both paths separately — the local one wraps its own return; the citationUtils one is wrapped at the InlineThreadView call site. If these ever consolidate, push the linkifyNodes call inside the canonical implementation.
+- **Composer textareas intentionally skipped.** Auto-linking is render-only; the textarea editing the body still shows raw text. Users editing a post see the URL string they typed, not a link.
+- **Auto-link applies to body fields only**, not titles. Titles (`titleBase`, `titlePart2`, `titleSuffix`) are short labels by design — pasting URLs there is unusual and would visually break the heading.
+
 ### Earlier (pre-audit, header/layout polish)
 
 The stretch of commits before this audit arc landed a series of header/layout adjustments: **4feb4f1** added CLAUDE.md; **60808a5** bumped `--site-header-h` 56→96px at ≤1133px; **2a3d62b** kept the profile pill inline next to sign-out; **6dacde3** shifted the journal diary stack +56px right on desktop. Plus three reverts of earlier header experiments (**0a93496 / bdd2e72 / e461b52**) and the experiments themselves (**431f790 / 35746c5 / c8e092b / 0eed264 / e625d2c**). Net effect: fixed header is a single right cluster (pill + sign-out + admin), profile diary nudges right on desktop to align under the pill, narrow breakpoint reserves enough vertical space for the tall logo column.

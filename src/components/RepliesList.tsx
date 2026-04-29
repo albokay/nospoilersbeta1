@@ -41,6 +41,7 @@ import Username from "./Username";
 import Tooltip from "./Tooltip";
 import type { PendingReference } from "./ResponseComposer";
 import { useScrollHighlight } from "../hooks/useScrollHighlight";
+import { linkifyNodes } from "../lib/linkify";
 
 // Matches [QUOTE: any text including newlines]
 const QUOTE_TOKEN_RE = /\[QUOTE:([\s\S]*?)\]/;
@@ -98,7 +99,7 @@ function annotateTextWithSups(
     }
   }
   const matchedIndices = new Set(markers.map(m => m.index));
-  if (!markers.length) return { nodes: [text], matchedIndices };
+  if (!markers.length) return { nodes: linkifyNodes([text]), matchedIndices };
   markers.sort((a, b) => a.endPos - b.endPos);
   const nodes: React.ReactNode[] = [];
   let last = 0;
@@ -126,7 +127,11 @@ function annotateTextWithSups(
     last = m.endPos;
   }
   if (last < text.length) nodes.push(text.slice(last));
-  return { nodes, matchedIndices };
+  // Linkify URL-shaped substrings inside the plain-text segments. The
+  // citation spans / sups above pass through untouched (they're elements,
+  // not strings), so quoted-passage highlighting and inline citations
+  // continue to work alongside auto-linking.
+  return { nodes: linkifyNodes(nodes), matchedIndices };
 }
 
 /** Small inline fallback sups for quotes whose text couldn't be found in the body. */

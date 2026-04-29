@@ -12,6 +12,7 @@ import {
   deleteReply,
   markThreadSeen,
 } from "../lib/db";
+import { linkifyText } from "../lib/linkify";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import { canView } from "../lib/utils";
 import LoadingDots from "../components/LoadingDots";
@@ -320,7 +321,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
             whiteSpace: "pre-wrap",
             overflowWrap: "break-word",
           }}>
-            {threadDeleted ? "[deleted by author]" : (thread.body || "")}
+            {threadDeleted ? "[deleted by author]" : linkifyText(thread.body || "")}
           </div>
 
           <div style={{
@@ -705,7 +706,7 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
         whiteSpace: "pre-wrap",
         overflowWrap: "break-word",
       }}>
-        {reply.body}
+        {linkifyText(reply.body)}
       </div>
       <div style={{
         marginTop: 8,

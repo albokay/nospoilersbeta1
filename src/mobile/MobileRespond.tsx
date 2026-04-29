@@ -10,6 +10,7 @@ import {
 } from "../lib/db";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import { canView, effectiveProgress } from "../lib/utils";
+import { linkifyText } from "../lib/linkify";
 import LoadingDots from "../components/LoadingDots";
 
 // /m/rooms/:groupId/thread/:threadId/respond — write a response to a
@@ -367,7 +368,7 @@ export default function MobileRespond({ groupId, threadId }: { groupId: string; 
                     whiteSpace: "pre-wrap",
                     overflowWrap: "break-word",
                   }}>
-                    {r.body}
+                    {linkifyText(r.body)}
                   </div>
                 </div>
               );
