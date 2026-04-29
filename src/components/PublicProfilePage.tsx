@@ -149,9 +149,10 @@ export default function PublicProfilePage({
                 letterSpacing: 0.5,
                 lineHeight: 1.05,
                 color: "#fff",
+                opacity: 0.8,
               }}
             >
-              {username} hasn't written anything publicly.
+              <span style={{ opacity: 0.7 }}>@{username}</span> hasn't written anything publicly yet.
             </div>
           )}
 
