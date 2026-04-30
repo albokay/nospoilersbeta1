@@ -10,6 +10,26 @@ const BLOCKS = [
   { id: "blue",      color: "#355eb8", z: 5, blend: "color-burn" },
 ] as const;
 
+// Context background colors set by body classes (see theme.ts).
+// When a block matches the current context bg, it disappears against its
+// surroundings — render that block 10% darker so it stays visible.
+const CONTEXT_BG: Record<string, string> = {
+  "group-context":  "#adc8d7", // matches the lightBlue block
+  "public-context": "#dea838", // matches the green block (canon yellow)
+  // default (private/home) bg is #7abd8e — doesn't match any block, so no darkening.
+};
+
+function darken10(hex: string): string {
+  const m = hex.replace("#", "");
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  const dr = Math.round(r * 0.9);
+  const dg = Math.round(g * 0.9);
+  const db = Math.round(b * 0.9);
+  return `#${dr.toString(16).padStart(2, "0")}${dg.toString(16).padStart(2, "0")}${db.toString(16).padStart(2, "0")}`;
+}
+
 type BlockId = (typeof BLOCKS)[number]["id"];
 type Pos = { x: number; y: number };
 type Layout = Record<BlockId, Pos>;
@@ -88,6 +108,31 @@ export default function SidebarLogo({
   const [layout, setLayout] = useState<Layout | null>(null);
   const [settled, setSettled] = useState(false);
 
+  // Track the current context bg so the matching block can be rendered 10%
+  // darker (otherwise it disappears against the page background). Reads
+  // document.body.classList and updates via MutationObserver, since the
+  // context classes are toggled imperatively by ShowSection / PublicProfilePage.
+  const [contextBg, setContextBg] = useState<string | null>(() => {
+    if (typeof document === "undefined") return null;
+    for (const cls of Object.keys(CONTEXT_BG)) {
+      if (document.body.classList.contains(cls)) return CONTEXT_BG[cls];
+    }
+    return null;
+  });
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const update = () => {
+      let next: string | null = null;
+      for (const cls of Object.keys(CONTEXT_BG)) {
+        if (document.body.classList.contains(cls)) { next = CONTEXT_BG[cls]; break; }
+      }
+      setContextBg(prev => (prev === next ? prev : next));
+    };
+    const obs = new MutationObserver(update);
+    obs.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+
   useEffect(() => {
     const target =
       ARRANGEMENTS[Math.floor(Math.random() * ARRANGEMENTS.length)];
@@ -148,7 +193,9 @@ export default function SidebarLogo({
                 width: BLOCK,
                 height: BLOCK,
                 borderRadius: 15,
-                background: block.color,
+                background: contextBg && contextBg.toLowerCase() === block.color.toLowerCase()
+                  ? darken10(block.color)
+                  : block.color,
                 zIndex: block.z,
                 mixBlendMode: block.blend as React.CSSProperties["mixBlendMode"],
                 transform: `translate(${layout[block.id].x}px, ${layout[block.id].y}px)`,
