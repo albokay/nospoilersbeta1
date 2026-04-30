@@ -2672,7 +2672,6 @@ export default function ShowSection({
                         style={{
                           background: "#7abd8e", color: "#fff", borderRadius: 9999,
                           padding: "2px 7px", fontWeight: 700,
-                          display: "inline-flex", alignItems: "center",
                         }}>
                         <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
                       </span>
