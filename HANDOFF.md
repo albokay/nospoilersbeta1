@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-04-29)
+# Sidebar — Technical State (2026-04-30)
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -1306,6 +1306,22 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-04-30 — Notification overhaul follow-ups
+
+Three rounds of follow-up adjustments after the 2026-04-29 overhaul landed.
+
+**Sort fix — friend-room view bypassed sort entirely.** `activeList` filtered `allThreads` directly when `activeGroupId` was set, never running the sort comparator that lived inside `baseVisible`. None of the three `sortBy` modes (relevance / post / episode) had any effect in friend rooms. Refactored: `sortThreads(input)` extracted as a single closure used by both `baseVisible` (public path) and `activeList` (friend-room path). One source of truth for sort logic.
+
+**Sort fix — tier function disagreed with red badge on freshness boundary.** First pass of the tier function used `lastSeenByThread[t.id]` (= NOW after migration backfill) as the boundary for hidden-reply detection. The red badge uses `hiddenBaseAt[t.id]` (= thread first-encounter time, written ONCE on first sighting and never updated). Result: a thread with a hidden reply created before the backfill timestamp would fire the red badge but be classified as Tier 4 by the sort, landing it visually below Tier 4 threads with no new content at all. Fixed by routing tier classification through the same `openedAt` / `baseAt` boundaries that `getNewCounts` uses, so badge state and tier sort can never disagree.
+
+**Inline badge tweaks.** Inside the bottom-right `.replyCount` flex row:
+
+- Red own-thread badge moved to the LEFT of the reply count (was to the right). Functionality + styling untouched (size, shadow, count, hover-X, 36h auto-expiry). Direction-only change.
+- Red tooltip copy updated: "There is new writing in here for you...for when you catch up." `width={210}` forces 2-line wrap.
+- Green new-reply pill (visibleNew > 0 OR freshReplyThreadIds) wrapped in a Tooltip: "There is new writing in here for you." `width={140}` for 2-line wrap. Behavior unchanged when no new replies — just the bare mail+count span renders, no tooltip.
+
+**Pinned for next time:** when introducing a new freshness mechanism that overlaps with an existing one (like layering DB last_seen on top of `hiddenBaseAt`), make consumers of both go through the same boundary. The 4/29 first pass had `getNewCounts` (badge consumer) and `tierOf` (sort consumer) reading from different boundaries. Visually independent but logically coupled — the user noticed the disagreement immediately.
 
 ### 2026-04-29 — Notification overhaul: client wiring (lands on top of 20260429 migration)
 

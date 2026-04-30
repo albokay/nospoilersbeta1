@@ -2648,25 +2648,39 @@ export default function ShowSection({
                 </div>
 
                 <div className="replyCount" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span className={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? "newReplyBadge" : ""}
-                    style={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? {
-                    background: "#7abd8e", color: "#fff", borderRadius: 9999,
-                    padding: "2px 7px", fontWeight: 700,
-                  } : {}}>
-                    <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
-                  </span>
-                  {/* Red 28×28 own-thread badge — relocated 2026-04-29 to sit inline */}
-                  {/* next to the reply count. Functionality and styling preserved   */}
-                  {/* (size, shadow, color, count, hover-X dismissal, 36h auto-expiry). */}
-                  {/* Only the position changes: absolute-left → inline-right.       */}
+                  {/* Red 28×28 own-thread badge sits to the LEFT of the reply count.   */}
+                  {/* Functionality + styling preserved (size, shadow, color, count,    */}
+                  {/* hover-X dismissal, 36h auto-expiry); only position changes.       */}
                   {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
                     <Tooltip
-                      text="There are new responses to you in here (for when you catch up)."
-                      direction="left"
-                      align="right"
+                      text="There is new writing in here for you...for when you catch up."
+                      direction="above"
+                      align="center"
+                      width={210}
                     >
                       <ThreadRedDot count={hiddenNew} threadId={t.id} onDismiss={() => setDismissedDots(d => d + 1)} />
                     </Tooltip>
+                  )}
+                  {(visibleNew > 0 || freshReplyThreadIds[t.id]) ? (
+                    <Tooltip
+                      text="There is new writing in here for you."
+                      direction="above"
+                      align="center"
+                      width={140}
+                    >
+                      <span className="newReplyBadge"
+                        style={{
+                          background: "#7abd8e", color: "#fff", borderRadius: 9999,
+                          padding: "2px 7px", fontWeight: 700,
+                          display: "inline-flex", alignItems: "center",
+                        }}>
+                        <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <span>
+                      <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
+                    </span>
                   )}
                 </div>
               </div>
