@@ -1131,25 +1131,73 @@ export default function ShowSection({
     return [...dbThreads, ...seedThreads.filter(t => t.showId === showId && !dbIds.has(t.id))];
   }, [dbThreads, showId]);
 
+  // ── Override pin: publisher's just-published thread (relevance only) ───────
+  //
+  // Captured ONCE per context-mount (user / showId / activeGroupId). The pin
+  // expires when (a) the thread receives a non-own reply, OR (b) 6h pass
+  // since publish — but the expiration check happens at mount only. A
+  // publisher who keeps the page open past either threshold continues to
+  // see the pin until next mount (intentional: "transition should be
+  // invisible to the active user").
+  //
+  // Stamps written to `ns_just_published_<userId>` at insertThread success
+  // (skipped for private journal). Captured here at the moment threads
+  // finish loading, then frozen in the useMemo cache so subsequent reply
+  // arrivals don't recompute.
+  //
+  // replyMeta is INTENTIONALLY excluded from deps — including it would
+  // unpin threads when replies arrived mid-session, which is exactly what
+  // the spec rules out. The closure captures replyMeta at first compute.
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  const pinSet = useMemo<Map<string, number>>(() => {
+    if (!user || threadsLoading) return new Map();
+    let raw: Record<string, number> = {};
+    try { raw = JSON.parse(localStorage.getItem(`ns_just_published_${user.id}`) || "{}"); } catch { /* keep empty */ }
+    const now = Date.now();
+    const result = new Map<string, number>();
+    for (const [tid, publishedAt] of Object.entries(raw)) {
+      if (now - publishedAt > SIX_HOURS) continue; // expired by time
+      const meta = replyMeta[tid] ?? [];
+      const hasNonOwnReply = meta.some((r: any) => r.authorId !== user.id);
+      if (hasNonOwnReply) continue; // expired by reply arrival
+      result.set(tid, publishedAt);
+    }
+    return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, showId, activeGroupId, threadsLoading]);
+
   // ── Shared sort comparator (used by baseVisible + activeList) ──────────────
   //
   // sortBy values:
   //   - "post":      latest activity desc (single criterion)
   //   - "episode":   season → episode → updatedAt (all desc)
   //   - "relevance": tiered (lowest tier first, recency desc within tier).
-  //       Tier 1: any visible reply newer than user's last_seen for the
-  //               thread. Also hits if the thread is in newHighlights or
-  //               freshReplyThreadIds (progress-bump-induced "just revealed"
-  //               sets, kept as a Tier 1 shortcut so the prior UX survives).
-  //       Tier 2: hidden reply newer than last_seen, with parent authored
-  //               by the user (= "someone replied to your post / your reply").
-  //       Tier 3: hidden reply newer than last_seen, parent NOT user-authored.
-  //       Tier 4: rest.
   //
-  // Defined here (not inside any useMemo) so both baseVisible and activeList
-  // can share the same closure. Re-derived on every render, but the two
-  // useMemos that consume it gate on the underlying inputs in their dep
-  // arrays so this isn't a perf problem in practice.
+  // Friend-room hierarchy (full):
+  //   pin (publisher-only) → 1a → 1b → 1c → 1d → 1e → 2a → 2b → rest
+  //     1a: visible-new reply addressed to user (parent is user-authored)
+  //     1b: brand-new thread from friends, <36h, user has not written in it
+  //     1c: visible-new reply in thread user has written in
+  //     1d: visible-new reply in thread user has read but not written in
+  //     1e: brand-new thread, ≥36h, user has not written in it
+  //     2a: hidden-new reply addressed to user
+  //     2b: hidden-new reply elsewhere
+  //
+  // Public hierarchy (simplified, drops 1b/1e): "from friends" doesn't
+  // map cleanly to public context, so brand-new lanes don't exist there.
+  //   pin → 1a → 1c → 1d → 2a → 2b → rest
+  //
+  // "Brand-new" = thread the user has never marked seen (no last_seen row,
+  // no localStorage lastOpened) AND createdAt within window. Once opened,
+  // a thread leaves the brand-new lanes regardless of age.
+  //
+  // "Participated" = user has authored at least one reply in the thread
+  // (writing only — liking does not count).
+  //
+  // Tier-classification + sort uses the SAME `openedAt` and `baseAt`
+  // boundaries as getNewCounts so the green/red badges and the tier sort
+  // can never disagree on what counts as new.
+  const THIRTY_SIX_HOURS = 36 * 60 * 60 * 1000;
   const sortThreads = (input: Thread[]): Thread[] => {
     if (sortBy === "post") {
       return [...input].sort((a, b) => b.updatedAt - a.updatedAt);
@@ -1161,19 +1209,26 @@ export default function ShowSection({
         return b.updatedAt - a.updatedAt;
       });
     }
-    // relevance — tiered. Uses the same `openedAt` (visible boundary) and
-    // `baseAt` (hidden boundary) that getNewCounts uses, so the green/red
-    // badges and the tier sort agree on what counts as "new." Without this
-    // alignment, the red badge could fire on a thread that the tier function
-    // classifies as Tier 4, leaving Tier 4 threads visually ahead of an
-    // unmistakable Tier 2 thread.
-    const newlyVisible = newHighlights[showId] ?? {};
+    // relevance — tiered.
     const myId = user?.id;
+    const myUsername = profile?.username;
     const prog = effectiveProgress;
+    const inFriendRoom = !!activeGroupId;
+    const now = Date.now();
+
     const tierOf = (t: Thread): number => {
       const meta = replyMeta[t.id] ?? [];
       const openedAt = lastSeenByThread[t.id] ?? lastOpenedAt[t.id] ?? 0;
       const baseAt   = hiddenBaseAt[t.id] ?? Date.now();
+      // "Brand-new" requires literally never having marked-seen the thread.
+      // After the 20260429 backfill, every existing thread has a row, so
+      // brand-new = a thread created after deploy that the user has not yet
+      // opened-and-scrolled.
+      const userRead   = (lastSeenByThread[t.id] !== undefined) || (lastOpenedAt[t.id] !== undefined);
+      const userWrote  = meta.some(r => r.authorId === myId);
+      const brandNew   = !userRead;
+      const threadAge  = now - t.updatedAt;  // updatedAt approximates createdAt for new threads
+
       const metaById: Record<string, typeof meta[number]> = {};
       for (const r of meta) metaById[r.id] = r;
       const getParent = (r: typeof meta[number]): typeof meta[number] | null =>
@@ -1187,36 +1242,59 @@ export default function ShowSection({
         }
         return true;
       };
-      if (newlyVisible[t.id] || freshReplyThreadIds[t.id]) return 1;
-      let hasVisibleNew = false, hasHiddenNewToMe = false, hasHiddenNewOther = false;
+
+      let hasVisibleNew = false;
+      let hasVisibleNewToMe = false;
+      let hasHiddenNewToMe = false;
+      let hasHiddenNewOther = false;
       for (const r of meta) {
-        if (r.authorId === myId) continue;
+        if (r.authorId === myId) continue;  // own replies don't trigger any tier
         const visible = chainVisible(r);
         if (visible) {
-          // Visible-new boundary: openedAt (matches green badge in getNewCounts).
-          if (r.createdAt > openedAt) hasVisibleNew = true;
+          if (r.createdAt > openedAt) {
+            hasVisibleNew = true;
+            const parent = getParent(r);
+            const toUser = parent ? parent.authorId === myId : t.author === myUsername;
+            if (toUser) hasVisibleNewToMe = true;
+          }
         } else {
-          // Hidden-new boundary: baseAt (matches red badge in getNewCounts),
-          // and exclude risky-revealed replies (user has already acknowledged).
           if (r.createdAt > baseAt && !riskyRevealedIds.has(r.id)) {
             const parent = getParent(r);
-            const toUser = parent ? parent.authorId === myId : t.author === profile?.username;
+            const toUser = parent ? parent.authorId === myId : t.author === myUsername;
             if (toUser) hasHiddenNewToMe = true;
             else hasHiddenNewOther = true;
           }
         }
       }
-      if (hasVisibleNew) return 1;
-      if (hasHiddenNewToMe) return 2;
-      if (hasHiddenNewOther) return 3;
-      return 4;
+
+      // Tier classification. Order: most personal/urgent first.
+      if (hasVisibleNewToMe)                                          return 1;  // 1a
+      if (inFriendRoom && brandNew && threadAge < THIRTY_SIX_HOURS && !userWrote) return 2;  // 1b
+      if (hasVisibleNew && userWrote)                                 return 3;  // 1c
+      if (hasVisibleNew && userRead)                                  return 4;  // 1d
+      if (inFriendRoom && brandNew && !userWrote)                     return 5;  // 1e
+      if (hasHiddenNewToMe)                                           return 6;  // 2a
+      if (hasHiddenNewOther)                                          return 7;  // 2b
+      return 8;  // rest
     };
-    return [...input].sort((a, b) => {
+
+    // Pull pinned threads out before tier sort. Pinned threads are excluded
+    // from tier evaluation entirely (no double-appearance) and stack at the
+    // top sorted by publish time desc.
+    const pinned: Thread[] = [];
+    const others: Thread[] = [];
+    for (const t of input) {
+      if (pinSet.has(t.id)) pinned.push(t);
+      else others.push(t);
+    }
+    pinned.sort((a, b) => (pinSet.get(b.id) ?? 0) - (pinSet.get(a.id) ?? 0));
+    others.sort((a, b) => {
       const ta = tierOf(a);
       const tb = tierOf(b);
       if (ta !== tb) return ta - tb;
       return b.updatedAt - a.updatedAt;
     });
+    return [...pinned, ...others];
   };
 
   const baseVisible = useMemo(() => {
@@ -1235,7 +1313,7 @@ export default function ShowSection({
     }
 
     return sortThreads(list);
-  }, [allThreads, progress, searchQuery, sortBy, newHighlights, showId, reWatchOnly, replyMeta, lastSeenByThread, lastOpenedAt, hiddenBaseAt, freshReplyThreadIds, riskyRevealedIds, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
+  }, [allThreads, progress, searchQuery, sortBy, newHighlights, showId, reWatchOnly, replyMeta, lastSeenByThread, lastOpenedAt, hiddenBaseAt, freshReplyThreadIds, riskyRevealedIds, pinSet, activeGroupId, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
 
   // ── Green-tab: compute newly visible threads ──
   const prevProgRef = useRef<{ s: number; e: number } | undefined>(undefined);
@@ -1278,7 +1356,7 @@ export default function ShowSection({
     const groupIdSet = new Set(groupThreadsData.map(t => t.id));
     const filtered = allThreads.filter(t => groupIdSet.has(t.id));
     return sortThreads(filtered);
-  }, [activeGroupId, groupThreadsData, allThreads, displayed, sortBy, replyMeta, lastSeenByThread, lastOpenedAt, hiddenBaseAt, freshReplyThreadIds, riskyRevealedIds, newHighlights, showId, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
+  }, [activeGroupId, groupThreadsData, allThreads, displayed, sortBy, replyMeta, lastSeenByThread, lastOpenedAt, hiddenBaseAt, freshReplyThreadIds, riskyRevealedIds, newHighlights, pinSet, showId, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
 
   const activeLoading = activeGroupId ? groupThreadsLoading : threadsLoading;
 
@@ -1521,6 +1599,26 @@ export default function ShowSection({
         localStorage.setItem("ns_hidden_base", JSON.stringify(next));
         return next;
       });
+
+      // Stamp the publish time for the override-pin (relevance sort).
+      // Skipped for private journal posts — no social-momentum need there.
+      // Read at mount-time only by the pin capture; expires at 6h or first
+      // non-own reply (checked at next mount, never mid-session).
+      if (user && composeDestination !== "private") {
+        const pubKey = `ns_just_published_${user.id}`;
+        try {
+          const map = JSON.parse(localStorage.getItem(pubKey) || "{}") as Record<string, number>;
+          map[t.id] = now;
+          // GC: drop entries older than 6h while we're here.
+          const SIX_H = 6 * 60 * 60 * 1000;
+          for (const [tid, ts] of Object.entries(map)) {
+            if (now - ts > SIX_H) delete map[tid];
+          }
+          localStorage.setItem(pubKey, JSON.stringify(map));
+        } catch { /* corrupt JSON: silently overwrite */
+          localStorage.setItem(pubKey, JSON.stringify({ [t.id]: now }));
+        }
+      }
 
       setDbThreads(prev => [t, ...prev]);
       setReplyCounts(rc => ({ ...rc, [t.id]: 0 }));

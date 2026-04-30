@@ -1307,6 +1307,38 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-04-30 — Relevance hierarchy refinement (Tier 1 sub-tiering + publisher override pin)
+
+Replaces the flat Tier 1 / Tier 2 / Tier 3 model with a richer hierarchy that weighs personal connection above pure recency within visible content, surfaces brand-new friend posts as a 36h momentum lane, and pins the publisher's own just-published thread to the top of *their* view for up to 6h. Spec captured in `relevance rethink.pdf` (project root).
+
+**New hierarchy:**
+
+- **Override (publisher-only):** thread the user just published, until either a non-own reply lands OR 6h elapse. Captured at mount, never re-evaluated mid-session — a publisher who keeps the page open past either threshold continues to see the pin until next mount. Intentional ("transition should be invisible to the active user").
+- **Tier 1 (visible new):** 1a (reply addressed to user) → 1b (brand-new friend thread <36h, user hasn't written) → 1c (visible-new in user-participated thread) → 1d (visible-new in user-read thread) → 1e (brand-new ≥36h, user hasn't written).
+- **Tier 2 (hidden new):** 2a (parent user-authored) → 2b (other).
+- **Rest.**
+
+**Confirmed UX rules (spec):**
+
+- Brand-new = literally never marked-seen AND createdAt within window. Once opened, a thread leaves brand-new lanes regardless of age.
+- Brand-new + user has written in it → 1c (participation outranks novelty).
+- "Participated" = writing only, NOT liking. Liking is too cheap a signal.
+- Public context drops 1b/1e (no "brand-new from friends" concept). Public hierarchy: pin → 1a → 1c → 1d → 2a → 2b → rest. Pin still applies for public publishes.
+- Override pin expires only on non-own replies; publisher's follow-up to their own thread doesn't unpin.
+- Pinned threads excluded from tier evaluation entirely (no double-appearance lower in the list).
+
+**Implementation pinned for future readers:**
+
+- `ns_just_published_<userId>` localStorage map of `{threadId: publishedAtMillis}`. Written at insertThread success (skipped for private journal). 6h-expired entries garbage-collected lazily on next write.
+- `pinSet` is a `useMemo` keyed on `[user?.id, showId, activeGroupId, threadsLoading]` — **`replyMeta` deliberately excluded from deps** so a reply arriving mid-session doesn't unpin. Closure captures replyMeta at first compute (when threadsLoading flips false) and freezes. ESLint exhaustive-deps disabled with comment to document the choice.
+- Tier classification uses the same `openedAt` (visible boundary) and `baseAt` (hidden boundary) that getNewCounts uses, preserving badge/sort agreement (the trap from the prior iteration).
+- Friend-room vs public dispatch via `inFriendRoom = !!activeGroupId` inside `tierOf`. Public skips the brand-new lanes (1b returns 5, 1e returns 5 — collapsed into Tier 4 functionally), full friend-room hierarchy uses 1-8.
+- Pinned threads pulled out of `input` before tier sort, sorted among themselves by publishedAt desc, prepended to the sorted-others list.
+
+**Design intent (carried forward):** the sort actively shapes social behavior. Personal connection above timing, momentum lane for fresh friend posts (catch-fire window), clean expiry for stale unanswered ones, small emotional reward at publish. Public is the stripped-down version because the social dynamics are different there.
+
+**Out of scope (capture for later):** decay weighting within tiers (currently straight recency); "stale investment" signal for threads the user contributed to that have gone quiet. Memoization of `participationByThread` / `seenByThread` for scale — fine at beta scale, revisit if load justifies.
+
 ### 2026-04-30 — Notification overhaul follow-ups
 
 Three rounds of follow-up adjustments after the 2026-04-29 overhaul landed.
