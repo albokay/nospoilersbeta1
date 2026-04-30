@@ -1161,13 +1161,19 @@ export default function ShowSection({
         return b.updatedAt - a.updatedAt;
       });
     }
-    // relevance — tiered
+    // relevance — tiered. Uses the same `openedAt` (visible boundary) and
+    // `baseAt` (hidden boundary) that getNewCounts uses, so the green/red
+    // badges and the tier sort agree on what counts as "new." Without this
+    // alignment, the red badge could fire on a thread that the tier function
+    // classifies as Tier 4, leaving Tier 4 threads visually ahead of an
+    // unmistakable Tier 2 thread.
     const newlyVisible = newHighlights[showId] ?? {};
     const myId = user?.id;
     const prog = effectiveProgress;
     const tierOf = (t: Thread): number => {
       const meta = replyMeta[t.id] ?? [];
-      const seenAt = lastSeenByThread[t.id] ?? lastOpenedAt[t.id] ?? 0;
+      const openedAt = lastSeenByThread[t.id] ?? lastOpenedAt[t.id] ?? 0;
+      const baseAt   = hiddenBaseAt[t.id] ?? Date.now();
       const metaById: Record<string, typeof meta[number]> = {};
       for (const r of meta) metaById[r.id] = r;
       const getParent = (r: typeof meta[number]): typeof meta[number] | null =>
@@ -1185,13 +1191,20 @@ export default function ShowSection({
       let hasVisibleNew = false, hasHiddenNewToMe = false, hasHiddenNewOther = false;
       for (const r of meta) {
         if (r.authorId === myId) continue;
-        if (r.createdAt <= seenAt) continue;
         const visible = chainVisible(r);
-        if (visible) { hasVisibleNew = true; continue; }
-        const parent = getParent(r);
-        const toUser = parent ? parent.authorId === myId : t.author === profile?.username;
-        if (toUser) hasHiddenNewToMe = true;
-        else hasHiddenNewOther = true;
+        if (visible) {
+          // Visible-new boundary: openedAt (matches green badge in getNewCounts).
+          if (r.createdAt > openedAt) hasVisibleNew = true;
+        } else {
+          // Hidden-new boundary: baseAt (matches red badge in getNewCounts),
+          // and exclude risky-revealed replies (user has already acknowledged).
+          if (r.createdAt > baseAt && !riskyRevealedIds.has(r.id)) {
+            const parent = getParent(r);
+            const toUser = parent ? parent.authorId === myId : t.author === profile?.username;
+            if (toUser) hasHiddenNewToMe = true;
+            else hasHiddenNewOther = true;
+          }
+        }
       }
       if (hasVisibleNew) return 1;
       if (hasHiddenNewToMe) return 2;
@@ -1222,7 +1235,7 @@ export default function ShowSection({
     }
 
     return sortThreads(list);
-  }, [allThreads, progress, searchQuery, sortBy, newHighlights, showId, reWatchOnly, replyMeta, lastSeenByThread, lastOpenedAt, freshReplyThreadIds, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
+  }, [allThreads, progress, searchQuery, sortBy, newHighlights, showId, reWatchOnly, replyMeta, lastSeenByThread, lastOpenedAt, hiddenBaseAt, freshReplyThreadIds, riskyRevealedIds, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
 
   // ── Green-tab: compute newly visible threads ──
   const prevProgRef = useRef<{ s: number; e: number } | undefined>(undefined);
@@ -1265,7 +1278,7 @@ export default function ShowSection({
     const groupIdSet = new Set(groupThreadsData.map(t => t.id));
     const filtered = allThreads.filter(t => groupIdSet.has(t.id));
     return sortThreads(filtered);
-  }, [activeGroupId, groupThreadsData, allThreads, displayed, sortBy, replyMeta, lastSeenByThread, lastOpenedAt, freshReplyThreadIds, newHighlights, showId, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
+  }, [activeGroupId, groupThreadsData, allThreads, displayed, sortBy, replyMeta, lastSeenByThread, lastOpenedAt, hiddenBaseAt, freshReplyThreadIds, riskyRevealedIds, newHighlights, showId, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
 
   const activeLoading = activeGroupId ? groupThreadsLoading : threadsLoading;
 
