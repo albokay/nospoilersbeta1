@@ -1131,7 +1131,81 @@ export default function ShowSection({
     return [...dbThreads, ...seedThreads.filter(t => t.showId === showId && !dbIds.has(t.id))];
   }, [dbThreads, showId]);
 
-  // Also update green-tab tracking to use effectiveProgress
+  // ── Shared sort comparator (used by baseVisible + activeList) ──────────────
+  //
+  // sortBy values:
+  //   - "post":      latest activity desc (single criterion)
+  //   - "episode":   season → episode → updatedAt (all desc)
+  //   - "relevance": tiered (lowest tier first, recency desc within tier).
+  //       Tier 1: any visible reply newer than user's last_seen for the
+  //               thread. Also hits if the thread is in newHighlights or
+  //               freshReplyThreadIds (progress-bump-induced "just revealed"
+  //               sets, kept as a Tier 1 shortcut so the prior UX survives).
+  //       Tier 2: hidden reply newer than last_seen, with parent authored
+  //               by the user (= "someone replied to your post / your reply").
+  //       Tier 3: hidden reply newer than last_seen, parent NOT user-authored.
+  //       Tier 4: rest.
+  //
+  // Defined here (not inside any useMemo) so both baseVisible and activeList
+  // can share the same closure. Re-derived on every render, but the two
+  // useMemos that consume it gate on the underlying inputs in their dep
+  // arrays so this isn't a perf problem in practice.
+  const sortThreads = (input: Thread[]): Thread[] => {
+    if (sortBy === "post") {
+      return [...input].sort((a, b) => b.updatedAt - a.updatedAt);
+    }
+    if (sortBy === "episode") {
+      return [...input].sort((a, b) => {
+        if (a.season !== b.season) return b.season - a.season;
+        if (a.episode !== b.episode) return b.episode - a.episode;
+        return b.updatedAt - a.updatedAt;
+      });
+    }
+    // relevance — tiered
+    const newlyVisible = newHighlights[showId] ?? {};
+    const myId = user?.id;
+    const prog = effectiveProgress;
+    const tierOf = (t: Thread): number => {
+      const meta = replyMeta[t.id] ?? [];
+      const seenAt = lastSeenByThread[t.id] ?? lastOpenedAt[t.id] ?? 0;
+      const metaById: Record<string, typeof meta[number]> = {};
+      for (const r of meta) metaById[r.id] = r;
+      const getParent = (r: typeof meta[number]): typeof meta[number] | null =>
+        (r.replyToId && metaById[r.replyToId]) || (r.referencedReplyId && metaById[r.referencedReplyId]) || null;
+      const chainVisible = (r: typeof meta[number]): boolean => {
+        if (!canView({ season: r.season, episode: r.episode }, prog)) return false;
+        let cur = getParent(r);
+        while (cur) {
+          if (!canView({ season: cur.season, episode: cur.episode }, prog)) return false;
+          cur = getParent(cur);
+        }
+        return true;
+      };
+      if (newlyVisible[t.id] || freshReplyThreadIds[t.id]) return 1;
+      let hasVisibleNew = false, hasHiddenNewToMe = false, hasHiddenNewOther = false;
+      for (const r of meta) {
+        if (r.authorId === myId) continue;
+        if (r.createdAt <= seenAt) continue;
+        const visible = chainVisible(r);
+        if (visible) { hasVisibleNew = true; continue; }
+        const parent = getParent(r);
+        const toUser = parent ? parent.authorId === myId : t.author === profile?.username;
+        if (toUser) hasHiddenNewToMe = true;
+        else hasHiddenNewOther = true;
+      }
+      if (hasVisibleNew) return 1;
+      if (hasHiddenNewToMe) return 2;
+      if (hasHiddenNewOther) return 3;
+      return 4;
+    };
+    return [...input].sort((a, b) => {
+      const ta = tierOf(a);
+      const tb = tierOf(b);
+      if (ta !== tb) return ta - tb;
+      return b.updatedAt - a.updatedAt;
+    });
+  };
+
   const baseVisible = useMemo(() => {
     const prog = effectiveProgress;
     let list = allThreads
@@ -1139,99 +1213,15 @@ export default function ShowSection({
       .filter(t => t.isPublic);  // show page is public-only; private entries live in the journal
 
     if (searchQuery.trim()) {
+      // Search results bypass sortBy and use score-based ordering instead.
       const withScores = list
         .map(t => ({ t, s: scoreThread(t, searchQuery) }))
         .filter(x => x.s > 0)
         .sort((a, b) => (b.s - a.s) || (b.t.updatedAt - a.t.updatedAt));
-      list = withScores.map(x => x.t);
+      return withScores.map(x => x.t);
     }
 
-    if (sortBy === "relevance") {
-      // ── Tiered relevance sort (20260429 rewrite) ──
-      //
-      // Replaces the old single-criterion sort that only considered
-      // newHighlights (= threads where progress-bump just revealed replies).
-      // The old sort fell through to episode → updatedAt for everything else,
-      // making "relevance" effectively episode-with-tiebreaker most of the time.
-      //
-      // New tiers (lowest tier number sorts to top; recency desc within tier):
-      //   1: thread has any visible reply newer than user's last_seen for it
-      //      (or is in newHighlights / freshReplyThreadIds — the
-      //      progress-bump-induced "just revealed" set, kept as a Tier 1
-      //      shortcut so the existing UX is preserved).
-      //   2a: thread has any hidden reply newer than user's last_seen,
-      //       AND that reply's parent is something the user wrote
-      //       (the user's thread post or one of their replies).
-      //   2b: thread has any hidden reply newer than user's last_seen,
-      //       parent NOT user-authored.
-      //   3: everything else.
-      const newlyVisible = newHighlights[showId] ?? {};
-      const myId = user?.id;
-      const tierOf = (t: Thread): number => {
-        const meta = replyMeta[t.id] ?? [];
-        const seenAt = lastSeenByThread[t.id] ?? lastOpenedAt[t.id] ?? 0;
-        const prog = effectiveProgress;
-        // Build parent-lookup map (mirrors getNewCounts chainVisible).
-        const metaById: Record<string, typeof meta[number]> = {};
-        for (const r of meta) metaById[r.id] = r;
-        const getParent = (r: typeof meta[number]): typeof meta[number] | null =>
-          (r.replyToId && metaById[r.replyToId]) || (r.referencedReplyId && metaById[r.referencedReplyId]) || null;
-        const chainVisible = (r: typeof meta[number]): boolean => {
-          if (!canView({ season: r.season, episode: r.episode }, prog)) return false;
-          let cur = getParent(r);
-          while (cur) {
-            if (!canView({ season: cur.season, episode: cur.episode }, prog)) return false;
-            cur = getParent(cur);
-          }
-          return true;
-        };
-        // Tier 1 shortcuts — preserve existing progress-bump UX:
-        if (newlyVisible[t.id] || freshReplyThreadIds[t.id]) return 1;
-        // Tier 1: any visible reply newer than seenAt (excluding own replies).
-        let hasVisibleNew = false;
-        let hasHiddenNewToMe = false;
-        let hasHiddenNewOther = false;
-        for (const r of meta) {
-          if (r.authorId === myId) continue;
-          if (r.createdAt <= seenAt) continue;
-          const visible = chainVisible(r);
-          if (visible) { hasVisibleNew = true; continue; }
-          // Hidden new — determine 2a vs 2b by parent authorship.
-          // Parent = either a reply the user wrote, or the thread itself
-          // when the reply has no parent ref AND the thread is user-authored.
-          const parent = getParent(r);
-          let toUser = false;
-          if (parent) {
-            toUser = parent.authorId === myId;
-          } else {
-            toUser = t.author === profile?.username;
-          }
-          if (toUser) hasHiddenNewToMe = true;
-          else hasHiddenNewOther = true;
-        }
-        if (hasVisibleNew) return 1;
-        if (hasHiddenNewToMe) return 2;
-        if (hasHiddenNewOther) return 3;
-        return 4;
-      };
-      list = [...list].sort((a, b) => {
-        const ta = tierOf(a);
-        const tb = tierOf(b);
-        if (ta !== tb) return ta - tb;
-        // Within tier: latest activity desc (matches user spec — sort by
-        // recency, NOT by count of new replies).
-        return b.updatedAt - a.updatedAt;
-      });
-    } else if (sortBy === "post") {
-      list = [...list].sort((a, b) => b.updatedAt - a.updatedAt);
-    } else if (sortBy === "episode") {
-      list = [...list].sort((a, b) => {
-        if (a.season !== b.season) return b.season - a.season;
-        if (a.episode !== b.episode) return b.episode - a.episode;
-        return b.updatedAt - a.updatedAt;
-      });
-    }
-    return list;
+    return sortThreads(list);
   }, [allThreads, progress, searchQuery, sortBy, newHighlights, showId, reWatchOnly, replyMeta, lastSeenByThread, lastOpenedAt, freshReplyThreadIds, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
 
   // ── Green-tab: compute newly visible threads ──
@@ -1267,12 +1257,15 @@ export default function ShowSection({
   const displayed = baseVisible;
 
   // When a group tab is active, map group thread IDs back through allThreads to pick up
-  // full metadata (replyMeta, etc.) already loaded by fetchThreadsForShow.
+  // full metadata (replyMeta, etc.) already loaded by fetchThreadsForShow. Then apply
+  // the same sortThreads the public path uses — without this, friend-room threads
+  // bypassed sortBy entirely and rendered in raw DB order.
   const activeList = useMemo(() => {
     if (!activeGroupId) return displayed;
     const groupIdSet = new Set(groupThreadsData.map(t => t.id));
-    return allThreads.filter(t => groupIdSet.has(t.id));
-  }, [activeGroupId, groupThreadsData, allThreads, displayed]);
+    const filtered = allThreads.filter(t => groupIdSet.has(t.id));
+    return sortThreads(filtered);
+  }, [activeGroupId, groupThreadsData, allThreads, displayed, sortBy, replyMeta, lastSeenByThread, lastOpenedAt, freshReplyThreadIds, newHighlights, showId, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
 
   const activeLoading = activeGroupId ? groupThreadsLoading : threadsLoading;
 
