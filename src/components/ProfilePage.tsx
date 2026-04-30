@@ -723,9 +723,11 @@ export default function ProfilePage({
 
   // Per-tab activity: "green" if new visible replies, "red" if invisible activity
   // remains undismissed and within the 24h window. Green takes precedence.
-  const tabActivity = useMemo(() => {
+  // Also tracks per-show counts so the tab tooltip can pluralize.
+  const { tabActivity, tabActivityCounts } = useMemo(() => {
     const r: Record<string, "green" | "red"> = {};
-    if (!user?.id) return r;
+    const counts: Record<string, number> = {};
+    if (!user?.id) return { tabActivity: r, tabActivityCounts: counts };
     const now = Date.now();
     const roomPrefix = `ns_room_visited_${user.id}_`;
     const publicPrefix = `ns_show_public_visited_${user.id}_`;
@@ -735,6 +737,7 @@ export default function ProfilePage({
       if (canView({ season: reply.season, episode: reply.episode }, progress[t.showId])
           && reply.updatedAt > openedAtSeenAt) {
         r[t.showId] = "green";
+        counts[t.showId] = (counts[t.showId] ?? 0) + 1;
       }
     }
 
@@ -755,9 +758,11 @@ export default function ProfilePage({
       const stamp = redSeenStamps[t.showId];
       if (!stamp) continue; // effect below will write it; next render renders the dot
       if (now - stamp >= TWENTY_FOUR_HOURS) continue;
+      if (r[t.showId] !== "red") counts[t.showId] = 0; // reset count on first red hit
       r[t.showId] = "red";
+      counts[t.showId] = (counts[t.showId] ?? 0) + 1;
     }
-    return r;
+    return { tabActivity: r, tabActivityCounts: counts };
   }, [repliesToUser, progress, openedAtSeenAt, user?.id, redSeenStamps, TWENTY_FOUR_HOURS]);
 
   // Manage the per-show red-seen stamp lifecycle: write on first appearance of
@@ -888,7 +893,20 @@ export default function ProfilePage({
                           // dark semi-transparent fill from CSS, which
                           // reads on all 3 surfaces without modification.
                           style={active ? { background: tabBg, borderBottomColor: tabBg } : undefined}
-                          title={activity === "red" ? "New responses ahead of where you are." : activity === "green" ? "There are new responses to you in here." : undefined}
+                          title={(() => {
+                            if (activity !== "red" && activity !== "green") return undefined;
+                            const count = tabActivityCounts[sid] ?? 1;
+                            const plural = count > 1;
+                            if (activity === "green") {
+                              return plural
+                                ? "You have responses waiting for you."
+                                : "Someone wrote you a response.";
+                            }
+                            // red
+                            return plural
+                              ? "You have responses waiting for you (but you can't read them just yet)."
+                              : "Someone wrote you a response (but you can't read it just yet).";
+                          })()}
                           onClick={(e) => {
                             if (sid !== activeTab) {
                               // First click: just select the tab

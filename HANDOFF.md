@@ -1307,6 +1307,33 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-04-29 — Notification overhaul: client wiring (lands on top of 20260429 migration)
+
+Follow-up to the migration arc below. Wires the new per-thread read state into the desktop UI, rewrites the relevance comparator, switches mobile thread mark-seen to scroll-triggered, relocates the red own-thread badge, and adds tab-dot tooltips.
+
+**Files touched:**
+
+- `src/lib/db.ts` — adds `markThreadPublicSeen` and `fetchThreadPublicViewState` wrappers (parallel shape to the existing `markThreadSeen` / `fetchThreadViewState` for friend-room context).
+- `src/components/InlineThreadView.tsx` — adds scroll-required mark-seen effect. 500ms post-mount grace ignores programmatic scrolls; first user scroll fires the right RPC (`markThreadSeen` if in a friend-room, `markThreadPublicSeen` if public). Listener detaches after first fire.
+- `src/mobile/MobileThread.tsx` — replaces on-mount `markThreadSeen` with the same scroll-required pattern, in service of mobile/desktop parity.
+- `src/components/ShowSection.tsx`:
+  - New `lastSeenByThread` state: merged map of friend-room + public last_seen timestamps from the two RPCs. Loaded per (showId, activeGroupId); reloads on context switch.
+  - `getNewCounts` `openedAt` boundary now reads DB-backed `lastSeenByThread[t.id]` first, falls back to localStorage `lastOpenedAt[t.id]`, then 0. `hiddenBaseAt` semantics preserved verbatim — the red 28×28 own-thread badge counter must not change behavior.
+  - Relevance comparator rewritten with 4 tiers: visible-new (1) → hidden-new with parent authored by user (2) → hidden-new not to user (3) → rest (4). Sort within each tier by `updatedAt` desc. Progress-bump shortcuts (`newHighlights[showId]`, `freshReplyThreadIds`) preserved as Tier 1 fast-paths.
+  - Red 28×28 own-thread badge relocated from absolute-positioned-left to inline-right next to the mail icon. **Position-only change** — count, color, drop-shadow, hover-X dismissal, 36h auto-expiry all preserved verbatim. Tooltip direction adjusted to `left/align=right` to fit the new anchor.
+- `src/components/ProfilePage.tsx`:
+  - `tabActivity` memo now also returns `tabActivityCounts` (per-show count of replies driving the green/red state).
+  - Tab `title` tooltip uses singular/plural copy: green singular = "Someone wrote you a response."; green plural = "You have responses waiting for you."; red singular = "Someone wrote you a response (but you can't read it just yet)."; red plural = "You have responses waiting for you (but you can't read them just yet)."
+
+**Behavioral consequences worth pinning:**
+
+- Per-thread read state on desktop is now DB-backed and survives sessions/devices. Localstorage `lastOpenedAt` becomes a fallback for shows / threads where the RPC fails or the row hasn't been written yet. `markThreadVisited` (the localStorage write triggered on thread-card click) still fires; treat it as belt-and-suspenders.
+- Mobile thread dots no longer clear from a glance-and-back-out — user must scroll. Matches desktop. If a regression report comes in about "the dot won't go away," verify the user is actually scrolling within the thread (not just opening it).
+- "Relevance" sort now does what the name implies. New visible content rises to the top; new hidden content addressed to the user follows; new hidden content elsewhere follows that. The old fall-through behavior (episode → updatedAt) still applies inside Tier 4 (= no new content of any kind), via `updatedAt` desc.
+- The red own-thread badge sits inline with the mail icon now. From a layout standpoint, the right edge of the thread card is now the only home for "things to know about replies." Visually slightly busier on threads where both the green new-reply pill and the red own-thread badge fire — that combination indicates "you have new visible replies AND new hidden replies past your progress," which is informationally correct.
+
+**Tested via:** `npm run build` (clean). No preview eval per Sidebar policy — relying on live-site verification post-deploy.
+
 ### 2026-04-29 — Notification overhaul: per-thread read state, new relevance sort, repositioned badge (migration only; client lands in follow-up)
 
 Begins a multi-part overhaul of the desktop notification & sort behavior. This commit is **migration-only** — DDL + RPCs + backfill, no client changes yet. Client wiring lands in the follow-up after the migration is applied.

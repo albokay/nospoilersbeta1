@@ -5,7 +5,7 @@ import type { FriendGroup } from "../types";
 import { timeAgo, canView, effectiveProgress } from "../lib/utils";
 import EpisodeTag from "./EpisodeTag";
 import { useAuth } from "../lib/auth";
-import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, addThreadToGroup } from "../lib/db";
+import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, addThreadToGroup, markThreadSeen, markThreadPublicSeen } from "../lib/db";
 import type { CitationEntry } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import Modal from "./Modal";
@@ -212,6 +212,50 @@ export default function InlineThreadView({
   }, [thread.id]);
 
   useEffect(() => { onMountAlignTop?.(); }, []);
+
+  // ── Scroll-required mark-seen ────────────────────────────────
+  //
+  // Per-thread read state advances when the user opens AND scrolls within a
+  // thread — not on mount alone. Opening a thread without scrolling means
+  // they didn't actually engage with the replies.
+  //
+  // Routing:
+  //   - friend-room context (groupIdProp set)  → mark_thread_seen
+  //   - public context (no group, thread.isPublic) → mark_thread_public_seen
+  //   - private own thread → no-op (no notion of "new" to clear)
+  //
+  // Implementation:
+  //   - 500ms post-mount grace ignores programmatic scrolls (scrollToShowTop,
+  //     focusReplyId scroll-into-view) that happen during initial layout.
+  //   - First real scroll fires mark-seen and detaches the listener.
+  //   - Fire-and-forget; failure leaves the dot to clear on a later visit.
+  useEffect(() => {
+    if (!user) return;
+    const tid = thread.id;
+    const gid = groupIdProp ?? null;
+    const isPublicContext = !gid && thread.isPublic;
+    if (!gid && !isPublicContext) return; // private own thread: no read state
+
+    let detached = false;
+    let attachTimer: number | null = null;
+    const onScroll = () => {
+      if (detached) return;
+      detached = true;
+      window.removeEventListener("scroll", onScroll, { passive: true } as any);
+      const p = gid
+        ? markThreadSeen(gid, tid)
+        : markThreadPublicSeen(tid);
+      p.catch(err => console.warn("mark thread seen failed:", err));
+    };
+    attachTimer = window.setTimeout(() => {
+      window.addEventListener("scroll", onScroll, { passive: true });
+    }, 500);
+    return () => {
+      if (attachTimer != null) window.clearTimeout(attachTimer);
+      window.removeEventListener("scroll", onScroll, { passive: true } as any);
+      detached = true;
+    };
+  }, [thread.id, groupIdProp, thread.isPublic, user?.id]);
 
   const handleQuoteThread = () => {
     if (!user) { onAuthRequired(); return; }

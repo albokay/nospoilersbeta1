@@ -63,7 +63,7 @@ function ThreadRedDot({ count, threadId, onDismiss }: { count: number; threadId:
 import type { Thread, FriendGroup, FriendGroupMember } from "../types";
 import { seedShows, seedThreads, repliesByThread } from "../lib/mockData";
 import type { Show, CitationEntry } from "../lib/db";
-import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, createShow, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, transferGroupOwnership, softDeleteFriendGroup, recordDepartedMember, fetchDepartedMembers, sendInvite, fetchSentInvitations, fetchBrowseProgress, fetchRoomActivityVisibility } from "../lib/db";
+import { fetchThreadsForShow, insertThread, likeThread as dbLikeThread, unlikeThread as dbUnlikeThread, unlikeReply as dbUnlikeReply, refreshShowIfStale, fetchCitationsForReplies, fetchCitationsForThread, fetchPrompts, logThreadPrompt, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, createShow, fetchGroupThreads, fetchFriendGroupMembers, renameFriendGroup, deleteFriendGroup, removeGroupMember, transferGroupOwnership, softDeleteFriendGroup, recordDepartedMember, fetchDepartedMembers, sendInvite, fetchSentInvitations, fetchBrowseProgress, fetchRoomActivityVisibility, fetchThreadViewState, fetchThreadPublicViewState } from "../lib/db";
 import type { RoomVisibility } from "../lib/db";
 import type { Invitation } from "../types";
 import type { PromptRow } from "../lib/db";
@@ -361,6 +361,37 @@ export default function ShowSection({
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, location.key]);
+
+  // ── Per-thread last_seen_at, DB-backed (20260429) ──────────────────────────
+  //
+  // Replaces the old localStorage `lastOpenedAt` system as the freshness
+  // boundary for "is this reply new for me?" computation. Two contexts:
+  //
+  //   - Friend-room: from `friend_group_thread_views` via fetchThreadViewState.
+  //     Loaded per active group; switching groups reloads.
+  //   - Public:      from `user_thread_public_views` via fetchThreadPublicViewState.
+  //     Loaded per show; threads outside this show are absent.
+  //
+  // `lastSeenByThread[threadId]` is the merged read-state map keyed on thread
+  // id. Absence of a thread = "never seen" (the localStorage `lastOpenedAt`
+  // fallback in getNewCounts handles users / shows the RPCs don't cover).
+  const [lastSeenByThread, setLastSeenByThread] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!user) { setLastSeenByThread({}); return; }
+    let cancelled = false;
+    const loadPublic = fetchThreadPublicViewState(showId).catch(() => ({} as Record<string, number>));
+    const loadFriend = activeGroupId
+      ? fetchThreadViewState(activeGroupId).catch(() => ({} as Record<string, number>))
+      : Promise.resolve({} as Record<string, number>);
+    Promise.all([loadPublic, loadFriend]).then(([pub, fr]) => {
+      if (cancelled) return;
+      // Merge: friend-room rows override public rows when both exist for a
+      // shared thread. Friend-room wins because that's the active context.
+      setLastSeenByThread({ ...pub, ...fr });
+    });
+    return () => { cancelled = true; };
+  }, [user?.id, showId, activeGroupId]);
+
   // Group settings modal
   const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
@@ -957,7 +988,17 @@ export default function ShowSection({
   const getNewCounts = (threadId: string) => {
     const meta = replyMeta[threadId] ?? [];
     const prog = effectiveProgress;
-    const openedAt = lastOpenedAt[threadId] ?? Date.now();
+    // Freshness boundary: DB-backed last_seen wins when present; falls back
+    // to localStorage lastOpenedAt when the thread isn't in the DB map yet
+    // (RPC failure, brand-new thread before backfill, etc). Absence in both
+    // is treated as "never seen" (timestamp 0) so all existing replies count
+    // as new the first time the user encounters the thread.
+    const dbSeen = lastSeenByThread[threadId];
+    const lsSeen = lastOpenedAt[threadId];
+    const openedAt = dbSeen ?? lsSeen ?? 0;
+    // hiddenBaseAt stays on its original semantics (set ONCE on first
+    // encounter, never updated on open) — preserved for the red 28×28 own-
+    // thread badge counter, which by spec must not change behavior.
     const baseAt = hiddenBaseAt[threadId] ?? Date.now();
     // Build an id lookup so chain-visibility can walk the parent chain.
     // A reply counts as "chain-visible" only if it passes canView AND
@@ -1106,16 +1147,79 @@ export default function ShowSection({
     }
 
     if (sortBy === "relevance") {
+      // ── Tiered relevance sort (20260429 rewrite) ──
+      //
+      // Replaces the old single-criterion sort that only considered
+      // newHighlights (= threads where progress-bump just revealed replies).
+      // The old sort fell through to episode → updatedAt for everything else,
+      // making "relevance" effectively episode-with-tiebreaker most of the time.
+      //
+      // New tiers (lowest tier number sorts to top; recency desc within tier):
+      //   1: thread has any visible reply newer than user's last_seen for it
+      //      (or is in newHighlights / freshReplyThreadIds — the
+      //      progress-bump-induced "just revealed" set, kept as a Tier 1
+      //      shortcut so the existing UX is preserved).
+      //   2a: thread has any hidden reply newer than user's last_seen,
+      //       AND that reply's parent is something the user wrote
+      //       (the user's thread post or one of their replies).
+      //   2b: thread has any hidden reply newer than user's last_seen,
+      //       parent NOT user-authored.
+      //   3: everything else.
       const newlyVisible = newHighlights[showId] ?? {};
+      const myId = user?.id;
+      const tierOf = (t: Thread): number => {
+        const meta = replyMeta[t.id] ?? [];
+        const seenAt = lastSeenByThread[t.id] ?? lastOpenedAt[t.id] ?? 0;
+        const prog = effectiveProgress;
+        // Build parent-lookup map (mirrors getNewCounts chainVisible).
+        const metaById: Record<string, typeof meta[number]> = {};
+        for (const r of meta) metaById[r.id] = r;
+        const getParent = (r: typeof meta[number]): typeof meta[number] | null =>
+          (r.replyToId && metaById[r.replyToId]) || (r.referencedReplyId && metaById[r.referencedReplyId]) || null;
+        const chainVisible = (r: typeof meta[number]): boolean => {
+          if (!canView({ season: r.season, episode: r.episode }, prog)) return false;
+          let cur = getParent(r);
+          while (cur) {
+            if (!canView({ season: cur.season, episode: cur.episode }, prog)) return false;
+            cur = getParent(cur);
+          }
+          return true;
+        };
+        // Tier 1 shortcuts — preserve existing progress-bump UX:
+        if (newlyVisible[t.id] || freshReplyThreadIds[t.id]) return 1;
+        // Tier 1: any visible reply newer than seenAt (excluding own replies).
+        let hasVisibleNew = false;
+        let hasHiddenNewToMe = false;
+        let hasHiddenNewOther = false;
+        for (const r of meta) {
+          if (r.authorId === myId) continue;
+          if (r.createdAt <= seenAt) continue;
+          const visible = chainVisible(r);
+          if (visible) { hasVisibleNew = true; continue; }
+          // Hidden new — determine 2a vs 2b by parent authorship.
+          // Parent = either a reply the user wrote, or the thread itself
+          // when the reply has no parent ref AND the thread is user-authored.
+          const parent = getParent(r);
+          let toUser = false;
+          if (parent) {
+            toUser = parent.authorId === myId;
+          } else {
+            toUser = t.author === profile?.username;
+          }
+          if (toUser) hasHiddenNewToMe = true;
+          else hasHiddenNewOther = true;
+        }
+        if (hasVisibleNew) return 1;
+        if (hasHiddenNewToMe) return 2;
+        if (hasHiddenNewOther) return 3;
+        return 4;
+      };
       list = [...list].sort((a, b) => {
-        // P1: newly visible first
-        const aNv = newlyVisible[a.id] ? 1 : 0;
-        const bNv = newlyVisible[b.id] ? 1 : 0;
-        if (bNv !== aNv) return bNv - aNv;
-        // P2: episode order (most recent episode first)
-        if (a.season !== b.season) return b.season - a.season;
-        if (a.episode !== b.episode) return b.episode - a.episode;
-        // P3: post date (newest first)
+        const ta = tierOf(a);
+        const tb = tierOf(b);
+        if (ta !== tb) return ta - tb;
+        // Within tier: latest activity desc (matches user spec — sort by
+        // recency, NOT by count of new replies).
         return b.updatedAt - a.updatedAt;
       });
     } else if (sortBy === "post") {
@@ -1128,7 +1232,7 @@ export default function ShowSection({
       });
     }
     return list;
-  }, [allThreads, progress, searchQuery, sortBy, newHighlights, showId, reWatchOnly]);
+  }, [allThreads, progress, searchQuery, sortBy, newHighlights, showId, reWatchOnly, replyMeta, lastSeenByThread, lastOpenedAt, freshReplyThreadIds, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
 
   // ── Green-tab: compute newly visible threads ──
   const prevProgRef = useRef<{ s: number; e: number } | undefined>(undefined);
@@ -2471,17 +2575,6 @@ export default function ShowSection({
 
             return (
               <div key={t.id} style={{ position: "relative", margin: "0 0 12px 0" }}>
-                {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
-                  <Tooltip
-                    text="There are new responses to you in here (for when you catch up)."
-                    direction="right"
-                    align="left"
-                    useAbsolute
-                    style={{ position: "absolute", left: -14, top: "calc(50% - 14px)", zIndex: 1 }}
-                  >
-                    <ThreadRedDot count={hiddenNew} threadId={t.id} onDismiss={() => setDismissedDots(d => d + 1)} />
-                  </Tooltip>
-                )}
               <div
                 className="card threadCard"
                 style={{
@@ -2548,7 +2641,7 @@ export default function ShowSection({
                   <div className="clamp3">{t.preview}</div>
                 </div>
 
-                <div className="replyCount">
+                <div className="replyCount" style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span className={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? "newReplyBadge" : ""}
                     style={(visibleNew > 0 || freshReplyThreadIds[t.id]) ? {
                     background: "#7abd8e", color: "#fff", borderRadius: 9999,
@@ -2556,6 +2649,19 @@ export default function ShowSection({
                   } : {}}>
                     <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
                   </span>
+                  {/* Red 28×28 own-thread badge — relocated 2026-04-29 to sit inline */}
+                  {/* next to the reply count. Functionality and styling preserved   */}
+                  {/* (size, shadow, color, count, hover-X dismissal, 36h auto-expiry). */}
+                  {/* Only the position changes: absolute-left → inline-right.       */}
+                  {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
+                    <Tooltip
+                      text="There are new responses to you in here (for when you catch up)."
+                      direction="left"
+                      align="right"
+                    >
+                      <ThreadRedDot count={hiddenNew} threadId={t.id} onDismiss={() => setDismissedDots(d => d + 1)} />
+                    </Tooltip>
+                  )}
                 </div>
               </div>
               </div>

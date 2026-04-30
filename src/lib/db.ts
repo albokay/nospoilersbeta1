@@ -1725,6 +1725,40 @@ export async function fetchThreadViewState(groupId: string): Promise<Record<stri
   return out;
 }
 
+// ── Per-thread read tracking — public context (20260429) ────────────────────
+//
+// Companion to mark_thread_seen / get_thread_view_state above (which cover
+// friend-room context). Public-context wrappers stamp / fetch last_seen for
+// public threads — drives the desktop relevance sort, the green badge
+// freshness boundary on public threads, and the per-thread "I've read this"
+// state outside friend rooms.
+//
+// Both functions throw on error so callers can degrade gracefully (fall back
+// to localStorage lastOpenedAt) when the migration hasn't been applied.
+
+/** Stamp the calling user's per-thread last_seen_at on a public thread. */
+export async function markThreadPublicSeen(threadId: string): Promise<void> {
+  const { error } = await supabase.rpc("mark_thread_public_seen", {
+    p_thread_id: threadId,
+  });
+  if (error) throw error;
+}
+
+/**
+ * Per-thread last_seen_at map for the calling user across one show's public
+ * threads. Threads the caller has never opened are absent; caller treats
+ * absence as "never seen" (timestamp 0) when comparing against latest reply.
+ */
+export async function fetchThreadPublicViewState(showId: string): Promise<Record<string, number>> {
+  const { data, error } = await supabase.rpc("get_thread_public_view_state", { p_show_id: showId });
+  if (error) throw error;
+  const out: Record<string, number> = {};
+  for (const r of (data ?? []) as Array<{ thread_id: string; last_seen_at: string }>) {
+    out[r.thread_id] = new Date(r.last_seen_at).getTime();
+  }
+  return out;
+}
+
 /** Share a thread to a friend group (creates group_threads row). */
 export async function addThreadToGroup(threadId: string, groupId: string): Promise<void> {
   const { error } = await supabase

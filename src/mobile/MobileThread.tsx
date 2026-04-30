@@ -145,15 +145,36 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
     };
   }, [groupId, threadId, user?.id]);
 
-  // Stamp the per-thread last_seen_at on mount. Fire-and-forget — a failure
-  // here just means the thread-card dot in MobileRoom won't clear when the
-  // user backs out, which is recoverable on the next visit. Backed by
-  // 20260428_thread_views.sql; fails silently when migration isn't applied.
+  // Stamp the per-thread last_seen_at on first scroll within the thread.
+  //
+  // Changed from on-mount to scroll-required (2026-04-29) to match desktop
+  // and to honor user spec: "opening a THREAD should clear the new reply
+  // that has triggered a notification." Opening alone isn't enough — scroll
+  // demonstrates the user actually engaged with the replies.
+  //
+  // 500ms grace ignores programmatic scrolls during initial layout. First
+  // real user scroll fires mark-seen and detaches. Fire-and-forget — a
+  // failure just leaves the dot to clear on the next visit.
   useEffect(() => {
     if (!user) return;
-    markThreadSeen(groupId, threadId).catch(err => {
-      console.warn("markThreadSeen failed:", err);
-    });
+    let detached = false;
+    let attachTimer: number | null = null;
+    const onScroll = () => {
+      if (detached) return;
+      detached = true;
+      window.removeEventListener("scroll", onScroll);
+      markThreadSeen(groupId, threadId).catch(err => {
+        console.warn("markThreadSeen failed:", err);
+      });
+    };
+    attachTimer = window.setTimeout(() => {
+      window.addEventListener("scroll", onScroll, { passive: true });
+    }, 500);
+    return () => {
+      if (attachTimer != null) window.clearTimeout(attachTimer);
+      window.removeEventListener("scroll", onScroll);
+      detached = true;
+    };
   }, [groupId, threadId, user?.id]);
 
   // Filter replies through canView + chain-visibility. Same shape as
