@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-04-27)
+# Sidebar — Technical State (2026-04-29)
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -1306,6 +1306,47 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-04-29 — Notification overhaul: per-thread read state, new relevance sort, repositioned badge (migration only; client lands in follow-up)
+
+Begins a multi-part overhaul of the desktop notification & sort behavior. This commit is **migration-only** — DDL + RPCs + backfill, no client changes yet. Client wiring lands in the follow-up after the migration is applied.
+
+**Diagnosis that drove this work** (`ShowSection.tsx`, full read on 2026-04-29):
+
+- The "relevance" sort (`sortBy === "relevance"`, line 1108) is silently degenerate. P1 prioritizes only `newHighlights[showId][threadId]`, which is populated *exclusively* by the progress-bump effect (line 1135). With `newHighlights` empty most of the time, relevance falls through to episode → updatedAt sort. No use of `visibleNew`, `hiddenNew`, or `freshReplyThreadIds`.
+- Green "new replies" badge fires on a thread when `visibleNew > 0 || freshReplyThreadIds[t.id]`. Both inputs are anchored to per-thread `lastOpenedAt[threadId]` (localStorage `ns_last_opened`), which is *initialized to `Date.now()` on first encounter* (line 1027–1034). So when a user opens a show for the first time, every existing reply gets timestamped as already-seen. Green only ever fires for replies arriving *after* that first load. That's why green felt rare on non-own threads — not a scope bug, a freshness-boundary bug.
+- Red 28×28 own-thread badge is correctly own-only-gated (line 2474, `isOwn && threadDotActive(...)`). Independent system, working as designed.
+
+**The new model** (lands in follow-up commit):
+
+- Read state moves from session-localStorage to per-(user, thread) DB rows. Two tables: `friend_group_thread_views` (already exists from 2026-04-28) for friend-room context, `user_thread_public_views` (new, this migration) for public context. Private context is skipped — private threads can't receive replies from anyone but the author, so there's no "new" notion to track.
+- "Mark seen" requires the user to **open AND scroll within the thread** — not just click in. Mount-only marking would clear notifications for threads users glance at but don't actually read.
+- Mobile parity: `MobileThread` will switch from on-mount marking to scroll-required, matching desktop. The brief desktop-mobile divergence was rejected — read-state semantics should match across surfaces.
+- Relevance comparator gets four tiers (sort within each by latest activity desc):
+  - Tier 1: visible-new content (any reply createdAt > user's last_seen_at for the thread, gated by chain-visibility).
+  - Tier 2a: hidden-new content where the new reply's parent is something the user wrote (a thread or reply they authored).
+  - Tier 2b: hidden-new content not addressed to the user.
+  - Tier 3: everything else.
+- Green "new reply" badge will fire on any thread (not just own) once the freshness boundary moves to DB-backed last_seen.
+- Red 28×28 own-thread badge moves to bottom-right next to the mail icon. **Position-only** — count, color, hover-X dismissal, 36h auto-expiry all preserved.
+- Profile-tab green/red dots get tooltips: "Someone wrote you a response." / "You have responses waiting for you." (singular/plural), with the parenthetical "(but you can't read [it/them] just yet)" for red.
+
+**Migration shape pinned here:**
+
+- `user_thread_public_views (user_id UUID, thread_id TEXT, last_seen_at TIMESTAMPTZ)` with composite PK. `thread_id TEXT` matches `threads.id` (seed ids like `'tsp-seed-a'` aren't UUIDs).
+- Owner-only RLS: select/insert/update/delete all gated on `auth.uid() = user_id`.
+- `mark_thread_public_seen(p_thread_id TEXT)` validates the thread exists AND `is_public = TRUE` before upserting. Prevents the public-views table from accumulating rows for non-public threads.
+- `get_thread_public_view_state(p_show_id TEXT)` is show-scoped (joins `threads` to filter by `show_id`). Keeps response payloads small.
+- **Backfill applied at deploy time** to both this table and `friend_group_thread_views`: stamp `last_seen_at = NOW()` for every existing user × thread pair. Avoids the wave of green badges that would otherwise appear for existing users on first load post-deploy. Friend-room backfill is gated on `friend_group_members` ∩ `group_threads` (only legitimate user-group-thread triples).
+
+**Two-step deploy required (one-time):** `supabase/migrations/20260429_public_thread_views.sql` must be applied in the Supabase SQL editor before any client code calls the new RPCs. Until applied, any RPC call will fail; the client code in the follow-up commit will treat that as "no public-view data" and fall back to the localStorage `lastOpenedAt` system (graceful degrade).
+
+**What's intentionally NOT changing in this overhaul:**
+
+- Mobile rooms-list gold dot (`markRoomSeen` / `friend_group_members.last_seen_at`) — independent system, owns the rooms-list room-button dot. Untouched.
+- Profile tab dot expiry windows (24h red, 36h pill red) — untouched.
+- Red 28×28 own-thread badge styling (size, shadow, color, hover-X dismissal) — only the position changes.
+- The `is_public` filter in `mark_thread_public_seen` and `get_thread_public_view_state` — public-views table is reserved for genuinely public threads. Friend-room reads of the same thread go to `friend_group_thread_views`, not here.
 
 ### 2026-04-27 — InlineThreadView replies-column OrderToggle (vertical episode/time pill)
 
