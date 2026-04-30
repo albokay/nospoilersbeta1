@@ -2653,20 +2653,20 @@ export default function ShowSection({
                   {/* hover-X dismissal, 36h auto-expiry); only position changes.       */}
                   {isOwn && threadDotActive(t.id, hiddenNew > 0) && (
                     <Tooltip
-                      text="There is new writing in here for you...for when you catch up."
+                      text={<>There is new writing in here for you...<br />for when you catch up.</>}
                       direction="above"
                       align="center"
-                      width={210}
+                      width={280}
                     >
                       <ThreadRedDot count={hiddenNew} threadId={t.id} onDismiss={() => setDismissedDots(d => d + 1)} />
                     </Tooltip>
                   )}
                   {(visibleNew > 0 || freshReplyThreadIds[t.id]) ? (
                     <Tooltip
-                      text="There is new writing in here for you."
+                      text={<>There is new writing<br />in here for you.</>}
                       direction="above"
                       align="center"
-                      width={140}
+                      width={180}
                     >
                       <span className="newReplyBadge"
                         style={{
