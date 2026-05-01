@@ -7,7 +7,7 @@ const POST_IT_BG    = "#7abd8e";  // canon green (write-button green inside frie
 const HANDLE_COLOR  = "#fffaf0";  // canon white — handles + neutral copy
 const AHEAD_COLOR   = "#f45028";  // canon red — "[N] episodes ahead"
 const BEHIND_COLOR  = "#355eb8";  // canon dark blue — "[N] episodes behind"
-const TILT_DEG      = 10;          // clockwise tilt (was 12; nudged down by request)
+const TILT_DEG      = 8;           // clockwise tilt (was 10; nudged down by request)
 const MIN_VIEWPORT_PX = 1280;     // hide on narrow viewports (mobile separate spec)
 const SCROLL_THRESHOLD_LINES = 20; // internal scroll if more than this many lines
 
@@ -173,19 +173,22 @@ export default function FriendProgressPostIt({
       aria-label="Friend progress"
       style={{
         position: "fixed",
-        // Right edge of the box flush against the viewport's right edge.
-        // Text content sits inside the padding and stays fully on-screen.
-        right: 0,
+        // Box extends past the viewport's right edge so the right edge
+        // is never visible. Text content stays in the original on-screen
+        // location: paddingRight matches the off-screen extension so the
+        // off-screen portion is pure green padding, no text.
+        right: -80,
         bottom: 96,
         zIndex: 50,
         transform: `rotate(${TILT_DEG}deg)`,
         transformOrigin: "center",
         background: POST_IT_BG,
         color: HANDLE_COLOR,
-        padding: "16px 22px",
+        // Top/bottom 16, left 22, right 22 + 80 (off-screen amount).
+        padding: "16px 102px 16px 22px",
         borderRadius: 0,             // sharp corners
         boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
-        width: 320,
+        width: 400,
         fontSize: 14,
         lineHeight: 1.5,
         // Internal scroll only when post-it grows past the threshold.
