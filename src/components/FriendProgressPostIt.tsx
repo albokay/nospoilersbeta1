@@ -7,7 +7,7 @@ const POST_IT_BG    = "#7abd8e";  // canon green (write-button green inside frie
 const HANDLE_COLOR  = "#fffaf0";  // canon white — handles + neutral copy
 const AHEAD_COLOR   = "#f45028";  // canon red — "[N] episodes ahead"
 const BEHIND_COLOR  = "#355eb8";  // canon dark blue — "[N] episodes behind"
-const TILT_DEG      = 12;          // ~10–15° clockwise per spec
+const TILT_DEG      = 10;          // clockwise tilt (was 12; nudged down by request)
 const MIN_VIEWPORT_PX = 1280;     // hide on narrow viewports (mobile separate spec)
 const SCROLL_THRESHOLD_LINES = 20; // internal scroll if more than this many lines
 
@@ -173,7 +173,10 @@ export default function FriendProgressPostIt({
       aria-label="Friend progress"
       style={{
         position: "fixed",
-        right: 32,
+        // Negative right offset: the post-it extends past the viewport's
+        // right edge, so it reads as "tucked off the side" rather than
+        // floating in the margin.
+        right: -80,
         bottom: 96,
         zIndex: 50,
         transform: `rotate(${TILT_DEG}deg)`,
@@ -181,9 +184,9 @@ export default function FriendProgressPostIt({
         background: POST_IT_BG,
         color: HANDLE_COLOR,
         padding: "16px 22px",
-        borderRadius: 6,
+        borderRadius: 0,             // sharp corners
         boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
-        width: 300,
+        width: 320,
         fontSize: 14,
         lineHeight: 1.5,
         // Internal scroll only when post-it grows past the threshold.
@@ -197,9 +200,10 @@ export default function FriendProgressPostIt({
         const handle = (
           <span style={{ fontStyle: "italic", color: HANDLE_COLOR }}>@{s.username}</span>
         );
+        const lineStyle: React.CSSProperties = { whiteSpace: "nowrap" };
         if (s.kind === "ahead") {
           return (
-            <div key={i}>
+            <div key={i} style={lineStyle}>
               {handle}{" is "}
               <span style={{ color: AHEAD_COLOR }}>
                 {s.count != null ? `${s.count} episode${s.count === 1 ? "" : "s"} ` : ""}ahead
@@ -209,7 +213,7 @@ export default function FriendProgressPostIt({
         }
         if (s.kind === "same") {
           return (
-            <div key={i}>
+            <div key={i} style={lineStyle}>
               {handle}{" "}
               <span style={{ color: HANDLE_COLOR }}>and you are caught up!</span>
             </div>
@@ -217,7 +221,7 @@ export default function FriendProgressPostIt({
         }
         if (s.kind === "behind") {
           return (
-            <div key={i}>
+            <div key={i} style={lineStyle}>
               {handle}{" is "}
               <span style={{ color: BEHIND_COLOR }}>
                 {s.count != null ? `${s.count} episode${s.count === 1 ? "" : "s"} ` : ""}behind
@@ -227,7 +231,7 @@ export default function FriendProgressPostIt({
         }
         // not-started
         return (
-          <div key={i}>
+          <div key={i} style={lineStyle}>
             {handle}{" "}
             <span style={{ color: HANDLE_COLOR }}>hasn't started watching</span>
           </div>
