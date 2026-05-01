@@ -173,10 +173,9 @@ export default function FriendProgressPostIt({
       aria-label="Friend progress"
       style={{
         position: "fixed",
-        // Negative right offset: the post-it extends past the viewport's
-        // right edge, so it reads as "tucked off the side" rather than
-        // floating in the margin.
-        right: -80,
+        // Right edge of the box flush against the viewport's right edge.
+        // Text content sits inside the padding and stays fully on-screen.
+        right: 0,
         bottom: 96,
         zIndex: 50,
         transform: `rotate(${TILT_DEG}deg)`,

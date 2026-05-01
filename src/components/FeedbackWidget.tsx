@@ -77,13 +77,16 @@ export default function FeedbackWidget({
 
   return (
     <>
-      {/* Trigger: vertical tab on both mobile and desktop */}
+      {/* Trigger: vertical tab on both mobile and desktop. Anchored to the
+          LEFT edge of the viewport (was right). writing-mode vertical-rl
+          gives natural top-to-bottom text without needing the 180deg flip
+          that the right-side version used. */}
       {!open && (
         <div
           onClick={handleOpen}
           style={{
-            position: "fixed", right: 0, top: "85%",
-            transform: "translateY(-50%) rotate(180deg)",
+            position: "fixed", left: 0, top: "85%",
+            transform: "translateY(-50%)",
             writingMode: "vertical-rl" as React.CSSProperties["writingMode"],
             zIndex: 10000,
             background: "#f45028", color: "#fff",
@@ -91,7 +94,7 @@ export default function FeedbackWidget({
             cursor: "pointer", fontWeight: 700, fontSize: 13,
             letterSpacing: 0.4, borderRadius: "0 8px 8px 0",
             userSelect: "none" as React.CSSProperties["userSelect"],
-            boxShadow: "-2px 2px 8px rgba(0,0,0,0.18)",
+            boxShadow: "2px 2px 8px rgba(0,0,0,0.18)",
           }}
         >
           feedback
@@ -125,9 +128,11 @@ export default function FeedbackWidget({
             borderRadius: "16px 16px 0 0",
             boxShadow: "0 -4px 24px rgba(0,0,0,0.22)",
           } : {
-            top: 0, right: 0, bottom: 0, width: 340,
-            transform: open ? "translateX(0)" : "translateX(100%)",
-            boxShadow: "-4px 0 24px rgba(0,0,0,0.22)",
+            // Slide-in panel anchored to the LEFT edge (matches the trigger
+            // tab's new home). Slides off to the left when closed.
+            top: 0, left: 0, bottom: 0, width: 340,
+            transform: open ? "translateX(0)" : "translateX(-100%)",
+            boxShadow: "4px 0 24px rgba(0,0,0,0.22)",
           }),
         }}
       >
