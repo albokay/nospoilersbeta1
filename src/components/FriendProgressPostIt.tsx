@@ -189,7 +189,7 @@ export default function FriendProgressPostIt({
         // Top/bottom 16, left 22, right 22 + 80 (off-screen amount).
         padding: "16px 102px 16px 22px",
         borderRadius: 0,             // sharp corners
-        boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
+        boxShadow: "none",
         width: 450,
         fontSize: 14,
         lineHeight: 1.5,
