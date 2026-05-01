@@ -176,7 +176,9 @@ export default function FriendProgressPostIt({
         // Box extends past the viewport's right edge so the right edge
         // is never visible. Text content stays in the original on-screen
         // location: paddingRight matches the off-screen extension so the
-        // off-screen portion is pure green padding, no text.
+        // off-screen portion is pure green padding, no text. Width sized
+        // so the visible portion extends 50px further into the center
+        // column than the prior fit (per request).
         right: -80,
         bottom: 96,
         zIndex: 50,
@@ -188,7 +190,7 @@ export default function FriendProgressPostIt({
         padding: "16px 102px 16px 22px",
         borderRadius: 0,             // sharp corners
         boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
-        width: 400,
+        width: 450,
         fontSize: 14,
         lineHeight: 1.5,
         // Internal scroll only when post-it grows past the threshold.
