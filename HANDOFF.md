@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-04-30)
+# Sidebar — Technical State (2026-05-01)
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -1306,6 +1306,40 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-01 — Friend-progress post-it (desktop friend rooms)
+
+A small, persistent right-margin post-it inside the friend-room view that lists each *other* room member's watch progress relative to the viewing user. Spec captured in `sidebar friend progress indicator.pdf` (project root). Part of the "social presence" design direction — surfacing the social fabric of friend rooms without surveillance-feeling UI.
+
+**Visual:** rectangular note in canon green (`#7abd8e`), 12° clockwise tilt, fixed-positioned `right: 32, bottom: 96`, persistent throughout the friend-room view including individual thread reads. Hidden on mobile (viewport <1280px), hidden in solo rooms, hidden in non-friend-room contexts.
+
+**Five status types** with copy from spec:
+- `@handle is N episodes ahead` — "N episodes ahead" in canon-red
+- `@handle and you are caught up!` — neutral white
+- `@handle is N episodes behind` — "N episodes behind" in canon-blue
+- `@handle hasn't started watching` — neutral white
+- Handles always italic + canon-white.
+
+**Sort order:** ahead (most→least) → caught-up → behind (least→most) → not-started. Within each group, alphabetical for stability.
+
+**Calculation:** episode delta computed across season boundaries via the show's `seasons: number[]` (episode counts per season). When seasons data is incomplete or out-of-bounds, count is suppressed and only direction (ahead / behind) is shown — same copy minus the number. Rewatchers contribute their effective (highest) progress; no special "rewatching" copy. "Hasn't started" = no progress row OR `season < 1 || episode < 1`.
+
+**Edge-case handling pinned for future readers:**
+
+- Failed progress fetch for a member → exclude that member from the post-it silently. Don't fall back to "not started" (which would mislead).
+- Solo room (only the viewing user) → component returns null.
+- Departed members → not fetched (only `fetchFriendGroupMembers` rows enter the input).
+- Loading members → omitted from initial render; appear on next render after fetch resolves.
+- More than 20 lines → `maxHeight: 360, overflowY: auto` so the post-it scrolls internally rather than overflowing the viewport. No hard membership cap exists in the codebase as of this commit; spec's "10 max" is aspirational.
+
+**Implementation notes:**
+
+- `FriendProgressPostIt.tsx` is self-contained: members come in, status lines come out. No DB writes, no global state, no realtime subscription.
+- Uses existing `fetchPublicProgressForUser` RPC (one call per member; results cached client-side per mount). Returns all-shows progress per user; we extract only `[showId]`. Wasteful at scale — fine at the current member count, would warrant a batch RPC `get_progress_for_users_on_show(show_id, user_ids[])` if rooms regularly exceed ~25.
+- Independent `roomMembers` state in `ShowSection.tsx` fetched on `activeGroupId` change. Doesn't share with the settings-modal `groupMembers` state — separate concerns, separate loading windows.
+- Page-load only — no realtime updates when a member changes their progress mid-session. Per spec, that's nice-to-have but not v1. Re-mount (refresh / room switch) refreshes the data.
+
+**What this isn't:** not a notification system, not a presence indicator, not interactive (read-only display in v1), not on mobile. Mobile rooms get a separate simpler treatment if/when specced.
 
 ### 2026-04-30 — Relevance hierarchy refinement (Tier 1 sub-tiering + publisher override pin)
 

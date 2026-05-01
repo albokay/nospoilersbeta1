@@ -78,6 +78,7 @@ import Tooltip from "./Tooltip";
 import ModeToggle from "./ModeToggle";
 import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
+import FriendProgressPostIt from "./FriendProgressPostIt";
 import Username from "./Username";
 import type { PendingReference } from "./ResponseComposer";
 import PromptCard from "./PromptCard";
@@ -397,6 +398,20 @@ export default function ShowSection({
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
   const [groupMembers, setGroupMembers] = useState<FriendGroupMember[]>([]);
   const [groupMembersLoading, setGroupMembersLoading] = useState(false);
+
+  // Members of the active friend room — fetched whenever activeGroupId
+  // changes, independent of the settings modal's groupMembers state.
+  // Drives the friend-progress post-it. Failure leaves the array empty
+  // → post-it hides itself.
+  const [roomMembers, setRoomMembers] = useState<FriendGroupMember[]>([]);
+  useEffect(() => {
+    if (!activeGroupId) { setRoomMembers([]); return; }
+    let cancelled = false;
+    fetchFriendGroupMembers(activeGroupId)
+      .then(rows => { if (!cancelled) setRoomMembers(rows); })
+      .catch(() => { if (!cancelled) setRoomMembers([]); });
+    return () => { cancelled = true; };
+  }, [activeGroupId]);
   const [renameValue, setRenameValue] = useState("");
   const [renameSubmitting, setRenameSubmitting] = useState(false);
   // Invite form (inside group settings modal). Multi-row: each row tracks
@@ -2530,6 +2545,20 @@ export default function ShowSection({
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Friend-progress post-it: floats in the right margin throughout the
+          friend-room view (thread list AND open thread). Only renders inside
+          a friend room and only on desktop viewports (component handles the
+          width gate + solo-room hide internally). */}
+      {activeGroupId && user && (
+        <FriendProgressPostIt
+          members={roomMembers}
+          currentUserId={user.id}
+          showId={showId}
+          seasons={allShows.find(s => s.id === showId)?.seasons ?? []}
+          userProgress={effectiveProgress}
+        />
       )}
 
       {/* CONTENT */}
