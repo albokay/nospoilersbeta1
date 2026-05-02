@@ -99,9 +99,9 @@ body.group-context .blockquote-ref .blockquote-author,
 body.group-context .blockquote-ref .blockquote-text{ color:rgba(26,58,74,0.55); opacity:1; }
 body.public-context .responding-to-label{ color:#7abd8e; }
 body.public-context .btn.post{ background:#355eb8 !important; border-color:#355eb8 !important; color:#fff !important; }
-body.public-context .progress-control{ border-color:#7abd8e !important; }
+body.public-context .progress-control{ border-color:#355eb8 !important; }
 body.group-context .btn.post{ background:#355eb8 !important; border-color:#355eb8 !important; color:#fff !important; }
-body.group-context .progress-control{ border-color:#7abd8e !important; }
+body.group-context .progress-control{ border-color:#355eb8 !important; }
 /* Inside modals (portaled, with [data-modal-root]), the .progress-control
    keeps its white outline regardless of body context. The compose modal's
    in-modal picker sits on the modal's own colored frame and reads against

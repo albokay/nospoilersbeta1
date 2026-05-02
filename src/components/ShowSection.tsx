@@ -2844,7 +2844,7 @@ export default function ShowSection({
                 <button
                   className="btn"
                   onClick={() => openGroupSettings(activeGroupId)}
-                  style={{ background: "var(--dos-user)", border: "none", color: "#fff", fontSize: 14, padding: "8px 20px" }}
+                  style={{ background: "#7abd8e", border: "none", color: "#fff", fontSize: 14, padding: "8px 20px" }}
                 >
                   <Users size={14} color="#fff" style={{verticalAlign:"middle"}} /> invite friends
                 </button>
