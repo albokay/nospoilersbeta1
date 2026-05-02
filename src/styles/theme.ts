@@ -5,7 +5,7 @@ export function injectDOSStyles() {
 :root{
   --dos-bg:#7abd8e; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
-  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#355eb8; --dos-border:#ffffff;
+  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#7abd8e; --dos-border:#ffffff;
   /* Toggle "off" fill (de-selected segments) and "on" text (selected
      segments). In default/public both equal --dos-border (white) and
      --dos-fg (white) respectively, so no special handling is needed there.
@@ -98,9 +98,9 @@ body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
 body.group-context .blockquote-ref .blockquote-author,
 body.group-context .blockquote-ref .blockquote-text{ color:rgba(26,58,74,0.55); opacity:1; }
 body.public-context .responding-to-label{ color:#7abd8e; }
-body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.public-context .btn.post{ background:#355eb8 !important; border-color:#355eb8 !important; color:#fff !important; }
 body.public-context .progress-control{ border-color:#7abd8e !important; }
-body.group-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.group-context .btn.post{ background:#355eb8 !important; border-color:#355eb8 !important; color:#fff !important; }
 body.group-context .progress-control{ border-color:#7abd8e !important; }
 /* Inside modals (portaled, with [data-modal-root]), the .progress-control
    keeps its white outline regardless of body context. The compose modal's
@@ -533,8 +533,13 @@ header.site{
 /* profile chip */
 .profileChip{
   display:inline-flex; align-items:center; gap:8px; cursor:pointer;
-  border:none; padding:6px 10px; border-radius:9999px;
-  background: var(--dos-user); height:34px; box-sizing:border-box;
+  border:2px solid #fff; padding:6px 10px; border-radius:9999px;
+  background: transparent; height:34px; box-sizing:border-box; color:#fff;
+}
+/* Friend-room and public contexts: filled green pill, no outline. */
+body.group-context .profileChip,
+body.public-context .profileChip{
+  background: var(--dos-user); border-color: transparent;
 }
 .avatar{
   width:24px; height:24px; border:none; border-radius:50%;

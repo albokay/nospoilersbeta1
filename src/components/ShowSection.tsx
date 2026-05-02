@@ -2002,6 +2002,12 @@ export default function ShowSection({
                   rewatchHighest={effectiveProgress?.isRewatching && effectiveProgress.highestS != null && effectiveProgress.highestE != null
                     ? { s: effectiveProgress.highestS, e: effectiveProgress.highestE }
                     : null}
+                  pillBg={(() => {
+                    if (activeGroupId) return "#355eb8";
+                    const at = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
+                    const viewingPrivate = !activeGroupId && !!at && !at.isPublic;
+                    return viewingPrivate ? undefined : "#355eb8";
+                  })()}
                 />
               </div>
             </div>
@@ -2105,6 +2111,12 @@ export default function ShowSection({
                     rewatchHighest={effectiveProgress?.isRewatching && effectiveProgress.highestS != null && effectiveProgress.highestE != null
                       ? { s: effectiveProgress.highestS, e: effectiveProgress.highestE }
                       : null}
+                    pillBg={(() => {
+                      if (activeGroupId) return "#355eb8";
+                      const at = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
+                      const viewingPrivate = !activeGroupId && !!at && !at.isPublic;
+                      return viewingPrivate ? undefined : "#355eb8";
+                    })()}
                   />
                   <Tooltip
                     key={String(helpOpen)}
@@ -2717,7 +2729,7 @@ export default function ShowSection({
                   position: "relative",
                   paddingTop: 12,
                   paddingBottom: 36,
-                  border: isNew ? "4px solid #4b8f6c" : isOwn ? "4px solid var(--dos-user)" : "4px solid var(--dos-border)"
+                  border: isNew ? "4px solid #355eb8" : isOwn ? "4px solid var(--dos-user)" : "4px solid var(--dos-border)"
                 }}
                 onClick={() => {
                   markThreadVisited(t.id);
@@ -2797,7 +2809,7 @@ export default function ShowSection({
                     >
                       <span className="newReplyBadge"
                         style={{
-                          background: "#7abd8e", color: "#fff", borderRadius: 9999,
+                          background: "#355eb8", color: "#fff", borderRadius: 9999,
                           padding: "2px 7px", fontWeight: 700,
                         }}>
                         <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}

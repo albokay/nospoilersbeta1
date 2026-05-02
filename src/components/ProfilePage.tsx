@@ -980,42 +980,33 @@ export default function ProfilePage({
 
                         {/* Friend-room affordance — conditional on room count.
                            Single: direct link. Multi: dropdown (chevron). */}
-                        {tabGroups.length === 1 && (() => {
-                          const name = tabGroups[0].name;
-                          const MAX = 12;
-                          const truncated = name.length > MAX ? name.slice(0, MAX) + "…" : name;
-                          return (
-                            <Tooltip
-                              text="Go to friend room."
-                              direction="below"
-                              align="center"
-                              portal
-                              tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
+                        {tabGroups.length === 1 && (
+                          <Tooltip
+                            text="Go to friend room."
+                            direction="below"
+                            align="center"
+                            portal
+                            tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
+                          >
+                            <button
+                              className="btn h40"
+                              onClick={() => goToShowRoom(activeTab, tabGroups[0].id)}
+                              style={{
+                                lineHeight: 1.2,
+                                display: "inline-flex", alignItems: "center", gap: 5,
+                                // Transparent fill across all filter states.
+                                background: "transparent",
+                                border: "2px solid #fff",
+                                color: "#fff",
+                                whiteSpace: "nowrap",
+                              }}
                             >
-                              <button
-                                className="btn h40"
-                                onClick={() => goToShowRoom(activeTab, tabGroups[0].id)}
-                                style={{
-                                  lineHeight: 1.2,
-                                  display: "inline-flex", alignItems: "center", gap: 5,
-                                  // Transparent fill across all filter
-                                  // states — matches the multi-room dropdown
-                                  // variant for consistency. White outline +
-                                  // white content reads on every tabBg
-                                  // surface (light-blue, green, yellow).
-                                  background: "transparent",
-                                  border: "2px solid #fff",
-                                  color: "#fff",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                <ArrowRight size={15} color="#fff" style={{ flexShrink: 0 }} />
-                                <span>{truncated}</span>
-                                <Users size={15} color="#fff" style={{ flexShrink: 0 }} />
-                              </button>
-                            </Tooltip>
-                          );
-                        })()}
+                              <ArrowRight size={15} color="#fff" style={{ flexShrink: 0 }} />
+                              <span>go to friend room</span>
+                              <Users size={15} color="#fff" style={{ flexShrink: 0 }} />
+                            </button>
+                          </Tooltip>
+                        )}
                         {tabGroups.length >= 2 && (
                           <div ref={roomsHeaderDropdownRef} style={{ position: "relative" }}>
                             <button
