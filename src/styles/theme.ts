@@ -5,7 +5,7 @@ export function injectDOSStyles() {
 :root{
   --dos-bg:#7abd8e; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
-  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#7abd8e; --dos-border:#ffffff;
+  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#355eb8; --dos-border:#ffffff;
   /* Toggle "off" fill (de-selected segments) and "on" text (selected
      segments). In default/public both equal --dos-border (white) and
      --dos-fg (white) respectively, so no special handling is needed there.
@@ -536,10 +536,10 @@ header.site{
   border:2px solid #fff; padding:6px 10px; border-radius:9999px;
   background: transparent; height:34px; box-sizing:border-box; color:#fff;
 }
-/* Friend-room and public contexts: filled green pill, no outline. */
+/* Friend-room and public contexts: filled canon-green pill, no outline. */
 body.group-context .profileChip,
 body.public-context .profileChip{
-  background: var(--dos-user); border-color: transparent;
+  background: #7abd8e; border-color: transparent;
 }
 .avatar{
   width:24px; height:24px; border:none; border-radius:50%;

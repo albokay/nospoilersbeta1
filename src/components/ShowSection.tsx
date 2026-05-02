@@ -2008,6 +2008,12 @@ export default function ShowSection({
                     const viewingPrivate = !activeGroupId && !!at && !at.isPublic;
                     return viewingPrivate ? undefined : "#355eb8";
                   })()}
+                  pillBorderColor={(() => {
+                    if (activeGroupId) return "#355eb8";
+                    const at = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
+                    const viewingPrivate = !activeGroupId && !!at && !at.isPublic;
+                    return viewingPrivate ? undefined : "#355eb8";
+                  })()}
                 />
               </div>
             </div>
@@ -2117,6 +2123,12 @@ export default function ShowSection({
                       const viewingPrivate = !activeGroupId && !!at && !at.isPublic;
                       return viewingPrivate ? undefined : "#355eb8";
                     })()}
+                    pillBorderColor={(() => {
+                      if (activeGroupId) return "#355eb8";
+                      const at = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
+                      const viewingPrivate = !activeGroupId && !!at && !at.isPublic;
+                      return viewingPrivate ? undefined : "#355eb8";
+                    })()}
                   />
                   <Tooltip
                     key={String(helpOpen)}
@@ -2130,7 +2142,7 @@ export default function ShowSection({
                       style={{
                         width: 20, height: 20, padding: 0,
                         borderRadius: "50%", border: "none",
-                        background: "var(--dos-user)", color: "#fff",
+                        background: "#7abd8e", color: "#fff",
                         fontSize: 12, fontWeight: 800, lineHeight: 1,
                         cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
@@ -2729,7 +2741,7 @@ export default function ShowSection({
                   position: "relative",
                   paddingTop: 12,
                   paddingBottom: 36,
-                  border: isNew ? "4px solid #355eb8" : isOwn ? "4px solid var(--dos-user)" : "4px solid var(--dos-border)"
+                  border: isNew ? "4px solid #355eb8" : isOwn ? "4px solid #fff" : "4px solid var(--dos-border)"
                 }}
                 onClick={() => {
                   markThreadVisited(t.id);
