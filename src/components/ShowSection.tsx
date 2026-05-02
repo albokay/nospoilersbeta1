@@ -2142,7 +2142,7 @@ export default function ShowSection({
                       style={{
                         width: 20, height: 20, padding: 0,
                         borderRadius: "50%", border: "none",
-                        background: "#7abd8e", color: "#fff",
+                        background: "#7abd8e", color: "#355eb8",
                         fontSize: 12, fontWeight: 800, lineHeight: 1,
                         cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
