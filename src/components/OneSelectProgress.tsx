@@ -35,7 +35,7 @@ function isWithinPreviousHighest(s: number, e: number, highest?: { s: number; e:
 }
 
 export default function OneSelectProgress({
-  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel, allowZero = false, rewatchHighest, plain = false, pillBg, pillBorderColor
+  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel, allowZero = false, rewatchHighest, plain = false, pillBg
 }: {
   show: any;
   value: any;
@@ -61,12 +61,8 @@ export default function OneSelectProgress({
   // friends, canon-yellow on public). Default keeps the canon-green
   // pill for every other callsite (ShowSection, mobile, etc.).
   pillBg?: string;
-  // Override the default pill border color (white). Independent from
-  // pillBg so callers can have a colored fill with a coordinating border.
-  pillBorderColor?: string;
 }) {
   const effectivePillBg = pillBg ?? "#7abd8e";
-  const effectivePillBorder = pillBorderColor ?? "#fff";
   const opts = buildProgressOptions(show);
   const curS = value?.s ?? 1;
   const curE = value?.e ?? 1;
@@ -132,7 +128,7 @@ export default function OneSelectProgress({
       <>
         <button
           className="btn progress-control"
-          style={{ whiteSpace: "nowrap", background: effectivePillBg, color: "#fff", border: `2px solid ${effectivePillBorder}`, fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
+          style={{ whiteSpace: "nowrap", background: effectivePillBg, color: "#fff", border: "2px solid #fff", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
           onClick={() => setMobileOpen(true)}
         >
           {compactLabel} ▾
@@ -147,7 +143,7 @@ export default function OneSelectProgress({
               className="badge progress-control"
               value={selectedId}
               onChange={(e) => { onSelect(e); setMobileOpen(false); }}
-              style={{ background: effectivePillBg, color: "#fff", border: `2px solid ${effectivePillBorder}`, width: "100%", height: 40 }}
+              style={{ background: effectivePillBg, color: "#fff", border: "2px solid #fff", width: "100%", height: 40 }}
               size={1}
             >
               {showZeroOption && (
@@ -207,7 +203,7 @@ export default function OneSelectProgress({
         // reserves right-padding for the overlay ChevronDown rendered below.
         // Keeps the affordance consistent across browsers (Safari in
         // particular hides the native arrow at this font-size + padding).
-        : { background: effectivePillBg, color: "#fff", border: `2px solid ${effectivePillBorder}`, fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", paddingRight: 28 }
+        : { background: effectivePillBg, color: "#fff", border: "2px solid #fff", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", paddingRight: 28 }
       }
     >
       {showZeroOption && (

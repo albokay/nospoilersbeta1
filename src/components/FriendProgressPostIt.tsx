@@ -179,7 +179,7 @@ export default function FriendProgressPostIt({
         // off-screen portion is pure green padding, no text. Width sized
         // so the visible portion extends 50px further into the center
         // column than the prior fit (per request).
-        right: -94,
+        right: -130,
         bottom: 96,
         zIndex: 50,
         transform: `rotate(${TILT_DEG}deg)`,

@@ -2002,18 +2002,6 @@ export default function ShowSection({
                   rewatchHighest={effectiveProgress?.isRewatching && effectiveProgress.highestS != null && effectiveProgress.highestE != null
                     ? { s: effectiveProgress.highestS, e: effectiveProgress.highestE }
                     : null}
-                  pillBg={(() => {
-                    if (activeGroupId) return "#355eb8";
-                    const at = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
-                    const viewingPrivate = !activeGroupId && !!at && !at.isPublic;
-                    return viewingPrivate ? undefined : "#355eb8";
-                  })()}
-                  pillBorderColor={(() => {
-                    if (activeGroupId) return "#355eb8";
-                    const at = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
-                    const viewingPrivate = !activeGroupId && !!at && !at.isPublic;
-                    return viewingPrivate ? undefined : "#355eb8";
-                  })()}
                 />
               </div>
             </div>
@@ -2117,18 +2105,6 @@ export default function ShowSection({
                     rewatchHighest={effectiveProgress?.isRewatching && effectiveProgress.highestS != null && effectiveProgress.highestE != null
                       ? { s: effectiveProgress.highestS, e: effectiveProgress.highestE }
                       : null}
-                    pillBg={(() => {
-                      if (activeGroupId) return "#355eb8";
-                      const at = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
-                      const viewingPrivate = !activeGroupId && !!at && !at.isPublic;
-                      return viewingPrivate ? undefined : "#355eb8";
-                    })()}
-                    pillBorderColor={(() => {
-                      if (activeGroupId) return "#355eb8";
-                      const at = activeThreadId ? dbThreads.find(t => t.id === activeThreadId) : null;
-                      const viewingPrivate = !activeGroupId && !!at && !at.isPublic;
-                      return viewingPrivate ? undefined : "#355eb8";
-                    })()}
                   />
                   <Tooltip
                     key={String(helpOpen)}
@@ -2142,7 +2118,7 @@ export default function ShowSection({
                       style={{
                         width: 20, height: 20, padding: 0,
                         borderRadius: "50%", border: "none",
-                        background: "#7abd8e", color: "#355eb8",
+                        background: "var(--dos-user)", color: "#fff",
                         fontSize: 12, fontWeight: 800, lineHeight: 1,
                         cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
@@ -2741,7 +2717,7 @@ export default function ShowSection({
                   position: "relative",
                   paddingTop: 12,
                   paddingBottom: 36,
-                  border: isNew ? "4px solid #355eb8" : isOwn ? "4px solid #fff" : "4px solid var(--dos-border)"
+                  border: isNew ? "4px solid #4b8f6c" : isOwn ? "4px solid var(--dos-user)" : "4px solid var(--dos-border)"
                 }}
                 onClick={() => {
                   markThreadVisited(t.id);
@@ -2821,7 +2797,7 @@ export default function ShowSection({
                     >
                       <span className="newReplyBadge"
                         style={{
-                          background: "#355eb8", color: "#fff", borderRadius: 9999,
+                          background: "#7abd8e", color: "#fff", borderRadius: 9999,
                           padding: "2px 7px", fontWeight: 700,
                         }}>
                         <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
@@ -2844,7 +2820,7 @@ export default function ShowSection({
                 <button
                   className="btn"
                   onClick={() => openGroupSettings(activeGroupId)}
-                  style={{ background: "#7abd8e", border: "none", color: "#fff", fontSize: 14, padding: "8px 20px" }}
+                  style={{ background: "var(--dos-user)", border: "none", color: "#fff", fontSize: 14, padding: "8px 20px" }}
                 >
                   <Users size={14} color="#fff" style={{verticalAlign:"middle"}} /> invite friends
                 </button>

@@ -98,10 +98,10 @@ body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
 body.group-context .blockquote-ref .blockquote-author,
 body.group-context .blockquote-ref .blockquote-text{ color:rgba(26,58,74,0.55); opacity:1; }
 body.public-context .responding-to-label{ color:#7abd8e; }
-body.public-context .btn.post{ background:#355eb8 !important; border-color:#355eb8 !important; color:#fff !important; }
-body.public-context .progress-control{ border-color:#355eb8 !important; }
-body.group-context .btn.post{ background:#355eb8 !important; border-color:#355eb8 !important; color:#fff !important; }
-body.group-context .progress-control{ border-color:#355eb8 !important; }
+body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.public-context .progress-control{ border-color:#7abd8e !important; }
+body.group-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.group-context .progress-control{ border-color:#7abd8e !important; }
 /* Inside modals (portaled, with [data-modal-root]), the .progress-control
    keeps its white outline regardless of body context. The compose modal's
    in-modal picker sits on the modal's own colored frame and reads against
@@ -533,13 +533,8 @@ header.site{
 /* profile chip */
 .profileChip{
   display:inline-flex; align-items:center; gap:8px; cursor:pointer;
-  border:2px solid #fff; padding:6px 10px; border-radius:9999px;
-  background: transparent; height:34px; box-sizing:border-box; color:#fff;
-}
-/* Friend-room and public contexts: filled canon-green pill, no outline. */
-body.group-context .profileChip,
-body.public-context .profileChip{
-  background: #7abd8e; border-color: transparent;
+  border:none; padding:6px 10px; border-radius:9999px;
+  background: var(--dos-user); height:34px; box-sizing:border-box;
 }
 .avatar{
   width:24px; height:24px; border:none; border-radius:50%;

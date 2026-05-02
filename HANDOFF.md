@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-05-02)
+# Sidebar — Technical State (2026-05-01)
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
