@@ -2717,7 +2717,7 @@ export default function ShowSection({
                   position: "relative",
                   paddingTop: 12,
                   paddingBottom: 36,
-                  border: isNew ? "4px solid #4b8f6c" : isOwn ? "4px solid var(--dos-user)" : "4px solid var(--dos-border)"
+                  border: isNew ? "4px solid #355eb8" : isOwn ? "4px solid #fff" : "4px solid var(--dos-border)"
                 }}
                 onClick={() => {
                   markThreadVisited(t.id);
@@ -2797,7 +2797,7 @@ export default function ShowSection({
                     >
                       <span className="newReplyBadge"
                         style={{
-                          background: "#7abd8e", color: "#fff", borderRadius: 9999,
+                          background: "#355eb8", color: "#fff", borderRadius: 9999,
                           padding: "2px 7px", fontWeight: 700,
                         }}>
                         <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}

@@ -110,7 +110,7 @@ body.public-context [data-modal-root] .progress-control,
 body.group-context [data-modal-root] .progress-control{ border-color:#fff !important; }
 body.public-context .btn.primary{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
 /* New-reply badge in thread list — green instead of yellow in public context */
-body.public-context .newReplyBadge{ background:#7abd8e !important; }
+body.public-context .newReplyBadge{ background:#355eb8 !important; }
 /* Radio dot in compose destination selector — green instead of yellow in public context */
 body.public-context .radio-dot{ background:#7abd8e !important; }
 /* Retag warning box, move-to dropdown, edit textarea — green bg in public context */
