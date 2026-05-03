@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-05-01)
+# Sidebar — Technical State (2026-05-02)
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -1306,6 +1306,33 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-02 — Relevance amendment: user-relative thread age for the brand-new lane
+
+Refines the 1b/1e brand-new threshold so it tracks *when the thread became visible to this user*, not the thread's calendar `createdAt`. A user who catches up to their friends — unlocking content posted while they were behind — sees that newly-unlocked content as brand-new (1b), even if it's calendar-old.
+
+**Per-(user, thread) `firstVisibleToUserAt` computed in three layers:**
+
+1. **Catch-up override (persisted, wins when present).** When a thread transitions from hidden → visible due to a session-time progress advance, the existing progress-bump effect (which already populates `newHighlights`) now also stamps `Date.now()` into `localStorage["ns_first_visible_<userId>"][threadId]`. Hydrated to component state on mount; survives session close.
+2. **Friend-room default.** `max(thread.createdAt, friend_group_members.joined_at)`. Threads posted before the user joined use the join time floor; threads posted after use the post time. The current user's `joinedAt` is read from the existing `roomMembers` state.
+3. **Public default.** `thread.createdAt` only — no room-join concept.
+
+**Spec choices pinned:**
+
+- localStorage was chosen over a DB column for v1 simplicity. Cross-device drift accepted: a user who catches up on phone then opens desktop won't see the catch-up override there until either (a) they advance progress again on desktop, or (b) we promote to DB. Per spec amendment, that trade is acceptable for now.
+- Override never overwrites a prior catch-up timestamp. First catch-up moment wins.
+- "Brand-new for me" is independent of "brand-new in calendar terms." Threads visible for a week with no engagement still land in 1e — the amendment only helps the catch-up case, not the "I never bothered to read this" case (confirmed with user).
+
+**Files touched:**
+
+- `src/components/ShowSection.tsx`:
+  - New `firstVisibleOverrides` state (record map) hydrated from localStorage on mount, re-hydrated on user change.
+  - Progress-bump effect (the same one that populates `newHighlights`) writes to `firstVisibleOverrides` and persists to localStorage when threads become newly visible.
+  - `tierOf` in the relevance comparator computes `firstVisibleAt` = override → friend-room default → public default, then uses `now - firstVisibleAt` instead of `now - thread.updatedAt` for the 36h window check.
+  - `myJoinedAt` derived from `roomMembers` for the friend-room floor.
+  - Dep arrays of `baseVisible` and `activeList` updated to include `firstVisibleOverrides` and `roomMembers`.
+
+**Side effects intentionally avoided:** no DB migration, no schema change, no column add, no new RPC. Pure client-side.
 
 ### 2026-05-01 — Friend-progress post-it (desktop friend rooms)
 

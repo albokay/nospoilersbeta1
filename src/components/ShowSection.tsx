@@ -992,6 +992,22 @@ export default function ShowSection({
     try { return JSON.parse(localStorage.getItem("ns_hidden_base") || "{}"); } catch { return {}; }
   });
 
+  // firstVisibleOverrides: per-(user, thread) timestamp written when a thread
+  // transitions from hidden → visible due to a progress advance during the
+  // session (the "catch-up moment"). The relevance comparator uses this to
+  // refresh the brand-new (1b) window for users who just unlocked content
+  // their friends posted earlier. Storage key namespaced per user; localStorage
+  // is per-device — cross-device drift accepted for v1 per spec amendment.
+  const [firstVisibleOverrides, setFirstVisibleOverrides] = useState<Record<string, number>>(() => {
+    if (!user) return {};
+    try { return JSON.parse(localStorage.getItem(`ns_first_visible_${user.id}`) || "{}"); } catch { return {}; }
+  });
+  useEffect(() => {
+    if (!user) { setFirstVisibleOverrides({}); return; }
+    try { setFirstVisibleOverrides(JSON.parse(localStorage.getItem(`ns_first_visible_${user.id}`) || "{}")); }
+    catch { setFirstVisibleOverrides({}); }
+  }, [user?.id]);
+
   const markThreadVisited = (tid: string) => {
     setLastOpenedAt(prev => {
       const next = { ...prev, [tid]: Date.now() };
@@ -1230,6 +1246,13 @@ export default function ShowSection({
     const prog = effectiveProgress;
     const inFriendRoom = !!activeGroupId;
     const now = Date.now();
+    // User's join time for the active friend room (for the brand-new window
+    // floor: a user who joined a room 5 days ago doesn't see threads from
+    // 4 days ago as brand-new). Public has no room-join floor — public
+    // threads use thread.createdAt only.
+    const myJoinedAt = inFriendRoom
+      ? (roomMembers.find(m => m.userId === myId)?.joinedAt ?? 0)
+      : 0;
 
     const tierOf = (t: Thread): number => {
       const meta = replyMeta[t.id] ?? [];
@@ -1242,7 +1265,18 @@ export default function ShowSection({
       const userRead   = (lastSeenByThread[t.id] !== undefined) || (lastOpenedAt[t.id] !== undefined);
       const userWrote  = meta.some(r => r.authorId === myId);
       const brandNew   = !userRead;
-      const threadAge  = now - t.updatedAt;  // updatedAt approximates createdAt for new threads
+      // firstVisibleToUserAt: when the thread became visible to *this* user.
+      //   - Catch-up override (in-session progress advance unlocked the thread)
+      //     wins when present — written by the progress-bump effect.
+      //   - Friend-room default: max(thread.createdAt, joinedAt). A thread
+      //     posted before the user joined uses joinedAt.
+      //   - Public default: thread.createdAt only.
+      // Used for the 1b/1e window so caught-up users see freshly-unlocked
+      // content as "brand-new for them" within 36h of the unlock moment.
+      const override = firstVisibleOverrides[t.id];
+      const firstVisibleAt = override
+        ?? (inFriendRoom ? Math.max(t.createdAt ?? 0, myJoinedAt) : (t.createdAt ?? 0));
+      const threadAge  = now - firstVisibleAt;
 
       const metaById: Record<string, typeof meta[number]> = {};
       for (const r of meta) metaById[r.id] = r;
@@ -1328,7 +1362,7 @@ export default function ShowSection({
     }
 
     return sortThreads(list);
-  }, [allThreads, progress, searchQuery, sortBy, newHighlights, showId, reWatchOnly, replyMeta, lastSeenByThread, lastOpenedAt, hiddenBaseAt, freshReplyThreadIds, riskyRevealedIds, pinSet, activeGroupId, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
+  }, [allThreads, progress, searchQuery, sortBy, newHighlights, showId, reWatchOnly, replyMeta, lastSeenByThread, lastOpenedAt, hiddenBaseAt, firstVisibleOverrides, freshReplyThreadIds, riskyRevealedIds, pinSet, activeGroupId, roomMembers, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
 
   // ── Green-tab: compute newly visible threads ──
   const prevProgRef = useRef<{ s: number; e: number } | undefined>(undefined);
@@ -1342,6 +1376,25 @@ export default function ShowSection({
       }
       if (Object.keys(newly).length > 0) {
         setNewHighlights((nh: any) => ({ ...nh, [showId]: { ...(nh[showId] || {}), ...newly } }));
+        // Catch-up moment: stamp firstVisibleAt for these threads so the
+        // 1b/1e relevance window resets to "now." Persist per-user to
+        // localStorage; survives session close. Only writes for threads
+        // not yet stamped (never overwrite a prior catch-up moment).
+        if (user) {
+          setFirstVisibleOverrides(prev => {
+            const next = { ...prev };
+            const stamp = Date.now();
+            let changed = false;
+            for (const tid of Object.keys(newly)) {
+              if (!(tid in next)) { next[tid] = stamp; changed = true; }
+            }
+            if (changed) {
+              try { localStorage.setItem(`ns_first_visible_${user.id}`, JSON.stringify(next)); } catch {}
+              return next;
+            }
+            return prev;
+          });
+        }
       }
       const newReplyThreads: Record<string, true> = {};
       const newReplyIds: Record<string, true> = {};
@@ -1371,7 +1424,7 @@ export default function ShowSection({
     const groupIdSet = new Set(groupThreadsData.map(t => t.id));
     const filtered = allThreads.filter(t => groupIdSet.has(t.id));
     return sortThreads(filtered);
-  }, [activeGroupId, groupThreadsData, allThreads, displayed, sortBy, replyMeta, lastSeenByThread, lastOpenedAt, hiddenBaseAt, freshReplyThreadIds, riskyRevealedIds, newHighlights, pinSet, showId, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
+  }, [activeGroupId, groupThreadsData, allThreads, displayed, sortBy, replyMeta, lastSeenByThread, lastOpenedAt, hiddenBaseAt, firstVisibleOverrides, freshReplyThreadIds, riskyRevealedIds, newHighlights, pinSet, roomMembers, showId, user?.id, profile?.username, effectiveProgress?.s, effectiveProgress?.e]);
 
   const activeLoading = activeGroupId ? groupThreadsLoading : threadsLoading;
 
