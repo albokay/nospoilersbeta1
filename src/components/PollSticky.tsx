@@ -297,7 +297,7 @@ export default function PollSticky({ groupId, currentUserId }: Props) {
     }
 
     return (
-      <div style={{ ...stickyShellStyle(), position: "relative" }}>
+      <div style={stickyShellStyle()}>
         <button
           onClick={handleDismiss}
           aria-label="Dismiss"
