@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import {
   fetchActiveRoomAsk,
+  fetchMostRecentClosedRoomAsk,
   replyToAsk,
   sendSikwEmail,
   lazyCloseRoomAsks,
+  dismissClosedAsk,
   type ActiveAskData,
+  type ClosedAskData,
   type SikwReplyType,
 } from "../lib/db";
 import LoadingDots from "./LoadingDots";
@@ -72,8 +76,10 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
     return () => window.removeEventListener("resize", fn);
   }, []);
 
-  const [data, setData] = useState<ActiveAskData | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [data, setData]       = useState<ActiveAskData | null>(null);
+  const [closed, setClosed]   = useState<ClosedAskData | null>(null);
+  const [loaded, setLoaded]   = useState(false);
+  const [dismissedLocal, setDismissedLocal] = useState(false);
 
   // Replier form state
   const [selectedType, setSelectedType] = useState<SikwReplyType | null>(null);
@@ -83,11 +89,13 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
   const [submitting, setSubmitting]     = useState(false);
   const [error, setError]               = useState<string | null>(null);
 
-  // Initial load: lazy-close expired asks then fetch.
+  // Initial load: lazy-close expired asks then fetch active or closed.
   useEffect(() => {
     let cancelled = false;
     setLoaded(false);
     setData(null);
+    setClosed(null);
+    setDismissedLocal(false);
     setSelectedType(null);
     setStickEpisode(null);
     setGiveEpisode(null);
@@ -96,10 +104,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
 
     (async () => {
       try {
-        const justClosed = await lazyCloseRoomAsks(groupId);
-        // Don't fire close emails for asks here — closed-state sticky
-        // surfaces them naturally; SIKW close email is a 3e concern.
-        void justClosed;
+        await lazyCloseRoomAsks(groupId);
       } catch {
         // best-effort
       }
@@ -107,6 +112,11 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
         const a = await fetchActiveRoomAsk(groupId, currentUserId);
         if (cancelled) return;
         setData(a);
+        if (!a) {
+          const c = await fetchMostRecentClosedRoomAsk(groupId, currentUserId);
+          if (cancelled) return;
+          setClosed(c);
+        }
       } catch {
         if (cancelled) return;
       } finally {
@@ -117,7 +127,10 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
     return () => { cancelled = true; };
   }, [groupId, currentUserId]);
 
-  if (!wide || !loaded || !data) return null;
+  if (!wide || !loaded) return null;
+  if (!data && (!closed || dismissedLocal)) return null;
+  if (closed && !data && !dismissedLocal) return renderClosedSticky();
+  if (!data) return null;
 
   const { ask, askerUsername, myReply, allReplies, eligibleCount } = data;
   const isAsker = ask.askerId === currentUserId;
@@ -427,6 +440,116 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
           {submitting ? <>Sending<LoadingDots /></> : `Send to @${askerUsername || "the asker"} →`}
         </button>
       </>
+    );
+  }
+
+  // ── Closed sticky ──────────────────────────────────────────────────────
+  function renderClosedSticky() {
+    if (!closed) return null;
+    const { ask: cAsk, askerUsername: cAsker, myReply: cMyReply, allReplies: cAllReplies, eligibleCount: cEligible } = closed;
+    const cIsAsker = cAsk.askerId === currentUserId;
+
+    async function handleDismiss() {
+      setDismissedLocal(true);
+      try {
+        await dismissClosedAsk(cAsk.id);
+      } catch {
+        // local hide is enough; next nav re-fetches truth
+      }
+    }
+
+    return (
+      <div style={stickyShellStyle()}>
+        <button
+          onClick={handleDismiss}
+          aria-label="Dismiss"
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 8,
+            background: "transparent",
+            border: "none",
+            padding: 2,
+            color: FADED_TEXT,
+            opacity: 0.6,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <X size={13} />
+        </button>
+
+        {/* Eyebrow */}
+        {cIsAsker ? (
+          <div style={askerLineStyle()}>you asked:</div>
+        ) : (
+          <div style={askerLineStyle()}>@{cAsker || "a friend"} asked:</div>
+        )}
+
+        {/* Question */}
+        <div style={{ ...questionStyle(), marginBottom: 10 }}>{cAsk.message}</div>
+
+        {/* Body branches */}
+        {cIsAsker ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+            <div style={{ fontStyle: "italic", fontSize: 10, color: FADED_TEXT, opacity: 0.7 }}>
+              only you see these replies
+            </div>
+            {cAllReplies.length === 0 ? (
+              <div style={{ fontSize: 12, fontStyle: "italic", color: FADED_TEXT, opacity: 0.75 }}>
+                no replies came in.
+              </div>
+            ) : (
+              cAllReplies.map((r) => (
+                <div
+                  key={r.id}
+                  style={{
+                    padding: "6px 9px",
+                    borderRadius: 5,
+                    background: "rgba(255,255,255,0.65)",
+                    fontSize: 12,
+                    color: TEXT_COLOR,
+                  }}
+                >
+                  <div style={{ fontStyle: "italic", color: FADED_TEXT, marginBottom: 2 }}>
+                    @{r.replierUsername || "(someone)"}
+                  </div>
+                  <div>{renderReplyContent(r)}</div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : cMyReply ? (
+          <div
+            style={{
+              padding: "8px 11px",
+              borderRadius: 5,
+              background: "rgba(255,255,255,0.85)",
+              border: `0.5px solid ${ACCENT}`,
+              fontSize: 12,
+              color: TEXT_COLOR,
+              marginBottom: 10,
+              fontWeight: 500,
+            }}
+          >
+            {renderReplyContent(cMyReply)}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, fontStyle: "italic", color: FADED_TEXT, opacity: 0.75, marginBottom: 10 }}>
+            you didn't reply
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{ ...footerStyle(), justifyContent: cIsAsker ? "flex-start" : "center" }}>
+          {cIsAsker ? (
+            <span>closed · {cAllReplies.length} of {cEligible} friends replied</span>
+          ) : (
+            <span style={{ marginLeft: "auto" }}>closed</span>
+          )}
+        </div>
+      </div>
     );
   }
 }

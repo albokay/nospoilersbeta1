@@ -2447,6 +2447,111 @@ export async function replyToAsk(args: {
   };
 }
 
+export type ClosedAskData = {
+  ask: SikwAsk;
+  askerUsername: string | null;
+  myReply: SikwReply | null;
+  /** Populated only when caller is the asker. */
+  allReplies: SikwReplyWithUser[];
+  eligibleCount: number;
+  myDismissed: boolean;
+};
+
+/**
+ * Returns the most-recent closed SIKW ask in the room within the 1-week
+ * post-close window, skipping any the caller has already dismissed.
+ * Mirrors fetchMostRecentClosedRoomPoll. Replies stay private to asker
+ * forever — RLS allows asker to read all, others to read only own.
+ */
+export async function fetchMostRecentClosedRoomAsk(
+  groupId: string,
+  callerId: string,
+): Promise<ClosedAskData | null> {
+  const since1w = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: askRows, error: askErr } = await supabase
+    .from("sikw_asks")
+    .select("*")
+    .eq("group_id", groupId)
+    .not("closed_at", "is", null)
+    .gt("closed_at", since1w)
+    .order("closed_at", { ascending: false })
+    .limit(10);
+  if (askErr) throw askErr;
+  if (!askRows || askRows.length === 0) return null;
+
+  const askIds = askRows.map((a: { id: string }) => a.id);
+  const { data: dismissalRows } = await supabase
+    .from("sikw_dismissals")
+    .select("ask_id")
+    .eq("user_id", callerId)
+    .in("ask_id", askIds);
+  const dismissedIds = new Set((dismissalRows ?? []).map((d: { ask_id: string }) => d.ask_id));
+
+  const targetRow = askRows.find((a: { id: string }) => !dismissedIds.has(a.id));
+  if (!targetRow) return null;
+  const ask = rowToAsk(targetRow as SikwAskRow);
+  const isAsker = ask.askerId === callerId;
+
+  let askerUsername: string | null = null;
+  const { data: askerProfile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", ask.askerId)
+    .maybeSingle();
+  if (askerProfile?.username) askerUsername = askerProfile.username;
+
+  let myReply: SikwReply | null = null;
+  if (!isAsker) {
+    const { data: replyRow } = await supabase
+      .from("sikw_replies")
+      .select("*")
+      .eq("ask_id", ask.id)
+      .eq("replier_id", callerId)
+      .maybeSingle();
+    if (replyRow) myReply = rowToSikwReply(replyRow as SikwReplyRow);
+  }
+
+  let allReplies: SikwReplyWithUser[] = [];
+  if (isAsker) {
+    const { data: replyRows } = await supabase
+      .from("sikw_replies")
+      .select("*")
+      .eq("ask_id", ask.id)
+      .order("replied_at", { ascending: true });
+    const ids = Array.from(new Set((replyRows ?? []).map((r: { replier_id: string }) => r.replier_id)));
+    const userMap: Record<string, string> = {};
+    if (ids.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", ids);
+      for (const p of profiles ?? []) {
+        if (p.username) userMap[p.id as string] = p.username as string;
+      }
+    }
+    allReplies = (replyRows ?? []).map((r) => {
+      const base = rowToSikwReply(r as SikwReplyRow);
+      return { ...base, replierUsername: userMap[base.replierId] ?? null };
+    });
+  }
+
+  const { count: memberCount } = await supabase
+    .from("friend_group_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("group_id", groupId);
+  const eligibleCount = Math.max(0, (memberCount ?? 0) - 1);
+
+  return {
+    ask,
+    askerUsername,
+    myReply,
+    allReplies,
+    eligibleCount,
+    myDismissed: false,
+  };
+}
+
 export async function lazyCloseRoomAsks(groupId: string): Promise<string[]> {
   const { data, error } = await supabase.rpc("lazy_close_room_asks", { p_group_id: groupId });
   if (error) throw error;
