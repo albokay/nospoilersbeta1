@@ -24,6 +24,19 @@ const TILT_DEG        = -4;
 const MIN_VIEWPORT_PX = 1230;
 const STICKY_WIDTH    = 240;
 
+// localStorage gate — asker dismissed their own active poll. Hides the
+// active sticky for that asker until the poll closes; the closed-state
+// sticky then renders normally (different gate: dismissedLocal +
+// dismiss_closed_poll RPC).
+const ASKER_DISMISS_KEY_PREFIX = "ns_poll_asker_dismissed_";
+function isAskerDismissed(pollId: string): boolean {
+  try { return localStorage.getItem(ASKER_DISMISS_KEY_PREFIX + pollId) === "1"; }
+  catch { return false; }
+}
+function markAskerDismissed(pollId: string): void {
+  try { localStorage.setItem(ASKER_DISMISS_KEY_PREFIX + pollId, "1"); } catch {}
+}
+
 interface Props {
   groupId: string;
   currentUserId: string;
@@ -65,6 +78,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
   const [count, setCount]     = useState<{ responseCount: number; eligibleCount: number } | null>(null);
   const [loaded, setLoaded]   = useState(false);
   const [dismissedLocal, setDismissedLocal] = useState(false);
+  const [askerDismissedPollId, setAskerDismissedPollId] = useState<string | null>(null);
 
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [writeInText, setWriteInText] = useState<string>("");
@@ -128,6 +142,16 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
     return () => { cancelled = true; };
   }, [groupId, currentUserId, refreshKey]);
 
+  // After active poll loads, restore asker's dismissal flag from localStorage
+  // so the hide persists across refreshes/navigation.
+  useEffect(() => {
+    if (active && active.poll.askerId === currentUserId && isAskerDismissed(active.poll.id)) {
+      setAskerDismissedPollId(active.poll.id);
+    } else {
+      setAskerDismissedPollId(null);
+    }
+  }, [active, currentUserId]);
+
   if (!wide || !loaded) return null;
 
   // ── ACTIVE STATE ───────────────────────────────────────────────────────
@@ -148,7 +172,21 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
     if (!active) return null;
     const { poll, options, askerUsername, myResponse } = active;
     const hasVoted = !!myResponse;
+    const isAsker = poll.askerId === currentUserId;
     const closesAt = poll.createdAt + durationMs(poll.duration);
+
+    // Hide gates: voter who already voted waits for the closed sticky;
+    // asker who clicked × waits for the closed sticky too. Both branches
+    // re-surface naturally via fetchMostRecentClosedRoomPoll once the
+    // poll closes.
+    if (hasVoted) return null;
+    if (isAsker && askerDismissedPollId === poll.id) return null;
+
+    function handleAskerDismiss() {
+      if (!active) return;
+      markAskerDismissed(active.poll.id);
+      setAskerDismissedPollId(active.poll.id);
+    }
 
     const canSubmit =
       !submitting &&
@@ -194,14 +232,35 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
 
     return (
       <div style={stickyShellStyle()}>
+        {isAsker && (
+          <button
+            onClick={handleAskerDismiss}
+            aria-label="Dismiss"
+            style={{
+              position: "absolute",
+              top: 6,
+              right: 8,
+              background: "transparent",
+              border: "none",
+              padding: 2,
+              color: FADED_TEXT,
+              opacity: 0.6,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <X size={13} />
+          </button>
+        )}
         <div style={askerLineStyle()}>@{askerUsername || "a friend"} asks:</div>
         <div style={questionStyle()}>{poll.question}</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
           {options.map((opt) => {
-            const isMine     = myResponse?.optionId === opt.id;
-            const isSelected = !hasVoted && selectedOptionId === opt.id;
-            const highlighted = isMine || isSelected;
+            // After the hasVoted early-return above, myResponse is null —
+            // isMine is always false and only the live selection matters.
+            const highlighted = selectedOptionId === opt.id;
             return (
               <label
                 key={opt.id}
@@ -259,9 +318,6 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
             </div>
           )}
 
-          {hasVoted && myResponse?.writeInText && (
-            <div style={writeInLockedStyle()}>{myResponse.writeInText}</div>
-          )}
         </div>
 
         {!hasVoted && (
