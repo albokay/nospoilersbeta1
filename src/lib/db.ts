@@ -2232,17 +2232,18 @@ export async function fetchNextRoomPing(
 }
 
 /**
- * Returns the set of show_ids where the caller has at least one
- * undismissed incoming sticky-channel ping. Used by the journal rail
- * dot signal — one query at App load, drives per-show indicators.
+ * Returns a per-show count of the caller's undismissed incoming
+ * sticky-channel pings. Used by the journal rail dot signal — one
+ * query at App load, drives both the per-show dot and (later) any
+ * pluralized tooltips.
  *
  * Same filter shape as fetchNextRoomPing: recipient = caller, not
  * dismissed, not email-channel (nudge_ahead delivers via email and
  * has no in-app surface).
  */
-export async function fetchUndismissedPingShowIds(
+export async function fetchUndismissedPingCountsByShow(
   recipientUserId: string,
-): Promise<Set<string>> {
+): Promise<Record<string, number>> {
   const { data, error } = await supabase
     .from("pings")
     .select("show_id")
@@ -2250,11 +2251,14 @@ export async function fetchUndismissedPingShowIds(
     .is("dismissed_at", null)
     .neq("ping_type", "nudge_ahead");
   if (error) throw error;
-  const ids = new Set<string>();
+  const counts: Record<string, number> = {};
   for (const r of data ?? []) {
-    if (r.show_id) ids.add(r.show_id as string);
+    if (r.show_id) {
+      const sid = r.show_id as string;
+      counts[sid] = (counts[sid] ?? 0) + 1;
+    }
   }
-  return ids;
+  return counts;
 }
 
 // ── Accept invite via SECURITY DEFINER RPC ─────────────────────────────────────

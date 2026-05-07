@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
-import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount, fetchAllFriendGroupsWithActivity, markTabCreated } from "./lib/db";
+import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount, fetchAllFriendGroupsWithActivity, fetchUndismissedPingCountsByShow, markTabCreated } from "./lib/db";
 import { supabase } from "./lib/supabaseClient";
 import type { Show } from "./lib/db";
 import type { Reply, Thread, ProgressEntry, FriendGroup } from "./types";
@@ -280,6 +280,15 @@ function AppShell() {
     if (!user) { setAllFriendGroups([]); return; }
     fetchAllFriendGroupsWithActivity(user.id).then(setAllFriendGroups).catch(() => {});
   }, [user?.id]);
+
+  // Undismissed incoming sticky-channel ping counts per show. Drives the
+  // journal rail dot signal — same wayfinding as new replies. Fetched on
+  // user / nav change; no realtime per spec ("next ping shows on nav refresh").
+  const [pingCountsByShow, setPingCountsByShow] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!user) { setPingCountsByShow({}); return; }
+    fetchUndismissedPingCountsByShow(user.id).then(setPingCountsByShow).catch(() => {});
+  }, [user?.id, expandedShowId, showProfile]);
 
   // Track when user last visited their profile (clears green badge)
   const [visibleSeenAt, setVisibleSeenAt] = useState<number>(() => {
@@ -1177,6 +1186,7 @@ function AppShell() {
           openShow={openShow}
           onClose={goHomepage}
           repliesToUser={repliesToUser}
+          pingCountsByShow={pingCountsByShow}
           openedAtSeenAt={openedAtSeenAt}
           onTabsChange={setProfileTabData}
           updateProgressFor={updateProgressFor}
