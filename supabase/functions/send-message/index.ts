@@ -35,12 +35,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// CORS allowlist. Add the Netlify branch deploy URL when known.
+// CORS allowlist.
 const ALLOWED_ORIGINS = new Set([
   "https://beta.sidebar.watch",
   "http://localhost:5173",
-  // TODO add the pings-polls branch deploy URL once it's live, e.g.:
-  //   "https://pings-polls--<sitename>.netlify.app",
+  // pings-polls branch preview deploy (Vercel)
+  "https://nospoilersbeta1-git-pings-polls-albokays-projects.vercel.app",
 ]);
 
 function corsHeaders(origin: string | null): Record<string, string> {
