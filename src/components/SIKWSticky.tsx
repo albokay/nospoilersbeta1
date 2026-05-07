@@ -21,10 +21,12 @@ import CanonRadio from "./CanonRadio";
 // (PollSticky + SIKWSticky) mount independently and only one type
 // surfaces at a time given the per-asker enforcement.
 
-const STICKY_BG       = "#FAC775";
-const TEXT_COLOR      = "#412402";
-const FADED_TEXT      = "#633806";
-const ACCENT          = "#854F0B";
+const STICKY_BG       = "#dea838";              // canon yellow
+const TEXT_COLOR      = "#fff";                 // primary text over yellow
+const FADED_TEXT      = "rgba(255,255,255,0.7)";// secondary text over yellow
+const DIVIDER_COLOR   = "rgba(255,255,255,0.6)";
+const SUBMIT_BG       = "#7abd8e";              // canon green
+const CANON_NAVY      = "#1a3a4a";              // text on white choice rows
 const TILT_DEG        = -8;
 const MIN_VIEWPORT_PX = 1230;
 const STICKY_WIDTH    = 280;
@@ -202,14 +204,14 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
           <div
             key={r.id}
             style={{
-              padding: "6px 9px",
-              borderRadius: 5,
-              background: "rgba(255,255,255,0.65)",
+              padding: "8px 11px",
+              borderRadius: 12,
+              background: "#fff",
               fontSize: 12,
-              color: TEXT_COLOR,
+              color: CANON_NAVY,
             }}
           >
-            <div style={{ fontStyle: "italic", color: FADED_TEXT, marginBottom: 2 }}>
+            <div style={{ fontStyle: "italic", color: "rgba(26,58,74,0.6)", marginBottom: 2 }}>
               @{r.replierUsername || "(someone)"}
             </div>
             <div>{renderReplyContent(r)}</div>
@@ -242,17 +244,17 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
       <div
         style={{
           padding: "8px 11px",
-          borderRadius: 5,
-          background: "rgba(255,255,255,0.85)",
-          border: `0.5px solid ${ACCENT}`,
+          borderRadius: 12,
+          background: "#fff",
+          border: "none",
           fontSize: 12,
-          color: TEXT_COLOR,
+          color: CANON_NAVY,
           marginBottom: 10,
           fontWeight: 500,
         }}
       >
         {renderReplyContent(myReply)}
-        <div style={{ fontSize: 10, fontStyle: "italic", color: FADED_TEXT, marginTop: 4, fontWeight: 400 }}>
+        <div style={{ fontSize: 10, fontStyle: "italic", color: "rgba(26,58,74,0.6)", marginTop: 4, fontWeight: 400 }}>
           your reply has been sent to @{askerUsername || "the asker"}
         </div>
       </div>
@@ -312,7 +314,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
           {/* Stick with it */}
           <label style={replyOptionStyle(selectedType === "stick_with_it")}>
-            <CanonRadio checked={selectedType === "stick_with_it"} color={ACCENT} />
+            <CanonRadio checked={selectedType === "stick_with_it"} color="#fff" bgColor={STICKY_BG} />
             <input
               type="radio"
               name={`sikw-${ask.id}`}
@@ -343,7 +345,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
 
           {/* Dropping is fair */}
           <label style={replyOptionStyle(selectedType === "dropping_is_fair")}>
-            <CanonRadio checked={selectedType === "dropping_is_fair"} color={ACCENT} />
+            <CanonRadio checked={selectedType === "dropping_is_fair"} color="#fff" bgColor={STICKY_BG} />
             <input
               type="radio"
               name={`sikw-${ask.id}`}
@@ -355,9 +357,9 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
           </label>
 
           {/* Write your own */}
-          <div style={{ padding: "7px 9px", borderRadius: 5, background: selectedType === "custom" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.5)", border: selectedType === "custom" ? `0.5px solid ${ACCENT}` : "0.5px solid transparent" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: TEXT_COLOR, marginBottom: selectedType === "custom" ? 5 : 0, cursor: "pointer" }}>
-              <CanonRadio checked={selectedType === "custom"} color={ACCENT} />
+          <div style={{ padding: "8px 11px", borderRadius: 12, background: "#fff", border: "none" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CANON_NAVY, marginBottom: selectedType === "custom" ? 6 : 0, cursor: "pointer" }}>
+              <CanonRadio checked={selectedType === "custom"} color="#fff" bgColor={STICKY_BG} />
               <input
                 type="radio"
                 name={`sikw-${ask.id}`}
@@ -378,11 +380,14 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
                 style={{
                   width: "100%",
                   fontSize: 11,
-                  padding: "4px 7px",
-                  borderRadius: 4,
-                  border: "0.5px solid rgba(99,56,6,0.3)",
-                  height: 24,
+                  padding: "5px 9px",
+                  borderRadius: 9999,
+                  border: "none",
+                  height: 26,
                   boxSizing: "border-box",
+                  color: CANON_NAVY,
+                  background: "rgba(173,200,215,0.4)",
+                  outline: "none",
                 }}
               />
             )}
@@ -393,7 +398,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
           onClick={handleSubmit}
           disabled={!canSubmit}
           style={{
-            background: canSubmit ? ACCENT : "rgba(133,79,11,0.45)",
+            background: canSubmit ? SUBMIT_BG : "rgba(122,189,142,0.45)",
             color: "#fff",
             border: "none",
             padding: "6px 12px",
@@ -407,9 +412,10 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
             alignItems: "center",
             justifyContent: "center",
             gap: 5,
+            minHeight: 26,
           }}
         >
-          {submitting
+          {!canSubmit ? null : submitting
             ? <>Sending<LoadingDots /></>
             : <>Send to @{askerUsername || "the asker"} <ArrowRight size={12} /></>}
         </button>
@@ -479,14 +485,14 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
                 <div
                   key={r.id}
                   style={{
-                    padding: "6px 9px",
-                    borderRadius: 5,
-                    background: "rgba(255,255,255,0.65)",
+                    padding: "8px 11px",
+                    borderRadius: 12,
+                    background: "#fff",
                     fontSize: 12,
-                    color: TEXT_COLOR,
+                    color: CANON_NAVY,
                   }}
                 >
-                  <div style={{ fontStyle: "italic", color: FADED_TEXT, marginBottom: 2 }}>
+                  <div style={{ fontStyle: "italic", color: "rgba(26,58,74,0.6)", marginBottom: 2 }}>
                     @{r.replierUsername || "(someone)"}
                   </div>
                   <div>{renderReplyContent(r)}</div>
@@ -498,11 +504,11 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
           <div
             style={{
               padding: "8px 11px",
-              borderRadius: 5,
-              background: "rgba(255,255,255,0.85)",
-              border: `0.5px solid ${ACCENT}`,
+              borderRadius: 12,
+              background: "#fff",
+              border: "none",
               fontSize: 12,
-              color: TEXT_COLOR,
+              color: CANON_NAVY,
               marginBottom: 10,
               fontWeight: 500,
             }}
@@ -563,18 +569,18 @@ function questionStyle(): React.CSSProperties {
   };
 }
 
-function replyOptionStyle(selected: boolean): React.CSSProperties {
+function replyOptionStyle(_selected: boolean): React.CSSProperties {
   return {
     display: "flex",
     alignItems: "center",
-    gap: 7,
-    padding: "7px 9px",
-    borderRadius: 5,
-    background: selected ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.5)",
-    border: selected ? `0.5px solid ${ACCENT}` : "0.5px solid transparent",
+    gap: 8,
+    padding: "8px 11px",
+    borderRadius: 12,
+    background: "#fff",
+    border: "none",
     fontSize: 12,
-    color: TEXT_COLOR,
-    fontWeight: selected ? 500 : 400,
+    color: CANON_NAVY,
+    fontWeight: 500,
     cursor: "pointer",
     flexWrap: "wrap",
   };
@@ -585,9 +591,9 @@ function selectStyle(): React.CSSProperties {
     fontSize: 11,
     padding: "1px 5px",
     borderRadius: 3,
-    border: `0.5px solid ${ACCENT}`,
-    background: "white",
-    color: TEXT_COLOR,
+    border: "none",
+    background: "rgba(173,200,215,0.4)",
+    color: CANON_NAVY,
     height: 22,
     marginLeft: 2,
   };
@@ -595,7 +601,7 @@ function selectStyle(): React.CSSProperties {
 
 function footerStyle(): React.CSSProperties {
   return {
-    borderTop: `0.5px dashed rgba(99,56,6,0.4)`,
+    borderTop: `1px dotted ${DIVIDER_COLOR}`,
     paddingTop: 6,
     fontStyle: "italic",
     fontSize: 11,

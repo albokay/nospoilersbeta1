@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { X, BarChart3, HelpCircle, ArrowRight } from "lucide-react";
+import { X, MessageCircleQuestionMark, ArrowRight } from "lucide-react";
 
 // Anchored popover that opens when the user clicks "ask the room →"
 // at the bottom of the right sticky. Two cards: poll composer +
@@ -85,7 +85,7 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
             fontFamily: '"Lora", Georgia, serif',
           }}
         >
-          Ask the room
+          Ask the room a question:
         </div>
         <button
           onClick={onClose}
@@ -104,14 +104,8 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
         </button>
       </div>
 
-      <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
-        What kind of question?
-      </div>
-
       <button onClick={onSelectPoll} style={cardButtonStyle}>
-        <div style={iconChipStyle}>
-          <BarChart3 size={16} color="#fff" strokeWidth={1.8} />
-        </div>
+        <MessageCircleQuestionMark size={20} color="#fff" strokeWidth={1.8} style={{ flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: CANON_NAVY, marginBottom: 2 }}>
             Open a poll
@@ -124,21 +118,7 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
       </button>
 
       <button onClick={onSelectSikw} style={{ ...cardButtonStyle, marginTop: 8 }}>
-        <div style={{ ...iconChipStyle, position: "relative" }}>
-          {/* Two help-circle glyphs side by side, second slightly faded */}
-          <HelpCircle
-            size={13}
-            color="#fff"
-            strokeWidth={1.8}
-            style={{ position: "absolute", left: 4, top: 8 }}
-          />
-          <HelpCircle
-            size={13}
-            color="#fff"
-            strokeWidth={1.8}
-            style={{ position: "absolute", right: 4, top: 8, opacity: 0.7 }}
-          />
-        </div>
+        <MessageCircleQuestionMark size={20} color="#fff" strokeWidth={1.8} style={{ flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: CANON_NAVY, marginBottom: 2 }}>
             Should I keep watching?
@@ -161,18 +141,7 @@ const cardButtonStyle: React.CSSProperties = {
   textAlign: "left",
   padding: "10px 12px",
   borderRadius: 12,
-  border: `2px solid ${CANON_LIGHT}`,
-  background: "#fff",
-  cursor: "pointer",
-};
-
-const iconChipStyle: React.CSSProperties = {
-  flexShrink: 0,
-  width: 30,
-  height: 30,
-  borderRadius: 6,
+  border: "none",
   background: CANON_LIGHT,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
+  cursor: "pointer",
 };

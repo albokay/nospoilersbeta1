@@ -113,6 +113,9 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
 
   return (
     <Modal onClose={onClose} width="min(360px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: `2px solid ${CANON_BLUE}` }}>
+      <style>{`
+        .poll-composer-input::placeholder { color: #fff; opacity: 0.95; }
+      `}</style>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
         <div style={{ fontSize: 18, fontWeight: 600, color: CANON_NAVY, fontFamily: '"Lora", Georgia, serif' }}>Open a poll</div>
         <button
@@ -124,7 +127,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
         </button>
       </div>
       <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 18 }}>
-        Ask the room a question with set answer choices.
+        Take the temperature of the room…
       </div>
 
       {showReplaceConfirm && (
@@ -181,9 +184,10 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
       {/* Question */}
       <div style={{ marginBottom: 18 }}>
         <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6 }}>
-          Question
+          Question:
         </label>
         <input
+          className="poll-composer-input"
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
@@ -194,11 +198,11 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
             fontSize: 14,
             padding: "9px 16px",
             borderRadius: 9999,
-            border: `2px solid ${CANON_LIGHT}`,
+            border: "none",
             height: 40,
             boxSizing: "border-box",
             color: CANON_NAVY,
-            background: "#fff",
+            background: CANON_LIGHT,
             outline: "none",
           }}
         />
@@ -213,6 +217,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <span style={{ fontSize: 12, color: TEXT_MUTED, width: 16, textAlign: "center" }}>{i + 1}</span>
             <input
+              className="poll-composer-input"
               type="text"
               value={o}
               onChange={(e) => setOption(i, e.target.value)}
@@ -223,11 +228,11 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
                 fontSize: 13,
                 padding: "7px 14px",
                 borderRadius: 9999,
-                border: `2px solid ${CANON_LIGHT}`,
+                border: "none",
                 height: 34,
                 boxSizing: "border-box",
                 color: CANON_NAVY,
-                background: "#fff",
+                background: CANON_LIGHT,
                 outline: "none",
               }}
             />
@@ -283,8 +288,8 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
           marginBottom: 18,
           padding: "10px 12px",
           borderRadius: 12,
-          background: "rgba(173,200,215,0.25)",
-          border: `2px solid ${CANON_LIGHT}`,
+          background: "#fff",
+          border: "none",
         }}
       >
         <label
@@ -299,7 +304,8 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
         >
           <CanonRadio
             checked={allowWriteIn}
-            color={CANON_GREEN}
+            bgColor={CANON_LIGHT}
+            color="#fff"
             size={20}
             dotSize={10}
           />
@@ -309,17 +315,17 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
             onChange={(e) => setAllowWriteIn(e.target.checked)}
             style={{ display: "none" }}
           />
-          <span onClick={() => setAllowWriteIn(!allowWriteIn)}>Allow write-in answers</span>
+          <span onClick={() => setAllowWriteIn(!allowWriteIn)}>Allow write-in answers?</span>
         </label>
         <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 4, marginLeft: 30, lineHeight: 1.4 }}>
-          If on, friends can write their own answer. Remind them to keep it spoiler-free.
+          If on, friends can write their own answer.
         </div>
       </div>
 
       {/* Duration */}
       <div style={{ marginBottom: 20 }}>
         <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 8 }}>
-          Open for
+          Open for:
         </label>
         <div style={{ display: "flex", gap: 6 }}>
           {DURATIONS.map((d) => {
@@ -332,7 +338,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
                   flex: 1,
                   padding: "7px 0",
                   borderRadius: 9999,
-                  border: `2px solid ${selected ? CANON_BLUE : CANON_LIGHT}`,
+                  border: selected ? `2px solid ${CANON_BLUE}` : "none",
                   background: selected ? CANON_BLUE : "#fff",
                   fontSize: 12,
                   color: selected ? "#fff" : CANON_NAVY,
@@ -359,7 +365,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
           style={{
             background: canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)",
             color: "#fff",
-            border: `2px solid ${canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)"}`,
+            border: canSubmit ? `2px solid ${CANON_BLUE}` : "none",
             padding: "8px 18px",
             borderRadius: 9999,
             fontSize: 13,
@@ -368,9 +374,11 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
+            minHeight: 36,
+            minWidth: canSubmit ? undefined : 120,
           }}
         >
-          {submitting ? <>Opening<LoadingDots /></> : <>Open the poll <ArrowRight size={14} /></>}
+          {!canSubmit ? null : submitting ? <>Opening<LoadingDots /></> : <>Open the poll <ArrowRight size={14} /></>}
         </button>
         <button
           onClick={onClose}

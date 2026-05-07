@@ -16,10 +16,12 @@ import CanonRadio from "./CanonRadio";
 import type { PollDurationCode } from "../types";
 
 // ── Visual constants ─────────────────────────────────────────────────────
-const STICKY_BG       = "#FAC775";
-const TEXT_COLOR      = "#412402";
-const FADED_TEXT      = "#633806";
-const ACCENT          = "#854F0B";
+const STICKY_BG       = "#dea838";              // canon yellow
+const TEXT_COLOR      = "#fff";                 // primary text over yellow
+const FADED_TEXT      = "rgba(255,255,255,0.7)";// secondary text over yellow
+const DIVIDER_COLOR   = "rgba(255,255,255,0.6)";
+const SUBMIT_BG       = "#7abd8e";              // canon green
+const CANON_NAVY      = "#1a3a4a";              // text on white choice rows
 const TILT_DEG        = -4;
 const MIN_VIEWPORT_PX = 1230;
 const STICKY_WIDTH    = 240;
@@ -270,7 +272,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
                 key={opt.id}
                 style={optionRowStyle(highlighted, hasVoted)}
               >
-                <CanonRadio checked={highlighted} color={ACCENT} />
+                <CanonRadio checked={highlighted} color="#fff" bgColor={STICKY_BG} />
                 <input
                   type="radio"
                   name={`poll-${poll.id}`}
@@ -285,11 +287,12 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
           })}
 
           {poll.allowWriteIn && !hasVoted && (
-            <div style={{ padding: "6px 9px", borderRadius: 5, background: "rgba(255,255,255,0.5)" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, marginBottom: 5 }}>
+            <div style={{ padding: "8px 11px", borderRadius: 12, background: "#fff" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CANON_NAVY, marginBottom: 6, cursor: "pointer" }}>
                 <CanonRadio
                   checked={selectedOptionId === null && writeInText.length > 0}
-                  color={ACCENT}
+                  color="#fff"
+                  bgColor={STICKY_BG}
                 />
                 <input
                   type="radio"
@@ -312,11 +315,14 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
                 style={{
                   width: "100%",
                   fontSize: 11,
-                  padding: "4px 7px",
-                  borderRadius: 4,
-                  border: `0.5px solid rgba(99,56,6,0.3)`,
-                  height: 24,
+                  padding: "5px 9px",
+                  borderRadius: 9999,
+                  border: "none",
+                  height: 26,
                   boxSizing: "border-box",
+                  color: CANON_NAVY,
+                  background: "rgba(255,255,255,0.6)",
+                  outline: "none",
                 }}
               />
             </div>
@@ -333,7 +339,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
             disabled={!canSubmit}
             style={submitButtonStyle(canSubmit)}
           >
-            {submitting ? <>Sending<LoadingDots /></> : "Submit"}
+            {!canSubmit ? null : submitting ? <>Sending<LoadingDots /></> : "Submit"}
           </button>
         )}
 
@@ -428,7 +434,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
               </div>
               <div
                 style={{
-                  background: "rgba(133, 79, 11, 0.18)",
+                  background: "rgba(255,255,255,0.25)",
                   height: 2,
                   marginBottom: 10,
                   borderRadius: 1,
@@ -436,7 +442,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
               >
                 <div
                   style={{
-                    background: ACCENT,
+                    background: "#fff",
                     height: "100%",
                     width: `${pct}%`,
                     borderRadius: 1,
@@ -504,53 +510,54 @@ function questionStyle(): React.CSSProperties {
   };
 }
 
-function optionRowStyle(highlighted: boolean, locked: boolean): React.CSSProperties {
+function optionRowStyle(_highlighted: boolean, locked: boolean): React.CSSProperties {
   return {
     display: "flex",
     alignItems: "center",
-    gap: 7,
-    padding: "6px 9px",
-    borderRadius: 5,
-    background: highlighted ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.5)",
-    border: highlighted ? `0.5px solid ${ACCENT}` : "0.5px solid transparent",
+    gap: 8,
+    padding: "8px 11px",
+    borderRadius: 12,
+    background: "#fff",
+    border: "none",
     fontSize: 12,
-    color: TEXT_COLOR,
-    fontWeight: highlighted ? 500 : 400,
+    color: CANON_NAVY,
+    fontWeight: 500,
     cursor: locked ? "default" : "pointer",
   };
 }
 
 function writeInLockedStyle(): React.CSSProperties {
   return {
-    padding: "6px 9px",
-    borderRadius: 5,
-    background: "rgba(255,255,255,0.85)",
-    border: `0.5px solid ${ACCENT}`,
+    padding: "8px 11px",
+    borderRadius: 12,
+    background: "#fff",
+    border: "none",
     fontSize: 12,
     fontStyle: "italic",
-    color: TEXT_COLOR,
+    color: CANON_NAVY,
     fontWeight: 500,
   };
 }
 
 function submitButtonStyle(enabled: boolean): React.CSSProperties {
   return {
-    background: enabled ? ACCENT : "rgba(133,79,11,0.45)",
+    background: enabled ? SUBMIT_BG : "rgba(122,189,142,0.45)",
     color: "#fff",
     border: "none",
     padding: "6px 12px",
-    borderRadius: 999,
+    borderRadius: 9999,
     fontSize: 11,
     fontWeight: 500,
     width: "100%",
     cursor: enabled ? "pointer" : "not-allowed",
     marginBottom: 8,
+    minHeight: 26,
   };
 }
 
 function footerStyle(): React.CSSProperties {
   return {
-    borderTop: `0.5px dashed rgba(99,56,6,0.4)`,
+    borderTop: `1px dotted ${DIVIDER_COLOR}`,
     paddingTop: 6,
     fontStyle: "italic",
     fontSize: 11,

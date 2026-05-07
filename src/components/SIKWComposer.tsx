@@ -152,14 +152,14 @@ export default function SIKWComposer({
         </button>
       </div>
       <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
-        Ask the room whether to stick with the show. Replies are spoiler-light by structure.
+        Ask the room whether to stick with the show.
       </div>
 
       {/* Progress context block */}
       <div
         style={{
           background: "rgba(173,200,215,0.25)",
-          border: `2px solid ${CANON_LIGHT}`,
+          border: "none",
           borderRadius: 12,
           padding: "10px 12px",
           marginBottom: 18,
@@ -245,8 +245,8 @@ export default function SIKWComposer({
                 gap: 10,
                 padding: "9px 12px",
                 borderRadius: 12,
-                background: selected ? "rgba(53,94,184,0.08)" : "transparent",
-                border: `2px solid ${selected ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
+                background: CANON_LIGHT,
+                border: "none",
                 fontSize: 13,
                 color: selected ? CANON_NAVY : "#2c2c2a",
                 cursor: "pointer",
@@ -270,8 +270,8 @@ export default function SIKWComposer({
           style={{
             padding: "9px 12px",
             borderRadius: 12,
-            border: `2px solid ${customSelected ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
-            background: customSelected ? "rgba(53,94,184,0.08)" : "transparent",
+            border: "none",
+            background: CANON_LIGHT,
           }}
         >
           <label
@@ -342,7 +342,7 @@ export default function SIKWComposer({
           style={{
             background: canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)",
             color: "#fff",
-            border: `2px solid ${canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)"}`,
+            border: canSubmit ? `2px solid ${CANON_BLUE}` : "none",
             padding: "8px 18px",
             borderRadius: 9999,
             fontSize: 13,
@@ -351,9 +351,11 @@ export default function SIKWComposer({
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
+            minHeight: 36,
+            minWidth: canSubmit ? undefined : 120,
           }}
         >
-          {submitting ? <>Asking<LoadingDots /></> : <>Ask the room <ArrowRight size={14} /></>}
+          {!canSubmit ? null : submitting ? <>Asking<LoadingDots /></> : <>Ask the room <ArrowRight size={14} /></>}
         </button>
         <button
           onClick={onClose}

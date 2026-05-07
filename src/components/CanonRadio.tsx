@@ -12,6 +12,8 @@ interface Props {
   checked: boolean;
   /** Inner dot color when checked. Defaults to canon green. */
   color?: string;
+  /** Outer circle background. Defaults to white. */
+  bgColor?: string;
   /** Outer circle diameter. */
   size?: number;
   /** Inner dot diameter. */
@@ -23,6 +25,7 @@ interface Props {
 export default function CanonRadio({
   checked,
   color = "#7abd8e",
+  bgColor = "#fff",
   size = 14,
   dotSize = 7,
   "aria-label": ariaLabel,
@@ -36,7 +39,7 @@ export default function CanonRadio({
         width: size,
         height: size,
         borderRadius: "50%",
-        background: "#fff",
+        background: bgColor,
         flexShrink: 0,
         display: "inline-flex",
         alignItems: "center",
