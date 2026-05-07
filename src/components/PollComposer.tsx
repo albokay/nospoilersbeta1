@@ -30,6 +30,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
   const [submitting, setSubmitting]   = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
+  const [existingType, setExistingType] = useState<"poll" | "ask" | null>(null);
 
   function setOption(i: number, val: string) {
     setOptions((prev) => prev.map((o, idx) => (idx === i ? val : o)));
@@ -67,7 +68,8 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
         replaceExisting,
       });
       if (!result.ok) {
-        if (result.error === "has_active_poll") {
+        if (result.error === "has_active_item") {
+          setExistingType(result.existingType ?? "poll");
           setSubmitting(false);
           setShowReplaceConfirm(true);
           return;
@@ -127,7 +129,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
             lineHeight: 1.4,
           }}
         >
-          You have an active poll in this room. Opening a new poll will replace it.
+          You have an active {existingType === "ask" ? "ask" : "poll"} in this room. Opening a new poll will replace it.
           <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
             <button
               onClick={handleConfirmReplace}

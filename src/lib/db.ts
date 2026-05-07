@@ -2158,17 +2158,24 @@ const PING_RATE_LIMIT_WINDOW_HOURS = 24;
 
 export type PollDuration = "24h" | "3d" | "1w";
 
+export type ActiveItemType = "poll" | "ask";
+
 export type OpenPollResult =
-  | { ok: true; pollId: string; replacedPollId: string | null }
-  | { ok: false; error: string; existingPollId?: string };
+  | { ok: true; pollId: string; replacedId: string | null; replacedType: ActiveItemType | null }
+  | { ok: false; error: string; existingType?: ActiveItemType; existingId?: string };
+
+export type OpenAskResult =
+  | { ok: true; askId: string; replacedId: string | null; replacedType: ActiveItemType | null }
+  | { ok: false; error: string; existingType?: ActiveItemType; existingId?: string };
 
 /**
- * Calls the open_poll RPC. Validates membership, enforces
- * one-active-per-asker, atomically creates the poll + options.
+ * Calls the open_poll RPC. Validates membership, enforces the shared
+ * one-active-item slot (poll OR SIKW ask per asker per room),
+ * atomically creates the poll + options.
  *
- * On has_active_poll: returns existingPollId so the frontend can
- * prompt for replacement-with-confirmation, then call again with
- * replaceExisting=true.
+ * On has_active_item: returns existingType + existingId so the
+ * frontend can prompt for replacement-with-confirmation with copy
+ * referencing the right kind of item.
  */
 export async function openPoll(args: {
   groupId: string;
@@ -2191,13 +2198,52 @@ export async function openPoll(args: {
     return {
       ok: false,
       error: data?.error || "unknown",
-      existingPollId: data?.existing_poll_id ?? undefined,
+      existingType: data?.existing_type ?? undefined,
+      existingId:   data?.existing_id   ?? undefined,
     };
   }
   return {
     ok: true,
-    pollId: data.poll_id,
-    replacedPollId: data.replaced_poll_id ?? null,
+    pollId:       data.poll_id,
+    replacedId:   data.replaced_id ?? null,
+    replacedType: data.replaced_type ?? null,
+  };
+}
+
+/**
+ * Calls the open_ask RPC for SIKW ("should I keep watching?") asks.
+ * Same shared-slot semantics as openPoll. asker_progress_* are
+ * stored at send time so respondents can render meaningful
+ * episode-target dropdowns.
+ */
+export async function openAsk(args: {
+  groupId: string;
+  message: string;
+  progressSeason: number;
+  progressEpisode: number;
+  replaceExisting: boolean;
+}): Promise<OpenAskResult> {
+  const { data, error } = await supabase.rpc("open_ask", {
+    p_group_id:         args.groupId,
+    p_message:          args.message,
+    p_progress_season:  args.progressSeason,
+    p_progress_episode: args.progressEpisode,
+    p_replace_existing: args.replaceExisting,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.ok === false) {
+    return {
+      ok: false,
+      error: data?.error || "unknown",
+      existingType: data?.existing_type ?? undefined,
+      existingId:   data?.existing_id   ?? undefined,
+    };
+  }
+  return {
+    ok: true,
+    askId:        data.ask_id,
+    replacedId:   data.replaced_id ?? null,
+    replacedType: data.replaced_type ?? null,
   };
 }
 
