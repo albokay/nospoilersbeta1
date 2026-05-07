@@ -4,8 +4,8 @@ import { fetchNextRoomPing, dismissPing } from "../lib/db";
 import type { Ping } from "../types";
 
 // ── Visual constants ─────────────────────────────────────────────────────
-const STICKY_BG       = "#ffffff";
-const TEXT_COLOR      = "#355eb8";  // canon dark blue — readable on white paper
+const STICKY_BG       = "#fef8ea";  // canon cream
+const TEXT_COLOR      = "#355eb8";  // canon dark blue — readable on cream paper
 const TILT_DEG        = -6;          // counter-clockwise (mirror of green post-it)
 const MIN_VIEWPORT_PX = 1230;        // hide on narrow viewports (matches green post-it gate)
 

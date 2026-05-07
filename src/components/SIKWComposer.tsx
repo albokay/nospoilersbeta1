@@ -1,8 +1,18 @@
 import React, { useState } from "react";
-import { X, Clock } from "lucide-react";
+import { X, Clock, ArrowRight } from "lucide-react";
 import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
+import CanonRadio from "./CanonRadio";
 import { openAsk, sendSikwEmail } from "../lib/db";
+
+// Canon palette
+const CREAM        = "#fef8ea";
+const CANON_BLUE   = "#355eb8";
+const CANON_YELLOW = "#dea838";
+const CANON_RED    = "#f45028";
+const CANON_NAVY   = "#1a3a4a";
+const CANON_LIGHT  = "#adc8d7";
+const TEXT_MUTED   = "#5f5e5a";
 
 const MESSAGE_MAX = 80;
 
@@ -105,7 +115,7 @@ export default function SIKWComposer({
   }
 
   return (
-    <Modal onClose={onClose} width="min(420px, 92vw)" cardStyle={{ background: "#fff", padding: "20px 22px 18px" }}>
+    <Modal onClose={onClose} width="min(420px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: `2px solid ${CANON_BLUE}` }}>
       <div
         style={{
           display: "flex",
@@ -114,7 +124,7 @@ export default function SIKWComposer({
           marginBottom: 4,
         }}
       >
-        <div style={{ fontSize: 16, fontWeight: 500, color: "#042c53" }}>
+        <div style={{ fontSize: 18, fontWeight: 600, color: CANON_NAVY, fontFamily: '"Lora", Georgia, serif' }}>
           Should I keep watching?
         </div>
         <button
@@ -124,7 +134,7 @@ export default function SIKWComposer({
             background: "transparent",
             border: "none",
             padding: 0,
-            color: "#888780",
+            color: TEXT_MUTED,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -133,15 +143,16 @@ export default function SIKWComposer({
           <X size={16} />
         </button>
       </div>
-      <div style={{ fontSize: 12, color: "#5f5e5a", marginBottom: 16 }}>
+      <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
         Ask the room whether to stick with the show. Replies are spoiler-light by structure.
       </div>
 
       {/* Progress context block */}
       <div
         style={{
-          background: "#f1efe8",
-          borderRadius: 7,
+          background: "rgba(173,200,215,0.25)",
+          border: `2px solid ${CANON_LIGHT}`,
+          borderRadius: 12,
           padding: "10px 12px",
           marginBottom: 18,
           display: "flex",
@@ -149,10 +160,10 @@ export default function SIKWComposer({
           gap: 8,
         }}
       >
-        <Clock size={14} color="#5f5e5a" strokeWidth={1.8} />
-        <div style={{ fontSize: 12, color: "#2c2c2a" }}>
+        <Clock size={14} color={CANON_NAVY} strokeWidth={1.8} />
+        <div style={{ fontSize: 12, color: CANON_NAVY }}>
           Your friends will see you're at{" "}
-          <span style={{ fontWeight: 500, color: "#042c53" }}>
+          <span style={{ fontWeight: 600 }}>
             {formatSE(progressSeason, progressEpisode)}
           </span>
           .
@@ -162,13 +173,13 @@ export default function SIKWComposer({
       {showReplaceConfirm && (
         <div
           style={{
-            background: "#fef6e6",
-            border: "0.5px solid #dea838",
-            borderRadius: 8,
+            background: "rgba(222,168,56,0.15)",
+            border: `2px solid ${CANON_YELLOW}`,
+            borderRadius: 12,
             padding: "10px 12px",
             marginBottom: 14,
             fontSize: 12,
-            color: "#412402",
+            color: CANON_NAVY,
             lineHeight: 1.4,
           }}
         >
@@ -178,11 +189,11 @@ export default function SIKWComposer({
               onClick={handleConfirmReplace}
               disabled={submitting}
               style={{
-                background: "#dea838",
+                background: CANON_YELLOW,
                 color: "#fff",
-                border: "none",
+                border: `2px solid ${CANON_YELLOW}`,
                 padding: "5px 12px",
-                borderRadius: 999,
+                borderRadius: 9999,
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: submitting ? "default" : "pointer",
@@ -195,11 +206,12 @@ export default function SIKWComposer({
               disabled={submitting}
               style={{
                 background: "transparent",
-                color: "#5f5e5a",
-                border: "0.5px solid #b4b2a9",
+                color: TEXT_MUTED,
+                border: `2px solid ${TEXT_MUTED}`,
                 padding: "5px 12px",
-                borderRadius: 999,
+                borderRadius: 9999,
                 fontSize: 12,
+                fontWeight: 500,
                 cursor: "pointer",
               }}
             >
@@ -209,7 +221,7 @@ export default function SIKWComposer({
         </div>
       )}
 
-      <div style={{ fontSize: 12, color: "#5f5e5a", marginBottom: 8 }}>
+      <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 8 }}>
         How do you want to ask it?
       </div>
 
@@ -222,22 +234,23 @@ export default function SIKWComposer({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
-                padding: "9px 11px",
-                borderRadius: 6,
-                background: selected ? "#e6f1fb" : "transparent",
-                border: selected ? "0.5px solid #b5d4f4" : "0.5px solid rgba(0,0,0,0.12)",
+                gap: 10,
+                padding: "9px 12px",
+                borderRadius: 12,
+                background: selected ? "rgba(53,94,184,0.08)" : "transparent",
+                border: `2px solid ${selected ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
                 fontSize: 13,
-                color: selected ? "#042c53" : "#2c2c2a",
+                color: selected ? CANON_NAVY : "#2c2c2a",
                 cursor: "pointer",
               }}
             >
+              <CanonRadio checked={selected} color={CANON_BLUE} size={20} dotSize={10} />
               <input
                 type="radio"
                 name="sikw-preset"
                 checked={selected}
                 onChange={() => handleSelectPreset(preset)}
-                style={{ margin: 0 }}
+                style={{ display: "none" }}
               />
               {preset}
             </label>
@@ -247,28 +260,35 @@ export default function SIKWComposer({
         {/* Write your own */}
         <div
           style={{
-            padding: "9px 11px",
-            borderRadius: 6,
-            border: "0.5px solid rgba(0,0,0,0.12)",
+            padding: "9px 12px",
+            borderRadius: 12,
+            border: `2px solid ${selectedPreset === null && trimmedCustom.length > 0 ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
+            background: selectedPreset === null && trimmedCustom.length > 0 ? "rgba(53,94,184,0.08)" : "transparent",
           }}
         >
           <label
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 10,
               fontSize: 13,
               color: "#2c2c2a",
-              marginBottom: 7,
+              marginBottom: 8,
               cursor: "pointer",
             }}
           >
+            <CanonRadio
+              checked={selectedPreset === null && trimmedCustom.length > 0}
+              color={CANON_BLUE}
+              size={20}
+              dotSize={10}
+            />
             <input
               type="radio"
               name="sikw-preset"
               checked={selectedPreset === null && trimmedCustom.length > 0}
               onChange={() => setSelectedPreset(null)}
-              style={{ margin: 0 }}
+              style={{ display: "none" }}
             />
             Write your own
           </label>
@@ -281,17 +301,20 @@ export default function SIKWComposer({
             style={{
               width: "100%",
               fontSize: 12,
-              padding: "6px 9px",
-              borderRadius: 4,
-              border: "0.5px solid rgba(0,0,0,0.12)",
-              height: 28,
+              padding: "6px 14px",
+              borderRadius: 9999,
+              border: `2px solid ${CANON_LIGHT}`,
+              background: "#fff",
+              height: 30,
               boxSizing: "border-box",
+              color: CANON_NAVY,
+              outline: "none",
             }}
           />
         </div>
       </div>
 
-      {error && <div style={{ fontSize: 11, color: "#f45028", marginBottom: 10 }}>{error}</div>}
+      {error && <div style={{ fontSize: 11, color: CANON_RED, marginBottom: 10 }}>{error}</div>}
 
       <div
         style={{
@@ -299,18 +322,18 @@ export default function SIKWComposer({
           gap: 10,
           alignItems: "center",
           paddingTop: 12,
-          borderTop: "0.5px solid rgba(0,0,0,0.08)",
+          borderTop: `2px solid rgba(26,58,74,0.12)`,
         }}
       >
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
           style={{
-            background: canSubmit ? "#185fa5" : "rgba(24,95,165,0.45)",
+            background: canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)",
             color: "#fff",
-            border: "none",
+            border: `2px solid ${canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)"}`,
             padding: "8px 18px",
-            borderRadius: 999,
+            borderRadius: 9999,
             fontSize: 13,
             fontWeight: 500,
             cursor: canSubmit ? "pointer" : "not-allowed",
@@ -319,17 +342,18 @@ export default function SIKWComposer({
             gap: 6,
           }}
         >
-          {submitting ? <>Asking<LoadingDots /></> : "Ask the room →"}
+          {submitting ? <>Asking<LoadingDots /></> : <>Ask the room <ArrowRight size={14} /></>}
         </button>
         <button
           onClick={onClose}
           style={{
             background: "transparent",
-            color: "#5f5e5a",
-            border: "0.5px solid #b4b2a9",
+            color: TEXT_MUTED,
+            border: `2px solid ${TEXT_MUTED}`,
             padding: "8px 16px",
-            borderRadius: 999,
+            borderRadius: 9999,
             fontSize: 13,
+            fontWeight: 500,
             cursor: "pointer",
           }}
         >

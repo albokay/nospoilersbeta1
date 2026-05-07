@@ -1,9 +1,16 @@
 import React, { useEffect, useRef } from "react";
-import { X, BarChart3, HelpCircle } from "lucide-react";
+import { X, BarChart3, HelpCircle, ArrowRight } from "lucide-react";
 
 // Anchored popover that opens when the user clicks "ask the room →"
 // at the bottom of the right sticky. Two cards: poll composer +
 // SIKW composer.
+
+// Canon palette
+const CREAM        = "#fef8ea";
+const CANON_BLUE   = "#355eb8";
+const CANON_LIGHT  = "#adc8d7";
+const CANON_NAVY   = "#1a3a4a";
+const TEXT_MUTED   = "#5f5e5a";
 
 interface Props {
   anchorRect: DOMRect;
@@ -62,9 +69,9 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
         top: popoverTop,
         left: popoverLeft,
         width: POPOVER_WIDTH,
-        background: "#fff",
+        background: CREAM,
         borderRadius: 24,
-        border: "0.5px solid rgba(0,0,0,0.12)",
+        border: `2px solid ${CANON_BLUE}`,
         padding: "16px 18px 14px",
         boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
         zIndex: 70,
@@ -80,7 +87,7 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
           height: 0,
           borderTop: `${ARROW_SIZE}px solid transparent`,
           borderBottom: `${ARROW_SIZE}px solid transparent`,
-          borderLeft: `${ARROW_SIZE}px solid #fff`,
+          borderLeft: `${ARROW_SIZE}px solid ${CREAM}`,
         }}
       />
 
@@ -92,7 +99,16 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
           marginBottom: 8,
         }}
       >
-        <div style={{ fontSize: 14, fontWeight: 500, color: "#042c53" }}>Ask the room</div>
+        <div
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: CANON_NAVY,
+            fontFamily: '"Lora", Georgia, serif',
+          }}
+        >
+          Ask the room
+        </div>
         <button
           onClick={onClose}
           aria-label="Close"
@@ -100,7 +116,7 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
             background: "transparent",
             border: "none",
             padding: 0,
-            color: "#888780",
+            color: TEXT_MUTED,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -110,7 +126,7 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
         </button>
       </div>
 
-      <div style={{ fontSize: 11, color: "#5f5e5a", marginBottom: 10 }}>
+      <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 10 }}>
         What kind of question?
       </div>
 
@@ -119,14 +135,14 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
           <BarChart3 size={16} color="#fff" strokeWidth={1.8} />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: "#042c53", marginBottom: 2 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: CANON_NAVY, marginBottom: 2 }}>
             Open a poll
           </div>
-          <div style={{ fontSize: 11, color: "#5f5e5a", lineHeight: 1.4 }}>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, lineHeight: 1.4 }}>
             Ask a question with set answer choices
           </div>
         </div>
-        <div style={{ color: "#185fa5", fontSize: 14 }}>→</div>
+        <ArrowRight size={14} color={CANON_BLUE} />
       </button>
 
       <button onClick={onSelectSikw} style={{ ...cardButtonStyle, marginTop: 8 }}>
@@ -146,14 +162,14 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
           />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: "#042c53", marginBottom: 2 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: CANON_NAVY, marginBottom: 2 }}>
             Should I keep watching?
           </div>
-          <div style={{ fontSize: 11, color: "#5f5e5a", lineHeight: 1.4 }}>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, lineHeight: 1.4 }}>
             Ask the room whether to stick with it
           </div>
         </div>
-        <div style={{ color: "#185fa5", fontSize: 14 }}>→</div>
+        <ArrowRight size={14} color={CANON_BLUE} />
       </button>
     </div>
   );
@@ -167,7 +183,7 @@ const cardButtonStyle: React.CSSProperties = {
   textAlign: "left",
   padding: "10px 12px",
   borderRadius: 12,
-  border: "0.5px solid rgba(0,0,0,0.12)",
+  border: `2px solid ${CANON_LIGHT}`,
   background: "#fff",
   cursor: "pointer",
 };
@@ -177,7 +193,7 @@ const iconChipStyle: React.CSSProperties = {
   width: 30,
   height: 30,
   borderRadius: 6,
-  background: "#adc8d7",
+  background: CANON_LIGHT,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",

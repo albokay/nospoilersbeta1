@@ -1,8 +1,19 @@
 import React, { useState } from "react";
-import { X } from "lucide-react";
+import { X, ArrowRight, Plus } from "lucide-react";
 import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
+import CanonRadio from "./CanonRadio";
 import { openPoll, sendPollEmail, type PollDuration } from "../lib/db";
+
+// Canon palette
+const CREAM        = "#fef8ea";
+const CANON_BLUE   = "#355eb8";
+const CANON_GREEN  = "#7abd8e";
+const CANON_YELLOW = "#dea838";
+const CANON_RED    = "#f45028";
+const CANON_NAVY   = "#1a3a4a";
+const CANON_LIGHT  = "#adc8d7";
+const TEXT_MUTED   = "#5f5e5a";
 
 const QUESTION_MAX = 100;
 const OPTION_MAX   = 30;
@@ -101,31 +112,31 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
   }
 
   return (
-    <Modal onClose={onClose} width="min(420px, 92vw)" cardStyle={{ background: "#fff", padding: "20px 22px 18px" }}>
+    <Modal onClose={onClose} width="min(420px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: `2px solid ${CANON_BLUE}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-        <div style={{ fontSize: 16, fontWeight: 500, color: "#042c53" }}>Open a poll</div>
+        <div style={{ fontSize: 18, fontWeight: 600, color: CANON_NAVY, fontFamily: '"Lora", Georgia, serif' }}>Open a poll</div>
         <button
           onClick={onClose}
           aria-label="Close"
-          style={{ background: "transparent", border: "none", padding: 0, color: "#888780", cursor: "pointer", display: "flex", alignItems: "center" }}
+          style={{ background: "transparent", border: "none", padding: 0, color: TEXT_MUTED, cursor: "pointer", display: "flex", alignItems: "center" }}
         >
           <X size={16} />
         </button>
       </div>
-      <div style={{ fontSize: 12, color: "#5f5e5a", marginBottom: 18 }}>
+      <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 18 }}>
         Ask the room a question with set answer choices.
       </div>
 
       {showReplaceConfirm && (
         <div
           style={{
-            background: "#fef6e6",
-            border: "0.5px solid #dea838",
-            borderRadius: 8,
+            background: "rgba(222,168,56,0.15)",
+            border: `2px solid ${CANON_YELLOW}`,
+            borderRadius: 12,
             padding: "10px 12px",
             marginBottom: 14,
             fontSize: 12,
-            color: "#412402",
+            color: CANON_NAVY,
             lineHeight: 1.4,
           }}
         >
@@ -135,11 +146,11 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
               onClick={handleConfirmReplace}
               disabled={submitting}
               style={{
-                background: "#dea838",
+                background: CANON_YELLOW,
                 color: "#fff",
-                border: "none",
+                border: `2px solid ${CANON_YELLOW}`,
                 padding: "5px 12px",
-                borderRadius: 999,
+                borderRadius: 9999,
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: submitting ? "default" : "pointer",
@@ -152,11 +163,12 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
               disabled={submitting}
               style={{
                 background: "transparent",
-                color: "#5f5e5a",
-                border: "0.5px solid #b4b2a9",
+                color: TEXT_MUTED,
+                border: `2px solid ${TEXT_MUTED}`,
                 padding: "5px 12px",
-                borderRadius: 999,
+                borderRadius: 9999,
                 fontSize: 12,
+                fontWeight: 500,
                 cursor: "pointer",
               }}
             >
@@ -168,7 +180,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
 
       {/* Question */}
       <div style={{ marginBottom: 18 }}>
-        <label style={{ display: "block", fontSize: 12, color: "#5f5e5a", marginBottom: 6 }}>
+        <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6 }}>
           Question
         </label>
         <input
@@ -180,24 +192,26 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
           style={{
             width: "100%",
             fontSize: 14,
-            padding: "9px 11px",
-            borderRadius: 6,
-            border: "0.5px solid rgba(0,0,0,0.18)",
-            height: 36,
+            padding: "9px 16px",
+            borderRadius: 9999,
+            border: `2px solid ${CANON_LIGHT}`,
+            height: 40,
             boxSizing: "border-box",
-            color: "#042c53",
+            color: CANON_NAVY,
+            background: "#fff",
+            outline: "none",
           }}
         />
       </div>
 
       {/* Options */}
       <div style={{ marginBottom: 18 }}>
-        <label style={{ display: "block", fontSize: 12, color: "#5f5e5a", marginBottom: 6 }}>
-          Answer options <span style={{ color: "#888780" }}>(2–5)</span>
+        <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6 }}>
+          Answer options <span style={{ color: TEXT_MUTED, opacity: 0.7 }}>(2–5)</span>
         </label>
         {options.map((o, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: "#888780", width: 16, textAlign: "center" }}>{i + 1}</span>
+            <span style={{ fontSize: 12, color: TEXT_MUTED, width: 16, textAlign: "center" }}>{i + 1}</span>
             <input
               type="text"
               value={o}
@@ -207,12 +221,14 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
               style={{
                 flex: 1,
                 fontSize: 13,
-                padding: "7px 10px",
-                borderRadius: 6,
-                border: "0.5px solid rgba(0,0,0,0.18)",
-                height: 32,
+                padding: "7px 14px",
+                borderRadius: 9999,
+                border: `2px solid ${CANON_LIGHT}`,
+                height: 34,
                 boxSizing: "border-box",
-                color: "#042c53",
+                color: CANON_NAVY,
+                background: "#fff",
+                outline: "none",
               }}
             />
             {options.length > MIN_OPTIONS && (
@@ -223,7 +239,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
                   background: "transparent",
                   border: "none",
                   padding: 4,
-                  color: "#888780",
+                  color: TEXT_MUTED,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -240,18 +256,22 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
             style={{
               background: "transparent",
               border: "none",
-              color: "#185fa5",
+              color: CANON_BLUE,
               fontSize: 12,
               padding: "4px 0 0",
               marginLeft: 24,
               cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              fontWeight: 500,
             }}
           >
-            + add option
+            <Plus size={12} /> add option
           </button>
         )}
         {hasDuplicates && (
-          <div style={{ fontSize: 11, color: "#f45028", marginTop: 6 }}>
+          <div style={{ fontSize: 11, color: CANON_RED, marginTop: 6 }}>
             Each option must be unique.
           </div>
         )}
@@ -262,27 +282,43 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
         style={{
           marginBottom: 18,
           padding: "10px 12px",
-          borderRadius: 8,
-          background: "#f1efe8",
+          borderRadius: 12,
+          background: "rgba(173,200,215,0.25)",
+          border: `2px solid ${CANON_LIGHT}`,
         }}
       >
-        <label style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "#042c53", cursor: "pointer" }}>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            fontSize: 13,
+            color: CANON_NAVY,
+            cursor: "pointer",
+          }}
+        >
+          <CanonRadio
+            checked={allowWriteIn}
+            color={CANON_GREEN}
+            size={20}
+            dotSize={10}
+          />
           <input
             type="checkbox"
             checked={allowWriteIn}
             onChange={(e) => setAllowWriteIn(e.target.checked)}
-            style={{ margin: 0 }}
+            style={{ display: "none" }}
           />
-          Allow write-in answers
+          <span onClick={() => setAllowWriteIn(!allowWriteIn)}>Allow write-in answers</span>
         </label>
-        <div style={{ fontSize: 11, color: "#5f5e5a", marginTop: 4, marginLeft: 26, lineHeight: 1.4 }}>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 4, marginLeft: 30, lineHeight: 1.4 }}>
           If on, friends can write their own answer. Remind them to keep it spoiler-free.
         </div>
       </div>
 
       {/* Duration */}
       <div style={{ marginBottom: 20 }}>
-        <label style={{ display: "block", fontSize: 12, color: "#5f5e5a", marginBottom: 8 }}>
+        <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 8 }}>
           Open for
         </label>
         <div style={{ display: "flex", gap: 6 }}>
@@ -295,12 +331,12 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
                 style={{
                   flex: 1,
                   padding: "7px 0",
-                  borderRadius: 6,
-                  border: selected ? "0.5px solid #185fa5" : "0.5px solid rgba(0,0,0,0.18)",
-                  background: selected ? "#e6f1fb" : "#fff",
+                  borderRadius: 9999,
+                  border: `2px solid ${selected ? CANON_BLUE : CANON_LIGHT}`,
+                  background: selected ? CANON_BLUE : "#fff",
                   fontSize: 12,
-                  color: "#042c53",
-                  fontWeight: selected ? 500 : 400,
+                  color: selected ? "#fff" : CANON_NAVY,
+                  fontWeight: 500,
                   cursor: "pointer",
                 }}
               >
@@ -312,20 +348,20 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
       </div>
 
       {error && (
-        <div style={{ fontSize: 11, color: "#f45028", marginBottom: 12 }}>{error}</div>
+        <div style={{ fontSize: 11, color: CANON_RED, marginBottom: 12 }}>{error}</div>
       )}
 
       {/* Bottom action bar */}
-      <div style={{ display: "flex", gap: 10, alignItems: "center", paddingTop: 12, borderTop: "0.5px solid rgba(0,0,0,0.08)" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", paddingTop: 12, borderTop: `2px solid rgba(26,58,74,0.12)` }}>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
           style={{
-            background: canSubmit ? "#185fa5" : "rgba(24,95,165,0.45)",
+            background: canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)",
             color: "#fff",
-            border: "none",
+            border: `2px solid ${canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)"}`,
             padding: "8px 18px",
-            borderRadius: 999,
+            borderRadius: 9999,
             fontSize: 13,
             fontWeight: 500,
             cursor: canSubmit ? "pointer" : "not-allowed",
@@ -334,17 +370,18 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
             gap: 6,
           }}
         >
-          {submitting ? <>Opening<LoadingDots /></> : "Open the poll →"}
+          {submitting ? <>Opening<LoadingDots /></> : <>Open the poll <ArrowRight size={14} /></>}
         </button>
         <button
           onClick={onClose}
           style={{
             background: "transparent",
-            color: "#5f5e5a",
-            border: "0.5px solid #b4b2a9",
+            color: TEXT_MUTED,
+            border: `2px solid ${TEXT_MUTED}`,
             padding: "8px 16px",
-            borderRadius: 999,
+            borderRadius: 9999,
             fontSize: 13,
+            fontWeight: 500,
             cursor: "pointer",
           }}
         >

@@ -1,9 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { hasRecentPing, sendMessage } from "../lib/db";
 import LoadingDots from "./LoadingDots";
+import CanonRadio from "./CanonRadio";
 import type { PingType } from "../types";
+
+// Canon palette
+const CREAM       = "#fef8ea";
+const CANON_BLUE  = "#355eb8";
+const CANON_GREEN = "#7abd8e";
+const CANON_RED   = "#f45028";
+const CANON_NAVY  = "#1a3a4a";
+const TEXT_MUTED  = "#5f5e5a";
 
 // ── Direction is FRIEND-relative (matches the right-sticky's framing) ─────
 // "ahead"       = friend is ahead of me  → I am behind → behind-to-ahead picker (sticky channel)
@@ -232,9 +241,9 @@ export default function NudgePopover({
         top: popoverTop,
         left: popoverLeft,
         width: POPOVER_WIDTH,
-        background: "#fff",
+        background: CREAM,
         borderRadius: 24,
-        border: "0.5px solid rgba(0,0,0,0.12)",
+        border: `2px solid ${CANON_BLUE}`,
         padding: "16px 18px 14px",
         boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
         zIndex: 70,
@@ -251,7 +260,7 @@ export default function NudgePopover({
           height: 0,
           borderTop: `${ARROW_SIZE}px solid transparent`,
           borderBottom: `${ARROW_SIZE}px solid transparent`,
-          borderLeft: `${ARROW_SIZE}px solid #fff`,
+          borderLeft: `${ARROW_SIZE}px solid ${CREAM}`,
         }}
       />
 
@@ -265,10 +274,17 @@ export default function NudgePopover({
         }}
       >
         <div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: "#042c53" }}>
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: CANON_NAVY,
+              fontFamily: '"Lora", Georgia, serif',
+            }}
+          >
             @{recipientUsername}
           </div>
-          <div style={{ fontSize: 11, color: "#5f5e5a", marginTop: 1 }}>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
             {relativePositionLabel(direction, count)}
           </div>
         </div>
@@ -279,7 +295,7 @@ export default function NudgePopover({
             background: "transparent",
             border: "none",
             padding: 0,
-            color: "#888780",
+            color: TEXT_MUTED,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -290,11 +306,11 @@ export default function NudgePopover({
       </div>
 
       {/* Body */}
-      <div style={{ fontSize: 11, color: "#5f5e5a", marginBottom: 6 }}>
+      <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 6 }}>
         Send a nudge:
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
         {presets.map((preset) => {
           const selected = selectedPreset === preset;
           return (
@@ -303,22 +319,23 @@ export default function NudgePopover({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 7,
-                padding: "6px 9px",
-                borderRadius: 5,
-                background: selected ? "#e6f1fb" : "transparent",
-                border: selected ? "0.5px solid #b5d4f4" : "0.5px solid rgba(0,0,0,0.08)",
+                gap: 8,
+                padding: "7px 10px",
+                borderRadius: 12,
+                background: selected ? "rgba(53,94,184,0.08)" : "transparent",
+                border: `2px solid ${selected ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
                 fontSize: 12,
-                color: selected ? "#042c53" : "#2c2c2a",
+                color: selected ? CANON_NAVY : "#2c2c2a",
                 cursor: "pointer",
               }}
             >
+              <CanonRadio checked={selected} color={CANON_BLUE} />
               <input
                 type="radio"
                 name={`nudge-preset-${recipientId}`}
                 checked={selected}
                 onChange={() => handleSelectPreset(preset)}
-                style={{ margin: 0 }}
+                style={{ display: "none" }}
               />
               {preset}
             </label>
@@ -328,21 +345,27 @@ export default function NudgePopover({
         {/* Write your own */}
         <div
           style={{
-            padding: "6px 9px",
-            borderRadius: 5,
-            border: "0.5px solid rgba(0,0,0,0.08)",
+            padding: "7px 10px",
+            borderRadius: 12,
+            border: `2px solid ${selectedPreset === null && trimmedCustom.length > 0 ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
+            background: selectedPreset === null && trimmedCustom.length > 0 ? "rgba(53,94,184,0.08)" : "transparent",
           }}
         >
           <label
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 7,
+              gap: 8,
               fontSize: 12,
               color: "#2c2c2a",
-              marginBottom: 5,
+              marginBottom: 6,
+              cursor: "pointer",
             }}
           >
+            <CanonRadio
+              checked={selectedPreset === null && trimmedCustom.length > 0}
+              color={CANON_BLUE}
+            />
             <input
               type="radio"
               name={`nudge-preset-${recipientId}`}
@@ -350,7 +373,7 @@ export default function NudgePopover({
               onChange={() => {
                 setSelectedPreset(null);
               }}
-              style={{ margin: 0 }}
+              style={{ display: "none" }}
             />
             Write your own
           </label>
@@ -363,11 +386,14 @@ export default function NudgePopover({
             style={{
               width: "100%",
               fontSize: 11,
-              padding: "4px 7px",
-              borderRadius: 4,
-              border: "0.5px solid rgba(0,0,0,0.12)",
-              height: 24,
+              padding: "5px 10px",
+              borderRadius: 9999,
+              border: `2px solid ${CANON_BLUE}`,
+              background: "#fff",
+              height: 26,
               boxSizing: "border-box",
+              color: CANON_NAVY,
+              outline: "none",
             }}
           />
         </div>
@@ -375,50 +401,62 @@ export default function NudgePopover({
 
       {/* Inline rate-limit / error message */}
       {rateLimited && (
-        <div style={{ fontSize: 11, color: "#5f5e5a", marginBottom: 8, fontStyle: "italic" }}>
+        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8, fontStyle: "italic" }}>
           You already nudged @{recipientUsername} in this room today.
         </div>
       )}
       {!rateLimited && errorMsg && (
-        <div style={{ fontSize: 11, color: "#f45028", marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: CANON_RED, marginBottom: 8 }}>
           {errorMsg}
         </div>
       )}
 
       {/* Footer: Send / Cancel, OR sent confirmation */}
-      <div style={{ display: "flex", gap: 7, alignItems: "center", minHeight: 30 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", minHeight: 32 }}>
         {sentFlash ? (
-          <div style={{ fontSize: 12, color: "#185fa5", fontWeight: 500 }}>sent →</div>
+          <div
+            style={{
+              fontSize: 12,
+              color: CANON_GREEN,
+              fontWeight: 600,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            sent <ArrowRight size={13} />
+          </div>
         ) : (
           <>
             <button
               onClick={handleSend}
               disabled={!canSubmit}
               style={{
-                background: canSubmit ? "#185fa5" : "rgba(24,95,165,0.45)",
+                background: canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)",
                 color: "#fff",
-                border: "none",
+                border: `2px solid ${canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)"}`,
                 padding: "6px 14px",
-                borderRadius: 999,
+                borderRadius: 9999,
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: canSubmit ? "pointer" : "not-allowed",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 6,
+                gap: 5,
               }}
             >
-              {submitting ? <>Sending<LoadingDots /></> : "Send →"}
+              {submitting ? <>Sending<LoadingDots /></> : <>Send <ArrowRight size={13} /></>}
             </button>
             <button
               onClick={onClose}
               style={{
                 background: "transparent",
-                color: "#5f5e5a",
-                border: "0.5px solid #b4b2a9",
+                color: TEXT_MUTED,
+                border: `2px solid ${TEXT_MUTED}`,
                 padding: "6px 12px",
-                borderRadius: 999,
+                borderRadius: 9999,
                 fontSize: 12,
+                fontWeight: 500,
                 cursor: "pointer",
               }}
             >
@@ -431,7 +469,7 @@ export default function NudgePopover({
       {/* Profile link */}
       <div
         style={{
-          borderTop: "0.5px solid rgba(0,0,0,0.08)",
+          borderTop: `2px solid rgba(26,58,74,0.12)`,
           marginTop: 12,
           paddingTop: 8,
         }}
@@ -441,12 +479,15 @@ export default function NudgePopover({
           onClick={handleViewProfile}
           style={{
             fontSize: 11,
-            color: "#185fa5",
+            color: CANON_BLUE,
             textDecoration: "none",
             cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
           }}
         >
-          View @{recipientUsername}'s profile →
+          View @{recipientUsername}'s profile <ArrowRight size={11} />
         </a>
       </div>
     </div>

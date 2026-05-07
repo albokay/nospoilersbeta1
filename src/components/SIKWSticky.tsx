@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, ArrowRight } from "lucide-react";
 import {
   fetchActiveRoomAsk,
   fetchMostRecentClosedRoomAsk,
@@ -12,6 +12,7 @@ import {
   type SikwReplyType,
 } from "../lib/db";
 import LoadingDots from "./LoadingDots";
+import CanonRadio from "./CanonRadio";
 
 // ── Visual constants ─────────────────────────────────────────────────────
 // SIKW shares the left-rail amber sticky surface with polls. Same palette,
@@ -317,12 +318,13 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
           {/* Stick with it */}
           <label style={replyOptionStyle(selectedType === "stick_with_it")}>
+            <CanonRadio checked={selectedType === "stick_with_it"} color={ACCENT} />
             <input
               type="radio"
               name={`sikw-${ask.id}`}
               checked={selectedType === "stick_with_it"}
               onChange={() => setSelectedType("stick_with_it")}
-              style={{ margin: 0 }}
+              style={{ display: "none" }}
             />
             <span>Stick with it — gets better after</span>
             <select
@@ -347,12 +349,13 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
 
           {/* Give until */}
           <label style={replyOptionStyle(selectedType === "give_until")}>
+            <CanonRadio checked={selectedType === "give_until"} color={ACCENT} />
             <input
               type="radio"
               name={`sikw-${ask.id}`}
               checked={selectedType === "give_until"}
               onChange={() => setSelectedType("give_until")}
-              style={{ margin: 0 }}
+              style={{ display: "none" }}
             />
             <span>Give it at least until</span>
             <select
@@ -377,12 +380,13 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
 
           {/* Dropping is fair */}
           <label style={replyOptionStyle(selectedType === "dropping_is_fair")}>
+            <CanonRadio checked={selectedType === "dropping_is_fair"} color={ACCENT} />
             <input
               type="radio"
               name={`sikw-${ask.id}`}
               checked={selectedType === "dropping_is_fair"}
               onChange={() => setSelectedType("dropping_is_fair")}
-              style={{ margin: 0 }}
+              style={{ display: "none" }}
             />
             Honestly, dropping is fair
           </label>
@@ -390,12 +394,13 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
           {/* Write your own */}
           <div style={{ padding: "7px 9px", borderRadius: 5, background: selectedType === "custom" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.5)", border: selectedType === "custom" ? `0.5px solid ${ACCENT}` : "0.5px solid transparent" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: TEXT_COLOR, marginBottom: 5 }}>
+              <CanonRadio checked={selectedType === "custom"} color={ACCENT} />
               <input
                 type="radio"
                 name={`sikw-${ask.id}`}
                 checked={selectedType === "custom"}
                 onChange={() => setSelectedType("custom")}
-                style={{ margin: 0 }}
+                style={{ display: "none" }}
               />
               Write your own
             </label>
@@ -429,15 +434,21 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
             color: "#fff",
             border: "none",
             padding: "6px 12px",
-            borderRadius: 999,
+            borderRadius: 9999,
             fontSize: 11,
             fontWeight: 500,
             width: "100%",
             cursor: canSubmit ? "pointer" : "not-allowed",
             marginBottom: 8,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 5,
           }}
         >
-          {submitting ? <>Sending<LoadingDots /></> : `Send to @${askerUsername || "the asker"} →`}
+          {submitting
+            ? <>Sending<LoadingDots /></>
+            : <>Send to @{askerUsername || "the asker"} <ArrowRight size={12} /></>}
         </button>
       </>
     );

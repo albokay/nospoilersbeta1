@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, ArrowRight } from "lucide-react";
 import {
   fetchActiveRoomPoll,
   fetchPollCount,
@@ -12,6 +12,7 @@ import {
 } from "../lib/db";
 import { dismissClosedPoll } from "../lib/db";
 import LoadingDots from "./LoadingDots";
+import CanonRadio from "./CanonRadio";
 import type { PollDurationCode } from "../types";
 
 // ── Visual constants ─────────────────────────────────────────────────────
@@ -195,13 +196,14 @@ export default function PollSticky({ groupId, currentUserId }: Props) {
                 key={opt.id}
                 style={optionRowStyle(highlighted, hasVoted)}
               >
+                <CanonRadio checked={highlighted} color={ACCENT} />
                 <input
                   type="radio"
                   name={`poll-${poll.id}`}
                   disabled={hasVoted}
                   checked={highlighted}
                   onChange={() => setSelectedOptionId(opt.id)}
-                  style={{ margin: 0 }}
+                  style={{ display: "none" }}
                 />
                 {opt.optionText}
               </label>
@@ -211,12 +213,16 @@ export default function PollSticky({ groupId, currentUserId }: Props) {
           {poll.allowWriteIn && !hasVoted && (
             <div style={{ padding: "6px 9px", borderRadius: 5, background: "rgba(255,255,255,0.5)" }}>
               <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, marginBottom: 5 }}>
+                <CanonRadio
+                  checked={selectedOptionId === null && writeInText.length > 0}
+                  color={ACCENT}
+                />
                 <input
                   type="radio"
                   name={`poll-${poll.id}`}
                   checked={selectedOptionId === null && writeInText.length > 0}
                   onChange={() => setSelectedOptionId(null)}
-                  style={{ margin: 0 }}
+                  style={{ display: "none" }}
                 />
                 Write your own
               </label>
