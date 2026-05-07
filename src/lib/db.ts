@@ -2566,6 +2566,35 @@ export async function voteOnPoll(args: {
 }
 
 /**
+ * Calls the send-message edge function with a SIKW template
+ * (sikw_ask_invite or sikw_reply). Same response shape as
+ * sendPollEmail.
+ */
+export async function sendSikwEmail(args: {
+  templateType: "sikw_ask_invite" | "sikw_reply";
+  askId: string;
+}): Promise<SendPollEmailResult> {
+  const { data: result, error } = await supabase.functions.invoke("send-message", {
+    body: { template_type: args.templateType, ask_id: args.askId },
+  });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const body = await ctx.json();
+        if (body && typeof body === "object" && body.ok === false) {
+          return { ok: false, error: body.error, message: body.message };
+        }
+      } catch {
+        // fall through
+      }
+    }
+    return { ok: false, error: "edge_function_error", message: error.message };
+  }
+  return result as SendPollEmailResult;
+}
+
+/**
  * Calls the send-message edge function with a poll template.
  * Fire-and-forget for poll_invite (multicast); single send for
  * poll_close and poll_vote_notification.
