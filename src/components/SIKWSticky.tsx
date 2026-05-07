@@ -445,16 +445,17 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
           aria-label="Dismiss"
           style={{
             position: "absolute",
-            top: 6,
-            right: 8,
+            top: 2,
+            right: 4,
             background: "transparent",
             border: "none",
-            padding: 2,
+            padding: 6,
             color: FADED_TEXT,
             opacity: 0.6,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
           }}
         >
           <X size={13} />

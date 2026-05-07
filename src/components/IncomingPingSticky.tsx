@@ -108,15 +108,16 @@ export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
         aria-label="Dismiss"
         style={{
           position: "absolute",
-          top: 6,
-          right: 8,
+          top: 2,
+          right: 4,
           background: "transparent",
           border: "none",
-          padding: 2,
+          padding: 6,
           color: "rgba(53,94,184,0.5)",
           cursor: dismissing ? "default" : "pointer",
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <X size={13} />

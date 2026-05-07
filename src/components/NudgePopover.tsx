@@ -320,11 +320,13 @@ export default function NudgePopover({
           style={{
             background: "transparent",
             border: "none",
-            padding: 0,
+            padding: 6,
+            margin: -6,
             color: TEXT_MUTED,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
           }}
         >
           <X size={14} />

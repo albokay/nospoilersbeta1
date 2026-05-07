@@ -121,7 +121,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
         <button
           onClick={onClose}
           aria-label="Close"
-          style={{ background: "transparent", border: "none", padding: 0, color: TEXT_MUTED, cursor: "pointer", display: "flex", alignItems: "center" }}
+          style={{ background: "transparent", border: "none", padding: 6, margin: -6, color: TEXT_MUTED, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
         >
           <X size={16} />
         </button>
