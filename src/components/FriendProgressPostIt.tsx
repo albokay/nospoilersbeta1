@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { fetchPublicProgressForUser } from "../lib/db";
 import { FEATURE_PINGS_POLLS } from "../lib/featureFlags";
 import NudgePopover, { type NudgeDirection } from "./NudgePopover";
+import AskTheRoomPicker from "./AskTheRoomPicker";
+import PollComposer from "./PollComposer";
 import type { FriendGroupMember } from "../types";
 
 // ── Visual constants (canon palette + post-it accent green) ───────────────
@@ -90,6 +92,8 @@ export default function FriendProgressPostIt({
 
   // Popover anchor state (ping-launcher mode only).
   const [openFor, setOpenFor] = useState<{ status: Status; rect: DOMRect } | null>(null);
+  const [askPickerRect, setAskPickerRect] = useState<DOMRect | null>(null);
+  const [pollComposerOpen, setPollComposerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!others.length) return;
@@ -317,8 +321,16 @@ export default function FriendProgressPostIt({
             <div
               role="button"
               tabIndex={0}
-              onClick={() => {
-                /* TODO chunk: ask-the-room picker (round 2/3) */
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setAskPickerRect(rect);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setAskPickerRect(rect);
+                }
               }}
               style={{
                 fontStyle: "italic",
@@ -344,6 +356,24 @@ export default function FriendProgressPostIt({
           count={statusToCount(openFor.status)}
           anchorRect={openFor.rect}
           onClose={() => setOpenFor(null)}
+        />
+      )}
+
+      {launcherMode && askPickerRect && groupId && (
+        <AskTheRoomPicker
+          anchorRect={askPickerRect}
+          onClose={() => setAskPickerRect(null)}
+          onSelectPoll={() => {
+            setAskPickerRect(null);
+            setPollComposerOpen(true);
+          }}
+        />
+      )}
+
+      {launcherMode && pollComposerOpen && groupId && (
+        <PollComposer
+          groupId={groupId}
+          onClose={() => setPollComposerOpen(false)}
         />
       )}
     </>

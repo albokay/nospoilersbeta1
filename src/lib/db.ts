@@ -2154,6 +2154,92 @@ function rowToPing(row: PingRow, senderUsername?: string): Ping {
 const PING_RATE_LIMIT_ENABLED      = false;
 const PING_RATE_LIMIT_WINDOW_HOURS = 24;
 
+// ── Polls ─────────────────────────────────────────────────────────────────
+
+export type PollDuration = "24h" | "3d" | "1w";
+
+export type OpenPollResult =
+  | { ok: true; pollId: string; replacedPollId: string | null }
+  | { ok: false; error: string; existingPollId?: string };
+
+/**
+ * Calls the open_poll RPC. Validates membership, enforces
+ * one-active-per-asker, atomically creates the poll + options.
+ *
+ * On has_active_poll: returns existingPollId so the frontend can
+ * prompt for replacement-with-confirmation, then call again with
+ * replaceExisting=true.
+ */
+export async function openPoll(args: {
+  groupId: string;
+  question: string;
+  allowWriteIn: boolean;
+  duration: PollDuration;
+  options: string[];
+  replaceExisting: boolean;
+}): Promise<OpenPollResult> {
+  const { data, error } = await supabase.rpc("open_poll", {
+    p_group_id:        args.groupId,
+    p_question:        args.question,
+    p_allow_write_in:  args.allowWriteIn,
+    p_duration:        args.duration,
+    p_options:         args.options,
+    p_replace_existing: args.replaceExisting,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.ok === false) {
+    return {
+      ok: false,
+      error: data?.error || "unknown",
+      existingPollId: data?.existing_poll_id ?? undefined,
+    };
+  }
+  return {
+    ok: true,
+    pollId: data.poll_id,
+    replacedPollId: data.replaced_poll_id ?? null,
+  };
+}
+
+export type SendPollEmailResult = {
+  ok: boolean;
+  error?: string;
+  message?: string;
+  channel?: string;
+  warning?: string;
+  sent_count?: number;
+  failed_count?: number;
+};
+
+/**
+ * Calls the send-message edge function with a poll template.
+ * Fire-and-forget for poll_invite (multicast); single send for
+ * poll_close and poll_vote_notification.
+ */
+export async function sendPollEmail(args: {
+  templateType: "poll_invite" | "poll_close" | "poll_vote_notification";
+  pollId: string;
+}): Promise<SendPollEmailResult> {
+  const { data: result, error } = await supabase.functions.invoke("send-message", {
+    body: { template_type: args.templateType, poll_id: args.pollId },
+  });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const body = await ctx.json();
+        if (body && typeof body === "object" && body.ok === false) {
+          return { ok: false, error: body.error, message: body.message };
+        }
+      } catch {
+        // fall through
+      }
+    }
+    return { ok: false, error: "edge_function_error", message: error.message };
+  }
+  return result as SendPollEmailResult;
+}
+
 /**
  * Pre-check used by the nudge popover: has the caller already pinged
  * this recipient in this room within the rate-limit window? Lets the
