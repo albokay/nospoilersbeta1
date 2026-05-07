@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { X, MessageCircleQuestionMark, ArrowRight } from "lucide-react";
+import { X, MessageCircleQuestionMark, ChartBar, ArrowRight } from "lucide-react";
 
 // Anchored popover that opens when the user clicks "ask the room →"
 // at the bottom of the right sticky. Two cards: poll composer +
@@ -7,7 +7,6 @@ import { X, MessageCircleQuestionMark, ArrowRight } from "lucide-react";
 
 // Canon palette
 const CREAM        = "#fef8ea";
-const CANON_BLUE   = "#355eb8";
 const CANON_LIGHT  = "#adc8d7";
 const CANON_NAVY   = "#1a3a4a";
 const TEXT_MUTED   = "#5f5e5a";
@@ -107,29 +106,19 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
       </div>
 
       <button onClick={onSelectPoll} style={cardButtonStyle}>
-        <MessageCircleQuestionMark size={20} color="#fff" strokeWidth={1.8} style={{ flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: CANON_NAVY, marginBottom: 2 }}>
-            Open a poll
-          </div>
-          <div style={{ fontSize: 11, color: TEXT_MUTED, lineHeight: 1.4 }}>
-            Ask a question with set answer choices
-          </div>
+        <ChartBar size={20} color="#fff" strokeWidth={1.8} style={{ flexShrink: 0 }} />
+        <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#fff" }}>
+          Start a poll
         </div>
-        <ArrowRight size={14} color={CANON_BLUE} />
+        <ArrowRight size={14} color="#fff" />
       </button>
 
       <button onClick={onSelectSikw} style={{ ...cardButtonStyle, marginTop: 8 }}>
         <MessageCircleQuestionMark size={20} color="#fff" strokeWidth={1.8} style={{ flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: CANON_NAVY, marginBottom: 2 }}>
-            Should I keep watching?
-          </div>
-          <div style={{ fontSize: 11, color: TEXT_MUTED, lineHeight: 1.4 }}>
-            Ask the room whether to stick with it
-          </div>
+        <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#fff" }}>
+          Should I keep watching?
         </div>
-        <ArrowRight size={14} color={CANON_BLUE} />
+        <ArrowRight size={14} color="#fff" />
       </button>
     </div>
   );

@@ -293,7 +293,7 @@ export default function FriendProgressPostIt({
             return (
               <div key={i} style={lineStyle}>
                 {handle}{" "}
-                <span style={{ color: HANDLE_COLOR }}>and you are caught up!</span>
+                <span style={{ color: HANDLE_COLOR }}>and you are in sync!</span>
               </div>
             );
           }
