@@ -2981,6 +2981,7 @@ export async function fetchNextRoomPing(
     .eq("recipient_id", recipientUserId)
     .eq("group_id", groupId)
     .is("dismissed_at", null)
+    .not("message", "is", null)
     .order("sent_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -3017,7 +3018,8 @@ export async function fetchUndismissedPingCountsByShow(
     .from("pings")
     .select("show_id")
     .eq("recipient_id", recipientUserId)
-    .is("dismissed_at", null);
+    .is("dismissed_at", null)
+    .not("message", "is", null);
   if (error) throw error;
   const counts: Record<string, number> = {};
   for (const r of data ?? []) {

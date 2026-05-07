@@ -175,11 +175,13 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
     const isAsker = poll.askerId === currentUserId;
     const closesAt = poll.createdAt + durationMs(poll.duration);
 
-    // Hide gates: voter who already voted waits for the closed sticky;
-    // asker who clicked × waits for the closed sticky too. Both branches
-    // re-surface naturally via fetchMostRecentClosedRoomPoll once the
-    // poll closes.
-    if (hasVoted) return null;
+    // Hide gates:
+    //   - Non-asker voter who already voted: hide; closed sticky takes
+    //     over via fetchMostRecentClosedRoomPoll once the poll closes.
+    //   - Asker who clicked ×: hide; same re-surface path.
+    //   - Asker who has not yet voted: keep the form visible (× only
+    //     appears after they submit their own response).
+    if (hasVoted && !isAsker) return null;
     if (isAsker && askerDismissedPollId === poll.id) return null;
 
     function handleAskerDismiss() {
@@ -232,7 +234,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
 
     return (
       <div style={stickyShellStyle()}>
-        {isAsker && (
+        {isAsker && hasVoted && (
           <button
             onClick={handleAskerDismiss}
             aria-label="Dismiss"
@@ -258,9 +260,9 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
 
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
           {options.map((opt) => {
-            // After the hasVoted early-return above, myResponse is null —
-            // isMine is always false and only the live selection matters.
-            const highlighted = selectedOptionId === opt.id;
+            const isMine     = myResponse?.optionId === opt.id;
+            const isSelected = !hasVoted && selectedOptionId === opt.id;
+            const highlighted = isMine || isSelected;
             return (
               <label
                 key={opt.id}
@@ -318,6 +320,9 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
             </div>
           )}
 
+          {hasVoted && myResponse?.writeInText && (
+            <div style={writeInLockedStyle()}>{myResponse.writeInText}</div>
+          )}
         </div>
 
         {!hasVoted && (
@@ -474,7 +479,7 @@ function stickyShellStyle(): React.CSSProperties {
     color: TEXT_COLOR,
     padding: "14px 16px",
     borderRadius: 0,
-    boxShadow: "0 4px 14px rgba(0,0,0,0.10)",
+    boxShadow: "0 8px 20px rgba(0,0,0,0.20)",
     fontSize: 13,
     lineHeight: 1.4,
   };

@@ -36,7 +36,7 @@ interface Props {
   seasons: number[];
 }
 
-const ASK_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 1 week, fixed for SIKW
+const ASK_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days, fixed for SIKW
 
 function closesInLabel(targetMs: number): string {
   const delta = targetMs - Date.now();
@@ -433,7 +433,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
     }
 
     return (
-      <div style={stickyShellStyle(true)}>
+      <div style={stickyShellStyle()}>
         <button
           onClick={handleDismiss}
           aria-label="Dismiss"
@@ -530,7 +530,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
 
 // ── style helpers (mirror PollSticky's amber styling) ────────────────────
 
-function stickyShellStyle(forClosedResults: boolean = false): React.CSSProperties {
+function stickyShellStyle(): React.CSSProperties {
   return {
     position: "fixed",
     left: 32,
@@ -543,7 +543,7 @@ function stickyShellStyle(forClosedResults: boolean = false): React.CSSPropertie
     color: TEXT_COLOR,
     padding: "14px 16px",
     borderRadius: 0,
-    boxShadow: forClosedResults ? "0 4px 14px rgba(0,0,0,0.10)" : "0 1px 0 rgba(0,0,0,0.06)",
+    boxShadow: "0 8px 20px rgba(0,0,0,0.20)",
     fontSize: 13,
     lineHeight: 1.4,
   };
