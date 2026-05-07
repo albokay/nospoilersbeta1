@@ -20,13 +20,16 @@ const STICKY_BG       = "#FAC775";
 const TEXT_COLOR      = "#412402";
 const FADED_TEXT      = "#633806";
 const ACCENT          = "#854F0B";
-const TILT_DEG        = -8;
+const TILT_DEG        = -4;
 const MIN_VIEWPORT_PX = 1230;
-const STICKY_WIDTH    = 280;
+const STICKY_WIDTH    = 240;
 
 interface Props {
   groupId: string;
   currentUserId: string;
+  /** Bumping this counter forces an immediate re-fetch — used so the asker
+   *  sees their just-opened poll without a page nav. */
+  refreshKey?: number;
 }
 
 function durationMs(d: PollDurationCode): number {
@@ -47,7 +50,7 @@ function closesInLabel(targetMs: number): string {
   return "<1m";
 }
 
-export default function PollSticky({ groupId, currentUserId }: Props) {
+export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: Props) {
   const [wide, setWide] = useState(() =>
     typeof window !== "undefined" && window.innerWidth >= MIN_VIEWPORT_PX,
   );
@@ -115,7 +118,7 @@ export default function PollSticky({ groupId, currentUserId }: Props) {
     })();
 
     return () => { cancelled = true; };
-  }, [groupId, currentUserId]);
+  }, [groupId, currentUserId, refreshKey]);
 
   if (!wide || !loaded) return null;
 

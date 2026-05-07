@@ -24,6 +24,9 @@ interface Props {
   userProgress: { s: number; e: number } | undefined;
   /** Active friend room id; required for ping-launcher mode (passed to NudgePopover for sends). */
   groupId?: string;
+  /** Fired after the asker successfully opens a poll, so the parent can
+   *  bump PollSticky's refresh key and the asker sees their poll immediately. */
+  onPollOpened?: () => void;
 }
 
 type Status =
@@ -70,6 +73,7 @@ export default function FriendProgressPostIt({
   seasons,
   userProgress,
   groupId,
+  onPollOpened,
 }: Props) {
   // Hide entirely if viewport is too narrow (mobile gets separate treatment).
   const [wide, setWide] = useState(() =>
@@ -380,6 +384,7 @@ export default function FriendProgressPostIt({
         <PollComposer
           groupId={groupId}
           onClose={() => setPollComposerOpen(false)}
+          onOpened={() => onPollOpened?.()}
         />
       )}
 

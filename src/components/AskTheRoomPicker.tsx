@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { X, BarChart3, HelpCircle, ArrowRight } from "lucide-react";
 
 // Anchored popover that opens when the user clicks "ask the room →"
@@ -20,37 +20,15 @@ interface Props {
 }
 
 const POPOVER_WIDTH = 280;
-const ARROW_SIZE = 7;
 const GAP_FROM_ANCHOR = 14;
 const POPOVER_BOTTOM_PX = 96; // matches FriendProgressPostIt bottom — anchors popup bottom to the sticky
 
 export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, onSelectSikw }: Props) {
   const popoverRef = useRef<HTMLDivElement | null>(null);
-  const [popoverHeight, setPopoverHeight] = useState<number | null>(null);
 
   // Sit to the LEFT of the anchor row, bottom-anchored to align with the
   // FriendProgressPostIt sticky (so the popup bottom always sits in frame).
   const popoverLeft = Math.max(14, anchorRect.left - POPOVER_WIDTH - GAP_FROM_ANCHOR);
-  const popoverTopComputed =
-    popoverHeight != null
-      ? window.innerHeight - popoverHeight - POPOVER_BOTTOM_PX
-      : null;
-  const arrowTop =
-    popoverHeight != null && popoverTopComputed != null
-      ? Math.max(
-          14,
-          Math.min(
-            popoverHeight - 14 - ARROW_SIZE,
-            anchorRect.top + anchorRect.height / 2 - popoverTopComputed,
-          ),
-        )
-      : null;
-
-  useLayoutEffect(() => {
-    if (popoverRef.current) {
-      setPopoverHeight(popoverRef.current.offsetHeight);
-    }
-  }, []);
 
   // Click-outside dismissal
   useEffect(() => {
@@ -91,22 +69,6 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
         zIndex: 70,
       }}
     >
-      {arrowTop != null && (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            right: -ARROW_SIZE,
-            top: arrowTop,
-            width: 0,
-            height: 0,
-            borderTop: `${ARROW_SIZE}px solid transparent`,
-            borderBottom: `${ARROW_SIZE}px solid transparent`,
-            borderLeft: `${ARROW_SIZE}px solid ${CREAM}`,
-          }}
-        />
-      )}
-
       <div
         style={{
           display: "flex",

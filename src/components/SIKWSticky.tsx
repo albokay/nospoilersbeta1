@@ -85,7 +85,6 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
   // Replier form state
   const [selectedType, setSelectedType] = useState<SikwReplyType | null>(null);
   const [stickEpisode, setStickEpisode] = useState<EpisodeOption | null>(null);
-  const [giveEpisode, setGiveEpisode]   = useState<EpisodeOption | null>(null);
   const [customText, setCustomText]     = useState<string>("");
   const [submitting, setSubmitting]     = useState(false);
   const [error, setError]               = useState<string | null>(null);
@@ -99,7 +98,6 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
     setDismissedLocal(false);
     setSelectedType(null);
     setStickEpisode(null);
-    setGiveEpisode(null);
     setCustomText("");
     setError(null);
 
@@ -267,7 +265,6 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
       if (submitting) return false;
       if (selectedType === null) return false;
       if (selectedType === "stick_with_it") return !!stickEpisode;
-      if (selectedType === "give_until")    return !!giveEpisode;
       if (selectedType === "custom")        return customText.trim().length > 0;
       if (selectedType === "dropping_is_fair") return true;
       return false;
@@ -285,9 +282,6 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
         if (selectedType === "stick_with_it" && stickEpisode) {
           args.episodeTargetSeason = stickEpisode.season;
           args.episodeTargetEpisode = stickEpisode.episode;
-        } else if (selectedType === "give_until" && giveEpisode) {
-          args.episodeTargetSeason = giveEpisode.season;
-          args.episodeTargetEpisode = giveEpisode.episode;
         } else if (selectedType === "custom") {
           args.message = customText.trim();
         }
@@ -337,37 +331,6 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
               }}
               style={selectStyle()}
               onClick={() => setSelectedType("stick_with_it")}
-            >
-              <option value="">Sxx Exx</option>
-              {episodeOptions.map((o) => (
-                <option key={`${o.season}-${o.episode}`} value={`${o.season}-${o.episode}`}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Give until */}
-          <label style={replyOptionStyle(selectedType === "give_until")}>
-            <CanonRadio checked={selectedType === "give_until"} color={ACCENT} />
-            <input
-              type="radio"
-              name={`sikw-${ask.id}`}
-              checked={selectedType === "give_until"}
-              onChange={() => setSelectedType("give_until")}
-              style={{ display: "none" }}
-            />
-            <span>Give it at least until</span>
-            <select
-              value={giveEpisode ? `${giveEpisode.season}-${giveEpisode.episode}` : ""}
-              onChange={(e) => {
-                const [s, ep] = e.target.value.split("-").map(Number);
-                const opt = episodeOptions.find((o) => o.season === s && o.episode === ep);
-                setGiveEpisode(opt ?? null);
-                setSelectedType("give_until");
-              }}
-              style={selectStyle()}
-              onClick={() => setSelectedType("give_until")}
             >
               <option value="">Sxx Exx</option>
               {episodeOptions.map((o) => (

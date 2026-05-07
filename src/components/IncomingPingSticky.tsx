@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import { X } from "lucide-react";
 import { fetchNextRoomPing, dismissPing } from "../lib/db";
 import type { Ping } from "../types";
@@ -6,8 +6,9 @@ import type { Ping } from "../types";
 // ── Visual constants ─────────────────────────────────────────────────────
 const STICKY_BG       = "#fef8ea";  // canon cream
 const TEXT_COLOR      = "#355eb8";  // canon dark blue — readable on cream paper
-const TILT_DEG        = -3;          // counter-clockwise (mirror of green post-it)
+const TILT_DEG        = 4;           // clockwise — matches the green post-it direction at half angle
 const MIN_VIEWPORT_PX = 1230;        // hide on narrow viewports (matches green post-it gate)
+const ENTRY_TRANSITION_MS = 320;
 
 interface Props {
   groupId: string;
@@ -28,6 +29,7 @@ export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [dismissing, setDismissing] = useState(false);
+  const [entered, setEntered] = useState(false);
 
   // Fetch the next undismissed sticky-channel ping for this room.
   // Per spec: shown on page load / nav refresh only; no realtime.
@@ -65,6 +67,13 @@ export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
     setHidden(true);
   }
 
+  useLayoutEffect(() => {
+    if (loaded && ping && !hidden) {
+      const id = requestAnimationFrame(() => setEntered(true));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [loaded, ping, hidden]);
+
   if (!wide || !loaded || !ping || hidden) return null;
 
   const senderHandle = ping.senderUsername || "a friend";
@@ -78,8 +87,10 @@ export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
         bottom: 320,
         zIndex: 51,
         width: 260,
-        transform: `rotate(${TILT_DEG}deg)`,
+        transform: `rotate(${TILT_DEG}deg) translateY(${entered ? 0 : 8}px)`,
         transformOrigin: "center",
+        opacity: entered ? 1 : 0,
+        transition: `opacity ${ENTRY_TRANSITION_MS}ms ease-out, transform ${ENTRY_TRANSITION_MS}ms ease-out`,
         background: STICKY_BG,
         color: TEXT_COLOR,
         padding: "14px 16px",

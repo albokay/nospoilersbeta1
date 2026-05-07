@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { X, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { hasRecentPing, sendMessage } from "../lib/db";
@@ -36,7 +36,6 @@ interface Props {
 }
 
 const POPOVER_WIDTH = 300;
-const ARROW_SIZE = 7;
 const GAP_FROM_ANCHOR = 14;
 const POPOVER_BOTTOM_PX = 96; // matches FriendProgressPostIt bottom — anchors popup bottom to the sticky
 const MESSAGE_MAX_LENGTH = 80;
@@ -46,7 +45,7 @@ const SENT_FLASH_MS = 1500;
 // set; "not-started" reuses ahead-to-behind since not-started == behind.
 const VOCAB_AHEAD_TO_BEHIND = [
   "miss you in here 👋",
-  "no rush, but it's getting good",
+  "no rush, but it just got good",
   "piling up takes for you",
   "still planning to watch or did you give up?",
 ];
@@ -99,7 +98,6 @@ export default function NudgePopover({
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [customSelected, setCustomSelected] = useState<boolean>(false);
   const [customText, setCustomText] = useState<string>("");
-  const [popoverHeight, setPopoverHeight] = useState<number | null>(null);
   const customInputRef = useRef<HTMLInputElement | null>(null);
   const [rateLimited, setRateLimited] = useState<boolean>(false);
   const [rateChecked, setRateChecked] = useState<boolean>(false);
@@ -135,38 +133,6 @@ export default function NudgePopover({
     14,
     anchorRect.left - POPOVER_WIDTH - GAP_FROM_ANCHOR,
   );
-  // Arrow points at the clicked row; computed relative to the bottom-anchored popover.
-  const popoverTopComputed =
-    popoverHeight != null
-      ? window.innerHeight - popoverHeight - POPOVER_BOTTOM_PX
-      : null;
-  const arrowTop =
-    popoverHeight != null && popoverTopComputed != null
-      ? Math.max(
-          14,
-          Math.min(
-            popoverHeight - 14 - ARROW_SIZE,
-            anchorRect.top + anchorRect.height / 2 - popoverTopComputed,
-          ),
-        )
-      : null;
-
-  // Measure popover height for arrow placement; keep in sync as content
-  // changes (e.g. the "write your own" input toggling visibility).
-  useLayoutEffect(() => {
-    if (popoverRef.current) {
-      setPopoverHeight(popoverRef.current.offsetHeight);
-    }
-  }, []);
-  useEffect(() => {
-    if (!popoverRef.current || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) setPopoverHeight(entry.contentRect.height);
-    });
-    ro.observe(popoverRef.current);
-    return () => ro.disconnect();
-  }, []);
 
   // Click-outside dismissal
   useEffect(() => {
@@ -280,23 +246,6 @@ export default function NudgePopover({
         zIndex: 70,
       }}
     >
-      {/* Arrow pointing right (toward the anchor row) */}
-      {arrowTop != null && (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            right: -ARROW_SIZE,
-            top: arrowTop,
-            width: 0,
-            height: 0,
-            borderTop: `${ARROW_SIZE}px solid transparent`,
-            borderBottom: `${ARROW_SIZE}px solid transparent`,
-            borderLeft: `${ARROW_SIZE}px solid ${CREAM}`,
-          }}
-        />
-      )}
-
       {/* Header */}
       <div
         style={{

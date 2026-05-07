@@ -112,7 +112,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
   }
 
   return (
-    <Modal onClose={onClose} width="min(420px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: `2px solid ${CANON_BLUE}` }}>
+    <Modal onClose={onClose} width="min(360px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: `2px solid ${CANON_BLUE}` }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
         <div style={{ fontSize: 18, fontWeight: 600, color: CANON_NAVY, fontFamily: '"Lora", Georgia, serif' }}>Open a poll</div>
         <button

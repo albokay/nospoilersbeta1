@@ -196,6 +196,9 @@ export default function ShowSection({
   const [riskyRevealedIds, setRiskyRevealedIds] = useState<Set<string>>(new Set());
   const [freshReplyThreadIds, setFreshReplyThreadIds] = useState<Record<string, true>>({});
   const [freshReplyIds, setFreshReplyIds] = useState<Record<string, true>>({});
+  // Bumped when the asker successfully opens a poll, forcing PollSticky to
+  // re-fetch immediately so the asker sees their poll without a page nav.
+  const [pollRefreshKey, setPollRefreshKey] = useState(0);
 
   // Clear risky reveals only when the thread changes, not on mode toggle
   // Scroll to top whenever the show changes (reliable on mobile)
@@ -2616,6 +2619,7 @@ export default function ShowSection({
           seasons={allShows.find(s => s.id === showId)?.seasons ?? []}
           userProgress={effectiveProgress}
           groupId={activeGroupId}
+          onPollOpened={() => setPollRefreshKey(k => k + 1)}
         />
       )}
 
@@ -2630,6 +2634,7 @@ export default function ShowSection({
         <PollSticky
           groupId={activeGroupId}
           currentUserId={user.id}
+          refreshKey={pollRefreshKey}
         />
       )}
 
