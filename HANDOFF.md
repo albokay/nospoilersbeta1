@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-05-02)
+# Sidebar — Technical State (2026-05-07)
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -35,6 +35,14 @@
 | `prompts` / `thread_prompts` | Writing prompts shown in composer + audit log | Admin-only writes; thread_prompts is best-effort |
 | `feedback` | FeedbackWidget submissions. `user_id` nullable (anon submissions use `null` + `username="anon"`) | RLS: admin-only reads; `role anon` can insert rows where `user_id IS NULL` (`20260420_anon_feedback.sql`) |
 | `rate_limits` (implied) | Backing the `check_rate_limit*` RPCs | |
+| `pings` | One-way friend-room nudges (sender, recipient, show, group, ping_type, message, sent_at, dismissed_at). `ping_type` drives channel: `nudge_ahead` → email; `nudge_same`/`nudge_behind` → in-room sticky | RLS sender-only SELECT; UPDATE via `dismiss_ping` RPC; INSERT via service-role `send-message` edge function. Per-room rate limit currently OFF (`TODO PING_RATE_LIMIT` kill switch in two files — see Outstanding action items) |
+| `polls` | Friend-room polls (asker, group, question, allow_write_in, duration, created_at, closed_at, last_vote_notification_at) | RLS member SELECT. Shared one-active-item slot with `sikw_asks` per-asker per-room. Lazy close via `lazy_close_room_polls` RPC |
+| `poll_options` | Poll answer choices (poll_id, option_text, display_order) | RLS member SELECT via parent poll |
+| `poll_responses` | Per-voter responses; UNIQUE (poll_id, responder_id) locks vote at submit | RLS: caller is responder OR (member AND poll closed). Pre-close vote content private to responder; opens to all members on close. Aggregate counts via `get_poll_count` SECURITY DEFINER RPC (privacy-safe) |
+| `poll_dismissals` | Per-viewer 48h post-close dismissal | RLS: caller's own. INSERT via `dismiss_closed_poll` RPC |
+| `sikw_asks` | "Should I keep watching?" asks (asker, group, message, asker_progress_*, created_at, closed_at, dismissed_at) | RLS member SELECT. Shared slot with polls. 1-week auto-close via `lazy_close_room_asks`. Global dismiss via `dismissed_at` column (any member's × clears for all) |
+| `sikw_replies` | SIKW replies; UNIQUE (ask_id, replier_id). reply_type drives shape constraint (`stick_with_it`/`give_until` require episode_target_*; `dropping_is_fair` is bare; `custom` requires message) | RLS: caller is replier OR caller is asker of the ask. Replies private to asker FOREVER — no post-close opening (different from polls) |
+| `sikw_dismissals` | (deprecated post-3e amendment) per-viewer ask dismissal — now unused; SIKW dismiss became global via `sikw_asks.dismissed_at` | Table left in place; safe to drop in a later cleanup migration |
 
 ## 3. Three Publishing Destinations
 
@@ -1307,6 +1315,91 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-06 → 2026-05-07 — Pings, polls, SIKW asks (rounds 1-3 of social-engagement spec)
+
+Three-round implementation of the social-engagement spec — friend-room one-way nudges, room-hosted polls, and "should I keep watching?" asks — built on a feature-flagged `pings-polls` branch with Vercel preview-deploy isolation. ~30 commits across the two days. Beta on `main` is unaffected; new code lives only on the branch deploy until a future merge.
+
+**Architecture decisions ratified before code:**
+
+- **Single-Supabase prod, branch-isolated frontend** — explicit choice over a full second-Supabase staging setup. Migrations + edge functions affect prod from the moment they apply; the frontend stays branch-scoped via Vercel preview + `VITE_FEATURE_PINGS_POLLS` env var set on the `pings-polls` branch only. Rationale: lighter ops at this stage; risk addressed via tight phase shape (additive structure first, behavior later) + per-round live verification before each phase ships.
+- **Hosting platform note** — the project deploys via Vercel, not Netlify as some older HANDOFF sections imply. Auto-deploy on push for both `main` (production: beta.sidebar.watch) and `pings-polls` (preview deploy at `nospoilersbeta1-git-pings-polls-albokays-projects.vercel.app`). §1 still says "Netlify" — treat as Vercel going forward; not updating §1 in this pass to keep the diff scoped.
+- **Branch deviation from "always work on main"** — the `pings-polls` branch is a documented exception to the CLAUDE.md / MEMORY.md rule. Captured in MEMORY.md as scope-limited to this feature arc; ordinary fixes still go to main.
+
+**Round 1 — pings (one-way friend nudges):**
+
+Direction-based: a sender's relative progress vs the recipient picks the picker vocabulary AND the delivery channel. `nudge_ahead` (sender ahead of recipient → recipient is behind) → email channel only. `nudge_same` (same progress) and `nudge_behind` (sender behind, recipient ahead) → in-room sticky channel only. Per-room rate limit (currently OFF for testing — flip via `TODO PING_RATE_LIMIT` markers in `supabase/functions/send-message/index.ts` and `src/lib/db.ts` before broader exposure).
+
+- **DB:** `pings` table with `group_id NOT NULL` (per-room scoping), `dismissed_at` for in-room sticky dismiss, `message TEXT NULL` (populated for sticky-channel pings; NULL for email-channel where the message goes in the email body, not stored). RLS: sender-only SELECT; UPDATE via `dismiss_ping(p_ping_id)` RPC; INSERT via service-role edge function only.
+- **Edge function `send-message`** (new — `supabase/config.toml` mirrors `send-invite`'s `verify_jwt = false`). Three template_types in round 1; refactored to top-level `switch (template_type)` + handler dispatch in round 2 to make room for poll + SIKW templates. Membership validation (sender + recipient both current members of the room), email composition, Resend send.
+- **Frontend (phase 1d, 5 chunks A-E):** `FriendProgressPostIt` reframed into a ping launcher (clickable @-name rows with dotted underlines, "click a name to nudge a friend" helper, dashed divider, "ask the room →" line). Clicking a friend opens `NudgePopover` anchored to the row, with the appropriate picker for the direction. `IncomingPingSticky` (new — left of the green post-it, paper at -6° tilt, "@sender pinged you:" header + vocabulary line + ×) renders the oldest undismissed sticky-channel ping. Journal rail dot fires on incoming pings via `fetchUndismissedPingCountsByShow` + folded into ProfilePage's `tabActivity` memo (same green dot as new replies; outranks the red "blocked above progress" branch).
+
+**Round 2 — polls (room-hosted multi-option questions):**
+
+Standard multi-choice polls on the same friend-room surface. Active poll → amber left-rail sticky (-8° tilt, mirror of the green post-it). Pre-close votes are private to the voter; aggregate counts come through `get_poll_count` SECURITY DEFINER RPC (never reads vote content, never leaks to asker). On close, RLS opens up — all room members see all votes. Closed sticky = "bloom" with proportional bars + voter @-names per option. Per-viewer 48h post-close dismissal via `poll_dismissals` rows.
+
+- **DB:** `polls`, `poll_options`, `poll_responses`, `poll_dismissals` + `last_vote_notification_at` column on polls for 5-min email batching. Three RPCs: `open_poll`, `vote_on_poll` (locks at submit via UNIQUE constraint, lazy-checks all-voted close via `closed_at IS NULL` race guard), `dismiss_closed_poll`. Plus `lazy_close_room_polls` (race-protected duration-expiry close fired on room mount) and `get_poll_count` (aggregate-only, privacy-safe).
+- **Edge function templates** (folded into the same `send-message` function): `poll_invite` (asker → all non-asker members on poll open), `poll_close` (to asker on close — fires from whichever member's vote triggered the close, naturally single-instance via the race guard), and `poll_vote_notification` (to asker per vote, server-side 5-min batch window per poll using `last_vote_notification_at`).
+- **Frontend (phases 2c-2e):** `AskTheRoomPicker` opens from "ask the room →" with card-style options. `PollComposer` (modal: question, 2-5 numbered option fields with add/remove, write-in toggle, 24h/3d/1w pill, submit). `PollSticky` handles both active state (radio rows + write-in if allowed + "X of N weighed in · closes in Y" footer) and closed state (bloom with proportional bars + voter names + × dismiss + 48h visible window). Replacement-with-confirmation when asker has an active poll.
+
+**Round 3 — SIKW asks ("should I keep watching?"):**
+
+Asker shares their current progress; friends respond with one of three preset replies (with episode-target dropdowns where applicable) or custom write-in. Privacy is asymmetric and stricter than polls: replies stay private to asker **forever** — no post-close opening. Asker sees all replies live (no blind-until-close mechanic). 1-week auto-close. Global dismissal: any member's × clears the closed sticky for everyone — a deliberate divergence from polls' per-viewer dismiss, locked in via amendment.
+
+- **DB:** `sikw_asks`, `sikw_replies`, `sikw_dismissals` (latter effectively unused after the global-dismiss amendment landed — kept for now). Four RPCs: `open_ask`, `reply_to_ask` (locks at submit, all-replied close fires when responses ≥ members − 1 since asker doesn't reply to own ask), `dismiss_closed_ask`, `lazy_close_room_asks`. Plus `dismissed_at TIMESTAMPTZ` column added to `sikw_asks` post-3e for global dismiss (the dismiss RPC stamps it; fetch filters on it). Replies RLS: `replier_id = caller OR (caller is asker_id of the ask)` — nobody else, ever, including post-close.
+- **Shared one-active-item slot** — `open_poll` was updated in 3a to also check for active SIKW asks (and vice versa). On conflict, RPC returns `has_active_item` with `existing_type` field; frontend renders the right copy ("You have an active poll/ask in this room. Opening a new one will replace it"). PollComposer + SIKWComposer both updated for the new error shape.
+- **Edge function templates:** `sikw_ask_invite` (asker → non-asker members on ask creation; email body shows asker's progress in S/E format), `sikw_reply` (replier → asker per reply, no batching per spec — each reply gets its own email; email body deliberately omits the reply content per spec to send the asker back to the room).
+- **Frontend (phases 3c-3e):** `AskTheRoomPicker` gains second card. `SIKWComposer` (modal: progress context block, three preset radios, write-your-own). `SIKWSticky` handles active states (replier picker with episode dropdowns / replier locked-reply view / asker live-replies view) and closed states (asker reads all replies past-tense; replier sees own reply or "you didn't reply" stub; × dismisses globally per amendment). Asker's own active view simplified mid-arc to "you asked:" eyebrow + "(only you see them)" inline empty-state — quieter than the third-person "@asker is at S X E Y and asks:" used for replier views.
+
+**Stylistic pass (end of session, after rounds 1-3 shipped):**
+
+"Best-guess" canon pass on every new ping/poll/SIKW component:
+
+- Cream `#fef8ea` (the `splashSearch` field bg) on popovers + modal cards. Amber poll/SIKW left stickies stay amber by intent (paper-artifact identity); green friend-progress post-it unchanged.
+- 2px borders standardized (matches `.btn`/`.badge`/`.splashSearchWrap`). Was 0.5px in many spots.
+- Pill (`9999px`) radii on buttons + inputs; 24px on modal cards; smaller on inline option chips.
+- Canon palette enforced: primary `#355eb8`, navy `#1a3a4a`, green `#7abd8e`, yellow `#dea838`, red `#f45028`, light-blue `#adc8d7`, cream `#fef8ea`. Off-canon hexes (`#185fa5`, `#042c53`, `#888780`, etc.) replaced.
+- New `CanonRadio` component ([src/components/CanonRadio.tsx](src/components/CanonRadio.tsx)) — white circle + colored inner dot, matching the SearchShows pattern. Native `<input type="radio">` kept hidden for accessibility, paired with the visual.
+- Lora on key headers (popover/modal titles, sticky question lines); Inter elsewhere as default.
+- All text-arrow glyphs (`→`) replaced with Lucide `<ArrowRight />`; `+ add option` uses Lucide `<Plus />`.
+
+**Two-step deploys this arc required:**
+
+Many. Each migration applied via Supabase SQL editor; edge function redeployed via `supabase functions deploy send-message` after each template addition.
+
+Migrations applied (chronological):
+- `20260506_pings_phase_1a_structure.sql`
+- `20260506_pings_v2_amendment.sql` (cut binge/inactivity, added group_id + dismissed_at + new ping_type values)
+- `20260506_pings_phase_1b_rls_and_dismiss_rpc.sql`
+- `20260506_pings_add_message_column.sql`
+- `20260506_polls_phase_2a_schema_and_rls.sql`
+- `20260506_polls_phase_2b_count_rpc_and_notification_column.sql`
+- `20260506_polls_phase_2e_lazy_close.sql`
+- `20260506_sikw_phase_3a_schema_and_rls.sql` (also updated `open_poll` for shared slot)
+- `20260506_sikw_global_dismiss.sql` (added `dismissed_at` column to sikw_asks; rewrote `dismiss_closed_ask` RPC to stamp it)
+
+Edge function `send-message` redeployed 4× across the session (initial + after each round's template additions + after CORS allowlist update for the Vercel branch URL).
+
+**Deferred items (still open):**
+
+- **Re-enable ping rate limit** before broader exposure — flip `PING_RATE_LIMIT_ENABLED` to `true` in both files (`supabase/functions/send-message/index.ts` and `src/lib/db.ts`), redeploy edge function, push frontend. Window when re-enabled: 24h. Tracked in [project_pings_polls_unfinished memory](file:///Users/alborzkamalizad/.claude/projects/-Users-alborzkamalizad-Downloads-no-spoilers-v072-fullui-ready/memory/project_pings_polls_unfinished.md).
+- **Merge `pings-polls` → main** when ready to expose to non-test users.
+- **`sikw_dismissals` table is unused** after the global-dismiss amendment. Safe to drop in a later cleanup migration.
+- **Multi-poll/ask stacking** — only one PollSticky and one SIKWSticky surface at a time. If different askers in the same room have simultaneous items of different types, both stickies render at the same fixed position and visually overlap. Acceptable for v1; refactor to a single `LeftSticky` orchestrator if it ever shows up in real use.
+- **Lazy close on duration expiry** for both polls and SIKW asks fires the close email from whichever member's room visit triggered the close. Race-safe via `closed_at IS NULL` guard, but if no member visits the room for a long time after duration expires, the close email never fires. Acceptable for current cadence.
+
+**Conventions established or reinforced this arc:**
+
+- **Branch-isolated frontend + single-Supabase prod for risky-but-additive features.** Schema applies to prod at migration time, but frontend code lives behind a feature flag on a branch deploy. Cheaper than full staging; acceptable when the migration shape is purely additive (new tables, new columns, new RPCs — never alters existing surfaces). Pair with explicit `TODO`-style kill switches for any behavior that could affect existing users (rate limits, etc.).
+- **Phase-level migration shape for risky surfaces.** Within a round, the first migration is structure-only (tables + RLS-enabled-no-policy → table is locked from REST callers by default). Behavior comes in later phases (RLS policies, RPCs, triggers, edge function templates, frontend). Lets each phase land + verify independently without exposing partial behavior.
+- **`SECURITY DEFINER` aggregate RPCs as a privacy-preserving alternative to opening RLS for content.** `get_poll_count` returns aggregate counts only; the asker calls it pre-close to render "X of N weighed in" without ever seeing vote content. Same pattern would apply to any surface where "show me how many" must work without "show me what."
+- **Direction enums on rows that drive channel/render decisions, not recomputed at read time.** `pings.ping_type` (`nudge_ahead`/`nudge_same`/`nudge_behind`) is captured at send time from the sender's relative progress vs the recipient. Storing the direction on the row anchors it to send-time context — recomputing at read time would drift as users advance.
+- **Race-protected lazy-close pattern** (used in `lazy_close_room_polls`, `lazy_close_room_asks`, vote/reply-triggered closes): `UPDATE … SET closed_at = now() WHERE … AND closed_at IS NULL`, then `GET DIAGNOSTICS row_count`. Among parallel callers, exactly one wins per item — guarantees the close-fired-once property needed for downstream emails.
+- **`CanonRadio` pattern** (white circle + canon-color inner dot) for any custom radio-like control, mirroring SearchShows. Native `<input type="radio">` stays hidden in the DOM for accessibility. Lives at [src/components/CanonRadio.tsx](src/components/CanonRadio.tsx).
+- **Cream `#fef8ea` is the canon "neutral paper" color** for popovers and modal cards. Reserve white (`#fff`) for live response surfaces only, if at all. New popover/modal surfaces should default to cream.
+- **Global vs per-viewer dismissal is a deliberate axis.** Polls use per-viewer (rows in `poll_dismissals`); SIKW asks use global (column on `sikw_asks`). Spec amendment locked in the SIKW divergence — the asymmetric privacy model (replies asker-only forever) and the asker-centric reading of the closed state make global the right call there. Future surfaces should pick consciously, not default.
+- **Always-ask-before-commit + show-files-and-message-first**, reinforced this session. Never run `git commit` without first proposing the file list and commit message and waiting for explicit yes. Dropped a related memory entry (`feedback_ask_to_commit.md`) updated to capture the strict version.
+- **Concise status updates lead with product impact.** New session pattern: status updates are 1-2 sentences of product meaning + risk callouts + "what I deliberately did NOT do" — not multi-step function/migration walkthroughs. Implementation details only when explicitly asked.
+
 ### 2026-05-02 — Relevance amendment: user-relative thread age for the brand-new lane
 
 Refines the 1b/1e brand-new threshold so it tracks *when the thread became visible to this user*, not the thread's calendar `createdAt`. A user who catches up to their friends — unlocking content posted while they were behind — sees that newly-unlocked content as brand-new (1b), even if it's calendar-old.
@@ -1738,7 +1831,9 @@ Reusable `<LoadingDots />` component lives at [src/components/LoadingDots.tsx](s
 
 ## Outstanding action items (carry across sessions)
 
-_None currently._
+- **Re-enable ping rate limit** before merging `pings-polls` to main or otherwise exposing pings to non-test users. Search for `TODO PING_RATE_LIMIT` in the repo — appears in two files (`supabase/functions/send-message/index.ts` and `src/lib/db.ts`); flip both `PING_RATE_LIMIT_ENABLED` consts to `true`, redeploy edge function (`supabase functions deploy send-message`), push the frontend. Window when re-enabled: 24h (was 7d). Popover copy: "today" not "this week". Tracked in [project_pings_polls_unfinished memory](file:///Users/alborzkamalizad/.claude/projects/-Users-alborzkamalizad-Downloads-no-spoilers-v072-fullui-ready/memory/project_pings_polls_unfinished.md).
+
+- **Merge `pings-polls` → main** when ready to expose pings/polls/SIKW asks to non-test users. The branch is feature-flagged via `VITE_FEATURE_PINGS_POLLS=true` set on the Vercel preview deploy only; production env doesn't have the var, so a merge alone wouldn't activate the UI. To turn on: merge + add the env var to production (or remove the flag check in `src/lib/featureFlags.ts`).
 
 ## Edge function deploy notes
 
