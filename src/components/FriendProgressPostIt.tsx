@@ -4,6 +4,7 @@ import { FEATURE_PINGS_POLLS } from "../lib/featureFlags";
 import NudgePopover, { type NudgeDirection } from "./NudgePopover";
 import AskTheRoomPicker from "./AskTheRoomPicker";
 import PollComposer from "./PollComposer";
+import SIKWComposer from "./SIKWComposer";
 import type { FriendGroupMember } from "../types";
 
 // ── Visual constants (canon palette + post-it accent green) ───────────────
@@ -94,6 +95,7 @@ export default function FriendProgressPostIt({
   const [openFor, setOpenFor] = useState<{ status: Status; rect: DOMRect } | null>(null);
   const [askPickerRect, setAskPickerRect] = useState<DOMRect | null>(null);
   const [pollComposerOpen, setPollComposerOpen] = useState<boolean>(false);
+  const [sikwComposerOpen, setSikwComposerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!others.length) return;
@@ -367,6 +369,10 @@ export default function FriendProgressPostIt({
             setAskPickerRect(null);
             setPollComposerOpen(true);
           }}
+          onSelectSikw={() => {
+            setAskPickerRect(null);
+            setSikwComposerOpen(true);
+          }}
         />
       )}
 
@@ -374,6 +380,15 @@ export default function FriendProgressPostIt({
         <PollComposer
           groupId={groupId}
           onClose={() => setPollComposerOpen(false)}
+        />
+      )}
+
+      {launcherMode && sikwComposerOpen && groupId && (
+        <SIKWComposer
+          groupId={groupId}
+          progressSeason={userProgress?.s ?? 0}
+          progressEpisode={userProgress?.e ?? 0}
+          onClose={() => setSikwComposerOpen(false)}
         />
       )}
     </>
