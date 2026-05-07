@@ -128,25 +128,26 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div style={stickyShellStyle()}>
-      {/* Asker line */}
-      <div style={askerLineStyle()}>
-        @{askerUsername || "a friend"} is at <strong style={{ fontStyle: "normal", fontWeight: 500 }}>
-          {formatSE(ask.askerProgressSeason, ask.askerProgressEpisode)}
-        </strong> and asks:
-      </div>
+      {/* Asker line — first-person for asker, third-person for everyone else */}
+      {isAsker ? (
+        <div style={askerLineStyle()}>you asked:</div>
+      ) : (
+        <div style={askerLineStyle()}>
+          @{askerUsername || "a friend"} is at <strong style={{ fontStyle: "normal", fontWeight: 500 }}>
+            {formatSE(ask.askerProgressSeason, ask.askerProgressEpisode)}
+          </strong> and asks:
+        </div>
+      )}
 
       {/* Question */}
-      <div style={questionStyle()}>{ask.message}</div>
+      <div style={{ ...questionStyle(), marginBottom: isAsker ? 8 : 4 }}>{ask.message}</div>
 
-      {/* Privacy line — replier sees this, asker sees a different line */}
+      {/* Privacy line — only for repliers; asker's privacy reminder
+          lives inline in the empty state ("waiting for replies… (only
+          you see them)") */}
       {!isAsker && (
         <div style={{ fontStyle: "italic", fontSize: 10, color: FADED_TEXT, opacity: 0.7, marginBottom: 12 }}>
           only @{askerUsername || "the asker"} sees your reply
-        </div>
-      )}
-      {isAsker && (
-        <div style={{ fontStyle: "italic", fontSize: 10, color: FADED_TEXT, opacity: 0.7, marginBottom: 12 }}>
-          only you see these replies
         </div>
       )}
 
@@ -179,7 +180,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
     if (allReplies.length === 0) {
       return (
         <div style={{ fontSize: 12, fontStyle: "italic", color: FADED_TEXT, opacity: 0.75, marginBottom: 10 }}>
-          waiting for replies…
+          waiting for replies… <span style={{ opacity: 0.85 }}>(only you see them)</span>
         </div>
       );
     }
