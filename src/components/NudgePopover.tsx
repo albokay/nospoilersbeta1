@@ -5,11 +5,11 @@ import { hasRecentPing, sendMessage } from "../lib/db";
 import LoadingDots from "./LoadingDots";
 import type { PingType } from "../types";
 
-// ── Direction maps to which picker the popover renders ────────────────────
-// Sender-relative: "ahead" means the sender is ahead of the recipient
-// (recipient is behind, email channel). "behind" means recipient is
-// ahead of the sender (sticky channel). "same" means same progress
-// (sticky channel). "not-started" treats the recipient as behind.
+// ── Direction is FRIEND-relative (matches the right-sticky's framing) ─────
+// "ahead"       = friend is ahead of me  → I am behind → behind-to-ahead picker (sticky channel)
+// "behind"      = friend is behind me    → I am ahead  → ahead-to-behind picker (email channel)
+// "same"        = friend at same episode → same picker (sticky channel)
+// "not-started" = friend hasn't started  → treat like behind (ahead-to-behind picker, email channel)
 
 export type NudgeDirection = "ahead" | "same" | "behind" | "not-started";
 
@@ -50,13 +50,17 @@ const VOCAB_BEHIND_TO_AHEAD = [
 
 function vocabFor(direction: NudgeDirection): string[] {
   if (direction === "same") return VOCAB_SAME;
-  if (direction === "behind") return VOCAB_BEHIND_TO_AHEAD;
+  // friend ahead → I am behind → behind-to-ahead vocab
+  if (direction === "ahead") return VOCAB_BEHIND_TO_AHEAD;
+  // friend behind / not-started → I am ahead → ahead-to-behind vocab
   return VOCAB_AHEAD_TO_BEHIND;
 }
 
 function templateTypeFor(direction: NudgeDirection): PingType {
   if (direction === "same") return "nudge_same";
-  if (direction === "behind") return "nudge_behind";
+  // friend ahead → sender is behind → nudge_behind (sticky channel)
+  if (direction === "ahead") return "nudge_behind";
+  // friend behind / not-started → sender is ahead → nudge_ahead (email channel)
   return "nudge_ahead";
 }
 
@@ -229,9 +233,9 @@ export default function NudgePopover({
         left: popoverLeft,
         width: POPOVER_WIDTH,
         background: "#fff",
-        borderRadius: 10,
+        borderRadius: 24,
         border: "0.5px solid rgba(0,0,0,0.12)",
-        padding: "14px 14px 12px",
+        padding: "16px 18px 14px",
         boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
         zIndex: 70,
       }}
