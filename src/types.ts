@@ -61,6 +61,25 @@ export type Reply = {
   quotedText?: string | null;
 };
 
+// ── Pings ─────────────────────────────────────────────────────────────────────
+
+export type PingType = 'nudge_ahead' | 'nudge_same' | 'nudge_behind';
+
+export type Ping = {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  showId: string;
+  groupId: string;
+  pingType: PingType;
+  message: string | null;
+  sentAt: number;
+  dismissedAt: number | null;
+  // Resolved at fetch time when needed (e.g. for the in-room sticky which
+  // displays "@sender pinged you:"). Not always populated.
+  senderUsername?: string;
+};
+
 // Extended progress entry — carries rewatch metadata alongside the feed-filter position
 export type ProgressEntry = {
   s: number;

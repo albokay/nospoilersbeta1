@@ -2054,6 +2054,149 @@ export async function sendInvite(data: {
   return result as SendInviteResult;
 }
 
+// ── Pings (round 1: friend-room one-way nudges) ───────────────────────────────
+
+import type { Ping, PingType } from "../types";
+
+export type SendMessageResult =
+  | { ok: true; pingId: string; channel: "sticky" | "email"; warning?: string }
+  | { ok: false; error: string; message?: string };
+
+/**
+ * Calls the `send-message` Edge Function. The function validates caller +
+ * group membership + 7-day rate limit, writes the ping row, and (for
+ * nudge_ahead only) sends the Resend email. Mirrors sendInvite's error
+ * handling so non-2xx responses surface their structured error code +
+ * message rather than the generic FunctionsHttpError wrapper.
+ */
+export async function sendMessage(args: {
+  templateType: PingType;
+  recipientId: string;
+  groupId: string;
+  message: string;
+}): Promise<SendMessageResult> {
+  const { data: result, error } = await supabase.functions.invoke("send-message", {
+    body: {
+      template_type: args.templateType,
+      recipient_id:  args.recipientId,
+      group_id:      args.groupId,
+      message:       args.message,
+    },
+  });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const body = await ctx.json();
+        if (body && typeof body === "object" && body.ok === false && typeof body.error === "string") {
+          return { ok: false, error: body.error, message: body.message };
+        }
+        return {
+          ok: false,
+          error: "edge_function_error",
+          message: `${error.message} (status ${ctx.status}${body ? `: ${JSON.stringify(body)}` : ""})`,
+        };
+      } catch {
+        const text = await ctx.text().catch(() => "");
+        return {
+          ok: false,
+          error: "edge_function_error",
+          message: `${error.message} (status ${ctx.status}${text ? `: ${text}` : ""})`,
+        };
+      }
+    }
+    return { ok: false, error: "edge_function_error", message: error.message };
+  }
+  return result as SendMessageResult;
+}
+
+/**
+ * Recipient stamps an active ping as dismissed. Returns true if the call
+ * dismissed the row, false otherwise (not yours / doesn't exist /
+ * already dismissed — all return false uniformly, no leak).
+ */
+export async function dismissPing(pingId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("dismiss_ping", { p_ping_id: pingId });
+  if (error) throw error;
+  return data === true;
+}
+
+type PingRow = {
+  id:            string;
+  sender_id:     string;
+  recipient_id:  string;
+  show_id:       string;
+  group_id:      string;
+  ping_type:     PingType;
+  message:       string | null;
+  sent_at:       string;
+  dismissed_at:  string | null;
+};
+
+function rowToPing(row: PingRow, senderUsername?: string): Ping {
+  return {
+    id:            row.id,
+    senderId:      row.sender_id,
+    recipientId:   row.recipient_id,
+    showId:        row.show_id,
+    groupId:       row.group_id,
+    pingType:      row.ping_type,
+    message:       row.message,
+    sentAt:        new Date(row.sent_at).getTime(),
+    dismissedAt:   row.dismissed_at ? new Date(row.dismissed_at).getTime() : null,
+    senderUsername,
+  };
+}
+
+/**
+ * Returns the oldest undismissed ping where caller is the recipient
+ * AND the ping is in the given room. Used by the in-room sticky.
+ * Resolves the sender's @username via a separate profiles lookup.
+ */
+export async function fetchNextRoomPing(groupId: string): Promise<Ping | null> {
+  const { data, error } = await supabase
+    .from("pings")
+    .select("*")
+    .eq("group_id", groupId)
+    .is("dismissed_at", null)
+    .order("sent_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as PingRow;
+
+  // Resolve sender username (best-effort — display falls back to "@a friend"
+  // if the join misses).
+  let senderUsername: string | undefined;
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", row.sender_id)
+    .maybeSingle();
+  if (prof?.username) senderUsername = prof.username;
+
+  return rowToPing(row, senderUsername);
+}
+
+/**
+ * Returns the set of show_ids where the caller has at least one
+ * undismissed incoming ping. Used by the journal rail dot signal —
+ * one query at App load, drives per-show indicators.
+ */
+export async function fetchUndismissedPingShowIds(): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("pings")
+    .select("show_id")
+    .is("dismissed_at", null);
+  if (error) throw error;
+  const ids = new Set<string>();
+  for (const r of data ?? []) {
+    if (r.show_id) ids.add(r.show_id as string);
+  }
+  return ids;
+}
+
 // ── Accept invite via SECURITY DEFINER RPC ─────────────────────────────────────
 
 /**
