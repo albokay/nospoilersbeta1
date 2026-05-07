@@ -81,6 +81,7 @@ import InlineThreadView from "./InlineThreadView";
 import FriendProgressPostIt from "./FriendProgressPostIt";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
+import SIKWSticky from "./SIKWSticky";
 import { FEATURE_PINGS_POLLS } from "../lib/featureFlags";
 import Username from "./Username";
 import type { PendingReference } from "./ResponseComposer";
@@ -2629,6 +2630,14 @@ export default function ShowSection({
         <PollSticky
           groupId={activeGroupId}
           currentUserId={user.id}
+        />
+      )}
+
+      {FEATURE_PINGS_POLLS && activeGroupId && user && (
+        <SIKWSticky
+          groupId={activeGroupId}
+          currentUserId={user.id}
+          seasons={allShows.find(s => s.id === showId)?.seasons ?? []}
         />
       )}
 

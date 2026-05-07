@@ -2257,6 +2257,208 @@ export type SendPollEmailResult = {
   failed_count?: number;
 };
 
+// ── SIKW asks: data shapes + fetch/write wrappers ────────────────────────
+
+export type SikwReplyType = "stick_with_it" | "give_until" | "dropping_is_fair" | "custom";
+
+export type SikwAsk = {
+  id: string;
+  askerId: string;
+  groupId: string;
+  message: string;
+  askerProgressSeason: number;
+  askerProgressEpisode: number;
+  createdAt: number;
+  closedAt: number | null;
+};
+
+export type SikwReply = {
+  id: string;
+  askId: string;
+  replierId: string;
+  replyType: SikwReplyType;
+  episodeTargetSeason: number | null;
+  episodeTargetEpisode: number | null;
+  message: string | null;
+  repliedAt: number;
+};
+
+type SikwAskRow = {
+  id: string;
+  asker_id: string;
+  group_id: string;
+  message: string;
+  asker_progress_season: number;
+  asker_progress_episode: number;
+  created_at: string;
+  closed_at: string | null;
+};
+
+type SikwReplyRow = {
+  id: string;
+  ask_id: string;
+  replier_id: string;
+  reply_type: SikwReplyType;
+  episode_target_season: number | null;
+  episode_target_episode: number | null;
+  message: string | null;
+  replied_at: string;
+};
+
+function rowToAsk(r: SikwAskRow): SikwAsk {
+  return {
+    id:                    r.id,
+    askerId:               r.asker_id,
+    groupId:               r.group_id,
+    message:               r.message,
+    askerProgressSeason:   r.asker_progress_season,
+    askerProgressEpisode:  r.asker_progress_episode,
+    createdAt:             new Date(r.created_at).getTime(),
+    closedAt:              r.closed_at ? new Date(r.closed_at).getTime() : null,
+  };
+}
+
+function rowToSikwReply(r: SikwReplyRow): SikwReply {
+  return {
+    id:                     r.id,
+    askId:                  r.ask_id,
+    replierId:              r.replier_id,
+    replyType:              r.reply_type,
+    episodeTargetSeason:    r.episode_target_season,
+    episodeTargetEpisode:   r.episode_target_episode,
+    message:                r.message,
+    repliedAt:              new Date(r.replied_at).getTime(),
+  };
+}
+
+export type SikwReplyWithUser = SikwReply & { replierUsername: string | null };
+
+export type ActiveAskData = {
+  ask: SikwAsk;
+  askerUsername: string | null;
+  myReply: SikwReply | null;
+  /** Populated only when caller is the asker (RLS allows asker to read all). */
+  allReplies: SikwReplyWithUser[];
+  eligibleCount: number;
+};
+
+/**
+ * Returns the room's currently-active SIKW ask + caller's own reply.
+ * If caller is the asker, also returns ALL replies (RLS allows it).
+ * Eligible count = members minus asker (asker doesn't reply).
+ */
+export async function fetchActiveRoomAsk(
+  groupId: string,
+  callerId: string,
+): Promise<ActiveAskData | null> {
+  const { data: askRow, error: askErr } = await supabase
+    .from("sikw_asks")
+    .select("*")
+    .eq("group_id", groupId)
+    .is("closed_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (askErr) throw askErr;
+  if (!askRow) return null;
+
+  const ask = rowToAsk(askRow as SikwAskRow);
+  const isAsker = ask.askerId === callerId;
+
+  let askerUsername: string | null = null;
+  const { data: askerProfile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", ask.askerId)
+    .maybeSingle();
+  if (askerProfile?.username) askerUsername = askerProfile.username;
+
+  let myReply: SikwReply | null = null;
+  if (!isAsker) {
+    const { data: replyRow } = await supabase
+      .from("sikw_replies")
+      .select("*")
+      .eq("ask_id", ask.id)
+      .eq("replier_id", callerId)
+      .maybeSingle();
+    if (replyRow) myReply = rowToSikwReply(replyRow as SikwReplyRow);
+  }
+
+  let allReplies: SikwReplyWithUser[] = [];
+  if (isAsker) {
+    const { data: replyRows } = await supabase
+      .from("sikw_replies")
+      .select("*")
+      .eq("ask_id", ask.id)
+      .order("replied_at", { ascending: true });
+    const ids = Array.from(new Set((replyRows ?? []).map((r: { replier_id: string }) => r.replier_id)));
+    const userMap: Record<string, string> = {};
+    if (ids.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", ids);
+      for (const p of profiles ?? []) {
+        if (p.username) userMap[p.id as string] = p.username as string;
+      }
+    }
+    allReplies = (replyRows ?? []).map((r) => {
+      const base = rowToSikwReply(r as SikwReplyRow);
+      return { ...base, replierUsername: userMap[base.replierId] ?? null };
+    });
+  }
+
+  // Eligible count: members minus asker.
+  const { count: memberCount } = await supabase
+    .from("friend_group_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("group_id", groupId);
+  const eligibleCount = Math.max(0, (memberCount ?? 0) - 1);
+
+  return { ask, askerUsername, myReply, allReplies, eligibleCount };
+}
+
+export type ReplyToAskResult =
+  | { ok: true; replyId: string; didClose: boolean; replyCount: number; eligibleCount: number }
+  | { ok: false; error: string };
+
+export async function replyToAsk(args: {
+  askId: string;
+  replyType: SikwReplyType;
+  episodeTargetSeason?: number | null;
+  episodeTargetEpisode?: number | null;
+  message?: string | null;
+}): Promise<ReplyToAskResult> {
+  const { data, error } = await supabase.rpc("reply_to_ask", {
+    p_ask_id:                  args.askId,
+    p_reply_type:              args.replyType,
+    p_episode_target_season:   args.episodeTargetSeason ?? null,
+    p_episode_target_episode:  args.episodeTargetEpisode ?? null,
+    p_message:                 args.message ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.ok === false) return { ok: false, error: data?.error || "unknown" };
+  return {
+    ok:             true,
+    replyId:        data.reply_id,
+    didClose:       !!data.did_close,
+    replyCount:     data.reply_count as number,
+    eligibleCount:  data.eligible_count as number,
+  };
+}
+
+export async function lazyCloseRoomAsks(groupId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc("lazy_close_room_asks", { p_group_id: groupId });
+  if (error) throw error;
+  return (data ?? []) as string[];
+}
+
+export async function dismissClosedAsk(askId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("dismiss_closed_ask", { p_ask_id: askId });
+  if (error) throw error;
+  return data === true;
+}
+
 type PollRow = {
   id: string;
   asker_id: string;
