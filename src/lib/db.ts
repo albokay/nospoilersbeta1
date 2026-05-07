@@ -2332,6 +2332,140 @@ export async function fetchActiveRoomPoll(
   return { poll, options, askerUsername, myResponse };
 }
 
+export type PollResponseWithUser = import("../types").PollResponse & {
+  responderUsername: string | null;
+};
+
+export type ClosedPollData = {
+  poll: import("../types").Poll;
+  options: import("../types").PollOption[];
+  askerUsername: string | null;
+  responses: PollResponseWithUser[];
+  eligibleCount: number;
+  myDismissed: boolean;
+};
+
+/**
+ * Marks a closed poll as dismissed for the caller. Idempotent —
+ * returns true on first dismiss, false on repeats.
+ */
+export async function dismissClosedPoll(pollId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("dismiss_closed_poll", { p_poll_id: pollId });
+  if (error) throw error;
+  return data === true;
+}
+
+/**
+ * Stamps closed_at on any open polls in this room whose duration has
+ * elapsed. Race-safe via SQL — among parallel callers, exactly one
+ * wins per expired poll. Returns the IDs that THIS call closed so
+ * the caller can fire close emails for those.
+ */
+export async function lazyCloseRoomPolls(groupId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc("lazy_close_room_polls", { p_group_id: groupId });
+  if (error) throw error;
+  return (data ?? []) as string[];
+}
+
+/**
+ * Returns the most-recent closed poll in the room within the 48-hour
+ * post-close visible window — UNLESS the caller has already dismissed
+ * it, in which case looks at the next one. Also pulls all responses
+ * (RLS allows post-close member reads) with responder usernames
+ * resolved, plus the asker's @username.
+ *
+ * Returns null when no closed-and-not-dismissed poll exists in the
+ * 48h window.
+ */
+export async function fetchMostRecentClosedRoomPoll(
+  groupId: string,
+  callerId: string,
+): Promise<ClosedPollData | null> {
+  const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
+  // Pull a small batch — most rooms won't have more than a couple
+  // closed polls in 48h.
+  const { data: pollRows, error: pollErr } = await supabase
+    .from("polls")
+    .select("*")
+    .eq("group_id", groupId)
+    .not("closed_at", "is", null)
+    .gt("closed_at", since48h)
+    .order("closed_at", { ascending: false })
+    .limit(10);
+  if (pollErr) throw pollErr;
+  if (!pollRows || pollRows.length === 0) return null;
+
+  const pollIds = pollRows.map((p: { id: string }) => p.id);
+
+  // Caller's dismissals across these polls.
+  const { data: dismissalRows } = await supabase
+    .from("poll_dismissals")
+    .select("poll_id")
+    .eq("user_id", callerId)
+    .in("poll_id", pollIds);
+  const dismissedIds = new Set((dismissalRows ?? []).map((d: { poll_id: string }) => d.poll_id));
+
+  const targetRow = pollRows.find((p: { id: string }) => !dismissedIds.has(p.id));
+  if (!targetRow) return null;
+  const poll = rowToPoll(targetRow as PollRow);
+
+  const { data: optionRows } = await supabase
+    .from("poll_options")
+    .select("*")
+    .eq("poll_id", poll.id)
+    .order("display_order", { ascending: true });
+  const options = (optionRows ?? []).map((r) => rowToPollOption(r as PollOptionRow));
+
+  // Responses (post-close: RLS allows members to see all).
+  const { data: responseRows } = await supabase
+    .from("poll_responses")
+    .select("*")
+    .eq("poll_id", poll.id);
+
+  const responderIds = Array.from(
+    new Set((responseRows ?? []).map((r: { responder_id: string }) => r.responder_id)),
+  );
+  const userMap: Record<string, string> = {};
+  if (responderIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .in("id", responderIds);
+    for (const p of profiles ?? []) {
+      if (p.username) userMap[p.id as string] = p.username as string;
+    }
+  }
+
+  const responses: PollResponseWithUser[] = (responseRows ?? []).map((r) => {
+    const base = rowToPollResponse(r as PollResponseRow);
+    return { ...base, responderUsername: userMap[base.responderId] ?? null };
+  });
+
+  let askerUsername: string | null = null;
+  const { data: askerProfile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", poll.askerId)
+    .maybeSingle();
+  if (askerProfile?.username) askerUsername = askerProfile.username;
+
+  // Eligible count for the "X of N weighed in" footer.
+  const { count: eligibleCount } = await supabase
+    .from("friend_group_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("group_id", groupId);
+
+  return {
+    poll,
+    options,
+    askerUsername,
+    responses,
+    eligibleCount: eligibleCount ?? 0,
+    myDismissed: false,
+  };
+}
+
 /**
  * Calls get_poll_count RPC. Aggregate-only; never leaks vote content.
  * Used by both the asker's pre-close "X of N weighed in" footer and
