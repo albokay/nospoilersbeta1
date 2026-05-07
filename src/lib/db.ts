@@ -2469,28 +2469,23 @@ export async function fetchMostRecentClosedRoomAsk(
 ): Promise<ClosedAskData | null> {
   const since1w = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: askRows, error: askErr } = await supabase
+  // SIKW dismissal is GLOBAL (per amendment) — once anyone in the room
+  // X's a closed ask, the sticky vanishes for everyone. Implemented via
+  // sikw_asks.dismissed_at column; we filter at the query level.
+  const { data: askRow, error: askErr } = await supabase
     .from("sikw_asks")
     .select("*")
     .eq("group_id", groupId)
     .not("closed_at", "is", null)
     .gt("closed_at", since1w)
+    .is("dismissed_at", null)
     .order("closed_at", { ascending: false })
-    .limit(10);
+    .limit(1)
+    .maybeSingle();
   if (askErr) throw askErr;
-  if (!askRows || askRows.length === 0) return null;
+  if (!askRow) return null;
 
-  const askIds = askRows.map((a: { id: string }) => a.id);
-  const { data: dismissalRows } = await supabase
-    .from("sikw_dismissals")
-    .select("ask_id")
-    .eq("user_id", callerId)
-    .in("ask_id", askIds);
-  const dismissedIds = new Set((dismissalRows ?? []).map((d: { ask_id: string }) => d.ask_id));
-
-  const targetRow = askRows.find((a: { id: string }) => !dismissedIds.has(a.id));
-  if (!targetRow) return null;
-  const ask = rowToAsk(targetRow as SikwAskRow);
+  const ask = rowToAsk(askRow as SikwAskRow);
   const isAsker = ask.askerId === callerId;
 
   let askerUsername: string | null = null;
