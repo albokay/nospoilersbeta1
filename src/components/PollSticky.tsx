@@ -83,6 +83,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
   const [askerDismissedPollId, setAskerDismissedPollId] = useState<string | null>(null);
 
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [customSelected, setCustomSelected] = useState<boolean>(false);
   const [writeInText, setWriteInText] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +102,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
       setClosed(null);
       setCount(null);
       setSelectedOptionId(null);
+      setCustomSelected(false);
       setWriteInText("");
       setError(null);
       setDismissedLocal(false);
@@ -195,7 +197,8 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
     const canSubmit =
       !submitting &&
       !hasVoted &&
-      (selectedOptionId !== null || (poll.allowWriteIn && writeInText.trim().length > 0));
+      (selectedOptionId !== null ||
+        (poll.allowWriteIn && customSelected && writeInText.trim().length > 0));
 
     async function handleSubmit() {
       if (!canSubmit || !active) return;
@@ -278,7 +281,10 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
                   name={`poll-${poll.id}`}
                   disabled={hasVoted}
                   checked={highlighted}
-                  onChange={() => setSelectedOptionId(opt.id)}
+                  onChange={() => {
+                    setSelectedOptionId(opt.id);
+                    setCustomSelected(false);
+                  }}
                   style={{ display: "none" }}
                 />
                 {opt.optionText}
@@ -288,43 +294,46 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
 
           {poll.allowWriteIn && !hasVoted && (
             <div style={{ padding: "8px 11px", borderRadius: 12, background: "#fff" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CANON_NAVY, marginBottom: 6, cursor: "pointer" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CANON_NAVY, marginBottom: customSelected ? 6 : 0, cursor: "pointer" }}>
                 <CanonRadio
-                  checked={selectedOptionId === null && writeInText.length > 0}
+                  checked={customSelected}
                   color="#fff"
                   bgColor={STICKY_BG}
                 />
                 <input
                   type="radio"
                   name={`poll-${poll.id}`}
-                  checked={selectedOptionId === null && writeInText.length > 0}
-                  onChange={() => setSelectedOptionId(null)}
+                  checked={customSelected}
+                  onChange={() => {
+                    setSelectedOptionId(null);
+                    setCustomSelected(true);
+                  }}
                   style={{ display: "none" }}
                 />
-                Write your own
+                (write your own)
               </label>
-              <input
-                type="text"
-                value={writeInText}
-                onChange={(e) => {
-                  setWriteInText(e.target.value);
-                  if (selectedOptionId !== null) setSelectedOptionId(null);
-                }}
-                maxLength={80}
-                placeholder="80 char · spoiler-free"
-                style={{
-                  width: "100%",
-                  fontSize: 11,
-                  padding: "5px 9px",
-                  borderRadius: 9999,
-                  border: "none",
-                  height: 26,
-                  boxSizing: "border-box",
-                  color: CANON_NAVY,
-                  background: "rgba(255,255,255,0.6)",
-                  outline: "none",
-                }}
-              />
+              {customSelected && (
+                <input
+                  type="text"
+                  value={writeInText}
+                  onChange={(e) => setWriteInText(e.target.value)}
+                  maxLength={80}
+                  placeholder="80 char · spoiler-free"
+                  autoFocus
+                  style={{
+                    width: "100%",
+                    fontSize: 11,
+                    padding: "5px 9px",
+                    borderRadius: 9999,
+                    border: "none",
+                    height: 26,
+                    boxSizing: "border-box",
+                    color: CANON_NAVY,
+                    background: "rgba(255,255,255,0.6)",
+                    outline: "none",
+                  }}
+                />
+              )}
             </div>
           )}
 

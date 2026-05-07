@@ -39,10 +39,8 @@ const POPOVER_WIDTH = 300;
 const GAP_FROM_ANCHOR = 14;
 const POPOVER_BOTTOM_PX = 96; // matches FriendProgressPostIt bottom — anchors popup bottom to the sticky
 const MESSAGE_MAX_LENGTH = 80;
-// Celebratory "Sent!" takeover timing: hold visible, then fade, then unmount.
-const SENT_HOLD_MS  = 500;
-const SENT_FADE_MS  = 700;
-const SENT_TOTAL_MS = SENT_HOLD_MS + SENT_FADE_MS;
+// "Sent!" takeover hold time before unmount (no fade — instant swap).
+const SENT_TOTAL_MS = 1000;
 
 // Vocabulary lines per spec amendment. Sender-relative direction picks the
 // set; "not-started" reuses ahead-to-behind since not-started == behind.
@@ -107,7 +105,7 @@ export default function NudgePopover({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sentFlash, setSentFlash] = useState<boolean>(false);
-  const [sentFading, setSentFading] = useState<boolean>(false);
+  const [sentBoxHeight, setSentBoxHeight] = useState<number | null>(null);
 
   // Pre-check rate limit so the Send button can render disabled from the
   // start instead of accepting input that will be rejected.
@@ -219,9 +217,11 @@ export default function NudgePopover({
         return;
       }
       setSubmitting(false);
+      // Capture the form's height so the takeover keeps the same box size.
+      if (popoverRef.current) {
+        setSentBoxHeight(popoverRef.current.offsetHeight);
+      }
       setSentFlash(true);
-      // Fade then unmount.
-      setTimeout(() => setSentFading(true), SENT_HOLD_MS);
       setTimeout(() => onClose(), SENT_TOTAL_MS);
     } catch (err) {
       setSubmitting(false);
@@ -236,19 +236,18 @@ export default function NudgePopover({
   }
 
   // ── Render ────────────────────────────────────────────────────────────
-  // Celebratory takeover: when sentFlash, the entire popover contents are
-  // replaced by a centered "Sent!" word, which then fades and unmounts.
+  // Takeover: when sentFlash, the entire popover contents are replaced by a
+  // centered "Sent!" word, while the box keeps the same size as the form.
   if (sentFlash) {
     return (
       <div
-        ref={popoverRef}
         role="dialog"
         style={{
           position: "fixed",
           bottom: POPOVER_BOTTOM_PX,
           left: popoverLeft,
           width: POPOVER_WIDTH,
-          minHeight: 180,
+          height: sentBoxHeight ?? "auto",
           background: CREAM,
           borderRadius: 24,
           padding: "16px 18px 14px",
@@ -257,15 +256,14 @@ export default function NudgePopover({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          opacity: sentFading ? 0 : 1,
-          transition: `opacity ${SENT_FADE_MS}ms ease-out`,
+          boxSizing: "border-box",
         }}
       >
         <div
           style={{
             fontSize: 15,
             fontWeight: 600,
-            color: CANON_LIGHT,
+            color: CANON_NAVY,
             fontFamily:
               '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
           }}
@@ -350,10 +348,10 @@ export default function NudgePopover({
                 gap: 8,
                 padding: "7px 10px",
                 borderRadius: 12,
-                background: selected ? "rgba(53,94,184,0.08)" : "transparent",
-                border: `2px solid ${selected ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
+                background: CANON_LIGHT,
+                border: "none",
                 fontSize: 12,
-                color: selected ? CANON_NAVY : "#2c2c2a",
+                color: "#fff",
                 cursor: "pointer",
               }}
             >
@@ -375,8 +373,8 @@ export default function NudgePopover({
           style={{
             padding: "7px 10px",
             borderRadius: 12,
-            border: `2px solid ${customSelected ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
-            background: customSelected ? "rgba(53,94,184,0.08)" : "transparent",
+            border: "none",
+            background: CANON_LIGHT,
           }}
         >
           <label
@@ -385,7 +383,7 @@ export default function NudgePopover({
               alignItems: "center",
               gap: 8,
               fontSize: 12,
-              color: "#2c2c2a",
+              color: "#fff",
               marginBottom: customSelected ? 6 : 0,
               cursor: "pointer",
             }}
@@ -416,8 +414,8 @@ export default function NudgePopover({
                 fontSize: 11,
                 padding: "5px 10px",
                 borderRadius: 9999,
-                border: `2px solid ${CANON_BLUE}`,
-                background: "#fff",
+                border: "none",
+                background: "rgba(255,255,255,0.7)",
                 height: 26,
                 boxSizing: "border-box",
                 color: CANON_NAVY,
@@ -448,7 +446,7 @@ export default function NudgePopover({
               style={{
                 background: canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)",
                 color: "#fff",
-                border: `2px solid ${canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)"}`,
+                border: canSubmit ? `2px solid ${CANON_BLUE}` : "none",
                 padding: "6px 14px",
                 borderRadius: 9999,
                 fontSize: 12,
@@ -457,9 +455,11 @@ export default function NudgePopover({
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 5,
+                minHeight: 28,
+                minWidth: canSubmit ? undefined : 90,
               }}
             >
-              {submitting ? <>Sending<LoadingDots /></> : <>Send <ArrowRight size={13} /></>}
+              {!canSubmit ? null : submitting ? <>Sending<LoadingDots /></> : <>Send <ArrowRight size={13} /></>}
             </button>
             <button
               onClick={onClose}

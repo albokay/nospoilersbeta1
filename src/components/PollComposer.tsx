@@ -282,26 +282,18 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
         )}
       </div>
 
-      {/* Allow write-in toggle */}
-      <div
+      {/* Allow write-in toggle — radio sits in the number column to align
+          with the 1, 2, … numbers above; text pill aligns with the inputs. */}
+      <label
         style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
           marginBottom: 18,
-          padding: "10px 12px",
-          borderRadius: 12,
-          background: "#fff",
-          border: "none",
+          cursor: "pointer",
         }}
       >
-        <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            fontSize: 13,
-            color: CANON_NAVY,
-            cursor: "pointer",
-          }}
-        >
+        <span style={{ width: 16, display: "flex", justifyContent: "center", flexShrink: 0 }}>
           <CanonRadio
             checked={allowWriteIn}
             bgColor={CANON_LIGHT}
@@ -309,18 +301,27 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
             size={20}
             dotSize={10}
           />
-          <input
-            type="checkbox"
-            checked={allowWriteIn}
-            onChange={(e) => setAllowWriteIn(e.target.checked)}
-            style={{ display: "none" }}
-          />
-          <span onClick={() => setAllowWriteIn(!allowWriteIn)}>Allow write-in answers?</span>
-        </label>
-        <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 4, marginLeft: 30, lineHeight: 1.4 }}>
-          If on, friends can write their own answer.
-        </div>
-      </div>
+        </span>
+        <input
+          type="checkbox"
+          checked={allowWriteIn}
+          onChange={(e) => setAllowWriteIn(e.target.checked)}
+          style={{ display: "none" }}
+        />
+        <span
+          style={{
+            flex: 1,
+            padding: "8px 14px",
+            background: "#fff",
+            borderRadius: 9999,
+            fontSize: 13,
+            color: CANON_NAVY,
+            lineHeight: 1.4,
+          }}
+        >
+          Allow friends to write their own answers?
+        </span>
+      </label>
 
       {/* Duration */}
       <div style={{ marginBottom: 20 }}>
