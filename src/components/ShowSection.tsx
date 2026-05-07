@@ -80,6 +80,7 @@ import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
 import FriendProgressPostIt from "./FriendProgressPostIt";
 import IncomingPingSticky from "./IncomingPingSticky";
+import PollSticky from "./PollSticky";
 import { FEATURE_PINGS_POLLS } from "../lib/featureFlags";
 import Username from "./Username";
 import type { PendingReference } from "./ResponseComposer";
@@ -2619,6 +2620,13 @@ export default function ShowSection({
 
       {FEATURE_PINGS_POLLS && activeGroupId && user && (
         <IncomingPingSticky
+          groupId={activeGroupId}
+          currentUserId={user.id}
+        />
+      )}
+
+      {FEATURE_PINGS_POLLS && activeGroupId && user && (
+        <PollSticky
           groupId={activeGroupId}
           currentUserId={user.id}
         />

@@ -2211,6 +2211,180 @@ export type SendPollEmailResult = {
   failed_count?: number;
 };
 
+type PollRow = {
+  id: string;
+  asker_id: string;
+  group_id: string;
+  question: string;
+  allow_write_in: boolean;
+  duration: import("../types").PollDurationCode;
+  created_at: string;
+  closed_at: string | null;
+};
+
+type PollOptionRow = {
+  id: string;
+  poll_id: string;
+  option_text: string;
+  display_order: number;
+};
+
+type PollResponseRow = {
+  id: string;
+  poll_id: string;
+  responder_id: string;
+  option_id: string | null;
+  write_in_text: string | null;
+  responded_at: string;
+};
+
+export type ActivePollData = {
+  poll: import("../types").Poll;
+  options: import("../types").PollOption[];
+  askerUsername: string | null;
+  myResponse: import("../types").PollResponse | null;
+};
+
+function rowToPoll(r: PollRow): import("../types").Poll {
+  return {
+    id:           r.id,
+    askerId:      r.asker_id,
+    groupId:      r.group_id,
+    question:     r.question,
+    allowWriteIn: r.allow_write_in,
+    duration:     r.duration,
+    createdAt:    new Date(r.created_at).getTime(),
+    closedAt:     r.closed_at ? new Date(r.closed_at).getTime() : null,
+  };
+}
+
+function rowToPollOption(r: PollOptionRow): import("../types").PollOption {
+  return {
+    id:           r.id,
+    pollId:       r.poll_id,
+    optionText:   r.option_text,
+    displayOrder: r.display_order,
+  };
+}
+
+function rowToPollResponse(r: PollResponseRow): import("../types").PollResponse {
+  return {
+    id:           r.id,
+    pollId:       r.poll_id,
+    responderId:  r.responder_id,
+    optionId:     r.option_id,
+    writeInText:  r.write_in_text,
+    respondedAt:  new Date(r.responded_at).getTime(),
+  };
+}
+
+/**
+ * Returns the room's currently-active poll (closed_at IS NULL),
+ * its options, the asker's @username, and the caller's own response
+ * if they've voted. Returns null when no active poll exists.
+ *
+ * Pre-close, RLS prevents callers from seeing OTHERS' responses;
+ * the caller's own response is fetched separately and returned here.
+ */
+export async function fetchActiveRoomPoll(
+  groupId: string,
+  callerId: string,
+): Promise<ActivePollData | null> {
+  const { data: pollRow, error: pollErr } = await supabase
+    .from("polls")
+    .select("*")
+    .eq("group_id", groupId)
+    .is("closed_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (pollErr) throw pollErr;
+  if (!pollRow) return null;
+
+  const poll = rowToPoll(pollRow as PollRow);
+
+  const { data: optionRows, error: optErr } = await supabase
+    .from("poll_options")
+    .select("*")
+    .eq("poll_id", poll.id)
+    .order("display_order", { ascending: true });
+  if (optErr) throw optErr;
+  const options = (optionRows ?? []).map((r) => rowToPollOption(r as PollOptionRow));
+
+  // Best-effort asker @username
+  let askerUsername: string | null = null;
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", poll.askerId)
+    .maybeSingle();
+  if (profileRow?.username) askerUsername = profileRow.username;
+
+  // Caller's own response (RLS allows reading own row)
+  const { data: responseRow } = await supabase
+    .from("poll_responses")
+    .select("*")
+    .eq("poll_id", poll.id)
+    .eq("responder_id", callerId)
+    .maybeSingle();
+  const myResponse = responseRow ? rowToPollResponse(responseRow as PollResponseRow) : null;
+
+  return { poll, options, askerUsername, myResponse };
+}
+
+/**
+ * Calls get_poll_count RPC. Aggregate-only; never leaks vote content.
+ * Used by both the asker's pre-close "X of N weighed in" footer and
+ * by voters who want to see the same count.
+ */
+export async function fetchPollCount(pollId: string): Promise<{
+  responseCount: number;
+  eligibleCount: number;
+  closed: boolean;
+} | null> {
+  const { data, error } = await supabase.rpc("get_poll_count", { p_poll_id: pollId });
+  if (error) throw error;
+  if (!data || data.ok === false) return null;
+  return {
+    responseCount: data.response_count as number,
+    eligibleCount: data.eligible_count as number,
+    closed:        !!data.closed,
+  };
+}
+
+export type VoteOnPollResult =
+  | { ok: true; responseId: string; didClose: boolean; responseCount: number; eligibleCount: number }
+  | { ok: false; error: string };
+
+/**
+ * Calls vote_on_poll RPC. Records the vote (locks at submit via
+ * UNIQUE constraint), checks all-voted close, returns didClose=true
+ * if this vote triggered close. Frontend fires poll_close email when
+ * didClose is true.
+ *
+ * Either optionId or writeInText is provided, never both.
+ */
+export async function voteOnPoll(args: {
+  pollId: string;
+  optionId?: string | null;
+  writeInText?: string | null;
+}): Promise<VoteOnPollResult> {
+  const { data, error } = await supabase.rpc("vote_on_poll", {
+    p_poll_id:   args.pollId,
+    p_option_id: args.optionId ?? null,
+    p_write_in:  args.writeInText ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.ok === false) return { ok: false, error: data?.error || "unknown" };
+  return {
+    ok:             true,
+    responseId:     data.response_id,
+    didClose:       !!data.did_close,
+    responseCount:  data.response_count as number,
+    eligibleCount:  data.eligible_count as number,
+  };
+}
+
 /**
  * Calls the send-message edge function with a poll template.
  * Fire-and-forget for poll_invite (multicast); single send for
