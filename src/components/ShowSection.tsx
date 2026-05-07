@@ -2611,6 +2611,7 @@ export default function ShowSection({
           showId={showId}
           seasons={allShows.find(s => s.id === showId)?.seasons ?? []}
           userProgress={effectiveProgress}
+          groupId={activeGroupId}
         />
       )}
 
