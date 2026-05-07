@@ -79,6 +79,8 @@ import ModeToggle from "./ModeToggle";
 import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
 import FriendProgressPostIt from "./FriendProgressPostIt";
+import IncomingPingSticky from "./IncomingPingSticky";
+import { FEATURE_PINGS_POLLS } from "../lib/featureFlags";
 import Username from "./Username";
 import type { PendingReference } from "./ResponseComposer";
 import PromptCard from "./PromptCard";
@@ -2612,6 +2614,13 @@ export default function ShowSection({
           seasons={allShows.find(s => s.id === showId)?.seasons ?? []}
           userProgress={effectiveProgress}
           groupId={activeGroupId}
+        />
+      )}
+
+      {FEATURE_PINGS_POLLS && activeGroupId && user && (
+        <IncomingPingSticky
+          groupId={activeGroupId}
+          currentUserId={user.id}
         />
       )}
 

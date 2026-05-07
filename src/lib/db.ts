@@ -2176,16 +2176,30 @@ export async function hasRecentPing(args: {
 }
 
 /**
- * Returns the oldest undismissed ping where caller is the recipient
- * AND the ping is in the given room. Used by the in-room sticky.
+ * Returns the oldest undismissed sticky-channel ping for the caller
+ * in the given room. Used by the in-room incoming-ping sticky.
+ *
+ * Filters:
+ *   - recipient_id = caller (only incoming, not pings I sent)
+ *   - group_id = the active room
+ *   - dismissed_at IS NULL (not already dismissed)
+ *   - ping_type ≠ 'nudge_ahead' (email-channel pings never surface
+ *     in-room; without this filter they'd accumulate forever in the
+ *     queue, blocking newer sticky pings behind them)
+ *
  * Resolves the sender's @username via a separate profiles lookup.
  */
-export async function fetchNextRoomPing(groupId: string): Promise<Ping | null> {
+export async function fetchNextRoomPing(
+  recipientUserId: string,
+  groupId: string,
+): Promise<Ping | null> {
   const { data, error } = await supabase
     .from("pings")
     .select("*")
+    .eq("recipient_id", recipientUserId)
     .eq("group_id", groupId)
     .is("dismissed_at", null)
+    .neq("ping_type", "nudge_ahead")
     .order("sent_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -2208,14 +2222,22 @@ export async function fetchNextRoomPing(groupId: string): Promise<Ping | null> {
 
 /**
  * Returns the set of show_ids where the caller has at least one
- * undismissed incoming ping. Used by the journal rail dot signal —
- * one query at App load, drives per-show indicators.
+ * undismissed incoming sticky-channel ping. Used by the journal rail
+ * dot signal — one query at App load, drives per-show indicators.
+ *
+ * Same filter shape as fetchNextRoomPing: recipient = caller, not
+ * dismissed, not email-channel (nudge_ahead delivers via email and
+ * has no in-app surface).
  */
-export async function fetchUndismissedPingShowIds(): Promise<Set<string>> {
+export async function fetchUndismissedPingShowIds(
+  recipientUserId: string,
+): Promise<Set<string>> {
   const { data, error } = await supabase
     .from("pings")
     .select("show_id")
-    .is("dismissed_at", null);
+    .eq("recipient_id", recipientUserId)
+    .is("dismissed_at", null)
+    .neq("ping_type", "nudge_ahead");
   if (error) throw error;
   const ids = new Set<string>();
   for (const r of data ?? []) {
