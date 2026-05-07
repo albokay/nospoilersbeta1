@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { X, Clock, ArrowRight } from "lucide-react";
 import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
@@ -43,27 +43,35 @@ export default function SIKWComposer({
   onOpened,
 }: Props) {
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [customSelected, setCustomSelected] = useState<boolean>(false);
   const [customText, setCustomText] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
   const [existingType, setExistingType] = useState<"poll" | "ask" | null>(null);
+  const customInputRef = useRef<HTMLInputElement | null>(null);
 
   function handleSelectPreset(preset: string) {
     setSelectedPreset(preset);
+    setCustomSelected(false);
     setCustomText("");
     setError(null);
   }
+  function handleSelectCustom() {
+    setSelectedPreset(null);
+    setCustomSelected(true);
+    setError(null);
+    requestAnimationFrame(() => customInputRef.current?.focus());
+  }
   function handleCustomChange(e: React.ChangeEvent<HTMLInputElement>) {
     setCustomText(e.target.value);
-    if (selectedPreset) setSelectedPreset(null);
     if (error) setError(null);
   }
 
   const trimmedCustom = customText.trim();
   const messageToSend: string | null = selectedPreset
     ? selectedPreset
-    : trimmedCustom.length > 0
+    : customSelected && trimmedCustom.length > 0
       ? trimmedCustom
       : null;
 
@@ -262,8 +270,8 @@ export default function SIKWComposer({
           style={{
             padding: "9px 12px",
             borderRadius: 12,
-            border: `2px solid ${selectedPreset === null && trimmedCustom.length > 0 ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
-            background: selectedPreset === null && trimmedCustom.length > 0 ? "rgba(53,94,184,0.08)" : "transparent",
+            border: `2px solid ${customSelected ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
+            background: customSelected ? "rgba(53,94,184,0.08)" : "transparent",
           }}
         >
           <label
@@ -273,12 +281,12 @@ export default function SIKWComposer({
               gap: 10,
               fontSize: 13,
               color: "#2c2c2a",
-              marginBottom: 8,
+              marginBottom: customSelected ? 8 : 0,
               cursor: "pointer",
             }}
           >
             <CanonRadio
-              checked={selectedPreset === null && trimmedCustom.length > 0}
+              checked={customSelected}
               color={CANON_BLUE}
               size={20}
               dotSize={10}
@@ -286,31 +294,34 @@ export default function SIKWComposer({
             <input
               type="radio"
               name="sikw-preset"
-              checked={selectedPreset === null && trimmedCustom.length > 0}
-              onChange={() => setSelectedPreset(null)}
+              checked={customSelected}
+              onChange={handleSelectCustom}
               style={{ display: "none" }}
             />
-            Write your own
+            (write your own)
           </label>
-          <input
-            type="text"
-            value={customText}
-            onChange={handleCustomChange}
-            maxLength={MESSAGE_MAX}
-            placeholder="80 char max — keep it spoiler-free for friends behind you"
-            style={{
-              width: "100%",
-              fontSize: 12,
-              padding: "6px 14px",
-              borderRadius: 9999,
-              border: `2px solid ${CANON_LIGHT}`,
-              background: "#fff",
-              height: 30,
-              boxSizing: "border-box",
-              color: CANON_NAVY,
-              outline: "none",
-            }}
-          />
+          {customSelected && (
+            <input
+              ref={customInputRef}
+              type="text"
+              value={customText}
+              onChange={handleCustomChange}
+              maxLength={MESSAGE_MAX}
+              placeholder="80 char max — keep it spoiler-free for friends behind you"
+              style={{
+                width: "100%",
+                fontSize: 12,
+                padding: "6px 14px",
+                borderRadius: 9999,
+                border: `2px solid ${CANON_LIGHT}`,
+                background: "#fff",
+                height: 30,
+                boxSizing: "border-box",
+                color: CANON_NAVY,
+                outline: "none",
+              }}
+            />
+          )}
         </div>
       </div>
 

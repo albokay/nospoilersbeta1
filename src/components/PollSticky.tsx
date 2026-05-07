@@ -255,7 +255,9 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
             <X size={13} />
           </button>
         )}
-        <div style={askerLineStyle()}>@{askerUsername || "a friend"} asks:</div>
+        <div style={askerLineStyle()}>
+          {isAsker ? "you asked:" : `@${askerUsername || "a friend"} asks:`}
+        </div>
         <div style={questionStyle()}>{poll.question}</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
@@ -348,6 +350,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
   function renderClosed() {
     if (!closed) return null;
     const { poll, options, askerUsername, responses } = closed;
+    const isAsker = poll.askerId === currentUserId;
 
     // Aggregate per option
     const total = responses.length;
@@ -396,7 +399,9 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
           <X size={13} />
         </button>
 
-        <div style={askerLineStyle()}>@{askerUsername || "a friend"} asked:</div>
+        <div style={askerLineStyle()}>
+          {isAsker ? "you asked:" : `@${askerUsername || "a friend"} asked:`}
+        </div>
         <div style={{ ...questionStyle(), marginBottom: 14 }}>{poll.question}</div>
 
         {options.map((opt) => {

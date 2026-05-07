@@ -9,7 +9,7 @@ import type { PingType } from "../types";
 // Canon palette
 const CREAM       = "#fef8ea";
 const CANON_BLUE  = "#355eb8";
-const CANON_GREEN = "#7abd8e";
+const CANON_LIGHT = "#adc8d7";
 const CANON_RED   = "#f45028";
 const CANON_NAVY  = "#1a3a4a";
 const TEXT_MUTED  = "#5f5e5a";
@@ -39,7 +39,10 @@ const POPOVER_WIDTH = 300;
 const GAP_FROM_ANCHOR = 14;
 const POPOVER_BOTTOM_PX = 96; // matches FriendProgressPostIt bottom — anchors popup bottom to the sticky
 const MESSAGE_MAX_LENGTH = 80;
-const SENT_FLASH_MS = 1500;
+// Celebratory "Sent!" takeover timing: hold visible, then fade, then unmount.
+const SENT_HOLD_MS  = 500;
+const SENT_FADE_MS  = 700;
+const SENT_TOTAL_MS = SENT_HOLD_MS + SENT_FADE_MS;
 
 // Vocabulary lines per spec amendment. Sender-relative direction picks the
 // set; "not-started" reuses ahead-to-behind since not-started == behind.
@@ -104,6 +107,7 @@ export default function NudgePopover({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sentFlash, setSentFlash] = useState<boolean>(false);
+  const [sentFading, setSentFading] = useState<boolean>(false);
 
   // Pre-check rate limit so the Send button can render disabled from the
   // start instead of accepting input that will be rejected.
@@ -216,7 +220,9 @@ export default function NudgePopover({
       }
       setSubmitting(false);
       setSentFlash(true);
-      setTimeout(() => onClose(), SENT_FLASH_MS);
+      // Fade then unmount.
+      setTimeout(() => setSentFading(true), SENT_HOLD_MS);
+      setTimeout(() => onClose(), SENT_TOTAL_MS);
     } catch (err) {
       setSubmitting(false);
       setErrorMsg(err instanceof Error ? err.message : "Couldn't send. Try again?");
@@ -230,6 +236,46 @@ export default function NudgePopover({
   }
 
   // ── Render ────────────────────────────────────────────────────────────
+  // Celebratory takeover: when sentFlash, the entire popover contents are
+  // replaced by a centered "Sent!" word, which then fades and unmounts.
+  if (sentFlash) {
+    return (
+      <div
+        ref={popoverRef}
+        role="dialog"
+        style={{
+          position: "fixed",
+          bottom: POPOVER_BOTTOM_PX,
+          left: popoverLeft,
+          width: POPOVER_WIDTH,
+          minHeight: 180,
+          background: CREAM,
+          borderRadius: 24,
+          padding: "16px 18px 14px",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+          zIndex: 70,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: sentFading ? 0 : 1,
+          transition: `opacity ${SENT_FADE_MS}ms ease-out`,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: CANON_LIGHT,
+            fontFamily:
+              '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+          }}
+        >
+          Sent!
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={popoverRef}
@@ -394,23 +440,8 @@ export default function NudgePopover({
         </div>
       )}
 
-      {/* Footer: Send / Cancel, OR sent confirmation */}
+      {/* Footer: Send / Cancel */}
       <div style={{ display: "flex", gap: 8, alignItems: "center", minHeight: 32 }}>
-        {sentFlash ? (
-          <div
-            style={{
-              fontSize: 12,
-              color: CANON_GREEN,
-              fontWeight: 600,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            sent <ArrowRight size={13} />
-          </div>
-        ) : (
-          <>
             <button
               onClick={handleSend}
               disabled={!canSubmit}
@@ -445,8 +476,6 @@ export default function NudgePopover({
             >
               Cancel
             </button>
-          </>
-        )}
       </div>
 
       {/* Profile link */}

@@ -87,7 +87,7 @@ export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
         position: "fixed",
         right: 32,
         bottom: 320,
-        zIndex: 51,
+        zIndex: 60,
         width: 260,
         transform: `rotate(${TILT_DEG}deg) translateY(${entered ? 0 : ENTRY_RISE_PX}px)`,
         transformOrigin: "center",
