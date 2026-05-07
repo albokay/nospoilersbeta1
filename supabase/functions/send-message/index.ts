@@ -52,9 +52,12 @@ function corsHeaders(origin: string | null): Record<string, string> {
   };
 }
 
-const RATE_LIMIT_WINDOW_DAYS = 7;
-const MESSAGE_MAX_LENGTH     = 80;
-const FROM_ADDRESS           = "Sidebar <invites@sidebar.watch>";
+// TODO PING_RATE_LIMIT: flip to true when round-1 testing is done.
+// Must stay in sync with PING_RATE_LIMIT_ENABLED in src/lib/db.ts.
+const PING_RATE_LIMIT_ENABLED = false;
+const RATE_LIMIT_WINDOW_HOURS = 24;
+const MESSAGE_MAX_LENGTH      = 80;
+const FROM_ADDRESS            = "Sidebar <invites@sidebar.watch>";
 
 const VALID_TEMPLATE_TYPES = new Set(["nudge_ahead", "nudge_same", "nudge_behind"]);
 
@@ -142,19 +145,21 @@ serve(async (req) => {
     if (grpErr || !grp) return jsonError("group_not_found", 404);
     if (grp.deleted_at) return jsonError("group_not_found", 404);
 
-    // ── 6. Rate limit: 7 days per (sender, recipient, group) ─────────────
-    const since = new Date(Date.now() - RATE_LIMIT_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const { data: recent } = await admin
-      .from("pings")
-      .select("id")
-      .eq("sender_id", user.id)
-      .eq("recipient_id", recipient_id)
-      .eq("group_id", group_id)
-      .gt("sent_at", since)
-      .limit(1)
-      .maybeSingle();
-    if (recent) {
-      return jsonError("rate_limit", 429, "You've already pinged this friend in this room recently.");
+    // ── 6. Rate limit: per (sender, recipient, group) within window ──────
+    if (PING_RATE_LIMIT_ENABLED) {
+      const since = new Date(Date.now() - RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+      const { data: recent } = await admin
+        .from("pings")
+        .select("id")
+        .eq("sender_id", user.id)
+        .eq("recipient_id", recipient_id)
+        .eq("group_id", group_id)
+        .gt("sent_at", since)
+        .limit(1)
+        .maybeSingle();
+      if (recent) {
+        return jsonError("rate_limit", 429, "You've already pinged this friend in this room today.");
+      }
     }
 
     // ── 7. INSERT ping row ───────────────────────────────────────────────

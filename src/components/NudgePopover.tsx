@@ -200,7 +200,7 @@ export default function NudgePopover({
       if (!result.ok) {
         if (result.error === "rate_limit") {
           setRateLimited(true);
-          setErrorMsg(`You already nudged @${recipientUsername} in this room this week.`);
+          setErrorMsg(`You already nudged @${recipientUsername} in this room today.`);
         } else {
           setErrorMsg(result.message || "Couldn't send. Try again?");
         }
@@ -376,7 +376,7 @@ export default function NudgePopover({
       {/* Inline rate-limit / error message */}
       {rateLimited && (
         <div style={{ fontSize: 11, color: "#5f5e5a", marginBottom: 8, fontStyle: "italic" }}>
-          You already nudged @{recipientUsername} in this room this week.
+          You already nudged @{recipientUsername} in this room today.
         </div>
       )}
       {!rateLimited && errorMsg && (

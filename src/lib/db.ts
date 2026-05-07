@@ -2148,11 +2148,19 @@ function rowToPing(row: PingRow, senderUsername?: string): Ping {
   };
 }
 
+// TODO PING_RATE_LIMIT: flip to true when round-1 testing is done.
+// Must stay in sync with PING_RATE_LIMIT_ENABLED in
+// supabase/functions/send-message/index.ts.
+const PING_RATE_LIMIT_ENABLED      = false;
+const PING_RATE_LIMIT_WINDOW_HOURS = 24;
+
 /**
  * Pre-check used by the nudge popover: has the caller already pinged
- * this recipient in this room within the 7-day window? Lets the UI
- * render the Send button as disabled with an explanatory line BEFORE
- * the user fills out the form, rather than rejecting on submit.
+ * this recipient in this room within the rate-limit window? Lets the
+ * UI render the Send button as disabled with an explanatory line
+ * BEFORE the user fills out the form, rather than rejecting on submit.
+ *
+ * Returns false unconditionally when rate limiting is disabled.
  *
  * Sender-only RLS read; relies on the caller actually being the sender.
  */
@@ -2161,7 +2169,10 @@ export async function hasRecentPing(args: {
   recipientId: string;
   groupId: string;
 }): Promise<boolean> {
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  if (!PING_RATE_LIMIT_ENABLED) return false;
+  const since = new Date(
+    Date.now() - PING_RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000,
+  ).toISOString();
   const { data, error } = await supabase
     .from("pings")
     .select("id")
