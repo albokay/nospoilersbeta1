@@ -199,10 +199,10 @@ async function handlePing(
     }
   }
 
-  // Insert ping row. message col rule (application-level):
-  //   nudge_ahead → NULL (content goes in email)
-  //   nudge_same / nudge_behind → store the message (sticky reads it)
-  const persistedMessage = template_type === "nudge_ahead" ? null : trimmedMessage;
+  // Insert ping row. Persist the message for every ping_type so the
+  // recipient sees an in-room sticky regardless of channel — nudge_ahead
+  // also still triggers the email below.
+  const persistedMessage = trimmedMessage;
 
   const { data: insertedPing, error: insErr } = await admin
     .from("pings")

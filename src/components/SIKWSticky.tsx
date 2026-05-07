@@ -221,13 +221,13 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
 
   function renderReplyContent(r: { replyType: SikwReplyType; episodeTargetSeason: number | null; episodeTargetEpisode: number | null; message: string | null }): string {
     if (r.replyType === "stick_with_it" && r.episodeTargetSeason && r.episodeTargetEpisode) {
-      return `Stick with it — gets better after ${formatSE(r.episodeTargetSeason, r.episodeTargetEpisode)}`;
+      return `stick with it — gets better after ${formatSE(r.episodeTargetSeason, r.episodeTargetEpisode)}`;
     }
     if (r.replyType === "give_until" && r.episodeTargetSeason && r.episodeTargetEpisode) {
-      return `Give it at least until ${formatSE(r.episodeTargetSeason, r.episodeTargetEpisode)}`;
+      return `give it at least until ${formatSE(r.episodeTargetSeason, r.episodeTargetEpisode)}`;
     }
     if (r.replyType === "dropping_is_fair") {
-      return "Honestly, dropping is fair";
+      return "honestly, dropping is fair";
     }
     if (r.replyType === "custom" && r.message) {
       return `"${r.message}"`;
@@ -320,7 +320,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
               onChange={() => setSelectedType("stick_with_it")}
               style={{ display: "none" }}
             />
-            <span>Stick with it — gets better after</span>
+            <span>stick with it — gets better after</span>
             <select
               value={stickEpisode ? `${stickEpisode.season}-${stickEpisode.episode}` : ""}
               onChange={(e) => {
@@ -351,12 +351,12 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
               onChange={() => setSelectedType("dropping_is_fair")}
               style={{ display: "none" }}
             />
-            Honestly, dropping is fair
+            honestly, dropping is fair
           </label>
 
           {/* Write your own */}
           <div style={{ padding: "7px 9px", borderRadius: 5, background: selectedType === "custom" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.5)", border: selectedType === "custom" ? `0.5px solid ${ACCENT}` : "0.5px solid transparent" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: TEXT_COLOR, marginBottom: 5 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: TEXT_COLOR, marginBottom: selectedType === "custom" ? 5 : 0, cursor: "pointer" }}>
               <CanonRadio checked={selectedType === "custom"} color={ACCENT} />
               <input
                 type="radio"
@@ -365,27 +365,27 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
                 onChange={() => setSelectedType("custom")}
                 style={{ display: "none" }}
               />
-              Write your own
+              (write your own)
             </label>
-            <input
-              type="text"
-              value={customText}
-              onChange={(e) => {
-                setCustomText(e.target.value);
-                setSelectedType("custom");
-              }}
-              maxLength={80}
-              placeholder="80 char · spoiler-free"
-              style={{
-                width: "100%",
-                fontSize: 11,
-                padding: "4px 7px",
-                borderRadius: 4,
-                border: "0.5px solid rgba(99,56,6,0.3)",
-                height: 24,
-                boxSizing: "border-box",
-              }}
-            />
+            {selectedType === "custom" && (
+              <input
+                type="text"
+                value={customText}
+                onChange={(e) => setCustomText(e.target.value)}
+                maxLength={80}
+                placeholder="80 char · spoiler-free"
+                autoFocus
+                style={{
+                  width: "100%",
+                  fontSize: 11,
+                  padding: "4px 7px",
+                  borderRadius: 4,
+                  border: "0.5px solid rgba(99,56,6,0.3)",
+                  height: 24,
+                  boxSizing: "border-box",
+                }}
+              />
+            )}
           </div>
         </div>
 
@@ -433,7 +433,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
     }
 
     return (
-      <div style={stickyShellStyle()}>
+      <div style={stickyShellStyle(true)}>
         <button
           onClick={handleDismiss}
           aria-label="Dismiss"
@@ -530,7 +530,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
 
 // ── style helpers (mirror PollSticky's amber styling) ────────────────────
 
-function stickyShellStyle(): React.CSSProperties {
+function stickyShellStyle(forClosedResults: boolean = false): React.CSSProperties {
   return {
     position: "fixed",
     left: 32,
@@ -543,7 +543,7 @@ function stickyShellStyle(): React.CSSProperties {
     color: TEXT_COLOR,
     padding: "14px 16px",
     borderRadius: 0,
-    boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
+    boxShadow: forClosedResults ? "0 4px 14px rgba(0,0,0,0.10)" : "0 1px 0 rgba(0,0,0,0.06)",
     fontSize: 13,
     lineHeight: 1.4,
   };

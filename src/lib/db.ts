@@ -2958,16 +2958,16 @@ export async function hasRecentPing(args: {
 }
 
 /**
- * Returns the oldest undismissed sticky-channel ping for the caller
- * in the given room. Used by the in-room incoming-ping sticky.
+ * Returns the oldest undismissed ping for the caller in the given
+ * room. Used by the in-room incoming-ping sticky.
  *
  * Filters:
  *   - recipient_id = caller (only incoming, not pings I sent)
  *   - group_id = the active room
  *   - dismissed_at IS NULL (not already dismissed)
- *   - ping_type ≠ 'nudge_ahead' (email-channel pings never surface
- *     in-room; without this filter they'd accumulate forever in the
- *     queue, blocking newer sticky pings behind them)
+ *
+ * All ping_types surface in-room; nudge_ahead also delivers an email
+ * but the sticky shows up the same way for consistency.
  *
  * Resolves the sender's @username via a separate profiles lookup.
  */
@@ -2981,7 +2981,6 @@ export async function fetchNextRoomPing(
     .eq("recipient_id", recipientUserId)
     .eq("group_id", groupId)
     .is("dismissed_at", null)
-    .neq("ping_type", "nudge_ahead")
     .order("sent_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -3004,13 +3003,12 @@ export async function fetchNextRoomPing(
 
 /**
  * Returns a per-show count of the caller's undismissed incoming
- * sticky-channel pings. Used by the journal rail dot signal — one
- * query at App load, drives both the per-show dot and (later) any
- * pluralized tooltips.
+ * pings. Used by the journal rail dot signal — one query at App load,
+ * drives both the per-show dot and (later) any pluralized tooltips.
  *
  * Same filter shape as fetchNextRoomPing: recipient = caller, not
- * dismissed, not email-channel (nudge_ahead delivers via email and
- * has no in-app surface).
+ * dismissed. All ping_types count (nudge_ahead also surfaces in-room
+ * now, in addition to its email).
  */
 export async function fetchUndismissedPingCountsByShow(
   recipientUserId: string,
@@ -3019,8 +3017,7 @@ export async function fetchUndismissedPingCountsByShow(
     .from("pings")
     .select("show_id")
     .eq("recipient_id", recipientUserId)
-    .is("dismissed_at", null)
-    .neq("ping_type", "nudge_ahead");
+    .is("dismissed_at", null);
   if (error) throw error;
   const counts: Record<string, number> = {};
   for (const r of data ?? []) {

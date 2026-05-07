@@ -72,27 +72,34 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
   const [error, setError] = useState<string | null>(null);
 
   // Initial load: lazy-close expired polls, then fetch active + closed.
+  // On a refresh-triggered load (refreshKey > 0, e.g. asker just opened a
+  // poll), skip lazy close and keep prior visible state in place until the
+  // fresh data overwrites it — eliminates a wasted round-trip and avoids a
+  // blank flash for the asker waiting to see their poll.
   useEffect(() => {
     let cancelled = false;
-    setLoaded(false);
-    setActive(null);
-    setClosed(null);
-    setCount(null);
-    setSelectedOptionId(null);
-    setWriteInText("");
-    setError(null);
-    setDismissedLocal(false);
+    const isRefresh = refreshKey > 0;
+    if (!isRefresh) {
+      setLoaded(false);
+      setActive(null);
+      setClosed(null);
+      setCount(null);
+      setSelectedOptionId(null);
+      setWriteInText("");
+      setError(null);
+      setDismissedLocal(false);
+    }
 
     (async () => {
-      try {
-        // Lazy close any duration-expired polls. Each ID returned is one
-        // this caller's UPDATE just closed; fire close email for each.
-        const justClosed = await lazyCloseRoomPolls(groupId);
-        for (const pid of justClosed) {
-          sendPollEmail({ templateType: "poll_close", pollId: pid }).catch(() => {});
+      if (!isRefresh) {
+        try {
+          const justClosed = await lazyCloseRoomPolls(groupId);
+          for (const pid of justClosed) {
+            sendPollEmail({ templateType: "poll_close", pollId: pid }).catch(() => {});
+          }
+        } catch {
+          // Best-effort — proceed with reads even if lazy close failed.
         }
-      } catch {
-        // Best-effort — proceed with reads even if lazy close failed.
       }
 
       try {
@@ -100,12 +107,13 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
         if (cancelled) return;
         setActive(a);
         if (a) {
+          // Clear any stale closed-state from a prior poll so we render active.
+          setClosed(null);
           fetchPollCount(a.poll.id).then((c) => {
             if (cancelled || !c) return;
             setCount({ responseCount: c.responseCount, eligibleCount: c.eligibleCount });
           }).catch(() => {});
         } else {
-          // Only look at closed when there's no active poll.
           const c = await fetchMostRecentClosedRoomPoll(groupId, currentUserId);
           if (cancelled) return;
           setClosed(c);
@@ -401,7 +409,7 @@ function stickyShellStyle(): React.CSSProperties {
   return {
     position: "fixed",
     left: 32,
-    top: 200,
+    top: 260,
     zIndex: 50,
     width: STICKY_WIDTH,
     transform: `rotate(${TILT_DEG}deg)`,
@@ -410,7 +418,7 @@ function stickyShellStyle(): React.CSSProperties {
     color: TEXT_COLOR,
     padding: "14px 16px",
     borderRadius: 0,
-    boxShadow: "0 1px 0 rgba(0,0,0,0.06)",
+    boxShadow: "0 4px 14px rgba(0,0,0,0.10)",
     fontSize: 13,
     lineHeight: 1.4,
   };

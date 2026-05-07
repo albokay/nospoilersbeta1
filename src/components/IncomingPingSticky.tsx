@@ -8,7 +8,9 @@ const STICKY_BG       = "#fef8ea";  // canon cream
 const TEXT_COLOR      = "#355eb8";  // canon dark blue — readable on cream paper
 const TILT_DEG        = 4;           // clockwise — matches the green post-it direction at half angle
 const MIN_VIEWPORT_PX = 1230;        // hide on narrow viewports (matches green post-it gate)
-const ENTRY_TRANSITION_MS = 320;
+const ENTRY_TRANSITION_MS = 380;
+const ENTRY_DELAY_MS      = 600;     // brief pause after page load before the sticky animates in
+const ENTRY_RISE_PX       = 18;
 
 interface Props {
   groupId: string;
@@ -69,8 +71,8 @@ export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
 
   useLayoutEffect(() => {
     if (loaded && ping && !hidden) {
-      const id = requestAnimationFrame(() => setEntered(true));
-      return () => cancelAnimationFrame(id);
+      const t = window.setTimeout(() => setEntered(true), ENTRY_DELAY_MS);
+      return () => window.clearTimeout(t);
     }
   }, [loaded, ping, hidden]);
 
@@ -84,10 +86,10 @@ export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
       style={{
         position: "fixed",
         right: 32,
-        bottom: 320,
+        bottom: 440,
         zIndex: 51,
         width: 260,
-        transform: `rotate(${TILT_DEG}deg) translateY(${entered ? 0 : 8}px)`,
+        transform: `rotate(${TILT_DEG}deg) translateY(${entered ? 0 : ENTRY_RISE_PX}px)`,
         transformOrigin: "center",
         opacity: entered ? 1 : 0,
         transition: `opacity ${ENTRY_TRANSITION_MS}ms ease-out, transform ${ENTRY_TRANSITION_MS}ms ease-out`,
