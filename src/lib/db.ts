@@ -2149,6 +2149,33 @@ function rowToPing(row: PingRow, senderUsername?: string): Ping {
 }
 
 /**
+ * Pre-check used by the nudge popover: has the caller already pinged
+ * this recipient in this room within the 7-day window? Lets the UI
+ * render the Send button as disabled with an explanatory line BEFORE
+ * the user fills out the form, rather than rejecting on submit.
+ *
+ * Sender-only RLS read; relies on the caller actually being the sender.
+ */
+export async function hasRecentPing(args: {
+  senderId: string;
+  recipientId: string;
+  groupId: string;
+}): Promise<boolean> {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("pings")
+    .select("id")
+    .eq("sender_id", args.senderId)
+    .eq("recipient_id", args.recipientId)
+    .eq("group_id", args.groupId)
+    .gt("sent_at", since)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+/**
  * Returns the oldest undismissed ping where caller is the recipient
  * AND the ping is in the given room. Used by the in-room sticky.
  * Resolves the sender's @username via a separate profiles lookup.

@@ -339,6 +339,7 @@ export default function FriendProgressPostIt({
           recipientUsername={openFor.status.username}
           recipientId={openFor.status.userId}
           groupId={groupId}
+          currentUserId={currentUserId}
           direction={statusToDirection(openFor.status)}
           count={statusToCount(openFor.status)}
           anchorRect={openFor.rect}
