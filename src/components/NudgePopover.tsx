@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { hasRecentPing, sendMessage } from "../lib/db";
@@ -38,6 +38,7 @@ interface Props {
 const POPOVER_WIDTH = 300;
 const ARROW_SIZE = 7;
 const GAP_FROM_ANCHOR = 14;
+const POPOVER_BOTTOM_PX = 96; // matches FriendProgressPostIt bottom — anchors popup bottom to the sticky
 const MESSAGE_MAX_LENGTH = 80;
 const SENT_FLASH_MS = 1500;
 
@@ -96,7 +97,10 @@ export default function NudgePopover({
 
   const presets = vocabFor(direction);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [customSelected, setCustomSelected] = useState<boolean>(false);
   const [customText, setCustomText] = useState<string>("");
+  const [popoverHeight, setPopoverHeight] = useState<number | null>(null);
+  const customInputRef = useRef<HTMLInputElement | null>(null);
   const [rateLimited, setRateLimited] = useState<boolean>(false);
   const [rateChecked, setRateChecked] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -124,27 +128,45 @@ export default function NudgePopover({
     };
   }, [currentUserId, recipientId, groupId]);
 
-  // Position: sit to the LEFT of the anchor row (the post-it lives on the
-  // right of the screen), vertically centered on the row. Clamp to keep
-  // the popover on-screen.
-  const popoverTop = Math.max(
-    14,
-    Math.min(
-      window.innerHeight - 320,
-      anchorRect.top + anchorRect.height / 2 - 130,
-    ),
-  );
+  // Position: sit to the LEFT of the anchor row, bottom-anchored to align
+  // with the FriendProgressPostIt sticky (so the popover bottom always
+  // sits within frame regardless of anchor row height/position).
   const popoverLeft = Math.max(
     14,
     anchorRect.left - POPOVER_WIDTH - GAP_FROM_ANCHOR,
   );
-  const arrowTop = Math.max(
-    20,
-    Math.min(
-      290,
-      anchorRect.top + anchorRect.height / 2 - popoverTop,
-    ),
-  );
+  // Arrow points at the clicked row; computed relative to the bottom-anchored popover.
+  const popoverTopComputed =
+    popoverHeight != null
+      ? window.innerHeight - popoverHeight - POPOVER_BOTTOM_PX
+      : null;
+  const arrowTop =
+    popoverHeight != null && popoverTopComputed != null
+      ? Math.max(
+          14,
+          Math.min(
+            popoverHeight - 14 - ARROW_SIZE,
+            anchorRect.top + anchorRect.height / 2 - popoverTopComputed,
+          ),
+        )
+      : null;
+
+  // Measure popover height for arrow placement; keep in sync as content
+  // changes (e.g. the "write your own" input toggling visibility).
+  useLayoutEffect(() => {
+    if (popoverRef.current) {
+      setPopoverHeight(popoverRef.current.offsetHeight);
+    }
+  }, []);
+  useEffect(() => {
+    if (!popoverRef.current || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setPopoverHeight(entry.contentRect.height);
+    });
+    ro.observe(popoverRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   // Click-outside dismissal
   useEffect(() => {
@@ -171,20 +193,30 @@ export default function NudgePopover({
 
   function handleSelectPreset(preset: string) {
     setSelectedPreset(preset);
+    setCustomSelected(false);
     setCustomText("");
     setErrorMsg(null);
   }
 
+  function handleSelectCustom() {
+    setSelectedPreset(null);
+    setCustomSelected(true);
+    setErrorMsg(null);
+    // Focus the input on the next paint, after it mounts.
+    requestAnimationFrame(() => {
+      customInputRef.current?.focus();
+    });
+  }
+
   function handleCustomChange(e: React.ChangeEvent<HTMLInputElement>) {
     setCustomText(e.target.value);
-    if (selectedPreset) setSelectedPreset(null);
     if (errorMsg) setErrorMsg(null);
   }
 
   const trimmedCustom = customText.trim();
   const messageToSend: string | null = selectedPreset
     ? selectedPreset
-    : trimmedCustom.length > 0
+    : customSelected && trimmedCustom.length > 0
       ? trimmedCustom
       : null;
 
@@ -238,31 +270,32 @@ export default function NudgePopover({
       role="dialog"
       style={{
         position: "fixed",
-        top: popoverTop,
+        bottom: POPOVER_BOTTOM_PX,
         left: popoverLeft,
         width: POPOVER_WIDTH,
         background: CREAM,
         borderRadius: 24,
-        border: `2px solid ${CANON_BLUE}`,
         padding: "16px 18px 14px",
         boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
         zIndex: 70,
       }}
     >
       {/* Arrow pointing right (toward the anchor row) */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          right: -ARROW_SIZE,
-          top: arrowTop,
-          width: 0,
-          height: 0,
-          borderTop: `${ARROW_SIZE}px solid transparent`,
-          borderBottom: `${ARROW_SIZE}px solid transparent`,
-          borderLeft: `${ARROW_SIZE}px solid ${CREAM}`,
-        }}
-      />
+      {arrowTop != null && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            right: -ARROW_SIZE,
+            top: arrowTop,
+            width: 0,
+            height: 0,
+            borderTop: `${ARROW_SIZE}px solid transparent`,
+            borderBottom: `${ARROW_SIZE}px solid transparent`,
+            borderLeft: `${ARROW_SIZE}px solid ${CREAM}`,
+          }}
+        />
+      )}
 
       {/* Header */}
       <div
@@ -347,8 +380,8 @@ export default function NudgePopover({
           style={{
             padding: "7px 10px",
             borderRadius: 12,
-            border: `2px solid ${selectedPreset === null && trimmedCustom.length > 0 ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
-            background: selectedPreset === null && trimmedCustom.length > 0 ? "rgba(53,94,184,0.08)" : "transparent",
+            border: `2px solid ${customSelected ? CANON_BLUE : "rgba(26,58,74,0.15)"}`,
+            background: customSelected ? "rgba(53,94,184,0.08)" : "transparent",
           }}
         >
           <label
@@ -358,44 +391,45 @@ export default function NudgePopover({
               gap: 8,
               fontSize: 12,
               color: "#2c2c2a",
-              marginBottom: 6,
+              marginBottom: customSelected ? 6 : 0,
               cursor: "pointer",
             }}
           >
             <CanonRadio
-              checked={selectedPreset === null && trimmedCustom.length > 0}
+              checked={customSelected}
               color={CANON_BLUE}
             />
             <input
               type="radio"
               name={`nudge-preset-${recipientId}`}
-              checked={selectedPreset === null && trimmedCustom.length > 0}
-              onChange={() => {
-                setSelectedPreset(null);
-              }}
+              checked={customSelected}
+              onChange={handleSelectCustom}
               style={{ display: "none" }}
             />
-            Write your own
+            (write your own)
           </label>
-          <input
-            type="text"
-            value={customText}
-            onChange={handleCustomChange}
-            maxLength={MESSAGE_MAX_LENGTH}
-            placeholder={`${MESSAGE_MAX_LENGTH} char max`}
-            style={{
-              width: "100%",
-              fontSize: 11,
-              padding: "5px 10px",
-              borderRadius: 9999,
-              border: `2px solid ${CANON_BLUE}`,
-              background: "#fff",
-              height: 26,
-              boxSizing: "border-box",
-              color: CANON_NAVY,
-              outline: "none",
-            }}
-          />
+          {customSelected && (
+            <input
+              ref={customInputRef}
+              type="text"
+              value={customText}
+              onChange={handleCustomChange}
+              maxLength={MESSAGE_MAX_LENGTH}
+              placeholder={`${MESSAGE_MAX_LENGTH} char max`}
+              style={{
+                width: "100%",
+                fontSize: 11,
+                padding: "5px 10px",
+                borderRadius: 9999,
+                border: `2px solid ${CANON_BLUE}`,
+                background: "#fff",
+                height: 26,
+                boxSizing: "border-box",
+                color: CANON_NAVY,
+                outline: "none",
+              }}
+            />
+          )}
         </div>
       </div>
 

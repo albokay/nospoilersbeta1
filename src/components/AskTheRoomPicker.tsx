@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X, BarChart3, HelpCircle, ArrowRight } from "lucide-react";
 
 // Anchored popover that opens when the user clicks "ask the room →"
@@ -22,20 +22,35 @@ interface Props {
 const POPOVER_WIDTH = 280;
 const ARROW_SIZE = 7;
 const GAP_FROM_ANCHOR = 14;
+const POPOVER_BOTTOM_PX = 96; // matches FriendProgressPostIt bottom — anchors popup bottom to the sticky
 
 export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, onSelectSikw }: Props) {
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const [popoverHeight, setPopoverHeight] = useState<number | null>(null);
 
-  // Sit to the LEFT of the anchor row, vertically centered. Clamp on-screen.
-  const popoverTop = Math.max(
-    14,
-    Math.min(window.innerHeight - 220, anchorRect.top + anchorRect.height / 2 - 80),
-  );
+  // Sit to the LEFT of the anchor row, bottom-anchored to align with the
+  // FriendProgressPostIt sticky (so the popup bottom always sits in frame).
   const popoverLeft = Math.max(14, anchorRect.left - POPOVER_WIDTH - GAP_FROM_ANCHOR);
-  const arrowTop = Math.max(
-    20,
-    Math.min(190, anchorRect.top + anchorRect.height / 2 - popoverTop),
-  );
+  const popoverTopComputed =
+    popoverHeight != null
+      ? window.innerHeight - popoverHeight - POPOVER_BOTTOM_PX
+      : null;
+  const arrowTop =
+    popoverHeight != null && popoverTopComputed != null
+      ? Math.max(
+          14,
+          Math.min(
+            popoverHeight - 14 - ARROW_SIZE,
+            anchorRect.top + anchorRect.height / 2 - popoverTopComputed,
+          ),
+        )
+      : null;
+
+  useLayoutEffect(() => {
+    if (popoverRef.current) {
+      setPopoverHeight(popoverRef.current.offsetHeight);
+    }
+  }, []);
 
   // Click-outside dismissal
   useEffect(() => {
@@ -66,30 +81,31 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
       role="dialog"
       style={{
         position: "fixed",
-        top: popoverTop,
+        bottom: POPOVER_BOTTOM_PX,
         left: popoverLeft,
         width: POPOVER_WIDTH,
         background: CREAM,
         borderRadius: 24,
-        border: `2px solid ${CANON_BLUE}`,
         padding: "16px 18px 14px",
         boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
         zIndex: 70,
       }}
     >
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          right: -ARROW_SIZE,
-          top: arrowTop,
-          width: 0,
-          height: 0,
-          borderTop: `${ARROW_SIZE}px solid transparent`,
-          borderBottom: `${ARROW_SIZE}px solid transparent`,
-          borderLeft: `${ARROW_SIZE}px solid ${CREAM}`,
-        }}
-      />
+      {arrowTop != null && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            right: -ARROW_SIZE,
+            top: arrowTop,
+            width: 0,
+            height: 0,
+            borderTop: `${ARROW_SIZE}px solid transparent`,
+            borderBottom: `${ARROW_SIZE}px solid transparent`,
+            borderLeft: `${ARROW_SIZE}px solid ${CREAM}`,
+          }}
+        />
+      )}
 
       <div
         style={{
