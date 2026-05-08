@@ -431,12 +431,12 @@ export default function NudgePopover({
 
       {/* Inline rate-limit / error message */}
       {rateLimited && (
-        <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 8, fontStyle: "italic" }}>
+        <div style={{ fontSize: 11, color: CANON_RED, marginBottom: 8, fontStyle: "italic", textAlign: "center", textWrap: "balance" }}>
           You already nudged @{recipientUsername} in this room today.
         </div>
       )}
       {!rateLimited && errorMsg && (
-        <div style={{ fontSize: 11, color: CANON_RED, marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: CANON_RED, marginBottom: 8, textAlign: "center", textWrap: "balance" }}>
           {errorMsg}
         </div>
       )}
