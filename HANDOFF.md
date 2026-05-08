@@ -1369,6 +1369,7 @@ The checkpoint 1 stubs leaked mockup-driven styling — 1.5px borders and a `box
 - **Square corners on the journal panel.** `border-radius: 0` — matches `.diaryCardWrap > .card`. Pills (`9999px`) on buttons + chips, but the panel itself is square.
 - **Default body palette tokens carry through.** `--dos-bg` / `--dos-fg` / `--dos-gray` / `--dos-user` / `--dos-border` resolve correctly on default body (green) and `body.public-context` (mustard). v2 just toggles the existing class for profile pages — no new palette CSS, no new theme tokens. Compose-cream is the only inline override (one tiny `<style>` injection).
 - **Reuse existing class hooks for parity.** Response sections render through `.title` / `.card` / `.reply-card` / `.threadCard` / `.muted` / `.username` / `.clamp3`; action buttons use `.btn` / `.btn.post` / `.btn.h40`. Inline overrides only where v2 layout geometry differs from the live `.container`-anchored page.
+- **Buttons + chips: solid-fill-no-outline OR transparent-with-outline. Never both.** Live site rule. Semi-transparent fill paired with an outline is forbidden. The dest chips on journal entries (initially had `rgba(53,94,184,0.22)` + `2px solid #355eb8`) were corrected to transparent fill + colored outline. Decision rule for new surfaces: if transparency is helping with visual hierarchy (the chip recedes), no outline; if you need a defined chip shape, pick one of the two valid patterns.
 
 **Layout (journal page):**
 
