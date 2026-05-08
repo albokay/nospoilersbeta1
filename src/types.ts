@@ -111,7 +111,9 @@ export type Ping = {
   senderUsername?: string;
 };
 
-// Extended progress entry — carries rewatch metadata alongside the feed-filter position
+// Extended progress entry — carries rewatch metadata alongside the feed-filter position.
+// v2 (2026-05-08): also carries the four-status flag, canon-pin, and four shelf blurbs.
+// All v2 fields are optional so legacy callers that don't read them stay correct.
 export type ProgressEntry = {
   s: number;
   e: number;
@@ -120,4 +122,11 @@ export type ProgressEntry = {
   rewatchE?: number;
   highestS?: number;
   highestE?: number;
+  // v2 — four-status show model + curatorial pin + per-shelf blurbs.
+  stoppedWatching?: boolean;
+  canonPin?: boolean;
+  watchingQuote?: string;
+  wantReason?: string;
+  canonTake?: string;
+  stoppedReason?: string;
 };

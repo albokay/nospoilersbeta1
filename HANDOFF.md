@@ -1348,13 +1348,13 @@ ALTER TABLE progress
 
 **Two-step deploy:**
 
-1. **(this commit)** Migration file lands in repo for traceability.
-2. **(manual)** Apply via Supabase SQL editor before any code reads the new columns.
-3. **(next commit, checkpoint 3 phase B)** `fetchProgress` extended to select + map the new columns; `ProgressEntry` type extended; setter helpers added (`setStoppedWatching`, `setCanonPin`, `setShelfBlurb`). No UI surface uses them until checkpoint 4.
+1. **Phase A** (commit `89571a3`) — Migration file landed in repo.
+2. **Manual** — Applied via Supabase SQL editor 2026-05-08. Verified via `information_schema.columns` query: 6 rows returned with correct types and defaults (`stopped_watching` / `canon_pin` boolean default `false`; `watching_quote` / `want_reason` / `canon_take` / `stopped_reason` text default `null`).
+3. **Phase B** (this commit) — `ProgressEntry` type in [src/types.ts](src/types.ts) extended with six optional fields. [fetchProgress](src/lib/db.ts) extended to select + map the new columns. Three setter helpers added at the bottom of [db.ts](src/lib/db.ts): `setStoppedWatching(userId, showId, value)` · `setCanonPin(userId, showId, value)` · `setShelfBlurb(userId, showId, kind, text)`. The setter helpers UPDATE (not UPSERT) so a missing row throws — surfacing programming errors rather than silently creating phantom progress rows. Blurb length validation client-side at 280 chars (one tweet); whitespace-only strings save as NULL so placeholder copy re-renders.
 
-Code in checkpoint 3 phase B is held until SQL is confirmed applied — selecting a non-existent column would break every `fetchProgress` call on the live site.
+No UI surface consumes the new fields yet. Live ProfilePage / ShowSection / mobile / friend-room paths read the same `ProgressEntry` shape, the new fields are optional, and existing code keeps ignoring them. v2 profile shelves wire the setters in checkpoint 4.
 
-**Bundle delta:** zero. SQL file only.
+**Bundle delta:** phase A zero. Phase B 887 → 887 KB raw / 240.27 → 240.37 KB gzip.
 
 ### 2026-05-08 — v2 UI rethink: read-only journal page (checkpoint 2)
 

@@ -993,7 +993,7 @@ export async function fetchAdminUserActivity(userId: string): Promise<AdminUserA
 export async function fetchProgress(userId: string): Promise<Record<string, import("../types").ProgressEntry>> {
   const { data, error } = await supabase
     .from("progress")
-    .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode")
+    .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason")
     .eq("user_id", userId);
   if (error) throw error;
   const result: Record<string, import("../types").ProgressEntry> = {};
@@ -1006,9 +1006,83 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
       rewatchE:      row.rewatch_episode ?? undefined,
       highestS:      row.highest_season  ?? undefined,
       highestE:      row.highest_episode ?? undefined,
+      // v2 columns (2026-05-08 migration). Live UI ignores these;
+      // v2 components (profile shelves, journal stop-watching action)
+      // consume them as those checkpoints land.
+      stoppedWatching: row.stopped_watching ?? false,
+      canonPin:        row.canon_pin ?? false,
+      watchingQuote:   row.watching_quote ?? undefined,
+      wantReason:      row.want_reason ?? undefined,
+      canonTake:       row.canon_take ?? undefined,
+      stoppedReason:   row.stopped_reason ?? undefined,
     };
   }
   return result;
+}
+
+// === v2 setters (2026-05-08) ====================================================
+//
+// Owner-only writes to the new progress columns. RLS enforces caller-owns-row.
+// All four helpers operate on a (user_id, show_id) row that's guaranteed to
+// exist — every show in a user's journal has an existing progress row from
+// onboarding. We UPDATE rather than UPSERT so a missing row throws (signals
+// a programming error: trying to set a v2 field for a show the user doesn't
+// have in their journal).
+//
+// Length validation for the four blurb fields is enforced here (not in SQL)
+// so we can give callers a Promise rejection with a useful message rather
+// than a Postgres check-constraint error. Numbers picked to match the spirit
+// of LIMITS in db.ts:12 (titles ~120, bodies ~5000): blurbs are short prose,
+// 280 chars each (one tweet's worth).
+
+const V2_BLURB_MAX = 280;
+
+export async function setStoppedWatching(
+  userId: string,
+  showId: string,
+  value: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from("progress")
+    .update({ stopped_watching: value })
+    .eq("user_id", userId)
+    .eq("show_id", showId);
+  if (error) throw error;
+}
+
+export async function setCanonPin(
+  userId: string,
+  showId: string,
+  value: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from("progress")
+    .update({ canon_pin: value })
+    .eq("user_id", userId)
+    .eq("show_id", showId);
+  if (error) throw error;
+}
+
+export type V2BlurbKind = "watching_quote" | "want_reason" | "canon_take" | "stopped_reason";
+
+export async function setShelfBlurb(
+  userId: string,
+  showId: string,
+  kind: V2BlurbKind,
+  text: string | null
+): Promise<void> {
+  if (text !== null && text.length > V2_BLURB_MAX) {
+    throw new Error(`Blurb exceeds ${V2_BLURB_MAX} characters.`);
+  }
+  // Whitespace-only strings save as NULL — the placeholder copy ("add a take…",
+  // etc.) re-renders rather than the user seeing their own empty string.
+  const trimmed = text === null ? null : (text.trim() || null);
+  const { error } = await supabase
+    .from("progress")
+    .update({ [kind]: trimmed })
+    .eq("user_id", userId)
+    .eq("show_id", showId);
+  if (error) throw error;
 }
 
 export async function upsertProgress(userId: string, showId: string, s: number, e: number): Promise<void> {
