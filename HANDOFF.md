@@ -1321,7 +1321,7 @@ Migration-only commit. Extends `get_public_progress(target_user_id)` to return t
 
 **Migration:** [supabase/migrations/20260508_v2_get_public_progress_extended.sql](supabase/migrations/20260508_v2_get_public_progress_extended.sql)
 
-`CREATE OR REPLACE FUNCTION public.get_public_progress(target_user_id uuid)` — same `STABLE SECURITY DEFINER` + `LANGUAGE sql` shape as before. Returns 14 columns now (was 3): `show_id`, `season`, `episode`, `is_rewatching`, `rewatch_season`, `rewatch_episode`, `highest_season`, `highest_episode`, `stopped_watching`, `canon_pin`, `watching_quote`, `want_reason`, `canon_take`, `stopped_reason`.
+Atomic `DROP FUNCTION IF EXISTS … ; CREATE FUNCTION …` inside `BEGIN/COMMIT`. Postgres rejects `CREATE OR REPLACE FUNCTION` when `RETURNS TABLE` shape changes (error `42P13`); the drop-then-create pattern is the supported migration shape, and wrapping in a transaction makes the swap atomic so no concurrent caller sees the function missing. Same `STABLE SECURITY DEFINER` + `LANGUAGE sql` shape as before. Returns 14 columns now (was 3): `show_id`, `season`, `episode`, `is_rewatching`, `rewatch_season`, `rewatch_episode`, `highest_season`, `highest_episode`, `stopped_watching`, `canon_pin`, `watching_quote`, `want_reason`, `canon_take`, `stopped_reason`.
 
 **Why these specific columns:** the visitor profile classifies each show into one of four shelves using the same logic as `V2ProfileSelfPage` (stoppedWatching → stopped; (s,e)===(0,0) → want; rewatch-aware finished detection from highest_*; else watching). It then renders the per-shelf blurb and the canon-pin label. All v2 self-page renders need to work in the visitor flow too.
 
