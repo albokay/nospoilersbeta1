@@ -26,8 +26,13 @@ export default function V2Layout({ palette, pairedHeader, children }: V2LayoutPr
       : palette === "compose" ? "v2-compose-context"
       : null;
     if (cls) document.body.classList.add(cls);
+    // has-header flips the body gradient so the lighter band sits at the
+    // bottom — the live site toggles this in AppShell for every non-
+    // homepage route. v2 sits outside AppShell, so we toggle it here.
+    document.body.classList.add("has-header");
     return () => {
       if (cls) document.body.classList.remove(cls);
+      document.body.classList.remove("has-header");
     };
   }, [palette]);
 
