@@ -1315,6 +1315,44 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-07 — Pings/polls/SIKW: styling polish pass + production ship
+
+Eight batches of UX / visual polish across the pings/polls/SIKW surfaces, then re-enabled the rate limit, dropped the feature flag, and merged `pings-polls` → `main`. End state: pings, polls, and SIKW asks are live on `beta.sidebar.watch` for every logged-in user with an active friend room.
+
+**Polish batches (chronological):**
+
+1. **Bottom-anchor popovers + drop blue outline + (write your own) ping field.** `NudgePopover` and `AskTheRoomPicker` switched from row-centered to bottom-anchored at 96px (matches `FriendProgressPostIt`) so the popup bottom always sits in frame. Dropped the 2px canon-blue outline. NudgePopover write-in: explicit `customSelected` state, "(write your own)" copy, input renders only after radio click.
+
+2. **Slant / animation / arrow drop / immediate poll appearance / SIKW reply trim.** `IncomingPingSticky` tilt `−3° → +4°` (matches FriendProgressPostIt direction at half angle); fade-in + 8→18px rise on mount with 600ms initial delay. Removed the right-edge triangle pointers on both popovers. Wired `pollRefreshKey` from `ShowSection` through `FriendProgressPostIt` → `PollComposer.onOpened` so the asker's poll appears in the sticky immediately. Narrowed PollComposer (420 → 360) and PollSticky (280 → 240). PollSticky tilt `−8° → −4°`. Dropped "Give it at least until" SIKW reply option from the picker (kept the `give_until` reply_type in the schema + closed-state renderer for future re-introduction).
+
+3. **Asker pre-close dismiss + voter post-vote auto-hide.** PollSticky asker can `×` out of their own active poll; per-pollId `localStorage` flag (`ns_poll_asker_dismissed_<id>`) so the hide persists across refreshes. Voter who has voted has the active sticky auto-hide via `hasVoted && !isAsker`. Both re-surface naturally as the closed sticky when the poll closes (different gate: `dismissedLocal` + `dismiss_closed_poll` RPC).
+
+4. **Higher pings / drop shadow / ahead-to-behind in-room rendering / 3-day SIKW window.** Stronger `0 8px 20px / 0.20` drop shadow on PollSticky + SIKWSticky shells (active SIKW gets it too). Edge function `send-message` now persists `message` for every ping_type, so `nudge_ahead` (ahead → behind) renders an in-room sticky in addition to its email; `db.ts` filters out null-message rows for forward defense (pre-deploy `nudge_ahead` rows stay dormant). SIKW window 7 days → 3 days via [supabase/migrations/20260507_sikw_window_3_days.sql](supabase/migrations/20260507_sikw_window_3_days.sql) (replaces `lazy_close_room_asks` with `interval '3 days'`).
+
+5. **z-index + SIKWComposer (write your own) + Sent! takeover + asker poll heading.** IncomingPingSticky zIndex `51 → 60` so it clears any large indicator-list post-it. SIKWComposer write-in adopts the same conditional input + "(write your own)" pattern. NudgePopover send confirmation became a full-popover "Sent!" takeover — canon-navy 15px Inter weight 600, hold 1000ms then unmount, no fade; captures `popoverRef.offsetHeight` at send time and locks the takeover box to that height so the swap doesn't reflow. PollSticky shows "you asked:" for the asker in both active and closed states (parity with SIKWSticky).
+
+6. **Canon palette pass on stickies.** PollSticky and SIKWSticky shells: `STICKY_BG` → canon yellow `#dea838`, white text, white-with-0.7 faded text, white dotted divider, canon-green submit. Choice rows: solid white fill, no border, 12px radii, navy text. CanonRadio gained an optional `bgColor` prop so the inverted "yellow with white dot" pattern works without forking the component. PollSticky write-in input pill has no border + light-blue tint over white. SIKW closed-state asker reply containers white fill / no border / navy text; muted nested labels recolored from white to translucent navy where they sit on white.
+
+7. **Composer + AskTheRoomPicker copy + chrome.** PollComposer: subhead "Take the temperature of the room…", colons on "Question:" / "Open for:", canon-light-blue text fields with white placeholder via an injected `.poll-composer-input::placeholder` rule, white-fill duration pills with no outline (selected keeps blue → later switched to green), inverted CanonRadio on the write-in toggle. Write-in toggle later restructured into a flex row with the radio in the 16-wide number column to align with "1" / "2" above; single-line "Allow friends to write their own answers?". SIKWComposer: dropped "Replies are spoiler-light by structure." + the progress-block border; preset rows + "(write your own)" container canon-light-blue fill with no border. AskTheRoomPicker: heading "Ask the room a question:", dropped "What kind of question?" subhead, light-blue card buttons with white text + white arrows, single-line buttons; lucide `ChartBar` for poll, lucide `MessageCircleQuestionMark` for SIKW, no chip background. FriendProgressPostIt same-progress copy "and you are caught up!" → "and you are in sync!".
+
+8. **× hit areas + drop modal outlines + canon-green primary buttons.** All eight `×` / dismiss buttons across the surfaces (NudgePopover, AskTheRoomPicker, PollComposer, SIKWComposer, IncomingPingSticky, PollSticky active + closed, SIKWSticky) bumped to `padding: 6` (~28px hit target); corner-anchored sticky buttons compensate via `top: 6 → 2, right: 8 → 4` to keep the icon at the same visual offset; in-flow header buttons get `margin: -6` so the larger box doesn't push the header layout. Dropped the 2px canon-blue border on PollComposer + SIKWComposer modal cards. "Open the poll" submit, "Ask the room" submit, "Send" nudge submit, and the selected duration pill all switched canon-blue → canon-green (`#7abd8e`); disabled state uses `rgba(122,189,142,0.45)` with no text + no border (faded fill keeps the shape). Removed unused `CANON_GREEN` and `CANON_BLUE` constants in NudgePopover where the related call sites were retired.
+
+**Production ship (final commit set):**
+
+- Re-enabled the per-(sender, recipient, room) per-24h ping rate limit. Flipped both `PING_RATE_LIMIT_ENABLED` consts to `true` ([src/lib/db.ts](src/lib/db.ts) + [supabase/functions/send-message/index.ts](supabase/functions/send-message/index.ts)); redeployed `send-message`. Window is 24h, popover copy says "today".
+- Deleted `src/lib/featureFlags.ts`. Cleaned up the `FEATURE_PINGS_POLLS` gate from `FriendProgressPostIt` (`launcherMode = !!groupId` now) and the three `ShowSection` sticky mounts (`activeGroupId && user` only).
+- Merged `pings-polls` → `main` via merge commit (`--no-ff`) and pushed; Vercel auto-deployed `beta.sidebar.watch`. Bundle grew 813 → 868 kB (gzip 224 → 236 kB) — expected, since the previously flag-gated pings/polls code was tree-shaken out of the prior prod bundle.
+
+**Edge function `send-message` redeploys this day:** 3 — once for the message persistence change (batch 4), once defensively after the rendering filter went in, once for the rate-limit re-enable at ship.
+
+**Conventions reinforced this arc:**
+
+- **Inverted CanonRadio (`bgColor=<canon-color>, color=#fff`)** for radios that sit inside white "card" rows over a colored sticky bg — the inverted pattern reads cleaner than white-on-white at small sizes.
+- **`12px` is the option-chip radius** across the app (NudgePopover preset rows, SIKW preset rows, AskTheRoomPicker cards, PollSticky/SIKWSticky choice rows). Pill (`9999px`) is for buttons + inputs. Don't mix.
+- **For inline `<style>` injection inside React components**, use a small `<style>{...}</style>` block at the top of the JSX rather than touching the global theme stylesheet. Keeps the rule colocated and scoped via a className. Used in PollComposer for the white-placeholder rule.
+- **`localStorage`-keyed sticky dismissals are per-item, not per-user-globally** — `ns_poll_asker_dismissed_<pollId>`. New polls have new ids and naturally surface the new sticky without colliding with stale dismissals.
+- **Captured-height takeover pattern** (used by NudgePopover Sent!): when a popover swaps from form → confirmation, capture `ref.offsetHeight` first and apply it as a fixed height on the confirmation render so the box doesn't reflow. Cleaner than a fade and less janky than two animated transitions.
+
 ### 2026-05-06 → 2026-05-07 — Pings, polls, SIKW asks (rounds 1-3 of social-engagement spec)
 
 Three-round implementation of the social-engagement spec — friend-room one-way nudges, room-hosted polls, and "should I keep watching?" asks — built on a feature-flagged `pings-polls` branch with Vercel preview-deploy isolation. ~30 commits across the two days. Beta on `main` is unaffected; new code lives only on the branch deploy until a future merge.
@@ -1831,9 +1869,19 @@ Reusable `<LoadingDots />` component lives at [src/components/LoadingDots.tsx](s
 
 ## Outstanding action items (carry across sessions)
 
-- **Re-enable ping rate limit** before merging `pings-polls` to main or otherwise exposing pings to non-test users. Search for `TODO PING_RATE_LIMIT` in the repo — appears in two files (`supabase/functions/send-message/index.ts` and `src/lib/db.ts`); flip both `PING_RATE_LIMIT_ENABLED` consts to `true`, redeploy edge function (`supabase functions deploy send-message`), push the frontend. Window when re-enabled: 24h (was 7d). Popover copy: "today" not "this week". Tracked in [project_pings_polls_unfinished memory](file:///Users/alborzkamalizad/.claude/projects/-Users-alborzkamalizad-Downloads-no-spoilers-v072-fullui-ready/memory/project_pings_polls_unfinished.md).
+Both pre-launch blockers from the pings/polls arc shipped on 2026-05-07: rate limit is re-enabled, feature flag is removed, `pings-polls` merged to `main` and is live on `beta.sidebar.watch`. What's left is housekeeping and minor v2 follow-ups:
 
-- **Merge `pings-polls` → main** when ready to expose pings/polls/SIKW asks to non-test users. The branch is feature-flagged via `VITE_FEATURE_PINGS_POLLS=true` set on the Vercel preview deploy only; production env doesn't have the var, so a merge alone wouldn't activate the UI. To turn on: merge + add the env var to production (or remove the flag check in `src/lib/featureFlags.ts`).
+- **(Cleanup, optional) Remove `VITE_FEATURE_PINGS_POLLS=true` from the Vercel preview env.** The flag was deleted from code on 2026-05-07, so the env var has no consumer. No functional impact while it sits — just dangling config.
+
+- **(Cleanup, optional) Delete the `pings-polls` branch.** The merge brought everything across to `main`. `git branch -d pings-polls && git push origin --delete pings-polls` whenever convenient. Branch will appear in `git branch -a` until then.
+
+- **(Cleanup, optional) Drop the unused `sikw_dismissals` table.** After the global-dismiss amendment moved SIKW dismissal to `sikw_asks.dismissed_at`, this table is unread + unwritten. Safe to drop in a future cleanup migration. Zero impact while it sits.
+
+- **(Future v2) `give_until` SIKW reply path stays in the schema + closed-state renderer.** Picker option was removed during the 2026-05-07 polish pass, but the reply_type, the `episode_target_*` columns, and the `renderReplyContent` branch all remain. Pinned for a future re-introduction with different copy. Existing replies (if any pre-removal) still display correctly via the renderer.
+
+- **(Future v2) Multi-poll/ask stacking.** PollSticky and SIKWSticky both render at fixed `top: 200` / `top: 260` on `left: 32`. The shared one-active-item slot per asker per room currently prevents simultaneous active items in the same room, so the two stickies don't visually collide in practice. If that constraint ever loosens (e.g. one poll AND one ask from different askers at the same time), they'd overlap. Refactor to a single `LeftSticky` orchestrator if it ever shows up in real use.
+
+- **(Acceptable, defer indefinitely) Lazy-close-on-duration-expiry depends on a room visit.** `lazy_close_room_polls` / `lazy_close_room_asks` only run when somebody mounts PollSticky / SIKWSticky. Race-safe via the `closed_at IS NULL` guard. If no member visits a room for a long time after a poll/ask's duration expires, the close email never fires — the poll/ask still closes cleanly the next time someone walks in, just no notification at the expiry moment. Acceptable at current cadence; would matter only for heavy churn rooms with long absences.
 
 ## Edge function deploy notes
 
