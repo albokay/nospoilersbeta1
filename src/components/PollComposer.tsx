@@ -112,7 +112,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
   }
 
   return (
-    <Modal onClose={onClose} width="min(360px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: `2px solid ${CANON_BLUE}` }}>
+    <Modal onClose={onClose} width="min(360px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: "none" }}>
       <style>{`
         .poll-composer-input::placeholder { color: #fff; opacity: 0.95; }
       `}</style>
@@ -339,8 +339,8 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
                   flex: 1,
                   padding: "7px 0",
                   borderRadius: 9999,
-                  border: selected ? `2px solid ${CANON_BLUE}` : "none",
-                  background: selected ? CANON_BLUE : "#fff",
+                  border: selected ? `2px solid ${CANON_GREEN}` : "none",
+                  background: selected ? CANON_GREEN : "#fff",
                   fontSize: 12,
                   color: selected ? "#fff" : CANON_NAVY,
                   fontWeight: 500,
@@ -364,9 +364,9 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
           onClick={handleSubmit}
           disabled={!canSubmit}
           style={{
-            background: canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)",
+            background: canSubmit ? CANON_GREEN : "rgba(122,189,142,0.45)",
             color: "#fff",
-            border: canSubmit ? `2px solid ${CANON_BLUE}` : "none",
+            border: canSubmit ? `2px solid ${CANON_GREEN}` : "none",
             padding: "8px 18px",
             borderRadius: 9999,
             fontSize: 13,

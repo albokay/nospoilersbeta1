@@ -8,6 +8,7 @@ import { openAsk, sendSikwEmail } from "../lib/db";
 // Canon palette
 const CREAM        = "#fef8ea";
 const CANON_BLUE   = "#355eb8";
+const CANON_GREEN  = "#7abd8e";
 const CANON_YELLOW = "#dea838";
 const CANON_RED    = "#f45028";
 const CANON_NAVY   = "#1a3a4a";
@@ -123,7 +124,7 @@ export default function SIKWComposer({
   }
 
   return (
-    <Modal onClose={onClose} width="min(420px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: `2px solid ${CANON_BLUE}` }}>
+    <Modal onClose={onClose} width="min(420px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: "none" }}>
       <div
         style={{
           display: "flex",
@@ -342,9 +343,9 @@ export default function SIKWComposer({
           onClick={handleSubmit}
           disabled={!canSubmit}
           style={{
-            background: canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)",
+            background: canSubmit ? CANON_GREEN : "rgba(122,189,142,0.45)",
             color: "#fff",
-            border: canSubmit ? `2px solid ${CANON_BLUE}` : "none",
+            border: canSubmit ? `2px solid ${CANON_GREEN}` : "none",
             padding: "8px 18px",
             borderRadius: 9999,
             fontSize: 13,
