@@ -10,46 +10,36 @@ type V2LayoutProps = {
   children: React.ReactNode;
 };
 
-const PALETTE_BG: Record<Palette, string> = {
-  journal: "#7abd8e",
-  profile: "#dea838",
-  compose: "#fef8ea",
-};
-
-const PALETTE_INK: Record<Palette, string> = {
-  journal: "#ffffff",
-  profile: "#ffffff",
-  compose: "#1a3a4a",
-};
-
+// V2 palette strategy:
+//  - "journal"   → default body palette (green via --dos-bg, set in theme.ts).
+//                  No body class, no inline bg override.
+//  - "profile"   → toggle body.public-context (mustard) — the existing class
+//                  used by the live public space, so all theme tokens flip.
+//  - "compose"   → cream paint, applied as body bg via a v2-only class.
 export default function V2Layout({ palette, pairedHeader, children }: V2LayoutProps) {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
 
   useEffect(() => {
-    const cls = `v2-${palette}-context`;
-    document.body.classList.add(cls, "v2-context");
+    const cls =
+      palette === "profile" ? "public-context"
+      : palette === "compose" ? "v2-compose-context"
+      : null;
+    if (cls) document.body.classList.add(cls);
     return () => {
-      document.body.classList.remove(cls, "v2-context");
+      if (cls) document.body.classList.remove(cls);
     };
   }, [palette]);
 
-  const ink = PALETTE_INK[palette];
-  const inkSoft = palette === "compose" ? "rgba(26,58,74,0.7)" : "rgba(255,255,255,0.85)";
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: PALETTE_BG[palette],
-        color: ink,
-        fontFamily: "Inter, system-ui, sans-serif",
-        position: "relative",
-        overflowX: "hidden",
-      }}
-    >
-      {/* TOP-RIGHT CLUSTER — mirrors live site (you-pill + sign-out + settings).
-          v2-only minimal version; production cluster stays put on non-v2 routes. */}
+    <div style={{ minHeight: "100vh", position: "relative" }}>
+      {/* Compose-palette bg paint — kept inline so we don't grow theme.ts */}
+      {palette === "compose" && (
+        <style>{`body.v2-compose-context{background:#fef8ea !important}`}</style>
+      )}
+
+      {/* TOP-RIGHT CLUSTER — minimal v2 mirror of the live header.
+          2px borders to match site convention. */}
       <div
         style={{
           position: "fixed",
@@ -65,15 +55,15 @@ export default function V2Layout({ palette, pairedHeader, children }: V2LayoutPr
           <button
             onClick={() => navigate("/v2/journal")}
             style={{
-              background: "#355eb8",
+              background: "var(--dos-user)",
               color: "#fff",
               border: "none",
-              borderRadius: 999,
-              padding: "11px 20px",
+              borderRadius: 9999,
+              padding: "8px 16px",
               fontSize: 14,
               fontWeight: 500,
               cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(53,94,184,0.3)",
+              height: 34,
             }}
           >
             you are {profile.username}
@@ -82,14 +72,15 @@ export default function V2Layout({ palette, pairedHeader, children }: V2LayoutPr
           <button
             onClick={() => navigate("/")}
             style={{
-              background: "rgba(255,255,255,0.85)",
-              color: "#1a3a4a",
-              border: "none",
-              borderRadius: 999,
-              padding: "11px 20px",
+              background: "var(--dos-bg)",
+              color: "var(--dos-fg)",
+              border: "2px solid var(--dos-border)",
+              borderRadius: 9999,
+              padding: "6px 16px",
               fontSize: 14,
               fontWeight: 500,
               cursor: "pointer",
+              height: 34,
             }}
           >
             sign in
@@ -100,14 +91,17 @@ export default function V2Layout({ palette, pairedHeader, children }: V2LayoutPr
             onClick={() => signOut()}
             title="Sign out"
             style={{
-              width: 38,
-              height: 38,
+              width: 34,
+              height: 34,
               borderRadius: "50%",
-              border: `1.5px solid ${palette === "compose" ? "rgba(26,58,74,0.4)" : "rgba(255,255,255,0.6)"}`,
+              border: "2px solid var(--dos-border)",
               background: "transparent",
-              color: ink,
+              color: "var(--dos-fg)",
               cursor: "pointer",
-              fontSize: 16,
+              fontSize: 14,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
             ⏻
@@ -115,7 +109,6 @@ export default function V2Layout({ palette, pairedHeader, children }: V2LayoutPr
         )}
       </div>
 
-      {/* MAIN STAGE */}
       <main
         style={{
           maxWidth: 1100,
@@ -129,7 +122,7 @@ export default function V2Layout({ palette, pairedHeader, children }: V2LayoutPr
               display: "flex",
               alignItems: "baseline",
               gap: 18,
-              marginBottom: 28,
+              marginBottom: 24,
               flexWrap: "wrap",
             }}
           >
@@ -137,7 +130,7 @@ export default function V2Layout({ palette, pairedHeader, children }: V2LayoutPr
               style={{
                 fontSize: 22,
                 fontWeight: 600,
-                color: ink,
+                color: "var(--dos-fg)",
                 letterSpacing: "-0.005em",
               }}
             >
@@ -153,9 +146,9 @@ export default function V2Layout({ palette, pairedHeader, children }: V2LayoutPr
                 fontFamily: "Lora, Georgia, serif",
                 fontStyle: "italic",
                 fontSize: 16,
-                color: inkSoft,
+                color: "var(--dos-gray)",
                 textDecoration: "none",
-                borderBottom: `1px dotted ${palette === "compose" ? "rgba(26,58,74,0.4)" : "rgba(255,255,255,0.55)"}`,
+                borderBottom: "1px dotted var(--dos-gray)",
                 paddingBottom: 1,
                 cursor: "pointer",
               }}

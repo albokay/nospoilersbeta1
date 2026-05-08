@@ -1315,6 +1315,66 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: read-only journal page (checkpoint 2)
+
+Built the journal page at `/v2/journal` and `/v2/journal/:showId`. Read-only display: rail, panel with heading + progress + action row + entry feed with derived destination chips, four response sections lifted from today's ProfilePage and rendered below the panel. No new write paths.
+
+**Visual conventions (corrected mid-arc per user feedback on checkpoint 1):**
+
+The checkpoint 1 stubs leaked mockup-driven styling — 1.5px borders and a `box-shadow: 0 2px 18px` on the panel. Both removed. The new convention pins this as a v2-arc-wide rule:
+
+- **2px borders throughout.** Matches `.btn` / `.badge` / `.splashSearchWrap` / `.diaryBackPage` / `.diaryCardWrap > .card` / canon dest chips. No 1.5px ever.
+- **No drop shadows on content panels.** The live site achieves panel depth via layered translated background panes (`.diaryBackPage` cascade) + 2px white borders, not via box-shadows. The same pattern is used in v2 (3 layered translucent panes behind the front card, opacities 0.18 / 0.36 / 0.55).
+- **Square corners on the journal panel.** `border-radius: 0` — matches `.diaryCardWrap > .card`. Pills (`9999px`) on buttons + chips, but the panel itself is square.
+- **Default body palette tokens carry through.** `--dos-bg` / `--dos-fg` / `--dos-gray` / `--dos-user` / `--dos-border` resolve correctly on default body (green) and `body.public-context` (mustard). v2 just toggles the existing class for profile pages — no new palette CSS, no new theme tokens. Compose-cream is the only inline override (one tiny `<style>` injection).
+- **Reuse existing class hooks for parity.** Response sections render through `.title` / `.card` / `.reply-card` / `.threadCard` / `.muted` / `.username` / `.clamp3`; action buttons use `.btn` / `.btn.post` / `.btn.h40`. Inline overrides only where v2 layout geometry differs from the live `.container`-anchored page.
+
+**Layout (journal page):**
+
+- Fixed-flex sticky left rail (250px wide, `position: sticky; top: 100`) at viewports ≥1080px; collapses inline above the panel below 1080px.
+- Rail contents: embedded `<SearchShows />` (placeholder "find a show" — already the component's default), then "your shows" eyebrow, then per-show buttons with active-row highlight + entry count + progress meta.
+- Panel: fixed 720px height, flex column. Heading + meta + action row sit above (flex-shrink: 0); entry feed is the flex-1 child with `overflow-y: auto`. Same shape as live `.diaryCardWrap > .card` + `.diaryScrollArea`.
+- Response sections (responses to you / your responses / your starred entries / your starred responses) render below the panel, max-height 400 each with internal scroll. Reached by scrolling the browser page — same as today's ProfilePage.
+
+**Per-show data path:**
+
+- Bootstrap on user change: `fetchShows()` + `fetchProgress(user.id)` + `fetchUserThreads(user.id)` (no showId — one query covers all rails entry counts).
+- On active-show change: parallel `Promise.all` of `fetchUserReplies` + `fetchRepliesToUserThreads` + `fetchLikedThreads` + `fetchLikedReplies` + `fetchFriendGroupsForUser`. Each scoped to the active showId. No caching layer yet (live ProfilePage caches per-tab; v2 fetches on every active-show switch — fine for now).
+- Active show resolution: URL `/v2/journal/:showId` if it matches a real progress row, else first show in the user's progress map.
+
+**Derived destination chips:**
+
+- `chipsFor(row)` returns `("public" | "friend")[]` from `thread.isPublic` + presence of `groupId` in the fetchUserThreads return shape. Today's prod has zero rows with both set (verified pre-build), so chips always come back as 0 or 1 element. The render path handles 0 / 1 / 2 — forward-compatible with the multi-destination compose flow that lands in checkpoint 6.
+- Chip click navigates to the live route: friend chip → `/show/:id?group=:groupId`; public chip → `/show/:id`. The live ShowSection handles room / public toggling on arrival.
+
+**Action row:**
+
+- "write a new entry" → navigates to `/v2/compose/:showId` (still a stub until checkpoint 6).
+- "→ your friend room" → only renders if user has ≥1 friend group on this show. Singular when N=1, plural ("→ your N friend rooms") when N>1. Click navigates to `/show/:id` with `?group=:groupId` if N=1, no preselection if N>1 (live ShowSection handles room picker).
+- "→ public conversation" → navigates to `/show/:id` (live show page resolves to the public-aggregate view).
+
+**Show-name chevron menu:**
+
+- Renders the dropdown with the "close show / stop watching" option, but the option is **disabled** (`title="lands in a later checkpoint"`). Action lands in checkpoint 8 alongside the friend-room departure cascade. Subtitle copy updated per checkpoint-1 alignment to call out the room-leaving consequence: "Closes the show in your journal and removes you from any friend rooms on this show. Searching for the show again restores your entries and progress, but not room memberships."
+
+**Files (this commit):**
+
+| Path | Change |
+|---|---|
+| [src/components/v2/V2JournalPage.tsx](src/components/v2/V2JournalPage.tsx) | Full read-only journal page |
+| [src/components/v2/V2Layout.tsx](src/components/v2/V2Layout.tsx) | Rewritten: defers to body palette tokens, 2px borders, drops the inline panel paint that was overriding the body's natural gradient. Profile pages now toggle `body.public-context`; compose injects a one-line `<style>` for cream bg |
+| [src/components/v2/V2ProfileSelfPage.tsx](src/components/v2/V2ProfileSelfPage.tsx) · [V2ProfileVisitorPage.tsx](src/components/v2/V2ProfileVisitorPage.tsx) · [V2UserAggregatePage.tsx](src/components/v2/V2UserAggregatePage.tsx) · [V2ComposePage.tsx](src/components/v2/V2ComposePage.tsx) | Stubs corrected to 2px borders, no drop shadow, `--dos-bg` ground |
+
+Bundle delta: 874 → 887 kB raw / 238 → 240 kB gzip.
+
+**Behaviors deliberately deferred:**
+
+- **Inline kebab on private entries** (the only true-delete surface) — punted; soft-delete already works on the live site, but the kebab is read-only-this-checkpoint scope creep. Lands when v2 deletion is wired in a later pass.
+- **"+ add destination" hover affordance** on entries — checkpoint 9 work (revives the dormant friend-room → public path + adds private → friend-room). Visual placeholder also skipped to avoid promising behavior that isn't there.
+- **"close show / stop watching"** action — checkpoint 8.
+- **Show-tab notification dots** on rail items — needs the existing per-show activity probes wired through; planned but not in this pass.
+- **Per-tab caching** of response-section data — live ProfilePage caches across tab switches; v2 refetches on each active-show change. Can revisit if it shows up as a perceivable lag.
+
 ### 2026-05-08 — v2 UI rethink: parallel-build scaffolding (checkpoint 1)
 
 Kickoff of a multi-checkpoint UI redesign per `claude new UI handoff for Code/sidebar_UI rethink handoff_v3.md`. Approach is **parallel build under `/v2/*`** mirroring the `/m/*` mobile pattern — the live beta at every existing path is untouched and a route swap at cutover replaces it.

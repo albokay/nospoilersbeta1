@@ -13,20 +13,18 @@ export default function V2ProfileSelfPage() {
     >
       <section
         style={{
-          background: "rgba(255,250,235,0.6)",
-          border: "1.5px solid rgba(255,255,255,0.85)",
-          borderRadius: 22,
-          padding: "32px 36px 40px",
-          color: "#2a1f0a",
+          background: "var(--dos-bg)",
+          border: "2px solid #fff",
+          padding: "28px 32px",
+          color: "var(--dos-fg)",
           minHeight: 320,
-          boxShadow: "0 2px 18px rgba(0,0,0,0.06)",
         }}
       >
         <h1
           style={{
             fontFamily: "Lora, Georgia, serif",
-            fontWeight: 700,
-            fontSize: 38,
+            fontWeight: 600,
+            fontSize: 34,
             letterSpacing: "0.02em",
             textTransform: "uppercase",
             lineHeight: 1.05,
@@ -40,7 +38,7 @@ export default function V2ProfileSelfPage() {
             fontFamily: "Lora, Georgia, serif",
             fontStyle: "italic",
             fontSize: 16,
-            color: "#4a3a1c",
+            color: "var(--dos-gray)",
           }}
         >
           shell is mounted. shelves and pin toggle land in checkpoint 4.
