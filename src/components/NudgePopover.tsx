@@ -9,6 +9,7 @@ import type { PingType } from "../types";
 // Canon palette
 const CREAM       = "#fef8ea";
 const CANON_BLUE  = "#355eb8";
+const CANON_GREEN = "#7abd8e";
 const CANON_LIGHT = "#adc8d7";
 const CANON_RED   = "#f45028";
 const CANON_NAVY  = "#1a3a4a";
@@ -446,9 +447,9 @@ export default function NudgePopover({
               onClick={handleSend}
               disabled={!canSubmit}
               style={{
-                background: canSubmit ? CANON_BLUE : "rgba(53,94,184,0.45)",
+                background: canSubmit ? CANON_GREEN : "rgba(122,189,142,0.45)",
                 color: "#fff",
-                border: canSubmit ? `2px solid ${CANON_BLUE}` : "none",
+                border: canSubmit ? `2px solid ${CANON_GREEN}` : "none",
                 padding: "6px 14px",
                 borderRadius: 9999,
                 fontSize: 12,
