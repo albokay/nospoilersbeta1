@@ -2148,10 +2148,10 @@ function rowToPing(row: PingRow, senderUsername?: string): Ping {
   };
 }
 
-// TODO PING_RATE_LIMIT: flip to true when round-1 testing is done.
+// One ping per (sender, recipient, room) per 24 hours.
 // Must stay in sync with PING_RATE_LIMIT_ENABLED in
 // supabase/functions/send-message/index.ts.
-const PING_RATE_LIMIT_ENABLED      = false;
+const PING_RATE_LIMIT_ENABLED      = true;
 const PING_RATE_LIMIT_WINDOW_HOURS = 24;
 
 // ── Polls ─────────────────────────────────────────────────────────────────

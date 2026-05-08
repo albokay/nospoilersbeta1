@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { fetchPublicProgressForUser } from "../lib/db";
-import { FEATURE_PINGS_POLLS } from "../lib/featureFlags";
 import NudgePopover, { type NudgeDirection } from "./NudgePopover";
 import AskTheRoomPicker from "./AskTheRoomPicker";
 import PollComposer from "./PollComposer";
@@ -199,9 +198,9 @@ export default function FriendProgressPostIt({
   const overflow = statuses.length > SCROLL_THRESHOLD_LINES;
 
   // Ping-launcher mode renders helper text + clickable names + divider +
-  // "ask the room →" line. When the feature flag is off, the post-it
-  // renders identically to its previous static form.
-  const launcherMode = FEATURE_PINGS_POLLS && !!groupId;
+  // "ask the room →" line. Off when there's no active group (e.g. solo or
+  // public view) — the post-it falls back to its static form.
+  const launcherMode = !!groupId;
 
   function handleNameClick(e: React.MouseEvent<HTMLSpanElement>, status: Status) {
     if (!launcherMode) return;

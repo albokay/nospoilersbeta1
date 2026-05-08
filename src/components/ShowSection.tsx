@@ -82,7 +82,6 @@ import FriendProgressPostIt from "./FriendProgressPostIt";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
 import SIKWSticky from "./SIKWSticky";
-import { FEATURE_PINGS_POLLS } from "../lib/featureFlags";
 import Username from "./Username";
 import type { PendingReference } from "./ResponseComposer";
 import PromptCard from "./PromptCard";
@@ -2623,14 +2622,14 @@ export default function ShowSection({
         />
       )}
 
-      {FEATURE_PINGS_POLLS && activeGroupId && user && (
+      {activeGroupId && user && (
         <IncomingPingSticky
           groupId={activeGroupId}
           currentUserId={user.id}
         />
       )}
 
-      {FEATURE_PINGS_POLLS && activeGroupId && user && (
+      {activeGroupId && user && (
         <PollSticky
           groupId={activeGroupId}
           currentUserId={user.id}
@@ -2638,7 +2637,7 @@ export default function ShowSection({
         />
       )}
 
-      {FEATURE_PINGS_POLLS && activeGroupId && user && (
+      {activeGroupId && user && (
         <SIKWSticky
           groupId={activeGroupId}
           currentUserId={user.id}

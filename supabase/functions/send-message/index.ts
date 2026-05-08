@@ -51,9 +51,9 @@ function corsHeaders(origin: string | null): Record<string, string> {
 
 // ── Constants ────────────────────────────────────────────────────────────
 
-// TODO PING_RATE_LIMIT: flip to true when round-1 testing is done.
+// One ping per (sender, recipient, room) per 24 hours.
 // Must stay in sync with PING_RATE_LIMIT_ENABLED in src/lib/db.ts.
-const PING_RATE_LIMIT_ENABLED            = false;
+const PING_RATE_LIMIT_ENABLED            = true;
 const PING_RATE_LIMIT_WINDOW_HOURS       = 24;
 const MESSAGE_MAX_LENGTH                 = 80;
 const FROM_ADDRESS                       = "Sidebar <invites@sidebar.watch>";
