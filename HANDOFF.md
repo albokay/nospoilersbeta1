@@ -1315,6 +1315,47 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: progress columns migration (checkpoint 3)
+
+Adds six columns to `progress` for the new four-status show model + canon-pin + four shelf blurbs. Migration file only in this commit; SQL applies manually in the Supabase editor before any code selects the new columns.
+
+**Migration:** [supabase/migrations/20260508_v2_progress_columns.sql](supabase/migrations/20260508_v2_progress_columns.sql)
+
+```sql
+ALTER TABLE progress
+  ADD COLUMN IF NOT EXISTS stopped_watching boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS canon_pin        boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS watching_quote   text,
+  ADD COLUMN IF NOT EXISTS want_reason      text,
+  ADD COLUMN IF NOT EXISTS canon_take       text,
+  ADD COLUMN IF NOT EXISTS stopped_reason   text;
+```
+
+**Column semantics:**
+
+| Column | Type | Purpose | Lands in |
+|---|---|---|---|
+| `stopped_watching` | bool | Flips via journal chevron "close show / stop watching". Resurrection clears it but doesn't auto-rejoin friend rooms. | Checkpoint 8 |
+| `canon_pin` | bool | Curatorial subset of finished-watching shown above "see all N shows" link with orange italic "canon" label. Toggled per-show on own profile. | Checkpoint 4 |
+| `watching_quote` | text | Pull-quote on the watching-now shelf. | Checkpoint 4 |
+| `want_reason` | text | Reason on the want-to-watch shelf. | Checkpoint 4 |
+| `canon_take` | text | Distilled take on a finished-watching card. | Checkpoint 4 |
+| `stopped_reason` | text | Reason on the stopped-watching shelf. | Checkpoint 4 |
+
+**RLS:** New columns inherit `progress`'s existing owner-only SELECT/INSERT/UPDATE policies. Public-read for `canon_pin` + the four blurbs (needed by v2 visitor profile in checkpoint 5) is intentionally NOT wired here — `get_public_progress` returns a fixed column projection and will be updated alongside checkpoint 5 to keep migrations scoped to one logical change each.
+
+**Length validation:** Enforced client-side at write time (same pattern as thread/reply body lengths). No DB-side check constraints.
+
+**Two-step deploy:**
+
+1. **(this commit)** Migration file lands in repo for traceability.
+2. **(manual)** Apply via Supabase SQL editor before any code reads the new columns.
+3. **(next commit, checkpoint 3 phase B)** `fetchProgress` extended to select + map the new columns; `ProgressEntry` type extended; setter helpers added (`setStoppedWatching`, `setCanonPin`, `setShelfBlurb`). No UI surface uses them until checkpoint 4.
+
+Code in checkpoint 3 phase B is held until SQL is confirmed applied — selecting a non-existent column would break every `fetchProgress` call on the live site.
+
+**Bundle delta:** zero. SQL file only.
+
 ### 2026-05-08 — v2 UI rethink: read-only journal page (checkpoint 2)
 
 Built the journal page at `/v2/journal` and `/v2/journal/:showId`. Read-only display: rail, panel with heading + progress + action row + entry feed with derived destination chips, four response sections lifted from today's ProfilePage and rendered below the panel. No new write paths.
