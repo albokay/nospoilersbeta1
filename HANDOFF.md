@@ -1315,6 +1315,69 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: profile self (checkpoint 4)
+
+Built `/v2/profile` — the user's own public profile, mustard-palette, four shelves driven by the new `progress` columns landed in checkpoint 3.
+
+**Status derivation** (per show, computed from `progress`):
+
+| Status | Condition |
+|---|---|
+| stopped | `stoppedWatching === true` (column added in checkpoint 3; stop-watching action lands in checkpoint 8) |
+| want | `(s, e) === (0, 0)` |
+| finished | `seasons` known and (rewatch-aware) progress reached `(seasons.length, seasons[last])` |
+| watching | otherwise |
+
+`isFinished` is rewatch-aware: rewatchers' "have I finished?" checks `highestS / highestE`, not the rewatch-position `s / e`. Defensive `??` falls back to `s/e` when highest fields are absent (legacy rows).
+
+**Shelves rendered** (alphabetical within each, for stability):
+
+- **Watching Now** (renders only if non-empty) — 1-col grid, full-width cards. Fields: show name + rewatch tag, green progress badge, `watching_quote` blurb (Lora italic, orange-rule treatment, edit-pencil — opens inline textarea).
+- **Want to Watch** (always renders, for the + add tile) — stack of single-row cards. Fields: show name, `want_reason` blurb. Ends with a dashed "+ add a show to your list" button that expands an inline `<SearchShows />` (placeholder "find a show", existing onboarding flow). Picking a show triggers `onShowCreated` → `fetchProgress` refetch → tile collapses.
+- **Finished Watching** (renders only if non-empty) — 2-col responsive grid (`auto-fit, minmax(280px, 1fr)`). Fields: show name, `canon_take` blurb. Pinned shows surface above unpinned; pin toggle in the corner flips between the orange italic "canon" label (pinned) and a `Pin` icon (unpinned). Footer: "see all N shows" CTA visible-only — disabled with a tooltip explaining the expanded view is tabled per spec.
+- **Stopped Watching** (renders only if non-empty — won't have rows until checkpoint 8) — 2-column stack (220px label + reason). Fields: show name, `stopped at S/E` snapshot, `stopped_reason` blurb.
+
+**Inline blurb editor** (`BlurbField` — module-private to this page):
+
+- Click placeholder or existing text → text becomes a textarea (`autoFocus`, `maxLength={280}`).
+- Save: `Cmd/Ctrl+Enter` or `blur`. No-op if unchanged. Whitespace-only saves as `null` per `setShelfBlurb`'s contract (placeholder re-renders).
+- Cancel: `Escape` resets to original and exits edit mode.
+- Optimistic local update via `setProgress(prev => ...)` keeps the page snappy without a refetch.
+
+**Pin toggle:**
+
+- Click → `setCanonPin(user.id, showId, !current)`, then optimistic local update.
+- Visual: pinned = orange italic "canon" text label always visible; unpinned = `Pin` icon. (Mockup specified hover-revealed unpinned + always-visible pinned. Hover reveal is a polish detail deferred to the wholesale styling pass.)
+
+**Visual conventions applied:**
+
+- Shelf cards: cream-tinted fill `rgba(255,250,235, 0.55)`, **no border**, `border-radius: 24` (matches live `.card` default radius). Solid-fill-no-outline pattern per the rule.
+- Blurb editor: `rgba(255,255,255,0.18)` fill + `2px solid #fff` border in edit mode. Transparent + outline pattern.
+- Add-show tile: `2px dashed rgba(255,255,255,0.6)` border, transparent fill — placeholder dashed-frame pattern.
+- Edit pencil + pin button: transparent fill, no border, color shift on hover (handled inline). Both are own-profile-only — visitor view (checkpoint 5) renders the canon label read-only and omits the pencil.
+- All buttons + chips on the page comply with the solid-fill-no-outline OR transparent-with-outline rule.
+
+**Edit-profile + share-profile:**
+
+- "edit profile" pill — disabled with tooltip (edit-profile flow tabled per spec).
+- "share profile" pill — navigates to the live `/u/:username` page (the existing `PublicProfilePage`) so users can see their public face; switches to v2 visitor view in checkpoint 5 once that lands.
+
+**Files (this commit):**
+
+- [src/components/v2/V2ProfileSelfPage.tsx](src/components/v2/V2ProfileSelfPage.tsx) — full implementation, replaces the stub.
+- [HANDOFF.md](HANDOFF.md) — this entry.
+
+**Bundle delta:** 887 → 898 KB raw / 240 → 243 KB gzip.
+
+**Behaviors deliberately deferred:**
+
+- **Visitor view of someone else's profile** — checkpoint 5.
+- **Stop-watching action + friend-room departure cascade** — checkpoint 8.
+- **Hover-reveal on the unpinned pin icon** — defaulted to always-visible for now; the hover behavior will be tuned in the wholesale styling pass once all v2 pages are in place.
+- **Edit-profile flow** (bio + name editability) — tabled per design spec.
+- **"see all N shows" expanded view** — tabled per design spec.
+- **`get_public_progress` RPC update** to surface `canon_pin` + the four blurbs publicly — lands in checkpoint 5 alongside the visitor view that needs them.
+
 ### 2026-05-08 — v2 UI rethink: progress columns migration (checkpoint 3)
 
 Adds six columns to `progress` for the new four-status show model + canon-pin + four shelf blurbs. Migration file only in this commit; SQL applies manually in the Supabase editor before any code selects the new columns.
