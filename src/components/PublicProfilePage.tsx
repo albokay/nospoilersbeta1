@@ -39,7 +39,10 @@ export default function PublicProfilePage({
   const [notFound, setNotFound] = useState(false);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [replies, setReplies] = useState<{ reply: Reply; thread: Thread }[]>([]);
-  const [targetProgress, setTargetProgress] = useState<Record<string, { s: number; e: number }>>({});
+  // fetchPublicProgressForUser returns the full ProgressEntry shape as of
+  // 2026-05-08 (checkpoint 5 phase A). Live PublicProfilePage only needs s/e,
+  // but the wider type keeps assignment from the helper trivially correct.
+  const [targetProgress, setTargetProgress] = useState<Record<string, import("../types").ProgressEntry>>({});
 
   // Theme the page with the canon yellow "public" palette while mounted.
   // Pairs with has-header for the gradient-anchor logic used everywhere

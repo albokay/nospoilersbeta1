@@ -1247,18 +1247,84 @@ export async function fetchPublicRepliesForUser(userId: string): Promise<{ reply
 }
 
 /** Shows a user is tracking (progress rows), sorted by show name.
- *  Uses RPC to bypass owner-only RLS on the progress table. */
+ *  Uses RPC to bypass owner-only RLS on the progress table.
+ *  Returns the full ProgressEntry shape — the v2 visitor profile classifies
+ *  shelves and renders blurbs from these fields. The 14-column RPC was
+ *  introduced 2026-05-08 (checkpoint 5 phase A). Live PublicProfilePage
+ *  is column-name-keyed so the wider return shape is non-breaking. */
 export async function fetchPublicProgressForUser(
   userId: string
-): Promise<Record<string, { s: number; e: number }>> {
+): Promise<Record<string, import("../types").ProgressEntry>> {
   const { data, error } = await supabase
     .rpc("get_public_progress", { target_user_id: userId });
   if (error) throw error;
-  const result: Record<string, { s: number; e: number }> = {};
+  const result: Record<string, import("../types").ProgressEntry> = {};
   for (const row of data ?? []) {
-    result[row.show_id] = { s: row.season, e: row.episode };
+    result[row.show_id] = {
+      s: row.season,
+      e: row.episode,
+      isRewatching:    row.is_rewatching ?? false,
+      rewatchS:        row.rewatch_season ?? undefined,
+      rewatchE:        row.rewatch_episode ?? undefined,
+      highestS:        row.highest_season ?? undefined,
+      highestE:        row.highest_episode ?? undefined,
+      stoppedWatching: row.stopped_watching ?? false,
+      canonPin:        row.canon_pin ?? false,
+      watchingQuote:   row.watching_quote ?? undefined,
+      wantReason:      row.want_reason ?? undefined,
+      canonTake:       row.canon_take ?? undefined,
+      stoppedReason:   row.stopped_reason ?? undefined,
+    };
   }
   return result;
+}
+
+// === v2 visitor-profile context (2026-05-08, checkpoint 5 phase B) ===
+//
+// Per-show CTA logic on the visitor profile needs three signals:
+//   1. Visitor's own progress on each show (already available via fetchProgress).
+//   2. Friend rooms that BOTH the visitor and the owner are members of, per show.
+//   3. Whether the owner has any public threads on each show.
+//
+// (1) + (3) reuse existing helpers (fetchProgress, fetchPublicThreadsForUser).
+// (2) is the new helper below — single round-trip via a self-join of
+// friend_group_members.
+
+export type SharedRoomRow = { groupId: string; groupName: string; showId: string };
+
+export async function fetchSharedRoomsForUsers(
+  viewerId: string,
+  targetId: string
+): Promise<SharedRoomRow[]> {
+  // Friend-group memberships for the viewer.
+  const { data: viewerRows, error: vErr } = await supabase
+    .from("friend_group_members")
+    .select("group_id")
+    .eq("user_id", viewerId);
+  if (vErr) throw vErr;
+  const viewerGroupIds = new Set((viewerRows ?? []).map((r: any) => r.group_id));
+  if (!viewerGroupIds.size) return [];
+
+  // Friend-group memberships for the target.
+  const { data: targetRows, error: tErr } = await supabase
+    .from("friend_group_members")
+    .select("group_id")
+    .eq("user_id", targetId);
+  if (tErr) throw tErr;
+  const sharedIds = (targetRows ?? [])
+    .map((r: any) => r.group_id)
+    .filter((id: string) => viewerGroupIds.has(id));
+  if (!sharedIds.length) return [];
+
+  // Resolve the shared groups, excluding soft-deleted.
+  const { data: groupRows, error: gErr } = await supabase
+    .from("friend_groups")
+    .select("id, name, show_id, deleted_at")
+    .in("id", sharedIds);
+  if (gErr) throw gErr;
+  return (groupRows ?? [])
+    .filter((g: any) => !g.deleted_at)
+    .map((g: any) => ({ groupId: g.id, groupName: g.name, showId: g.show_id }));
 }
 
 // ── Replies ──────────────────────────────────────────────────────────────────

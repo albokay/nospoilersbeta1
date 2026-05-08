@@ -1315,6 +1315,62 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: visitor profile UI (checkpoint 5 phase B)
+
+Built `/v2/u/:username` — read-only mustard-palette view of someone else's profile, four shelves (same classification + render shape as the self page), per-card contextual CTAs.
+
+**Visitor data path:**
+
+- Owner side (works for logged-out visitors too): `fetchPublicProfileByUsername` → owner.id → parallel `fetchShows()` + `fetchPublicProgressForUser(owner.id)` (now wider, returns full `ProgressEntry`) + `fetchPublicThreadsForUser(owner.id)`.
+- Visitor side (logged-in only): `fetchProgress(visitor.id)` + new `fetchSharedRoomsForUsers(visitor.id, owner.id)`. Self-join over `friend_group_members` filtered to non-soft-deleted groups.
+
+**Self-visit guard:** logged-in user visiting `/v2/u/<their-own-username>` is `Navigate(replace)`'d to `/v2/profile` so they get the self page (with edit affordances) instead of the read-only visitor render.
+
+**Shelf classification** is identical to the self page (`stoppedWatching` → stopped; `(0,0)` → want; rewatch-aware `highest_*` reaches `(seasons.length, seasons[last])` → finished; else watching). Pinned canon shows surface above unpinned in the Finished grid.
+
+**Read-only render differences from self:**
+
+- No edit pencils on any blurb. Blurbs render as plain text only when present; nothing when absent (no placeholders).
+- No pin toggle. Pinned shows show a static "canon" label (Lora italic, canon-red). Unpinned shows nothing in the corner.
+- No "+ add a show to your list" tile.
+- Eyebrows reference the owner's @-handle as the third-person referent: `what @maya is in the middle of:` / `on @maya's list, not yet started:` / `shows @maya has completed:` / `shows @maya has stopped, for now:`.
+
+**Per-card contextual CTAs** (rendered by `<ContextualCTAs />`):
+
+| Visitor state | Owner state | CTA on Watching Now / Finished cards |
+|---|---|---|
+| Logged out | — | none (collaboration); see public-posts row below |
+| Logged in, shares a room with owner on this show | — | "→ go to your friend room" (links to `/show/:id?group=:groupId`) |
+| Logged in, has progress on this show, no shared room | — | "invite @owner to a friend room" (links to `/show/:id` — live invite UI handles from there) |
+| Logged in, no progress on this show | — | none |
+| Any logged-in state | Owner has any public posts on this show | "see @owner's public posts on [show]" (links to `/v2/u/:owner/show/:showId/posts`, the user-aggregate stub until checkpoint 7) |
+
+Want-to-Watch shelf has its own inline CTA: when both visitor and owner have `(0,0)` progress on a show, `"you both want this — start a friend room"` button renders below the show name. Single navigation target (`/show/:id`) — the live show page handles room creation.
+
+**Multi-room caveat:** when visitor and owner share more than one friend room on the same show (rare but possible), the CTA picks the first by group id. A multi-room picker is a future polish; not in the spec.
+
+**Live `/u/:username` (PublicProfilePage) impact:**
+
+- `fetchPublicProgressForUser` return type widened to `Record<string, ProgressEntry>` (was `Record<string, {s, e}>`). PublicProfilePage's `targetProgress` state was retyped to `ProgressEntry`. No behavior change — the live page continues to read only `s/e`.
+- The 14-column `get_public_progress` RPC was applied to prod 2026-05-08 (phase A); the wider return shape is now in effect for all callers.
+
+**Files (this commit):**
+
+| Path | Change |
+|---|---|
+| [src/components/v2/V2ProfileVisitorPage.tsx](src/components/v2/V2ProfileVisitorPage.tsx) | Full read-only visitor page, replaces stub |
+| [src/lib/db.ts](src/lib/db.ts) | `fetchPublicProgressForUser` widened to `ProgressEntry`; new `fetchSharedRoomsForUsers(viewerId, targetId)` helper + `SharedRoomRow` type |
+| [src/components/PublicProfilePage.tsx](src/components/PublicProfilePage.tsx) | `targetProgress` state retyped to `ProgressEntry` (no behavior change) |
+
+**Bundle delta:** 898 → 908 KB raw / 243 → 244 KB gzip.
+
+**Behaviors deliberately deferred:**
+
+- **User aggregate page** (`/v2/u/:username/show/:showId/posts`) — still a stub. Lands in checkpoint 7; the public-posts CTA correctly links to it now so the click target exists once that checkpoint ships.
+- **Multi-room CTA shape** — first-room-only for now.
+- **Owner bio + member-since** display — bio not in `profiles` schema (edit-profile flow tabled per spec); join date not surfaced for visitors (privacy-flavor; can re-add if requested).
+- **Profile-header summary CTAs** ("you and @maya are both watching X and Y" with stacked buttons) — per-card CTAs cover the same actions; summary is decorative, deferred to wholesale styling.
+
 ### 2026-05-08 — v2 UI rethink: visitor profile RPC extension (checkpoint 5 phase A)
 
 Migration-only commit. Extends `get_public_progress(target_user_id)` to return the v2 columns the visitor profile page needs to classify and render the owner's shelves. Existing live caller (`fetchPublicProgressForUser` at [db.ts:1251](src/lib/db.ts:1251)) unpacks rows by column name and ignores additional columns — adding columns is non-breaking.
