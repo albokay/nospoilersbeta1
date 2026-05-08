@@ -10,6 +10,8 @@ import {
   fetchLikedThreads,
   fetchLikedReplies,
   fetchFriendGroupsForUser,
+  setStoppedWatching,
+  stopWatching,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
 import type { Thread, Reply, ProgressEntry, FriendGroup } from "../../types";
@@ -17,6 +19,7 @@ import SearchShows from "../SearchShows";
 import EpisodeTag from "../EpisodeTag";
 import { timeAgo } from "../../lib/utils";
 import { linkifyText } from "../../lib/linkify";
+import LoadingDots from "../LoadingDots";
 import V2Layout from "./V2Layout";
 import { ChevronDown, SquarePen, Users, Globe } from "lucide-react";
 
@@ -67,6 +70,9 @@ export default function V2JournalPage() {
     likedReplies: ReplyRow[];
   }>({ myReplies: [], repliesToMe: [], likedThreads: [], likedReplies: [] });
   const [chevronOpen, setChevronOpen] = useState(false);
+  const [stopModalOpen, setStopModalOpen] = useState(false);
+  const [stopSubmitting, setStopSubmitting] = useState(false);
+  const [stopError, setStopError] = useState<string | null>(null);
   const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 1080);
 
   useEffect(() => {
@@ -96,12 +102,14 @@ export default function V2JournalPage() {
   }, [user?.id]);
 
   // Active show selection — URL wins; fallback to first show in user's progress.
+  // Stopped-watching shows are hidden from the rail; they live on the profile's
+  // Stopped Watching shelf and resurrect via the rail-search reopen path.
   const userShowIds = useMemo(() => {
     return Object.keys(progress).filter((sid) => {
-      // Hide shows the user has no real progress for (defensive). The
-      // stopped-watching gate lands in checkpoint 8 — for now every
-      // progress row is surfaced.
-      return progress[sid] !== undefined;
+      const p = progress[sid];
+      if (!p) return false;
+      if (p.stoppedWatching) return false;
+      return true;
     });
   }, [progress]);
 
@@ -197,7 +205,22 @@ export default function V2JournalPage() {
           <SearchShows
             shows={shows}
             progress={progress}
-            onReopenJournal={(showId) => navigate(`/v2/journal/${showId}`)}
+            onReopenJournal={async (showId) => {
+              // Resurrection: if the picked show was previously stopped,
+              // clear the flag and refresh local progress so the show
+              // reappears in the rail. Memberships do NOT auto-rejoin —
+              // re-invite required.
+              if (user && progress[showId]?.stoppedWatching) {
+                try {
+                  await setStoppedWatching(user.id, showId, false);
+                  const fresh = await fetchProgress(user.id);
+                  setProgress(fresh);
+                } catch (err) {
+                  console.warn("clear-stopped failed:", err);
+                }
+              }
+              navigate(`/v2/journal/${showId}`);
+            }}
             onShowCreated={(s) => navigate(`/v2/journal/${s.id}`)}
             onAuthRequired={() => navigate("/")}
             placeholder="find a show"
@@ -356,8 +379,11 @@ export default function V2JournalPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
-                          disabled
-                          title="lands in a later checkpoint"
+                          onClick={() => {
+                            setChevronOpen(false);
+                            setStopError(null);
+                            setStopModalOpen(true);
+                          }}
                           style={{
                             display: "block",
                             width: "100%",
@@ -367,8 +393,8 @@ export default function V2JournalPage() {
                             padding: "10px 12px",
                             color: "var(--dos-fg)",
                             fontSize: 14,
-                            cursor: "not-allowed",
-                            opacity: 0.7,
+                            cursor: "pointer",
+                            borderRadius: 0,
                           }}
                         >
                           close show / stop watching
@@ -704,6 +730,118 @@ export default function V2JournalPage() {
           style={{ position: "fixed", inset: 0, zIndex: 4 }}
           aria-hidden
         />
+      )}
+
+      {/* stop-watching confirmation modal */}
+      {stopModalOpen && activeShow && profile && user && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+            padding: 20,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !stopSubmitting) setStopModalOpen(false);
+          }}
+        >
+          <div
+            style={{
+              background: "var(--dos-bg)",
+              border: "2px solid #fff",
+              padding: "24px 28px",
+              maxWidth: 480,
+              width: "100%",
+              color: "var(--dos-fg)",
+            }}
+          >
+            <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 600, fontSize: 22, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.02em" }}>
+              Stop watching {activeShow.name}?
+            </div>
+            <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-fg)", lineHeight: 1.55, marginBottom: 16 }}>
+              Your journal entries and progress will be preserved. The show moves to your <strong style={{ fontStyle: "normal", fontWeight: 600 }}>Stopped Watching</strong> shelf. Searching for it again restores everything except room memberships.
+            </div>
+            {groupsForActive.length > 0 && (
+              <div
+                style={{
+                  background: "rgba(244,80,40,0.15)",
+                  border: "2px solid var(--danger)",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                  marginBottom: 18,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--dos-fg)", marginBottom: 6 }}>
+                  You'll leave {groupsForActive.length === 1 ? "this friend room" : `${groupsForActive.length} friend rooms`}:
+                </div>
+                <ul style={{ margin: "0 0 8px 18px", padding: 0, fontSize: 14, lineHeight: 1.55, color: "var(--dos-fg)" }}>
+                  {groupsForActive.map((g) => (
+                    <li key={g.id} style={{ fontStyle: "italic", fontFamily: "Lora, Georgia, serif" }}>{g.name}</li>
+                  ))}
+                </ul>
+                <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 13, color: "var(--dos-gray)", lineHeight: 1.5 }}>
+                  You'd need to be re-invited to come back.
+                </div>
+              </div>
+            )}
+            {stopError && (
+              <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>
+                {stopError}
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+              <button
+                className="btn h40"
+                disabled={stopSubmitting}
+                onClick={() => setStopModalOpen(false)}
+                style={{ fontSize: 13 }}
+              >
+                keep watching
+              </button>
+              <button
+                disabled={stopSubmitting}
+                onClick={async () => {
+                  if (!user || !profile || !activeShow) return;
+                  setStopSubmitting(true);
+                  setStopError(null);
+                  try {
+                    await stopWatching(user.id, profile.username, activeShow.id);
+                    // Land on the profile page where the new Stopped row surfaces.
+                    navigate("/v2/profile");
+                  } catch (err: any) {
+                    console.warn("stopWatching failed:", err);
+                    setStopError(err?.message || "Couldn't stop watching. Try again.");
+                    setStopSubmitting(false);
+                  }
+                }}
+                className="btn-danger h40"
+                style={{
+                  background: "var(--danger)",
+                  border: "none",
+                  color: "#fff",
+                  borderRadius: 9999,
+                  padding: "9px 18px",
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: stopSubmitting ? "not-allowed" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  height: 34,
+                }}
+              >
+                {stopSubmitting ? <>stopping<LoadingDots /></> : "stop watching"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </V2Layout>
   );

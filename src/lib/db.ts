@@ -1050,6 +1050,53 @@ export async function setStoppedWatching(
   if (error) throw error;
 }
 
+// Full stop-watching cascade (2026-05-08, v2 checkpoint 8). For each
+// friend room the user is in on this show:
+//   - if the user owns the room AND others remain, transfer ownership
+//     to the oldest other member (live ShowSection convention)
+//   - record departure (so remaining members see "has left the room")
+//   - remove the user's membership
+//   - if the user was the last member, soft-delete the room instead
+//     (skip the record/remove in that branch — group is gone anyway)
+//
+// Order matters: cascade first, flag last. If the cascade fails partway,
+// the stopped_watching flag stays false and the user can retry — every
+// step (`removeGroupMember`, `recordDepartedMember`, `softDeleteFriendGroup`)
+// is idempotent enough for re-runs against the partial state.
+//
+// Returns counts so the UI can report what happened ("you left N rooms,
+// 1 was soft-deleted because you were the last member").
+export async function stopWatching(
+  userId: string,
+  username: string,
+  showId: string
+): Promise<{ groupsLeft: number; groupsSoftDeleted: number }> {
+  const groups = await fetchFriendGroupsForUser(userId, showId);
+  let groupsLeft = 0;
+  let groupsSoftDeleted = 0;
+
+  for (const g of groups) {
+    const members = await fetchFriendGroupMembers(g.id);
+    const others = members.filter((m) => m.userId !== userId);
+    if (others.length === 0) {
+      await softDeleteFriendGroup(g.id);
+      groupsSoftDeleted++;
+    } else {
+      if (g.createdBy === userId) {
+        const oldestOther = [...others].sort((a, b) => a.joinedAt - b.joinedAt)[0];
+        await transferGroupOwnership(g.id, oldestOther.userId);
+      }
+      await recordDepartedMember(g.id, userId, username);
+      await removeGroupMember(g.id, userId);
+      groupsLeft++;
+    }
+  }
+
+  // Flag last so a partial-failure retry resumes cleanly.
+  await setStoppedWatching(userId, showId, true);
+  return { groupsLeft, groupsSoftDeleted };
+}
+
 export async function setCanonPin(
   userId: string,
   showId: string,

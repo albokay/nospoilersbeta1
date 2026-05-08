@@ -1315,6 +1315,60 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: stop-watching cascade + resurrection (checkpoint 8)
+
+Wires the chevron menu's "close show / stop watching" action on `/v2/journal/:showId` (previously disabled stub). On confirm, runs the full friend-room departure cascade and flips `progress.stopped_watching = true`; show moves from journal rail to the profile's Stopped Watching shelf. Resurrection (re-search) clears the flag — room memberships do NOT auto-rejoin.
+
+**New `stopWatching` helper** ([db.ts](src/lib/db.ts)):
+
+```
+stopWatching(userId, username, showId)
+  → { groupsLeft, groupsSoftDeleted }
+```
+
+For each friend room the user is a member of on this show:
+
+- **Last member case** (`others.length === 0`) → `softDeleteFriendGroup(g.id)` only. No need to `recordDepartedMember` / `removeGroupMember` since the room itself is gone.
+- **Owner-with-other-members case** (`g.createdBy === userId && others.length > 0`) → `transferGroupOwnership` to the oldest other member (live ShowSection convention from line 669), then record + remove.
+- **Non-owner-with-others case** → `recordDepartedMember(groupId, userId, username)` + `removeGroupMember(groupId, userId)`.
+
+After all rooms are processed, **flag last** — `setStoppedWatching(userId, showId, true)`. Order matters: cascade first, flag last. Each individual step is idempotent enough that a partial failure can be retried (re-runs against the partial state succeed). If we set the flag first, a partway-through failure would leave the user in a state where the journal hides the show but they're still in some rooms — inconsistent.
+
+**Confirmation modal** (lives inside V2JournalPage):
+
+- Title: `Stop watching <show name>?` (Lora caps)
+- Body: "Your journal entries and progress will be preserved. The show moves to your **Stopped Watching** shelf. Searching for it again restores everything except room memberships."
+- If `groupsForActive.length > 0`: red-border alert block listing each affected room by name + "You'd need to be re-invited to come back."
+- Buttons: `keep watching` (transparent + outline cancel) and `stop watching` (solid `--danger` red, no outline, complies with v2 button rule). Pre-existing `LoadingDots` for the in-flight state.
+- Backdrop click closes (unless submitting).
+- On error: inline copy under the alert block; modal stays open so the user can retry.
+
+**Rail-search resurrection:**
+
+- V2JournalPage's `<SearchShows />` `onReopenJournal` callback now `await`s `setStoppedWatching(false)` if the picked show has the stopped flag, then refetches local progress and navigates. Show reappears in the rail without a manual refresh.
+- V2ProfileSelfPage's `+ add a show` tile mirrors the same cleanup on its own `onReopenJournal`.
+- No room re-creation. Memberships stay gone — re-invite required. Microcopy in the chevron menu's subtitle and the modal both name this consequence.
+
+**Rail filter:**
+
+- `userShowIds` now excludes shows where `progress[sid]?.stoppedWatching === true`. Stopped shows live on the profile shelf only; the rail is "shows you're actively engaged with."
+
+**Files (this commit):**
+
+| Path | Change |
+|---|---|
+| [src/lib/db.ts](src/lib/db.ts) | `stopWatching(userId, username, showId)` helper |
+| [src/components/v2/V2JournalPage.tsx](src/components/v2/V2JournalPage.tsx) | rail filter excludes stopped, chevron menu activated, confirmation modal added, search-resurrection logic |
+| [src/components/v2/V2ProfileSelfPage.tsx](src/components/v2/V2ProfileSelfPage.tsx) | `+ add a show` tile's `onReopenJournal` clears the stopped flag |
+
+**Bundle delta:** 930 → 933 KB raw / 249 → 250 KB gzip.
+
+**Behaviors deliberately deferred:**
+
+- **Pings, polls, SIKW asks left dangling in soft-deleted rooms** — RLS gates these tables on group membership, so non-members can't see them anyway. A periodic admin cleanup of orphaned rows in soft-deleted rooms could land later but isn't load-bearing for any user surface.
+- **Friend-room view (live ShowSection) for the show that just got stop-watched** — if a user has an open tab on the live `/show/:id?...` view of a now-soft-deleted room, the existing leave-room error paths in ShowSection should catch this. Not adding v2-side notification or refresh; it's a live-side concern.
+- **Stop-watching from the live ShowSection** — kept as the existing Settings → Leave Room flow per the spec's "friend rooms untouched" rule. The v2 journal-page chevron is the new entry-point; live still uses its existing per-room leave button.
+
 ### 2026-05-08 — v2 UI rethink: single-user public-posts page (checkpoint 7)
 
 Built `/v2/u/:username/show/:showId/posts` — the page the visitor profile's "see @owner's public posts on [show]" CTA links to. Mustard palette. Two states: pre-claim (visitor hasn't told us their progress) and post-claim (visitor has progress, real or session-stored).

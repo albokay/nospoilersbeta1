@@ -6,6 +6,7 @@ import {
   fetchProgress,
   setCanonPin,
   setShelfBlurb,
+  setStoppedWatching,
   type V2BlurbKind,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
@@ -435,7 +436,18 @@ export default function V2ProfileSelfPage() {
                   setProgress(next);
                   setAddOpen(false);
                 }}
-                onReopenJournal={(showId) => navigate(`/v2/journal/${showId}`)}
+                onReopenJournal={async (showId) => {
+                  // Resurrection from the profile + add tile: clear the
+                  // stopped flag if set, then route to the journal.
+                  if (user && progress[showId]?.stoppedWatching) {
+                    try {
+                      await setStoppedWatching(user.id, showId, false);
+                    } catch (err) {
+                      console.warn("clear-stopped failed:", err);
+                    }
+                  }
+                  navigate(`/v2/journal/${showId}`);
+                }}
                 onAuthRequired={() => navigate("/")}
                 placeholder="find a show"
               />
