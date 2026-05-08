@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-05-07)
+# Sidebar — Technical State (2026-05-08)
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -1314,6 +1314,78 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-08 — v2 UI rethink: parallel-build scaffolding (checkpoint 1)
+
+Kickoff of a multi-checkpoint UI redesign per `claude new UI handoff for Code/sidebar_UI rethink handoff_v3.md`. Approach is **parallel build under `/v2/*`** mirroring the `/m/*` mobile pattern — the live beta at every existing path is untouched and a route swap at cutover replaces it.
+
+**Architectural decisions ratified before code (per the design handoff):**
+
+- **Journal = canonical home for every original entry.** Today an entry is filed exclusively into `private | friend room | public`. New model: every author-owned thread is a journal entry; "private", "friend room X", "public" are *destinations the entry travels to*, not buckets. Responses (replies to others' entries) are NOT mirrored to the journal — they live where they were written.
+- **Three exclusive top-level destination states for compose:** Private only · Friend room (combinable with public) · Public (combinable with friend room). Journal-presence is implicit. Multi-room shows (N>1 friend rooms on one show) render N stacked friend-room cards in compose; selection state is `{ public: bool, groupIds: string[] }`.
+- **Progress-based gating, always.** No change to the existing spoiler model — `canView` / `effectiveProgress` carry forward.
+- **Four show-statuses derived from progress + one explicit action:** want-to-watch (zero progress), watching-now (in progress), finished-watching (final ep), stopped-watching (explicit close-show action). Stopped is the only non-derived state and requires a new column.
+- **Stop-watching = leave all friend rooms for that show.** Materially destructive. Calls the existing `removeGroupMember` + `recordDepartedMember` per affected room (and `softDeleteFriendGroup` if the user was the last member). Resurrection (re-searching the show) restores the journal tab + progress but does NOT auto-rejoin rooms — re-invitation required. Microcopy on the show-name chevron menu must call this out.
+- **Pinned canon = curatorial subset of finished-watching.** Toggle per-show on own profile; pinned shows surface above the see-all link with the orange italic Lora "canon" label.
+- **Compose-first writing** in a dedicated cream-palette page. Show name as heading, progress pill, ruled-paper textarea (line-height 28px + 28px background period — paired constraint), prompt placeholder, "want a prompt?" button, destination chooser, action row. "× not now" appears top-right and in action row; both fire the same discard-confirm modal when title or body is non-empty.
+- **No drafts** — posted (= journal-private at minimum) or discarded.
+- **Contextual deletion** — delete-from-friend-room removes only the `group_threads` link; if the entry was friend-room-only it demotes to private journal. Hard delete only when private-only entries are deleted from the journal.
+- **Friending = inviting to a friend room** — already true in production.
+
+**Pre-build verifications (live DB):**
+
+- `SELECT COUNT(*) FROM threads WHERE is_public = true AND is_deleted = false AND EXISTS (SELECT 1 FROM group_threads WHERE thread_id = threads.id)` returned `0`. The existing schema permits multi-destination threads (`is_public=true` AND `group_threads` rows coexisting on one thread) but no row in prod has ever been written that way — the `composeDestination` enum in current code enforces exclusivity at write time. The new chip-render logic is purely forward-looking; **no physical migration of existing entries is needed**. The four old buckets map cleanly: `private` → no chips · `public` → public chip · `friend-room` → friend chip · (hypothetical `friend+public`) → both chips.
+
+**Schema additions planned (additive only, applied later in the sequence):**
+
+- `progress.stopped_watching` (bool, default false) — flips on via the new "close show / stop watching" action.
+- `progress.canon_pin` (bool, default false) — toggled on the profile's finished-watching shelf.
+- `progress.watching_quote` / `want_reason` / `canon_take` / `stopped_reason` (nullable text) — the four shelf blurbs editable from profile pencil affordance.
+
+All four columns default to NULL/false; existing users adopt them organically.
+
+**Out of scope for this redesign:**
+
+- Friend rooms themselves (rendering, pings, polls, SIKW asks, invite flow) — fully untouched. v2 routes to existing friend-room surfaces.
+- Mobile (`/m/*`) — unchanged. v2 is desktop-only; `<768px` viewports continue to redirect to `/m`.
+- Pre-beta checklist (account deletion, password reset UI, error tracking, feedback-read flow, beta copy pass) — separate track.
+- The "expand" button on entries, first-run onboarding, public-aggregate (all-author) page, prompt library — all stay as-is.
+
+**Build sequence (10 checkpoints):**
+
+1. **(this commit) Route scaffolding** — `/v2/*` mounted as an early-return special route in `<App />`, palette-aware shared layout, five stub pages.
+2. **Journal page** (read-only first) — rail, panel, derived destination chips on entries, responses sections below the panel.
+3. **Schema additions** — single migration adding the six new `progress` columns.
+4. **Profile self** — shelves driven by derived statuses + blurb columns; pin toggle, edit pencils, "+ add to want-to-watch".
+5. **Profile visitor** — contextual CTAs comparing visitor's progress + room membership + want-to-watch list against owner's per-show.
+6. **Compose** — ruled-paper textarea, dest chooser, multi-destination submit, prompt feature wired to existing `getPromptSuggestion` + `PromptCard`, discard-confirm modal.
+7. **Single-user aggregate** — pre-claim and post-claim states.
+8. **Stop-watching action** — chevron menu in journal, "+ add a show" affordance on profile, resurrection on rail-search, friend-room departure cascade.
+9. **"+ add destination" upgrades on journal entries** — revives the dormant friend-room → public path (§6 item 8) and adds private → friend-room.
+10. **Cutover** — route swap, delete old components, physical adoption of v2 paths as canonical.
+
+**Checkpoint 1 commit (this entry):**
+
+| Path | Purpose |
+|---|---|
+| [src/components/v2/V2App.tsx](src/components/v2/V2App.tsx) | Path-parsing router; mirrors `<App />`'s special-route pattern |
+| [src/components/v2/V2Layout.tsx](src/components/v2/V2Layout.tsx) | Palette-aware shell: bg color + body class (`v2-journal-context` / `v2-profile-context` / `v2-compose-context`) + paired-header + top-right cluster (you-pill + sign-out) |
+| [src/components/v2/V2JournalPage.tsx](src/components/v2/V2JournalPage.tsx) | Green stub |
+| [src/components/v2/V2ProfileSelfPage.tsx](src/components/v2/V2ProfileSelfPage.tsx) | Mustard stub |
+| [src/components/v2/V2ProfileVisitorPage.tsx](src/components/v2/V2ProfileVisitorPage.tsx) | Mustard stub (visitor view) |
+| [src/components/v2/V2UserAggregatePage.tsx](src/components/v2/V2UserAggregatePage.tsx) | Mustard stub (single-user public posts) |
+| [src/components/v2/V2ComposePage.tsx](src/components/v2/V2ComposePage.tsx) | Cream stub |
+| [src/App.tsx](src/App.tsx) | Two-line addition: import + `if (pathParts[0] === "v2") return <V2App />;` next to the `/m` route |
+
+Routes mounted: `/v2` (redirects to `/v2/journal`) · `/v2/journal` · `/v2/profile` · `/v2/u/:username` · `/v2/u/:username/show/:showId/posts` · `/v2/compose/:showId`.
+
+Bundle delta: 868 → 874 kB raw / 236 → 238 kB gzip.
+
+**Conventions established this arc:**
+
+- **v2 is fully isolated from AppShell.** No AppShell state is read in v2; v2 components fetch their own data via `db.ts` helpers + `useAuth()`. Cleaner cutover later, and parallel iteration can't break the live site.
+- **Palette as body class.** `V2Layout` adds `v2-{palette}-context` + `v2-context` to `document.body` on mount, removes on unmount. Mirrors the existing `body.public-context` / `body.group-context` pattern. Page-level theming hooks for future v2 components piggyback on these.
+- **Page-level palette contract:** journal = green, profile (self + visitor + aggregate) = mustard, compose = cream. Don't introduce a fourth palette without a product reason.
 
 ### 2026-05-07 — Pings/polls/SIKW: styling polish pass + production ship
 
