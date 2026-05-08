@@ -1315,6 +1315,81 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: compose page (checkpoint 6)
+
+Built `/v2/compose/:showId` — the contemplative writing surface. Cream palette, ruled-paper textarea, prompt feature wired to existing `getPromptSuggestion` + `PromptCard`, multi-destination chooser (1+ friend rooms × public, both off by default, independent toggles), live selection summary, discard-confirm modal, post-on-submit lands back on `/v2/journal/:showId`.
+
+**Self-managed page chrome (not via V2Layout):**
+
+V2Layout's top-right cluster paints with `var(--dos-fg)` which is `#fff` in the default green palette and the public-context mustard palette — invisible on cream. Compose also has its own top-right ("× not now") rather than the standard you-pill cluster. So V2ComposePage manages its own body-class toggles (`v2-compose-context` + `has-header`) and renders its own page chrome with dark ink. No new theme tokens; `<style>` injection lives in the page itself.
+
+**Ruled-paper textarea math (the load-bearing visual):**
+
+- Line-height: `28px`. Background-image period: `28px`. **Both must match exactly** — drift = text floats off the rules.
+- Rule color: `rgba(43, 36, 24, 0.14)`, drawn 1px tall at `27px` offset (so text sits on top of each rule, like notebook paper).
+- Auto-grow: scrollHeight measured every input, snapped to the next 28px multiple via `Math.ceil(sh / 28) * 28`. Floor: `BODY_MIN_LINES * 28 = 168px`.
+- Manual resize: `resize: vertical` only. User-resized larger sticks (current height max'd against target). User can't shrink below content because `min-height` tracks the auto-grow target.
+- `overflow: hidden` so partial lines never appear at the bottom edge.
+
+**Effective-progress at write time** (rewatcher-aware, same rule as live ShowSection):
+
+- `tagPosition(progress)` returns `(highestS, highestE)` for rewatchers, else `(s, e)`. The thread is tagged at this position so spoiler-gating treats rewatcher posts as "writer knows up to S/E" — first-timers below that level can't see the post.
+- `rewatchSeason / rewatchEpisode` snapshot the rewatch position for display ("written on rewatch of S2E3"). Set only when posting as a rewatcher.
+- Rewatcher-only italic copy below the progress pill explains the auto-tag: "Your post is automatically marked to S/E — your highest prior progress as a re-watcher. It will only show to people who've watched at least that far." Same copy as the live ShowSection composer (live + journal-version both — see 2026-04-21 polish arc, `7894cea` + `2672028`).
+
+**Prompt feature** wired exactly to live ShowSection parity:
+
+- `fetchPrompts()` returns `PromptRow[]` (snake_case from DB); mapper inside the bootstrap converts to `PromptEntry[]` (camelCase) per the same shape as ShowSection's at line 932.
+- `handlePromptBtn / handlePromptShuffle` both call `getPromptSuggestion(show, tagPosition, shownPromptIds, promptEntries)` — the helper de-dupes via `excludeIds` (number[]) so the same prompt won't appear twice in a session.
+- `handlePromptInsert(text)` writes a `[PROMPT: text]` token at the cursor with a leading newline (when there's text before) and a trailing newline. Matches the live render path's `.prompt-ref` styling automatically.
+- Prompt usage is logged via `logThreadPrompt(threadId, promptId)` after successful submit. Best-effort; failures are swallowed (live behavior).
+
+**Destination chooser:**
+
+- "in your private journal — always" baseline pill — quiet, persistent, non-interactive. Sets the implicit baseline.
+- Sub-eyebrow: "share it further?"
+- Auto-fit grid `repeat(auto-fit, minmax(280px, 1fr))` of cards: one per friend room on this show + one public card.
+- **Both toggles off by default** per spec. `selectedGroupIds: Set<string>` + `selectedPublic: boolean`.
+- Independent toggles. User can pick zero, one of either, or both. Multi-room selection is supported (a single submit can attach the thread to N rooms).
+
+**Destination cards visual style** (compose-cream context, both states comply with the v2 button rule):
+
+- Unselected: solid paper fill `#fdfbf3`, no border, dark-ink text. Top-right indicator is transparent + 2px gray outline (transparent-with-outline pattern).
+- Selected: solid palette-color fill (canon-blue `#355eb8` for friend rooms, canon-mustard `#dea838` for public), no border, white text. Top-right indicator becomes a solid-white dot with the palette color as the checkmark glyph (solid-fill pattern). White-on-color reads cleanly.
+
+**Live selection summary** (`buildSelectionSummary`):
+
+- Builds the sentence with up to 3 room names enumerated Oxford-style ("post to your **A**, **B**, and **C** friend rooms"), collapses to "post to your **N friend rooms**" at 4+. Sentence flows correctly when public is also selected ("…, and publish **publicly** — visible to anyone caught up to S/E.").
+- Four base shapes: nothing selected · friend(s) only · public only · both. Multi-room phrasing branches inside the friend(s)-only and both branches.
+
+**Discard-confirm:**
+
+- Dirty check: `postTitle.trim().length > 0 || postBody.trim().length > 0`. If clean, both "× not now" buttons (top-right + action row) navigate directly back to `/v2/journal/:showId` without confirmation.
+- If dirty, modal renders with copy: "Are you sure?" / "You will lose what you've written." Buttons: "keep writing" (transparent + outline) and "discard" (solid danger-red, no outline, with X icon). Backdrop click closes modal but doesn't discard.
+
+**Submit** (`submitPost`):
+
+- Writes one thread row via `insertThread(...)` with `isPublic: selectedPublic`.
+- Then loops `selectedGroupIds` and calls `addThreadToGroup(t.id, groupId)` for each. Best-effort per room — a single room failing to attach doesn't abort (consistent with how the live ShowSection handles its single-room case at ShowSection.tsx:1660).
+- Logs prompt usage for any inserted prompts.
+- Navigates to `/v2/journal/:showId` — new entry shows up at the top of the entry feed with derived chips reflecting all selected destinations. **First multi-destination rows in prod ship via this surface** (the live composer artificially restricted to one-of-three; the schema always permitted multi-destination, see HANDOFF §3 "Three Publishing Destinations").
+
+**Cutover plan note (added this checkpoint):**
+
+After cutover, the friend-room and public-space "write" buttons that today live in the live ShowSection should also route to `/v2/compose/:showId` with the destination chooser pre-populated based on the entry context (e.g., from a friend room → that room's checkbox checked; from public → public checkbox checked). For now, `/v2/journal` is the only entry point. Per spec, friend rooms are out of scope for the v2 redesign, and the live site continues to operate during the parallel build, so this rewire happens at cutover, not in any current checkpoint.
+
+**Files (this commit):**
+
+- [src/components/v2/V2ComposePage.tsx](src/components/v2/V2ComposePage.tsx) — full implementation, replaces stub.
+
+**Bundle delta:** 908 → 921 KB raw / 244 → 247 KB gzip.
+
+**Behaviors deliberately deferred:**
+
+- **Post-publish moment + stake-before-see reveal** (the visual confirmation/transition after submit, with a special variant when posting to a friend room that reveals the friends' previously-hidden entries) — tabled per spec, lands as its own future checkpoint.
+- **Friend-room and public "write" buttons** rewired to v2 compose with pre-population — at cutover, not in this arc.
+- **Entry points other than `/v2/journal`** — none exist in the v2 arc until cutover.
+
 ### 2026-05-08 — v2 UI rethink: visitor profile UI (checkpoint 5 phase B)
 
 Built `/v2/u/:username` — read-only mustard-palette view of someone else's profile, four shelves (same classification + render shape as the self page), per-card contextual CTAs.
