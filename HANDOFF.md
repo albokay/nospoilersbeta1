@@ -1315,6 +1315,31 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: visitor profile RPC extension (checkpoint 5 phase A)
+
+Migration-only commit. Extends `get_public_progress(target_user_id)` to return the v2 columns the visitor profile page needs to classify and render the owner's shelves. Existing live caller (`fetchPublicProgressForUser` at [db.ts:1251](src/lib/db.ts:1251)) unpacks rows by column name and ignores additional columns — adding columns is non-breaking.
+
+**Migration:** [supabase/migrations/20260508_v2_get_public_progress_extended.sql](supabase/migrations/20260508_v2_get_public_progress_extended.sql)
+
+`CREATE OR REPLACE FUNCTION public.get_public_progress(target_user_id uuid)` — same `STABLE SECURITY DEFINER` + `LANGUAGE sql` shape as before. Returns 14 columns now (was 3): `show_id`, `season`, `episode`, `is_rewatching`, `rewatch_season`, `rewatch_episode`, `highest_season`, `highest_episode`, `stopped_watching`, `canon_pin`, `watching_quote`, `want_reason`, `canon_take`, `stopped_reason`.
+
+**Why these specific columns:** the visitor profile classifies each show into one of four shelves using the same logic as `V2ProfileSelfPage` (stoppedWatching → stopped; (s,e)===(0,0) → want; rewatch-aware finished detection from highest_*; else watching). It then renders the per-shelf blurb and the canon-pin label. All v2 self-page renders need to work in the visitor flow too.
+
+**Privacy posture:** every returned column is one the owner has chosen to expose by participating in Sidebar's public profile model. No enumeration risk — caller must already know the target user's UUID. `SECURITY DEFINER` bypasses RLS by design (that's why the RPC exists in the first place — `progress` is owner-only via RLS).
+
+**`search_path`** is intentionally NOT set here — matches the existing function's settings to keep the diff minimal. The Supabase advisor's "Function Search Path Mutable" finding for this RPC and 8 others (HANDOFF §6 item 21) is cosmetic; cleaning it deserves its own dedicated pass when convenient.
+
+**Two-step deploy:**
+
+1. **Phase A (this commit)** — Migration file lands.
+2. **Manual** — Apply via Supabase SQL editor before phase B. The verify probe is calling the RPC and expecting 14 columns:
+   ```sql
+   SELECT * FROM public.get_public_progress(auth.uid()) LIMIT 1;
+   ```
+3. **Phase B (next commit)** — Update [fetchPublicProgressForUser](src/lib/db.ts:1251) to map all 14 columns into `Record<string, ProgressEntry>` (the same shape the self-page uses). New helper to compute per-show contextual CTAs (shared rooms, shared want-to-watch, owner's public-post count). Replace the visitor page stub with the full mustard-palette four-shelf render — same shelves as self, no edit affordances, contextual CTAs per show.
+
+**Bundle delta:** zero. SQL only.
+
 ### 2026-05-08 — v2 UI rethink: profile self (checkpoint 4)
 
 Built `/v2/profile` — the user's own public profile, mustard-palette, four shelves driven by the new `progress` columns landed in checkpoint 3.
