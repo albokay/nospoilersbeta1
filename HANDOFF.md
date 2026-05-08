@@ -1315,6 +1315,70 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: single-user public-posts page (checkpoint 7)
+
+Built `/v2/u/:username/show/:showId/posts` — the page the visitor profile's "see @owner's public posts on [show]" CTA links to. Mustard palette. Two states: pre-claim (visitor hasn't told us their progress) and post-claim (visitor has progress, real or session-stored).
+
+**Data path:**
+
+- `fetchPublicProfileByUsername(username)` → ownerId (404 + friendly error if not found).
+- `fetchPublicThreadsForUser(ownerId)` → all owner's public threads, then client-side filter to `showId`.
+- `fetchShows()` → resolve show name + seasons (for the picker).
+- Public-reply counts via a single fanout query: `from('replies').select('thread_id').in('thread_id', [...]).eq('is_deleted', false).is('group_id', null)` then group client-side. `group_id IS NULL` restricts to public-conversation replies (friend-room replies share the threads table but live in a different space). Counts are nice-to-have; degrade silently on RLS or network failure.
+- Visitor's progress on this show:
+  - **Logged-in with real progress row** → that progress; `claimSource = "user-progress"`.
+  - **Logged-in without progress row** → fall through to session-storage `ns_browse_prog_<showId>`; `claimSource = "session"`.
+  - **Logged-out** → session-storage only; `claimSource = "session"` once set.
+
+**Pre-claim render:**
+
+- Single dashed-border card centered: `2px dashed rgba(255,255,255,0.6)` + transparent fill (transparent-with-outline pattern).
+- Body: `@<owner> has N public posts about <show>. They're spoiler-gated by where you are in the show. Tell us where you are and <the post|the posts> will unfold.` Singular/plural automatic.
+- "tell us where you are" pill (canon-green `.btn.post`); click reveals embedded `<OneSelectProgress />` (default `requireConfirm=true` so the standard confirmation modal flow fires; `onConfirm` writes the progress and re-renders the page in post-claim state).
+
+**Post-claim render:**
+
+- Progress status bar: green `you're at S/E` pill + "change progress" button. Clicking the latter opens an inline `<OneSelectProgress />` adjacent to the pill, plus a cancel button.
+- Visible-entries stack: filtered through `canView({ season: t.season, episode: t.episode }, visitorProgress)` — same gate as the rest of the site.
+- Each entry renders title + episode tag + timeAgo + "by @owner" byline + linkified body + action row (`write a response` + `quote` + reply count). Both action buttons navigate to `/show/:id` (the live public-conversation surface) — the actual response composer is a v2 future checkpoint; for now the user picks up reading/responding from the live UI.
+- "you're here, at S/E" italic divider after the visible stack.
+- Locked summary (when `lockedCount > 0`): dashed-border card with copy `<N more posts> from @owner, tagged to episodes after where you are. They will appear when you mark more episodes watched.`
+
+**Progress-claim semantics:**
+
+- `claimSource === "user-progress"` → claim writes via `upsertProgress(user.id, showId, s, e)` — same path as the standard journal-progress update. Affects the user's actual journal.
+- `claimSource === "session"` (logged-in without journal tab, or logged-out) → claim writes via session-storage `ns_browse_prog_<showId>`, mirroring the live `SearchShows` browse-public flow. Doesn't auto-create a journal tab — visitor-side progress claims should NOT silently onboard a user.
+
+**View-bar at top:**
+
+- Left: "coming from `@owner`'s profile" (links back to `/v2/u/:username`).
+- Right: "see all public posts on `<show>` →" (links to `/show/:id`, the live show page's public-conversation surface).
+
+**Page heading:**
+
+- Eyebrow: `@<owner>'s public posts on:` with the @-handle as a subtle inline link to the visitor profile.
+- Show name in big Lora caps (44px, weight 700).
+- Page-meta: `N posts · written between <month-day> and <relative time>`. Singular date when there's only one post, hidden entirely when count is zero.
+
+**Visual conventions held:**
+
+- Pre-claim card + locked-summary card: transparent fill + 2px dashed white outline. Transparent-with-outline pattern.
+- Entry cards: cream-tinted `rgba(255,250,235, 0.55)` solid fill, no border. Solid-fill-no-outline pattern.
+- Action buttons: existing `.btn` / `.btn.post` / `.btn.h40` from theme.ts.
+- All buttons + chips comply with the v2 button rule.
+
+**Files (this commit):**
+
+- [src/components/v2/V2UserAggregatePage.tsx](src/components/v2/V2UserAggregatePage.tsx) — full implementation, replaces stub.
+
+**Bundle delta:** 921 → 930 KB raw / 247 → 249 KB gzip.
+
+**Behaviors deliberately deferred:**
+
+- **In-page response composer** — `write a response` and `quote` both navigate to `/show/:id` for now. A v2 reply composer is a future checkpoint, separate from the destination compose page that ships in checkpoint 6.
+- **Public-thread reply count for friend-room replies** — counts only public-conversation replies (`group_id IS NULL`). Friend-room replies on the same thread row are excluded from the count, which matches what the user expects ("public responses") and what the live show page surfaces.
+- **Logged-in visitor without journal tab who claims progress** — saves to session-storage rather than `upsertProgress` because creating a real journal tab via a visitor-page progress-claim would silently onboard the user. The intentional split: "I'm browsing your posts" vs "I'm starting a journal on this show" stays distinct.
+
 ### 2026-05-08 — v2 UI rethink: compose page (checkpoint 6)
 
 Built `/v2/compose/:showId` — the contemplative writing surface. Cream palette, ruled-paper textarea, prompt feature wired to existing `getPromptSuggestion` + `PromptCard`, multi-destination chooser (1+ friend rooms × public, both off by default, independent toggles), live selection summary, discard-confirm modal, post-on-submit lands back on `/v2/journal/:showId`.
