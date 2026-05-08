@@ -435,8 +435,18 @@ export default function V2JournalPage() {
                     <button
                       className="btn h40"
                       onClick={() => {
+                        // Live ShowSection reads activeGroupId from
+                        // location.state (App.tsx:659 pattern). Query
+                        // strings are ignored. Single-room → preselect
+                        // that room; multi-room → land on the show
+                        // page and let the live UI offer the room
+                        // picker.
                         const g = groupsForActive[0];
-                        navigate(`/show/${activeShow.id}${groupsForActive.length === 1 ? `?group=${g.id}` : ""}`);
+                        if (groupsForActive.length === 1) {
+                          navigate(`/show/${activeShow.id}`, { state: { activeGroupId: g.id } });
+                        } else {
+                          navigate(`/show/${activeShow.id}`);
+                        }
                       }}
                       style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
                     >
@@ -497,10 +507,16 @@ export default function V2JournalPage() {
                           <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
                             {chips.includes("friend") && (
                               <a
-                                href={`/show/${t.showId}${row.groupId ? `?group=${row.groupId}` : ""}`}
+                                href={`/show/${t.showId}`}
                                 onClick={(e) => {
                                   e.preventDefault();
-                                  navigate(`/show/${t.showId}${row.groupId ? `?group=${row.groupId}` : ""}`);
+                                  // location.state is the live convention for
+                                  // preselecting a friend room (App.tsx:659).
+                                  if (row.groupId) {
+                                    navigate(`/show/${t.showId}`, { state: { activeGroupId: row.groupId } });
+                                  } else {
+                                    navigate(`/show/${t.showId}`);
+                                  }
                                 }}
                                 style={{
                                   display: "inline-flex",

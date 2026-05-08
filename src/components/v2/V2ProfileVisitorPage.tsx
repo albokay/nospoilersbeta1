@@ -523,7 +523,7 @@ function ContextualCTAs({
   sharedRoom: SharedRoomRow | undefined;
   ownerHasPublic: boolean;
   ownerUsername: string;
-  navigate: (to: string) => void;
+  navigate: (to: string, opts?: { state?: any }) => void;
 }) {
   const collabCTA = (() => {
     if (!visitorLoggedIn) return null;
@@ -531,7 +531,11 @@ function ContextualCTAs({
       return (
         <button
           className="btn h40"
-          onClick={() => navigate(`/show/${showId}?group=${sharedRoom.groupId}`)}
+          onClick={() =>
+            // Live ShowSection reads activeGroupId from location.state
+            // (App.tsx:659 pattern). ?group= query strings are ignored.
+            navigate(`/show/${showId}`, { state: { activeGroupId: sharedRoom.groupId } })
+          }
           style={{ fontSize: 12 }}
         >
           → go to your friend room
