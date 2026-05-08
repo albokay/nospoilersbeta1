@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { fetchPublicProgressForUser } from "../lib/db";
+import NudgePopover, { type NudgeDirection } from "./NudgePopover";
+import AskTheRoomPicker from "./AskTheRoomPicker";
+import PollComposer from "./PollComposer";
+import SIKWComposer from "./SIKWComposer";
 import type { FriendGroupMember } from "../types";
 
 // ── Visual constants (canon palette + post-it accent green) ───────────────
@@ -17,13 +21,18 @@ interface Props {
   showId: string;
   seasons: number[];
   userProgress: { s: number; e: number } | undefined;
+  /** Active friend room id; required for ping-launcher mode (passed to NudgePopover for sends). */
+  groupId?: string;
+  /** Fired after the asker successfully opens a poll, so the parent can
+   *  bump PollSticky's refresh key and the asker sees their poll immediately. */
+  onPollOpened?: () => void;
 }
 
 type Status =
-  | { kind: "ahead"; count: number | null; username: string }
-  | { kind: "same"; username: string }
-  | { kind: "behind"; count: number | null; username: string }
-  | { kind: "not-started"; username: string };
+  | { kind: "ahead"; count: number | null; username: string; userId: string }
+  | { kind: "same"; username: string; userId: string }
+  | { kind: "behind"; count: number | null; username: string; userId: string }
+  | { kind: "not-started"; username: string; userId: string };
 
 // Convert (season, episode) into an absolute episode index from S1E1 = 1.
 // Returns null when the seasons array can't accommodate the input — caller
@@ -44,12 +53,26 @@ function isNotStarted(p: { s: number; e: number } | "no-row" | undefined): boole
   return p.s < 1 || p.e < 1;
 }
 
+function statusToDirection(s: Status): NudgeDirection {
+  if (s.kind === "ahead") return "ahead";
+  if (s.kind === "same") return "same";
+  if (s.kind === "behind") return "behind";
+  return "not-started";
+}
+
+function statusToCount(s: Status): number | null {
+  if (s.kind === "ahead" || s.kind === "behind") return s.count;
+  return null;
+}
+
 export default function FriendProgressPostIt({
   members,
   currentUserId,
   showId,
   seasons,
   userProgress,
+  groupId,
+  onPollOpened,
 }: Props) {
   // Hide entirely if viewport is too narrow (mobile gets separate treatment).
   const [wide, setWide] = useState(() =>
@@ -70,6 +93,12 @@ export default function FriendProgressPostIt({
   //   {s,e}     → loaded progress
   type Loaded = { s: number; e: number } | "no-row" | "error";
   const [progressByUserId, setProgressByUserId] = useState<Record<string, Loaded | undefined>>({});
+
+  // Popover anchor state (ping-launcher mode only).
+  const [openFor, setOpenFor] = useState<{ status: Status; rect: DOMRect } | null>(null);
+  const [askPickerRect, setAskPickerRect] = useState<DOMRect | null>(null);
+  const [pollComposerOpen, setPollComposerOpen] = useState<boolean>(false);
+  const [sikwComposerOpen, setSikwComposerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!others.length) return;
@@ -105,7 +134,7 @@ export default function FriendProgressPostIt({
     if (p === "error") continue;          // fetch failed → hide silently per spec
 
     if (isNotStarted(p)) {
-      statuses.push({ kind: "not-started", username: m.username });
+      statuses.push({ kind: "not-started", username: m.username, userId: m.userId });
       continue;
     }
     // p is a {s,e} progress object from here.
@@ -113,7 +142,7 @@ export default function FriendProgressPostIt({
 
     // Caught up = exactly the same episode as the user.
     if (userProgress && fp.s === userProgress.s && fp.e === userProgress.e) {
-      statuses.push({ kind: "same", username: m.username });
+      statuses.push({ kind: "same", username: m.username, userId: m.userId });
       continue;
     }
 
@@ -121,23 +150,23 @@ export default function FriendProgressPostIt({
     const fIdx = episodeIndex(seasons, fp.s, fp.e);
     if (fIdx != null && userIdx != null) {
       const delta = fIdx - userIdx;
-      if (delta > 0) statuses.push({ kind: "ahead", count: delta, username: m.username });
-      else if (delta < 0) statuses.push({ kind: "behind", count: -delta, username: m.username });
-      else statuses.push({ kind: "same", username: m.username });
+      if (delta > 0) statuses.push({ kind: "ahead", count: delta, username: m.username, userId: m.userId });
+      else if (delta < 0) statuses.push({ kind: "behind", count: -delta, username: m.username, userId: m.userId });
+      else statuses.push({ kind: "same", username: m.username, userId: m.userId });
       continue;
     }
 
     // Fallback: incomplete season data → suppress count, give direction only.
     if (!userProgress) {
-      statuses.push({ kind: "ahead", count: null, username: m.username });
+      statuses.push({ kind: "ahead", count: null, username: m.username, userId: m.userId });
       continue;
     }
     if (fp.s > userProgress.s || (fp.s === userProgress.s && fp.e > userProgress.e)) {
-      statuses.push({ kind: "ahead", count: null, username: m.username });
+      statuses.push({ kind: "ahead", count: null, username: m.username, userId: m.userId });
     } else if (fp.s < userProgress.s || (fp.s === userProgress.s && fp.e < userProgress.e)) {
-      statuses.push({ kind: "behind", count: null, username: m.username });
+      statuses.push({ kind: "behind", count: null, username: m.username, userId: m.userId });
     } else {
-      statuses.push({ kind: "same", username: m.username });
+      statuses.push({ kind: "same", username: m.username, userId: m.userId });
     }
   }
 
@@ -168,79 +197,204 @@ export default function FriendProgressPostIt({
 
   const overflow = statuses.length > SCROLL_THRESHOLD_LINES;
 
+  // Ping-launcher mode renders helper text + clickable names + divider +
+  // "ask the room →" line. Off when there's no active group (e.g. solo or
+  // public view) — the post-it falls back to its static form.
+  const launcherMode = !!groupId;
+
+  function handleNameClick(e: React.MouseEvent<HTMLSpanElement>, status: Status) {
+    if (!launcherMode) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setOpenFor({ status, rect });
+  }
+
   return (
-    <div
-      aria-label="Friend progress"
-      style={{
-        position: "fixed",
-        // Box extends past the viewport's right edge so the right edge
-        // is never visible. Text content stays in the original on-screen
-        // location: paddingRight matches the off-screen extension so the
-        // off-screen portion is pure green padding, no text. Width sized
-        // so the visible portion extends 50px further into the center
-        // column than the prior fit (per request).
-        right: -96,
-        bottom: 96,
-        zIndex: 50,
-        transform: `rotate(${TILT_DEG}deg)`,
-        transformOrigin: "center",
-        background: POST_IT_BG,
-        color: HANDLE_COLOR,
-        // Top/bottom 16, left 22, right 22 + 80 (off-screen amount).
-        padding: "16px 102px 16px 22px",
-        borderRadius: 0,             // sharp corners
-        boxShadow: "none",
-        width: 450,
-        fontSize: 14,
-        lineHeight: 1.5,
-        // Internal scroll only when post-it grows past the threshold.
-        maxHeight: overflow ? 360 : "none",
-        overflowY: overflow ? "auto" : "visible",
-        // Don't intercept hover on adjacent elements through the rotated bbox.
-        pointerEvents: "auto",
-      }}
-    >
-      {statuses.map((s, i) => {
-        const handle = (
-          <span style={{ fontStyle: "italic", color: HANDLE_COLOR }}>@{s.username}</span>
-        );
-        const lineStyle: React.CSSProperties = { whiteSpace: "nowrap" };
-        if (s.kind === "ahead") {
-          return (
-            <div key={i} style={lineStyle}>
-              {handle}{" is "}
-              <span style={{ color: AHEAD_COLOR }}>
-                {s.count != null ? `${s.count} episode${s.count === 1 ? "" : "s"} ` : ""}ahead
-              </span>
-            </div>
+    <>
+      <div
+        aria-label="Friend progress"
+        style={{
+          position: "fixed",
+          right: -96,
+          bottom: 96,
+          zIndex: 50,
+          transform: `rotate(${TILT_DEG}deg)`,
+          transformOrigin: "center",
+          background: POST_IT_BG,
+          color: HANDLE_COLOR,
+          padding: "16px 102px 16px 22px",
+          borderRadius: 0,
+          boxShadow: "none",
+          width: 450,
+          fontSize: 14,
+          lineHeight: 1.5,
+          maxHeight: overflow ? 360 : "none",
+          overflowY: overflow ? "auto" : "visible",
+          pointerEvents: "auto",
+        }}
+      >
+        {launcherMode && (
+          <div
+            style={{
+              fontStyle: "italic",
+              fontSize: 11,
+              opacity: 0.85,
+              marginBottom: 8,
+            }}
+          >
+            click a name to nudge a friend
+          </div>
+        )}
+
+        {statuses.map((s, i) => {
+          const handleStyle: React.CSSProperties = launcherMode
+            ? {
+                fontStyle: "italic",
+                color: HANDLE_COLOR,
+                borderBottom: `1px dotted ${HANDLE_COLOR}`,
+                cursor: "pointer",
+                padding: "0 1px",
+              }
+            : { fontStyle: "italic", color: HANDLE_COLOR };
+
+          const handle = (
+            <span
+              role={launcherMode ? "button" : undefined}
+              tabIndex={launcherMode ? 0 : undefined}
+              onClick={launcherMode ? (e) => handleNameClick(e, s) : undefined}
+              onKeyDown={
+                launcherMode
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        setOpenFor({ status: s, rect });
+                      }
+                    }
+                  : undefined
+              }
+              style={handleStyle}
+            >
+              @{s.username}
+            </span>
           );
-        }
-        if (s.kind === "same") {
+          const lineStyle: React.CSSProperties = { whiteSpace: "nowrap" };
+          if (s.kind === "ahead") {
+            return (
+              <div key={i} style={lineStyle}>
+                {handle}{" is "}
+                <span style={{ color: AHEAD_COLOR }}>
+                  {s.count != null ? `${s.count} episode${s.count === 1 ? "" : "s"} ` : ""}ahead
+                </span>
+              </div>
+            );
+          }
+          if (s.kind === "same") {
+            return (
+              <div key={i} style={lineStyle}>
+                {handle}{" "}
+                <span style={{ color: HANDLE_COLOR }}>and you are in sync!</span>
+              </div>
+            );
+          }
+          if (s.kind === "behind") {
+            return (
+              <div key={i} style={lineStyle}>
+                {handle}{" is "}
+                <span style={{ color: BEHIND_COLOR }}>
+                  {s.count != null ? `${s.count} episode${s.count === 1 ? "" : "s"} ` : ""}behind
+                </span>
+              </div>
+            );
+          }
+          // not-started
           return (
             <div key={i} style={lineStyle}>
               {handle}{" "}
-              <span style={{ color: HANDLE_COLOR }}>and you are caught up!</span>
+              <span style={{ color: HANDLE_COLOR }}>hasn't started watching</span>
             </div>
           );
-        }
-        if (s.kind === "behind") {
-          return (
-            <div key={i} style={lineStyle}>
-              {handle}{" is "}
-              <span style={{ color: BEHIND_COLOR }}>
-                {s.count != null ? `${s.count} episode${s.count === 1 ? "" : "s"} ` : ""}behind
-              </span>
+        })}
+
+        {launcherMode && (
+          <>
+            <div
+              style={{
+                borderTop: `0.5px dashed rgba(23,52,4,0.4)`,
+                margin: "10px 0 8px",
+              }}
+            />
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setAskPickerRect(rect);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setAskPickerRect(rect);
+                }
+              }}
+              style={{
+                fontStyle: "italic",
+                fontSize: 12,
+                color: HANDLE_COLOR,
+                cursor: "pointer",
+                opacity: 0.85,
+              }}
+            >
+              ask the room →
             </div>
-          );
-        }
-        // not-started
-        return (
-          <div key={i} style={lineStyle}>
-            {handle}{" "}
-            <span style={{ color: HANDLE_COLOR }}>hasn't started watching</span>
-          </div>
-        );
-      })}
-    </div>
+          </>
+        )}
+      </div>
+
+      {launcherMode && openFor && groupId && (
+        <NudgePopover
+          recipientUsername={openFor.status.username}
+          recipientId={openFor.status.userId}
+          groupId={groupId}
+          currentUserId={currentUserId}
+          direction={statusToDirection(openFor.status)}
+          count={statusToCount(openFor.status)}
+          anchorRect={openFor.rect}
+          onClose={() => setOpenFor(null)}
+        />
+      )}
+
+      {launcherMode && askPickerRect && groupId && (
+        <AskTheRoomPicker
+          anchorRect={askPickerRect}
+          onClose={() => setAskPickerRect(null)}
+          onSelectPoll={() => {
+            setAskPickerRect(null);
+            setPollComposerOpen(true);
+          }}
+          onSelectSikw={() => {
+            setAskPickerRect(null);
+            setSikwComposerOpen(true);
+          }}
+        />
+      )}
+
+      {launcherMode && pollComposerOpen && groupId && (
+        <PollComposer
+          groupId={groupId}
+          onClose={() => setPollComposerOpen(false)}
+          onOpened={() => onPollOpened?.()}
+        />
+      )}
+
+      {launcherMode && sikwComposerOpen && groupId && (
+        <SIKWComposer
+          groupId={groupId}
+          progressSeason={userProgress?.s ?? 0}
+          progressEpisode={userProgress?.e ?? 0}
+          onClose={() => setSikwComposerOpen(false)}
+        />
+      )}
+    </>
   );
 }

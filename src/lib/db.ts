@@ -2054,6 +2054,983 @@ export async function sendInvite(data: {
   return result as SendInviteResult;
 }
 
+// ── Pings (round 1: friend-room one-way nudges) ───────────────────────────────
+
+import type { Ping, PingType } from "../types";
+
+export type SendMessageResult =
+  | { ok: true; pingId: string; channel: "sticky" | "email"; warning?: string }
+  | { ok: false; error: string; message?: string };
+
+/**
+ * Calls the `send-message` Edge Function. The function validates caller +
+ * group membership + 7-day rate limit, writes the ping row, and (for
+ * nudge_ahead only) sends the Resend email. Mirrors sendInvite's error
+ * handling so non-2xx responses surface their structured error code +
+ * message rather than the generic FunctionsHttpError wrapper.
+ */
+export async function sendMessage(args: {
+  templateType: PingType;
+  recipientId: string;
+  groupId: string;
+  message: string;
+}): Promise<SendMessageResult> {
+  const { data: result, error } = await supabase.functions.invoke("send-message", {
+    body: {
+      template_type: args.templateType,
+      recipient_id:  args.recipientId,
+      group_id:      args.groupId,
+      message:       args.message,
+    },
+  });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const body = await ctx.json();
+        if (body && typeof body === "object" && body.ok === false && typeof body.error === "string") {
+          return { ok: false, error: body.error, message: body.message };
+        }
+        return {
+          ok: false,
+          error: "edge_function_error",
+          message: `${error.message} (status ${ctx.status}${body ? `: ${JSON.stringify(body)}` : ""})`,
+        };
+      } catch {
+        const text = await ctx.text().catch(() => "");
+        return {
+          ok: false,
+          error: "edge_function_error",
+          message: `${error.message} (status ${ctx.status}${text ? `: ${text}` : ""})`,
+        };
+      }
+    }
+    return { ok: false, error: "edge_function_error", message: error.message };
+  }
+  return result as SendMessageResult;
+}
+
+/**
+ * Recipient stamps an active ping as dismissed. Returns true if the call
+ * dismissed the row, false otherwise (not yours / doesn't exist /
+ * already dismissed — all return false uniformly, no leak).
+ */
+export async function dismissPing(pingId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("dismiss_ping", { p_ping_id: pingId });
+  if (error) throw error;
+  return data === true;
+}
+
+type PingRow = {
+  id:            string;
+  sender_id:     string;
+  recipient_id:  string;
+  show_id:       string;
+  group_id:      string;
+  ping_type:     PingType;
+  message:       string | null;
+  sent_at:       string;
+  dismissed_at:  string | null;
+};
+
+function rowToPing(row: PingRow, senderUsername?: string): Ping {
+  return {
+    id:            row.id,
+    senderId:      row.sender_id,
+    recipientId:   row.recipient_id,
+    showId:        row.show_id,
+    groupId:       row.group_id,
+    pingType:      row.ping_type,
+    message:       row.message,
+    sentAt:        new Date(row.sent_at).getTime(),
+    dismissedAt:   row.dismissed_at ? new Date(row.dismissed_at).getTime() : null,
+    senderUsername,
+  };
+}
+
+// One ping per (sender, recipient, room) per 24 hours.
+// Must stay in sync with PING_RATE_LIMIT_ENABLED in
+// supabase/functions/send-message/index.ts.
+const PING_RATE_LIMIT_ENABLED      = true;
+const PING_RATE_LIMIT_WINDOW_HOURS = 24;
+
+// ── Polls ─────────────────────────────────────────────────────────────────
+
+export type PollDuration = "24h" | "3d" | "1w";
+
+export type ActiveItemType = "poll" | "ask";
+
+export type OpenPollResult =
+  | { ok: true; pollId: string; replacedId: string | null; replacedType: ActiveItemType | null }
+  | { ok: false; error: string; existingType?: ActiveItemType; existingId?: string };
+
+export type OpenAskResult =
+  | { ok: true; askId: string; replacedId: string | null; replacedType: ActiveItemType | null }
+  | { ok: false; error: string; existingType?: ActiveItemType; existingId?: string };
+
+/**
+ * Calls the open_poll RPC. Validates membership, enforces the shared
+ * one-active-item slot (poll OR SIKW ask per asker per room),
+ * atomically creates the poll + options.
+ *
+ * On has_active_item: returns existingType + existingId so the
+ * frontend can prompt for replacement-with-confirmation with copy
+ * referencing the right kind of item.
+ */
+export async function openPoll(args: {
+  groupId: string;
+  question: string;
+  allowWriteIn: boolean;
+  duration: PollDuration;
+  options: string[];
+  replaceExisting: boolean;
+}): Promise<OpenPollResult> {
+  const { data, error } = await supabase.rpc("open_poll", {
+    p_group_id:        args.groupId,
+    p_question:        args.question,
+    p_allow_write_in:  args.allowWriteIn,
+    p_duration:        args.duration,
+    p_options:         args.options,
+    p_replace_existing: args.replaceExisting,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.ok === false) {
+    return {
+      ok: false,
+      error: data?.error || "unknown",
+      existingType: data?.existing_type ?? undefined,
+      existingId:   data?.existing_id   ?? undefined,
+    };
+  }
+  return {
+    ok: true,
+    pollId:       data.poll_id,
+    replacedId:   data.replaced_id ?? null,
+    replacedType: data.replaced_type ?? null,
+  };
+}
+
+/**
+ * Calls the open_ask RPC for SIKW ("should I keep watching?") asks.
+ * Same shared-slot semantics as openPoll. asker_progress_* are
+ * stored at send time so respondents can render meaningful
+ * episode-target dropdowns.
+ */
+export async function openAsk(args: {
+  groupId: string;
+  message: string;
+  progressSeason: number;
+  progressEpisode: number;
+  replaceExisting: boolean;
+}): Promise<OpenAskResult> {
+  const { data, error } = await supabase.rpc("open_ask", {
+    p_group_id:         args.groupId,
+    p_message:          args.message,
+    p_progress_season:  args.progressSeason,
+    p_progress_episode: args.progressEpisode,
+    p_replace_existing: args.replaceExisting,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.ok === false) {
+    return {
+      ok: false,
+      error: data?.error || "unknown",
+      existingType: data?.existing_type ?? undefined,
+      existingId:   data?.existing_id   ?? undefined,
+    };
+  }
+  return {
+    ok: true,
+    askId:        data.ask_id,
+    replacedId:   data.replaced_id ?? null,
+    replacedType: data.replaced_type ?? null,
+  };
+}
+
+export type SendPollEmailResult = {
+  ok: boolean;
+  error?: string;
+  message?: string;
+  channel?: string;
+  warning?: string;
+  sent_count?: number;
+  failed_count?: number;
+};
+
+// ── SIKW asks: data shapes + fetch/write wrappers ────────────────────────
+
+export type SikwReplyType = "stick_with_it" | "give_until" | "dropping_is_fair" | "custom";
+
+export type SikwAsk = {
+  id: string;
+  askerId: string;
+  groupId: string;
+  message: string;
+  askerProgressSeason: number;
+  askerProgressEpisode: number;
+  createdAt: number;
+  closedAt: number | null;
+};
+
+export type SikwReply = {
+  id: string;
+  askId: string;
+  replierId: string;
+  replyType: SikwReplyType;
+  episodeTargetSeason: number | null;
+  episodeTargetEpisode: number | null;
+  message: string | null;
+  repliedAt: number;
+};
+
+type SikwAskRow = {
+  id: string;
+  asker_id: string;
+  group_id: string;
+  message: string;
+  asker_progress_season: number;
+  asker_progress_episode: number;
+  created_at: string;
+  closed_at: string | null;
+};
+
+type SikwReplyRow = {
+  id: string;
+  ask_id: string;
+  replier_id: string;
+  reply_type: SikwReplyType;
+  episode_target_season: number | null;
+  episode_target_episode: number | null;
+  message: string | null;
+  replied_at: string;
+};
+
+function rowToAsk(r: SikwAskRow): SikwAsk {
+  return {
+    id:                    r.id,
+    askerId:               r.asker_id,
+    groupId:               r.group_id,
+    message:               r.message,
+    askerProgressSeason:   r.asker_progress_season,
+    askerProgressEpisode:  r.asker_progress_episode,
+    createdAt:             new Date(r.created_at).getTime(),
+    closedAt:              r.closed_at ? new Date(r.closed_at).getTime() : null,
+  };
+}
+
+function rowToSikwReply(r: SikwReplyRow): SikwReply {
+  return {
+    id:                     r.id,
+    askId:                  r.ask_id,
+    replierId:              r.replier_id,
+    replyType:              r.reply_type,
+    episodeTargetSeason:    r.episode_target_season,
+    episodeTargetEpisode:   r.episode_target_episode,
+    message:                r.message,
+    repliedAt:              new Date(r.replied_at).getTime(),
+  };
+}
+
+export type SikwReplyWithUser = SikwReply & { replierUsername: string | null };
+
+export type ActiveAskData = {
+  ask: SikwAsk;
+  askerUsername: string | null;
+  myReply: SikwReply | null;
+  /** Populated only when caller is the asker (RLS allows asker to read all). */
+  allReplies: SikwReplyWithUser[];
+  eligibleCount: number;
+};
+
+/**
+ * Returns the room's currently-active SIKW ask + caller's own reply.
+ * If caller is the asker, also returns ALL replies (RLS allows it).
+ * Eligible count = members minus asker (asker doesn't reply).
+ */
+export async function fetchActiveRoomAsk(
+  groupId: string,
+  callerId: string,
+): Promise<ActiveAskData | null> {
+  const { data: askRow, error: askErr } = await supabase
+    .from("sikw_asks")
+    .select("*")
+    .eq("group_id", groupId)
+    .is("closed_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (askErr) throw askErr;
+  if (!askRow) return null;
+
+  const ask = rowToAsk(askRow as SikwAskRow);
+  const isAsker = ask.askerId === callerId;
+
+  let askerUsername: string | null = null;
+  const { data: askerProfile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", ask.askerId)
+    .maybeSingle();
+  if (askerProfile?.username) askerUsername = askerProfile.username;
+
+  let myReply: SikwReply | null = null;
+  if (!isAsker) {
+    const { data: replyRow } = await supabase
+      .from("sikw_replies")
+      .select("*")
+      .eq("ask_id", ask.id)
+      .eq("replier_id", callerId)
+      .maybeSingle();
+    if (replyRow) myReply = rowToSikwReply(replyRow as SikwReplyRow);
+  }
+
+  let allReplies: SikwReplyWithUser[] = [];
+  if (isAsker) {
+    const { data: replyRows } = await supabase
+      .from("sikw_replies")
+      .select("*")
+      .eq("ask_id", ask.id)
+      .order("replied_at", { ascending: true });
+    const ids = Array.from(new Set((replyRows ?? []).map((r: { replier_id: string }) => r.replier_id)));
+    const userMap: Record<string, string> = {};
+    if (ids.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", ids);
+      for (const p of profiles ?? []) {
+        if (p.username) userMap[p.id as string] = p.username as string;
+      }
+    }
+    allReplies = (replyRows ?? []).map((r) => {
+      const base = rowToSikwReply(r as SikwReplyRow);
+      return { ...base, replierUsername: userMap[base.replierId] ?? null };
+    });
+  }
+
+  // Eligible count: members minus asker.
+  const { count: memberCount } = await supabase
+    .from("friend_group_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("group_id", groupId);
+  const eligibleCount = Math.max(0, (memberCount ?? 0) - 1);
+
+  return { ask, askerUsername, myReply, allReplies, eligibleCount };
+}
+
+export type ReplyToAskResult =
+  | { ok: true; replyId: string; didClose: boolean; replyCount: number; eligibleCount: number }
+  | { ok: false; error: string };
+
+export async function replyToAsk(args: {
+  askId: string;
+  replyType: SikwReplyType;
+  episodeTargetSeason?: number | null;
+  episodeTargetEpisode?: number | null;
+  message?: string | null;
+}): Promise<ReplyToAskResult> {
+  const { data, error } = await supabase.rpc("reply_to_ask", {
+    p_ask_id:                  args.askId,
+    p_reply_type:              args.replyType,
+    p_episode_target_season:   args.episodeTargetSeason ?? null,
+    p_episode_target_episode:  args.episodeTargetEpisode ?? null,
+    p_message:                 args.message ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.ok === false) return { ok: false, error: data?.error || "unknown" };
+  return {
+    ok:             true,
+    replyId:        data.reply_id,
+    didClose:       !!data.did_close,
+    replyCount:     data.reply_count as number,
+    eligibleCount:  data.eligible_count as number,
+  };
+}
+
+export type ClosedAskData = {
+  ask: SikwAsk;
+  askerUsername: string | null;
+  myReply: SikwReply | null;
+  /** Populated only when caller is the asker. */
+  allReplies: SikwReplyWithUser[];
+  eligibleCount: number;
+  myDismissed: boolean;
+};
+
+/**
+ * Returns the most-recent closed SIKW ask in the room within the 1-week
+ * post-close window, skipping any the caller has already dismissed.
+ * Mirrors fetchMostRecentClosedRoomPoll. Replies stay private to asker
+ * forever — RLS allows asker to read all, others to read only own.
+ */
+export async function fetchMostRecentClosedRoomAsk(
+  groupId: string,
+  callerId: string,
+): Promise<ClosedAskData | null> {
+  const since1w = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // SIKW dismissal is GLOBAL (per amendment) — once anyone in the room
+  // X's a closed ask, the sticky vanishes for everyone. Implemented via
+  // sikw_asks.dismissed_at column; we filter at the query level.
+  const { data: askRow, error: askErr } = await supabase
+    .from("sikw_asks")
+    .select("*")
+    .eq("group_id", groupId)
+    .not("closed_at", "is", null)
+    .gt("closed_at", since1w)
+    .is("dismissed_at", null)
+    .order("closed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (askErr) throw askErr;
+  if (!askRow) return null;
+
+  const ask = rowToAsk(askRow as SikwAskRow);
+  const isAsker = ask.askerId === callerId;
+
+  let askerUsername: string | null = null;
+  const { data: askerProfile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", ask.askerId)
+    .maybeSingle();
+  if (askerProfile?.username) askerUsername = askerProfile.username;
+
+  let myReply: SikwReply | null = null;
+  if (!isAsker) {
+    const { data: replyRow } = await supabase
+      .from("sikw_replies")
+      .select("*")
+      .eq("ask_id", ask.id)
+      .eq("replier_id", callerId)
+      .maybeSingle();
+    if (replyRow) myReply = rowToSikwReply(replyRow as SikwReplyRow);
+  }
+
+  let allReplies: SikwReplyWithUser[] = [];
+  if (isAsker) {
+    const { data: replyRows } = await supabase
+      .from("sikw_replies")
+      .select("*")
+      .eq("ask_id", ask.id)
+      .order("replied_at", { ascending: true });
+    const ids = Array.from(new Set((replyRows ?? []).map((r: { replier_id: string }) => r.replier_id)));
+    const userMap: Record<string, string> = {};
+    if (ids.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", ids);
+      for (const p of profiles ?? []) {
+        if (p.username) userMap[p.id as string] = p.username as string;
+      }
+    }
+    allReplies = (replyRows ?? []).map((r) => {
+      const base = rowToSikwReply(r as SikwReplyRow);
+      return { ...base, replierUsername: userMap[base.replierId] ?? null };
+    });
+  }
+
+  const { count: memberCount } = await supabase
+    .from("friend_group_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("group_id", groupId);
+  const eligibleCount = Math.max(0, (memberCount ?? 0) - 1);
+
+  return {
+    ask,
+    askerUsername,
+    myReply,
+    allReplies,
+    eligibleCount,
+    myDismissed: false,
+  };
+}
+
+export async function lazyCloseRoomAsks(groupId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc("lazy_close_room_asks", { p_group_id: groupId });
+  if (error) throw error;
+  return (data ?? []) as string[];
+}
+
+export async function dismissClosedAsk(askId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("dismiss_closed_ask", { p_ask_id: askId });
+  if (error) throw error;
+  return data === true;
+}
+
+type PollRow = {
+  id: string;
+  asker_id: string;
+  group_id: string;
+  question: string;
+  allow_write_in: boolean;
+  duration: import("../types").PollDurationCode;
+  created_at: string;
+  closed_at: string | null;
+};
+
+type PollOptionRow = {
+  id: string;
+  poll_id: string;
+  option_text: string;
+  display_order: number;
+};
+
+type PollResponseRow = {
+  id: string;
+  poll_id: string;
+  responder_id: string;
+  option_id: string | null;
+  write_in_text: string | null;
+  responded_at: string;
+};
+
+export type ActivePollData = {
+  poll: import("../types").Poll;
+  options: import("../types").PollOption[];
+  askerUsername: string | null;
+  myResponse: import("../types").PollResponse | null;
+};
+
+function rowToPoll(r: PollRow): import("../types").Poll {
+  return {
+    id:           r.id,
+    askerId:      r.asker_id,
+    groupId:      r.group_id,
+    question:     r.question,
+    allowWriteIn: r.allow_write_in,
+    duration:     r.duration,
+    createdAt:    new Date(r.created_at).getTime(),
+    closedAt:     r.closed_at ? new Date(r.closed_at).getTime() : null,
+  };
+}
+
+function rowToPollOption(r: PollOptionRow): import("../types").PollOption {
+  return {
+    id:           r.id,
+    pollId:       r.poll_id,
+    optionText:   r.option_text,
+    displayOrder: r.display_order,
+  };
+}
+
+function rowToPollResponse(r: PollResponseRow): import("../types").PollResponse {
+  return {
+    id:           r.id,
+    pollId:       r.poll_id,
+    responderId:  r.responder_id,
+    optionId:     r.option_id,
+    writeInText:  r.write_in_text,
+    respondedAt:  new Date(r.responded_at).getTime(),
+  };
+}
+
+/**
+ * Returns the room's currently-active poll (closed_at IS NULL),
+ * its options, the asker's @username, and the caller's own response
+ * if they've voted. Returns null when no active poll exists.
+ *
+ * Pre-close, RLS prevents callers from seeing OTHERS' responses;
+ * the caller's own response is fetched separately and returned here.
+ */
+export async function fetchActiveRoomPoll(
+  groupId: string,
+  callerId: string,
+): Promise<ActivePollData | null> {
+  const { data: pollRow, error: pollErr } = await supabase
+    .from("polls")
+    .select("*")
+    .eq("group_id", groupId)
+    .is("closed_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (pollErr) throw pollErr;
+  if (!pollRow) return null;
+
+  const poll = rowToPoll(pollRow as PollRow);
+
+  const { data: optionRows, error: optErr } = await supabase
+    .from("poll_options")
+    .select("*")
+    .eq("poll_id", poll.id)
+    .order("display_order", { ascending: true });
+  if (optErr) throw optErr;
+  const options = (optionRows ?? []).map((r) => rowToPollOption(r as PollOptionRow));
+
+  // Best-effort asker @username
+  let askerUsername: string | null = null;
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", poll.askerId)
+    .maybeSingle();
+  if (profileRow?.username) askerUsername = profileRow.username;
+
+  // Caller's own response (RLS allows reading own row)
+  const { data: responseRow } = await supabase
+    .from("poll_responses")
+    .select("*")
+    .eq("poll_id", poll.id)
+    .eq("responder_id", callerId)
+    .maybeSingle();
+  const myResponse = responseRow ? rowToPollResponse(responseRow as PollResponseRow) : null;
+
+  return { poll, options, askerUsername, myResponse };
+}
+
+export type PollResponseWithUser = import("../types").PollResponse & {
+  responderUsername: string | null;
+};
+
+export type ClosedPollData = {
+  poll: import("../types").Poll;
+  options: import("../types").PollOption[];
+  askerUsername: string | null;
+  responses: PollResponseWithUser[];
+  eligibleCount: number;
+  myDismissed: boolean;
+};
+
+/**
+ * Marks a closed poll as dismissed for the caller. Idempotent —
+ * returns true on first dismiss, false on repeats.
+ */
+export async function dismissClosedPoll(pollId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("dismiss_closed_poll", { p_poll_id: pollId });
+  if (error) throw error;
+  return data === true;
+}
+
+/**
+ * Stamps closed_at on any open polls in this room whose duration has
+ * elapsed. Race-safe via SQL — among parallel callers, exactly one
+ * wins per expired poll. Returns the IDs that THIS call closed so
+ * the caller can fire close emails for those.
+ */
+export async function lazyCloseRoomPolls(groupId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc("lazy_close_room_polls", { p_group_id: groupId });
+  if (error) throw error;
+  return (data ?? []) as string[];
+}
+
+/**
+ * Returns the most-recent closed poll in the room within the 48-hour
+ * post-close visible window — UNLESS the caller has already dismissed
+ * it, in which case looks at the next one. Also pulls all responses
+ * (RLS allows post-close member reads) with responder usernames
+ * resolved, plus the asker's @username.
+ *
+ * Returns null when no closed-and-not-dismissed poll exists in the
+ * 48h window.
+ */
+export async function fetchMostRecentClosedRoomPoll(
+  groupId: string,
+  callerId: string,
+): Promise<ClosedPollData | null> {
+  const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
+  // Pull a small batch — most rooms won't have more than a couple
+  // closed polls in 48h.
+  const { data: pollRows, error: pollErr } = await supabase
+    .from("polls")
+    .select("*")
+    .eq("group_id", groupId)
+    .not("closed_at", "is", null)
+    .gt("closed_at", since48h)
+    .order("closed_at", { ascending: false })
+    .limit(10);
+  if (pollErr) throw pollErr;
+  if (!pollRows || pollRows.length === 0) return null;
+
+  const pollIds = pollRows.map((p: { id: string }) => p.id);
+
+  // Caller's dismissals across these polls.
+  const { data: dismissalRows } = await supabase
+    .from("poll_dismissals")
+    .select("poll_id")
+    .eq("user_id", callerId)
+    .in("poll_id", pollIds);
+  const dismissedIds = new Set((dismissalRows ?? []).map((d: { poll_id: string }) => d.poll_id));
+
+  const targetRow = pollRows.find((p: { id: string }) => !dismissedIds.has(p.id));
+  if (!targetRow) return null;
+  const poll = rowToPoll(targetRow as PollRow);
+
+  const { data: optionRows } = await supabase
+    .from("poll_options")
+    .select("*")
+    .eq("poll_id", poll.id)
+    .order("display_order", { ascending: true });
+  const options = (optionRows ?? []).map((r) => rowToPollOption(r as PollOptionRow));
+
+  // Responses (post-close: RLS allows members to see all).
+  const { data: responseRows } = await supabase
+    .from("poll_responses")
+    .select("*")
+    .eq("poll_id", poll.id);
+
+  const responderIds = Array.from(
+    new Set((responseRows ?? []).map((r: { responder_id: string }) => r.responder_id)),
+  );
+  const userMap: Record<string, string> = {};
+  if (responderIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .in("id", responderIds);
+    for (const p of profiles ?? []) {
+      if (p.username) userMap[p.id as string] = p.username as string;
+    }
+  }
+
+  const responses: PollResponseWithUser[] = (responseRows ?? []).map((r) => {
+    const base = rowToPollResponse(r as PollResponseRow);
+    return { ...base, responderUsername: userMap[base.responderId] ?? null };
+  });
+
+  let askerUsername: string | null = null;
+  const { data: askerProfile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", poll.askerId)
+    .maybeSingle();
+  if (askerProfile?.username) askerUsername = askerProfile.username;
+
+  // Eligible count for the "X of N weighed in" footer.
+  const { count: eligibleCount } = await supabase
+    .from("friend_group_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("group_id", groupId);
+
+  return {
+    poll,
+    options,
+    askerUsername,
+    responses,
+    eligibleCount: eligibleCount ?? 0,
+    myDismissed: false,
+  };
+}
+
+/**
+ * Calls get_poll_count RPC. Aggregate-only; never leaks vote content.
+ * Used by both the asker's pre-close "X of N weighed in" footer and
+ * by voters who want to see the same count.
+ */
+export async function fetchPollCount(pollId: string): Promise<{
+  responseCount: number;
+  eligibleCount: number;
+  closed: boolean;
+} | null> {
+  const { data, error } = await supabase.rpc("get_poll_count", { p_poll_id: pollId });
+  if (error) throw error;
+  if (!data || data.ok === false) return null;
+  return {
+    responseCount: data.response_count as number,
+    eligibleCount: data.eligible_count as number,
+    closed:        !!data.closed,
+  };
+}
+
+export type VoteOnPollResult =
+  | { ok: true; responseId: string; didClose: boolean; responseCount: number; eligibleCount: number }
+  | { ok: false; error: string };
+
+/**
+ * Calls vote_on_poll RPC. Records the vote (locks at submit via
+ * UNIQUE constraint), checks all-voted close, returns didClose=true
+ * if this vote triggered close. Frontend fires poll_close email when
+ * didClose is true.
+ *
+ * Either optionId or writeInText is provided, never both.
+ */
+export async function voteOnPoll(args: {
+  pollId: string;
+  optionId?: string | null;
+  writeInText?: string | null;
+}): Promise<VoteOnPollResult> {
+  const { data, error } = await supabase.rpc("vote_on_poll", {
+    p_poll_id:   args.pollId,
+    p_option_id: args.optionId ?? null,
+    p_write_in:  args.writeInText ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.ok === false) return { ok: false, error: data?.error || "unknown" };
+  return {
+    ok:             true,
+    responseId:     data.response_id,
+    didClose:       !!data.did_close,
+    responseCount:  data.response_count as number,
+    eligibleCount:  data.eligible_count as number,
+  };
+}
+
+/**
+ * Calls the send-message edge function with a SIKW template
+ * (sikw_ask_invite or sikw_reply). Same response shape as
+ * sendPollEmail.
+ */
+export async function sendSikwEmail(args: {
+  templateType: "sikw_ask_invite" | "sikw_reply";
+  askId: string;
+}): Promise<SendPollEmailResult> {
+  const { data: result, error } = await supabase.functions.invoke("send-message", {
+    body: { template_type: args.templateType, ask_id: args.askId },
+  });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const body = await ctx.json();
+        if (body && typeof body === "object" && body.ok === false) {
+          return { ok: false, error: body.error, message: body.message };
+        }
+      } catch {
+        // fall through
+      }
+    }
+    return { ok: false, error: "edge_function_error", message: error.message };
+  }
+  return result as SendPollEmailResult;
+}
+
+/**
+ * Calls the send-message edge function with a poll template.
+ * Fire-and-forget for poll_invite (multicast); single send for
+ * poll_close and poll_vote_notification.
+ */
+export async function sendPollEmail(args: {
+  templateType: "poll_invite" | "poll_close" | "poll_vote_notification";
+  pollId: string;
+}): Promise<SendPollEmailResult> {
+  const { data: result, error } = await supabase.functions.invoke("send-message", {
+    body: { template_type: args.templateType, poll_id: args.pollId },
+  });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const body = await ctx.json();
+        if (body && typeof body === "object" && body.ok === false) {
+          return { ok: false, error: body.error, message: body.message };
+        }
+      } catch {
+        // fall through
+      }
+    }
+    return { ok: false, error: "edge_function_error", message: error.message };
+  }
+  return result as SendPollEmailResult;
+}
+
+/**
+ * Pre-check used by the nudge popover: has the caller already pinged
+ * this recipient in this room within the rate-limit window? Lets the
+ * UI render the Send button as disabled with an explanatory line
+ * BEFORE the user fills out the form, rather than rejecting on submit.
+ *
+ * Returns false unconditionally when rate limiting is disabled.
+ *
+ * Sender-only RLS read; relies on the caller actually being the sender.
+ */
+export async function hasRecentPing(args: {
+  senderId: string;
+  recipientId: string;
+  groupId: string;
+}): Promise<boolean> {
+  if (!PING_RATE_LIMIT_ENABLED) return false;
+  const since = new Date(
+    Date.now() - PING_RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000,
+  ).toISOString();
+  const { data, error } = await supabase
+    .from("pings")
+    .select("id")
+    .eq("sender_id", args.senderId)
+    .eq("recipient_id", args.recipientId)
+    .eq("group_id", args.groupId)
+    .gt("sent_at", since)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+/**
+ * Returns the oldest undismissed ping for the caller in the given
+ * room. Used by the in-room incoming-ping sticky.
+ *
+ * Filters:
+ *   - recipient_id = caller (only incoming, not pings I sent)
+ *   - group_id = the active room
+ *   - dismissed_at IS NULL (not already dismissed)
+ *
+ * All ping_types surface in-room; nudge_ahead also delivers an email
+ * but the sticky shows up the same way for consistency.
+ *
+ * Resolves the sender's @username via a separate profiles lookup.
+ */
+export async function fetchNextRoomPing(
+  recipientUserId: string,
+  groupId: string,
+): Promise<Ping | null> {
+  const { data, error } = await supabase
+    .from("pings")
+    .select("*")
+    .eq("recipient_id", recipientUserId)
+    .eq("group_id", groupId)
+    .is("dismissed_at", null)
+    .not("message", "is", null)
+    .order("sent_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as PingRow;
+
+  // Resolve sender username (best-effort — display falls back to "@a friend"
+  // if the join misses).
+  let senderUsername: string | undefined;
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", row.sender_id)
+    .maybeSingle();
+  if (prof?.username) senderUsername = prof.username;
+
+  return rowToPing(row, senderUsername);
+}
+
+/**
+ * Returns a per-show count of the caller's undismissed incoming
+ * pings. Used by the journal rail dot signal — one query at App load,
+ * drives both the per-show dot and (later) any pluralized tooltips.
+ *
+ * Same filter shape as fetchNextRoomPing: recipient = caller, not
+ * dismissed. All ping_types count (nudge_ahead also surfaces in-room
+ * now, in addition to its email).
+ */
+export async function fetchUndismissedPingCountsByShow(
+  recipientUserId: string,
+): Promise<Record<string, number>> {
+  const { data, error } = await supabase
+    .from("pings")
+    .select("show_id")
+    .eq("recipient_id", recipientUserId)
+    .is("dismissed_at", null)
+    .not("message", "is", null);
+  if (error) throw error;
+  const counts: Record<string, number> = {};
+  for (const r of data ?? []) {
+    if (r.show_id) {
+      const sid = r.show_id as string;
+      counts[sid] = (counts[sid] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
+
 // ── Accept invite via SECURITY DEFINER RPC ─────────────────────────────────────
 
 /**

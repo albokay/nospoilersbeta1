@@ -37,6 +37,7 @@ export default function ProfilePage({
   progress,
   openThreadWithFocus, openShow, onClose,
   repliesToUser = [],
+  pingCountsByShow = {},
   openedAtSeenAt = 0,
   onTabsChange,
   updateProgressFor,
@@ -55,6 +56,7 @@ export default function ProfilePage({
   onClose: () => void;
   updateProgressFor?: (showId: string, val: { s: number; e: number }) => void;
   repliesToUser?: { reply: Reply; thread: Thread; groupId?: string }[];
+  pingCountsByShow?: Record<string, number>;
   openedAtSeenAt?: number;
   onTabsChange?: (data: ProfileTabData | null) => void;
   onGroupCreated?: (g: FriendGroup) => void;
@@ -741,6 +743,17 @@ export default function ProfilePage({
       }
     }
 
+    // Green: any incoming sticky-channel ping fires green for that show.
+    // Same wayfinding as new-replies per spec ("same way they fire for
+    // new entries"). Pings outrank the red branch — having content to
+    // engage with beats having content blocked above your progress.
+    for (const sid of Object.keys(pingCountsByShow)) {
+      const n = pingCountsByShow[sid] ?? 0;
+      if (n <= 0) continue;
+      r[sid] = "green";
+      counts[sid] = (counts[sid] ?? 0) + n;
+    }
+
     // Red: invisible reply not dismissed by visit, show stamp <24h old
     for (const item of repliesToUser) {
       const { reply, thread: t, groupId } = item;
@@ -763,7 +776,7 @@ export default function ProfilePage({
       counts[t.showId] = (counts[t.showId] ?? 0) + 1;
     }
     return { tabActivity: r, tabActivityCounts: counts };
-  }, [repliesToUser, progress, openedAtSeenAt, user?.id, redSeenStamps, TWENTY_FOUR_HOURS]);
+  }, [repliesToUser, pingCountsByShow, progress, openedAtSeenAt, user?.id, redSeenStamps, TWENTY_FOUR_HOURS]);
 
   // Manage the per-show red-seen stamp lifecycle: write on first appearance of
   // active invisible activity, clear when activity goes to zero. Effect (not

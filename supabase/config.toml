@@ -8,3 +8,9 @@
 # gateway check is redundant. Pinning here so future deploys don't have to
 # remember --no-verify-jwt. See HANDOFF.md §"Edge function deploy notes".
 verify_jwt = false
+
+[functions.send-message]
+# Same reason as send-invite — function does its own JWT verification
+# inside via admin.auth.getUser(jwt); gateway check is redundant and
+# would 401 with the project's ES256 keys.
+verify_jwt = false

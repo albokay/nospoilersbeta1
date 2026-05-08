@@ -79,6 +79,9 @@ import ModeToggle from "./ModeToggle";
 import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
 import FriendProgressPostIt from "./FriendProgressPostIt";
+import IncomingPingSticky from "./IncomingPingSticky";
+import PollSticky from "./PollSticky";
+import SIKWSticky from "./SIKWSticky";
 import Username from "./Username";
 import type { PendingReference } from "./ResponseComposer";
 import PromptCard from "./PromptCard";
@@ -192,6 +195,9 @@ export default function ShowSection({
   const [riskyRevealedIds, setRiskyRevealedIds] = useState<Set<string>>(new Set());
   const [freshReplyThreadIds, setFreshReplyThreadIds] = useState<Record<string, true>>({});
   const [freshReplyIds, setFreshReplyIds] = useState<Record<string, true>>({});
+  // Bumped when the asker successfully opens a poll, forcing PollSticky to
+  // re-fetch immediately so the asker sees their poll without a page nav.
+  const [pollRefreshKey, setPollRefreshKey] = useState(0);
 
   // Clear risky reveals only when the thread changes, not on mode toggle
   // Scroll to top whenever the show changes (reliable on mobile)
@@ -2611,6 +2617,31 @@ export default function ShowSection({
           showId={showId}
           seasons={allShows.find(s => s.id === showId)?.seasons ?? []}
           userProgress={effectiveProgress}
+          groupId={activeGroupId}
+          onPollOpened={() => setPollRefreshKey(k => k + 1)}
+        />
+      )}
+
+      {activeGroupId && user && (
+        <IncomingPingSticky
+          groupId={activeGroupId}
+          currentUserId={user.id}
+        />
+      )}
+
+      {activeGroupId && user && (
+        <PollSticky
+          groupId={activeGroupId}
+          currentUserId={user.id}
+          refreshKey={pollRefreshKey}
+        />
+      )}
+
+      {activeGroupId && user && (
+        <SIKWSticky
+          groupId={activeGroupId}
+          currentUserId={user.id}
+          seasons={allShows.find(s => s.id === showId)?.seasons ?? []}
         />
       )}
 

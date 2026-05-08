@@ -61,6 +61,56 @@ export type Reply = {
   quotedText?: string | null;
 };
 
+// ── Polls ─────────────────────────────────────────────────────────────────
+
+export type PollDurationCode = "24h" | "3d" | "1w";
+
+export type Poll = {
+  id: string;
+  askerId: string;
+  groupId: string;
+  question: string;
+  allowWriteIn: boolean;
+  duration: PollDurationCode;
+  createdAt: number;
+  closedAt: number | null;
+};
+
+export type PollOption = {
+  id: string;
+  pollId: string;
+  optionText: string;
+  displayOrder: number;
+};
+
+export type PollResponse = {
+  id: string;
+  pollId: string;
+  responderId: string;
+  optionId: string | null;
+  writeInText: string | null;
+  respondedAt: number;
+};
+
+// ── Pings ─────────────────────────────────────────────────────────────────────
+
+export type PingType = 'nudge_ahead' | 'nudge_same' | 'nudge_behind';
+
+export type Ping = {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  showId: string;
+  groupId: string;
+  pingType: PingType;
+  message: string | null;
+  sentAt: number;
+  dismissedAt: number | null;
+  // Resolved at fetch time when needed (e.g. for the in-room sticky which
+  // displays "@sender pinged you:"). Not always populated.
+  senderUsername?: string;
+};
+
 // Extended progress entry — carries rewatch metadata alongside the feed-filter position
 export type ProgressEntry = {
   s: number;
