@@ -28,7 +28,7 @@ const DIVIDER_COLOR   = "rgba(255,255,255,0.6)";
 const SUBMIT_BG       = "#7abd8e";              // canon green
 const CANON_NAVY      = "#1a3a4a";              // text on white choice rows
 const TILT_DEG        = -8;
-const MIN_VIEWPORT_PX = 1230;
+const MIN_VIEWPORT_PX = 1160;
 const STICKY_WIDTH    = 280;
 
 interface Props {

@@ -12,7 +12,7 @@ const HANDLE_COLOR  = "#fffaf0";  // canon white — handles + neutral copy
 const AHEAD_COLOR   = "#f45028";  // canon red — "[N] episodes ahead"
 const BEHIND_COLOR  = "#355eb8";  // canon dark blue — "[N] episodes behind"
 const TILT_DEG      = 8;           // clockwise tilt (was 10; nudged down by request)
-const MIN_VIEWPORT_PX = 1230;     // hide on narrow viewports (mobile separate spec)
+const MIN_VIEWPORT_PX = 1160;     // hide on narrow viewports (mobile separate spec)
 const SCROLL_THRESHOLD_LINES = 20; // internal scroll if more than this many lines
 
 interface Props {

@@ -7,7 +7,7 @@ import type { Ping } from "../types";
 const STICKY_BG       = "#fef8ea";  // canon cream
 const TEXT_COLOR      = "#355eb8";  // canon dark blue — readable on cream paper
 const TILT_DEG        = 4;           // clockwise — matches the green post-it direction at half angle
-const MIN_VIEWPORT_PX = 1230;        // hide on narrow viewports (matches green post-it gate)
+const MIN_VIEWPORT_PX = 1160;        // hide on narrow viewports (matches green post-it gate)
 const ENTRY_TRANSITION_MS = 380;
 const ENTRY_DELAY_MS      = 600;     // brief pause after page load before the sticky animates in
 const ENTRY_RISE_PX       = 18;
