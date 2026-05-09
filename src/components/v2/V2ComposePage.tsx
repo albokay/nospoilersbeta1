@@ -391,10 +391,29 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
 
   return (
     <div style={{ minHeight: "100vh", position: "relative" }}>
-      {/* compose-context cream paint via injected style */}
+      {/* compose-context cream paint via injected style.
+          The !important overrides on the input/textarea below claw back from
+          theme.ts:293-296's global "textarea { background: #fff !important; color: #000 !important }"
+          rule, which would otherwise wipe out the ruled-paper gradient + ink
+          color on the body textarea and the cream bg / ink color on the title
+          input. Scoped to the v2-compose-* class names so no other textarea
+          on the site is affected. */}
       <style>{`
         body.v2-compose-context { background: ${CREAM_BG} !important; color: ${INK}; }
+        .v2-compose-paper-input {
+          background-color: transparent !important;
+          background-image: ${RULE_GRADIENT} !important;
+          background-position: 0 0 !important;
+          background-size: 100% ${LH}px !important;
+          background-repeat: repeat !important;
+          color: ${INK} !important;
+        }
         .v2-compose-paper-input::placeholder { color: ${INK_FAINT}; font-style: italic; }
+        .v2-compose-title-input {
+          background-color: transparent !important;
+          background-image: none !important;
+          color: ${INK} !important;
+        }
         .v2-compose-title-input::placeholder { color: ${INK_FAINT}; font-weight: 500; font-style: italic; }
       `}</style>
 
