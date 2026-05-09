@@ -210,7 +210,7 @@ export default function V2JournalPage() {
         }
       >
         {!isNarrow && (
-          <div style={{ marginBottom: 10 }}>
+          <div style={{ marginBottom: 8 }}>
             <SidebarLogo scale={0.6} />
           </div>
         )}
@@ -248,8 +248,8 @@ export default function V2JournalPage() {
               fontStyle: "italic",
               fontSize: 12,
               color: "var(--dos-gray)",
-              margin: "12px 0 6px",
-              paddingLeft: 6,
+              margin: "16px 0 4px",
+              paddingLeft: 8,
             }}
           >
             your shows
@@ -262,11 +262,11 @@ export default function V2JournalPage() {
           <div
             style={
               isNarrow
-                ? { display: "flex", flexDirection: "column", gap: 2 }
+                ? { display: "flex", flexDirection: "column", gap: 4 }
                 : {
                     display: "flex",
                     flexDirection: "column",
-                    gap: 2,
+                    gap: 4,
                     maxHeight: "calc(100vh - 240px)",
                     overflowY: "auto",
                     paddingRight: 4,
@@ -297,7 +297,7 @@ export default function V2JournalPage() {
                     background: active ? "rgba(255,255,255,0.18)" : "transparent",
                     border: "2px solid transparent",
                     color: "var(--dos-fg)",
-                    padding: "6px 12px",
+                    padding: "8px 16px",
                     fontSize: 13,
                     fontWeight: active ? 600 : 500,
                     cursor: "pointer",
@@ -324,7 +324,7 @@ export default function V2JournalPage() {
               ? { padding: "0 24px 120px", minWidth: 0 }
               : {
                   marginLeft: MAIN_LEFT,
-                  padding: "36px 48px 120px",
+                  padding: "24px 48px 120px",
                   maxWidth: 920,
                   minWidth: 0,
                 }
@@ -338,8 +338,8 @@ export default function V2JournalPage() {
               style={{
                 display: "flex",
                 alignItems: "baseline",
-                gap: 18,
-                marginBottom: 24,
+                gap: 16,
+                marginBottom: 16,
                 flexWrap: "wrap",
                 marginLeft: 4,
               }}
@@ -421,14 +421,14 @@ export default function V2JournalPage() {
                 {/* fixed-position header: heading + meta + action row.
                     Sits above the scroll container so entries never bleed
                     above it (same pattern as live .profileActionBar). */}
-                <div style={{ flexShrink: 0, padding: "28px 32px 18px" }}>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 4 }}>
+                <div style={{ flexShrink: 0, padding: "16px 24px 8px" }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
                   <div style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <h1
                       style={{
                         fontFamily: "Lora, Georgia, serif",
                         fontWeight: 600,
-                        fontSize: 34,
+                        fontSize: 28,
                         letterSpacing: "0.02em",
                         textTransform: "uppercase",
                         color: "#fff",
@@ -540,9 +540,9 @@ export default function V2JournalPage() {
                   style={{
                     fontFamily: "Lora, Georgia, serif",
                     fontStyle: "italic",
-                    fontSize: 14,
+                    fontSize: 13,
                     color: "var(--dos-gray)",
-                    marginBottom: 18,
+                    marginBottom: 8,
                   }}
                 >
                   {activeEntries.length} {activeEntries.length === 1 ? "entry" : "entries"}
@@ -550,13 +550,13 @@ export default function V2JournalPage() {
                 </div>
 
                 {/* action row */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                   <button
-                    className="btn post h40"
+                    className="btn post"
                     onClick={() => navigate(`/v2/compose/${activeShow.id}`)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 32, padding: "0 16px", fontSize: 12 }}
                   >
-                    <SquarePen size={14} /> write a new entry
+                    <SquarePen size={13} /> write a new entry
                   </button>
                   {groupsForActive.length > 0 && (
                     <button
@@ -580,19 +580,19 @@ export default function V2JournalPage() {
                       style={{
                         display: "inline-flex",
                         alignItems: "center",
-                        gap: 6,
+                        gap: 4,
                         background: "#adc8d7",
                         color: "#fff",
                         border: "none",
                         borderRadius: 9999,
                         padding: "0 16px",
-                        height: 34,
-                        fontSize: 13,
+                        height: 32,
+                        fontSize: 12,
                         fontWeight: 600,
                         cursor: "pointer",
                       }}
                     >
-                      <Users size={14} /> {groupsForActive.length === 1 ? "→ your friend room" : `→ your ${groupsForActive.length} friend rooms`}
+                      <Users size={13} /> {groupsForActive.length === 1 ? "→ your friend room" : `→ your ${groupsForActive.length} friend rooms`}
                     </button>
                   )}
                   <button
@@ -602,19 +602,19 @@ export default function V2JournalPage() {
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 6,
+                      gap: 4,
                       background: "#dea838",
                       color: "#fff",
                       border: "none",
                       borderRadius: 9999,
                       padding: "0 16px",
-                      height: 34,
-                      fontSize: 13,
+                      height: 32,
+                      fontSize: 12,
                       fontWeight: 600,
                       cursor: "pointer",
                     }}
                   >
-                    <Globe size={14} /> → public conversation
+                    <Globe size={13} /> → public conversation
                   </button>
                 </div>
                 </div>{/* /fixed-position header */}
