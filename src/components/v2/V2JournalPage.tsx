@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import {
@@ -28,6 +28,8 @@ import { timeAgo } from "../../lib/utils";
 import { linkifyText } from "../../lib/linkify";
 import LoadingDots from "../LoadingDots";
 import V2Layout from "./V2Layout";
+import { navigateToShow } from "./v2nav";
+import { createPortal } from "react-dom";
 import { ChevronDown, SquarePen, Users, Globe, Plus } from "lucide-react";
 
 // Replaces the last space in a string with U+00A0 so the final two
@@ -96,6 +98,8 @@ export default function V2JournalPage() {
     likedReplies: ReplyRow[];
   }>({ myReplies: [], repliesToMe: [], likedThreads: [], likedReplies: [] });
   const [chevronOpen, setChevronOpen] = useState(false);
+  const chevronBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [chevronRect, setChevronRect] = useState<{ top: number; left: number } | null>(null);
   const [stopModalOpen, setStopModalOpen] = useState(false);
   const [stopSubmitting, setStopSubmitting] = useState(false);
   const [stopError, setStopError] = useState<string | null>(null);
@@ -340,7 +344,10 @@ export default function V2JournalPage() {
               if (!s) return null;
               const active = sid === activeShowId;
               const p = progress[sid];
-              const count = countByShow[sid] ?? 0;
+              // count was previously surfaced in the rail; dropped 2026-05-08
+              // — progress alone is the primary signal. countByShow stays
+              // available for future affordances (per-show notification dot, etc).
+              void countByShow;
               return (
                 <button
                   key={sid}
@@ -362,9 +369,8 @@ export default function V2JournalPage() {
                   }}
                 >
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                  <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", fontSize: 10, color: "var(--dos-gray)", fontWeight: 500, lineHeight: 1.2, flexShrink: 0, marginLeft: 8 }}>
-                    {count > 0 && <span>{count}</span>}
-                    <span style={{ fontSize: 9 }}>{formatProgressShort(p)}</span>
+                  <span style={{ fontSize: 11, color: "var(--dos-fg)", opacity: 0.7, fontWeight: 500, flexShrink: 0, marginLeft: 8 }}>
+                    {formatProgressShort(p)}
                   </span>
                 </button>
               );
@@ -509,12 +515,27 @@ export default function V2JournalPage() {
                       {preventLastWordOrphan(activeShow.name)}
                     </h1>
                     <button
-                      onClick={(e) => { e.stopPropagation(); setChevronOpen((v) => !v); }}
+                      ref={chevronBtnRef}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (chevronOpen) {
+                          setChevronOpen(false);
+                          return;
+                        }
+                        // Capture viewport coords of the chevron button so the
+                        // portaled dropdown can position itself with `position:
+                        // fixed`. The dropdown lives outside the panel's
+                        // overflow:hidden via a portal, so it renders fully
+                        // even when its anchor is inside a clipped container.
+                        const rect = chevronBtnRef.current?.getBoundingClientRect();
+                        if (rect) setChevronRect({ top: rect.bottom + 8, left: rect.left });
+                        setChevronOpen(true);
+                      }}
                       title="show options"
                       style={{
                         background: "transparent",
                         border: "none",
-                        color: "var(--dos-gray)",
+                        color: "#fff",
                         cursor: "pointer",
                         padding: "4px 6px",
                         display: "inline-flex",
@@ -523,59 +544,6 @@ export default function V2JournalPage() {
                     >
                       <ChevronDown size={20} />
                     </button>
-
-                    {chevronOpen && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "100%",
-                          left: 0,
-                          marginTop: 6,
-                          background: "var(--dos-bg)",
-                          border: "2px solid #fff",
-                          padding: 8,
-                          minWidth: 320,
-                          maxWidth: 360,
-                          zIndex: 5,
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          onClick={() => {
-                            setChevronOpen(false);
-                            setStopError(null);
-                            setStopModalOpen(true);
-                          }}
-                          style={{
-                            display: "block",
-                            width: "100%",
-                            textAlign: "left",
-                            background: "transparent",
-                            border: "none",
-                            padding: "10px 12px",
-                            color: "var(--dos-fg)",
-                            fontSize: 14,
-                            cursor: "pointer",
-                            borderRadius: 0,
-                          }}
-                        >
-                          close show / stop watching
-                          <span
-                            style={{
-                              display: "block",
-                              fontFamily: "Lora, Georgia, serif",
-                              fontStyle: "italic",
-                              fontSize: 12,
-                              color: "var(--dos-gray)",
-                              lineHeight: 1.5,
-                              marginTop: 4,
-                            }}
-                          >
-                            Closes the show in your journal and removes you from any friend rooms on this show. Searching for the show again restores your entries and progress, but not room memberships.
-                          </span>
-                        </button>
-                      </div>
-                    )}
                   </div>
 
                   {/* Universal progress picker — exact same component the live
@@ -638,7 +606,7 @@ export default function V2JournalPage() {
                       solid pill) that reveals one solid pill per room. */}
                   {groupsForActive.length === 1 && (
                     <button
-                      onClick={() => navigate(`/show/${activeShow.id}`, { state: { activeGroupId: groupsForActive[0].id } })}
+                      onClick={() => navigateToShow(navigate, activeShow.id, { activeGroupId: groupsForActive[0].id })}
                       style={friendRoomBtnStyle}
                     >
                       <Users size={13} /> → your friend room
@@ -676,7 +644,7 @@ export default function V2JournalPage() {
                                 key={g.id}
                                 onClick={() => {
                                   setRoomsDropdownOpen(false);
-                                  navigate(`/show/${activeShow.id}`, { state: { activeGroupId: g.id } });
+                                  navigateToShow(navigate, activeShow.id, { activeGroupId: g.id });
                                 }}
                                 style={friendRoomBtnStyle}
                               >
@@ -716,7 +684,7 @@ export default function V2JournalPage() {
                         cursor: "pointer",
                       }}
                     >
-                      + friends
+                      + friend room
                     </button>
                   ) : (
                     <button
@@ -743,7 +711,7 @@ export default function V2JournalPage() {
                     </button>
                   )}
                   <button
-                    onClick={() => navigate(`/show/${activeShow.id}`)}
+                    onClick={() => navigateToShow(navigate, activeShow.id)}
                     // Solid canon-yellow + no outline + white text —
                     // matches the public destination identity throughout v2.
                     style={{
@@ -839,8 +807,10 @@ export default function V2JournalPage() {
                             );
                           }
                         }}
-                        onNavigateRoom={(groupId) => navigate(`/show/${t.showId}`, { state: { activeGroupId: groupId } })}
-                        onNavigatePublic={() => navigate(`/show/${t.showId}`)}
+                        // Chip clicks land directly on the open thread inside
+                        // the appropriate destination context (room or public).
+                        onNavigateRoom={(groupId) => navigateToShow(navigate, t.showId, { threadId: t.id, activeGroupId: groupId })}
+                        onNavigatePublic={() => navigateToShow(navigate, t.showId, { threadId: t.id })}
                       />
                     );
                   })}
@@ -971,13 +941,70 @@ export default function V2JournalPage() {
 
       {/* (entry card component lives below the main return) */}
 
-      {/* close chevron-dropdown when clicking elsewhere */}
-      {chevronOpen && (
-        <div
-          onClick={() => setChevronOpen(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 4 }}
-          aria-hidden
-        />
+      {/* Chevron-dropdown — portaled to body so the panel's overflow:hidden
+          (needed for the entry-feed scroll) doesn't clip it. Anchored to
+          the chevron button's viewport coords captured at click. */}
+      {chevronOpen && chevronRect && createPortal(
+        <>
+          <div
+            onClick={() => setChevronOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 60 }}
+            aria-hidden
+          />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "fixed",
+              top: chevronRect.top,
+              left: chevronRect.left,
+              background: "var(--dos-bg)",
+              border: "2px solid #fff",
+              padding: 8,
+              minWidth: 320,
+              maxWidth: 360,
+              zIndex: 61,
+            }}
+          >
+            <button
+              onClick={() => {
+                setChevronOpen(false);
+                setStopError(null);
+                setStopModalOpen(true);
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                background: "transparent",
+                border: "none",
+                padding: "8px 12px",
+                color: "var(--dos-fg)",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                borderRadius: 0,
+              }}
+            >
+              close show / stop watching
+              <span
+                style={{
+                  display: "block",
+                  fontFamily: "Lora, Georgia, serif",
+                  fontStyle: "italic",
+                  fontSize: 13,
+                  color: "var(--dos-fg)",
+                  opacity: 0.85,
+                  lineHeight: 1.5,
+                  marginTop: 8,
+                  fontWeight: 400,
+                }}
+              >
+                Closes the show in your journal and removes you from any friend rooms on this show. Searching for the show again restores your entries and progress, but not room memberships.
+              </span>
+            </button>
+          </div>
+        </>,
+        document.body
       )}
 
       {/* create-friend-room modal — name your room, hit create */}

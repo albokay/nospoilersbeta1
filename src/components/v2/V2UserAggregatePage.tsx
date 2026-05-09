@@ -12,6 +12,7 @@ import { supabase } from "../../lib/supabaseClient";
 import type { Show } from "../../lib/db";
 import type { ProgressEntry, Thread } from "../../types";
 import V2Layout from "./V2Layout";
+import { navigateToShow } from "./v2nav";
 import OneSelectProgress from "../OneSelectProgress";
 import EpisodeTag from "../EpisodeTag";
 import LoadingDots from "../LoadingDots";
@@ -258,7 +259,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         </div>
         <a
           href={`/show/${show.id}`}
-          onClick={(e) => { e.preventDefault(); navigate(`/show/${show.id}`); }}
+          onClick={(e) => { e.preventDefault(); navigateToShow(navigate, show.id); }}
           style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-gray)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", paddingBottom: 1 }}
         >
           see all public posts on {show.name} →
@@ -393,7 +394,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
               username={username}
               showId={show.id}
               replyCount={replyCounts[t.id] ?? 0}
-              onOpen={() => navigate(`/show/${show.id}`)}
+              onOpen={() => navigateToShow(navigate, show.id, { threadId: t.id })}
             />
           ))}
 

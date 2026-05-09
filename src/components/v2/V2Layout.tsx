@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
-import { LogOut } from "lucide-react";
+import { LogOut, ChevronDown } from "lucide-react";
 import FeedbackWidget from "../FeedbackWidget";
 
 type Palette = "journal" | "profile" | "compose";
@@ -26,6 +27,27 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
 
+  // Account dropdown — opened via the profile pill. Currently holds just
+  // "sign out"; future entries (edit profile, settings, etc.) slot in here
+  // when those flows land. Portaled to body + anchored via getBoundingClientRect
+  // so the menu can't be clipped by ancestors with overflow:hidden.
+  const accountBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [accountMenuPos, setAccountMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  function toggleAccountMenu() {
+    if (accountMenuOpen) {
+      setAccountMenuOpen(false);
+      return;
+    }
+    const rect = accountBtnRef.current?.getBoundingClientRect();
+    if (rect) {
+      // Right-align dropdown to the pill's right edge.
+      setAccountMenuPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    }
+    setAccountMenuOpen(true);
+  }
+
   useEffect(() => {
     const cls =
       palette === "profile" ? "public-context"
@@ -49,35 +71,40 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
         <style>{`body.v2-compose-context{background:#fef8ea !important}`}</style>
       )}
 
-      {/* TOP-RIGHT CLUSTER — minimal v2 mirror of the live header.
-          2px borders to match site convention. */}
+      {/* TOP-RIGHT — single profile pill that doubles as the account
+          dropdown trigger. Dedicated sign-out icon removed; sign-out
+          lives inside the dropdown alongside future account actions. */}
       <div
         style={{
           position: "fixed",
-          top: 28,
-          right: 36,
+          top: 24,
+          right: 32,
           zIndex: 20,
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
         }}
       >
         {user && profile ? (
           <button
-            onClick={() => navigate("/v2/journal")}
+            ref={accountBtnRef}
+            onClick={toggleAccountMenu}
+            aria-haspopup="menu"
+            aria-expanded={accountMenuOpen}
             style={{
               background: "var(--dos-user)",
               color: "#fff",
               border: "none",
               borderRadius: 9999,
-              padding: "8px 16px",
+              padding: "0 16px",
               fontSize: 14,
               fontWeight: 500,
               cursor: "pointer",
-              height: 34,
+              height: 32,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
             }}
           >
             you are {profile.username}
+            <ChevronDown size={14} />
           </button>
         ) : (
           <button
@@ -87,41 +114,72 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
               color: "var(--dos-fg)",
               border: "2px solid var(--dos-border)",
               borderRadius: 9999,
-              padding: "6px 16px",
+              padding: "0 16px",
               fontSize: 14,
               fontWeight: 500,
               cursor: "pointer",
-              height: 34,
+              height: 32,
             }}
           >
             sign in
           </button>
         )}
-        {user && (
-          <button
-            onClick={() => signOut()}
-            title="Sign out"
+      </div>
+
+      {/* Account dropdown — portaled, right-aligned to the pill. Currently
+          holds sign-out; future items (edit profile / settings / etc.) slot
+          in as additional buttons in the same column. */}
+      {accountMenuOpen && accountMenuPos && createPortal(
+        <>
+          <div
+            onClick={() => setAccountMenuOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 60 }}
+            aria-hidden
+          />
+          <div
+            role="menu"
+            onClick={(e) => e.stopPropagation()}
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              border: "2px solid var(--dos-border)",
-              // Solid canon-green fill so the icon stays opaque when content
-              // scrolls behind it. Matches the body's default --dos-bg, so it
-              // blends on the journal palette and reads as a ghost on the
-              // mustard profile palette.
-              background: "var(--green)",
-              color: "var(--dos-fg)",
-              cursor: "pointer",
+              position: "fixed",
+              top: accountMenuPos.top,
+              right: accountMenuPos.right,
+              minWidth: 200,
+              background: "var(--dos-bg)",
+              border: "2px solid #fff",
+              padding: 8,
+              zIndex: 61,
               display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              flexDirection: "column",
             }}
           >
-            <LogOut size={15} />
-          </button>
-        )}
-      </div>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setAccountMenuOpen(false);
+                signOut();
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                width: "100%",
+                textAlign: "left",
+                background: "transparent",
+                border: "none",
+                padding: "8px 12px",
+                color: "var(--dos-fg)",
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: "pointer",
+                borderRadius: 0,
+              }}
+            >
+              <LogOut size={14} /> sign out
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
 
       {bareMain ? (
         children

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, type NavigateFunction } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import {
   fetchShows,
@@ -12,6 +12,7 @@ import {
 import type { Show, SharedRoomRow } from "../../lib/db";
 import type { ProgressEntry, Thread } from "../../types";
 import V2Layout from "./V2Layout";
+import { navigateToShow } from "./v2nav";
 
 type ShelfStatus = "watching" | "want" | "finished" | "stopped";
 
@@ -356,7 +357,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
                     <div style={{ marginTop: 10 }}>
                       <button
                         className="btn h40"
-                        onClick={() => navigate(`/show/${sid}`)}
+                        onClick={() => navigateToShow(navigate, sid)}
                         style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
                       >
                         you both want this — start a friend room
@@ -523,7 +524,7 @@ function ContextualCTAs({
   sharedRoom: SharedRoomRow | undefined;
   ownerHasPublic: boolean;
   ownerUsername: string;
-  navigate: (to: string, opts?: { state?: any }) => void;
+  navigate: NavigateFunction;
 }) {
   const collabCTA = (() => {
     if (!visitorLoggedIn) return null;
@@ -531,11 +532,7 @@ function ContextualCTAs({
       return (
         <button
           className="btn h40"
-          onClick={() =>
-            // Live ShowSection reads activeGroupId from location.state
-            // (App.tsx:659 pattern). ?group= query strings are ignored.
-            navigate(`/show/${showId}`, { state: { activeGroupId: sharedRoom.groupId } })
-          }
+          onClick={() => navigateToShow(navigate, showId, { activeGroupId: sharedRoom.groupId })}
           style={{ fontSize: 12 }}
         >
           → go to your friend room
@@ -546,7 +543,7 @@ function ContextualCTAs({
       return (
         <button
           className="btn h40"
-          onClick={() => navigate(`/show/${showId}`)}
+          onClick={() => navigateToShow(navigate, showId)}
           style={{ fontSize: 12 }}
         >
           invite @{ownerUsername} to a friend room
