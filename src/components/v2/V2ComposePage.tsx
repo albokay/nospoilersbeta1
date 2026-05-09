@@ -176,7 +176,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Boot: shows + progress for this show + groups + prompts. Bails to
-  // /v2/journal if the show isn't in the user's progress (no journal tab).
+  // /v3/journal if the show isn't in the user's progress (no journal tab).
   useEffect(() => {
     if (!user || !showId) return;
     let cancelled = false;
@@ -195,7 +195,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
         }
         const p = prog[showId];
         if (!p) {
-          setShowError("no journal tab for this show — open it from /v2/journal first");
+          setShowError("no journal tab for this show — open it from /v3/journal first");
           return;
         }
         // Convert snake_case PromptRow → camelCase PromptEntry that
@@ -294,8 +294,11 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
     }
   }
   function doDiscard() {
-    if (showId) navigate(`/v2/journal/${showId}`);
-    else navigate("/v2/journal");
+    // v3 journal mounts at the bare /v3/journal path and selects the active
+    // tab via location.state.activeTab (V3JournalPage reads it on mount,
+    // same pattern as live ProfilePage). Showless fallback drops the state.
+    if (showId) navigate("/v3/journal", { state: { activeTab: showId } });
+    else navigate("/v3/journal");
   }
 
   // === SUBMIT ===
@@ -341,7 +344,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
       // Land back on the journal — new entry shows up at the top with
       // its derived chips. (Post-publish reveal is tabled for a later
       // checkpoint per spec.)
-      navigate(`/v2/journal/${show.id}`);
+      navigate("/v3/journal", { state: { activeTab: show.id } });
     } catch (err: any) {
       console.warn("submit failed:", err);
       setSubmitError(err?.message || "Post failed. Try again.");
@@ -369,7 +372,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           {showError}
         </div>
         <div style={{ textAlign: "center", marginTop: 18 }}>
-          <button className="btn h40" onClick={() => navigate("/v2/journal")}>back to journal</button>
+          <button className="btn h40" onClick={() => navigate("/v3/journal")}>back to journal</button>
         </div>
       </div>
     );
