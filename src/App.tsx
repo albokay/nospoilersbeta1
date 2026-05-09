@@ -807,13 +807,13 @@ function AppShell() {
           <div style={{ position: "relative", display: "inline-block" }}>
             <button
               className="profileChip"
-              onClick={!showProfile ? () => {
+              onClick={!(showProfile || showV3Journal) ? () => {
                 navigate("/profile", expandedShowId ? { state: { activeTab: expandedShowId } } : undefined);
                 requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
               } : undefined}
-              style={showProfile ? { cursor: "default" } : undefined}
+              style={(showProfile || showV3Journal) ? { cursor: "default" } : undefined}
             >
-              {showProfile
+              {(showProfile || showV3Journal)
                 ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>you are {username}</span></>
                 : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
               }
