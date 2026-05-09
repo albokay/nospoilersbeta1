@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, CircleChevronDown, ChevronDown, Mail, ArrowLeft, ArrowRight, Plus } from "lucide-react";
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
@@ -63,6 +63,7 @@ export default function V3JournalPage({
 }) {
   const { user, profile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const showName = (showId: string) => showId === "bb" ? "Breaking Bad (DEMO)" : allShows.find(s => s.id === showId)?.name || showId;
 
@@ -962,29 +963,14 @@ export default function V3JournalPage({
                   {activeTab && (
                     <div className="profileActionBar" style={{ background: tabBg }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                        {/* Write — destination derives from activeFilter
-                           (filter-as-destination model). Bg tracks tabBg so
-                           the button reads as a white-outlined ghost on
-                           every filter, matching the existing canon-green
-                           ghost effect that's been live on private. */}
+                        {/* v3: write button navigates to /v2/compose/:showId
+                           instead of opening the in-page modal. Destination
+                           selection moves to the compose page's chooser. The
+                           legacy modal block below is now unreachable from
+                           v3 — left in place pending follow-up cleanup. */}
                         <button
                           className="btn post h40"
-                          onClick={() => {
-                            let dest: string;
-                            if (activeFilter === "private") dest = "private";
-                            else if (activeFilter === "public") dest = "public";
-                            else {
-                              // filter === "friends" — pick the
-                              // most-recently-active room. Legacy users
-                              // with no rooms fall back to "private" so
-                              // the write button still works (their
-                              // journal-only experience is preserved).
-                              const room = pickMostActiveRoom(tabGroups);
-                              dest = room ?? "private";
-                            }
-                            setComposeDestination(dest);
-                            setComposeOpen(true);
-                          }}
+                          onClick={() => navigate(`/v2/compose/${activeTab}`)}
                           style={{ lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5, background: tabBg }}
                         >
                           <SquarePen size={15} /> write
