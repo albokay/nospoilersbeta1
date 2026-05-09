@@ -951,7 +951,7 @@ function AppShell() {
           </div>
         </div>
       )}
-      {!showProfile && !publicProfileUsername && (
+      {!showProfile && !publicProfileUsername && !showV3Journal && (
         <>
           {/* ── Homepage ── */}
           {isHomepage && (
