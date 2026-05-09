@@ -46,18 +46,19 @@ function preventLastWordOrphan(s: string): string {
 
 // Solid canon-light-blue pill — friend-room destination identity
 // throughout v2. White outline added because v2 journal panel surface
-// is now also canon-light-blue (would otherwise blend).
+// is now also canon-light-blue (would otherwise blend). Height 40 matches
+// the OneSelectProgress pill height for action-row visual consistency.
 const friendRoomBtnStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 4,
+  gap: 6,
   background: "#adc8d7",
   color: "#fff",
   border: "2px solid #fff",
   borderRadius: 9999,
-  padding: "0 14px",
-  height: 32,
-  fontSize: 12,
+  padding: "0 16px",
+  height: 40,
+  fontSize: 13,
   fontWeight: 600,
   cursor: "pointer",
   whiteSpace: "nowrap",
@@ -529,11 +530,23 @@ export default function V2JournalPage() {
                 {/* action row */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                   <button
-                    className="btn post"
                     onClick={() => navigate(`/v2/compose/${activeShow.id}`)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 4, height: 32, padding: "0 16px", fontSize: 12 }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: "#fef8ea",
+                      color: "#000",
+                      border: "none",
+                      borderRadius: 9999,
+                      padding: "0 18px",
+                      height: 40,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
                   >
-                    <SquarePen size={13} /> write a new entry
+                    <SquarePen size={14} /> write
                   </button>
                   {/* Friend-room nav — single room: solid pill that goes
                       straight there. Multi-room: dropdown trigger (still
@@ -606,14 +619,14 @@ export default function V2JournalPage() {
                       style={{
                         display: "inline-flex",
                         alignItems: "center",
-                        gap: 4,
+                        gap: 6,
                         background: "transparent",
                         color: "#fff",
                         border: "2px solid #fff",
                         borderRadius: 9999,
-                        padding: "0 16px",
-                        height: 32,
-                        fontSize: 12,
+                        padding: "0 18px",
+                        height: 40,
+                        fontSize: 13,
                         fontWeight: 600,
                         cursor: "pointer",
                       }}
@@ -636,14 +649,14 @@ export default function V2JournalPage() {
                         color: "#fff",
                         border: "2px solid #fff",
                         borderRadius: "50%",
-                        width: 24,
-                        height: 24,
+                        width: 40,
+                        height: 40,
                         cursor: "pointer",
                         flexShrink: 0,
                         alignSelf: "center",
                       }}
                     >
-                      <Plus size={12} />
+                      <Plus size={16} />
                     </button>
                   )}
                   <button
@@ -653,19 +666,19 @@ export default function V2JournalPage() {
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 4,
+                      gap: 6,
                       background: "#dea838",
                       color: "#fff",
                       border: "none",
                       borderRadius: 9999,
-                      padding: "0 16px",
-                      height: 32,
-                      fontSize: 12,
+                      padding: "0 18px",
+                      height: 40,
+                      fontSize: 13,
                       fontWeight: 600,
                       cursor: "pointer",
                     }}
                   >
-                    <Globe size={13} /> <ArrowRight size={13} /> public conversation
+                    <Globe size={14} /> <ArrowRight size={14} /> public conversation
                   </button>
                   {/* Universal progress picker — pushed to the right end
                       of the action row via marginLeft: auto. Same
@@ -697,7 +710,7 @@ export default function V2JournalPage() {
 
                 {/* entry feed — scrolls inside the panel.
                     Borders + padding match live .diaryScrollArea. */}
-                <div style={{ flex: 1, overflowY: "auto", padding: "0 32px 24px", borderTop: "1px solid rgba(255,255,255,0.25)" }}>
+                <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 24px" }}>
                   {activeEntries.length === 0 && (() => {
                     // Empty-state precedence (mirrors live ProfilePage:1198):
                     //   1. TSP show → canonical demo welcome
@@ -1250,13 +1263,16 @@ function EntryCard({
   const isJournalOnly = !t.isPublic && row.allGroups.length === 0;
   const hasPreviewClip = (t.body && t.body.length > (t.preview?.length ?? 0)) || (t.preview ?? "") !== (t.body ?? "");
 
-  // Per-destination card bg (v2 light-blue-context test):
+  // Per-destination card bg (v2 light-blue-context):
   //   - public entry → canon-yellow card
   //   - journal-only entry → canon-green card
-  //   - friend-room entry → faint white overlay over the canon-light-blue
-  //     panel so the card has definition without competing with the
-  //     panel's identity.
-  const entryBg = t.isPublic ? "#dea838" : isJournalOnly ? "#7abd8e" : "rgba(255,255,255,0.10)";
+  //   - friend-room entry → transparent (matches the canon-light-blue panel)
+  const entryBg = t.isPublic ? "#dea838" : isJournalOnly ? "#7abd8e" : "transparent";
+  // Friend-room-only entries sit on a canon-light-blue panel surface;
+  // dark navy ink reads cleanly against it (matches the live group-context
+  // .public-context flip). All other entry types stay on white text.
+  const isFriendRoomOnly = !t.isPublic && row.allGroups.length > 0;
+  const ink = isFriendRoomOnly ? "#1a3a4c" : "#fff";
   void firstRow;
 
   return (
@@ -1276,18 +1292,18 @@ function EntryCard({
             style={{
               fontSize: 20,
               fontWeight: 600,
-              color: "#fff",
+              color: ink,
               lineHeight: 1.25,
               margin: 0,
             }}
           >
             {t.titleBase}
           </h3>
-          <span style={{ fontSize: 13, color: "var(--dos-gray)", fontWeight: 500 }}>
+          <span style={{ fontSize: 13, color: ink, opacity: 0.7, fontWeight: 500 }}>
             <EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} parens={false} />
           </span>
         </div>
-        <span style={{ fontSize: 13, color: "var(--dos-gray)" }}>{timeAgo(t.updatedAt)}</span>
+        <span style={{ fontSize: 13, color: ink, opacity: 0.7 }}>{timeAgo(t.updatedAt)}</span>
       </div>
 
       {/* destinations row — current state + upgrade affordances live in
@@ -1305,7 +1321,8 @@ function EntryCard({
                 fontFamily: "Inter, sans-serif",
                 fontStyle: "italic",
                 fontSize: 12,
-                color: "var(--dos-gray)",
+                color: ink,
+                opacity: 0.7,
                 marginRight: 2,
               }}
             >
@@ -1324,10 +1341,10 @@ function EntryCard({
                 padding: "4px 10px",
                 borderRadius: 9999,
                 background: "#adc8d7",
-                color: "#fff",
-                // White outline so the chip doesn't blend into the
-                // canon-light-blue panel surface (v2 light-blue context).
-                border: "2px solid #fff",
+                color: ink,
+                // Outline matches the entry's ink color so the chip stays
+                // definable on the same-canon-color panel/card.
+                border: `2px solid ${ink}`,
                 fontSize: 11,
                 fontWeight: 600,
                 letterSpacing: "0.02em",
@@ -1349,11 +1366,10 @@ function EntryCard({
                 padding: "4px 10px",
                 borderRadius: 9999,
                 background: "#dea838",
-                color: "#fff",
-                // White outline — public chip sits on a canon-yellow
-                // entry bg (when entry is published publicly), so the
-                // outline keeps it definable against the matching fill.
-                border: "2px solid #fff",
+                color: ink,
+                // Outline matches ink — defines the chip on a matching-yellow
+                // entry bg.
+                border: `2px solid ${ink}`,
                 fontSize: 11,
                 fontWeight: 600,
                 letterSpacing: "0.02em",
@@ -1376,8 +1392,8 @@ function EntryCard({
                 fontFamily: "Lora, Georgia, serif",
                 fontStyle: "italic",
                 fontSize: 12,
-                color: "rgba(255,255,255,0.92)",
-                border: "2px dashed rgba(255,255,255,0.7)",
+                color: ink,
+                border: `2px dashed ${ink}`,
                 background: "transparent",
                 cursor: "pointer",
               }}
@@ -1398,8 +1414,8 @@ function EntryCard({
                 fontFamily: "Lora, Georgia, serif",
                 fontStyle: "italic",
                 fontSize: 12,
-                color: "rgba(255,255,255,0.92)",
-                border: "2px dashed rgba(255,255,255,0.7)",
+                color: ink,
+                border: `2px dashed ${ink}`,
                 background: "transparent",
                 cursor: "pointer",
               }}
@@ -1433,22 +1449,23 @@ function EntryCard({
 
       <div
         className={expanded ? undefined : "clamp3"}
-        style={{ fontSize: 15, lineHeight: 1.6, color: "var(--dos-fg)", whiteSpace: expanded ? "pre-wrap" : undefined }}
+        style={{ fontSize: 15, lineHeight: 1.6, color: ink, whiteSpace: expanded ? "pre-wrap" : undefined }}
       >
         {linkifyText(expanded ? (t.body || t.preview) : (t.preview || t.body))}
       </div>
 
-      {/* expand / collapse — bottom-right of the entry. White solid fill,
-          no outline, canon-green text per live conventions. Right-aligned
-          so the entry can stay thinner (no full-width row beneath). */}
+      {/* expand / collapse — bottom-right of the entry. Transparent fill +
+          2px white outline + white text. Reads cleanly across all entry-bg
+          variants (yellow / green / transparent). Always white per spec
+          regardless of entry's destination context. */}
       {hasPreviewClip && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
           <button
             onClick={() => setExpanded((v) => !v)}
             style={{
-              background: "#fff",
-              color: "#7abd8e",
-              border: "none",
+              background: "transparent",
+              color: "#fff",
+              border: "2px solid #fff",
               borderRadius: 9999,
               padding: "4px 12px",
               fontFamily: "Inter, sans-serif",
