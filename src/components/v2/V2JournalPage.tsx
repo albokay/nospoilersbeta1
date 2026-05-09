@@ -16,6 +16,7 @@ import {
   addThreadToGroup,
   persistProgressUpdate,
   createFriendGroup,
+  deleteThread,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
 import type { Thread, Reply, ProgressEntry, FriendGroup } from "../../types";
@@ -202,15 +203,6 @@ export default function V2JournalPage() {
     [allUserThreads, activeShowId]
   );
 
-  // Per-show entry counts for rail meta.
-  const countByShow = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const r of allUserThreads) {
-      m[r.thread.showId] = (m[r.thread.showId] ?? 0) + 1;
-    }
-    return m;
-  }, [allUserThreads]);
-
   // Auth gate. Mirrors /profile gate — signed-out users go home.
   if (!authLoading && !user) {
     return <V2Layout palette="journal"><div /></V2Layout>;
@@ -308,83 +300,9 @@ export default function V2JournalPage() {
             placeholder="find a show"
           />
 
-          <div
-            style={{
-              fontFamily: "Lora, Georgia, serif",
-              fontStyle: "italic",
-              fontSize: 12,
-              color: "var(--dos-gray)",
-              margin: "16px 0 4px",
-              paddingLeft: 8,
-            }}
-          >
-            your shows
-          </div>
-
-          {/* Show-list scrolls inside its own container so a long list
-              doesn't push the layout. Logo + search above stay outside
-              the scroll so SidebarLogo's negative-offset blocks aren't
-              clipped by the auto-promoted overflow-x. */}
-          <div
-            style={
-              isNarrow
-                ? { display: "flex", flexDirection: "column", gap: 4 }
-                : {
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 4,
-                    maxHeight: "calc(100vh - 240px)",
-                    overflowY: "auto",
-                    paddingRight: 4,
-                  }
-            }
-          >
-            {bootstrapping ? (
-              <div style={{ fontSize: 13, color: "var(--dos-gray)", fontStyle: "italic", padding: "8px 8px" }}>
-                Loading shows<LoadingDots />
-              </div>
-            ) : userShowIds.length === 0 ? (
-              <div style={{ fontSize: 13, color: "var(--dos-gray)", fontStyle: "italic", padding: "8px 8px" }}>
-                no shows yet — search above to add one.
-              </div>
-            ) : null}
-            {userShowIds.map((sid) => {
-              const s = shows.find((sh) => sh.id === sid);
-              if (!s) return null;
-              const active = sid === activeShowId;
-              const p = progress[sid];
-              // count was previously surfaced in the rail; dropped 2026-05-08
-              // — progress alone is the primary signal. countByShow stays
-              // available for future affordances (per-show notification dot, etc).
-              void countByShow;
-              return (
-                <button
-                  key={sid}
-                  onClick={() => navigate(`/v2/journal/${sid}`)}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    width: "100%",
-                    textAlign: "left",
-                    background: active ? "rgba(255,255,255,0.18)" : "transparent",
-                    border: "2px solid transparent",
-                    color: "var(--dos-fg)",
-                    padding: "4px 12px",
-                    fontSize: 13,
-                    fontWeight: active ? 600 : 500,
-                    cursor: "pointer",
-                    borderRadius: 9999,
-                  }}
-                >
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                  <span style={{ fontSize: 11, color: "var(--dos-fg)", opacity: 0.7, fontWeight: 500, flexShrink: 0, marginLeft: 8 }}>
-                    {formatProgressShort(p)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {/* Show buttons removed — the active-show tabs above the panel
+              are now the primary show selector. Rail keeps logo + search
+              only as a stable wayfinding strip. */}
         </aside>
 
         {/* === MAIN COLUMN ===
@@ -445,6 +363,77 @@ export default function V2JournalPage() {
               >
                 <ArrowRight size={14} /> go to your public profile
               </a>
+            </div>
+          )}
+
+          {/* Show tabs — folder-tab row above the diary, primary show
+              selector. Active tab merges with the card's top border via
+              .diaryTab.active's margin-bottom: -3px (live convention).
+              Active tab also holds the chevron that opens the stop-
+              watching menu. */}
+          {!bootstrapping && userShowIds.length > 0 && (
+            <div className="diaryTabScroller">
+              <div className="diaryTabRow">
+                {userShowIds.map((sid) => {
+                  const s = shows.find((x) => x.id === sid);
+                  if (!s) return null;
+                  const active = sid === activeShowId;
+                  return (
+                    <div
+                      key={sid}
+                      className={active ? "diaryTab active" : "diaryTab"}
+                      role="tab"
+                      tabIndex={0}
+                      aria-selected={active}
+                      onClick={() => {
+                        if (!active) navigate(`/v2/journal/${sid}`);
+                      }}
+                      onKeyDown={(e) => {
+                        if (!active && (e.key === "Enter" || e.key === " ")) navigate(`/v2/journal/${sid}`);
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <span style={{ whiteSpace: "nowrap" }}>{s.name}</span>
+                      {active && (
+                        <button
+                          ref={chevronBtnRef}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (chevronOpen) {
+                              setChevronOpen(false);
+                              return;
+                            }
+                            // Capture viewport coords for the portaled
+                            // dropdown — anchor sits on the chevron inside
+                            // the active tab; portal escapes the panel
+                            // overflow:hidden.
+                            const rect = chevronBtnRef.current?.getBoundingClientRect();
+                            if (rect) setChevronRect({ top: rect.bottom + 8, left: rect.left });
+                            setChevronOpen(true);
+                          }}
+                          title="show options"
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "var(--dos-fg)",
+                            cursor: "pointer",
+                            padding: "0 2px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            lineHeight: 1,
+                          }}
+                        >
+                          <ChevronDown size={16} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -517,98 +506,6 @@ export default function V2JournalPage() {
                     Sits above the scroll container so entries never bleed
                     above it (same pattern as live .profileActionBar). */}
                 <div style={{ flexShrink: 0, padding: "16px 24px 8px" }}>
-                {/* Title row: title shrinks/wraps; progress pill stays
-                    pinned in the corner. align-items: flex-start keeps
-                    the pill top-aligned when the title goes multi-line.
-                    The title group is a plain block (not flex) so the h1
-                    (display: inline) and the chevron flow as inline tokens
-                    in the same text stream — chevron always stays glued
-                    to the last word via a NBSP connector. */}
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 4 }}>
-                  <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
-                    <h1
-                      style={{
-                        fontFamily: "Lora, Georgia, serif",
-                        fontWeight: 600,
-                        fontSize: 28,
-                        letterSpacing: "0.02em",
-                        textTransform: "uppercase",
-                        color: "#fff",
-                        lineHeight: 1.1,
-                        margin: 0,
-                        display: "inline",
-                        overflowWrap: "break-word",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {preventLastWordOrphan(activeShow.name)}
-                    </h1>
-                    {" "}
-                    <button
-                      ref={chevronBtnRef}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (chevronOpen) {
-                          setChevronOpen(false);
-                          return;
-                        }
-                        // Capture viewport coords of the chevron button so the
-                        // portaled dropdown can position itself with `position:
-                        // fixed`. The dropdown lives outside the panel's
-                        // overflow:hidden via a portal, so it renders fully
-                        // even when its anchor is inside a clipped container.
-                        const rect = chevronBtnRef.current?.getBoundingClientRect();
-                        if (rect) setChevronRect({ top: rect.bottom + 8, left: rect.left });
-                        setChevronOpen(true);
-                      }}
-                      title="show options"
-                      style={{
-                        background: "transparent",
-                        border: "none",
-                        color: "#fff",
-                        cursor: "pointer",
-                        padding: "4px 6px",
-                        display: "inline-flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <ChevronDown size={20} />
-                    </button>
-                  </div>
-
-                  {/* Universal progress picker — exact same component the live
-                      site uses (OneSelectProgress with default requireConfirm).
-                      Selecting a new S/E opens the standard confirmation modal,
-                      then commits via persistProgressUpdate which mirrors
-                      App.tsx's updateProgressFor (rewatcher-aware: bumps
-                      highest, transitions out of rewatch when past previous
-                      highest, otherwise updates rewatch position only). */}
-                  {user && (
-                    // Wrapper guarantees the pill stays in the corner via
-                    // flex-shrink: 0 + align-self: flex-start, even when the
-                    // title wraps to multiple lines.
-                    <div style={{ flexShrink: 0, alignSelf: "flex-start" }}>
-                      <OneSelectProgress
-                        show={activeShow as any}
-                        value={{ s: progress[activeShow.id]?.s ?? 1, e: progress[activeShow.id]?.e ?? 1 }}
-                        rewatchHighest={
-                          progress[activeShow.id]?.isRewatching && progress[activeShow.id]?.highestS != null && progress[activeShow.id]?.highestE != null
-                            ? { s: progress[activeShow.id].highestS!, e: progress[activeShow.id].highestE! }
-                            : null
-                        }
-                        onConfirm={async (val) => {
-                          try {
-                            const updated = await persistProgressUpdate(user.id, activeShow.id, progress[activeShow.id], val);
-                            setProgress((prev) => ({ ...prev, [activeShow.id]: updated }));
-                          } catch (err) {
-                            console.warn("progress update failed:", err);
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-
                 <div
                   style={{
                     fontFamily: "Lora, Georgia, serif",
@@ -763,6 +660,31 @@ export default function V2JournalPage() {
                   >
                     <Globe size={13} /> <ArrowRight size={13} /> public conversation
                   </button>
+                  {/* Universal progress picker — pushed to the right end
+                      of the action row via marginLeft: auto. Same
+                      OneSelectProgress component the live site uses
+                      (rewatcher-aware via persistProgressUpdate). */}
+                  {user && (
+                    <div style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center" }}>
+                      <OneSelectProgress
+                        show={activeShow as any}
+                        value={{ s: progress[activeShow.id]?.s ?? 1, e: progress[activeShow.id]?.e ?? 1 }}
+                        rewatchHighest={
+                          progress[activeShow.id]?.isRewatching && progress[activeShow.id]?.highestS != null && progress[activeShow.id]?.highestE != null
+                            ? { s: progress[activeShow.id].highestS!, e: progress[activeShow.id].highestE! }
+                            : null
+                        }
+                        onConfirm={async (val) => {
+                          try {
+                            const updated = await persistProgressUpdate(user.id, activeShow.id, progress[activeShow.id], val);
+                            setProgress((prev) => ({ ...prev, [activeShow.id]: updated }));
+                          } catch (err) {
+                            console.warn("progress update failed:", err);
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 </div>{/* /fixed-position header */}
 
@@ -848,7 +770,6 @@ export default function V2JournalPage() {
                           // Optimistic local update.
                           setAllUserThreads((prev) => prev.filter((r) => r.thread.id !== t.id));
                           try {
-                            const { deleteThread } = await import("../../lib/db");
                             await deleteThread(t.id);
                           } catch (err) {
                             console.warn("deleteThread failed:", err);
