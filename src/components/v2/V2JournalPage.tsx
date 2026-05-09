@@ -18,6 +18,7 @@ import {
 import type { Show } from "../../lib/db";
 import type { Thread, Reply, ProgressEntry, FriendGroup } from "../../types";
 import SearchShows from "../SearchShows";
+import SidebarLogo from "../SidebarLogo";
 import EpisodeTag from "../EpisodeTag";
 import { timeAgo } from "../../lib/utils";
 import { linkifyText } from "../../lib/linkify";
@@ -173,27 +174,24 @@ export default function V2JournalPage() {
     : undefined;
 
   return (
-    <V2Layout
-      palette="journal"
-      pairedHeader={
-        profile
-          ? {
-              left: "this is your journal",
-              rightLabel: "go to your public profile",
-              rightTo: "/v2/profile",
-            }
-          : undefined
-      }
-    >
+    <V2Layout palette="journal">
       <div style={{ display: "flex", gap: 36, alignItems: "flex-start", flexWrap: isNarrow ? "wrap" : "nowrap" }}>
-        {/* === LEFT RAIL === */}
+        {/* === LEFT RAIL ===
+            Logo + search + show buttons read as one unified left-column nav bar.
+            Width matches what the show-button meta needs to stay legible. */}
         <aside
           style={
             isNarrow
               ? { width: "100%" }
-              : { width: 250, flexShrink: 0, position: "sticky", top: 100, alignSelf: "flex-start" }
+              : { width: 280, flexShrink: 0, position: "sticky", top: 36, alignSelf: "flex-start" }
           }
         >
+          {!isNarrow && (
+            <div style={{ marginBottom: 18, marginLeft: -8 }}>
+              <SidebarLogo scale={0.85} />
+            </div>
+          )}
+
           <SearchShows
             shows={shows}
             progress={progress}
@@ -276,6 +274,70 @@ export default function V2JournalPage() {
 
         {/* === MAIN COLUMN === */}
         <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Paired header sits above the panel (aligned with panel's left
+              edge), not above the entire rail+main row. Mirrors the live
+              "this is your journal" placement. */}
+          {profile && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: 18,
+                marginBottom: 24,
+                flexWrap: "wrap",
+                marginLeft: 4,
+              }}
+            >
+              <div style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", letterSpacing: "-0.005em" }}>
+                this is your journal
+              </div>
+              <a
+                href="/v2/profile"
+                onClick={(e) => { e.preventDefault(); navigate("/v2/profile"); }}
+                style={{
+                  fontFamily: "Lora, Georgia, serif",
+                  fontStyle: "italic",
+                  fontSize: 16,
+                  color: "var(--dos-gray)",
+                  textDecoration: "none",
+                  borderBottom: "1px dotted var(--dos-gray)",
+                  paddingBottom: 1,
+                  cursor: "pointer",
+                }}
+              >
+                → go to your public profile
+              </a>
+            </div>
+          )}
+
+          {/* Diary wrapper — outer holds the receded back-pages, inner is the
+              front card. Mirrors live .diaryCardWrap > .diaryBackPage pattern.
+              The wrapper has no overflow-hidden (so back pages can peek out
+              past the front card's bottom-left edge); the inner card has
+              overflow-hidden so the entry feed scrolls inside it. */}
+          <div style={{ position: "relative", marginBottom: 32 }}>
+            {/* receded back pages — same offsets/opacities as the live diary
+                (theme.ts diaryBackPage cascade). 48/32/16 staggers them
+                cleanly behind the front card. */}
+            {([48, 32, 16] as const).map((offset) => {
+              const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
+              return (
+                <div
+                  key={offset}
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    border: "2px solid",
+                    borderColor: `rgba(255,255,255,${opacity})`,
+                    background: "var(--dos-bg)",
+                    transform: `translate(-${offset}px, ${offset}px)`,
+                    zIndex: 0,
+                  }}
+                />
+              );
+            })}
+
           {/* Journal panel — uses live-site visual conventions:
               2px white border, no drop shadow, square corners, --dos-bg ground.
               Fixed height with internal scroll = same shape as the live
@@ -290,27 +352,9 @@ export default function V2JournalPage() {
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
+              zIndex: 1,
             }}
           >
-            {/* layered "diary" depth — same trick as live ProfilePage */}
-            {([24, 16, 8] as const).map((offset) => {
-              const opacity = offset === 24 ? 0.18 : offset === 16 ? 0.36 : 0.55;
-              return (
-                <div
-                  key={offset}
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    border: "2px solid",
-                    borderColor: `rgba(255,255,255,${opacity})`,
-                    background: "var(--dos-bg)",
-                    transform: `translate(-${offset}px, ${offset}px)`,
-                    zIndex: -1,
-                  }}
-                />
-              );
-            })}
 
             {!activeShow ? (
               <div style={{ fontStyle: "italic", color: "var(--dos-gray)", padding: "32px 32px" }}>
@@ -451,7 +495,6 @@ export default function V2JournalPage() {
                   </button>
                   {groupsForActive.length > 0 && (
                     <button
-                      className="btn h40"
                       onClick={() => {
                         // Live ShowSection reads activeGroupId from
                         // location.state (App.tsx:659 pattern). Query
@@ -466,15 +509,45 @@ export default function V2JournalPage() {
                           navigate(`/show/${activeShow.id}`);
                         }
                       }}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                      // Solid canon-light-blue + no outline + white text —
+                      // matches the friend-room destination identity
+                      // throughout v2.
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        background: "#adc8d7",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 9999,
+                        padding: "0 16px",
+                        height: 34,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
                     >
                       <Users size={14} /> {groupsForActive.length === 1 ? "→ your friend room" : `→ your ${groupsForActive.length} friend rooms`}
                     </button>
                   )}
                   <button
-                    className="btn h40"
                     onClick={() => navigate(`/show/${activeShow.id}`)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                    // Solid canon-yellow + no outline + white text —
+                    // matches the public destination identity throughout v2.
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: "#dea838",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 9999,
+                      padding: "0 16px",
+                      height: 34,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
                   >
                     <Globe size={14} /> → public conversation
                   </button>
@@ -549,6 +622,7 @@ export default function V2JournalPage() {
               </>
             )}
           </section>
+          </div>{/* /diary wrapper */}
 
           {/* === RESPONSES SECTIONS — lifted from ProfilePage, scoped to active show.
               Existing classes (.title/.card/.reply-card/.threadCard/.muted/.clamp3)
@@ -832,7 +906,9 @@ function EntryCard({
 }) {
   const t = row.thread;
   const [hover, setHover] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const showAddRow = (canMakePublic || roomsNotIn.length > 0) && hover;
+  const hasPreviewClip = (t.body && t.body.length > (t.preview?.length ?? 0)) || (t.preview ?? "") !== (t.body ?? "");
 
   return (
     <article
@@ -864,9 +940,21 @@ function EntryCard({
         <span style={{ fontSize: 13, color: "var(--dos-gray)" }}>{timeAgo(t.updatedAt)}</span>
       </div>
 
-      {/* destination chips — one per room the thread is in, plus public */}
+      {/* destination chips — solid palette fill, no outline, white text.
+          "posted in:" italic Inter prefix introduces the chips. */}
       {(row.allGroups.length > 0 || t.isPublic) && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <span
+            style={{
+              fontFamily: "Inter, sans-serif",
+              fontStyle: "italic",
+              fontSize: 12,
+              color: "var(--dos-gray)",
+              marginRight: 2,
+            }}
+          >
+            posted in:
+          </span>
           {row.allGroups.map((g) => (
             <a
               key={g.groupId}
@@ -878,9 +966,9 @@ function EntryCard({
                 gap: 6,
                 padding: "4px 12px",
                 borderRadius: 9999,
-                background: "transparent",
+                background: "#adc8d7",
                 color: "#fff",
-                border: "2px solid #355eb8",
+                border: "none",
                 fontSize: 11,
                 fontWeight: 600,
                 letterSpacing: "0.02em",
@@ -901,9 +989,9 @@ function EntryCard({
                 gap: 6,
                 padding: "4px 12px",
                 borderRadius: 9999,
-                background: "transparent",
+                background: "#dea838",
                 color: "#fff",
-                border: "2px solid #dea838",
+                border: "none",
                 fontSize: 11,
                 fontWeight: 600,
                 letterSpacing: "0.02em",
@@ -917,9 +1005,38 @@ function EntryCard({
         </div>
       )}
 
-      <div className="clamp3" style={{ fontSize: 15, lineHeight: 1.6, color: "var(--dos-fg)" }}>
-        {linkifyText(t.preview || t.body)}
+      <div
+        className={expanded ? undefined : "clamp3"}
+        style={{ fontSize: 15, lineHeight: 1.6, color: "var(--dos-fg)", whiteSpace: expanded ? "pre-wrap" : undefined }}
+      >
+        {linkifyText(expanded ? (t.body || t.preview) : (t.preview || t.body))}
       </div>
+
+      {/* expand / collapse — restored from live conventions.
+          White solid fill, no outline, canon-green text. */}
+      {hasPreviewClip && (
+        <div style={{ marginTop: 10 }}>
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            style={{
+              background: "#fff",
+              color: "#7abd8e",
+              border: "none",
+              borderRadius: 9999,
+              padding: "6px 14px",
+              fontFamily: "Inter, sans-serif",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            {expanded ? "▴ less" : "▾ expand"}
+          </button>
+        </div>
+      )}
 
       {/* hover-revealed "+ add destination" affordances. transparent + 2px
           dashed outline = transparent-with-outline pattern. */}

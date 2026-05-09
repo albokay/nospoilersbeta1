@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
+import { LogOut } from "lucide-react";
 
 type Palette = "journal" | "profile" | "compose";
 
@@ -103,13 +104,12 @@ export default function V2Layout({ palette, pairedHeader, children }: V2LayoutPr
               background: "transparent",
               color: "var(--dos-fg)",
               cursor: "pointer",
-              fontSize: 14,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            ⏻
+            <LogOut size={15} />
           </button>
         )}
       </div>

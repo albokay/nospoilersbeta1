@@ -1315,6 +1315,52 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: journal-page polish pass after first walkthrough
+
+Targeted spot-fixes on `/v2/journal` after a real walkthrough surfaced ten missing-from-live items. All structural; no DB, no schema.
+
+| # | Change | Why |
+|---|---|---|
+| 1 | `<SidebarLogo />` mounts at the top of the rail (scale 0.85, ~238px wide, marginLeft -8 to nudge into alignment) | Dynamic logo had been dropped from V2Layout; wanted at the top of the rail's unified left column |
+| 2 | Paired-header (`this is your journal · → go to your public profile`) moved out of V2Layout's main and into the right column above the journal panel | Live convention: the heading aligns with the panel container's left edge, not the rail's |
+| 3 | Search field anchored to the rail (was already there structurally; logo above it now makes the visual association explicit) | "find a show" feels associated with the logo |
+| 4 | Rail width 250 → 280px so logo + search + show buttons read as one unified left-column nav bar | Width unification across all three components |
+| 5 | Destination chips on entries restyled: solid palette fill, no outline, white text. Friend = `#adc8d7` (canon light-blue), public = `#dea838` (canon yellow) | Visual hierarchy + matches the v2 button rule's "solid-fill-no-outline" pattern |
+| 6 | "posted in:" italic Inter prefix added before destination chips | Clarifies what the chips represent at a glance |
+| 7 | Sign-out icon: `⏻` Unicode → Lucide `<LogOut size={15} />` | Match live icon library; consistent with the rest of v2 |
+| 8 | Action-row "→ your friend room" button: solid canon-light-blue + white + no outline. "→ public conversation": solid canon-yellow + white + no outline | Reflects the destination color identity in the nav buttons too — same color identity as the chips |
+| 9 | Per-entry **expand / less** button restored | Live entries have always had this; v2 had dropped it. White solid fill, canon-green text, no outline. Toggles between the body's preview clip (`.clamp3`) and full body |
+| 10 | Receded-pages depth effect restored, with live offsets `[48, 32, 16]` and opacities `[0.18, 0.36, 0.55]` | Prior v2 had a smaller staggered version inside the `overflow:hidden` panel — back pages were being clipped. Restructured into an outer wrapper (no overflow) holding the back pages as siblings + an inner front card with `overflow:hidden` for the entry-feed scroll |
+
+**Diary-wrapper structural change** (item 10) is worth flagging:
+
+The previous shape had `<section overflow:hidden>` containing both the back pages and the front card. Back pages rendered with `transform: translate(-Xpx, +Xpx)` to peek out below-left, but the parent's `overflow:hidden` clipped them flush — so the depth effect was effectively invisible.
+
+New shape:
+```
+<div style={{ position: relative }}>           {/* wrapper, no overflow */}
+  <div className="diaryBackPage" />            {/* offset 48, opacity .18 */}
+  <div className="diaryBackPage" />            {/* offset 32, opacity .36 */}
+  <div className="diaryBackPage" />            {/* offset 16, opacity .55 */}
+  <section style={{ overflow: hidden, zIndex: 1 }}>
+    {/* fixed header + scrollable entry feed */}
+  </section>
+</div>
+```
+
+Mirrors the live `.diaryCardWrap` + `.diaryBackPage` cascade (theme.ts). Front card stays at `zIndex: 1` so it layers on top of the receded pages.
+
+**Files (this commit):**
+
+- [src/components/v2/V2Layout.tsx](src/components/v2/V2Layout.tsx) — Lucide LogOut replaces Unicode glyph
+- [src/components/v2/V2JournalPage.tsx](src/components/v2/V2JournalPage.tsx) — all journal-page changes (rail logo, paired header repositioned, panel restructured, action-row buttons restyled, EntryCard chip + expand-button + posted-in prefix)
+
+**Bundle delta:** 935 → 937 KB raw / 250 → 251 KB gzip.
+
+**Remaining wholesale styling pass items** (deferred):
+
+The other v2 surfaces (profile self/visitor, user-aggregate, compose) didn't get polished in this pass. Pending real-use feedback on each of those before iterating. Conventions captured in this entry (rail unification, paired-header-above-panel, solid-palette destination buttons + chips with "posted in:" prefix, restored expand button, layered diary depth) extend cleanly to those surfaces when their turn comes.
+
 ### 2026-05-08 — v2 UI rethink: + add destination upgrades on entries (checkpoint 9)
 
 Wires the hover-revealed "+ add destination" affordances on `/v2/journal/:showId` entries. From any existing entry the user can promote it to one or more new destinations: "+ make public" or "+ send to <room>" per friend room the thread isn't in yet. No clones — the new model lets a single thread row carry multiple destinations simultaneously, and these upgrades just flip `is_public` or insert `group_threads` rows on the existing thread.
