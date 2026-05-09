@@ -178,16 +178,21 @@ export default function V2JournalPage() {
   //    left edge (24px from the corner). Main column flows with margin-left
   //    clearing the rail.
   //  - Narrow viewports: stacked layout, rail above main inline.
-  const RAIL_WIDTH = 280;
+  const RAIL_WIDTH = 220;
   const RAIL_LEFT = 24;
-  const MAIN_LEFT = RAIL_LEFT + RAIL_WIDTH + 32; // 336
+  const MAIN_LEFT = RAIL_LEFT + RAIL_WIDTH + 32; // 276
 
   return (
     <V2Layout palette="journal" bareMain>
       {/* === RAIL ===
           Logo + search + show buttons read as one unified left-column
           nav bar. Fixed against viewport-left on wide; inline above the
-          main column on narrow. */}
+          main column on narrow.
+          The aside itself has NO overflow constraint — overflow-y:auto
+          would auto-promote overflow-x and clip the logo's negative-
+          offset blocks (SidebarLogo arrangement 4 has blocks at
+          translate(-24, …)). The show-button list inside has its own
+          scroll container so a long list doesn't push the layout. */}
       <aside
         style={
           isNarrow
@@ -195,17 +200,15 @@ export default function V2JournalPage() {
             : {
                 position: "fixed",
                 left: RAIL_LEFT,
-                top: 36,
+                top: 28,
                 width: RAIL_WIDTH,
-                maxHeight: "calc(100vh - 72px)",
-                overflowY: "auto",
                 zIndex: 10,
               }
         }
       >
         {!isNarrow && (
-          <div style={{ marginBottom: 18, marginLeft: -8 }}>
-            <SidebarLogo scale={0.85} />
+          <div style={{ marginBottom: 14 }}>
+            <SidebarLogo scale={0.6} />
           </div>
         )}
 
@@ -237,16 +240,33 @@ export default function V2JournalPage() {
             style={{
               fontFamily: "Lora, Georgia, serif",
               fontStyle: "italic",
-              fontSize: 13,
+              fontSize: 12,
               color: "var(--dos-gray)",
-              margin: "16px 0 8px",
+              margin: "12px 0 6px",
               paddingLeft: 6,
             }}
           >
             your shows
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {/* Show-list scrolls inside its own container so a long list
+              doesn't push the layout. Logo + search above stay outside
+              the scroll so SidebarLogo's negative-offset blocks aren't
+              clipped by the auto-promoted overflow-x. */}
+          <div
+            style={
+              isNarrow
+                ? { display: "flex", flexDirection: "column", gap: 2 }
+                : {
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
+                    maxHeight: "calc(100vh - 240px)",
+                    overflowY: "auto",
+                    paddingRight: 4,
+                  }
+            }
+          >
             {userShowIds.length === 0 && (
               <div style={{ fontSize: 13, color: "var(--dos-gray)", fontStyle: "italic", padding: "8px 6px" }}>
                 no shows yet — search above to add one.
@@ -271,17 +291,17 @@ export default function V2JournalPage() {
                     background: active ? "rgba(255,255,255,0.18)" : "transparent",
                     border: "2px solid transparent",
                     color: "var(--dos-fg)",
-                    padding: "8px 14px",
-                    fontSize: 14,
+                    padding: "6px 12px",
+                    fontSize: 13,
                     fontWeight: active ? 600 : 500,
                     cursor: "pointer",
                     borderRadius: 9999,
                   }}
                 >
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                  <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", fontSize: 11, color: "var(--dos-gray)", fontWeight: 500, lineHeight: 1.2, flexShrink: 0, marginLeft: 8 }}>
+                  <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", fontSize: 10, color: "var(--dos-gray)", fontWeight: 500, lineHeight: 1.2, flexShrink: 0, marginLeft: 8 }}>
                     {count > 0 && <span>{count}</span>}
-                    <span style={{ fontSize: 10 }}>{formatProgressShort(p)}</span>
+                    <span style={{ fontSize: 9 }}>{formatProgressShort(p)}</span>
                   </span>
                 </button>
               );
