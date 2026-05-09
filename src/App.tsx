@@ -265,10 +265,12 @@ function AppShell() {
   const [repliesToUser, setRepliesToUser] = useState<{ reply: Reply; thread: Thread; groupId?: string }[]>([]);
 
   // Fetch on login + whenever the user navigates to a show or the profile
+  // (live or v3). Without showV3Journal in deps, /v3/journal visits skip
+  // this refresh and the dot logic reads stale repliesToUser data.
   useEffect(() => {
     if (!user) { setRepliesToUser([]); return; }
     fetchRepliesToUserThreads(user.id).then(setRepliesToUser).catch(() => {});
-  }, [user?.id, expandedShowId, showProfile]);
+  }, [user?.id, expandedShowId, showProfile, showV3Journal]);
 
   // Live: refetch whenever any reply is inserted/updated/deleted in the DB
   useEffect(() => {
@@ -296,7 +298,7 @@ function AppShell() {
   useEffect(() => {
     if (!user) { setPingCountsByShow({}); return; }
     fetchUndismissedPingCountsByShow(user.id).then(setPingCountsByShow).catch(() => {});
-  }, [user?.id, expandedShowId, showProfile]);
+  }, [user?.id, expandedShowId, showProfile, showV3Journal]);
 
   // Track when user last visited their profile (clears green badge)
   const [visibleSeenAt, setVisibleSeenAt] = useState<number>(() => {
@@ -363,7 +365,13 @@ function AppShell() {
   hasVisibleRef.current = hasVisibleNewReplies;
   const [openedAtSeenAt, setOpenedAtSeenAt] = useState(0);
   useEffect(() => {
-    if (showProfile) {
+    // Fire on either journal route — /profile (live) or /v3/journal
+    // (duplicate). Without this, /v3/journal leaves openedAtSeenAt at 0
+    // so reply.updatedAt > 0 is always true and every visible reply
+    // lights green (over-fire). The visible/invisible stamp clears must
+    // also run on /v3/journal so navigating between the two routes
+    // doesn't leave inconsistent seen-stamp state.
+    if (showProfile || showV3Journal) {
       setOpenedAtSeenAt(visibleSeenAt); // capture BEFORE clearing
       const now = Date.now();
       setVisibleSeenAt(now);
@@ -373,7 +381,7 @@ function AppShell() {
       setInvisibleFirstSeenAt(0);
       localStorage.removeItem("ns_invisible_first_seen_at");
     }
-  }, [showProfile]);
+  }, [showProfile, showV3Journal]);
 
   const [pickShowId, setPickShowId] = useState<string | null>(null);
   // Stores a just-created show so the modal can render before `shows` state updates settle
