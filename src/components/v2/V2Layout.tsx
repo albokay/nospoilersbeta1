@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
-import { LogOut, ChevronDown } from "lucide-react";
+import { LogOut, ChevronDown, ArrowRight } from "lucide-react";
 import FeedbackWidget from "../FeedbackWidget";
 
 type Palette = "journal" | "profile" | "compose";
@@ -143,15 +143,15 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
               position: "fixed",
               top: accountMenuPos.top,
               right: accountMenuPos.right,
-              minWidth: 200,
-              background: "var(--dos-bg)",
-              border: "2px solid #fff",
-              padding: 8,
               zIndex: 61,
               display: "flex",
               flexDirection: "column",
+              gap: 8,
             }}
           >
+            {/* Sign-out matches the profile pill's pill-shape (height 32,
+                radius 9999, padding 0 16, fs 14) but rendered as a ghost:
+                transparent fill + 2px white outline + white text. */}
             <button
               role="menuitem"
               onClick={() => {
@@ -159,19 +159,19 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
                 signOut();
               }}
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
-                width: "100%",
-                textAlign: "left",
                 background: "transparent",
-                border: "none",
-                padding: "8px 12px",
-                color: "var(--dos-fg)",
+                border: "2px solid #fff",
+                color: "#fff",
+                borderRadius: 9999,
+                padding: "0 16px",
+                height: 32,
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: "pointer",
-                borderRadius: 0,
+                whiteSpace: "nowrap",
               }}
             >
               <LogOut size={14} /> sign out
@@ -226,9 +226,12 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
                   borderBottom: "1px dotted var(--dos-gray)",
                   paddingBottom: 1,
                   cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
-                → {pairedHeader.rightLabel}
+                <ArrowRight size={14} /> {pairedHeader.rightLabel}
               </a>
             </div>
           )}

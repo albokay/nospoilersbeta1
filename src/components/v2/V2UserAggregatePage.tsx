@@ -14,6 +14,7 @@ import type { ProgressEntry, Thread } from "../../types";
 import V2Layout from "./V2Layout";
 import { navigateToShow } from "./v2nav";
 import OneSelectProgress from "../OneSelectProgress";
+import { ArrowRight } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LoadingDots from "../LoadingDots";
 import { canView, timeAgo } from "../../lib/utils";
@@ -260,9 +261,9 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         <a
           href={`/show/${show.id}`}
           onClick={(e) => { e.preventDefault(); navigateToShow(navigate, show.id); }}
-          style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-gray)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", paddingBottom: 1 }}
+          style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-gray)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", paddingBottom: 1, display: "inline-flex", alignItems: "center", gap: 6 }}
         >
-          see all public posts on {show.name} →
+          see all public posts on {show.name} <ArrowRight size={13} />
         </a>
       </div>
 

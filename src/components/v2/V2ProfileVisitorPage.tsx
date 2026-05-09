@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, type NavigateFunction } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import {
   fetchShows,
@@ -533,9 +534,9 @@ function ContextualCTAs({
         <button
           className="btn h40"
           onClick={() => navigateToShow(navigate, showId, { activeGroupId: sharedRoom.groupId })}
-          style={{ fontSize: 12 }}
+          style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
         >
-          → go to your friend room
+          <ArrowRight size={13} /> go to your friend room
         </button>
       );
     }

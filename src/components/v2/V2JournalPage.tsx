@@ -30,7 +30,7 @@ import LoadingDots from "../LoadingDots";
 import V2Layout from "./V2Layout";
 import { navigateToShow } from "./v2nav";
 import { createPortal } from "react-dom";
-import { ChevronDown, SquarePen, Users, Globe, Plus } from "lucide-react";
+import { ChevronDown, SquarePen, Users, Globe, Plus, ArrowRight, Trash2 } from "lucide-react";
 
 // Replaces the last space in a string with U+00A0 so the final two
 // words stay glued. Browser wraps at the previous space instead. Same
@@ -91,6 +91,7 @@ export default function V2JournalPage() {
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [allUserThreads, setAllUserThreads] = useState<ThreadRow[]>([]);
   const [groupsForActive, setGroupsForActive] = useState<FriendGroup[]>([]);
+  const [bootstrapping, setBootstrapping] = useState(true);
   const [tabReplies, setTabReplies] = useState<{
     myReplies: ReplyRow[];
     repliesToMe: ReplyRow[];
@@ -120,6 +121,7 @@ export default function V2JournalPage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
+    setBootstrapping(true);
     Promise.all([fetchShows(), fetchProgress(user.id), fetchUserThreads(user.id)])
       .then(([allShows, prog, threads]) => {
         if (cancelled) return;
@@ -130,6 +132,9 @@ export default function V2JournalPage() {
       .catch((err) => {
         if (cancelled) return;
         console.warn("V2JournalPage bootstrap failed (recoverable):", err);
+      })
+      .finally(() => {
+        if (!cancelled) setBootstrapping(false);
       });
     return () => {
       cancelled = true;
@@ -429,9 +434,12 @@ export default function V2JournalPage() {
                   borderBottom: "1px dotted var(--dos-gray)",
                   paddingBottom: 1,
                   cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
-                → go to your public profile
+                <ArrowRight size={14} /> go to your public profile
               </a>
             </div>
           )}
@@ -482,7 +490,11 @@ export default function V2JournalPage() {
             }}
           >
 
-            {!activeShow ? (
+            {bootstrapping ? (
+              <div style={{ fontStyle: "italic", color: "var(--dos-gray)", padding: "32px 32px", textAlign: "center" }}>
+                Loading<LoadingDots />
+              </div>
+            ) : !activeShow ? (
               <div style={{ fontStyle: "italic", color: "var(--dos-gray)", padding: "32px 32px" }}>
                 no shows in your journal yet. search above to add one.
               </div>
@@ -609,7 +621,7 @@ export default function V2JournalPage() {
                       onClick={() => navigateToShow(navigate, activeShow.id, { activeGroupId: groupsForActive[0].id })}
                       style={friendRoomBtnStyle}
                     >
-                      <Users size={13} /> → your friend room
+                      <Users size={13} /> <ArrowRight size={13} /> your friend room
                     </button>
                   )}
                   {groupsForActive.length > 1 && (
@@ -618,7 +630,7 @@ export default function V2JournalPage() {
                         onClick={() => setRoomsDropdownOpen((v) => !v)}
                         style={friendRoomBtnStyle}
                       >
-                        <Users size={13} /> → your {groupsForActive.length} friend rooms
+                        <Users size={13} /> <ArrowRight size={13} /> your {groupsForActive.length} friend rooms
                         <ChevronDown size={13} style={{ marginLeft: 4 }} />
                       </button>
                       {roomsDropdownOpen && (
@@ -648,7 +660,7 @@ export default function V2JournalPage() {
                                 }}
                                 style={friendRoomBtnStyle}
                               >
-                                <Users size={13} /> → {g.name}
+                                <Users size={13} /> <ArrowRight size={13} /> {g.name}
                               </button>
                             ))}
                           </div>
@@ -702,12 +714,14 @@ export default function V2JournalPage() {
                         color: "#fff",
                         border: "2px solid #fff",
                         borderRadius: "50%",
-                        width: 32,
-                        height: 32,
+                        width: 24,
+                        height: 24,
                         cursor: "pointer",
+                        flexShrink: 0,
+                        alignSelf: "center",
                       }}
                     >
-                      <Plus size={14} />
+                      <Plus size={12} />
                     </button>
                   )}
                   <button
@@ -729,7 +743,7 @@ export default function V2JournalPage() {
                       cursor: "pointer",
                     }}
                   >
-                    <Globe size={13} /> → public conversation
+                    <Globe size={13} /> <ArrowRight size={13} /> public conversation
                   </button>
                 </div>
                 </div>{/* /fixed-position header */}
@@ -811,6 +825,21 @@ export default function V2JournalPage() {
                         // the appropriate destination context (room or public).
                         onNavigateRoom={(groupId) => navigateToShow(navigate, t.showId, { threadId: t.id, activeGroupId: groupId })}
                         onNavigatePublic={() => navigateToShow(navigate, t.showId, { threadId: t.id })}
+                        onDeleteFromJournal={async () => {
+                          if (!window.confirm("Delete from your journal? This is permanent.")) return;
+                          // Optimistic local update.
+                          setAllUserThreads((prev) => prev.filter((r) => r.thread.id !== t.id));
+                          try {
+                            const { deleteThread } = await import("../../lib/db");
+                            await deleteThread(t.id);
+                          } catch (err) {
+                            console.warn("deleteThread failed:", err);
+                            // Refetch on failure to surface the real state.
+                            if (user) {
+                              fetchUserThreads(user.id).then(setAllUserThreads).catch(() => {});
+                            }
+                          }
+                        }}
                       />
                     );
                   })}
@@ -1254,6 +1283,7 @@ function EntryCard({
   onUpgradeRoom,
   onNavigateRoom,
   onNavigatePublic,
+  onDeleteFromJournal,
 }: {
   row: ThreadRow;
   firstRow: boolean;
@@ -1263,18 +1293,23 @@ function EntryCard({
   onUpgradeRoom: (g: FriendGroup) => void;
   onNavigateRoom: (groupId: string) => void;
   onNavigatePublic: () => void;
+  onDeleteFromJournal: () => void;
 }) {
   const t = row.thread;
   const [expanded, setExpanded] = useState(false);
   const hasChips = row.allGroups.length > 0 || t.isPublic;
   const hasUpgrades = canMakePublic || roomsNotIn.length > 0;
+  // Journal-only entry = not public AND not in any friend room. Per spec:
+  // hard delete only happens here (other deletions just remove a destination).
+  const isJournalOnly = !t.isPublic && row.allGroups.length === 0;
   const hasPreviewClip = (t.body && t.body.length > (t.preview?.length ?? 0)) || (t.preview ?? "") !== (t.body ?? "");
 
   return (
     <article
       style={{
-        padding: "20px 0",
+        padding: "16px 0",
         borderTop: firstRow ? "none" : "1px solid rgba(255,255,255,0.18)",
+        position: "relative",
       }}
     >
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
@@ -1301,12 +1336,12 @@ function EntryCard({
       {/* destinations row — current state + upgrade affordances live in
           the same row, always visible. "posted in:" italic Inter prefix
           when chips exist; chips are solid palette fill (no outline,
-          white text); upgrade buttons are dashed-outline transparent
-          (transparent-with-outline pattern). Both groupings share one
-          flex-wrap row so what an entry IS and where it can be SENT
-          read together. */}
-      {(hasChips || hasUpgrades) && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
+          white text, ArrowRight prefix); upgrade buttons are dashed-
+          outline transparent (transparent-with-outline pattern). When the
+          entry is journal-only, a canon-red dotted "delete from journal"
+          button joins this row (spec: hard delete only from journal-only). */}
+      {(hasChips || hasUpgrades || isJournalOnly) && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap", alignItems: "center" }}>
           {hasChips && (
             <span
               style={{
@@ -1341,7 +1376,7 @@ function EntryCard({
                 cursor: "pointer",
               }}
             >
-              friend room · {g.groupName}
+              <ArrowRight size={11} /> friend room · {g.groupName}
             </a>
           ))}
           {t.isPublic && (
@@ -1364,7 +1399,7 @@ function EntryCard({
                 cursor: "pointer",
               }}
             >
-              public
+              <ArrowRight size={11} /> public
             </a>
           )}
           {canMakePublic && (
@@ -1410,6 +1445,27 @@ function EntryCard({
               + send to {g.name}
             </button>
           ))}
+          {isJournalOnly && (
+            <button
+              onClick={onDeleteFromJournal}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "4px 10px",
+                borderRadius: 9999,
+                fontFamily: "Lora, Georgia, serif",
+                fontStyle: "italic",
+                fontSize: 12,
+                color: "var(--danger)",
+                border: "2px dashed var(--danger)",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <Trash2 size={11} /> delete from journal
+            </button>
+          )}
         </div>
       )}
 
@@ -1420,10 +1476,11 @@ function EntryCard({
         {linkifyText(expanded ? (t.body || t.preview) : (t.preview || t.body))}
       </div>
 
-      {/* expand / collapse — restored from live conventions.
-          White solid fill, no outline, canon-green text. */}
+      {/* expand / collapse — bottom-right of the entry. White solid fill,
+          no outline, canon-green text per live conventions. Right-aligned
+          so the entry can stay thinner (no full-width row beneath). */}
       {hasPreviewClip && (
-        <div style={{ marginTop: 10 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
           <button
             onClick={() => setExpanded((v) => !v)}
             style={{
@@ -1431,7 +1488,7 @@ function EntryCard({
               color: "#7abd8e",
               border: "none",
               borderRadius: 9999,
-              padding: "6px 14px",
+              padding: "4px 12px",
               fontFamily: "Inter, sans-serif",
               fontSize: 12,
               fontWeight: 600,

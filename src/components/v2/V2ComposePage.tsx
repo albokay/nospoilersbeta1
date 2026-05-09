@@ -16,7 +16,7 @@ import type { PromptEntry } from "../../lib/promptData";
 import { getPromptSuggestion } from "../../lib/prompts";
 import PromptCard from "../PromptCard";
 import LoadingDots from "../LoadingDots";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles, X, ArrowRight } from "lucide-react";
 
 // Compose-page cream palette + dark ink. Self-contained — V2Layout's
 // chrome (white on green/mustard) wouldn't read on cream, and compose has
@@ -721,7 +721,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
             className="btn post h40"
             style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
           >
-            {submitting ? <>posting<LoadingDots /></> : <>post entry →</>}
+            {submitting ? <>posting<LoadingDots /></> : <>post entry <ArrowRight size={14} /></>}
           </button>
         </div>
         {submitError && (
