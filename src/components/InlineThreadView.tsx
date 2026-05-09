@@ -5,7 +5,7 @@ import type { FriendGroup } from "../types";
 import { timeAgo, canView, effectiveProgress } from "../lib/utils";
 import EpisodeTag from "./EpisodeTag";
 import { useAuth } from "../lib/auth";
-import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, addThreadToGroup, markThreadSeen, markThreadPublicSeen } from "../lib/db";
+import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, addThreadToGroup, removeThreadFromGroup, markThreadSeen, markThreadPublicSeen } from "../lib/db";
 import type { CitationEntry } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import Modal from "./Modal";
@@ -319,6 +319,23 @@ export default function InlineThreadView({
   };
 
   const handleDelete = async () => {
+    // Contextual deletion (v2 spec, 2026-05-08):
+    //   - In a friend-room context: only remove the group_threads link.
+    //     Thread stays alive in the journal (and any other rooms / public
+    //     destination it's also in). The thread is the canonical home;
+    //     friend rooms are just additional destinations.
+    //   - Outside any friend room (private journal or public conversation
+    //     view): full soft-delete via deleteThread.
+    if (groupIdProp) {
+      if (!window.confirm("Remove this post from this room? It will stay in your journal.")) return;
+      try {
+        await removeThreadFromGroup(thread.id, groupIdProp);
+        onThreadDelete?.();
+      } catch {
+        alert("Failed to remove from room. Please try again.");
+      }
+      return;
+    }
     if (!window.confirm("Delete this post? It will turn into a stub visible to others.")) return;
     try {
       await dbDeleteThread(thread.id);

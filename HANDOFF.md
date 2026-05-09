@@ -1315,6 +1315,55 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: journal polish 3 (+ contextual delete in live ShowSection)
+
+Six follow-ups, last of which crosses into the live ShowSection for the first time in the v2 arc. Specifically the contextual-deletion behavior (spec point #8) — it's been one of the nine v2 architectural decisions all along but hadn't been implemented because v2 doesn't have its own friend-room view; the live ShowSection's delete button was still doing full soft-deletes from inside friend rooms.
+
+**1. + friends button restyled, dual-shape.** White text + 2px white outline + transparent fill (transparent-with-outline pattern).
+
+- 0 rooms → text pill `+ friends`.
+- 1+ rooms → circular `+` icon button (Lucide `Plus`, same outline/colors). Reads as "add another room" without competing with the room-nav button next to it.
+
+**2. Empty-state welcome on /v2/journal.** Was a one-line italic "no entries on this show yet" gray text. Now renders `<EmptyProfileWelcome />` with the same precedence as live ProfilePage:1198:
+
+| Test | Variant |
+|---|---|
+| `activeShow.id === "tsp"` | `isTsp` (canonical demo welcome) |
+| `sessionStorage.ns_invite_welcome_<showId>` exists | `invitedMode` |
+| User has any `g.createdBy === user.id` room on the show | `selfCreatedRoom` |
+| else | default |
+
+Same exact welcome copy as the live site; v2 just drops the `activeFilter` branching (v2 journal feed isn't filter-scoped).
+
+**3. Show name wraps before pushing the progress pill.** Title row restructured: title group has `flex: 1; min-width: 0; overflow-wrap: break-word`; pill wrapper has `flex-shrink: 0; align-self: flex-start`. Pill stays in the corner regardless of title length. `align-items: flex-start` keeps the pill top-aligned when the title goes multi-line. Title text passes through `preventLastWordOrphan` (replaces final space with U+00A0) so the last line never has a single-word widow — same helper used by `ShowSection.tsx:7` for live banner titles. Lifted as a module-private helper at the top of V2JournalPage.
+
+**4. Multi-room dropdown.** When user has N>1 friend rooms on the active show, the "→ your N friend rooms" pill becomes a dropdown trigger with a `ChevronDown`. Click toggles a stacked menu of N solid canon-light-blue pills, one per room with the room name. Each pill navigates via `location.state.activeGroupId` (App.tsx:659 convention). Backdrop click closes. Single-room case stays as the direct-link pill from before.
+
+A module-level `friendRoomBtnStyle` const captures the canon-light-blue + white + no-outline pattern in one place — reused by the trigger button + every dropdown item.
+
+**5. Show-rail button padding tightened.** `padding: 8/16` → `4/12` (both 4-multiples per the 8-grid rule's tight-pair fallback). Show buttons now sit ~32 px tall in the rail, matching the search field height + leaving more vertical room for additional shows without scrolling.
+
+**6. Contextual delete in live `InlineThreadView.handleDelete` + `ShowSection.onThreadDelete`.** The new model says deleting from a friend room should remove only the link (`group_threads` row) and leave the thread alive in the journal. Hard delete is reserved for "private-only entries deleted from the journal" (and admin cascades). Until this commit, `handleDelete` always called `dbDeleteThread` regardless of context.
+
+`InlineThreadView.handleDelete`:
+- Branches on the existing `groupIdProp` (already passed in by ShowSection when viewing inside a friend room).
+- Friend-room branch: `removeThreadFromGroup(thread.id, groupId)` + new confirm copy ("Remove this post from this room? It will stay in your journal.").
+- Otherwise: original `dbDeleteThread` path.
+
+`ShowSection.onThreadDelete` (the callback that updates local `dbThreads`):
+- If `activeGroupId` is truthy: filter the thread out of local list (since the link is gone — the thread itself isn't deleted). Next fetch is authoritative.
+- Otherwise: keep marking `isDeleted: true` (the existing soft-delete-rendering path).
+
+**Why this finally crosses into the live ShowSection:** the v2 spec's nine architectural decisions include contextual deletion, but the v2 journal page doesn't surface its own thread-detail view (and won't until the post-cutover work). The user-visible delete affordance lives in the live ShowSection's friend-room view. Touching that file here is narrowly scoped — only the delete handler — and aligns the live behavior with the v2 spec the rest of the arc has been building toward. Everything else in ShowSection (rendering, room-create, invites, pings/polls/SIKW) stays untouched.
+
+**Files (this commit):**
+
+- [src/components/v2/V2JournalPage.tsx](src/components/v2/V2JournalPage.tsx) — items 1–5
+- [src/components/InlineThreadView.tsx](src/components/InlineThreadView.tsx) — `handleDelete` branches on `groupIdProp` (item 6 part A)
+- [src/components/ShowSection.tsx](src/components/ShowSection.tsx) — `onThreadDelete` callback branches on `activeGroupId` (item 6 part B)
+
+**Bundle delta:** 941 → 942 KB raw / 252 → 252 KB gzip.
+
 ### 2026-05-08 — v2 UI rethink: journal polish pass 2 (rail position, upgrade row, feedback)
 
 Three follow-ups after the first polish pass surfaced specific issues.

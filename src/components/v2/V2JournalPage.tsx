@@ -23,11 +23,41 @@ import SearchShows from "../SearchShows";
 import SidebarLogo from "../SidebarLogo";
 import EpisodeTag from "../EpisodeTag";
 import OneSelectProgress from "../OneSelectProgress";
+import EmptyProfileWelcome from "../EmptyProfileWelcome";
 import { timeAgo } from "../../lib/utils";
 import { linkifyText } from "../../lib/linkify";
 import LoadingDots from "../LoadingDots";
 import V2Layout from "./V2Layout";
-import { ChevronDown, SquarePen, Users, Globe } from "lucide-react";
+import { ChevronDown, SquarePen, Users, Globe, Plus } from "lucide-react";
+
+// Replaces the last space in a string with U+00A0 so the final two
+// words stay glued. Browser wraps at the previous space instead. Same
+// helper used by ShowSection.tsx:7 to prevent last-line widows on long
+// banner titles.
+function preventLastWordOrphan(s: string): string {
+  if (!s) return s;
+  const idx = s.lastIndexOf(" ");
+  if (idx === -1 || idx === 0) return s;
+  return s.slice(0, idx) + " " + s.slice(idx + 1);
+}
+
+// Solid canon-light-blue pill — friend-room destination identity
+// throughout v2. Solid-fill-no-outline per the v2 button rule.
+const friendRoomBtnStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  background: "#adc8d7",
+  color: "#fff",
+  border: "none",
+  borderRadius: 9999,
+  padding: "0 16px",
+  height: 32,
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
 
 type GroupRef = { groupId: string; groupName: string };
 type ThreadRow = { thread: Thread; groupId?: string; groupName?: string; allGroups: GroupRef[] };
@@ -73,6 +103,7 @@ export default function V2JournalPage() {
   const [newRoomName, setNewRoomName] = useState("");
   const [createRoomSubmitting, setCreateRoomSubmitting] = useState(false);
   const [createRoomError, setCreateRoomError] = useState<string | null>(null);
+  const [roomsDropdownOpen, setRoomsDropdownOpen] = useState(false);
   const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 1080);
 
   useEffect(() => {
@@ -323,7 +354,7 @@ export default function V2JournalPage() {
                     background: active ? "rgba(255,255,255,0.18)" : "transparent",
                     border: "2px solid transparent",
                     color: "var(--dos-fg)",
-                    padding: "8px 16px",
+                    padding: "4px 12px",
                     fontSize: 13,
                     fontWeight: active ? 600 : 500,
                     cursor: "pointer",
@@ -455,8 +486,11 @@ export default function V2JournalPage() {
                     Sits above the scroll container so entries never bleed
                     above it (same pattern as live .profileActionBar). */}
                 <div style={{ flexShrink: 0, padding: "16px 24px 8px" }}>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
-                  <div style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                {/* Title row: title shrinks/wraps; progress pill stays
+                    pinned in the corner. align-items: flex-start keeps
+                    the pill top-aligned when the title goes multi-line. */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 4 }}>
+                  <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0, flexWrap: "wrap" }}>
                     <h1
                       style={{
                         fontFamily: "Lora, Georgia, serif",
@@ -465,11 +499,14 @@ export default function V2JournalPage() {
                         letterSpacing: "0.02em",
                         textTransform: "uppercase",
                         color: "#fff",
-                        lineHeight: 1.05,
+                        lineHeight: 1.1,
                         margin: 0,
+                        overflowWrap: "break-word",
+                        wordBreak: "break-word",
+                        minWidth: 0,
                       }}
                     >
-                      {activeShow.name}
+                      {preventLastWordOrphan(activeShow.name)}
                     </h1>
                     <button
                       onClick={(e) => { e.stopPropagation(); setChevronOpen((v) => !v); }}
@@ -549,23 +586,28 @@ export default function V2JournalPage() {
                       highest, transitions out of rewatch when past previous
                       highest, otherwise updates rewatch position only). */}
                   {user && (
-                    <OneSelectProgress
-                      show={activeShow as any}
-                      value={{ s: progress[activeShow.id]?.s ?? 1, e: progress[activeShow.id]?.e ?? 1 }}
-                      rewatchHighest={
-                        progress[activeShow.id]?.isRewatching && progress[activeShow.id]?.highestS != null && progress[activeShow.id]?.highestE != null
-                          ? { s: progress[activeShow.id].highestS!, e: progress[activeShow.id].highestE! }
-                          : null
-                      }
-                      onConfirm={async (val) => {
-                        try {
-                          const updated = await persistProgressUpdate(user.id, activeShow.id, progress[activeShow.id], val);
-                          setProgress((prev) => ({ ...prev, [activeShow.id]: updated }));
-                        } catch (err) {
-                          console.warn("progress update failed:", err);
+                    // Wrapper guarantees the pill stays in the corner via
+                    // flex-shrink: 0 + align-self: flex-start, even when the
+                    // title wraps to multiple lines.
+                    <div style={{ flexShrink: 0, alignSelf: "flex-start" }}>
+                      <OneSelectProgress
+                        show={activeShow as any}
+                        value={{ s: progress[activeShow.id]?.s ?? 1, e: progress[activeShow.id]?.e ?? 1 }}
+                        rewatchHighest={
+                          progress[activeShow.id]?.isRewatching && progress[activeShow.id]?.highestS != null && progress[activeShow.id]?.highestE != null
+                            ? { s: progress[activeShow.id].highestS!, e: progress[activeShow.id].highestE! }
+                            : null
                         }
-                      }}
-                    />
+                        onConfirm={async (val) => {
+                          try {
+                            const updated = await persistProgressUpdate(user.id, activeShow.id, progress[activeShow.id], val);
+                            setProgress((prev) => ({ ...prev, [activeShow.id]: updated }));
+                          } catch (err) {
+                            console.warn("progress update failed:", err);
+                          }
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
 
@@ -591,32 +633,81 @@ export default function V2JournalPage() {
                   >
                     <SquarePen size={13} /> write a new entry
                   </button>
-                  {groupsForActive.length > 0 && (
+                  {/* Friend-room nav — single room: solid pill that goes
+                      straight there. Multi-room: dropdown trigger (still
+                      solid pill) that reveals one solid pill per room. */}
+                  {groupsForActive.length === 1 && (
+                    <button
+                      onClick={() => navigate(`/show/${activeShow.id}`, { state: { activeGroupId: groupsForActive[0].id } })}
+                      style={friendRoomBtnStyle}
+                    >
+                      <Users size={13} /> → your friend room
+                    </button>
+                  )}
+                  {groupsForActive.length > 1 && (
+                    <div style={{ position: "relative", display: "inline-flex" }}>
+                      <button
+                        onClick={() => setRoomsDropdownOpen((v) => !v)}
+                        style={friendRoomBtnStyle}
+                      >
+                        <Users size={13} /> → your {groupsForActive.length} friend rooms
+                        <ChevronDown size={13} style={{ marginLeft: 4 }} />
+                      </button>
+                      {roomsDropdownOpen && (
+                        <>
+                          <div
+                            onClick={() => setRoomsDropdownOpen(false)}
+                            style={{ position: "fixed", inset: 0, zIndex: 4 }}
+                            aria-hidden
+                          />
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: "calc(100% + 8px)",
+                              left: 0,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 8,
+                              zIndex: 5,
+                            }}
+                          >
+                            {groupsForActive.map((g) => (
+                              <button
+                                key={g.id}
+                                onClick={() => {
+                                  setRoomsDropdownOpen(false);
+                                  navigate(`/show/${activeShow.id}`, { state: { activeGroupId: g.id } });
+                                }}
+                                style={friendRoomBtnStyle}
+                              >
+                                <Users size={13} /> → {g.name}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {/* + friends — start a new friend room on this show.
+                      0 rooms → "+ friends" text pill (white outline +
+                      white text + transparent fill).
+                      1+ rooms → circular "+" icon (same outline/colors)
+                      so the affordance is compact and reads as
+                      "add another room." */}
+                  {groupsForActive.length === 0 ? (
                     <button
                       onClick={() => {
-                        // Live ShowSection reads activeGroupId from
-                        // location.state (App.tsx:659 pattern). Query
-                        // strings are ignored. Single-room → preselect
-                        // that room; multi-room → land on the show
-                        // page and let the live UI offer the room
-                        // picker.
-                        const g = groupsForActive[0];
-                        if (groupsForActive.length === 1) {
-                          navigate(`/show/${activeShow.id}`, { state: { activeGroupId: g.id } });
-                        } else {
-                          navigate(`/show/${activeShow.id}`);
-                        }
+                        setNewRoomName("");
+                        setCreateRoomError(null);
+                        setCreateRoomOpen(true);
                       }}
-                      // Solid canon-light-blue + no outline + white text —
-                      // matches the friend-room destination identity
-                      // throughout v2.
                       style={{
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 4,
-                        background: "#adc8d7",
+                        background: "transparent",
                         color: "#fff",
-                        border: "none",
+                        border: "2px solid #fff",
                         borderRadius: 9999,
                         padding: "0 16px",
                         height: 32,
@@ -625,37 +716,32 @@ export default function V2JournalPage() {
                         cursor: "pointer",
                       }}
                     >
-                      <Users size={13} /> {groupsForActive.length === 1 ? "→ your friend room" : `→ your ${groupsForActive.length} friend rooms`}
+                      + friends
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setNewRoomName("");
+                        setCreateRoomError(null);
+                        setCreateRoomOpen(true);
+                      }}
+                      title="add another friend room"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "transparent",
+                        color: "#fff",
+                        border: "2px solid #fff",
+                        borderRadius: "50%",
+                        width: 32,
+                        height: 32,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <Plus size={14} />
                     </button>
                   )}
-                  {/* + friends — start a new friend room on this show.
-                      Outline canon-blue-light + canon-blue-light text,
-                      transparent fill (transparent-with-outline pattern)
-                      so it reads as a complementary affordance to the
-                      solid friend-room button. */}
-                  <button
-                    onClick={() => {
-                      setNewRoomName("");
-                      setCreateRoomError(null);
-                      setCreateRoomOpen(true);
-                    }}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      background: "transparent",
-                      color: "#adc8d7",
-                      border: "2px solid #adc8d7",
-                      borderRadius: 9999,
-                      padding: "0 16px",
-                      height: 32,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    + friends
-                  </button>
                   <button
                     onClick={() => navigate(`/show/${activeShow.id}`)}
                     // Solid canon-yellow + no outline + white text —
@@ -683,11 +769,25 @@ export default function V2JournalPage() {
                 {/* entry feed — scrolls inside the panel.
                     Borders + padding match live .diaryScrollArea. */}
                 <div style={{ flex: 1, overflowY: "auto", padding: "0 32px 24px", borderTop: "1px solid rgba(255,255,255,0.25)" }}>
-                  {activeEntries.length === 0 && (
-                    <div style={{ padding: "24px 0", color: "var(--dos-gray)", fontStyle: "italic" }}>
-                      no entries on this show yet.
-                    </div>
-                  )}
+                  {activeEntries.length === 0 && (() => {
+                    // Empty-state precedence (mirrors live ProfilePage:1198):
+                    //   1. TSP show → canonical demo welcome
+                    //   2. invitedMode (sessionStorage flag set by InviteAcceptPage)
+                    //   3. selfCreatedRoom (user has at least one room they created)
+                    //   4. Default welcome
+                    if (activeShow.id === "tsp") {
+                      return <div style={{ padding: "16px 0" }}><EmptyProfileWelcome isTsp /></div>;
+                    }
+                    const invitedMode = typeof window !== "undefined" && !!sessionStorage.getItem(`ns_invite_welcome_${activeShow.id}`);
+                    if (invitedMode) {
+                      return <div style={{ padding: "16px 0" }}><EmptyProfileWelcome invitedMode showName={activeShow.name} /></div>;
+                    }
+                    const hasSelfCreatedRoom = !!user && groupsForActive.some((g) => g.createdBy === user.id);
+                    if (hasSelfCreatedRoom) {
+                      return <div style={{ padding: "16px 0" }}><EmptyProfileWelcome selfCreatedRoom showName={activeShow.name} /></div>;
+                    }
+                    return <div style={{ padding: "16px 0" }}><EmptyProfileWelcome /></div>;
+                  })()}
                   {activeEntries.map((row, idx) => {
                     const t = row.thread;
                     const inRoomIds = new Set(row.allGroups.map((g) => g.groupId));
