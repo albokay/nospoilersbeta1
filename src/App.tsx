@@ -12,6 +12,7 @@ import ExtensionDock from "./extensions/ExtensionDock";
 import SearchShows from "./components/SearchShows";
 import ShowSection from "./components/ShowSection";
 import ProfilePage, { type ProfileTabData } from "./components/ProfilePage";
+import V3JournalPage from "./components/V3JournalPage";
 import Modal from "./components/Modal";
 import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
@@ -190,6 +191,11 @@ function AppShell() {
   const expandedShowId   = pathParts[0] === "show" ? (pathParts[1] ?? null) : null;
   const activeThreadId   = pathParts[0] === "show" && pathParts[2] === "thread" ? (pathParts[3] ?? null) : null;
   const showProfile      = location.pathname === "/profile";
+  // /v3/journal — wholesale duplicate of /profile mounted via V3JournalPage.
+  // Lives inside AppShell so it inherits the same prop graph + chrome as
+  // ProfilePage. Tracked separately so we can swap the rendered component
+  // while reusing the same data fetches, redirects, and header.
+  const showV3Journal    = pathParts[0] === "v3" && pathParts[1] === "journal";
   const publicProfileUsername = pathParts[0] === "user" ? decodeURIComponent(pathParts[1] ?? "") || null : null;
 
   // focusReplyId is still ephemeral state — it is set programmatically when
@@ -577,7 +583,7 @@ function AppShell() {
     openShow(id);
   };
 
-  const isHomepage = !expandedShowId && !showProfile && !publicProfileUsername;
+  const isHomepage = !expandedShowId && !showProfile && !publicProfileUsername && !showV3Journal;
   useEffect(() => {
     document.body.classList.toggle("has-header", !isHomepage);
     document.body.classList.toggle("homepage", isHomepage);
@@ -601,7 +607,7 @@ function AppShell() {
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, [isHomepage]);
-  const isProfilePage = showProfile || !!publicProfileUsername;
+  const isProfilePage = showProfile || !!publicProfileUsername || showV3Journal;
   const showAdmin = location.search.includes("admin");
   const isAdmin = !!profile?.is_admin;
 
@@ -628,7 +634,7 @@ function AppShell() {
   useEffect(() => {
     if (authLoading) return;
     const p = location.pathname;
-    if (!user && p === "/profile") {
+    if (!user && (p === "/profile" || p.startsWith("/v3/journal"))) {
       navigate("/", { replace: true });
       return;
     }
@@ -1195,6 +1201,34 @@ function AppShell() {
           onShowUpdated={(updated: Show) => setShows(prev => prev.map(s => s.id === updated.id ? updated : s))}
           onGroupCreated={(g: FriendGroup) => {
             // Mirror the ShowSection handler: optimistic add to top-nav pills.
+            setAllFriendGroups(prev =>
+              prev.find(x => x.id === g.id) ? prev : [{ ...g, lastActivityAt: Date.now() }, ...prev]
+            );
+          }}
+        />
+      )}
+
+      {/* v3 journal — wholesale duplicate of ProfilePage, same prop graph.
+          Tweaks live in V3JournalPage.tsx; live /profile is unaffected. */}
+      {showV3Journal && username && (
+        <V3JournalPage
+          shows={shows}
+          username={username}
+          progress={progress}
+          likesThreads={likesThreads}
+          likesReplies={likesReplies}
+          likedByUserThreads={likedByUserThreads}
+          likedByUserReplies={likedByUserReplies}
+          openThreadWithFocus={openThreadWithFocus}
+          openShow={openShow}
+          onClose={goHomepage}
+          repliesToUser={repliesToUser}
+          pingCountsByShow={pingCountsByShow}
+          openedAtSeenAt={openedAtSeenAt}
+          onTabsChange={setProfileTabData}
+          updateProgressFor={updateProgressFor}
+          onShowUpdated={(updated: Show) => setShows(prev => prev.map(s => s.id === updated.id ? updated : s))}
+          onGroupCreated={(g: FriendGroup) => {
             setAllFriendGroups(prev =>
               prev.find(x => x.id === g.id) ? prev : [{ ...g, lastActivityAt: Date.now() }, ...prev]
             );

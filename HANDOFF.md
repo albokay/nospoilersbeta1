@@ -1,5 +1,7 @@
 # Sidebar — Technical State (2026-05-09)
 
+> **2026-05-09 update — `/v3/journal` introduced.** A duplicate-of-live strategy supersedes the previous "v2 wrapper" plan. See "v3 strategy" arc in §7 for the full rationale + plumbing.
+
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
 ---
@@ -1314,6 +1316,46 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-09 — v3 strategy: `/v3/journal` = wholesale duplicate of live ProfilePage, mounted inside AppShell
+
+After the prior 2026-05-09 v2 polish arc closed with a decision to restore the live journal's look in v2, the implementation strategy shifted again on review: **rather than wrap or rebuild the v2 journal, the live ProfilePage is now duplicated to a new file and mounted under a new `/v3` route family**. v2's surviving surfaces (compose, profile self/visitor, user-aggregate) stay where they are. The journal becomes the first — and currently only — `/v3` surface.
+
+**Why duplicate over wrapping the live ProfilePage:**
+
+- The user's plan is to **iterate freely** on the duplicated journal page. A wrapper would force every tweak through `<ProfilePage>` props or a "v3 mode" branch, polluting the live `/profile` file. A copy keeps tweaks scoped to one file with zero risk to the live journal.
+- ProfilePage takes ~12 props from AppShell (`shows`, `progress`, four likes maps, callbacks, `repliesToUser`, `pingCountsByShow`, `openedAtSeenAt`, etc.). Building a v2-style wrapper outside AppShell meant re-fetching and re-deriving all of that at the v2 layer. Mounting the duplicate **inside** AppShell inherits the full prop graph for free.
+
+**Why a new `/v3` family rather than up-versioning the rest of v2:**
+
+- The v2 surfaces that survived the prior arc (compose / profile self / profile visitor / user-aggregate) are a *different pattern*: parallel-built isolated pages mounted outside AppShell, sharing `V2Layout` + `v2nav.ts` + `/v2/*` URLs + sessionStorage keys. They work today and don't need touching.
+- `/v3` specifically means "duplicate of a live page, mounted inside AppShell, free to iterate." That's a distinct strategy from v2's "isolated parallel build." Collapsing both under one banner would muddy what's a duplicate vs an independent rebuild.
+- If a v2 surface ever needs the same duplicate-of-live treatment, *that one* migrates to `/v3` at that point — one at a time, with intent. No bulk rename.
+
+**Files touched (this commit):**
+
+| File | Change |
+|---|---|
+| `src/components/V3JournalPage.tsx` | NEW — `cp src/components/ProfilePage.tsx`, then renamed `export default function ProfilePage` → `V3JournalPage` and replaced the local `export type ProfileTabData` with a `import type { ProfileTabData } from "./ProfilePage"` so AppShell's `setProfileTabData` callback type stays single-source-of-truth across both components. **No other changes** in this commit — V3JournalPage at `/v3/journal` renders identically to ProfilePage at `/profile`. |
+| `src/App.tsx` | (1) Import `V3JournalPage`. (2) Add `showV3Journal = pathParts[0] === "v3" && pathParts[1] === "journal"`. (3) Extend `isHomepage` exclusion + `isProfilePage` inclusion so the `/v3/journal` URL renders the journal chrome rather than falling through to homepage. (4) Auth-routing redirect: `!user && (p === "/profile" \|\| p.startsWith("/v3/journal"))` → bounces signed-out users off `/v3/journal` to `/`, parity with `/profile`. (5) Mount `<V3JournalPage>` next to `<ProfilePage>` with the **same exact prop set**. Mount conditioned on `showV3Journal && username`. |
+
+**Behaviors deliberately NOT changed in this commit (covered by the next iteration):**
+
+- The "write" button in V3JournalPage still opens the modal (because it's the duplicated ProfilePage code unchanged). Next commit rewires the V3 write button to `navigate("/v2/compose/:showId")` and removes the dead compose modal block from `V3JournalPage.tsx`. The user's stated single carry-over from v2 is "write button → compose page (not modal)."
+- The profile pill in the AppShell header still navigates to `/profile`, not `/v3/journal`. Same surface as today; we'll decide whether the pill should anchor to v3 for v3 users separately.
+- v2's existing `/v2/journal` route + `V2JournalPage` are unchanged in this commit. They continue to render the post-arc polished v2 journal that the redirect superseded conceptually but didn't yet remove. Cleanup (delete `V2JournalPage`, drop `/v2/journal` from `V2App`, remove "back to journal" link from `V2Layout`'s pairedHeader) happens once `/v3/journal` is the confirmed direction.
+
+**Top-level rendering gate order is unchanged.** v3 lives inside AppShell, so it sits **after** the App-level early-returns (mobile redirect, /lab, /how-it-works*, /invite, /m, /v2). The auth-routing effect runs inside AppShell and is the only top-level gate that v3 interacts with — extended one liner above to cover `/v3/journal`. See §8.
+
+**Two-step deploys this arc required:** none. Pure FE.
+
+**Bundle delta:** 944 → 982 KB raw / 253 → 261 KB gzip. The +38 KB raw is V3JournalPage's duplicated source — accepted by design. If/when v3 cuts over and the live ProfilePage is retired, the duplicate becomes the canonical and the delta unwinds.
+
+**Conventions established by this arc (carry forward):**
+
+- **`/v3/*`** = "duplicated from live, mounted inside AppShell, free to iterate." Currently just `/v3/journal`. Future v3 surfaces follow the same recipe: `cp` the live file, rename the export, import any exported types from the live file (don't re-export to avoid duplicate-symbol confusion), mount inside AppShell with the same prop graph as the live mount, extend `isHomepage`/`isProfilePage`/auth-redirect gates.
+- **`/v2/*`** = the parallel-built surfaces that survived 2026-05-09's polish-arc redirect (compose + profile self/visitor + user-aggregate + V2Layout + v2nav). Independently built, mounted outside AppShell. No bulk rename — they migrate to `/v3` only if/when individually duplicated.
+- **Don't re-export shared types from a duplicate file.** `V3JournalPage` imports `ProfileTabData` from `ProfilePage` rather than re-exporting its own copy. Any caller (currently just `App.setProfileTabData`) sees one source of truth and accepts callbacks from either component.
 
 ### 2026-05-09 — v2 UI rethink: journal polish arc end + decision to redirect
 
