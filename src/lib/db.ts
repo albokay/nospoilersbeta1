@@ -1176,6 +1176,77 @@ export async function upsertRewatchStatus(
   if (error) throw error;
 }
 
+// === v2 progress-update helper (2026-05-08) ===================================
+//
+// Pure-function port of App.tsx's updateProgressFor (App.tsx:449). Three
+// cases: non-rewatcher forward progress (bumps highest if needed); rewatcher
+// within previous highest (updates rewatch position only); rewatcher past
+// previous highest (transitions out of rewatch mode). Logic must stay byte-
+// equivalent to App.tsx so v2 behaves "exactly like before."
+//
+// Kept duplicated rather than extracted-and-shared so the live App.tsx isn't
+// touched during the v2 arc. At cutover, App.tsx can drop its inline version
+// and import this one.
+export function computeNextProgressEntry(
+  cur: import("../types").ProgressEntry | undefined,
+  next: { s: number; e: number }
+): import("../types").ProgressEntry {
+  // Non-rewatcher (or no prior entry): regular forward progress.
+  if (!cur?.isRewatching) {
+    const newHighestS =
+      cur?.highestS != null && cur?.highestE != null
+        ? next.s > cur.highestS || (next.s === cur.highestS && next.e > cur.highestE) ? next.s : cur.highestS
+        : next.s;
+    const newHighestE =
+      cur?.highestS != null && cur?.highestE != null
+        ? next.s > cur.highestS || (next.s === cur.highestS && next.e > cur.highestE) ? next.e : cur.highestE
+        : next.e;
+    return {
+      ...(cur || {} as import("../types").ProgressEntry),
+      s: next.s,
+      e: next.e,
+      highestS: newHighestS,
+      highestE: newHighestE,
+    };
+  }
+  // Rewatcher: compare new position to previous highest.
+  const hs = cur.highestS ?? cur.s;
+  const he = cur.highestE ?? cur.e;
+  const pastHighest = next.s > hs || (next.s === hs && next.e > he);
+  if (!pastHighest) {
+    return {
+      ...cur,
+      s: next.s,
+      e: next.e,
+      rewatchS: next.s,
+      rewatchE: next.e,
+    };
+  }
+  // Transition out of rewatch — strictly past previous highest.
+  return {
+    s: next.s,
+    e: next.e,
+    isRewatching: false,
+    rewatchS: undefined,
+    rewatchE: undefined,
+    highestS: next.s,
+    highestE: next.e,
+  };
+}
+
+// Persist + return the updated entry. Caller mirrors the same shape into
+// local state. Failures throw — caller decides how to surface.
+export async function persistProgressUpdate(
+  userId: string,
+  showId: string,
+  cur: import("../types").ProgressEntry | undefined,
+  next: { s: number; e: number }
+): Promise<import("../types").ProgressEntry> {
+  const updated = computeNextProgressEntry(cur, next);
+  await upsertRewatchStatus(userId, showId, updated);
+  return updated;
+}
+
 export async function clearRewatchMode(userId: string, showId: string): Promise<void> {
   const { error } = await supabase
     .from("progress")

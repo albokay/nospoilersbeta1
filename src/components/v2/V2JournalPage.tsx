@@ -14,12 +14,14 @@ import {
   stopWatching,
   setThreadPublic,
   addThreadToGroup,
+  persistProgressUpdate,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
 import type { Thread, Reply, ProgressEntry, FriendGroup } from "../../types";
 import SearchShows from "../SearchShows";
 import SidebarLogo from "../SidebarLogo";
 import EpisodeTag from "../EpisodeTag";
+import OneSelectProgress from "../OneSelectProgress";
 import { timeAgo } from "../../lib/utils";
 import { linkifyText } from "../../lib/linkify";
 import LoadingDots from "../LoadingDots";
@@ -180,7 +182,8 @@ export default function V2JournalPage() {
   //  - Narrow viewports: stacked layout, rail above main inline.
   const RAIL_WIDTH = 220;
   const RAIL_LEFT = 24;
-  const MAIN_LEFT = RAIL_LEFT + RAIL_WIDTH + 32; // 276
+  // Nudge main column slightly right so it doesn't hug the rail too tightly.
+  const MAIN_LEFT = RAIL_LEFT + RAIL_WIDTH + 56; // 300
 
   return (
     <V2Layout palette="journal" bareMain>
@@ -200,14 +203,14 @@ export default function V2JournalPage() {
             : {
                 position: "fixed",
                 left: RAIL_LEFT,
-                top: 28,
+                top: 16,
                 width: RAIL_WIDTH,
                 zIndex: 10,
               }
         }
       >
         {!isNarrow && (
-          <div style={{ marginBottom: 14 }}>
+          <div style={{ marginBottom: 10 }}>
             <SidebarLogo scale={0.6} />
           </div>
         )}
@@ -215,6 +218,9 @@ export default function V2JournalPage() {
         <SearchShows
             shows={shows}
             progress={progress}
+            // Tighter search pill so it sits in the rail at roughly the
+            // same height as the show buttons below it.
+            style={{ width: "100%", height: 34, margin: 0 }}
             onReopenJournal={async (showId) => {
               // Resurrection: if the picked show was previously stopped,
               // clear the flag and refresh local progress so the show
@@ -502,23 +508,32 @@ export default function V2JournalPage() {
                     )}
                   </div>
 
-                  {/* progress pill — visual only, mirrors live --dos-user pill */}
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      background: "var(--dos-user)",
-                      color: "#fff",
-                      borderRadius: 9999,
-                      padding: "6px 16px",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      height: 30,
-                    }}
-                  >
-                    you've watched: {formatProgressShort(progress[activeShow.id])}
-                  </span>
+                  {/* Universal progress picker — exact same component the live
+                      site uses (OneSelectProgress with default requireConfirm).
+                      Selecting a new S/E opens the standard confirmation modal,
+                      then commits via persistProgressUpdate which mirrors
+                      App.tsx's updateProgressFor (rewatcher-aware: bumps
+                      highest, transitions out of rewatch when past previous
+                      highest, otherwise updates rewatch position only). */}
+                  {user && (
+                    <OneSelectProgress
+                      show={activeShow as any}
+                      value={{ s: progress[activeShow.id]?.s ?? 1, e: progress[activeShow.id]?.e ?? 1 }}
+                      rewatchHighest={
+                        progress[activeShow.id]?.isRewatching && progress[activeShow.id]?.highestS != null && progress[activeShow.id]?.highestE != null
+                          ? { s: progress[activeShow.id].highestS!, e: progress[activeShow.id].highestE! }
+                          : null
+                      }
+                      onConfirm={async (val) => {
+                        try {
+                          const updated = await persistProgressUpdate(user.id, activeShow.id, progress[activeShow.id], val);
+                          setProgress((prev) => ({ ...prev, [activeShow.id]: updated }));
+                        } catch (err) {
+                          console.warn("progress update failed:", err);
+                        }
+                      }}
+                    />
+                  )}
                 </div>
 
                 <div
