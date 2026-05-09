@@ -1315,6 +1315,45 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: journal polish pass 2 (rail position, upgrade row, feedback)
+
+Three follow-ups after the first polish pass surfaced specific issues.
+
+**1. Rail tucked tight against the viewport's left edge.**
+
+Prior pass put the rail inside V2Layout's centered max-width main, so on wide viewports the rail sat well inside the page (not against the corner). New shape:
+
+- V2Layout grew a `bareMain?: boolean` prop. When set, V2Layout skips its own `<main>` wrapper (centered, max-width 1100, padded), and the page renders children directly responsible for their own page geometry.
+- V2JournalPage now uses `bareMain` and lays out two siblings on wide viewports:
+  - **Rail**: `position: fixed; left: 24; top: 36; width: 280px`. Logo + search + show buttons. `max-height: calc(100vh - 72px); overflow-y: auto` so long lists scroll inside the rail without losing the corner anchor.
+  - **Main**: `margin-left: 336` (rail-left 24 + rail-width 280 + gap 32) + `padding: 36px 48px 120px` + `max-width: 920` so the panel doesn't get absurd at very wide viewports.
+- Below 1080px (`isNarrow`), rail collapses inline with the main below it — full-width stack, same as before.
+
+**2. + add destination buttons promoted from hover into the same row as posted-in chips.**
+
+Was: hover-revealed second row that appeared/disappeared with mouse, expanding the entry card and creating a disorienting jiggle.
+
+Now: single always-visible flex row that combines:
+
+- "posted in:" italic Inter prefix (rendered when there's at least one current chip)
+- Solid-fill destination chips for every current destination (canon-light-blue friend / canon-yellow public)
+- Dashed-outline upgrade buttons ("+ make public", "+ send to <room>") for every destination the entry isn't already in
+
+Where things ARE and where they can be SENT live in the same area, in one row, all the time. No hover state, no card-height changes. Wraps at narrow widths.
+
+For private-only entries (no chips at all), the row still renders — just the "+ make public" / "+ send to..." buttons without the "posted in:" prefix. For entries already in every available destination (public + every show-room), the row renders just the chips, no upgrade buttons.
+
+**3. Feedback tab restored.**
+
+V2Layout now mounts `<FeedbackWidget isMobile={false} />` after the main content. Same component + same backing store as the live site (the feedback table the AdminPage already reads). Always visible across every v2 surface (journal, profile self/visitor, user-aggregate, compose). `isMobile=false` is correct because the v2 mobile-lockout still routes <768px to `/m`, so v2 only ever renders desktop.
+
+**Files (this commit):**
+
+- [src/components/v2/V2Layout.tsx](src/components/v2/V2Layout.tsx) — `bareMain` prop + FeedbackWidget mount
+- [src/components/v2/V2JournalPage.tsx](src/components/v2/V2JournalPage.tsx) — rail-fixed-left layout + EntryCard's combined upgrade row
+
+**Bundle delta:** 937 → 937 KB raw / 251 → 251 KB gzip.
+
 ### 2026-05-08 — v2 UI rethink: journal-page polish pass after first walkthrough
 
 Targeted spot-fixes on `/v2/journal` after a real walkthrough surfaced ten missing-from-live items. All structural; no DB, no schema.

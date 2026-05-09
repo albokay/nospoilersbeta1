@@ -2,12 +2,17 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import { LogOut } from "lucide-react";
+import FeedbackWidget from "../FeedbackWidget";
 
 type Palette = "journal" | "profile" | "compose";
 
 type V2LayoutProps = {
   palette: Palette;
   pairedHeader?: { left: string; rightLabel: string; rightTo: string };
+  // When true, V2Layout skips its centered max-width <main> and renders
+  // children directly. Used by surfaces that manage their own page
+  // geometry — e.g. V2JournalPage's fixed left rail + flowing main column.
+  bareMain?: boolean;
   children: React.ReactNode;
 };
 
@@ -17,7 +22,7 @@ type V2LayoutProps = {
 //  - "profile"   → toggle body.public-context (mustard) — the existing class
 //                  used by the live public space, so all theme tokens flip.
 //  - "compose"   → cream paint, applied as body bg via a v2-only class.
-export default function V2Layout({ palette, pairedHeader, children }: V2LayoutProps) {
+export default function V2Layout({ palette, pairedHeader, bareMain, children }: V2LayoutProps) {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
 
@@ -114,57 +119,66 @@ export default function V2Layout({ palette, pairedHeader, children }: V2LayoutPr
         )}
       </div>
 
-      <main
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          padding: "100px 48px 120px",
-        }}
-      >
-        {pairedHeader && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: 18,
-              marginBottom: 24,
-              flexWrap: "wrap",
-            }}
-          >
+      {bareMain ? (
+        children
+      ) : (
+        <main
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            padding: "100px 48px 120px",
+          }}
+        >
+          {pairedHeader && (
             <div
               style={{
-                fontSize: 22,
-                fontWeight: 600,
-                color: "var(--dos-fg)",
-                letterSpacing: "-0.005em",
+                display: "flex",
+                alignItems: "baseline",
+                gap: 18,
+                marginBottom: 24,
+                flexWrap: "wrap",
               }}
             >
-              {pairedHeader.left}
+              <div
+                style={{
+                  fontSize: 22,
+                  fontWeight: 600,
+                  color: "var(--dos-fg)",
+                  letterSpacing: "-0.005em",
+                }}
+              >
+                {pairedHeader.left}
+              </div>
+              <a
+                href={pairedHeader.rightTo}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(pairedHeader.rightTo);
+                }}
+                style={{
+                  fontFamily: "Lora, Georgia, serif",
+                  fontStyle: "italic",
+                  fontSize: 16,
+                  color: "var(--dos-gray)",
+                  textDecoration: "none",
+                  borderBottom: "1px dotted var(--dos-gray)",
+                  paddingBottom: 1,
+                  cursor: "pointer",
+                }}
+              >
+                → {pairedHeader.rightLabel}
+              </a>
             </div>
-            <a
-              href={pairedHeader.rightTo}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(pairedHeader.rightTo);
-              }}
-              style={{
-                fontFamily: "Lora, Georgia, serif",
-                fontStyle: "italic",
-                fontSize: 16,
-                color: "var(--dos-gray)",
-                textDecoration: "none",
-                borderBottom: "1px dotted var(--dos-gray)",
-                paddingBottom: 1,
-                cursor: "pointer",
-              }}
-            >
-              → {pairedHeader.rightLabel}
-            </a>
-          </div>
-        )}
+          )}
 
-        {children}
-      </main>
+          {children}
+        </main>
+      )}
+
+      {/* feedback tab — always available across v2 surfaces. Same component
+          + same backing store as live; isMobile=false because v2 is
+          desktop-only (mobile lockout still routes <768px to /m). */}
+      <FeedbackWidget isMobile={false} />
     </div>
   );
 }

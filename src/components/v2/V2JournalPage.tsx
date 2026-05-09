@@ -173,26 +173,43 @@ export default function V2JournalPage() {
     ? activeEntries[activeEntries.length - 1].thread.createdAt
     : undefined;
 
-  return (
-    <V2Layout palette="journal">
-      <div style={{ display: "flex", gap: 36, alignItems: "flex-start", flexWrap: isNarrow ? "wrap" : "nowrap" }}>
-        {/* === LEFT RAIL ===
-            Logo + search + show buttons read as one unified left-column nav bar.
-            Width matches what the show-button meta needs to stay legible. */}
-        <aside
-          style={
-            isNarrow
-              ? { width: "100%" }
-              : { width: 280, flexShrink: 0, position: "sticky", top: 36, alignSelf: "flex-start" }
-          }
-        >
-          {!isNarrow && (
-            <div style={{ marginBottom: 18, marginLeft: -8 }}>
-              <SidebarLogo scale={0.85} />
-            </div>
-          )}
+  // Layout geometry:
+  //  - Wide viewports (≥1080px): rail is fixed against the viewport's
+  //    left edge (24px from the corner). Main column flows with margin-left
+  //    clearing the rail.
+  //  - Narrow viewports: stacked layout, rail above main inline.
+  const RAIL_WIDTH = 280;
+  const RAIL_LEFT = 24;
+  const MAIN_LEFT = RAIL_LEFT + RAIL_WIDTH + 32; // 336
 
-          <SearchShows
+  return (
+    <V2Layout palette="journal" bareMain>
+      {/* === RAIL ===
+          Logo + search + show buttons read as one unified left-column
+          nav bar. Fixed against viewport-left on wide; inline above the
+          main column on narrow. */}
+      <aside
+        style={
+          isNarrow
+            ? { width: "calc(100% - 48px)", margin: "36px 24px 24px" }
+            : {
+                position: "fixed",
+                left: RAIL_LEFT,
+                top: 36,
+                width: RAIL_WIDTH,
+                maxHeight: "calc(100vh - 72px)",
+                overflowY: "auto",
+                zIndex: 10,
+              }
+        }
+      >
+        {!isNarrow && (
+          <div style={{ marginBottom: 18, marginLeft: -8 }}>
+            <SidebarLogo scale={0.85} />
+          </div>
+        )}
+
+        <SearchShows
             shows={shows}
             progress={progress}
             onReopenJournal={async (showId) => {
@@ -272,8 +289,21 @@ export default function V2JournalPage() {
           </div>
         </aside>
 
-        {/* === MAIN COLUMN === */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        {/* === MAIN COLUMN ===
+            Wide viewports: margin-left clears the fixed rail.
+            Narrow viewports: full-width below the inline rail. */}
+        <main
+          style={
+            isNarrow
+              ? { padding: "0 24px 120px", minWidth: 0 }
+              : {
+                  marginLeft: MAIN_LEFT,
+                  padding: "36px 48px 120px",
+                  maxWidth: 920,
+                  minWidth: 0,
+                }
+          }
+        >
           {/* Paired header sits above the panel (aligned with panel's left
               edge), not above the entire rail+main row. Mirrors the live
               "this is your journal" placement. */}
@@ -741,8 +771,7 @@ export default function V2JournalPage() {
               </section>
             </>
           )}
-        </div>
-      </div>
+        </main>
 
       {/* (entry card component lives below the main return) */}
 
@@ -905,15 +934,13 @@ function EntryCard({
   onNavigatePublic: () => void;
 }) {
   const t = row.thread;
-  const [hover, setHover] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const showAddRow = (canMakePublic || roomsNotIn.length > 0) && hover;
+  const hasChips = row.allGroups.length > 0 || t.isPublic;
+  const hasUpgrades = canMakePublic || roomsNotIn.length > 0;
   const hasPreviewClip = (t.body && t.body.length > (t.preview?.length ?? 0)) || (t.preview ?? "") !== (t.body ?? "");
 
   return (
     <article
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       style={{
         padding: "20px 0",
         borderTop: firstRow ? "none" : "1px solid rgba(255,255,255,0.18)",
@@ -940,21 +967,28 @@ function EntryCard({
         <span style={{ fontSize: 13, color: "var(--dos-gray)" }}>{timeAgo(t.updatedAt)}</span>
       </div>
 
-      {/* destination chips — solid palette fill, no outline, white text.
-          "posted in:" italic Inter prefix introduces the chips. */}
-      {(row.allGroups.length > 0 || t.isPublic) && (
+      {/* destinations row — current state + upgrade affordances live in
+          the same row, always visible. "posted in:" italic Inter prefix
+          when chips exist; chips are solid palette fill (no outline,
+          white text); upgrade buttons are dashed-outline transparent
+          (transparent-with-outline pattern). Both groupings share one
+          flex-wrap row so what an entry IS and where it can be SENT
+          read together. */}
+      {(hasChips || hasUpgrades) && (
         <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <span
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontStyle: "italic",
-              fontSize: 12,
-              color: "var(--dos-gray)",
-              marginRight: 2,
-            }}
-          >
-            posted in:
-          </span>
+          {hasChips && (
+            <span
+              style={{
+                fontFamily: "Inter, sans-serif",
+                fontStyle: "italic",
+                fontSize: 12,
+                color: "var(--dos-gray)",
+                marginRight: 2,
+              }}
+            >
+              posted in:
+            </span>
+          )}
           {row.allGroups.map((g) => (
             <a
               key={g.groupId}
@@ -1002,46 +1036,6 @@ function EntryCard({
               public
             </a>
           )}
-        </div>
-      )}
-
-      <div
-        className={expanded ? undefined : "clamp3"}
-        style={{ fontSize: 15, lineHeight: 1.6, color: "var(--dos-fg)", whiteSpace: expanded ? "pre-wrap" : undefined }}
-      >
-        {linkifyText(expanded ? (t.body || t.preview) : (t.preview || t.body))}
-      </div>
-
-      {/* expand / collapse — restored from live conventions.
-          White solid fill, no outline, canon-green text. */}
-      {hasPreviewClip && (
-        <div style={{ marginTop: 10 }}>
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            style={{
-              background: "#fff",
-              color: "#7abd8e",
-              border: "none",
-              borderRadius: 9999,
-              padding: "6px 14px",
-              fontFamily: "Inter, sans-serif",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            {expanded ? "▴ less" : "▾ expand"}
-          </button>
-        </div>
-      )}
-
-      {/* hover-revealed "+ add destination" affordances. transparent + 2px
-          dashed outline = transparent-with-outline pattern. */}
-      {showAddRow && (
-        <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
           {canMakePublic && (
             <button
               onClick={onUpgradePublic}
@@ -1087,6 +1081,40 @@ function EntryCard({
           ))}
         </div>
       )}
+
+      <div
+        className={expanded ? undefined : "clamp3"}
+        style={{ fontSize: 15, lineHeight: 1.6, color: "var(--dos-fg)", whiteSpace: expanded ? "pre-wrap" : undefined }}
+      >
+        {linkifyText(expanded ? (t.body || t.preview) : (t.preview || t.body))}
+      </div>
+
+      {/* expand / collapse — restored from live conventions.
+          White solid fill, no outline, canon-green text. */}
+      {hasPreviewClip && (
+        <div style={{ marginTop: 10 }}>
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            style={{
+              background: "#fff",
+              color: "#7abd8e",
+              border: "none",
+              borderRadius: 9999,
+              padding: "6px 14px",
+              fontFamily: "Inter, sans-serif",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            {expanded ? "▴ less" : "▾ expand"}
+          </button>
+        </div>
+      )}
+
     </article>
   );
 }
