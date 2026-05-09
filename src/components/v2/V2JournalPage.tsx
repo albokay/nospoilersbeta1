@@ -45,16 +45,17 @@ function preventLastWordOrphan(s: string): string {
 }
 
 // Solid canon-light-blue pill — friend-room destination identity
-// throughout v2. Solid-fill-no-outline per the v2 button rule.
+// throughout v2. White outline added because v2 journal panel surface
+// is now also canon-light-blue (would otherwise blend).
 const friendRoomBtnStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 4,
   background: "#adc8d7",
   color: "#fff",
-  border: "none",
+  border: "2px solid #fff",
   borderRadius: 9999,
-  padding: "0 16px",
+  padding: "0 14px",
   height: 32,
   fontSize: 12,
   fontWeight: 600,
@@ -395,6 +396,12 @@ export default function V2JournalPage() {
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 4,
+                        // Active tab + bottom-border-merge use canon-light-blue
+                        // (matches the panel surface below). Inactive keeps the
+                        // theme.ts .diaryTab default rgba bg.
+                        ...(active
+                          ? { background: "#adc8d7", borderBottomColor: "#adc8d7" }
+                          : {}),
                       }}
                     >
                       <span style={{ whiteSpace: "nowrap" }}>{s.name}</span>
@@ -457,7 +464,7 @@ export default function V2JournalPage() {
                     inset: 0,
                     border: "2px solid",
                     borderColor: `rgba(255,255,255,${opacity})`,
-                    background: "var(--dos-bg)",
+                    background: "#adc8d7",
                     transform: `translate(-${offset}px, ${offset}px)`,
                     zIndex: 0,
                   }}
@@ -474,7 +481,7 @@ export default function V2JournalPage() {
             style={{
               position: "relative",
               border: "2px solid #fff",
-              background: "var(--dos-bg)",
+              background: "#adc8d7",
               height: 720,
               display: "flex",
               flexDirection: "column",
@@ -1243,11 +1250,22 @@ function EntryCard({
   const isJournalOnly = !t.isPublic && row.allGroups.length === 0;
   const hasPreviewClip = (t.body && t.body.length > (t.preview?.length ?? 0)) || (t.preview ?? "") !== (t.body ?? "");
 
+  // Per-destination card bg (v2 light-blue-context test):
+  //   - public entry → canon-yellow card
+  //   - journal-only entry → canon-green card
+  //   - friend-room entry → faint white overlay over the canon-light-blue
+  //     panel so the card has definition without competing with the
+  //     panel's identity.
+  const entryBg = t.isPublic ? "#dea838" : isJournalOnly ? "#7abd8e" : "rgba(255,255,255,0.10)";
+  void firstRow;
+
   return (
     <article
       style={{
-        padding: "16px 0",
-        borderTop: firstRow ? "none" : "1px solid rgba(255,255,255,0.18)",
+        background: entryBg,
+        borderRadius: 12,
+        padding: "12px 16px",
+        marginBottom: 8,
         position: "relative",
       }}
     >
@@ -1303,11 +1321,13 @@ function EntryCard({
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "4px 12px",
+                padding: "4px 10px",
                 borderRadius: 9999,
                 background: "#adc8d7",
                 color: "#fff",
-                border: "none",
+                // White outline so the chip doesn't blend into the
+                // canon-light-blue panel surface (v2 light-blue context).
+                border: "2px solid #fff",
                 fontSize: 11,
                 fontWeight: 600,
                 letterSpacing: "0.02em",
@@ -1326,11 +1346,14 @@ function EntryCard({
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "4px 12px",
+                padding: "4px 10px",
                 borderRadius: 9999,
                 background: "#dea838",
                 color: "#fff",
-                border: "none",
+                // White outline — public chip sits on a canon-yellow
+                // entry bg (when entry is published publicly), so the
+                // outline keeps it definable against the matching fill.
+                border: "2px solid #fff",
                 fontSize: 11,
                 fontWeight: 600,
                 letterSpacing: "0.02em",
@@ -1353,8 +1376,8 @@ function EntryCard({
                 fontFamily: "Lora, Georgia, serif",
                 fontStyle: "italic",
                 fontSize: 12,
-                color: "var(--dos-gray)",
-                border: "2px dashed rgba(255,255,255,0.5)",
+                color: "rgba(255,255,255,0.92)",
+                border: "2px dashed rgba(255,255,255,0.7)",
                 background: "transparent",
                 cursor: "pointer",
               }}
@@ -1375,8 +1398,8 @@ function EntryCard({
                 fontFamily: "Lora, Georgia, serif",
                 fontStyle: "italic",
                 fontSize: 12,
-                color: "var(--dos-gray)",
-                border: "2px dashed rgba(255,255,255,0.5)",
+                color: "rgba(255,255,255,0.92)",
+                border: "2px dashed rgba(255,255,255,0.7)",
                 background: "transparent",
                 cursor: "pointer",
               }}
