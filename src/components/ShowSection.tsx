@@ -2674,21 +2674,31 @@ export default function ShowSection({
           onThreadUpdate={(updated: Thread) => setDbThreads(prev => prev.map(t => t.id === updated.id ? updated : t))}
           onThreadDelete={() => {
             const tid = activeThreadId!;
-            // Classify from the viewer's context at delete-time:
-            //   - Friend-room context (activeGroupId truthy): InlineThreadView
-            //     called removeThreadFromGroup, so the thread itself is still
-            //     alive in the journal. Filter it out of the local list (it's
-            //     no longer linked to this room); next fetch is authoritative.
-            //   - Private journal context: full soft-delete; mark isDeleted
-            //     and bounce the user back to their journal.
-            //   - Public conversation context: full soft-delete; stay in place.
+            // Classify from the viewer's context at delete-time. The
+            // InlineThreadView's handleDelete chose the right DB op based
+            // on thread state (groupIdProp, thread.isPublic); we mirror
+            // that into local state here.
+            //   - Friend-room context: link removed, thread alive elsewhere.
+            //     Filter out of local list.
+            //   - Public conversation context (thread was public, no group):
+            //     is_public flipped false, thread alive in journal/rooms.
+            //     Mirror locally — thread stays in dbThreads with
+            //     isPublic=false (next renders filter it out of the public
+            //     forum).
+            //   - Private journal context (thread was not public, no group):
+            //     true soft-delete. Mark isDeleted; bounce to /profile.
+            const wasFriendRoomRemoval = !!activeGroupId;
+            const wasPublicRemoval = !activeGroupId && !!thread?.isPublic;
             const wasPrivateJournalPost = thread && !thread.isPublic && !activeGroupId;
-            if (activeGroupId) {
+            if (wasFriendRoomRemoval) {
               setDbThreads(prev => prev.filter(t => t.id !== tid));
+            } else if (wasPublicRemoval) {
+              setDbThreads(prev => prev.map(t => t.id === tid ? { ...t, isPublic: false } : t));
             } else {
-              // Soft-delete path. Mark isDeleted — the thread list decides at
-              // render time whether to show a stub (has replies) or hide entirely
-              // (no replies) using replyMeta, kept fresh by the realtime subscription.
+              // Private soft-delete. Mark isDeleted — the thread list decides
+              // at render time whether to show a stub (has replies) or hide
+              // entirely (no replies) using replyMeta, kept fresh by the
+              // realtime subscription.
               setDbThreads(prev => prev.map(t => t.id === tid ? { ...t, isDeleted: true } : t));
             }
             setActiveThreadId(null);

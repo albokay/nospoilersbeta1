@@ -320,12 +320,14 @@ export default function InlineThreadView({
 
   const handleDelete = async () => {
     // Contextual deletion (v2 spec, 2026-05-08):
-    //   - In a friend-room context: only remove the group_threads link.
-    //     Thread stays alive in the journal (and any other rooms / public
-    //     destination it's also in). The thread is the canonical home;
-    //     friend rooms are just additional destinations.
-    //   - Outside any friend room (private journal or public conversation
-    //     view): full soft-delete via deleteThread.
+    //   - Friend-room context: only remove the group_threads link. Thread
+    //     stays alive in the journal (and any other rooms / public
+    //     destination it's also in).
+    //   - Public-conversation context (no group, thread is public): only
+    //     flip is_public to false. Thread stays alive in journal + any
+    //     friend rooms it's in. Removed from the public conversation only.
+    //   - Private journal context (no group, thread not public): full
+    //     soft-delete via deleteThread (the canonical "true delete" case).
     if (groupIdProp) {
       if (!window.confirm("Remove this post from this room? It will stay in your journal.")) return;
       try {
@@ -333,6 +335,16 @@ export default function InlineThreadView({
         onThreadDelete?.();
       } catch {
         alert("Failed to remove from room. Please try again.");
+      }
+      return;
+    }
+    if (thread.isPublic) {
+      if (!window.confirm("Remove this post from the public conversation? It will stay in your journal.")) return;
+      try {
+        await dbSetThreadPublic(thread.id, false);
+        onThreadDelete?.();
+      } catch {
+        alert("Failed to remove from public. Please try again.");
       }
       return;
     }

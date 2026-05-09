@@ -339,11 +339,15 @@ export default function V2JournalPage() {
                   }
             }
           >
-            {userShowIds.length === 0 && (
-              <div style={{ fontSize: 13, color: "var(--dos-gray)", fontStyle: "italic", padding: "8px 6px" }}>
+            {bootstrapping ? (
+              <div style={{ fontSize: 13, color: "var(--dos-gray)", fontStyle: "italic", padding: "8px 8px" }}>
+                Loading shows<LoadingDots />
+              </div>
+            ) : userShowIds.length === 0 ? (
+              <div style={{ fontSize: 13, color: "var(--dos-gray)", fontStyle: "italic", padding: "8px 8px" }}>
                 no shows yet — search above to add one.
               </div>
-            )}
+            ) : null}
             {userShowIds.map((sid) => {
               const s = shows.find((sh) => sh.id === sid);
               if (!s) return null;
@@ -491,7 +495,16 @@ export default function V2JournalPage() {
           >
 
             {bootstrapping ? (
-              <div style={{ fontStyle: "italic", color: "var(--dos-gray)", padding: "32px 32px", textAlign: "center" }}>
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontStyle: "italic",
+                  color: "var(--dos-gray)",
+                }}
+              >
                 Loading<LoadingDots />
               </div>
             ) : !activeShow ? (
@@ -506,9 +519,13 @@ export default function V2JournalPage() {
                 <div style={{ flexShrink: 0, padding: "16px 24px 8px" }}>
                 {/* Title row: title shrinks/wraps; progress pill stays
                     pinned in the corner. align-items: flex-start keeps
-                    the pill top-aligned when the title goes multi-line. */}
+                    the pill top-aligned when the title goes multi-line.
+                    The title group is a plain block (not flex) so the h1
+                    (display: inline) and the chevron flow as inline tokens
+                    in the same text stream — chevron always stays glued
+                    to the last word via a NBSP connector. */}
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 4 }}>
-                  <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0, flexWrap: "wrap" }}>
+                  <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
                     <h1
                       style={{
                         fontFamily: "Lora, Georgia, serif",
@@ -519,13 +536,14 @@ export default function V2JournalPage() {
                         color: "#fff",
                         lineHeight: 1.1,
                         margin: 0,
+                        display: "inline",
                         overflowWrap: "break-word",
                         wordBreak: "break-word",
-                        minWidth: 0,
                       }}
                     >
                       {preventLastWordOrphan(activeShow.name)}
                     </h1>
+                    {" "}
                     <button
                       ref={chevronBtnRef}
                       onClick={(e) => {
