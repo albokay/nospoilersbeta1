@@ -280,6 +280,96 @@ export async function markThreadMovedFromGroup(threadId: string): Promise<void> 
   if (error) throw error;
 }
 
+/**
+ * Create a duplicate of a thread without touching the source.
+ *
+ * "Duplicate" semantics differ from cloneThreadToPublic + markThreadMovedFromGroup:
+ *   - The source thread is NEVER mutated. No is_moved flag, no group_threads
+ *     row removed. The original stays a fully-live first-class instance.
+ *   - The clone gets a fresh thread id; replies are scoped per thread_id so
+ *     the two instances' reply chains never bleed.
+ *   - source_thread_id on the clone points back at the original (so a future
+ *     "duplicate of [original]" hint can render).
+ *
+ * Powers the "Duplicate to..." UI on public posts (→ friend room) and on
+ * friend-room posts (→ public). All copyable columns are preserved including
+ * rewatch metadata so the spoiler tag and "written on rewatch" annotation
+ * carry over faithfully.
+ *
+ *  - opts.isPublic: true  → clone is_public=true (lands on the public stream)
+ *  - opts.groupId set     → clone is added to that friend room via group_threads
+ *
+ * Both can apply, but typical callers pick one (public-OR-room target).
+ */
+export async function cloneThreadAsDuplicate(
+  threadId: string,
+  opts: { isPublic?: boolean; groupId?: string }
+): Promise<Thread> {
+  const { data: orig, error: origErr } = await supabase
+    .from("threads")
+    .select("*")
+    .eq("id", threadId)
+    .single();
+  if (origErr || !orig) throw origErr ?? new Error("Thread not found");
+
+  const newId = crypto.randomUUID();
+  const { data: inserted, error } = await supabase
+    .from("threads")
+    .insert({
+      id:               newId,
+      show_id:          orig.show_id,
+      season:           orig.season,
+      episode:          orig.episode,
+      author_id:        orig.author_id,
+      author_name:      orig.author_name,
+      title:            orig.title,
+      preview:          orig.preview,
+      body:             orig.body,
+      is_public:        !!opts.isPublic,
+      is_rewatch:       orig.is_rewatch ?? false,
+      rewatch_season:   orig.rewatch_season ?? null,
+      rewatch_episode:  orig.rewatch_episode ?? null,
+      likes_count:      0,
+      source_thread_id: threadId,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  if (opts.groupId) {
+    // Best-effort: matches the live insertThread + addThreadToGroup pattern
+    // in ProfilePage.tsx:533 and ShowSection.tsx:1660. If the link fails the
+    // clone exists in the user's journal as a phantom private entry until
+    // they delete it; the trade-off is consistency with the existing UX.
+    await addThreadToGroup(newId, opts.groupId).catch((err) => {
+      console.warn(`cloneThreadAsDuplicate: addThreadToGroup failed thread=${newId} group=${opts.groupId}:`, err);
+    });
+  }
+
+  return rowToThread(inserted);
+}
+
+/**
+ * Returns the list of friend_group ids this thread already lives in (via
+ * group_threads). Used by the "Duplicate to..." dropdown on public posts to
+ * hide rooms where the thread is already present, so the user can't create
+ * accidental second-duplicates in the same room.
+ *
+ * Returns an empty array on error (best-effort): caller treats "couldn't
+ * determine" as "show all rooms" rather than blocking the dropdown.
+ */
+export async function fetchGroupIdsForThread(threadId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("group_threads")
+    .select("group_id")
+    .eq("thread_id", threadId);
+  if (error) {
+    console.warn("fetchGroupIdsForThread failed:", error);
+    return [];
+  }
+  return (data ?? []).map((r: any) => r.group_id);
+}
+
 // ── Likes ─────────────────────────────────────────────────────────────────────
 
 export async function fetchUserThreadLikes(userId: string, threadIds: string[]): Promise<Set<string>> {
