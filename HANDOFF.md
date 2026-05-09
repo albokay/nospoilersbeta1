@@ -1315,6 +1315,55 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
 
+### 2026-05-08 — v2 UI rethink: + add destination upgrades on entries (checkpoint 9)
+
+Wires the hover-revealed "+ add destination" affordances on `/v2/journal/:showId` entries. From any existing entry the user can promote it to one or more new destinations: "+ make public" or "+ send to <room>" per friend room the thread isn't in yet. No clones — the new model lets a single thread row carry multiple destinations simultaneously, and these upgrades just flip `is_public` or insert `group_threads` rows on the existing thread.
+
+**Bug fix folded in: `fetchUserThreads` was silently dropping multi-room memberships.**
+
+Pre-checkpoint-6 the live composer was always exclusive (private | public | one room), so a thread could only ever be in one `group_threads` row. `fetchUserThreads`'s join-keyed-by-thread-id map was overwriting on duplicate keys without noticing. After checkpoint 6 v2 compose creates multi-room threads, exposing the bug — multi-room entries were rendering with only one chip (whichever group_threads row happened to be returned last from the query).
+
+Fix: helper now also returns `allGroups: { groupId, groupName }[]` with the full set per thread. Legacy `groupId` / `groupName` fields stay as the first entry for backwards compatibility with the live ProfilePage caller (which only reads the first anyway). V2JournalPage's chip renderer iterates `allGroups` so multi-room threads now render N friend chips correctly.
+
+**Existing helpers reused** — no new helpers needed:
+
+- `setThreadPublic(threadId, isPublic)` was already at [db.ts:208](src/lib/db.ts:208), originally added with the dormant clone infrastructure. Owner-can-write per the threads UPDATE RLS policy, so flipping `is_public` from the v2 entry-card upgrade button works directly.
+- `addThreadToGroup(threadId, groupId)` was already at [db.ts:1966](src/lib/db.ts:1966) and is what compose uses today; same call from the entry-card affordance.
+
+**`<EntryCard />` factored out** of V2JournalPage's main render. Per-entry hover state lives on the card; main page passes `roomsNotIn` (computed from `groupsForActive` minus `row.allGroups`) and `canMakePublic` (= `!t.isPublic`) plus optimistic-update callbacks. Optimistic pattern:
+
+1. Click "+ make public" → local `setAllUserThreads` immediately updates the thread's `isPublic = true` (chip flips to public-yellow instantly).
+2. `await setThreadPublic(t.id, true)` runs.
+3. On error: roll back the local update with the inverse mutation; warning logged.
+
+Same shape for "+ send to <room>": optimistic add to `allGroups`, await `addThreadToGroup`, rollback on failure.
+
+**Visual** (transparent-with-outline per the v2 button rule):
+
+- Existing chips: 2px solid palette outline (canon-blue `#355eb8` for friend, canon-yellow `#dea838` for public), transparent fill, white text. Same as before.
+- "+ add destination" affordance: Lora italic + 2px dashed white outline + transparent fill. Borrowed from the journal mockup's `.dest-add` pattern. Dashed reads as "potential / not yet committed" — visually distinct from solid-outlined chips that mark current state.
+
+**Hover behavior:**
+
+- Affordance row only renders when `hover === true` AND there's at least one upgrade available (`canMakePublic || roomsNotIn.length > 0`).
+- Entries already in every available destination (public + every show-room) render no affordance row.
+- Hover state is local to the card; entries don't share hover.
+
+**Files (this commit):**
+
+| Path | Change |
+|---|---|
+| [src/lib/db.ts](src/lib/db.ts) | `fetchUserThreads` returns `allGroups: GroupRef[]`; legacy `groupId`/`groupName` fields stay |
+| [src/components/v2/V2JournalPage.tsx](src/components/v2/V2JournalPage.tsx) | Imports `setThreadPublic` + `addThreadToGroup`; new `<EntryCard />` factored out; optimistic handlers wired |
+
+**Bundle delta:** 933 → 935 KB raw / 250 → 250 KB gzip.
+
+**Behaviors deliberately deferred:**
+
+- **Reverse direction (downgrade)** — "remove from this room" / "make private again" — out of scope. The contextual deletion semantic (delete-from-friend-room → demote to private journal) lands separately if/when v2 ships its own delete UX. Today the live ShowSection's per-card delete flow still handles soft-deletes from rooms.
+- **Same affordance on the responses sections below the panel** — only the main entry feed has the upgrade affordances. Responses-to-you / your-responses / starred sections are read surfaces for now (lifted verbatim from ProfilePage); upgrade UX there is separate.
+- **Entry-card upgrade on the visitor profile or user-aggregate** — those are read-only views; only the owner of an entry can upgrade it (RLS enforces this anyway, so even if the UI tried to call upgrade, the write would fail). No UI shown to non-owners.
+
 ### 2026-05-08 — v2 UI rethink: stop-watching cascade + resurrection (checkpoint 8)
 
 Wires the chevron menu's "close show / stop watching" action on `/v2/journal/:showId` (previously disabled stub). On confirm, runs the full friend-room departure cascade and flips `progress.stopped_watching = true`; show moves from journal rail to the profile's Stopped Watching shelf. Resurrection (re-search) clears the flag — room memberships do NOT auto-rejoin.

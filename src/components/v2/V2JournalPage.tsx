@@ -12,6 +12,8 @@ import {
   fetchFriendGroupsForUser,
   setStoppedWatching,
   stopWatching,
+  setThreadPublic,
+  addThreadToGroup,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
 import type { Thread, Reply, ProgressEntry, FriendGroup } from "../../types";
@@ -23,19 +25,9 @@ import LoadingDots from "../LoadingDots";
 import V2Layout from "./V2Layout";
 import { ChevronDown, SquarePen, Users, Globe } from "lucide-react";
 
-type ThreadRow = { thread: Thread; groupId?: string; groupName?: string };
+type GroupRef = { groupId: string; groupName: string };
+type ThreadRow = { thread: Thread; groupId?: string; groupName?: string; allGroups: GroupRef[] };
 type ReplyRow = { reply: Reply; thread: Thread; groupId?: string; groupName?: string };
-
-// Derived destination chips for an entry. Today the schema permits any
-// combination but the live composer never wrote both is_public AND a
-// group_threads row on the same thread (verified in prod: 0 rows). The
-// new model relaxes that — render whatever combination is set.
-function chipsFor(row: ThreadRow): Array<"public" | "friend"> {
-  const out: Array<"public" | "friend"> = [];
-  if (row.thread.isPublic) out.push("public");
-  if (row.groupId) out.push("friend");
-  return out;
-}
 
 function formatProgressShort(p?: ProgressEntry): string {
   if (!p) return "—";
@@ -499,103 +491,58 @@ export default function V2JournalPage() {
                   )}
                   {activeEntries.map((row, idx) => {
                     const t = row.thread;
-                    const chips = chipsFor(row);
+                    const inRoomIds = new Set(row.allGroups.map((g) => g.groupId));
+                    const roomsNotIn = groupsForActive.filter((g) => !inRoomIds.has(g.id));
+                    const canMakePublic = !t.isPublic;
                     return (
-                      <article
+                      <EntryCard
                         key={t.id}
-                        style={{
-                          padding: "20px 0",
-                          borderTop: idx === 0 ? "none" : "1px solid rgba(255,255,255,0.18)",
+                        row={row}
+                        firstRow={idx === 0}
+                        roomsNotIn={roomsNotIn}
+                        canMakePublic={canMakePublic}
+                        onUpgradePublic={async () => {
+                          // Optimistic local update.
+                          setAllUserThreads((prev) =>
+                            prev.map((r) => (r.thread.id === t.id ? { ...r, thread: { ...r.thread, isPublic: true } } : r))
+                          );
+                          try {
+                            await setThreadPublic(t.id, true);
+                          } catch (err) {
+                            console.warn("setThreadPublic failed:", err);
+                            // Roll back local state on failure.
+                            setAllUserThreads((prev) =>
+                              prev.map((r) => (r.thread.id === t.id ? { ...r, thread: { ...r.thread, isPublic: false } } : r))
+                            );
+                          }
                         }}
-                      >
-                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
-                            <h3
-                              className="title"
-                              style={{
-                                fontSize: 20,
-                                fontWeight: 600,
-                                color: "#fff",
-                                lineHeight: 1.25,
-                                margin: 0,
-                              }}
-                            >
-                              {t.titleBase}
-                            </h3>
-                            <span style={{ fontSize: 13, color: "var(--dos-gray)", fontWeight: 500 }}>
-                              <EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} parens={false} />
-                            </span>
-                          </div>
-                          <span style={{ fontSize: 13, color: "var(--dos-gray)" }}>{timeAgo(t.updatedAt)}</span>
-                        </div>
-
-                        {chips.length > 0 && (
-                          <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-                            {chips.includes("friend") && (
-                              <a
-                                href={`/show/${t.showId}`}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  // location.state is the live convention for
-                                  // preselecting a friend room (App.tsx:659).
-                                  if (row.groupId) {
-                                    navigate(`/show/${t.showId}`, { state: { activeGroupId: row.groupId } });
-                                  } else {
-                                    navigate(`/show/${t.showId}`);
-                                  }
-                                }}
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: 6,
-                                  padding: "4px 12px",
-                                  borderRadius: 9999,
-                                  background: "transparent",
-                                  color: "#fff",
-                                  border: "2px solid #355eb8",
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  letterSpacing: "0.02em",
-                                  textDecoration: "none",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                friend room{row.groupName ? ` · ${row.groupName}` : ""}
-                              </a>
-                            )}
-                            {chips.includes("public") && (
-                              <a
-                                href={`/show/${t.showId}`}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  navigate(`/show/${t.showId}`);
-                                }}
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: 6,
-                                  padding: "4px 12px",
-                                  borderRadius: 9999,
-                                  background: "transparent",
-                                  color: "#fff",
-                                  border: "2px solid #dea838",
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  letterSpacing: "0.02em",
-                                  textDecoration: "none",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                public
-                              </a>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="clamp3" style={{ fontSize: 15, lineHeight: 1.6, color: "var(--dos-fg)" }}>
-                          {linkifyText(t.preview || t.body)}
-                        </div>
-                      </article>
+                        onUpgradeRoom={async (g: FriendGroup) => {
+                          const groupRef: GroupRef = { groupId: g.id, groupName: g.name };
+                          // Optimistic local update.
+                          setAllUserThreads((prev) =>
+                            prev.map((r) =>
+                              r.thread.id === t.id
+                                ? { ...r, allGroups: [...r.allGroups, groupRef], groupId: r.groupId ?? g.id, groupName: r.groupName ?? g.name }
+                                : r
+                            )
+                          );
+                          try {
+                            await addThreadToGroup(t.id, g.id);
+                          } catch (err) {
+                            console.warn("addThreadToGroup failed:", err);
+                            // Roll back local state on failure.
+                            setAllUserThreads((prev) =>
+                              prev.map((r) =>
+                                r.thread.id === t.id
+                                  ? { ...r, allGroups: r.allGroups.filter((x) => x.groupId !== g.id) }
+                                  : r
+                              )
+                            );
+                          }
+                        }}
+                        onNavigateRoom={(groupId) => navigate(`/show/${t.showId}`, { state: { activeGroupId: groupId } })}
+                        onNavigatePublic={() => navigate(`/show/${t.showId}`)}
+                      />
                     );
                   })}
                 </div>
@@ -723,6 +670,8 @@ export default function V2JournalPage() {
         </div>
       </div>
 
+      {/* (entry card component lives below the main return) */}
+
       {/* close chevron-dropdown when clicking elsewhere */}
       {chevronOpen && (
         <div
@@ -844,5 +793,183 @@ export default function V2JournalPage() {
         </div>
       )}
     </V2Layout>
+  );
+}
+
+// === ENTRY CARD ==============================================================
+//
+// One journal entry on the active show. Renders title + episode + body
+// preview, then the destination chips for whichever destinations the
+// thread is in (one chip per friend room + one "public" chip if applicable),
+// then on hover a row of "+ add destination" affordances for the
+// destinations the entry is NOT in. Click an affordance → optimistic
+// local update + DB write via setThreadPublic / addThreadToGroup. The
+// new chip appears immediately; if the write fails, the chip rolls back.
+//
+// Visual: chips use transparent fill + 2px palette outline (canon-blue
+// for friend, canon-yellow for public). + add buttons use Lora italic
+// + 2px dashed outline + transparent fill — both comply with the v2
+// button rule (transparent-with-outline pattern).
+
+function EntryCard({
+  row,
+  firstRow,
+  roomsNotIn,
+  canMakePublic,
+  onUpgradePublic,
+  onUpgradeRoom,
+  onNavigateRoom,
+  onNavigatePublic,
+}: {
+  row: ThreadRow;
+  firstRow: boolean;
+  roomsNotIn: FriendGroup[];
+  canMakePublic: boolean;
+  onUpgradePublic: () => void;
+  onUpgradeRoom: (g: FriendGroup) => void;
+  onNavigateRoom: (groupId: string) => void;
+  onNavigatePublic: () => void;
+}) {
+  const t = row.thread;
+  const [hover, setHover] = useState(false);
+  const showAddRow = (canMakePublic || roomsNotIn.length > 0) && hover;
+
+  return (
+    <article
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        padding: "20px 0",
+        borderTop: firstRow ? "none" : "1px solid rgba(255,255,255,0.18)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
+          <h3
+            className="title"
+            style={{
+              fontSize: 20,
+              fontWeight: 600,
+              color: "#fff",
+              lineHeight: 1.25,
+              margin: 0,
+            }}
+          >
+            {t.titleBase}
+          </h3>
+          <span style={{ fontSize: 13, color: "var(--dos-gray)", fontWeight: 500 }}>
+            <EpisodeTag season={t.season} episode={t.episode} isRewatch={t.isRewatch} rewatchS={t.rewatchS} rewatchE={t.rewatchE} parens={false} />
+          </span>
+        </div>
+        <span style={{ fontSize: 13, color: "var(--dos-gray)" }}>{timeAgo(t.updatedAt)}</span>
+      </div>
+
+      {/* destination chips — one per room the thread is in, plus public */}
+      {(row.allGroups.length > 0 || t.isPublic) && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+          {row.allGroups.map((g) => (
+            <a
+              key={g.groupId}
+              href={`/show/${t.showId}`}
+              onClick={(e) => { e.preventDefault(); onNavigateRoom(g.groupId); }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 12px",
+                borderRadius: 9999,
+                background: "transparent",
+                color: "#fff",
+                border: "2px solid #355eb8",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+                textDecoration: "none",
+                cursor: "pointer",
+              }}
+            >
+              friend room · {g.groupName}
+            </a>
+          ))}
+          {t.isPublic && (
+            <a
+              href={`/show/${t.showId}`}
+              onClick={(e) => { e.preventDefault(); onNavigatePublic(); }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 12px",
+                borderRadius: 9999,
+                background: "transparent",
+                color: "#fff",
+                border: "2px solid #dea838",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+                textDecoration: "none",
+                cursor: "pointer",
+              }}
+            >
+              public
+            </a>
+          )}
+        </div>
+      )}
+
+      <div className="clamp3" style={{ fontSize: 15, lineHeight: 1.6, color: "var(--dos-fg)" }}>
+        {linkifyText(t.preview || t.body)}
+      </div>
+
+      {/* hover-revealed "+ add destination" affordances. transparent + 2px
+          dashed outline = transparent-with-outline pattern. */}
+      {showAddRow && (
+        <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+          {canMakePublic && (
+            <button
+              onClick={onUpgradePublic}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "4px 10px",
+                borderRadius: 9999,
+                fontFamily: "Lora, Georgia, serif",
+                fontStyle: "italic",
+                fontSize: 12,
+                color: "var(--dos-gray)",
+                border: "2px dashed rgba(255,255,255,0.5)",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              + make public
+            </button>
+          )}
+          {roomsNotIn.map((g) => (
+            <button
+              key={g.id}
+              onClick={() => onUpgradeRoom(g)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "4px 10px",
+                borderRadius: 9999,
+                fontFamily: "Lora, Georgia, serif",
+                fontStyle: "italic",
+                fontSize: 12,
+                color: "var(--dos-gray)",
+                border: "2px dashed rgba(255,255,255,0.5)",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              + send to {g.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </article>
   );
 }

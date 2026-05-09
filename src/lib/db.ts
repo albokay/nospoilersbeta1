@@ -579,7 +579,7 @@ export function readTabCreated(userId: string, showId: string): number {
 export async function fetchUserThreads(
   userId: string,
   showId?: string
-): Promise<{ thread: Thread; groupId?: string; groupName?: string }[]> {
+): Promise<{ thread: Thread; groupId?: string; groupName?: string; allGroups: { groupId: string; groupName: string }[] }[]> {
   let query = supabase
     .from("threads")
     .select("*")
@@ -592,21 +592,37 @@ export async function fetchUserThreads(
   const threads = (data ?? []).map(rowToThread);
   if (!threads.length) return [];
 
-  // Enrich with group context (same pattern as fetchRepliesToUserThreads)
+  // Enrich with group context. Pre-2026-05-08 this only ever returned
+  // one group per thread (single-key map overwrite), which was fine
+  // when the live composer was exclusive (private | public | one-room).
+  // The v2 compose path (checkpoint 6) creates multi-room threads, so
+  // we now collect the FULL set into `allGroups`. The legacy
+  // `groupId`/`groupName` fields stay (= first group) for backwards
+  // compatibility with the live ProfilePage.
   const threadIds = threads.map(t => t.id);
-  const groupByThreadId: Record<string, { groupId: string; groupName: string }> = {};
+  const groupsByThreadId: Record<string, { groupId: string; groupName: string }[]> = {};
   const { data: gtData } = await supabase
     .from("group_threads")
     .select("thread_id, friend_groups(id, name)")
     .in("thread_id", threadIds);
   for (const row of gtData ?? []) {
     const g = (row as any).friend_groups;
-    if (g) groupByThreadId[row.thread_id] = { groupId: g.id, groupName: g.name };
+    if (g) {
+      const tid = (row as any).thread_id as string;
+      if (!groupsByThreadId[tid]) groupsByThreadId[tid] = [];
+      groupsByThreadId[tid].push({ groupId: g.id, groupName: g.name });
+    }
   }
 
   return threads.map(thread => {
-    const group = groupByThreadId[thread.id];
-    return { thread, groupId: group?.groupId, groupName: group?.groupName };
+    const all = groupsByThreadId[thread.id] ?? [];
+    const first = all[0];
+    return {
+      thread,
+      groupId: first?.groupId,
+      groupName: first?.groupName,
+      allGroups: all,
+    };
   });
 }
 
