@@ -5,7 +5,7 @@ import type { FriendGroup } from "../types";
 import { timeAgo, canView, effectiveProgress } from "../lib/utils";
 import EpisodeTag from "./EpisodeTag";
 import { useAuth } from "../lib/auth";
-import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, addThreadToGroup, removeThreadFromGroup, markThreadSeen, markThreadPublicSeen } from "../lib/db";
+import { editThread as dbEditThread, deleteThread as dbDeleteThread, setThreadPublic as dbSetThreadPublic, addThreadToGroup, removeThreadFromGroup, markThreadSeen, markThreadPublicSeen, cloneThreadAsDuplicate, fetchGroupIdsForThread, fetchFriendGroupsForUser } from "../lib/db";
 import type { CitationEntry } from "../lib/db";
 import LikeBadge from "./LikeBadge";
 import Modal from "./Modal";
@@ -158,6 +158,89 @@ export default function InlineThreadView({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showMoveOptions]);
+
+  // ── Duplicate-to dropdown (public + friend-room thread views) ──────────
+  // Mirrors the Convert-to UX shape but with duplicate semantics: the source
+  // thread is never mutated, the new instance has its own reply chain.
+  // Lazy-fetches eligible friend rooms on first dropdown open; caches the
+  // result locally and prunes it on each successful duplicate so the just-
+  // duplicated room disappears from the next open without a refetch.
+  const [showDuplicateOptions, setShowDuplicateOptions] = useState(false);
+  const [duplicateRoomsLoading, setDuplicateRoomsLoading] = useState(false);
+  const [duplicateRoomsError, setDuplicateRoomsError] = useState<string | null>(null);
+  const [eligibleDuplicateRooms, setEligibleDuplicateRooms] = useState<FriendGroup[] | null>(null);
+  type PendingDuplicate =
+    | { kind: "public" }
+    | { kind: "group"; group: FriendGroup };
+  const [pendingDuplicate, setPendingDuplicate] = useState<PendingDuplicate | null>(null);
+  const [duplicateSubmitting, setDuplicateSubmitting] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const duplicateOptionsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showDuplicateOptions) return;
+    const handler = (e: MouseEvent) => {
+      if (duplicateOptionsRef.current && !duplicateOptionsRef.current.contains(e.target as Node)) {
+        setShowDuplicateOptions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showDuplicateOptions]);
+
+  // Lazy fetch + cache for the public-post → friend-room dropdown.
+  // Friend-room → public direction has nothing to fetch (single hardcoded
+  // option), so it just toggles the dropdown.
+  async function ensureEligibleDuplicateRoomsLoaded() {
+    if (!user) return;
+    if (eligibleDuplicateRooms !== null && !duplicateRoomsError) return;
+    setDuplicateRoomsLoading(true);
+    setDuplicateRoomsError(null);
+    try {
+      const [allRooms, existingGroupIds] = await Promise.all([
+        fetchFriendGroupsForUser(user.id, thread.showId),
+        fetchGroupIdsForThread(thread.id),
+      ]);
+      const existing = new Set(existingGroupIds);
+      setEligibleDuplicateRooms(allRooms.filter((g) => !existing.has(g.id)));
+    } catch (err) {
+      console.warn("ensureEligibleDuplicateRoomsLoaded failed:", err);
+      setDuplicateRoomsError("Couldn't load your rooms. Try again.");
+    } finally {
+      setDuplicateRoomsLoading(false);
+    }
+  }
+
+  function openDuplicateDropdownForPublic() {
+    setShowDuplicateOptions((v) => !v);
+    if (!showDuplicateOptions) {
+      // Opening — kick off lazy fetch. Cache hit short-circuits inside helper.
+      void ensureEligibleDuplicateRoomsLoaded();
+    }
+  }
+
+  async function handleConfirmDuplicate() {
+    if (!pendingDuplicate) return;
+    setDuplicateSubmitting(true);
+    setDuplicateError(null);
+    try {
+      if (pendingDuplicate.kind === "public") {
+        await cloneThreadAsDuplicate(thread.id, { isPublic: true });
+      } else {
+        const target = pendingDuplicate.group;
+        await cloneThreadAsDuplicate(thread.id, { isPublic: false, groupId: target.id });
+        // Prune the just-duplicated room from the cache so the next open
+        // hides it (matches the "hide rooms it already lives in" rule
+        // without forcing a refetch).
+        setEligibleDuplicateRooms((prev) => prev ? prev.filter((g) => g.id !== target.id) : prev);
+      }
+      setPendingDuplicate(null);
+      setShowDuplicateOptions(false);
+    } catch (err: any) {
+      setDuplicateError(err?.message ?? "Duplicate failed. Please try again.");
+    } finally {
+      setDuplicateSubmitting(false);
+    }
+  }
 
   // Increment to force RepliesList to re-fetch after a new reply is submitted
   const [repliesKey, setRepliesKey] = useState(0);
@@ -388,6 +471,46 @@ export default function InlineThreadView({
 
   return (
     <section className="container" style={{ padding: "16px 0 24px" }}>
+      {/* Duplicate-to confirm modal — opened from the Duplicate dropdown
+          on either public posts (target = a friend room) or friend-room
+          posts (target = public). Confirms before creating the clone. */}
+      {pendingDuplicate && (() => {
+        const destLabel = pendingDuplicate.kind === "public" ? "public" : pendingDuplicate.group.name;
+        return (
+          <Modal onClose={() => { if (!duplicateSubmitting) { setPendingDuplicate(null); setDuplicateError(null); } }} width="min(480px,92vw)">
+            <div style={{ padding: "16px 12px 12px" }}>
+              <p style={{ margin: "0 0 12px", fontSize: 17, lineHeight: 1.5, fontWeight: 600 }}>
+                Duplicate to <em>{destLabel}</em>?
+              </p>
+              <p style={{ margin: "0 0 20px", fontSize: 14, lineHeight: 1.5, opacity: 0.85 }}>
+                A copy of this post will appear in {pendingDuplicate.kind === "public" ? "the public conversation" : <em>{destLabel}</em>}. Replies in each copy stay separate, and deleting one copy doesn't affect the other.
+              </p>
+              {duplicateError && (
+                <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--danger)" }}>{duplicateError}</p>
+              )}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button
+                  className="btn"
+                  style={{ fontSize: 14, background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
+                  onClick={() => { if (!duplicateSubmitting) { setPendingDuplicate(null); setDuplicateError(null); } }}
+                  disabled={duplicateSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn"
+                  style={{ fontSize: 14, background: "#7abd8e", border: "none", color: "#fff" }}
+                  onClick={handleConfirmDuplicate}
+                  disabled={duplicateSubmitting}
+                >
+                  {duplicateSubmitting ? "Duplicating…" : "Duplicate"}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+
       {threadQuoteHint && (
         <Modal onClose={() => setThreadQuoteHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
@@ -608,6 +731,97 @@ export default function InlineThreadView({
                                 <Users size={14} color="var(--icon-color)" /> {g.name}
                               </button>
                             ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Public posts → Duplicate to a friend room. Pure clone:
+                        the source public post stays untouched, replies in
+                        each instance stay separate, deleting one doesn't
+                        affect the other. Friend-room list is lazy-fetched
+                        on first dropdown open and excludes rooms where this
+                        thread already lives. */}
+                    {thread.isPublic && (
+                      <div ref={duplicateOptionsRef} style={{ position: "relative" }}>
+                        <button
+                          className="btn"
+                          style={{
+                            fontSize: 13,
+                            ...(showDuplicateOptions ? { background: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.8)" } : {})
+                          }}
+                          onClick={openDuplicateDropdownForPublic}
+                        >
+                          Duplicate to…
+                        </button>
+                        {showDuplicateOptions && (
+                          <div className="move-to-dropdown" style={{
+                            position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                            display: "flex", flexDirection: "column", gap: 6,
+                            background: "var(--dos-bg)", border: "none",
+                            borderRadius: 10, padding: "8px", zIndex: 10,
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+                            minWidth: 180,
+                          }}>
+                            {duplicateRoomsLoading && (
+                              <div style={{ fontSize: 13, color: "#fff", padding: "6px 8px", whiteSpace: "nowrap" }}>Loading rooms…</div>
+                            )}
+                            {!duplicateRoomsLoading && duplicateRoomsError && (
+                              <button
+                                className="btn"
+                                style={{ fontSize: 13, whiteSpace: "nowrap" }}
+                                onClick={() => { void ensureEligibleDuplicateRoomsLoaded(); }}
+                              >
+                                {duplicateRoomsError} (retry)
+                              </button>
+                            )}
+                            {!duplicateRoomsLoading && !duplicateRoomsError && eligibleDuplicateRooms !== null && eligibleDuplicateRooms.length === 0 && (
+                              <div style={{ fontSize: 13, color: "#fff", padding: "6px 8px", whiteSpace: "nowrap", opacity: 0.85 }}>
+                                No friend rooms available.
+                              </div>
+                            )}
+                            {!duplicateRoomsLoading && !duplicateRoomsError && (eligibleDuplicateRooms ?? []).map(g => (
+                              <button
+                                key={g.id}
+                                className="btn"
+                                style={{ fontSize: 13, whiteSpace: "nowrap" }}
+                                onClick={() => setPendingDuplicate({ kind: "group", group: g })}
+                              >
+                                <Users size={14} color="var(--icon-color)" /> {g.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Friend-room posts → Duplicate to public. Single
+                        option; no fetch needed. Same pure-clone semantics. */}
+                    {inGroupContext && (
+                      <div ref={duplicateOptionsRef} style={{ position: "relative" }}>
+                        <button
+                          className="btn"
+                          style={{
+                            fontSize: 13,
+                            ...(showDuplicateOptions ? { background: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.8)" } : {})
+                          }}
+                          onClick={() => setShowDuplicateOptions(v => !v)}
+                        >
+                          Duplicate to…
+                        </button>
+                        {showDuplicateOptions && (
+                          <div className="move-to-dropdown" style={{
+                            position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                            display: "flex", flexDirection: "column", gap: 6,
+                            background: "var(--dos-bg)", border: "none",
+                            borderRadius: 10, padding: "8px", zIndex: 10,
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+                          }}>
+                            <button
+                              className="btn"
+                              style={{ fontSize: 13, whiteSpace: "nowrap", background: "#dea838", border: "none", color: "#fff" }}
+                              onClick={() => setPendingDuplicate({ kind: "public" })}
+                            >
+                              <Globe size={14} color="#fff" /> Public Post
+                            </button>
                           </div>
                         )}
                       </div>
