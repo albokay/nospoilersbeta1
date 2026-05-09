@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-05-08)
+# Sidebar — Technical State (2026-05-09)
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -1314,6 +1314,75 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-09 — v2 UI rethink: journal polish arc end + decision to redirect
+
+This day stitched together six commits of v2-journal visual polish, ending with a strategic call to step back from the v2-journal direction in the next session and restore the live-site journal look while preserving the v2 *functionality* gains. Rest of the v2 surfaces (profile self/visitor, compose, user-aggregate, schema additions, contextual delete in live ShowSection) are unaffected by the redirect — they stay landed.
+
+**Six commits in chronological order:**
+
+| SHA | Scope |
+|---|---|
+| `8011690` | Journal nav fixes (`navigateToShow` helper centralizes `/show/:id` navigation, clears `ns_active_group_<showId>` sessionStorage when no group is targeted so live ShowSection inits in public mode rather than auto-reopening last-visited room; chip clicks land on `/show/:id/thread/:tid` directly). Profile pill becomes the account dropdown trigger (chevron + portaled menu, sign-out moves inside). Dedicated logout icon retired. |
+| `ef3eef9` | Sign-out dropdown styled as ghost-of-pill (32 tall, radius 9999, transparent + 2px white outline + white text). Bootstrap loading state — panel + rail show "Loading…" with `<LoadingDots />`. Expand button moves to bottom-right of entry tickets. Delete-from-journal button on journal-only entries (canon-red dotted outline + Trash2 icon). "+" friend-room button shrunk 32→24. All Unicode `→` arrows replaced with Lucide `ArrowRight` across V2Layout, V2JournalPage, V2ComposePage, V2ProfileVisitorPage, V2UserAggregatePage. ArrowRight prefix added to entry destination chips. |
+| `fc8ec1b` | Show-name chevron stays glued to last word via inline-flow + NBSP connector + `preventLastWordOrphan`. Bootstrap loading state moves to flex-center inside the 720px panel. Rail "Loading shows…" added. **Public delete = remove from public only**: `InlineThreadView.handleDelete` grew a public-context branch (`dbSetThreadPublic(false)` instead of `dbDeleteThread` when thread is public + no group). Parent `ShowSection.onThreadDelete` now infers the case from `thread.isPublic + !activeGroupId` and updates local state with `isPublic=false` rather than `isDeleted=true`. Spec-aligned contextual delete fully covered now (private journal → soft-delete, friend-room → unlink, public → demote). |
+| `db48ce6` | **Major restructure: graphic show tabs restored.** Show selection moved from rail's button list back to the live folder-tab row above the diary panel (reuses live `.diaryTabScroller` / `.diaryTab` / `.diaryTab.active` classes verbatim — no new CSS). Active tab holds show name + chevron (chevron opens stop-watching dropdown via the same portal). Rail keeps logo + search only; show-button list removed entirely. In-panel title row (h1 + chevron + progress pill) dropped — show identity now lives at the rail/panel boundary via the active tab. Progress pill moved into the action row's right end via `marginLeft: auto` alongside write / friend-room / public buttons. Entry count + "since" line stays above the action row. Cleaned up a dynamic-import warning while there. **−79 lines net.** |
+| `5a80f27` | **Light-blue-context visual test** (canon-light-blue panel + tab; per-destination entry-card bgs: yellow for public, green for journal-only, faint white overlay for friend-room). Active tab + back-pages cascade + front card all flip to `#adc8d7`. Friend-room buttons gain a 2px white outline since they otherwise blend into the matching panel surface. Dotted upgrade buttons bumped to ~92% white text + 70% white border. Public chip gains a 2px white outline so it stays definable on its matching-yellow card bg. |
+| `989039e` | Visual-test refinements after first walkthrough: friend-room-only entries back to transparent (was unbidden white overlay); faint white separator below action row removed; expand button → transparent + white outline + white text; write button → text just "write" + bg canon-cream `#fef8ea` + black text + height 40; all action-row buttons sized to match the OneSelectProgress pill (height 40, radius 9999, fontSize 13); friend-room-only entries flip text + button outlines to canon dark navy `#1a3a4c` via a new `ink` var threaded through title / episode tag / time-ago / "posted in:" / chips / dashed upgrade buttons / body. Expand stays white per explicit exclusion. |
+
+**Decision after the six-commit polish arc:**
+
+The v2 journal direction lost some of the live site's character despite the polish work. Specifically:
+
+- The light-blue-context visual test (`5a80f27` + `989039e`) didn't land — multi-color entry-card bgs (yellow public + green journal + transparent friend-room) plus a light-blue panel + dark-navy ink for some entries created visual noise that didn't read as cohesive.
+- The earlier polish ("posted in:" + ArrowRight chips, persistent-row upgrade buttons, etc.) were UX gains, but the underlying journal-page identity strayed from the live diary's confident single-color discipline.
+
+**New session direction (planned, not started):**
+
+Restore the live-site journal page's look — single-palette diary card on canon green via `body.has-header` + `--dos-bg`, the merged active tab + card visual, the diary back-pages cascade. KEEP the v2 *functional* gains and weave them into that shape:
+
+| v2 functional gain | Live-shape weaving |
+|---|---|
+| **Journal as canonical home** for every author-owned thread (no per-destination buckets) | Drop the live three-filter (private/friends/public) UX; entries listed as one stream per show |
+| **Multi-destination chips on entries** ("posted in: <room>, public") | Add chips inline on each diary card row |
+| **`+ make public` / `+ send to <room>` upgrade affordances** | Render in the same row as chips, dashed pattern preserved (transparent + dashed outline) |
+| **`delete from journal` (canon-red dotted)** for journal-only entries | Add as third-in-line affordance on journal-only rows |
+| **Friend-room and public delete = unlink not soft-delete** (live ShowSection already updated this commit-arc — kept) | No further work needed; already shipped to live `InlineThreadView` + `ShowSection` |
+| **`+ friend room` button** in the action row + create-room modal | Bring into the live diary's action bar |
+| **Active-tab chevron → stop-watching menu** | Live diary already has chevron-on-show-name; the dropdown's "close show / stop watching" item + cascade (`stopWatching` helper at `db.ts`) ports cleanly |
+| **Universal progress picker** (`OneSelectProgress` + `persistProgressUpdate`) | Already wired in live ProfilePage; nothing new needed beyond the cascade-aware compute helper which is already in `db.ts` |
+| **`navigateToShow` helper** + sessionStorage clearing | Lift into live nav callsites if/when they hit the same auto-reopen-last-room issue |
+
+**v2 surfaces NOT affected by the redirect** (these stay):
+
+- `/v2/profile` — four shelves with blurb editors + canon-pin toggle + "+ add a show" tile. Real reads/writes against the v2 progress columns landed in checkpoint 3.
+- `/v2/u/:username` — visitor profile with contextual CTAs.
+- `/v2/u/:username/show/:showId/posts` — single-user public-posts page with pre-claim + post-claim states.
+- `/v2/compose/:showId` — ruled-paper compose with multi-destination chooser.
+- All schema additions (`progress.stopped_watching`, `canon_pin`, four shelf blurbs).
+- Extended `get_public_progress` RPC.
+- `stopWatching` cascade helper.
+- `setThreadPublic` / `addThreadToGroup` / `removeThreadFromGroup` wiring.
+- `persistProgressUpdate` + `computeNextProgressEntry` helpers.
+- `navigateToShow` helper.
+- The contextual-delete edits to live `InlineThreadView` + `ShowSection` (private soft-delete, friend-room unlink, public demote).
+- `EmptyProfileWelcome` precedence wiring inside V2JournalPage's empty state.
+
+**v2 surfaces likely affected by the redirect:**
+
+- `/v2/journal` — its visual identity will likely converge with the live `/profile` journal in the next session. The structural decisions (rail removed, show-tab row, active-tab chevron, multi-destination chips, "+ add destination" affordances, delete-from-journal, "+ friend room") all stay valuable — they just need to live inside the live diary's color discipline rather than the experimental light-blue-context I tested today.
+
+**v2-arc conventions still in force** (carried into the next session):
+
+- 8 px grid (4 px for tight pairs only).
+- Buttons + chips: solid-fill-no-outline OR transparent-with-outline. Never both. (The `5a80f27` test added outlines to solid friend chips because they sat on a matching-color panel — that exception goes away when the panel returns to canon-green.)
+- 2 px borders throughout, no drop shadows on content panels.
+- Lucide icons throughout (no Unicode arrows).
+- Layered diary back-pages cascade for depth (offsets 48/32/16, opacities 0.18/0.36/0.55).
+
+**Files (these six commits combined):** [src/components/v2/V2JournalPage.tsx](src/components/v2/V2JournalPage.tsx), [src/components/v2/V2Layout.tsx](src/components/v2/V2Layout.tsx), [src/components/v2/V2ComposePage.tsx](src/components/v2/V2ComposePage.tsx), [src/components/v2/V2ProfileVisitorPage.tsx](src/components/v2/V2ProfileVisitorPage.tsx), [src/components/v2/V2UserAggregatePage.tsx](src/components/v2/V2UserAggregatePage.tsx), [src/components/v2/v2nav.ts](src/components/v2/v2nav.ts) (new), [src/components/InlineThreadView.tsx](src/components/InlineThreadView.tsx), [src/components/ShowSection.tsx](src/components/ShowSection.tsx).
+
+**Bundle as of `989039e`:** 944 KB raw / 253 KB gzip.
 
 ### 2026-05-08 — v2 UI rethink: journal polish 3 (+ contextual delete in live ShowSection)
 
