@@ -102,11 +102,15 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
             onClick={() => signOut()}
             title="Sign out"
             style={{
-              width: 34,
-              height: 34,
+              width: 32,
+              height: 32,
               borderRadius: "50%",
               border: "2px solid var(--dos-border)",
-              background: "transparent",
+              // Solid canon-green fill so the icon stays opaque when content
+              // scrolls behind it. Matches the body's default --dos-bg, so it
+              // blends on the journal palette and reads as a ghost on the
+              // mustard profile palette.
+              background: "var(--green)",
               color: "var(--dos-fg)",
               cursor: "pointer",
               display: "flex",

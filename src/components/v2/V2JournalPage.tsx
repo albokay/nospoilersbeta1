@@ -15,6 +15,7 @@ import {
   setThreadPublic,
   addThreadToGroup,
   persistProgressUpdate,
+  createFriendGroup,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
 import type { Thread, Reply, ProgressEntry, FriendGroup } from "../../types";
@@ -68,6 +69,10 @@ export default function V2JournalPage() {
   const [stopModalOpen, setStopModalOpen] = useState(false);
   const [stopSubmitting, setStopSubmitting] = useState(false);
   const [stopError, setStopError] = useState<string | null>(null);
+  const [createRoomOpen, setCreateRoomOpen] = useState(false);
+  const [newRoomName, setNewRoomName] = useState("");
+  const [createRoomSubmitting, setCreateRoomSubmitting] = useState(false);
+  const [createRoomError, setCreateRoomError] = useState<string | null>(null);
   const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 1080);
 
   useEffect(() => {
@@ -169,6 +174,27 @@ export default function V2JournalPage() {
   // Auth gate. Mirrors /profile gate — signed-out users go home.
   if (!authLoading && !user) {
     return <V2Layout palette="journal"><div /></V2Layout>;
+  }
+
+  // Create-friend-room handler. The user is on /v2/journal/:showId, which
+  // means the show is already in their progress, so we don't need the
+  // auto-onboard branch the live ShowSection has — just create the group
+  // and surface it locally.
+  async function handleCreateRoom() {
+    if (!user || !activeShow || !newRoomName.trim() || createRoomSubmitting) return;
+    setCreateRoomSubmitting(true);
+    setCreateRoomError(null);
+    try {
+      const g = await createFriendGroup({ showId: activeShow.id, name: newRoomName.trim(), createdBy: user.id });
+      setGroupsForActive((prev) => [...prev, g]);
+      setCreateRoomOpen(false);
+      setNewRoomName("");
+    } catch (err: any) {
+      console.warn("createFriendGroup failed:", err);
+      setCreateRoomError(err?.message || "Couldn't create room. Try again.");
+    } finally {
+      setCreateRoomSubmitting(false);
+    }
   }
 
   const sinceTs = activeEntries.length
@@ -324,7 +350,14 @@ export default function V2JournalPage() {
               ? { padding: "0 24px 120px", minWidth: 0 }
               : {
                   marginLeft: MAIN_LEFT,
-                  padding: "24px 48px 120px",
+                  // Top padding picks the heading down so "this is your
+                  // journal" lines up with the "sidebar" wordmark in the
+                  // rail logo. SidebarLogo at scale 0.6 is ~89px tall;
+                  // wordmark sits at the bottom (52×0.6 = 31px tall) and
+                  // its baseline lands ~80px below the logo's top edge
+                  // (which is at viewport y=16 via aside top: 16). 80-px
+                  // padding-top puts the heading baseline at the same y.
+                  padding: "80px 48px 120px",
                   maxWidth: 920,
                   minWidth: 0,
                 }
@@ -595,6 +628,34 @@ export default function V2JournalPage() {
                       <Users size={13} /> {groupsForActive.length === 1 ? "→ your friend room" : `→ your ${groupsForActive.length} friend rooms`}
                     </button>
                   )}
+                  {/* + friends — start a new friend room on this show.
+                      Outline canon-blue-light + canon-blue-light text,
+                      transparent fill (transparent-with-outline pattern)
+                      so it reads as a complementary affordance to the
+                      solid friend-room button. */}
+                  <button
+                    onClick={() => {
+                      setNewRoomName("");
+                      setCreateRoomError(null);
+                      setCreateRoomOpen(true);
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      background: "transparent",
+                      color: "#adc8d7",
+                      border: "2px solid #adc8d7",
+                      borderRadius: 9999,
+                      padding: "0 16px",
+                      height: 32,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    + friends
+                  </button>
                   <button
                     onClick={() => navigate(`/show/${activeShow.id}`)}
                     // Solid canon-yellow + no outline + white text —
@@ -817,6 +878,114 @@ export default function V2JournalPage() {
           style={{ position: "fixed", inset: 0, zIndex: 4 }}
           aria-hidden
         />
+      )}
+
+      {/* create-friend-room modal — name your room, hit create */}
+      {createRoomOpen && activeShow && user && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !createRoomSubmitting) setCreateRoomOpen(false);
+          }}
+        >
+          <div
+            style={{
+              background: "var(--dos-bg)",
+              border: "2px solid #fff",
+              padding: "24px 24px 16px",
+              maxWidth: 440,
+              width: "100%",
+              color: "var(--dos-fg)",
+            }}
+          >
+            <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 600, fontSize: 24, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.02em" }}>
+              new friend room
+            </div>
+            <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-gray)", lineHeight: 1.5, marginBottom: 16 }}>
+              for <strong style={{ fontStyle: "normal", fontWeight: 600, color: "var(--dos-fg)" }}>{activeShow.name}</strong>. give it a name, then invite friends from the room itself.
+            </div>
+            <input
+              autoFocus
+              type="text"
+              value={newRoomName}
+              onChange={(e) => setNewRoomName(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key === "Enter" && newRoomName.trim() && !createRoomSubmitting) {
+                  await handleCreateRoom();
+                }
+              }}
+              placeholder="e.g. Almost Paradise"
+              maxLength={120}
+              style={{
+                width: "100%",
+                background: "rgba(255,255,255,0.18)",
+                border: "2px solid #fff",
+                borderRadius: 9999,
+                padding: "8px 16px",
+                color: "var(--dos-fg)",
+                fontSize: 14,
+                marginBottom: 16,
+                outline: "none",
+              }}
+            />
+            {createRoomError && (
+              <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>
+                {createRoomError}
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+              <button
+                disabled={createRoomSubmitting}
+                onClick={() => setCreateRoomOpen(false)}
+                style={{
+                  background: "transparent",
+                  color: "var(--dos-fg)",
+                  border: "2px solid var(--dos-border)",
+                  borderRadius: 9999,
+                  padding: "0 16px",
+                  height: 32,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: createRoomSubmitting ? "not-allowed" : "pointer",
+                }}
+              >
+                cancel
+              </button>
+              <button
+                disabled={createRoomSubmitting || !newRoomName.trim()}
+                onClick={handleCreateRoom}
+                style={{
+                  background: "#adc8d7",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 9999,
+                  padding: "0 16px",
+                  height: 32,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: createRoomSubmitting || !newRoomName.trim() ? "not-allowed" : "pointer",
+                  opacity: createRoomSubmitting || !newRoomName.trim() ? 0.6 : 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                {createRoomSubmitting ? <>creating<LoadingDots /></> : "create room"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* stop-watching confirmation modal */}
