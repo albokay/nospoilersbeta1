@@ -86,12 +86,12 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   // Form state.
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
-  // Single-select destination model. "private" is the default (and the
-  // baseline state — every post lives in the user's journal regardless).
-  // "public" publishes to the show's public stream. Any other value is a
-  // friend_group id; in that case the post is added to that room. The
-  // three pill buttons in the destination chooser are mutually exclusive.
-  const [destination, setDestination] = useState<"private" | "public" | string>("private");
+  // Single-select destination model — null until the user makes a choice.
+  // The post-entry button is disabled (and rendered minimally) until a
+  // destination is selected. "private" / "public" are special string
+  // values; any other string is a friend_group id (post is also added
+  // to that room via group_threads).
+  const [destination, setDestination] = useState<"private" | "public" | string | null>(null);
 
   // Prompt feature — same shape as live ShowSection.
   const [activePrompt, setActivePrompt] = useState<PromptEntry | null>(null);
@@ -234,6 +234,10 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   // === SUBMIT ===
   async function submitPost() {
     if (!user || !profile || !show || !progress) return;
+    // Belt-and-suspenders: the post-entry button is rendered disabled when
+    // destination is null, but guard here too so a stray keyboard / form
+    // submit can't sneak through.
+    if (destination === null) return;
     const title = postTitle.trim();
     const body = postBody.trim();
     if (!title && !body) {
@@ -556,45 +560,66 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
             who would you like to share this with?
           </div>
 
-          {/* Single-select destination pills, stacked vertically + centered.
-              Each pill carries a title + italic subhead. Selected pill is
-              full opacity; unselected are dimmed for visual contrast (the
-              spec calls for "no outline" on the pills themselves, so the
-              opacity delta is the selection cue). Order: friend rooms (one
-              per room on this show), then "the public", then "keep it
-              private" as the default-selected baseline. */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          {/* Single-select destination pills — h40 (height-matched to the
+              post-entry button), always full opacity, with a cream radio
+              circle on the left. Selected radio shows an inner dot in the
+              pill's bg color. Order per spec: friend rooms, private,
+              public. Default state is null (nothing selected) — the user
+              must pick before posting. */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
             {groups.map((g) => (
               <DestinationPill
                 key={g.id}
                 selected={destination === g.id}
                 bg="#adc8d7"
                 fg="#1a3a4c"
-                subFg="rgba(26,58,76,0.75)"
                 title={<>my friends: <em style={{ fontStyle: "italic", fontWeight: 700 }}>{g.name}</em></>}
-                subhead={`your friends will see your entry once they've watched ${tagShort}.`}
                 onClick={() => setDestination(g.id)}
               />
             ))}
             <DestinationPill
-              selected={destination === "public"}
-              bg="#dea838"
-              fg="#fff"
-              subFg="rgba(255,255,255,0.85)"
-              title="the public"
-              subhead={`visible to anyone caught up to ${tagShort}.`}
-              onClick={() => setDestination("public")}
-            />
-            <DestinationPill
               selected={destination === "private"}
               bg="#7abd8e"
               fg="#fff"
-              subFg="rgba(255,255,255,0.85)"
               title="keep it private"
-              subhead="some of your best thinking happens when you write for yourself…"
               onClick={() => setDestination("private")}
             />
+            <DestinationPill
+              selected={destination === "public"}
+              bg="#dea838"
+              fg="#fff"
+              title="the public"
+              onClick={() => setDestination("public")}
+            />
           </div>
+
+          {/* Dynamic explainer — renders only after the user picks a
+              destination. Sits between the pills and the not-now /
+              post-entry action row, replacing the multi-select summary
+              we removed earlier with a single-line context paragraph. */}
+          {destination !== null && (
+            <p
+              style={{
+                fontFamily: "Lora, Georgia, serif",
+                fontStyle: "italic",
+                fontSize: 14,
+                color: INK_SOFT,
+                lineHeight: 1.5,
+                marginTop: 18,
+                marginBottom: 0,
+                textAlign: "center",
+                maxWidth: 580,
+                marginLeft: "auto",
+                marginRight: "auto",
+              }}
+            >
+              {destination === "public"
+                ? <>Anyone who's watched <strong>{tagShort}</strong> can read your writing.</>
+                : destination === "private"
+                ? <>No one else will see. Some of your best thinking happens when you write for yourself…</>
+                : <>Your friends will see your entry once they've watched <strong>{tagShort}</strong>.</>}
+            </p>
+          )}
         </div>
 
         {/* === ACTION ROW === */}
@@ -627,11 +652,27 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           </button>
           <button
             onClick={submitPost}
-            disabled={submitting}
+            disabled={submitting || destination === null}
             className="btn post h40"
-            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              // When no destination is chosen, render the button as a
+              // dimmed empty pill (no text/icon) — visually communicates
+              // "this exists but isn't actionable yet" without removing
+              // the affordance entirely. minWidth keeps the pill shape
+              // visible at h40 even with empty content.
+              opacity: destination === null ? 0.4 : 1,
+              cursor: (submitting || destination === null) ? "not-allowed" : "pointer",
+              minWidth: 130,
+            }}
           >
-            {submitting ? <>posting<LoadingDots /></> : <>post entry <ArrowRight size={14} /></>}
+            {destination === null
+              ? null
+              : submitting
+                ? <>posting<LoadingDots /></>
+                : <>post entry <ArrowRight size={14} /></>}
           </button>
         </div>
         {submitError && (
@@ -719,28 +760,25 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
 
 // === DESTINATION PILL =========================================================
 //
-// Single-select pill button — title (Inter, bold) + italic subhead (Lora),
-// stacked inside a rounded-full pill. Each pill has a solid bg + no border
-// per the spec ("no outline"). Selection state is conveyed via opacity:
-// selected = full opacity, unselected = 0.5. Width is capped via maxWidth
-// so long titles + subheads don't sprawl across the page; flexible enough
-// to grow taller for the two-line content.
+// Single-select pill button — h40 (height-matched to the post-entry button),
+// always full opacity (no opacity-as-selection-state per the latest spec).
+// Solid bg + no border per "no outline" rule. Selection cue is a radio circle
+// on the left: empty = cream-filled circle (matches the page bg) so it reads
+// as an unfilled radio; selected = the same cream circle with an inner dot
+// in the pill's bg color. Title-only — no subheads (the dynamic explainer
+// below the pills carries the per-choice context).
 
 function DestinationPill({
   selected,
   bg,
   fg,
-  subFg,
   title,
-  subhead,
   onClick,
 }: {
   selected: boolean;
   bg: string;
   fg: string;
-  subFg: string;
   title: React.ReactNode;
-  subhead: React.ReactNode;
   onClick: () => void;
 }) {
   return (
@@ -752,22 +790,43 @@ function DestinationPill({
         color: fg,
         border: "none",
         borderRadius: 9999,
-        padding: "14px 26px",
-        width: "100%",
-        maxWidth: 460,
+        height: 40,
+        padding: "0 22px",
+        width: 320,
         cursor: "pointer",
-        textAlign: "center",
-        opacity: selected ? 1 : 0.5,
-        transition: "opacity 120ms ease",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 12,
         fontFamily: "inherit",
       }}
     >
-      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 15, fontWeight: 600, color: fg, lineHeight: 1.25 }}>
+      <span
+        aria-hidden
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: "50%",
+          background: CREAM_BG,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {selected && (
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: bg,
+            }}
+          />
+        )}
+      </span>
+      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: fg, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
         {title}
-      </div>
-      <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 13, color: subFg, marginTop: 4, lineHeight: 1.4 }}>
-        {subhead}
-      </div>
+      </span>
     </button>
   );
 }
