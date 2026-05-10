@@ -401,7 +401,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
       <style>{`
         body.v2-compose-context { background: ${CREAM_BG} !important; color: ${INK}; }
         .v2-compose-paper-input {
-          background-color: transparent !important;
+          background-color: #fff !important;
           background-image: ${RULE_GRADIENT} !important;
           background-position: 0 0 !important;
           background-size: 100% ${LH}px !important;
@@ -449,7 +449,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
               marginBottom: 4,
             }}
           >
-            capture your fresh thoughts on:
+            capture your thoughts on:
           </div>
           <h1
             style={{
@@ -497,12 +497,18 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           )}
         </div>
 
-        {/* === PAPER === */}
+        {/* === PAPER ===
+            Sharp-cornered, transparent-fill outer container. The textarea
+            inside renders pure white (with the ruled-paper gradient on top
+            of the white) so the writing surface visually defines itself
+            without a styled cream wrapper. Prompt button now lives inside
+            the box, below the textarea, so it reads as part of the writing
+            unit rather than a separate after-the-paper affordance. */}
         <div
           style={{
-            background: PAPER_BG,
+            background: "transparent",
             border: `2px solid ${RULE}`,
-            borderRadius: 18,
+            borderRadius: 0,
             padding: "36px 40px",
             marginBottom: 24,
             display: "flex",
@@ -543,7 +549,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
               lineHeight: `${LH}px`,
               color: INK,
               border: "none",
-              backgroundColor: "transparent",
+              backgroundColor: "#fff",
               backgroundImage: RULE_GRADIENT,
               backgroundPosition: "0 0",
               backgroundSize: `100% ${LH}px`,
@@ -562,41 +568,41 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
               display: "block",
             }}
           />
-        </div>
 
-        {/* === PROMPT BUTTON / CARD === */}
-        {promptEntries.length > 0 && (
-          <div style={{ marginTop: 4, marginBottom: 24 }}>
-            {!activePrompt ? (
-              <button
-                onClick={handlePromptBtn}
-                style={{
-                  background: "var(--green)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 9999,
-                  padding: "9px 18px",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <Sparkles size={14} color="currentColor" /> want a prompt?
-              </button>
-            ) : (
-              <PromptCard
-                prompt={activePrompt}
-                onClose={() => setActivePrompt(null)}
-                onShuffle={handlePromptShuffle}
-                onInsert={handlePromptInsert}
-              />
-            )}
-          </div>
-        )}
+          {/* Prompt button / card — inside the paper, below the textarea */}
+          {promptEntries.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              {!activePrompt ? (
+                <button
+                  onClick={handlePromptBtn}
+                  style={{
+                    background: "var(--green)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 9999,
+                    padding: "9px 18px",
+                    fontFamily: "Inter, sans-serif",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <Sparkles size={14} color="currentColor" /> want a prompt?
+                </button>
+              ) : (
+                <PromptCard
+                  prompt={activePrompt}
+                  onClose={() => setActivePrompt(null)}
+                  onShuffle={handlePromptShuffle}
+                  onInsert={handlePromptInsert}
+                />
+              )}
+            </div>
+          )}
+        </div>
 
         {/* === DESTINATION CHOOSER === */}
         <div style={{ marginTop: 12 }}>
@@ -610,7 +616,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
               marginBottom: 14,
             }}
           >
-            where does this entry live?
+            who would you like to share this with?
           </div>
 
           {/* Journal-as-baseline pill — quiet, persistent, not interactive. */}
