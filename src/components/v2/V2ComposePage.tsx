@@ -62,82 +62,6 @@ function tagPosition(p: ProgressEntry): { s: number; e: number } {
   return { s: p.s, e: p.e };
 }
 
-// Live-summary copy for the destination chooser. Public + selected groups
-// combine; up to 3 group names enumerated Oxford-style, 4+ collapses to
-// "N friend rooms".
-function buildSelectionSummary(
-  groups: FriendGroup[],
-  selectedGroupIds: Set<string>,
-  selectedPublic: boolean,
-  tag: string
-): React.ReactNode {
-  const rooms = groups.filter((g) => selectedGroupIds.has(g.id));
-  const n = rooms.length;
-  const baseline = (
-    <>
-      This entry will live in your private <strong>journal</strong>
-    </>
-  );
-
-  // Phrase fragments for the rooms portion.
-  let roomsPhrase: React.ReactNode = null;
-  if (n === 1) {
-    roomsPhrase = (
-      <>
-        post to your <strong>{rooms[0].name}</strong> friend room
-      </>
-    );
-  } else if (n === 2) {
-    roomsPhrase = (
-      <>
-        post to your <strong>{rooms[0].name}</strong> and <strong>{rooms[1].name}</strong> friend rooms
-      </>
-    );
-  } else if (n === 3) {
-    roomsPhrase = (
-      <>
-        post to your <strong>{rooms[0].name}</strong>, <strong>{rooms[1].name}</strong>, and <strong>{rooms[2].name}</strong> friend rooms
-      </>
-    );
-  } else if (n >= 4) {
-    roomsPhrase = (
-      <>
-        post to your <strong>{n} friend rooms</strong>
-      </>
-    );
-  }
-
-  const publicPhrase: React.ReactNode = (
-    <>
-      publish <strong>publicly</strong> — visible to anyone caught up to {tag}
-    </>
-  );
-
-  if (n === 0 && !selectedPublic) {
-    return <>{baseline}. You can share it further later.</>;
-  }
-  if (n > 0 && !selectedPublic) {
-    return (
-      <>
-        {baseline}, and {roomsPhrase}.
-      </>
-    );
-  }
-  if (n === 0 && selectedPublic) {
-    return (
-      <>
-        {baseline}, and {publicPhrase}.
-      </>
-    );
-  }
-  // Both selected — chain rooms, then public.
-  return (
-    <>
-      {baseline}, {roomsPhrase}, and {publicPhrase}.
-    </>
-  );
-}
-
 export default function V2ComposePage({ showId }: { showId?: string }) {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
@@ -162,8 +86,12 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   // Form state.
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
-  const [selectedPublic, setSelectedPublic] = useState(false);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
+  // Single-select destination model. "private" is the default (and the
+  // baseline state — every post lives in the user's journal regardless).
+  // "public" publishes to the show's public stream. Any other value is a
+  // friend_group id; in that case the post is added to that room. The
+  // three pill buttons in the destination chooser are mutually exclusive.
+  const [destination, setDestination] = useState<"private" | "public" | string>("private");
 
   // Prompt feature — same shape as live ShowSection.
   const [activePrompt, setActivePrompt] = useState<PromptEntry | null>(null);
@@ -328,15 +256,16 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
         isRewatch: progress.isRewatching ?? false,
         rewatchSeason: progress.isRewatching ? (progress.rewatchS ?? progress.s) : undefined,
         rewatchEpisode: progress.isRewatching ? (progress.rewatchE ?? progress.e) : undefined,
-        isPublic: selectedPublic,
+        isPublic: destination === "public",
       };
       const t = await insertThread(threadData);
-      // Apply each selected room. Best-effort: a room failing to attach
-      // doesn't abort the post (consistent with how live ShowSection
-      // handles the single-room case at ShowSection.tsx:1660).
-      for (const groupId of Array.from(selectedGroupIds)) {
-        await addThreadToGroup(t.id, groupId).catch((err) => {
-          console.warn(`addThreadToGroup failed thread=${t.id} group=${groupId}:`, err);
+      // Single-destination model: if the user picked a friend room, attach
+      // the post there. Best-effort attach (matches the live insertThread +
+      // addThreadToGroup pattern in ProfilePage.tsx:533 and
+      // ShowSection.tsx:1660). "private" + "public" need no extra step.
+      if (destination !== "private" && destination !== "public") {
+        await addThreadToGroup(t.id, destination).catch((err) => {
+          console.warn(`addThreadToGroup failed thread=${t.id} group=${destination}:`, err);
         });
       }
       // Log prompt usage.
@@ -352,15 +281,6 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
       setSubmitError(err?.message || "Post failed. Try again.");
       setSubmitting(false);
     }
-  }
-
-  function toggleGroup(groupId: string) {
-    setSelectedGroupIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
-    });
   }
 
   // === GUARDS ===
@@ -389,7 +309,6 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
 
   const tag = tagPosition(progress);
   const tagShort = `S${String(tag.s).padStart(2, "0")} E${String(tag.e).padStart(2, "0")}`;
-  const summary = buildSelectionSummary(groups, selectedGroupIds, selectedPublic, tagShort);
 
   return (
     <div style={{ minHeight: "100vh", position: "relative" }}>
@@ -629,100 +548,45 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
             who would you like to share this with?
           </div>
 
-          {/* Journal-as-baseline pill — quiet, persistent, not interactive. */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              padding: "12px 22px",
-              background: "rgba(43,36,24,0.05)",
-              border: "none",
-              borderRadius: 9999,
-              maxWidth: 360,
-              margin: "0 auto",
-              fontFamily: "Lora, Georgia, serif",
-              fontStyle: "italic",
-              fontSize: 15,
-              color: INK_SOFT,
-            }}
-          >
-            ◐ in your private journal — always.
+          {/* Single-select destination pills, stacked vertically + centered.
+              Each pill carries a title + italic subhead. Selected pill is
+              full opacity; unselected are dimmed for visual contrast (the
+              spec calls for "no outline" on the pills themselves, so the
+              opacity delta is the selection cue). Order: friend rooms (one
+              per room on this show), then "the public", then "keep it
+              private" as the default-selected baseline. */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+            {groups.map((g) => (
+              <DestinationPill
+                key={g.id}
+                selected={destination === g.id}
+                bg="#adc8d7"
+                fg="#1a3a4c"
+                subFg="rgba(26,58,76,0.75)"
+                title={<>my friends: <em style={{ fontStyle: "italic", fontWeight: 700 }}>{g.name}</em></>}
+                subhead={`your friends will see your entry once they've watched ${tagShort}.`}
+                onClick={() => setDestination(g.id)}
+              />
+            ))}
+            <DestinationPill
+              selected={destination === "public"}
+              bg="#dea838"
+              fg="#fff"
+              subFg="rgba(255,255,255,0.85)"
+              title="the public"
+              subhead={`visible to anyone caught up to ${tagShort}.`}
+              onClick={() => setDestination("public")}
+            />
+            <DestinationPill
+              selected={destination === "private"}
+              bg="#7abd8e"
+              fg="#fff"
+              subFg="rgba(255,255,255,0.85)"
+              title="keep it private"
+              subhead="some of your best thinking happens when you write for yourself…"
+              onClick={() => setDestination("private")}
+            />
           </div>
-
-          {groups.length > 0 || true ? (
-            <>
-              <div
-                style={{
-                  textAlign: "center",
-                  fontFamily: "Lora, Georgia, serif",
-                  fontStyle: "italic",
-                  fontSize: 14,
-                  color: INK_FAINT,
-                  margin: "24px 0 14px",
-                }}
-              >
-                share it further?
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                  gap: 12,
-                  marginBottom: 18,
-                }}
-              >
-                {/* one card per friend room on this show */}
-                {groups.map((g) => {
-                  const selected = selectedGroupIds.has(g.id);
-                  return (
-                    <DestinationCard
-                      key={g.id}
-                      selected={selected}
-                      paletteHex="#355eb8"
-                      onClick={() => toggleGroup(g.id)}
-                      title={
-                        <>
-                          friend room: <em style={{ fontStyle: "italic", fontWeight: 600 }}>{g.name}</em>
-                        </>
-                      }
-                      description={`your friends will see your entry once they've watched ${tagShort}.`}
-                      preState="stake your take — unlocks their entries"
-                    />
-                  );
-                })}
-
-                {/* public card */}
-                <DestinationCard
-                  selected={selectedPublic}
-                  paletteHex="#dea838"
-                  onClick={() => setSelectedPublic((v) => !v)}
-                  title="public"
-                  description={`visible to anyone caught up to ${tagShort}.`}
-                  preState="deliberate"
-                />
-              </div>
-            </>
-          ) : null}
-
-          <p
-            style={{
-              fontFamily: "Lora, Georgia, serif",
-              fontStyle: "italic",
-              fontSize: 14,
-              color: INK_SOFT,
-              lineHeight: 1.5,
-              marginTop: 4,
-              textAlign: "center",
-              maxWidth: 580,
-              marginLeft: "auto",
-              marginRight: "auto",
-            }}
-          >
-            {summary}
-          </p>
         </div>
 
         {/* === ACTION ROW === */}
@@ -845,89 +709,56 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   );
 }
 
-// === DESTINATION CARD =========================================================
+// === DESTINATION PILL =========================================================
 //
-// Both states use the solid-fill-no-outline pattern (per v2 rule):
-//   - Unselected: paper fill (#fdfbf3), dark ink text.
-//   - Selected:   palette fill (full opacity), white text + white checkmark.
-//
-// The radius circle (top-right) uses the same rule per state: unselected is
-// transparent-with-outline (no fill, 2px gray ring); selected is solid-white
-// dot on the palette field (the white dot reads as a checkmark indicator
-// against the colored card).
+// Single-select pill button — title (Inter, bold) + italic subhead (Lora),
+// stacked inside a rounded-full pill. Each pill has a solid bg + no border
+// per the spec ("no outline"). Selection state is conveyed via opacity:
+// selected = full opacity, unselected = 0.5. Width is capped via maxWidth
+// so long titles + subheads don't sprawl across the page; flexible enough
+// to grow taller for the two-line content.
 
-function DestinationCard({
+function DestinationPill({
   selected,
-  paletteHex,
-  onClick,
+  bg,
+  fg,
+  subFg,
   title,
-  description,
-  preState,
+  subhead,
+  onClick,
 }: {
   selected: boolean;
-  paletteHex: string;
-  onClick: () => void;
+  bg: string;
+  fg: string;
+  subFg: string;
   title: React.ReactNode;
-  description: string;
-  preState: string;
+  subhead: React.ReactNode;
+  onClick: () => void;
 }) {
-  const inkOnFill = selected ? "#fff" : "#2b2418";
-  const softInkOnFill = selected ? "rgba(255,255,255,0.85)" : "#8a7860";
   return (
     <button
       onClick={onClick}
+      aria-pressed={selected}
       style={{
-        background: selected ? paletteHex : "#fdfbf3",
+        background: bg,
+        color: fg,
         border: "none",
-        borderRadius: 16,
-        padding: "18px 20px",
+        borderRadius: 9999,
+        padding: "14px 26px",
+        width: "100%",
+        maxWidth: 460,
         cursor: "pointer",
-        position: "relative",
-        textAlign: "left",
+        textAlign: "center",
+        opacity: selected ? 1 : 0.5,
+        transition: "opacity 120ms ease",
         fontFamily: "inherit",
-        color: inkOnFill,
       }}
     >
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: 14,
-          right: 14,
-          width: 22,
-          height: 22,
-          borderRadius: "50%",
-          // Unselected: transparent + outline. Selected: solid white dot.
-          border: selected ? "none" : "2px solid rgba(43,36,24,0.32)",
-          background: selected ? "#fff" : "transparent",
-          color: paletteHex,
-          fontSize: 13,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          lineHeight: 1,
-          fontWeight: 700,
-        }}
-      >
-        {selected ? "✓" : ""}
-      </span>
-      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 16, fontWeight: 600, paddingRight: 30, marginBottom: 6, color: inkOnFill }}>
+      <div style={{ fontFamily: "Inter, sans-serif", fontSize: 15, fontWeight: 600, color: fg, lineHeight: 1.25 }}>
         {title}
       </div>
-      <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 13, color: softInkOnFill, lineHeight: 1.45, marginBottom: 10 }}>
-        {description}
-      </div>
-      <div
-        style={{
-          fontFamily: "Inter, sans-serif",
-          fontSize: 11,
-          fontWeight: 500,
-          textTransform: "uppercase",
-          letterSpacing: "0.04em",
-          color: softInkOnFill,
-        }}
-      >
-        {preState}
+      <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 13, color: subFg, marginTop: 4, lineHeight: 1.4 }}>
+        {subhead}
       </div>
     </button>
   );
