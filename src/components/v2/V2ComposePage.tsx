@@ -9,7 +9,9 @@ import {
   insertThread,
   addThreadToGroup,
   logThreadPrompt,
+  persistProgressUpdate,
 } from "../../lib/db";
+import OneSelectProgress from "../OneSelectProgress";
 import type { Show, PromptRow } from "../../lib/db";
 import type { ProgressEntry, FriendGroup } from "../../types";
 import type { PromptEntry } from "../../lib/promptData";
@@ -465,20 +467,28 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           >
             {show.name}
           </h1>
-          <span
-            className="btn post h40"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "default",
+          {/* Universal watch-progress updater. Doubles as a reminder
+              ("make sure this is right before posting") and an inline
+              control to update if it isn't. Confirms in-modal on change
+              (requireConfirm default = true), then persists globally via
+              persistProgressUpdate so other surfaces — live ProfilePage,
+              V3JournalPage, ShowSection — pick up the new value on their
+              next mount/refetch. Local progress state mirrors the returned
+              entry so this page's tag computation + rewatch annotation
+              update immediately. */}
+          <OneSelectProgress
+            show={show}
+            value={progress}
+            onConfirm={async (next) => {
+              if (!user) return;
+              try {
+                const updated = await persistProgressUpdate(user.id, show.id, progress, next);
+                setProgress(updated);
+              } catch (err) {
+                console.warn("compose: persistProgressUpdate failed:", err);
+              }
             }}
-            title="your current progress on this show"
-          >
-            ◐ you've watched: {progressShort(progress)}
-          </span>
+          />
           {progress.isRewatching && (
             <div
               style={{
