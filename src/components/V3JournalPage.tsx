@@ -7,6 +7,7 @@ import type { Show } from "../lib/db";
 import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated, refreshShowIfStale, fetchRoomActivityVisibility } from "../lib/db";
 import type { RoomVisibility } from "../lib/db";
 import type { PromptRow } from "../lib/db";
+import { prefetchComposeData } from "../lib/composeDataCache";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import { linkifyText } from "../lib/linkify";
@@ -965,11 +966,16 @@ export default function V3JournalPage({
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                         {/* v3: write button navigates to /v2/compose/:showId
                            instead of opening the in-page modal. Destination
-                           selection moves to the compose page's chooser. The
-                           legacy modal block below is now unreachable from
-                           v3 — left in place pending follow-up cleanup. */}
+                           selection moves to the compose page's chooser.
+                           onMouseEnter pre-fetches the compose bootstrap
+                           data so the destination page renders instantly
+                           (cache hit) on click — see lib/composeDataCache.
+                           Touch devices that don't fire mouseenter just get
+                           the regular fetch path; no functional difference. */}
                         <button
                           className="btn post h40"
+                          onMouseEnter={() => { if (user?.id && activeTab) prefetchComposeData(user.id, activeTab); }}
+                          onFocus={() => { if (user?.id && activeTab) prefetchComposeData(user.id, activeTab); }}
                           onClick={() => navigate(`/v2/compose/${activeTab}`)}
                           style={{ lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5, background: tabBg }}
                         >

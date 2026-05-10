@@ -12,6 +12,7 @@ import {
   persistProgressUpdate,
 } from "../../lib/db";
 import OneSelectProgress from "../OneSelectProgress";
+import { getCachedComposeData, clearComposeDataCache } from "../../lib/composeDataCache";
 import type { Show, PromptRow } from "../../lib/db";
 import type { ProgressEntry, FriendGroup } from "../../types";
 import type { PromptEntry } from "../../lib/promptData";
@@ -103,12 +104,35 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [discardOpen, setDiscardOpen] = useState(false);
 
+  // Fade-in state — initial render paints opacity 0, the rAF flip to true
+  // triggers the CSS transition and the page eases on. Pairs with the
+  // hover-prefetch (composeDataCache) so when the cache hits, the route
+  // change feels like an instant fade instead of a hard pop.
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(r);
+  }, []);
+
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Boot: shows + progress for this show + groups + prompts. Bails to
   // /v3/journal if the show isn't in the user's progress (no journal tab).
+  // Cache fast-path: if the V3JournalPage write button's hover prefetch
+  // populated composeDataCache (see lib/composeDataCache), hydrate state
+  // synchronously from the cache and skip the fetch entirely. Cache miss
+  // (touch device, fast click without hover, prefetch failure) falls
+  // through to the regular fetch path below.
   useEffect(() => {
     if (!user || !showId) return;
+    const cached = getCachedComposeData(user.id, showId);
+    if (cached) {
+      setShow(cached.show);
+      setProgress(cached.progress);
+      setGroups(cached.groups);
+      setPromptEntries(cached.promptEntries);
+      return;
+    }
     let cancelled = false;
     Promise.all([
       fetchShows(),
@@ -287,6 +311,10 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
       } else {
         try { sessionStorage.removeItem(`ns_active_group_${show.id}`); } catch {}
       }
+      // Invalidate the prefetch cache so the next compose visit re-fetches
+      // (the just-published post would otherwise be missing from group/
+      // progress derivations on the prefetch's next hover).
+      clearComposeDataCache(user.id, show.id);
       navigate(`/show/${show.id}/thread/${t.id}`);
     } catch (err: any) {
       console.warn("submit failed:", err);
@@ -323,7 +351,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   const tagShort = `S${String(tag.s).padStart(2, "0")} E${String(tag.e).padStart(2, "0")}`;
 
   return (
-    <div style={{ minHeight: "100vh", position: "relative" }}>
+    <div style={{ minHeight: "100vh", position: "relative", opacity: visible ? 1 : 0, transition: "opacity 220ms ease-out" }}>
       {/* compose-context cream paint via injected style.
           The !important overrides on the input/textarea below claw back from
           theme.ts:293-296's global "textarea { background: #fff !important; color: #000 !important }"
