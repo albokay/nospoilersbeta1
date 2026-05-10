@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, Suspense, lazy } from "react";
+import LoadingDots from "./components/LoadingDots";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
@@ -18,7 +19,13 @@ import Modal from "./components/Modal";
 import OneSelectProgress from "./components/OneSelectProgress";
 import AuthModal from "./components/AuthModal";
 import SidebarLogo from "./components/SidebarLogo";
-import AdminPage from "./components/AdminPage";
+// Code-split route components — Tier 1.2 perf pass. These are either
+// rarely-visited (admin, lab, how-it-works variants) OR scoped to a path
+// the user takes once or never (invite, reset-password, mobile, v2). Each
+// is fetched as its own chunk on first visit; main bundle excludes them.
+// V3JournalPage + ProfilePage + ShowSection stay eager — they're the
+// primary destinations for every signed-in user.
+const AdminPage = lazy(() => import("./components/AdminPage"));
 import { Tv, EyeClosed, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Blend, ShieldCheck, LogOut } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
@@ -27,14 +34,32 @@ import FeedbackWidget from "./components/FeedbackWidget";
 // non-/m/* path now redirect into the /m/* mobile app surface (which
 // itself handles signed-in vs signed-out routing). The component file
 // stays in src/components/ as a fallback if we ever want to revert.
-import HomepageLab from "./components/HomepageLab";
-import HowItWorks from "./components/HowItWorks";
-import HowItWorksV2 from "./components/HowItWorksV2";
+const HomepageLab = lazy(() => import("./components/HomepageLab"));
+const HowItWorks = lazy(() => import("./components/HowItWorks"));
+const HowItWorksV2 = lazy(() => import("./components/HowItWorksV2"));
 import HomepageNarrative from "./components/HomepageNarrative";
-import InviteAcceptPage from "./components/InviteAcceptPage";
-import MobileApp from "./mobile/MobileApp";
-import V2App from "./components/v2/V2App";
-import ResetPasswordPage from "./components/ResetPasswordPage";
+const InviteAcceptPage = lazy(() => import("./components/InviteAcceptPage"));
+const MobileApp = lazy(() => import("./mobile/MobileApp"));
+const V2App = lazy(() => import("./components/v2/V2App"));
+const ResetPasswordPage = lazy(() => import("./components/ResetPasswordPage"));
+
+// Full-screen fallback for lazy chunks. Matches the canon palette so the
+// transition from main bundle → lazy chunk doesn't flash white. Only
+// renders for the (usually <100ms) window between chunk request and parse.
+function RouteFallback() {
+  return (
+    <div style={{
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "var(--dos-bg)",
+      color: "var(--dos-fg)",
+    }}>
+      <LoadingDots />
+    </div>
+  );
+}
 
 const GLOBAL_HEADER_H = 96;
 
@@ -79,10 +104,10 @@ export default function App() {
   useEffect(injectDOSStyles, []);
   const location = useLocation();
   const pathParts = location.pathname.split("/").filter(Boolean);
-  if (pathParts[0] === "lab") return <HomepageLab />;
-  if (pathParts[0] === "how-it-works") return <HowItWorksV2 />;
-  if (pathParts[0] === "how-it-works-v1") return <HowItWorks />;
-  if (pathParts[0] === "how-it-works-v2") return <HowItWorksV2 />;
+  if (pathParts[0] === "lab") return <Suspense fallback={<RouteFallback />}><HomepageLab /></Suspense>;
+  if (pathParts[0] === "how-it-works") return <Suspense fallback={<RouteFallback />}><HowItWorksV2 /></Suspense>;
+  if (pathParts[0] === "how-it-works-v1") return <Suspense fallback={<RouteFallback />}><HowItWorks /></Suspense>;
+  if (pathParts[0] === "how-it-works-v2") return <Suspense fallback={<RouteFallback />}><HowItWorksV2 /></Suspense>;
   if (pathParts[0] === "invite" && pathParts[1]) {
     // Viewport-detect: redirect mobile users to the mobile invite-accept
     // route. The email link is a single static URL; the front-end forks
@@ -93,16 +118,16 @@ export default function App() {
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       return <Navigate to={`/m/invite/${pathParts[1]}`} replace />;
     }
-    return <InviteAcceptPage token={pathParts[1]} />;
+    return <Suspense fallback={<RouteFallback />}><InviteAcceptPage token={pathParts[1]} /></Suspense>;
   }
-  if (pathParts[0] === "m") return <MobileApp />;
-  if (pathParts[0] === "v2") return <V2App />;
+  if (pathParts[0] === "m") return <Suspense fallback={<RouteFallback />}><MobileApp /></Suspense>;
+  if (pathParts[0] === "v2") return <Suspense fallback={<RouteFallback />}><V2App /></Suspense>;
   // /reset-password is a top-level utility route. It MUST sit above
   // AppShell so the recovery token (parsed from the URL hash by
   // supabase-js on page load) isn't disturbed by AppShell's auth
   // redirects, mobile lockout, or v2/v3 chrome. BetaGate also exempts
   // this path. See docs/sidebar_spec_password_reset.md.
-  if (pathParts[0] === "reset-password") return <ResetPasswordPage />;
+  if (pathParts[0] === "reset-password") return <Suspense fallback={<RouteFallback />}><ResetPasswordPage /></Suspense>;
   return <AppShell />;
 }
 
@@ -968,10 +993,12 @@ function AppShell() {
             background: "#7abd8e",
             overflowY: "auto",
           }}>
-            <HowItWorksV2
-              onClose={() => setShowHowItWorks(false)}
-              onSignup={() => { setShowHowItWorks(false); setAuthInitialMode("signup"); setShowAuthModal(true); }}
-            />
+            <Suspense fallback={null}>
+              <HowItWorksV2
+                onClose={() => setShowHowItWorks(false)}
+                onSignup={() => { setShowHowItWorks(false); setAuthInitialMode("signup"); setShowAuthModal(true); }}
+              />
+            </Suspense>
           </div>
         </div>
       )}
@@ -1330,16 +1357,18 @@ function AppShell() {
       )}
 
       {showAdmin && isAdmin && (
-        <AdminPage
-          shows={shows}
-          onShowsChange={setShows}
-          onShowDeleted={(showId) => {
-            setShows(prev => prev.filter(s => s.id !== showId));
-            setProgress(prev => { const n = { ...prev }; delete n[showId]; return n; });
-            if (expandedShowId === showId) goHomepage();
-          }}
-          onClose={goHomepage}
-        />
+        <Suspense fallback={<RouteFallback />}>
+          <AdminPage
+            shows={shows}
+            onShowsChange={setShows}
+            onShowDeleted={(showId) => {
+              setShows(prev => prev.filter(s => s.id !== showId));
+              setProgress(prev => { const n = { ...prev }; delete n[showId]; return n; });
+              if (expandedShowId === showId) goHomepage();
+            }}
+            onClose={goHomepage}
+          />
+        </Suspense>
       )}
 
       {pickShow && (
