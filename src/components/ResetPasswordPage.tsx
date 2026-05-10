@@ -35,7 +35,13 @@ const COPY = {
 type Phase = "waiting-for-recovery" | "ready" | "submitting" | "success" | "no-token";
 
 const MIN_PASSWORD_LENGTH = 6;
-const NO_TOKEN_GRACE_MS = 1500;
+// Grace period for the recovery session to materialize. supabase-js parses
+// the URL hash on the supabase client's own init, which can fire BEFORE
+// this component's subscription is in place — meaning we'd miss the
+// PASSWORD_RECOVERY event entirely. The mount-time getSession() check
+// catches that race; the timer is a fallback for the genuine no-token
+// case (bookmarked URL, expired token). 3s is generous for a slow tab.
+const NO_TOKEN_GRACE_MS = 3000;
 const SUCCESS_REDIRECT_MS = 1500;
 
 export default function ResetPasswordPage() {
@@ -46,24 +52,42 @@ export default function ResetPasswordPage() {
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
-  // Subscribe to onAuthStateChange to capture the PASSWORD_RECOVERY event.
-  // Falls through to no-token state if the event doesn't arrive within the
-  // grace window — covers bookmarked URL, expired token, or stale tab.
+  // Three convergent detection paths so we don't miss the recovery session:
+  //   (1) Mount-time getSession() — catches the common case where supabase-js
+  //       has already parsed the URL hash + signed the user in via the
+  //       recovery token before our subscription is set up. This was the
+  //       observed bug in the first version: PASSWORD_RECOVERY fired during
+  //       supabase client init (before our useEffect ran), our subscription
+  //       missed it, and the grace timer flipped us to no-token even though
+  //       the recovery had succeeded.
+  //   (2) onAuthStateChange — catches PASSWORD_RECOVERY (and SIGNED_IN as
+  //       a belt-and-suspenders fallback) for the case where the parse
+  //       finishes after our subscription is in place.
+  //   (3) Grace timer — only flips to no-token if neither (1) nor (2) ever
+  //       gave us a session. Covers the genuine no-token case (bookmarked
+  //       URL, expired token).
+  // The cancelled flag prevents state writes after unmount.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (session?.user) setPhase("ready");
+    })();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session?.user) {
         setPhase("ready");
       }
     });
     const timer = window.setTimeout(() => {
-      // Only switch to no-token if the recovery event never arrived AND
-      // we haven't moved past the waiting state (e.g. the user already
-      // submitted, in which case phaseRef will be "submitting"/"success").
+      if (cancelled) return;
       if (phaseRef.current === "waiting-for-recovery") {
         setPhase("no-token");
       }
     }, NO_TOKEN_GRACE_MS);
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
       window.clearTimeout(timer);
     };
