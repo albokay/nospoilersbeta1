@@ -4,6 +4,7 @@ import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
 import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount, fetchAllFriendGroupsWithActivity, fetchUndismissedPingCountsByShow, markTabCreated } from "./lib/db";
+import { getCachedProgress, setCachedProgress } from "./lib/journalCache";
 import { supabase } from "./lib/supabaseClient";
 import type { Show } from "./lib/db";
 import type { Reply, Thread, ProgressEntry, FriendGroup } from "./types";
@@ -230,14 +231,22 @@ function AppShell() {
     localStorage.setItem("ns_last_visit", String(now));
   }, []);
 
-  // Load progress from DB when user logs in; clear it when they log out
+  // Load progress from DB when user logs in; clear it when they log out.
+  // Hydrate-then-refresh: read the localStorage cache first so the journal
+  // page (and anything else gated on progress) renders immediately on
+  // returning visits, then re-fetch in the background and reconcile.
+  // Cache TTL is 1 hour; outside that window we fall through to the
+  // network fetch and show the spinner. See lib/journalCache.
   useEffect(() => {
     if (!user) { setProgress({ bb: { s: 1, e: 1 } }); return; }
+    const cached = getCachedProgress(user.id);
+    if (cached) setProgress({ ...cached });
     fetchProgress(user.id).then(saved => {
       // For logged-in users, only use what's actually saved in the DB.
       // BB appears only if they have a saved progress row for it.
       // Guests always get BB injected (handled above).
       setProgress({ ...saved });
+      setCachedProgress(user.id, saved);
     }).catch(err => console.error("Failed to load progress:", err));
   }, [user?.id]);
 

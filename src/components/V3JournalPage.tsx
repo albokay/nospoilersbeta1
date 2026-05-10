@@ -8,6 +8,7 @@ import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLik
 import type { RoomVisibility } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { prefetchComposeData } from "../lib/composeDataCache";
+import { getCachedActivity, setCachedActivity } from "../lib/journalCache";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import { linkifyText } from "../lib/linkify";
@@ -82,16 +83,28 @@ export default function V3JournalPage({
   const [tabLoading, setTabLoading] = useState(false);
   const loadingTabRef = useRef<string | null>(null);
 
-  // Step 1: lightweight metadata query — only show IDs + timestamps
+  // Step 1: lightweight metadata query — only show IDs + timestamps.
+  // Hydrate-then-refresh: localStorage cache populates activityOrder
+  // synchronously so the tab list renders before any network round-trip
+  // for returning visits. Background fetch always runs to reconcile +
+  // re-cache. Cache TTL = 1h; outside that window we fall through to
+  // the network with the spinner. See lib/journalCache.
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    setLoading(true);
+    const cached = getCachedActivity(user.id);
+    if (cached) {
+      setActivityOrder(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     fetchUserShowActivity(user.id)
       .then(activity => {
         if (cancelled) return;
         setActivityOrder(activity);
         setLoading(false);
+        setCachedActivity(user.id, activity);
       })
       .catch(err => {
         if (cancelled) return;
