@@ -104,16 +104,6 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [discardOpen, setDiscardOpen] = useState(false);
 
-  // Fade-in state — initial render paints opacity 0, the rAF flip to true
-  // triggers the CSS transition and the page eases on. Pairs with the
-  // hover-prefetch (composeDataCache) so when the cache hits, the route
-  // change feels like an instant fade instead of a hard pop.
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const r = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(r);
-  }, []);
-
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Boot: shows + progress for this show + groups + prompts. Bails to
@@ -351,7 +341,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   const tagShort = `S${String(tag.s).padStart(2, "0")} E${String(tag.e).padStart(2, "0")}`;
 
   return (
-    <div style={{ minHeight: "100vh", position: "relative", opacity: visible ? 1 : 0, transition: "opacity 1200ms linear" }}>
+    <div style={{ minHeight: "100vh", position: "relative", animation: "v2-compose-fade-in 600ms linear" }}>
       {/* compose-context cream paint via injected style.
           The !important overrides on the input/textarea below claw back from
           theme.ts:293-296's global "textarea { background: #fff !important; color: #000 !important }"
@@ -360,6 +350,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           input. Scoped to the v2-compose-* class names so no other textarea
           on the site is affected. */}
       <style>{`
+        @keyframes v2-compose-fade-in { from { opacity: 0; } to { opacity: 1; } }
         body.v2-compose-context { background: ${CREAM_BG} !important; color: ${INK}; }
         .v2-compose-paper-input {
           background-color: #fff !important;
