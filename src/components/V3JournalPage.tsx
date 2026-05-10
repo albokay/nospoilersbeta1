@@ -873,14 +873,13 @@ export default function V3JournalPage({
             <section style={{ marginTop: 0 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap", marginTop: 0, marginBottom: 12, minHeight: 28 }}>
                 <div className="title profile-journal-heading" style={{ fontSize: 22 }}>this is your journal</div>
-                {/* Restored from v2: companion link to the user's public
-                    profile. Lives next to "this is your journal" so the
-                    user can hop between their two homes (private journal
-                    here vs public-facing profile at /user/:username). */}
+                {/* Restored from v2: companion link to the v2 self profile
+                    page (/v2/profile). Lives next to "this is your journal"
+                    so the user can hop between their two homes. */}
                 {profile?.username && (
                   <a
-                    href={`/user/${profile.username}`}
-                    onClick={(e) => { e.preventDefault(); navigate(`/user/${profile.username}`); }}
+                    href="/v2/profile"
+                    onClick={(e) => { e.preventDefault(); navigate("/v2/profile"); }}
                     style={{
                       fontFamily: "Lora, Georgia, serif",
                       fontStyle: "italic",
