@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
-import { LogOut, ChevronDown, ArrowRight } from "lucide-react";
+import { LogOut, BookOpen, BookMarked, ArrowLeft, ArrowRight } from "lucide-react";
 import FeedbackWidget from "../FeedbackWidget";
 import SidebarLogo from "../SidebarLogo";
+import Tooltip from "../Tooltip";
 
 type Palette = "journal" | "profile" | "compose";
 
@@ -13,7 +13,7 @@ type V2LayoutProps = {
   pairedHeader?: { left: string; rightLabel: string; rightTo: string };
   // When true, V2Layout skips its centered max-width <main> and renders
   // children directly. Used by surfaces that manage their own page
-  // geometry — e.g. V2JournalPage's fixed left rail + flowing main column.
+  // geometry — e.g. V2ComposePage (manages its own root + animation).
   bareMain?: boolean;
   children: React.ReactNode;
 };
@@ -24,30 +24,19 @@ type V2LayoutProps = {
 //  - "profile"   → toggle body.public-context (mustard) — the existing class
 //                  used by the live public space, so all theme tokens flip.
 //  - "compose"   → cream paint, applied as body bg via a v2-only class.
+//
+// Chrome strategy (logo + sign-out + profile pill):
+//   v2 sits OUTSIDE AppShell, but rather than draw its own bespoke chrome
+//   we reuse AppShell's existing CSS classes (.topHeaderWrap, .topHeaderBand,
+//   .topHeaderLeft, .topHeaderRight, .topHeaderPillFixed, .profileChip).
+//   This guarantees pixel-identical placement of the logo / sign-out /
+//   profile pill across /v3/journal (in AppShell) and /v2/* (in V2Layout) —
+//   the user perceives one continuous frame as they navigate. Without this
+//   reuse the chrome jumped between pages because AppShell and v2 each had
+//   their own positioning code.
 export default function V2Layout({ palette, pairedHeader, bareMain, children }: V2LayoutProps) {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
-
-  // Account dropdown — opened via the profile pill. Currently holds just
-  // "sign out"; future entries (edit profile, settings, etc.) slot in here
-  // when those flows land. Portaled to body + anchored via getBoundingClientRect
-  // so the menu can't be clipped by ancestors with overflow:hidden.
-  const accountBtnRef = useRef<HTMLButtonElement | null>(null);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [accountMenuPos, setAccountMenuPos] = useState<{ top: number; right: number } | null>(null);
-
-  function toggleAccountMenu() {
-    if (accountMenuOpen) {
-      setAccountMenuOpen(false);
-      return;
-    }
-    const rect = accountBtnRef.current?.getBoundingClientRect();
-    if (rect) {
-      // Right-align dropdown to the pill's right edge.
-      setAccountMenuPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
-    }
-    setAccountMenuOpen(true);
-  }
 
   useEffect(() => {
     const cls =
@@ -65,6 +54,16 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
     };
   }, [palette]);
 
+  // Are we on a profile-family surface? V2Layout is only mounted by v2
+  // profile-family pages today (V2ProfileSelfPage, V2ProfileVisitorPage,
+  // V2UserAggregatePage). The pill convention from AppShell:
+  //   - On profile/journal pages → "you are {username}", cursor:default
+  //   - Elsewhere → "go to your journal" with click
+  // Since v2 surfaces are all profile-family by current usage, we always
+  // render the "you are X" variant. If V2Layout ever gets used by a
+  // non-profile v2 surface, we'd thread a prop here.
+  const onProfileFamily = true;
+
   return (
     <div style={{ minHeight: "100vh", position: "relative" }}>
       {/* Compose-palette bg paint — kept inline so we don't grow theme.ts */}
@@ -72,145 +71,98 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
         <style>{`body.v2-compose-context{background:#fef8ea !important}`}</style>
       )}
 
-      {/* Dynamic SidebarLogo top-left — mirrors AppShell's header logo so
-          v2 surfaces feel grounded in the same visual frame as live + v3.
-          Click navigates to the journal (the user's home base). Wrapped
-          in a fixed positioner so it stays put regardless of scroll. */}
-      <div style={{ position: "fixed", top: 14, left: 18, zIndex: 19 }}>
-        <h1
-          style={{ margin: 0, cursor: "pointer", display: "inline-block" }}
-          onClick={() => navigate("/v3/journal")}
-          role="button"
-          tabIndex={0}
-          aria-label="Go to your journal"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              navigate("/v3/journal");
-            }
-          }}
-        >
-          <SidebarLogo scale={0.6} />
-        </h1>
-      </div>
-
-
-      {/* TOP-RIGHT — single profile pill that doubles as the account
-          dropdown trigger. Dedicated sign-out icon removed; sign-out
-          lives inside the dropdown alongside future account actions. */}
-      <div
-        style={{
-          position: "fixed",
-          top: 24,
-          right: 32,
-          zIndex: 20,
-        }}
-      >
-        {user && profile ? (
-          <button
-            ref={accountBtnRef}
-            onClick={toggleAccountMenu}
-            aria-haspopup="menu"
-            aria-expanded={accountMenuOpen}
-            style={{
-              background: "var(--dos-user)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 9999,
-              padding: "0 16px",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: "pointer",
-              height: 32,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            you are {profile.username}
-            <ChevronDown size={14} />
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate("/")}
-            style={{
-              background: "var(--dos-bg)",
-              color: "var(--dos-fg)",
-              border: "2px solid var(--dos-border)",
-              borderRadius: 9999,
-              padding: "0 16px",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: "pointer",
-              height: 32,
-            }}
-          >
-            sign in
-          </button>
-        )}
-      </div>
-
-      {/* Account dropdown — portaled, right-aligned to the pill. Currently
-          holds sign-out; future items (edit profile / settings / etc.) slot
-          in as additional buttons in the same column. */}
-      {accountMenuOpen && accountMenuPos && createPortal(
-        <>
-          <div
-            onClick={() => setAccountMenuOpen(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 60 }}
-            aria-hidden
-          />
-          <div
-            role="menu"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "fixed",
-              top: accountMenuPos.top,
-              right: accountMenuPos.right,
-              zIndex: 61,
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            {/* Sign-out matches the profile pill's pill-shape (height 32,
-                radius 9999, padding 0 16, fs 14) but rendered as a ghost:
-                transparent fill + 2px white outline + white text. */}
-            <button
-              role="menuitem"
+      {/* Unified fixed chrome — uses AppShell's CSS classes so positioning
+          matches /v3/journal exactly. Pointer-events allowlist on the wrap
+          re-enables interaction for buttons / brand / pill children only
+          (the rest of the wrap area is click-through). */}
+      <div className="topHeaderWrap">
+        <div className="topHeaderBand">
+          {/* Left: brand logo, navigates to v3 journal on click */}
+          <div className="topHeaderLeft">
+            <h1
+              className="brand"
+              style={{ margin: 0, cursor: "pointer", marginLeft: 16 }}
+              tabIndex={0}
+              role="button"
+              aria-label="Go to your journal"
               onClick={() => {
-                setAccountMenuOpen(false);
-                signOut();
+                navigate("/v3/journal");
+                requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
               }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                background: "transparent",
-                border: "2px solid #fff",
-                color: "#fff",
-                borderRadius: 9999,
-                padding: "0 16px",
-                height: 32,
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/v3/journal");
+                }
               }}
             >
-              <LogOut size={14} /> sign out
-            </button>
+              <SidebarLogo scale={0.6} />
+            </h1>
           </div>
-        </>,
-        document.body
-      )}
+
+          {/* Right: sign-out (visible always — was previously hidden inside
+              an account dropdown, which broke the "always-visible sign-out"
+              expectation set by AppShell). Tooltip + LogOut icon match
+              AppShell's treatment 1:1. */}
+          <div className="topHeaderRight">
+            {user && (
+              <Tooltip text="Sign out" direction="below" tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}>
+                <button
+                  className="btn"
+                  style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "8px 10px" }}
+                  onClick={() => { navigate("/"); signOut(); }}
+                  aria-label="Sign out"
+                >
+                  <LogOut size={16} color="currentColor" />
+                </button>
+              </Tooltip>
+            )}
+            {!user && (
+              <button className="btn" style={{ flexShrink: 0 }} onClick={() => navigate("/")}>
+                Sign in / Join
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Profile pill — own fixed-position element via .topHeaderPillFixed
+            so its right edge aligns with the journal/profile content column
+            (math is in theme.ts). Same .profileChip styling and behavior
+            as AppShell. cursor:default on profile-family because we ARE on
+            the user's home base — pill is identity, not navigation. */}
+        {user && profile && (
+          <span className="topHeaderPillFixed">
+            <button
+              className="profileChip"
+              onClick={onProfileFamily ? undefined : () => {
+                navigate("/v3/journal");
+                requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+              }}
+              style={onProfileFamily ? { cursor: "default" } : undefined}
+            >
+              {onProfileFamily ? (
+                <>
+                  <BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} />
+                  <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>you are {profile.username}</span>
+                </>
+              ) : (
+                <>
+                  <BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} />
+                  <ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} />
+                  <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span>
+                </>
+              )}
+            </button>
+          </span>
+        )}
+      </div>
 
       {bareMain ? (
         children
       ) : (
         // Container width matches the live + v3 journal (.container is
         // min(672px, 92vw) centered) so v2 surfaces feel like the same
-        // page family. Top padding clears the fixed logo + profile pill.
+        // page family. Top padding clears the fixed header chrome.
         <main
           className="container"
           style={{

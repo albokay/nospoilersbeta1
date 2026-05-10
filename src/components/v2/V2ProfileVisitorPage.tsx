@@ -15,14 +15,13 @@ import type { ProgressEntry, Thread } from "../../types";
 import V2Layout from "./V2Layout";
 
 // Same shared profile-card style as V2ProfileSelfPage — sharp corners,
-// solid white fill, 2px ink outline. The visitor view of a profile
-// renders the same shelf/card structure as the owner sees, so we mirror
-// the visual language exactly. (Duplicated rather than imported to keep
-// each file self-contained; if a third surface ever needs it, lift to
-// a shared helper.)
+// transparent fill, 2px white outline. The visitor view mirrors the
+// owner's visual language exactly. (Duplicated rather than imported to
+// keep each file self-contained; if a third surface ever needs it,
+// lift to a shared helper.)
 const PROFILE_CARD: React.CSSProperties = {
-  background: "#fff",
-  border: "2px solid var(--dos-fg)",
+  background: "transparent",
+  border: "2px solid #fff",
   borderRadius: 0,
   boxShadow: "none",
 };

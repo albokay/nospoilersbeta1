@@ -15,24 +15,23 @@ import V2Layout from "./V2Layout";
 import SearchShows from "../SearchShows";
 import { Pencil, Plus, Pin } from "lucide-react";
 
-// Shared profile-card style — matches the journal's visual language:
-// sharp corners, solid white fill, 2px ink outline. Replaces the prior
-// translucent cream (rgba(255,250,235,0.55)) which introduced the
-// "middle transparency" the new spec calls out. .card class still
-// applies; these inline styles override its radius (24) and bg
-// (transparent).
+// Shared profile-card style — sharp corners, transparent fill, 2px white
+// outline. Lets the canon-yellow page bg show through; the white outline
+// reads as a decisive frame without competing with the bg color or
+// introducing any "middle transparency." .card class still applies;
+// these inline styles override its radius (24) and bg.
 const PROFILE_CARD: React.CSSProperties = {
-  background: "#fff",
-  border: "2px solid var(--dos-fg)",
+  background: "transparent",
+  border: "2px solid #fff",
   borderRadius: 0,
   boxShadow: "none",
 };
 
-// Dashed variant for "+ add a show" tile — same sharp + outline rule
-// but transparent fill + dashed border to telegraph "click to add".
+// Dashed variant for "+ add a show" tile — telegraphs "click to add"
+// against the same transparent + white visual language.
 const PROFILE_ADD_TILE: React.CSSProperties = {
   background: "transparent",
-  border: "2px dashed var(--dos-fg)",
+  border: "2px dashed #fff",
   borderRadius: 0,
   boxShadow: "none",
 };
