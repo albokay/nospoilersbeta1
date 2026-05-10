@@ -50,57 +50,23 @@ export type Show = {
   tvmazeType?: string;
 };
 
-// Module-level cache for fetchShows. Shows table is small + changes rarely
-// (admin-only writes via createShow / refreshShowIfStale / admin* helpers).
-// Multiple components (App, V3JournalPage, V2ComposePage, ShowSection,
-// composeDataCache) call fetchShows independently — without this cache,
-// every mount fires its own round-trip. Cache lifetime is the page session;
-// invalidated explicitly at every mutation site below.
-//
-// 60-second TTL caps how stale a fresh tab can be from a different session
-// that mutated the table. Within a session, mutations call invalidate
-// directly so consumers see fresh data immediately.
-const SHOWS_CACHE_TTL_MS = 60 * 1000;
-let showsCache: { data: Show[]; fetchedAt: number } | null = null;
-// Track in-flight fetches so concurrent callers share a single round-trip
-// rather than each firing their own.
-let showsInFlight: Promise<Show[]> | null = null;
-
-export function invalidateShowsCache(): void {
-  showsCache = null;
-  showsInFlight = null;
-}
-
 export async function fetchShows(): Promise<Show[]> {
-  if (showsCache && Date.now() - showsCache.fetchedAt < SHOWS_CACHE_TTL_MS) {
-    return showsCache.data;
-  }
-  if (showsInFlight) return showsInFlight;
-  showsInFlight = (async () => {
-    try {
-      const { data, error } = await supabase
-        .from("shows")
-        .select("id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at, genres, tvmaze_type")
-        .order("name");
-      if (error) throw error;
-      const mapped: Show[] = (data ?? []).map((row: any) => ({
-        id: row.id,
-        name: row.name,
-        seasons: row.seasons,
-        tvmazeId: row.tvmaze_id ?? undefined,
-        status: row.status ?? "Ended",
-        isHidden: row.is_hidden ?? false,
-        lastSyncedAt: row.last_synced_at ?? undefined,
-        genres: row.genres ?? [],
-        tvmazeType: row.tvmaze_type ?? undefined,
-      }));
-      showsCache = { data: mapped, fetchedAt: Date.now() };
-      return mapped;
-    } finally {
-      showsInFlight = null;
-    }
-  })();
-  return showsInFlight;
+  const { data, error } = await supabase
+    .from("shows")
+    .select("id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at, genres, tvmaze_type")
+    .order("name");
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    seasons: row.seasons,
+    tvmazeId: row.tvmaze_id ?? undefined,
+    status: row.status ?? "Ended",
+    isHidden: row.is_hidden ?? false,
+    lastSyncedAt: row.last_synced_at ?? undefined,
+    genres: row.genres ?? [],
+    tvmazeType: row.tvmaze_type ?? undefined,
+  }));
 }
 
 // ── Threads ──────────────────────────────────────────────────────────────────
@@ -911,7 +877,7 @@ export async function createShow(show: {
 
   const { data: inserted, error: insertErr } = await supabase
     .from("shows").insert(insertRow).select().single();
-  if (inserted) { invalidateShowsCache(); return mapRow(inserted); }
+  if (inserted) return mapRow(inserted);
 
   // Insert failed — most commonly a unique-key conflict because the row
   // already exists. Targeted UPDATE refreshes the TVMaze-sourced seasons
@@ -922,7 +888,7 @@ export async function createShow(show: {
     .update({ seasons: show.seasons, last_synced_at: now })
     .eq("id", show.id)
     .select().single();
-  if (updated) { invalidateShowsCache(); return mapRow(updated); }
+  if (updated) return mapRow(updated);
 
   // Last resort: return whatever is in the DB so onboarding can still
   // proceed even if both writes failed (e.g. transient network error).
@@ -1002,7 +968,6 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
     .update({ seasons, last_synced_at: now, genres, tvmaze_type: tvmazeType ?? null, status: normalizedStatus })
     .eq("id", show.id);
   if (error) return null;
-  invalidateShowsCache();
 
   return { ...show, seasons, lastSyncedAt: now, genres, tvmazeType, status: normalizedStatus };
 }
@@ -1028,13 +993,11 @@ export async function adminDeleteShow(showId: string): Promise<void> {
   // 5. delete the show itself
   const { error } = await supabase.from("shows").delete().eq("id", showId);
   if (error) throw error;
-  invalidateShowsCache();
 }
 
 export async function adminToggleHidden(showId: string, isHidden: boolean): Promise<void> {
   const { error } = await supabase.from("shows").update({ is_hidden: isHidden }).eq("id", showId);
   if (error) throw error;
-  invalidateShowsCache();
 }
 
 // ── Admin: per-user overview + drill-down activity ────────────────────────────
