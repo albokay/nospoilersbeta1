@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { MessageSquare, LockKeyhole, Globe, Users } from "lucide-react";
 import type { Thread, Reply, ProgressEntry } from "../types";
 import type { FriendGroup } from "../types";
@@ -104,6 +105,7 @@ export default function InlineThreadView({
   departedUsernames?: Set<string>;
 }) {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const isOwn = !!profile && thread.author === profile.username;
   const { scrollTo: scrollHighlight } = useScrollHighlight();
 
@@ -223,18 +225,29 @@ export default function InlineThreadView({
     setDuplicateSubmitting(true);
     setDuplicateError(null);
     try {
+      let newThread: Thread;
       if (pendingDuplicate.kind === "public") {
-        await cloneThreadAsDuplicate(thread.id, { isPublic: true });
+        newThread = await cloneThreadAsDuplicate(thread.id, { isPublic: true });
+        // Public destination — clear any active-room sessionStorage for this
+        // show so ShowSection inits the new thread in public-context (not
+        // auto-reopening a friend room).
+        try { sessionStorage.removeItem(`ns_active_group_${thread.showId}`); } catch {}
       } else {
         const target = pendingDuplicate.group;
-        await cloneThreadAsDuplicate(thread.id, { isPublic: false, groupId: target.id });
+        newThread = await cloneThreadAsDuplicate(thread.id, { isPublic: false, groupId: target.id });
         // Prune the just-duplicated room from the cache so the next open
         // hides it (matches the "hide rooms it already lives in" rule
         // without forcing a refetch).
         setEligibleDuplicateRooms((prev) => prev ? prev.filter((g) => g.id !== target.id) : prev);
+        // Friend-room destination — set the active-room marker so ShowSection
+        // mounts the new thread inside the room context.
+        try { sessionStorage.setItem(`ns_active_group_${thread.showId}`, target.id); } catch {}
       }
       setPendingDuplicate(null);
       setShowDuplicateOptions(false);
+      // Land on the new instance — user can immediately confirm the duplicate
+      // exists in the destination + tweak/reply/etc.
+      navigate(`/show/${thread.showId}/thread/${newThread.id}`);
     } catch (err: any) {
       setDuplicateError(err?.message ?? "Duplicate failed. Please try again.");
     } finally {
@@ -411,11 +424,19 @@ export default function InlineThreadView({
     //     friend rooms it's in. Removed from the public conversation only.
     //   - Private journal context (no group, thread not public): full
     //     soft-delete via deleteThread (the canonical "true delete" case).
+    // Common post-delete redirect: land on /v3/journal with the show tab
+    // pre-selected so the user lands in their journal context (matches the
+    // "delete sends you home" UX request). Each branch fires this only on
+    // success so a failed delete leaves the user in place to retry.
+    const redirectToJournal = () => {
+      navigate("/v3/journal", { state: { activeTab: thread.showId } });
+    };
     if (groupIdProp) {
       if (!window.confirm("Remove this post from this room? It will stay in your journal.")) return;
       try {
         await removeThreadFromGroup(thread.id, groupIdProp);
         onThreadDelete?.();
+        redirectToJournal();
       } catch {
         alert("Failed to remove from room. Please try again.");
       }
@@ -426,6 +447,7 @@ export default function InlineThreadView({
       try {
         await dbSetThreadPublic(thread.id, false);
         onThreadDelete?.();
+        redirectToJournal();
       } catch {
         alert("Failed to remove from public. Please try again.");
       }
@@ -435,6 +457,7 @@ export default function InlineThreadView({
     try {
       await dbDeleteThread(thread.id);
       onThreadDelete?.();
+      redirectToJournal();
     } catch {
       alert("Failed to delete. Please try again.");
     }
