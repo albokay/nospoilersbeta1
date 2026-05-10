@@ -451,7 +451,7 @@ export default function InlineThreadView({
       return;
     }
     if (thread.isPublic) {
-      if (!window.confirm("Remove this post from the public conversation? It will stay in your journal.")) return;
+      if (!window.confirm("Remove this post from the public conversation? It will turn into a private post in your journal.")) return;
       try {
         await dbSetThreadPublic(thread.id, false);
         onThreadDelete?.();
@@ -461,7 +461,7 @@ export default function InlineThreadView({
       }
       return;
     }
-    if (!window.confirm("Delete this post? It will turn into a stub visible to others.")) return;
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
     try {
       await dbDeleteThread(thread.id);
       onThreadDelete?.();
