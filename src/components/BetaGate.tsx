@@ -13,23 +13,36 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // /reset-password is exempt from the gate. The recovery token in the URL
+  // hash is single-use and consumed by supabase-js on page load — if the
+  // gate intercepts and reloads/redirects, the token is lost and the user
+  // can never reset. Conceptually they already have an account (so they
+  // already cleared the gate at signup); regating is redundant. Checked
+  // synchronously via window.location since BetaGate sits outside any
+  // router.
+  const onResetPasswordPath =
+    typeof window !== "undefined" && window.location.pathname.startsWith("/reset-password");
+
   // Mobile redirect: when the gate triggers on a mobile viewport, send the
   // user to /m before rendering the password form. Without this, returning
   // to a backgrounded mobile tab after the gate re-arms could leave the
   // desktop shell stuck on "Loading..."; /m's mobile shell renders cleanly.
   // BetaGate sits outside the RouterProvider so we use window.location
-  // rather than useNavigate.
+  // rather than useNavigate. Skip this redirect on /reset-password — see
+  // exemption above (mobile users on a recovery link should land on the
+  // page directly without the /m bounce).
   useEffect(() => {
     if (unlocked) return;
+    if (onResetPasswordPath) return;
     if (typeof window === "undefined") return;
     const isMobile = window.innerWidth < 768;
     const onMobilePath = window.location.pathname.startsWith("/m");
     if (isMobile && !onMobilePath) {
       window.location.replace("/m");
     }
-  }, [unlocked]);
+  }, [unlocked, onResetPasswordPath]);
 
-  if (unlocked) return <>{children}</>;
+  if (unlocked || onResetPasswordPath) return <>{children}</>;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

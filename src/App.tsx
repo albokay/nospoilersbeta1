@@ -33,6 +33,7 @@ import HomepageNarrative from "./components/HomepageNarrative";
 import InviteAcceptPage from "./components/InviteAcceptPage";
 import MobileApp from "./mobile/MobileApp";
 import V2App from "./components/v2/V2App";
+import ResetPasswordPage from "./components/ResetPasswordPage";
 
 const GLOBAL_HEADER_H = 96;
 
@@ -95,6 +96,12 @@ export default function App() {
   }
   if (pathParts[0] === "m") return <MobileApp />;
   if (pathParts[0] === "v2") return <V2App />;
+  // /reset-password is a top-level utility route. It MUST sit above
+  // AppShell so the recovery token (parsed from the URL hash by
+  // supabase-js on page load) isn't disturbed by AppShell's auth
+  // redirects, mobile lockout, or v2/v3 chrome. BetaGate also exempts
+  // this path. See docs/sidebar_spec_password_reset.md.
+  if (pathParts[0] === "reset-password") return <ResetPasswordPage />;
   return <AppShell />;
 }
 
