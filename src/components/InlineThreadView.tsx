@@ -247,7 +247,15 @@ export default function InlineThreadView({
       setShowDuplicateOptions(false);
       // Land on the new instance — user can immediately confirm the duplicate
       // exists in the destination + tweak/reply/etc.
-      navigate(`/show/${thread.showId}/thread/${newThread.id}`);
+      // Hard reload (not SPA navigate) because ShowSection has
+      // key={expandedShowId} so it doesn't remount on a thread-id-only URL
+      // change within the same show — and the just-created thread isn't in
+      // its local fetch cache yet, so SPA-nav would land on a thread the
+      // section can't render. window.location.assign forces a fresh App
+      // mount which re-fetches the show's threads + reads sessionStorage's
+      // active-room marker we just set. (Same pattern as HANDOFF "Hard
+      // reload after state-changing flows that bypass App state.")
+      window.location.assign(`/show/${thread.showId}/thread/${newThread.id}`);
     } catch (err: any) {
       setDuplicateError(err?.message ?? "Duplicate failed. Please try again.");
     } finally {

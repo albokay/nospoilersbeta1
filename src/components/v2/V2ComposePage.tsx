@@ -272,10 +272,18 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
       for (const pid of insertedPromptIds) {
         logThreadPrompt(t.id, pid).catch(() => {});
       }
-      // Land back on the journal — new entry shows up at the top with
-      // its derived chips. (Post-publish reveal is tabled for a later
-      // checkpoint per spec.)
-      navigate("/v3/journal", { state: { activeTab: show.id } });
+      // Land directly on the new thread so the user can immediately read
+      // it / share / reply. Public destinations land in public-context;
+      // friend-room destinations need the active-room sessionStorage marker
+      // so ShowSection mounts the thread inside the room. We're navigating
+      // from /v2/compose (a different route family) so SPA navigate is
+      // safe — App will mount ShowSection fresh.
+      if (destination !== "private" && destination !== "public") {
+        try { sessionStorage.setItem(`ns_active_group_${show.id}`, destination); } catch {}
+      } else {
+        try { sessionStorage.removeItem(`ns_active_group_${show.id}`); } catch {}
+      }
+      navigate(`/show/${show.id}/thread/${t.id}`);
     } catch (err: any) {
       console.warn("submit failed:", err);
       setSubmitError(err?.message || "Post failed. Try again.");
