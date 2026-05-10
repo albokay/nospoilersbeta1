@@ -1849,75 +1849,40 @@ export default function V3JournalPage({
         </div>
       )}
 
-      {/* Stop-watching confirmation modal — ported from V2JournalPage.
-          Lists the friend rooms the user will leave (drawn from tabGroups,
-          which is keyed to activeTab; safe because the dropdown only opens
-          on the active tab). On confirm runs the stopWatching cascade and
-          lands the user on /v2/profile where the now-stopped show appears
-          in the Stopped Watching shelf. */}
+      {/* Stop-watching confirmation modal — same Modal component + visual
+          shape as InlineThreadView's Duplicate-to confirm (rounded card,
+          no outline, Inter text). Copy is intentionally minimal: the
+          dropdown's tooltip already explains what stop-watching does, so
+          the modal just confirms the action. On confirm runs the
+          stopWatching cascade, hides the tab locally + invalidates the
+          journal cache so it stays hidden across remounts, and switches
+          to another tab if the closed one was active — user stays on
+          /v3/journal throughout. */}
       {stopModalOpen && stopShowId && profile && user && (() => {
         const sid = stopShowId;
         const sName = showName(sid);
+        const closeIfIdle = () => { if (!stopSubmitting) { setStopModalOpen(false); setStopError(null); } };
         return (
-          <div
-            role="dialog"
-            aria-modal="true"
-            style={{
-              position: "fixed", inset: 0,
-              background: "rgba(0,0,0,0.4)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              zIndex: 250, padding: 20,
-            }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget && !stopSubmitting) setStopModalOpen(false);
-            }}
-          >
-            <div style={{
-              background: "var(--dos-bg)", border: "2px solid #fff",
-              padding: "24px 28px", maxWidth: 480, width: "100%", color: "var(--dos-fg)",
-            }}>
-              <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 600, fontSize: 22, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.02em" }}>
-                Stop watching {sName}?
-              </div>
-              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-fg)", lineHeight: 1.55, marginBottom: 16 }}>
-                Your journal entries and progress will be preserved. The show moves to your <strong style={{ fontStyle: "normal", fontWeight: 600 }}>Stopped Watching</strong> shelf. Searching for it again restores everything except room memberships.
-              </div>
-              {tabGroups.length > 0 && sid === activeTab && (
-                <div style={{
-                  background: "rgba(244,80,40,0.15)",
-                  border: "2px solid var(--danger)",
-                  borderRadius: 12,
-                  padding: "14px 16px",
-                  marginBottom: 18,
-                }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--dos-fg)", marginBottom: 6 }}>
-                    You'll leave {tabGroups.length === 1 ? "this friend room" : `${tabGroups.length} friend rooms`}:
-                  </div>
-                  <ul style={{ margin: "0 0 8px 18px", padding: 0, fontSize: 14, lineHeight: 1.55, color: "var(--dos-fg)" }}>
-                    {tabGroups.map((g) => (
-                      <li key={g.id} style={{ fontStyle: "italic", fontFamily: "Lora, Georgia, serif" }}>{g.name}</li>
-                    ))}
-                  </ul>
-                  <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 13, color: "var(--dos-gray)", lineHeight: 1.5 }}>
-                    You'd need to be re-invited to come back.
-                  </div>
-                </div>
-              )}
+          <Modal onClose={closeIfIdle} width="min(420px,92vw)">
+            <div style={{ padding: "16px 12px 12px" }}>
+              <p style={{ margin: "0 0 20px", fontSize: 17, lineHeight: 1.5, fontWeight: 600 }}>
+                Stop watching <em>{sName}</em>?
+              </p>
               {stopError && (
-                <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>
-                  {stopError}
-                </div>
+                <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--danger)" }}>{stopError}</p>
               )}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 <button
-                  className="btn h40"
+                  className="btn"
+                  style={{ fontSize: 14, background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
+                  onClick={closeIfIdle}
                   disabled={stopSubmitting}
-                  onClick={() => setStopModalOpen(false)}
-                  style={{ fontSize: 13 }}
                 >
-                  keep watching
+                  Cancel
                 </button>
                 <button
+                  className="btn"
+                  style={{ fontSize: 14, background: "#7abd8e", border: "none", color: "#fff" }}
                   disabled={stopSubmitting}
                   onClick={async () => {
                     if (!user || !profile || !sid) return;
@@ -1925,47 +1890,46 @@ export default function V3JournalPage({
                     setStopError(null);
                     try {
                       await stopWatching(user.id, profile.username, sid);
-                      // Bust the journal cache so the next mount sees fresh
-                      // progress (without the stopped show in showTabOrder
-                      // once we filter — for now App.tsx's progress refetch
-                      // on next mount picks up stopped_watching=true). Also
-                      // clear per-show session keys so a later "search this
-                      // show" doesn't bounce into a stale context.
+                      // Cache invalidate so next App-level progress refetch
+                      // sees stopped_watching=true and the showTabOrder
+                      // filter picks it up there too.
                       invalidateJournalCache(user.id);
+                      // Per-show session keys: clear so a later search of
+                      // this show lands in a fresh context rather than
+                      // bouncing into the old room/public state.
                       sessionStorage.removeItem(`ns_browse_prog_${sid}`);
                       sessionStorage.removeItem(`ns_browse_show_${sid}`);
                       sessionStorage.removeItem(`ns_active_group_${sid}`);
                       sessionStorage.removeItem(`ns_came_from_group_${sid}`);
-                      // Land on the profile page where the new Stopped row
-                      // surfaces in the Stopped Watching shelf.
-                      navigate("/v2/profile");
+                      // Local hide is the immediate-feedback path: the
+                      // App-level progress hasn't refetched yet (V3 reads
+                      // it as a prop), so showTabOrder still includes the
+                      // show until the next mount. hideTab pushes it into
+                      // hiddenTabs which visibleTabOrder filters out
+                      // synchronously, so the tab disappears in this
+                      // render cycle.
+                      hideTab(sid);
+                      setStopModalOpen(false);
+                      setStopSubmitting(false);
+                      // If the closed tab was active, switch to the next
+                      // remaining visible tab (or clear if none).
+                      if (sid === activeTab) {
+                        const remaining = visibleTabOrder.filter(s => s !== sid);
+                        if (remaining.length) setActiveTab(remaining[0]);
+                        else setActiveTab("");
+                      }
                     } catch (err: any) {
                       console.warn("stopWatching failed:", err);
                       setStopError(err?.message || "Couldn't stop watching. Try again.");
                       setStopSubmitting(false);
                     }
                   }}
-                  className="btn-danger h40"
-                  style={{
-                    background: "var(--danger)",
-                    border: "none",
-                    color: "#fff",
-                    borderRadius: 9999,
-                    padding: "0 18px",
-                    height: 40,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: stopSubmitting ? "not-allowed" : "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
                 >
-                  {stopSubmitting ? <>stopping<LoadingDots /></> : "stop watching"}
+                  {stopSubmitting ? "Stopping…" : "Stop watching"}
                 </button>
               </div>
             </div>
-          </div>
+          </Modal>
         );
       })()}
     </section>
