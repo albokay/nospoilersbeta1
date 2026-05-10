@@ -160,20 +160,33 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
       {bareMain ? (
         children
       ) : (
-        // Container width matches the live + v3 journal (.container is
-        // min(672px, 92vw) centered) so v2 surfaces feel like the same
-        // page family. Top padding clears the fixed header chrome.
+        // Container width matches the live + v3 journal exactly:
+        //   - .container = min(672px, 92vw) centered (theme.ts:233)
+        //   - .journalShift on the ancestor activates the +56px margin-left
+        //     on .profile-journal-heading at ≥731px (theme.ts:450) — so the
+        //     heading's left edge lands at the same x-coord as V3's heading.
+        // Top padding mirrors V3's effective offset:
+        //   AppShell renders <header className="site bleed" /> in flow
+        //   above V3JournalPage, taking var(--site-header-h) px (56 wide /
+        //   96 narrow). V3's inner container then adds marginTop: 12.
+        //   V2 has no .site header, so we replicate the same offset via
+        //   calc(var(--site-header-h) + 12px). Net: heading sits at the
+        //   exact same y-coord as V3's heading on every viewport — no
+        //   vertical jump when navigating between /v3/journal and /v2/*.
         <main
-          className="container"
+          className="container journalShift"
           style={{
-            padding: "100px 0 120px",
+            padding: "calc(var(--site-header-h) + 12px) 0 120px",
           }}
         >
           {pairedHeader && (
             // Heading + companion link — geometry matches V3JournalPage's
             // "this is your journal" + "→ go to your public profile" pair
             // (gap 16, marginBottom 12, baseline alignment, flexWrap) so
-            // the two surfaces share identical heading placement.
+            // the two surfaces share identical heading placement. The
+            // .profile-journal-heading class pairs with .journalShift on
+            // the ancestor to land the heading 56px in from the container
+            // left edge, matching V3.
             <div
               style={{
                 display: "flex",
@@ -185,7 +198,7 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
               }}
             >
               <div
-                className="title"
+                className="title profile-journal-heading"
                 style={{ fontSize: 22 }}
               >
                 {pairedHeader.left}
