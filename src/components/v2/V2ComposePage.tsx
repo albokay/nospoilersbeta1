@@ -565,14 +565,17 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
               circle on the left. Selected radio shows an inner dot in the
               pill's bg color. Order per spec: friend rooms, private,
               public. Default state is null (nothing selected) — the user
-              must pick before posting. */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              must pick before posting.
+              Layout: grid with a single max-content column so all pills
+              share the width of the widest one's content (no dead space
+              on the right when titles are short). */}
+          <div style={{ display: "grid", gridTemplateColumns: "max-content", justifyContent: "center", gap: 8 }}>
             {groups.map((g) => (
               <DestinationPill
                 key={g.id}
                 selected={destination === g.id}
                 bg="#adc8d7"
-                fg="#1a3a4c"
+                fg="#fff"
                 title={<>my friends: <em style={{ fontStyle: "italic", fontWeight: 700 }}>{g.name}</em></>}
                 onClick={() => setDestination(g.id)}
               />
@@ -657,7 +660,8 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 8,
+              justifyContent: "center",
+              gap: 2,
               // When no destination is chosen, render the button as a
               // dimmed empty pill (no text/icon) — visually communicates
               // "this exists but isn't actionable yet" without removing
@@ -672,7 +676,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
               ? null
               : submitting
                 ? <>posting<LoadingDots /></>
-                : <>post entry <ArrowRight size={14} /></>}
+                : <>post entry<ArrowRight size={14} /></>}
           </button>
         </div>
         {submitError && (
@@ -792,7 +796,10 @@ function DestinationPill({
         borderRadius: 9999,
         height: 40,
         padding: "0 22px",
-        width: 320,
+        // Width is driven by the parent grid's max-content column, so all
+        // pills share the width of the widest one's content. width:100%
+        // makes each pill fill that grid column.
+        width: "100%",
         cursor: "pointer",
         display: "inline-flex",
         alignItems: "center",
