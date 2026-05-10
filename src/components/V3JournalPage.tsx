@@ -1822,13 +1822,42 @@ export default function V3JournalPage({
              journal-page outlines with 0.75 opacity so it reads as a soft
              separator rather than a hard rule. */}
           <div style={{ borderTop: "2px solid var(--dos-border)", width: "50%", margin: "2px auto", opacity: 0.75 }} />
-          {/* 3. Close show / stop watching — ported from V2.
-             Stronger than the prior local-hide: runs the stopWatching
-             cascade (removes user from any friend rooms on this show,
-             flags progress.stopped_watching=true) so the show moves to
-             the Stopped Watching shelf on the profile rather than just
-             being hidden in the journal view. Opens a confirmation modal
-             that lists the rooms the user will leave. */}
+          {/* 3. Close show tab — quiet local hide. The show stays where
+             it is on the profile (Watching Now / Finished / etc.); only
+             the journal tab disappears. Useful for cleaning up the
+             journal view without changing watch status (e.g. a show
+             that's finished, or one paused temporarily). */}
+          <Tooltip text="Hides this tab from your journal view. Your entries and progress are kept, and the show stays where it is on your profile. Search for the show again to bring the tab back." direction="below">
+            <button className="btn" style={{
+              fontSize: 13, whiteSpace: "nowrap", opacity: 0.75,
+              display: "flex", alignItems: "center", width: "100%",
+            }}
+              onClick={() => {
+                const sid = tabDropdownOpen;
+                setTabDropdownOpen(null);
+                hideTab(sid);
+                // Clear per-show session keys so a later search doesn't
+                // short-circuit into a stale context.
+                sessionStorage.removeItem(`ns_browse_prog_${sid}`);
+                sessionStorage.removeItem(`ns_browse_show_${sid}`);
+                sessionStorage.removeItem(`ns_active_group_${sid}`);
+                sessionStorage.removeItem(`ns_came_from_group_${sid}`);
+                if (sid === activeTab) {
+                  const remaining = visibleTabOrder.filter(s => s !== sid);
+                  if (remaining.length) setActiveTab(remaining[0]);
+                  else setActiveTab("");
+                }
+              }}>
+              <X size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Close show tab</span>
+              <span style={{ width: 14, flexShrink: 0 }} />
+            </button>
+          </Tooltip>
+          {/* 4. Stop watching — heavier action. Cascade: removes user
+             from any friend rooms on this show + flags
+             progress.stopped_watching=true so the show moves out of
+             Watching Now / Finished / Want shelves and into Stopped
+             Watching on the profile. Opens a confirmation modal. */}
           <Tooltip text="Closes the show in your journal and removes you from any friend rooms on this show. Searching for the show again restores your entries and progress, but not room memberships." direction="below">
             <button className="btn" style={{
               fontSize: 13, whiteSpace: "nowrap", opacity: 0.75,
@@ -1842,7 +1871,7 @@ export default function V3JournalPage({
                 setStopModalOpen(true);
               }}>
               <X size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Close show / stop watching</span>
+              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Stop watching</span>
               <span style={{ width: 14, flexShrink: 0 }} />
             </button>
           </Tooltip>
