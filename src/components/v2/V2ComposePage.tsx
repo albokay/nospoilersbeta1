@@ -351,7 +351,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   const tagShort = `S${String(tag.s).padStart(2, "0")} E${String(tag.e).padStart(2, "0")}`;
 
   return (
-    <div style={{ minHeight: "100vh", position: "relative", opacity: visible ? 1 : 0, transition: "opacity 220ms ease-out" }}>
+    <div style={{ minHeight: "100vh", position: "relative", opacity: visible ? 1 : 0, transition: "opacity 1000ms ease-out" }}>
       {/* compose-context cream paint via injected style.
           The !important overrides on the input/textarea below claw back from
           theme.ts:293-296's global "textarea { background: #fff !important; color: #000 !important }"
