@@ -13,6 +13,19 @@ import {
 import type { Show, SharedRoomRow } from "../../lib/db";
 import type { ProgressEntry, Thread } from "../../types";
 import V2Layout from "./V2Layout";
+
+// Same shared profile-card style as V2ProfileSelfPage — sharp corners,
+// solid white fill, 2px ink outline. The visitor view of a profile
+// renders the same shelf/card structure as the owner sees, so we mirror
+// the visual language exactly. (Duplicated rather than imported to keep
+// each file self-contained; if a third surface ever needs it, lift to
+// a shared helper.)
+const PROFILE_CARD: React.CSSProperties = {
+  background: "#fff",
+  border: "2px solid var(--dos-fg)",
+  borderRadius: 0,
+  boxShadow: "none",
+};
 import { navigateToShow } from "./v2nav";
 
 type ShelfStatus = "watching" | "want" | "finished" | "stopped";
@@ -272,8 +285,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
                   key={sid}
                   className="card"
                   style={{
-                    background: "rgba(255,250,235,0.55)",
-                    border: "none",
+                    ...PROFILE_CARD,
                     padding: "22px 26px",
                   }}
                 >
@@ -331,8 +343,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
                   key={sid}
                   className="card"
                   style={{
-                    background: "rgba(255,250,235,0.55)",
-                    border: "none",
+                    ...PROFILE_CARD,
                     padding: "14px 22px",
                   }}
                 >
@@ -387,8 +398,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
                   key={sid}
                   className="card"
                   style={{
-                    background: "rgba(255,250,235,0.55)",
-                    border: "none",
+                    ...PROFILE_CARD,
                     padding: "20px 22px",
                     position: "relative",
                   }}
@@ -457,8 +467,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
                   key={sid}
                   className="card"
                   style={{
-                    background: "rgba(255,250,235,0.55)",
-                    border: "none",
+                    ...PROFILE_CARD,
                     padding: "16px 22px",
                     display: "grid",
                     gridTemplateColumns: "220px 1fr",
@@ -587,19 +596,20 @@ function ShelfHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   );
 }
 
+// Plain-text watch-progress indicator. Was a green pill; pills suggest
+// interactability and this badge is read-only, so the new spec switches
+// to inline text. Mirrors V2ProfileSelfPage's ProgressBadge.
 function ProgressBadge({ progress }: { progress: ProgressEntry }) {
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 8,
-        background: "var(--green)",
-        color: "#fff",
-        padding: "4px 12px",
-        borderRadius: 9999,
-        fontSize: 12,
-        fontWeight: 600,
+        gap: 6,
+        color: "var(--dos-fg)",
+        fontSize: 13,
+        fontWeight: 500,
+        fontVariantNumeric: "tabular-nums",
       }}
     >
       ◐ {progressShort(progress)}

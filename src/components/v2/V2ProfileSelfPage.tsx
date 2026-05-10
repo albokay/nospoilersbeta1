@@ -15,6 +15,28 @@ import V2Layout from "./V2Layout";
 import SearchShows from "../SearchShows";
 import { Pencil, Plus, Pin } from "lucide-react";
 
+// Shared profile-card style — matches the journal's visual language:
+// sharp corners, solid white fill, 2px ink outline. Replaces the prior
+// translucent cream (rgba(255,250,235,0.55)) which introduced the
+// "middle transparency" the new spec calls out. .card class still
+// applies; these inline styles override its radius (24) and bg
+// (transparent).
+const PROFILE_CARD: React.CSSProperties = {
+  background: "#fff",
+  border: "2px solid var(--dos-fg)",
+  borderRadius: 0,
+  boxShadow: "none",
+};
+
+// Dashed variant for "+ add a show" tile — same sharp + outline rule
+// but transparent fill + dashed border to telegraph "click to add".
+const PROFILE_ADD_TILE: React.CSSProperties = {
+  background: "transparent",
+  border: "2px dashed var(--dos-fg)",
+  borderRadius: 0,
+  boxShadow: "none",
+};
+
 type ShelfStatus = "watching" | "want" | "finished" | "stopped";
 
 function classifyShow(p: ProgressEntry, show: Show | undefined): ShelfStatus {
@@ -213,7 +235,7 @@ export default function V2ProfileSelfPage() {
       pairedHeader={{
         left: "this is your public profile",
         rightLabel: "go to your journal",
-        rightTo: "/v2/journal",
+        rightTo: "/v3/journal",
       }}
     >
       {/* === PROFILE IDENTITY === */}
@@ -320,8 +342,7 @@ export default function V2ProfileSelfPage() {
                   key={sid}
                   className="card"
                   style={{
-                    background: "rgba(255,250,235,0.55)",
-                    border: "none",
+                    ...PROFILE_CARD,
                     padding: "22px 26px",
                     position: "relative",
                   }}
@@ -336,7 +357,7 @@ export default function V2ProfileSelfPage() {
                   <div
                     style={{
                       paddingLeft: 14,
-                      borderLeft: `2px solid ${progress[sid]?.watchingQuote ? "var(--danger)" : "rgba(255,255,255,0.4)"}`,
+                      borderLeft: `2px solid ${progress[sid]?.watchingQuote ? "var(--danger)" : "rgba(0,0,0,0.12)"}`,
                     }}
                   >
                     <BlurbField
@@ -369,8 +390,7 @@ export default function V2ProfileSelfPage() {
                 key={sid}
                 className="card"
                 style={{
-                  background: "rgba(255,250,235,0.55)",
-                  border: "none",
+                  ...PROFILE_CARD,
                   padding: "14px 22px",
                 }}
               >
@@ -399,9 +419,7 @@ export default function V2ProfileSelfPage() {
               onClick={() => setAddOpen(true)}
               className="card"
               style={{
-                background: "transparent",
-                border: "2px dashed rgba(255,255,255,0.6)",
-                borderRadius: 24,
+                ...PROFILE_ADD_TILE,
                 padding: "14px 22px",
                 width: "100%",
                 textAlign: "left",
@@ -409,7 +427,7 @@ export default function V2ProfileSelfPage() {
                 fontFamily: "Lora, Georgia, serif",
                 fontStyle: "italic",
                 fontSize: 15,
-                color: "var(--dos-gray)",
+                color: "var(--dos-fg)",
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
@@ -421,8 +439,7 @@ export default function V2ProfileSelfPage() {
             <div
               className="card"
               style={{
-                background: "rgba(255,250,235,0.55)",
-                border: "none",
+                ...PROFILE_CARD,
                 padding: "16px 22px",
               }}
             >
@@ -478,8 +495,7 @@ export default function V2ProfileSelfPage() {
                   key={sid}
                   className="card"
                   style={{
-                    background: "rgba(255,250,235,0.55)",
-                    border: "none",
+                    ...PROFILE_CARD,
                     padding: "20px 22px",
                     position: "relative",
                   }}
@@ -560,8 +576,7 @@ export default function V2ProfileSelfPage() {
                   key={sid}
                   className="card"
                   style={{
-                    background: "rgba(255,250,235,0.55)",
-                    border: "none",
+                    ...PROFILE_CARD,
                     padding: "16px 22px",
                     display: "grid",
                     gridTemplateColumns: "220px 1fr",
@@ -607,19 +622,21 @@ function ShelfHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   );
 }
 
+// Plain-text watch-progress indicator. Was a green pill; pills suggest
+// interactability and this badge is read-only, so the new spec switches
+// to inline text. Mono-spaced via Inter's tabular numerals reads as a
+// label without competing visually with adjacent interactive pills.
 function ProgressBadge({ progress }: { progress: ProgressEntry }) {
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 8,
-        background: "var(--green)",
-        color: "#fff",
-        padding: "4px 12px",
-        borderRadius: 9999,
-        fontSize: 12,
-        fontWeight: 600,
+        gap: 6,
+        color: "var(--dos-fg)",
+        fontSize: 13,
+        fontWeight: 500,
+        fontVariantNumeric: "tabular-nums",
       }}
     >
       ◐ {progressShort(progress)}

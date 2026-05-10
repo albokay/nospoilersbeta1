@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import { LogOut, ChevronDown, ArrowRight } from "lucide-react";
 import FeedbackWidget from "../FeedbackWidget";
+import SidebarLogo from "../SidebarLogo";
 
 type Palette = "journal" | "profile" | "compose";
 
@@ -70,6 +71,29 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
       {palette === "compose" && (
         <style>{`body.v2-compose-context{background:#fef8ea !important}`}</style>
       )}
+
+      {/* Dynamic SidebarLogo top-left — mirrors AppShell's header logo so
+          v2 surfaces feel grounded in the same visual frame as live + v3.
+          Click navigates to the journal (the user's home base). Wrapped
+          in a fixed positioner so it stays put regardless of scroll. */}
+      <div style={{ position: "fixed", top: 14, left: 18, zIndex: 19 }}>
+        <h1
+          style={{ margin: 0, cursor: "pointer", display: "inline-block" }}
+          onClick={() => navigate("/v3/journal")}
+          role="button"
+          tabIndex={0}
+          aria-label="Go to your journal"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              navigate("/v3/journal");
+            }
+          }}
+        >
+          <SidebarLogo scale={0.6} />
+        </h1>
+      </div>
+
 
       {/* TOP-RIGHT — single profile pill that doubles as the account
           dropdown trigger. Dedicated sign-out icon removed; sign-out
@@ -184,30 +208,33 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
       {bareMain ? (
         children
       ) : (
+        // Container width matches the live + v3 journal (.container is
+        // min(672px, 92vw) centered) so v2 surfaces feel like the same
+        // page family. Top padding clears the fixed logo + profile pill.
         <main
+          className="container"
           style={{
-            maxWidth: 1100,
-            margin: "0 auto",
-            padding: "100px 48px 120px",
+            padding: "100px 0 120px",
           }}
         >
           {pairedHeader && (
+            // Heading + companion link — geometry matches V3JournalPage's
+            // "this is your journal" + "→ go to your public profile" pair
+            // (gap 16, marginBottom 12, baseline alignment, flexWrap) so
+            // the two surfaces share identical heading placement.
             <div
               style={{
                 display: "flex",
                 alignItems: "baseline",
-                gap: 18,
-                marginBottom: 24,
+                gap: 16,
+                marginBottom: 12,
                 flexWrap: "wrap",
+                minHeight: 28,
               }}
             >
               <div
-                style={{
-                  fontSize: 22,
-                  fontWeight: 600,
-                  color: "var(--dos-fg)",
-                  letterSpacing: "-0.005em",
-                }}
+                className="title"
+                style={{ fontSize: 22 }}
               >
                 {pairedHeader.left}
               </div>
