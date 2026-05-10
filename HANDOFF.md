@@ -1,6 +1,6 @@
 # Sidebar — Technical State (2026-05-09)
 
-> **2026-05-09 update — `/v3/journal` introduced.** A duplicate-of-live strategy supersedes the previous "v2 wrapper" plan. See "v3 strategy" arc in §7 for the full rationale + plumbing.
+> **2026-05-09 — Latest landed: `/v3/journal` is live + "Duplicate to…" thread-clone affordance shipped + V2 compose ruled-paper rendering fixed.** See §7 arcs (top of recent-work list) for plumbing + rationale; §6 items 8 + 26 for known-issue updates around the new clone path.
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -108,7 +108,7 @@ State `(season=0, episode=0)` represents "haven't started the show yet" — used
 5. **Citation inserts are best-effort** (`db.ts:944`). FK failure logs a warning but the reply still saves — can produce orphan quote references.
 6. **Like counts aren't real-time.** Loaded once per login; no subscription. Multi-tab/multi-user lag is possible. (Counts also aren't shown in the UI by design — `LikeBadge.tsx`.)
 7. **Thread previews are baked at write time** (`body.slice(0, 240)+…`). Edits regenerate; historical previews don't auto-refresh on logic changes.
-8. **Friend-room → anywhere clone path is dormant.** `markThreadMovedFromGroup` and the friend-room → public clone flow have no UI callers. Either remove or document the intent if reviving.
+8. **Friend-room → anywhere clone path is dormant — partially revived 2026-05-09.** Original note: `markThreadMovedFromGroup` and the friend-room → public clone flow (`cloneThreadToPublic`) had no UI callers. **Update:** the friend-room → public *clone* direction now has a live caller via the new "Duplicate to…" feature (commit `943a9ac`), but it routes through a different helper — `cloneThreadAsDuplicate` — with pure-clone semantics (source untouched, no `markThreadMovedFromGroup`). The original `cloneThreadToPublic` + `markThreadMovedFromGroup` pair (move semantics: source flagged `is_moved=true`) remains UI-orphaned. Decision deferred: either remove the move-style pair, or wire it to a future "Convert to public" affordance on friend-room threads (parallel to the existing private-journal "Convert to…").
 9. **`fetchPublicThreadsForShow` filters seed-author client-side** by author field — flagged in the doc comment as wanting an `author_is_seed` column.
 10. **Public-reply visibility on profiles** in `fetchPublicRepliesForUser` requires `t.isPublic` (`db.ts:880`). Intentional — private posts can't be replied to by others, so this filter is correct as-is.
 11. **Profile-load race after signup** (deferred — V-5 from 2026-04-19 audit). After `signUp`, `loadProfile` runs (`auth.tsx:23-30`) — race possibility between auth.signUp completing and the profile-row trigger. Supabase `.single()` doesn't throw (returns `{data: null, error}`), so worst case is `setProfile(null)` and components see `user !== null && profile === null` briefly. Most components guard with `profile?.username` so they degrade gracefully. Worth verifying in practice on next signup that no UI flashes empty username; not blocking.
@@ -166,6 +166,7 @@ State `(season=0, episode=0)` represents "haven't started the show yet" — used
     3. Loop over all TSP friend_groups, re-INSERT the 7 `group_threads` links per group with the same staggered `shared_at` intervals as the original provision function.
 
     New signups were never affected — `provision_sidebar_protocol` (the on-signup trigger) creates fresh rows for each new user's room independent of other users' state. Damage was scoped to existing users at the moment the bad cleanup ran.
+26. **`cloneThreadAsDuplicate` orphan-on-failure shape** ([db.ts:281](src/lib/db.ts:281), commit `24cbe61`). The "Duplicate to <friend room>" flow is two non-atomic DB ops: (1) insert the new `threads` row with `is_public=false`, (2) insert the `group_threads` link to the target room. Op 2 is wrapped `.catch()` (best-effort, matches the live `insertThread + addThreadToGroup` pattern in [ProfilePage.tsx:533](src/components/ProfilePage.tsx:533) and [ShowSection.tsx:1660](src/components/ShowSection.tsx:1660)). If op 2 fails, the thread row exists with `is_public=false` and no `group_threads` link, which means it surfaces as a phantom **private journal entry** in the user's journal feed. The user sees the confirm modal close as if successful but the duplicate isn't in the target room and an unexpected private entry appears in their journal. Edge-case (op 2 rarely fails) and self-recoverable (user can soft-delete the phantom from the journal). Cleanest future fix would be a `SECURITY DEFINER` RPC wrapping both ops in a transaction — same pattern as `accept_invitation`. Defer until either this becomes an observed beta-user issue OR the existing live insertThread+add sites get the same treatment in a single pass.
 
 ## 7. Recent work
 
@@ -1316,6 +1317,95 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-09 — Duplicate to… : pure-clone alternative for public + friend-room thread views
+
+New user-facing affordance on the user's own thread views: a "Duplicate to…" dropdown that creates a clone of the thread in a different destination, with **pure-clone semantics** distinct from the existing "Convert to…" move flow.
+
+**Behavior contract:**
+
+- **Public posts** show "Duplicate to…" → friend-room dropdown listing the viewer's rooms for the show, **minus** rooms where this thread already lives (via `group_threads`). Lazy-fetched on first dropdown open; cached locally; pruned on each duplicate-success so the just-targeted room disappears from the next open without a refetch.
+- **Friend-room posts** show "Duplicate to…" → single hardcoded "Public Post" option. No fetch needed.
+- **Private journal posts** keep the existing "Convert to…" (move semantics) unchanged.
+- **Source thread is NEVER mutated.** No `is_moved` flag set, no `group_threads` row removed. Both instances are first-class.
+- **Replies don't bleed.** New thread row gets a fresh id; `replies.thread_id` keys to it; reply chains naturally isolate.
+- **Deletes scoped per instance.** Each clone has its own thread row → contextual-delete logic (private soft-delete / friend-room unlink / public demote) applies to each independently.
+- **`source_thread_id` wired** on the clone row pointing back at the original. Powers a future "duplicate of X" hint; not rendered in this commit.
+- **Spoiler tag preserved.** Clone copies original's `season/episode` + `is_rewatch`/`rewatch_season`/`rewatch_episode`. A duplicate is a faithful copy; the user's current progress is irrelevant. (Note: live `cloneThreadToPublic` does NOT copy rewatch fields — known latent gap, not fixed in this arc.)
+- **Confirm modal** before clone: "Duplicate to <em>{destination}</em>? — A copy of this post will appear in [destination]. Replies in each copy stay separate, and deleting one copy doesn't affect the other." Cancel + Duplicate buttons; Duplicate disables and shows "Duplicating…" while in flight.
+
+**Two commits:**
+
+| Commit | Scope |
+|---|---|
+| `24cbe61` | New helpers in [`src/lib/db.ts`](src/lib/db.ts:281): `cloneThreadAsDuplicate(threadId, { isPublic?, groupId? })` — inserts a fresh `threads` row copying every duplicable column from the original (show_id, season/episode, author, title, preview, body, is_rewatch + rewatch_season/episode), sets `is_public` from opts, sets `source_thread_id = threadId`, resets `likes_count = 0`. If `opts.groupId`, also calls existing `addThreadToGroup` (best-effort: matches the live insertThread + add pattern in ProfilePage and ShowSection — see Risk note below). Source thread untouched. Plus `fetchGroupIdsForThread(threadId)` returning the `group_threads.group_id` list for the given thread (best-effort, returns `[]` on error). No DB migration needed — reuses existing `source_thread_id` column + `group_threads` table. |
+| `943a9ac` | UI wiring in [`src/components/InlineThreadView.tsx`](src/components/InlineThreadView.tsx). New state cluster (`showDuplicateOptions`, `eligibleDuplicateRooms`, `pendingDuplicate`, `duplicateSubmitting/Error`, lazy-load helper, click-outside handler, `handleConfirmDuplicate`). Two new conditional toolbar blocks — `{thread.isPublic && (...)}` and `{inGroupContext && (...)}` — both inside the existing `{isOwn && (...)}` author-only wrapper, immediately after the existing Convert block. Same `.move-to-dropdown` styling + canon-yellow Globe pill for the public option (visual parity with the existing Convert dropdown). New confirm modal sibling to the existing `threadQuoteHint` modal. |
+
+**Friend-room source data — lazy-fetched, not prop-plumbed.** InlineThreadView is consumed in 4+ parent contexts (ShowSection inside live & v3, MobileThread, etc.). Threading a `userGroups` prop through every parent for a feature most viewers won't use was rejected; the fetch fires inside InlineThreadView on first dropdown click. Same `Promise.all([fetchFriendGroupsForUser(user.id, thread.showId), fetchGroupIdsForThread(thread.id)])` shape; loading + error states surface in the dropdown body.
+
+**Why a new `cloneThreadAsDuplicate` instead of reusing `cloneThreadToPublic`.** The existing `cloneThreadToPublic` was built for the friend-room → public move flow (paired with `markThreadMovedFromGroup`). It (a) hardcodes `is_public: true` so it can't target a friend room, and (b) doesn't copy `is_rewatch`/`rewatch_season`/`rewatch_episode`, which is fine for a "convert" (writer is publishing now) but wrong for a "duplicate" (faithful copy). Two separate functions with different semantics is clearer than one with mode flags. The dormant code path in §6 item 8 stays as-is — `cloneThreadToPublic` + `markThreadMovedFromGroup` aren't called by any UI today; revisit if "Convert to…" semantics need to be revived for friend-room→public direction.
+
+**`hasPublicClone` is dead code.** Discovered during this arc — declared in db.ts:261 but zero callers in `src/`. Naming is also misleading (counts ANY clone, doesn't filter `is_public`). Left as-is for now; if a use-case later needs "is there already a public version of this thread?" check, fix the filter at that point or write a new precisely-scoped helper.
+
+**Bundle delta:** 982.58 → 987.65 KB raw / 261.19 → 262.15 KB gzip. The +5KB raw is the new state cluster + dropdown render + confirm modal in InlineThreadView.
+
+**Conventions established / reinforced:**
+
+- **Lazy + cached fetch on dropdown open.** When a UI affordance needs auxiliary data (friend-room list, etc.) that most users won't see, fetch on first open into a local `null | T[]` state, treat null as "not yet fetched", reset to a fresh fetch via a "Try again" affordance on error. Pattern reused from elsewhere; codified here for future similar dropdowns.
+- **"Pure clone" vs "convert/move" naming.** When introducing a new variant of an existing operation (clone, here) make the semantic distinction visible in the function name (`cloneThreadAsDuplicate` vs `cloneThreadToPublic`) rather than via opts on a single function. Future-readers should see the variant name and immediately know "this doesn't mutate source."
+- **Confirm modal copy for non-undoable writes.** "A copy of this post will appear in X. Replies in each copy stay separate, and deleting one copy doesn't affect the other." captures both the destination and the consequence (no auto-undo, two independent reply chains). Reuse this shape for any future "creates a thing the user can't easily revoke" affordance.
+
+### 2026-05-09 — v2 compose ruled-paper rendering: theme.ts global !important override
+
+The compose page mockup (`docs/sidebar_compose_v9.html`-style spec) called for Inter 16/28 text rendered over a background of 1px ruled lines every 28px (the body-input `repeating-linear-gradient` per the mockup CSS). V2ComposePage already had the gradient wired inline as `backgroundImage: RULE_GRADIENT` since the original parallel-build commit, but **the lines never rendered in production**.
+
+**Root cause** ([theme.ts:296](src/styles/theme.ts:296)): a global `textarea { background: #fff !important; color: #000 !important }` rule was wiping the inline gradient. The shorthand `background` resets all `background-*` props (including `background-image`); the `!important` beats inline. Same rule also covered the title input (an `input.badge`-typed selector also had `!important`), forcing white bg + black text where the spec wanted cream + ink-brown.
+
+**Fix** ([V2ComposePage.tsx:392-419](src/components/v2/V2ComposePage.tsx:392), commit `f6cbc03`): scope-override via the existing `<style>` block at the top of the V2ComposePage render, using the v2-compose-* class names that were already on the elements. Each property listed individually with `!important`:
+
+```css
+.v2-compose-paper-input {
+  background-color: transparent !important;
+  background-image: <RULE_GRADIENT> !important;
+  background-position: 0 0 !important;
+  background-size: 100% 28px !important;
+  background-repeat: repeat !important;
+  color: <INK> !important;
+}
+.v2-compose-title-input {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: <INK> !important;
+}
+```
+
+Class scoping means **no other textarea on the site is affected** — the global theme.ts rule still applies everywhere except the compose page, where the more-specific class selector wins.
+
+**Convention reinforced:**
+
+- **When a theme-global `!important` rule blocks a per-component look, scope-override at the component layer rather than removing the global.** The theme.ts rule was added to fix dark-input bleed in some other context; removing it could regress that. The override pattern (more-specific selector + `!important` on each property the global sets) is the lowest-risk fix.
+- **Inline `style` props can't beat external CSS `!important`.** React's inline style maps to the element's `style` attribute, which has higher specificity than rules in stylesheets — but `!important` in a stylesheet still wins (since inline doesn't have `!important` syntax). To override an `!important` rule from inline, you have to add the `!important` via a `<style>` block (or external CSS) at higher specificity. Footgun worth knowing.
+
+### 2026-05-09 — v3 rollout polish: missed gates, dot lifecycle, write-button + compose exit
+
+The initial v3 scaffolding commit `b570b56` (see "v3 strategy" arc below) extended only some of the boolean gates that should have followed `showProfile` parity. Three follow-up commits (and one feature commit) closed the gaps surfaced during testing.
+
+**Five commits chronologically:**
+
+| Commit | Scope |
+|---|---|
+| `67a24ae` | **Homepage block missed gate.** The homepage narrative + beta-tester pill at [App.tsx:954](src/App.tsx:954) had its own `!showProfile && !publicProfileUsername` boolean rather than reusing the higher-up `isHomepage` derived var. Initial v3 scaffolding extended `isHomepage` (line 580) but missed this inline check, so the homepage chrome rendered **above** V3JournalPage at /v3/journal. Single-line gate addition. |
+| `0501961` | **Profile pill state on /v3/journal.** Three boolean checks on the `.profileChip` button (onClick gate, cursor style, label+icon ternary at [App.tsx:810-820](src/App.tsx:810)) were gated only on `showProfile`. On /v3/journal the pill was rendering as the off-journal state ("BookMarked + go to your journal") with a click handler. Now reads `(showProfile \|\| showV3Journal)` everywhere — same BookOpen + "you are {username}" with no click on /v3/journal as on /profile. |
+| `0b2a316` | **Write button rewire — the v2 carryover into v3.** Per the original v3 plan, the journal's write button on /v3/journal navigates to `/v2/compose/:showId` rather than opening the in-page compose modal. One onClick swap at [V3JournalPage.tsx:970-987](src/components/V3JournalPage.tsx:970): replaced the `setComposeDestination(dest); setComposeOpen(true)` modal-open logic with `navigate(\`/v2/compose/${activeTab}\`)`. `activeTab` provides the showId. Dead modal block + `composeOpen`/`composeDestination` state kept in V3JournalPage pending follow-up cleanup; unreachable but harmless. |
+| `8c5f40a` | **V2ComposePage exit + post-publish targets /v3/journal.** Four hardcoded `/v2/journal` URLs in V2ComposePage's discard ("× not now"), post-publish navigate, error-state "back to journal" button, and the show-not-found error copy now point at `/v3/journal`. Discard + post-publish pass `state.activeTab=showId` so V3JournalPage's `location.state.activeTab` consumer auto-selects the right show tab on land (mirrors live ProfilePage's per-show selection). |
+| `b3aff84` | **Notification dots misfire — three showProfile-gated effects extended to /v3/journal.** User reported dots were over-firing on /v3/journal and shifting between routes. Root cause: the `openedAtSeenAt` capture + seen-stamp clear effect at [App.tsx:365-388](src/App.tsx:365) fired only on `showProfile` change. On /v3/journal it never ran, so `openedAtSeenAt` stayed at 0 → `reply.updatedAt > 0` always true → every visible reply lit green (over-fire / hypothesis "a"). Same effect's stamp clears never ran, so /profile ↔ /v3/journal navigation left inconsistent stamp state (hypothesis "c"). Fix extended the gate to `showProfile \|\| showV3Journal` and added `showV3Journal` to two more refetch effects ([App.tsx:274](src/App.tsx:274) `fetchRepliesToUserThreads` + [App.tsx:305](src/App.tsx:305) `fetchUndismissedPingCountsByShow`) so v3 visits also trigger fresh data. |
+
+**Two more v3 follow-up commits got bundled into the v3 strategy arc below** (initial scaffolding `b570b56`).
+
+**Convention reinforced:**
+
+- **When duplicating a route family that participates in App-level effects, audit every `showProfile`/`showHomepage`/etc gate, not just the ones in the obvious spots.** The initial v3 commit extended the two derived gates (`isHomepage`, `isProfilePage`) but missed three inline boolean checks that hardcoded the same condition. Pattern for next time: `grep -n "showProfile" App.tsx` and audit every hit, not just the variable definitions.
+- **Always-firing effects should depend on the "currently on this surface?" boolean, not the route enum.** When extending an effect to fire on a second route, prefer adding the second route to deps rather than rewriting the effect to depend on a derived boolean — easier to audit, cheaper to revert, and the deps array surfaces the dependency clearly.
 
 ### 2026-05-09 — v3 strategy: `/v3/journal` = wholesale duplicate of live ProfilePage, mounted inside AppShell
 
