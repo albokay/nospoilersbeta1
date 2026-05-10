@@ -4,11 +4,11 @@ import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, CircleChevronDown, C
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated, refreshShowIfStale, fetchRoomActivityVisibility } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated, refreshShowIfStale, fetchRoomActivityVisibility, stopWatching } from "../lib/db";
 import type { RoomVisibility } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { prefetchComposeData } from "../lib/composeDataCache";
-import { getCachedActivity, setCachedActivity } from "../lib/journalCache";
+import { getCachedActivity, setCachedActivity, invalidateJournalCache } from "../lib/journalCache";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo } from "../lib/utils";
 import { linkifyText } from "../lib/linkify";
@@ -197,7 +197,14 @@ export default function V3JournalPage({
         latest[sid] = user ? readTabCreated(user.id, sid) : 0;
       }
     });
-    return Object.keys(latest).sort((a, b) => latest[b] - latest[a]);
+    // Hide any show the user has stopped watching — that show belongs on
+    // the profile's Stopped Watching shelf, not in the journal's tab list.
+    // Mirrors V2JournalPage's userShowIds filter. Without this, after the
+    // stopWatching cascade the tab would linger in the journal until the
+    // user manually hid it.
+    return Object.keys(latest)
+      .filter(sid => !progress[sid]?.stoppedWatching)
+      .sort((a, b) => latest[b] - latest[a]);
   }, [activityOrder, progress, user?.id]);
 
   // Hidden tabs: user can close tabs to declutter their private profile view.
@@ -394,6 +401,19 @@ export default function V3JournalPage({
     openShow(sid);
     setTabDropdownOpen(null);
   };
+
+  // Stop-watching modal — ported from V2JournalPage. Opens from the
+  // active tab's chevron-dropdown's "Close show / stop watching" item.
+  // Confirmation lists the friend rooms the user will leave (drawn from
+  // tabGroups, which is populated for activeTab); on confirm runs the
+  // stopWatching cascade (removes user from rooms / soft-deletes
+  // solo-owned rooms / transfers ownership of created rooms / flags
+  // progress.stopped_watching=true) and lands the user on /v2/profile
+  // where the show now lives in the Stopped Watching shelf.
+  const [stopModalOpen, setStopModalOpen] = useState(false);
+  const [stopShowId, setStopShowId] = useState<string | null>(null);
+  const [stopSubmitting, setStopSubmitting] = useState(false);
+  const [stopError, setStopError] = useState<string | null>(null);
 
   // Create friend room from profile
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
@@ -1802,43 +1822,152 @@ export default function V3JournalPage({
              journal-page outlines with 0.75 opacity so it reads as a soft
              separator rather than a hard rule. */}
           <div style={{ borderTop: "2px solid var(--dos-border)", width: "50%", margin: "2px auto", opacity: 0.75 }} />
-          {/* 3. Close show tab */}
-          <Tooltip text="Hides this tab from your journal view. Your entries and progress are kept. Search for the show again and choose 'Start your journal' to bring it back." direction="below">
+          {/* 3. Close show / stop watching — ported from V2.
+             Stronger than the prior local-hide: runs the stopWatching
+             cascade (removes user from any friend rooms on this show,
+             flags progress.stopped_watching=true) so the show moves to
+             the Stopped Watching shelf on the profile rather than just
+             being hidden in the journal view. Opens a confirmation modal
+             that lists the rooms the user will leave. */}
+          <Tooltip text="Closes the show in your journal and removes you from any friend rooms on this show. Searching for the show again restores your entries and progress, but not room memberships." direction="below">
             <button className="btn" style={{
               fontSize: 13, whiteSpace: "nowrap", opacity: 0.75,
               display: "flex", alignItems: "center", width: "100%",
             }}
               onClick={() => {
                 const sid = tabDropdownOpen;
+                setStopShowId(sid);
+                setStopError(null);
                 setTabDropdownOpen(null);
-                hideTab(sid);
-                // Clear every per-show session key so a later search doesn't
-                // short-circuit into a stale context (public space with
-                // preserved browse progress, friend room with preserved
-                // active-group id, etc.). Without this, searching a show
-                // whose tab was closed can bounce the user into whatever
-                // space they were last in, instead of back to a fresh tab.
-                sessionStorage.removeItem(`ns_browse_prog_${sid}`);
-                sessionStorage.removeItem(`ns_browse_show_${sid}`);
-                sessionStorage.removeItem(`ns_active_group_${sid}`);
-                sessionStorage.removeItem(`ns_came_from_group_${sid}`);
-                // Switch to another tab if the hidden one was active.
-                // If there are no remaining visible tabs, clear activeTab so
-                // the welcome renders immediately instead of the card falling
-                // back to cached data for the just-closed tab.
-                if (sid === activeTab) {
-                  const remaining = visibleTabOrder.filter(s => s !== sid);
-                  if (remaining.length) setActiveTab(remaining[0]);
-                  else setActiveTab("");
-                }
+                setStopModalOpen(true);
               }}>
               <X size={14} color="var(--icon-color)" style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Close show tab</span>
+              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Close show / stop watching</span>
               <span style={{ width: 14, flexShrink: 0 }} />
             </button>
           </Tooltip>
         </div>
       )}
+
+      {/* Stop-watching confirmation modal — ported from V2JournalPage.
+          Lists the friend rooms the user will leave (drawn from tabGroups,
+          which is keyed to activeTab; safe because the dropdown only opens
+          on the active tab). On confirm runs the stopWatching cascade and
+          lands the user on /v2/profile where the now-stopped show appears
+          in the Stopped Watching shelf. */}
+      {stopModalOpen && stopShowId && profile && user && (() => {
+        const sid = stopShowId;
+        const sName = showName(sid);
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed", inset: 0,
+              background: "rgba(0,0,0,0.4)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              zIndex: 250, padding: 20,
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !stopSubmitting) setStopModalOpen(false);
+            }}
+          >
+            <div style={{
+              background: "var(--dos-bg)", border: "2px solid #fff",
+              padding: "24px 28px", maxWidth: 480, width: "100%", color: "var(--dos-fg)",
+            }}>
+              <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 600, fontSize: 22, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                Stop watching {sName}?
+              </div>
+              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-fg)", lineHeight: 1.55, marginBottom: 16 }}>
+                Your journal entries and progress will be preserved. The show moves to your <strong style={{ fontStyle: "normal", fontWeight: 600 }}>Stopped Watching</strong> shelf. Searching for it again restores everything except room memberships.
+              </div>
+              {tabGroups.length > 0 && sid === activeTab && (
+                <div style={{
+                  background: "rgba(244,80,40,0.15)",
+                  border: "2px solid var(--danger)",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                  marginBottom: 18,
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--dos-fg)", marginBottom: 6 }}>
+                    You'll leave {tabGroups.length === 1 ? "this friend room" : `${tabGroups.length} friend rooms`}:
+                  </div>
+                  <ul style={{ margin: "0 0 8px 18px", padding: 0, fontSize: 14, lineHeight: 1.55, color: "var(--dos-fg)" }}>
+                    {tabGroups.map((g) => (
+                      <li key={g.id} style={{ fontStyle: "italic", fontFamily: "Lora, Georgia, serif" }}>{g.name}</li>
+                    ))}
+                  </ul>
+                  <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 13, color: "var(--dos-gray)", lineHeight: 1.5 }}>
+                    You'd need to be re-invited to come back.
+                  </div>
+                </div>
+              )}
+              {stopError && (
+                <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>
+                  {stopError}
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  className="btn h40"
+                  disabled={stopSubmitting}
+                  onClick={() => setStopModalOpen(false)}
+                  style={{ fontSize: 13 }}
+                >
+                  keep watching
+                </button>
+                <button
+                  disabled={stopSubmitting}
+                  onClick={async () => {
+                    if (!user || !profile || !sid) return;
+                    setStopSubmitting(true);
+                    setStopError(null);
+                    try {
+                      await stopWatching(user.id, profile.username, sid);
+                      // Bust the journal cache so the next mount sees fresh
+                      // progress (without the stopped show in showTabOrder
+                      // once we filter — for now App.tsx's progress refetch
+                      // on next mount picks up stopped_watching=true). Also
+                      // clear per-show session keys so a later "search this
+                      // show" doesn't bounce into a stale context.
+                      invalidateJournalCache(user.id);
+                      sessionStorage.removeItem(`ns_browse_prog_${sid}`);
+                      sessionStorage.removeItem(`ns_browse_show_${sid}`);
+                      sessionStorage.removeItem(`ns_active_group_${sid}`);
+                      sessionStorage.removeItem(`ns_came_from_group_${sid}`);
+                      // Land on the profile page where the new Stopped row
+                      // surfaces in the Stopped Watching shelf.
+                      navigate("/v2/profile");
+                    } catch (err: any) {
+                      console.warn("stopWatching failed:", err);
+                      setStopError(err?.message || "Couldn't stop watching. Try again.");
+                      setStopSubmitting(false);
+                    }
+                  }}
+                  className="btn-danger h40"
+                  style={{
+                    background: "var(--danger)",
+                    border: "none",
+                    color: "#fff",
+                    borderRadius: 9999,
+                    padding: "0 18px",
+                    height: 40,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: stopSubmitting ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  {stopSubmitting ? <>stopping<LoadingDots /></> : "stop watching"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </section>
   );
 }
