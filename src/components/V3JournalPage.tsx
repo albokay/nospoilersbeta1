@@ -871,8 +871,33 @@ export default function V3JournalPage({
              compose, entries) renders in its usual form. */}
           <div className="hangLContent" style={{ paddingTop: 0 }}>
             <section style={{ marginTop: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 0, marginBottom: 12, minHeight: 28 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap", marginTop: 0, marginBottom: 12, minHeight: 28 }}>
                 <div className="title profile-journal-heading" style={{ fontSize: 22 }}>this is your journal</div>
+                {/* Restored from v2: companion link to the user's public
+                    profile. Lives next to "this is your journal" so the
+                    user can hop between their two homes (private journal
+                    here vs public-facing profile at /user/:username). */}
+                {profile?.username && (
+                  <a
+                    href={`/user/${profile.username}`}
+                    onClick={(e) => { e.preventDefault(); navigate(`/user/${profile.username}`); }}
+                    style={{
+                      fontFamily: "Lora, Georgia, serif",
+                      fontStyle: "italic",
+                      fontSize: 16,
+                      color: "var(--dos-gray)",
+                      textDecoration: "none",
+                      borderBottom: "1px dotted var(--dos-gray)",
+                      paddingBottom: 1,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <ArrowRight size={14} /> go to your public profile
+                  </a>
+                )}
               </div>
               {!activeTab && (
                 <div className="diaryOuter">
