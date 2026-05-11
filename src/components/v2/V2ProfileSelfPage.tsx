@@ -9,6 +9,7 @@ import {
   setStoppedWatching,
   removeShowFromProfile,
   setProfileBio,
+  upsertRewatchStatus,
   V2_BIO_MAX,
   type V2BlurbKind,
 } from "../../lib/db";
@@ -551,9 +552,17 @@ export default function V2ProfileSelfPage() {
               <SearchShows
                 shows={shows}
                 progress={progress}
-                onShowCreated={async (s) => {
-                  // Onboarding default is (0,0) — show lands in the want-to-watch shelf naturally.
+                onShowCreated={async (s, entry) => {
+                  // Persist the entry the user filled out in the modal — without
+                  // this, createShow / createFriendGroup land but no progress row
+                  // is written, so the refetch below returns empty for this show
+                  // and it never appears on any shelf.
                   if (!user) return;
+                  try {
+                    await upsertRewatchStatus(user.id, s.id, entry);
+                  } catch (err) {
+                    console.warn("upsertRewatchStatus failed:", err);
+                  }
                   const next = await fetchProgress(user.id);
                   setProgress(next);
                   setAddOpen(false);

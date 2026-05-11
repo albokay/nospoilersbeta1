@@ -458,21 +458,17 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
         </div>
 
         {/* === PAPER ===
-            Sharp-cornered, transparent-fill outer container. The textarea
-            inside renders pure white (with the ruled-paper gradient on top
-            of the white) so the writing surface visually defines itself
-            without a styled cream wrapper. Prompt button now lives inside
-            the box, below the textarea, so it reads as part of the writing
-            unit rather than a separate after-the-paper affordance. */}
+            Sharp-cornered, white-fill outer container. White extends through
+            the entire writing surface — title sits on white at the top, then
+            the textarea below carries the ruled-paper gradient. Prompt button
+            lives inside the box, below the textarea, so it reads as part of
+            the writing unit rather than a separate after-the-paper affordance. */}
         <div
           style={{
-            background: "transparent",
+            background: "#fff",
             border: `2px solid ${RULE}`,
             borderRadius: 0,
-            // Asymmetric top padding for a "top of a piece of lined paper"
-            // feel — the title sits on the top line with a generous header
-            // margin above it before the body's ruled section begins.
-            padding: "96px 40px 36px 40px",
+            padding: "36px 40px",
             marginBottom: 24,
             display: "flex",
             flexDirection: "column",

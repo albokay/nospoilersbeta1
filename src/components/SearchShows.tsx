@@ -568,7 +568,7 @@ export default function SearchShows({
             {/* Create a friend room section */}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <h3 className="title" style={{ margin: "0 0 8px", fontSize: 16 }}>Create a friend room</h3>
+                <h3 className="title" style={{ margin: "0 0 8px", fontSize: 16 }}>Create a friend room?</h3>
                 <p style={{ margin: 0, fontSize: 14, opacity: 0.85, lineHeight: 1.5 }}>
                   This will be where you and your friends talk about <strong>{confirming.name}</strong>. Whatever anyone writes here will only be visible to you and your friends. You can decide who to invite later.
                 </p>
