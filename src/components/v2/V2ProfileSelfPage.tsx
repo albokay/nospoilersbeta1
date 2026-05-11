@@ -589,14 +589,17 @@ export default function V2ProfileSelfPage() {
                       className="card"
                       style={{
                         ...PROFILE_CARD,
-                        padding: isEditing ? "36px 26px 36px" : "22px 26px 36px",
+                        padding: isEditing ? "22px 80px 36px 26px" : "22px 26px 36px",
                         position: "relative",
                       }}
                     >
                       <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                         <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
+                          <span
+                            onClick={() => navigate(`/v2/journal/${sid}`)}
+                            style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2, cursor: "pointer" }}
+                          >{show.name}</span>
                           <ProgressBadge progress={p} />
                         </div>
                         {p.isRewatching && <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>rewatch</span>}
@@ -629,7 +632,7 @@ export default function V2ProfileSelfPage() {
       {/* === WANT TO WATCH (always renders for the + add tile) === */}
       <section style={{ marginBottom: 56 }}>
         <ShelfHead
-          eyebrow="on your list, not yet started:"
+          eyebrow="on your watch list:"
           title="Want to Watch"
           editing={editingShelves.has("want")}
           onToggleEdit={() => toggleShelfEdit("want")}
@@ -654,13 +657,16 @@ export default function V2ProfileSelfPage() {
                     className="card"
                     style={{
                       ...PROFILE_CARD,
-                      padding: isEditing ? "36px 60px 14px 22px" : "14px 60px 14px 22px",
+                      padding: isEditing ? "14px 80px 14px 22px" : "14px 60px 14px 22px",
                       position: "relative",
                     }}
                   >
                     <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                     <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 14 }}>
-                      <span style={{ fontSize: 17, fontWeight: 600, color: "var(--dos-fg)" }}>{show.name}</span>
+                      <span
+                        onClick={() => navigate(`/v2/journal/${sid}`)}
+                        style={{ fontSize: 17, fontWeight: 600, color: "var(--dos-fg)", cursor: "pointer" }}
+                      >{show.name}</span>
                       <span style={{ flex: 1, minWidth: 200 }}>
                         <BlurbField
                           kind="want_reason"
@@ -785,7 +791,9 @@ export default function V2ProfileSelfPage() {
                       className="card"
                       style={{
                         ...PROFILE_CARD,
-                        padding: isEditing ? "36px 22px 36px" : "20px 22px 36px",
+                        // In edit mode, extra right padding clears the top-right edit overlay
+                        // AND the leftward-shifted Pin button (see Pin style below).
+                        padding: isEditing ? "20px 130px 36px 22px" : "20px 22px 36px",
                         position: "relative",
                       }}
                     >
@@ -803,7 +811,10 @@ export default function V2ProfileSelfPage() {
                     style={{
                       position: "absolute",
                       top: 14,
-                      right: 14,
+                      // Shift leftward when editing so the top-right edit overlay (grip +
+                      // chevron, ~52px wide at right:8) has room to sit. Non-edit position
+                      // unchanged.
+                      right: isEditing ? 70 : 14,
                       background: "transparent",
                       border: "none",
                       cursor: "pointer",
@@ -822,7 +833,10 @@ export default function V2ProfileSelfPage() {
                   >
                     {pinned ? "canon" : <Pin size={14} color="currentColor" />}
                   </button>
-                      <div style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2, paddingRight: 64, marginBottom: 10 }}>
+                      <div
+                        onClick={() => navigate(`/v2/journal/${sid}`)}
+                        style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2, paddingRight: 64, marginBottom: 10, cursor: "pointer" }}
+                      >
                         {show.name}
                       </div>
                       <BlurbField
@@ -887,13 +901,16 @@ export default function V2ProfileSelfPage() {
                       className="card"
                       style={{
                         ...PROFILE_CARD,
-                        padding: isEditing ? "36px 22px 36px" : "20px 22px 36px",
+                        padding: isEditing ? "20px 80px 36px 22px" : "20px 22px 36px",
                         position: "relative",
                       }}
                     >
                       <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                       <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-                        <span style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
+                        <span
+                          onClick={() => navigate(`/v2/journal/${sid}`)}
+                          style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2, cursor: "pointer" }}
+                        >{show.name}</span>
                         <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>stopped at {progressShort(p)}</span>
                       </div>
                       <BlurbField
@@ -1125,7 +1142,7 @@ function EditCornerOverlay({
       style={{
         position: "absolute",
         top: 8,
-        left: 8,
+        right: 8,
         display: "inline-flex",
         alignItems: "center",
         gap: 2,
@@ -1141,7 +1158,7 @@ function EditCornerOverlay({
           background: "transparent",
           border: "none",
           padding: 4,
-          color: "var(--dos-gray)",
+          color: "#fff",
           cursor: "grab",
           touchAction: "none",
           display: "inline-flex",
@@ -1159,7 +1176,7 @@ function EditCornerOverlay({
             background: "transparent",
             border: "none",
             padding: 4,
-            color: "var(--dos-gray)",
+            color: "#fff",
             cursor: "pointer",
             display: "inline-flex",
             alignItems: "center",
@@ -1172,37 +1189,38 @@ function EditCornerOverlay({
             role="menu"
             style={{
               position: "absolute",
-              top: "calc(100% + 4px)",
-              left: 0,
-              minWidth: 200,
-              background: "#fff",
-              border: "1px solid var(--dos-border, #ddd)",
-              borderRadius: 8,
-              boxShadow: "0 6px 24px rgba(0,0,0,0.15)",
-              padding: 8,
+              top: "calc(100% + 6px)",
+              right: 0,
+              minWidth: 220,
+              background: "#dea838",
+              border: "none",
+              borderRadius: 23,
+              boxShadow: "0 8px 23px rgba(0,0,0,0.15)",
+              padding: 14,
               zIndex: 20,
             }}
           >
-            <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 12, color: "var(--dos-gray)", padding: "4px 6px 6px" }}>
+            <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 13, color: "#fff", padding: "0 6px 10px" }}>
               move to:
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {others.map((target) => (
                 <button
                   key={target}
                   onClick={() => onMoveToShelf(target)}
                   style={{
                     background: "transparent",
-                    border: "none",
-                    padding: "8px 10px",
-                    textAlign: "left",
+                    border: "2px solid #fff",
+                    borderRadius: 9999,
+                    padding: "8px 14px",
+                    textAlign: "center",
                     fontFamily: "Inter, sans-serif",
                     fontSize: 14,
-                    color: "var(--dos-fg)",
+                    fontWeight: 500,
+                    color: "#fff",
                     cursor: "pointer",
-                    borderRadius: 4,
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.05)"; }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.18)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
                 >
                   {SHELF_LABELS[target]}
