@@ -1203,6 +1203,36 @@ export async function stopWatching(
   return { groupsLeft, groupsSoftDeleted };
 }
 
+/**
+ * "Remove this show from my profile entirely" — stronger sibling of
+ * stopWatching. Runs the same room cascade (leave/transfer/soft-delete)
+ * AND deletes the user's progress row so the show no longer appears on
+ * any profile shelf (Watching Now / Want / Finished / Stopped).
+ *
+ * The user's threads + replies for the show are NOT touched — they live
+ * under their journal + the public stream regardless of whether the show
+ * appears on the profile. Profile shelves are driven by the progress
+ * table only; deleting that row removes the show from those shelves.
+ *
+ * Two-step (cascade then delete) rather than one transaction. If the
+ * delete fails after stopWatching succeeds, the user retries: the room-
+ * cascade is idempotent on already-stopped shows (groups already left,
+ * flag already set), so only the delete fires the second time.
+ */
+export async function removeShowFromProfile(
+  userId: string,
+  username: string,
+  showId: string
+): Promise<void> {
+  await stopWatching(userId, username, showId);
+  const { error } = await supabase
+    .from("progress")
+    .delete()
+    .eq("user_id", userId)
+    .eq("show_id", showId);
+  if (error) throw error;
+}
+
 export async function setCanonPin(
   userId: string,
   showId: string,

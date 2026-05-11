@@ -4,7 +4,7 @@ import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, CircleChevronDown, C
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated, refreshShowIfStale, fetchRoomActivityVisibility, stopWatching } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated, refreshShowIfStale, fetchRoomActivityVisibility, stopWatching, removeShowFromProfile } from "../lib/db";
 import type { RoomVisibility } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { prefetchComposeData } from "../lib/composeDataCache";
@@ -414,6 +414,12 @@ export default function V3JournalPage({
   const [stopShowId, setStopShowId] = useState<string | null>(null);
   const [stopSubmitting, setStopSubmitting] = useState(false);
   const [stopError, setStopError] = useState<string | null>(null);
+  // "shelf"  → flag stopped_watching=true; show appears on the profile's
+  //            Stopped Watching shelf (default — least destructive).
+  // "remove" → delete the progress row entirely; show no longer appears
+  //            on any profile shelf. User's threads + replies are NOT
+  //            touched. See removeShowFromProfile in lib/db.
+  const [stopMode, setStopMode] = useState<"shelf" | "remove">("shelf");
 
   // Create friend room from profile
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
@@ -1867,6 +1873,7 @@ export default function V3JournalPage({
                 const sid = tabDropdownOpen;
                 setStopShowId(sid);
                 setStopError(null);
+                setStopMode("shelf");
                 setTabDropdownOpen(null);
                 setStopModalOpen(true);
               }}>
@@ -1892,11 +1899,43 @@ export default function V3JournalPage({
         const sName = showName(sid);
         const closeIfIdle = () => { if (!stopSubmitting) { setStopModalOpen(false); setStopError(null); } };
         return (
-          <Modal onClose={closeIfIdle} width="min(420px,92vw)">
+          <Modal onClose={closeIfIdle} width="min(440px,92vw)">
             <div style={{ padding: "16px 12px 12px" }}>
-              <p style={{ margin: "0 0 20px", fontSize: 17, lineHeight: 1.5, fontWeight: 600 }}>
+              <p style={{ margin: "0 0 14px", fontSize: 17, lineHeight: 1.5, fontWeight: 600 }}>
                 Stop watching <em>{sName}</em>?
               </p>
+              {/* Two destinations for the show after stopping. Radios
+                  rather than separate confirm buttons so the user has a
+                  clear default ("shelf") and can change their mind
+                  without re-opening the modal. "remove" runs the same
+                  room-cascade as "shelf" but also deletes the progress
+                  row — see lib/db removeShowFromProfile. */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: stopSubmitting ? "default" : "pointer", fontSize: 14, lineHeight: 1.4 }}>
+                  <input
+                    type="radio"
+                    name="stop-mode"
+                    value="shelf"
+                    checked={stopMode === "shelf"}
+                    onChange={() => setStopMode("shelf")}
+                    disabled={stopSubmitting}
+                    style={{ marginTop: 3, flexShrink: 0 }}
+                  />
+                  <span>Move it to my <strong>Stopped Watching</strong> shelf on my profile.</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: stopSubmitting ? "default" : "pointer", fontSize: 14, lineHeight: 1.4 }}>
+                  <input
+                    type="radio"
+                    name="stop-mode"
+                    value="remove"
+                    checked={stopMode === "remove"}
+                    onChange={() => setStopMode("remove")}
+                    disabled={stopSubmitting}
+                    style={{ marginTop: 3, flexShrink: 0 }}
+                  />
+                  <span>Remove it from my profile entirely.</span>
+                </label>
+              </div>
               {stopError && (
                 <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--danger)" }}>{stopError}</p>
               )}
@@ -1918,43 +1957,40 @@ export default function V3JournalPage({
                     setStopSubmitting(true);
                     setStopError(null);
                     try {
-                      await stopWatching(user.id, profile.username, sid);
+                      if (stopMode === "remove") {
+                        await removeShowFromProfile(user.id, profile.username, sid);
+                      } else {
+                        await stopWatching(user.id, profile.username, sid);
+                      }
                       // Cache invalidate so next App-level progress refetch
-                      // sees stopped_watching=true and the showTabOrder
-                      // filter picks it up there too.
+                      // reflects the new state (stopped or fully-removed).
                       invalidateJournalCache(user.id);
-                      // Per-show session keys: clear so a later search of
-                      // this show lands in a fresh context rather than
-                      // bouncing into the old room/public state.
+                      // Clear per-show session keys so a later search lands
+                      // in a fresh context rather than the old room/public
+                      // state.
                       sessionStorage.removeItem(`ns_browse_prog_${sid}`);
                       sessionStorage.removeItem(`ns_browse_show_${sid}`);
                       sessionStorage.removeItem(`ns_active_group_${sid}`);
                       sessionStorage.removeItem(`ns_came_from_group_${sid}`);
-                      // Local hide is the immediate-feedback path: the
-                      // App-level progress hasn't refetched yet (V3 reads
-                      // it as a prop), so showTabOrder still includes the
-                      // show until the next mount. hideTab pushes it into
-                      // hiddenTabs which visibleTabOrder filters out
-                      // synchronously, so the tab disappears in this
-                      // render cycle.
+                      // Immediate UI hide — App's progress prop won't
+                      // refetch until the next mount, so the tab needs
+                      // a synchronous hide via visibleTabOrder's filter.
                       hideTab(sid);
                       setStopModalOpen(false);
                       setStopSubmitting(false);
-                      // If the closed tab was active, switch to the next
-                      // remaining visible tab (or clear if none).
                       if (sid === activeTab) {
                         const remaining = visibleTabOrder.filter(s => s !== sid);
                         if (remaining.length) setActiveTab(remaining[0]);
                         else setActiveTab("");
                       }
                     } catch (err: any) {
-                      console.warn("stopWatching failed:", err);
-                      setStopError(err?.message || "Couldn't stop watching. Try again.");
+                      console.warn("stop/remove failed:", err);
+                      setStopError(err?.message || (stopMode === "remove" ? "Couldn't remove. Try again." : "Couldn't stop watching. Try again."));
                       setStopSubmitting(false);
                     }
                   }}
                 >
-                  {stopSubmitting ? "Stopping…" : "Stop watching"}
+                  {stopSubmitting ? (stopMode === "remove" ? "Removing…" : "Stopping…") : (stopMode === "remove" ? "Remove" : "Stop watching")}
                 </button>
               </div>
             </div>
