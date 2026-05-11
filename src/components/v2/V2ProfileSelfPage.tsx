@@ -607,7 +607,7 @@ export default function V2ProfileSelfPage() {
                       <div
                         style={{
                           paddingLeft: 14,
-                          borderLeft: `2px solid ${progress[sid]?.watchingQuote ? "var(--danger)" : "rgba(0,0,0,0.12)"}`,
+                          borderLeft: `2px solid ${progress[sid]?.watchingQuote ? "#355eb8" : "rgba(0,0,0,0.12)"}`,
                         }}
                       >
                         <BlurbField
@@ -1085,7 +1085,10 @@ function SortableCard({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 10 : undefined,
+    // Lift the card above siblings when its chevron dropdown is open so the
+    // menu (which extends below the card border) isn't clipped by the next
+    // card down. Drag-time priority kept too.
+    zIndex: chevronOpen ? 30 : (isDragging ? 10 : undefined),
   };
   return (
     <article ref={setNodeRef} className={className} style={wrapperStyle}>
@@ -1158,7 +1161,7 @@ function EditCornerOverlay({
           background: "transparent",
           border: "none",
           padding: 4,
-          color: "#fff",
+          color: "#f45028",
           cursor: "grab",
           touchAction: "none",
           display: "inline-flex",
@@ -1176,7 +1179,7 @@ function EditCornerOverlay({
             background: "transparent",
             border: "none",
             padding: 4,
-            color: "#fff",
+            color: "#f45028",
             cursor: "pointer",
             display: "inline-flex",
             alignItems: "center",
