@@ -7,13 +7,15 @@ import {
   setCanonPin,
   setShelfBlurb,
   setStoppedWatching,
+  removeShowFromProfile,
   type V2BlurbKind,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
 import type { ProgressEntry } from "../../types";
 import V2Layout from "./V2Layout";
 import SearchShows from "../SearchShows";
-import { Plus, Pin } from "lucide-react";
+import Modal from "../Modal";
+import { Plus, Pin, Trash2 } from "lucide-react";
 
 // Shared profile-card style — sharp corners, transparent fill, 2px white
 // outline. Lets the canon-yellow page bg show through; the white outline
@@ -176,6 +178,15 @@ export default function V2ProfileSelfPage() {
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [addOpen, setAddOpen] = useState(false);
 
+  // "Remove this show from profile" — small Trash button on every show
+  // card opens a confirmation modal. On confirm, runs
+  // removeShowFromProfile (room cascade + DELETE progress row) and prunes
+  // the show from local state so the shelf re-renders without it. Threads
+  // and replies on the show are NOT touched.
+  const [removeShowId, setRemoveShowId] = useState<string | null>(null);
+  const [removeSubmitting, setRemoveSubmitting] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -320,10 +331,11 @@ export default function V2ProfileSelfPage() {
                   className="card"
                   style={{
                     ...PROFILE_CARD,
-                    padding: "22px 26px",
+                    padding: "22px 26px 36px",
                     position: "relative",
                   }}
                 >
+                  <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                     <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
@@ -368,9 +380,11 @@ export default function V2ProfileSelfPage() {
                 className="card"
                 style={{
                   ...PROFILE_CARD,
-                  padding: "14px 22px",
+                  padding: "14px 60px 14px 22px",
+                  position: "relative",
                 }}
               >
+                <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                 <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 14 }}>
                   <span style={{ fontSize: 17, fontWeight: 600, color: "var(--dos-fg)" }}>{show.name}</span>
                   <span style={{ flex: 1, minWidth: 200 }}>
@@ -473,10 +487,11 @@ export default function V2ProfileSelfPage() {
                   className="card"
                   style={{
                     ...PROFILE_CARD,
-                    padding: "20px 22px",
+                    padding: "20px 22px 36px",
                     position: "relative",
                   }}
                 >
+                  <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                   <button
                     onClick={async () => {
                       try {
@@ -558,9 +573,11 @@ export default function V2ProfileSelfPage() {
                   className="card"
                   style={{
                     ...PROFILE_CARD,
-                    padding: "20px 22px",
+                    padding: "20px 22px 36px",
+                    position: "relative",
                   }}
                 >
+                  <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                   <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
                     <span style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
                     <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>stopped at {progressShort(p)}</span>
@@ -580,6 +597,72 @@ export default function V2ProfileSelfPage() {
           </div>
         </section>
       )}
+
+      {/* Delete-show-from-profile confirmation modal — same Modal shape
+          as the V3 stop-watching modal (rounded card, no outline, Inter
+          text). On confirm, removeShowFromProfile runs the room cascade
+          and DELETEs the user's progress row; the show vanishes from
+          every shelf. Threads + replies on the show are untouched. */}
+      {removeShowId && user && profile && (() => {
+        const sid = removeShowId;
+        const sName = shows.find((s) => s.id === sid)?.name ?? sid;
+        const closeIfIdle = () => { if (!removeSubmitting) { setRemoveShowId(null); setRemoveError(null); } };
+        return (
+          <Modal onClose={closeIfIdle} width="min(440px,92vw)">
+            <div style={{ padding: "16px 12px 12px" }}>
+              <p style={{ margin: "0 0 12px", fontSize: 17, lineHeight: 1.5, fontWeight: 600 }}>
+                Remove <em>{sName}</em> from your profile?
+              </p>
+              <p style={{ margin: "0 0 18px", fontSize: 14, lineHeight: 1.5, opacity: 0.85 }}>
+                The show vanishes from every shelf. You'll leave any friend rooms on this show and need to be re-invited. Your journal entries and posts on the show stay where they are.
+              </p>
+              {removeError && (
+                <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--danger)" }}>{removeError}</p>
+              )}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button
+                  className="btn"
+                  style={{ fontSize: 14, background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
+                  onClick={closeIfIdle}
+                  disabled={removeSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn"
+                  style={{ fontSize: 14, background: "var(--danger)", border: "2px solid #fff", color: "#fff" }}
+                  disabled={removeSubmitting}
+                  onClick={async () => {
+                    if (!user || !profile || !sid) return;
+                    setRemoveSubmitting(true);
+                    setRemoveError(null);
+                    try {
+                      await removeShowFromProfile(user.id, profile.username, sid);
+                      // Prune from local state so the shelf re-renders
+                      // without the show. App-level progress will refresh
+                      // on the next navigation; this gives immediate
+                      // feedback in the current view.
+                      setProgress((prev) => {
+                        const next = { ...prev };
+                        delete next[sid];
+                        return next;
+                      });
+                      setRemoveShowId(null);
+                      setRemoveSubmitting(false);
+                    } catch (err: any) {
+                      console.warn("removeShowFromProfile failed:", err);
+                      setRemoveError(err?.message || "Couldn't remove. Try again.");
+                      setRemoveSubmitting(false);
+                    }
+                  }}
+                >
+                  {removeSubmitting ? "Removing…" : "Remove"}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
     </V2Layout>
   );
 }
@@ -594,6 +677,40 @@ function ShelfHead({ eyebrow, title }: { eyebrow: string; title: string }) {
         {title}
       </h2>
     </div>
+  );
+}
+
+// Small absolute-positioned trash button rendered on every show card.
+// Opens the confirmation modal via the parent's onClick. Subtle (gray
+// + low opacity) so it doesn't compete with the canon Pin or the show
+// title; gains a hover state via title attribute. Bottom-right rather
+// than top-right because Finished cards already have the Pin in the
+// top-right corner.
+function DeleteShowButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      title="Remove this show from your profile"
+      aria-label="Remove from profile"
+      style={{
+        position: "absolute",
+        bottom: 10,
+        right: 12,
+        background: "transparent",
+        border: "none",
+        cursor: "pointer",
+        padding: 6,
+        borderRadius: 9999,
+        color: "var(--dos-gray)",
+        opacity: 0.55,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        lineHeight: 1,
+      }}
+    >
+      <Trash2 size={14} color="currentColor" />
+    </button>
   );
 }
 
