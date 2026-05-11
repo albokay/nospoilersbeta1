@@ -1448,15 +1448,26 @@ export async function fetchBrowseProgress(
 
 export type PublicProfile = { id: string; username: string; bio: string | null };
 
-/** Resolves a username → userId + bio. Returns null if not found or is a seed user. */
+/** Resolves a username → userId + bio. Returns null if not found or is a seed user.
+ *  Bio-tolerant: if the bio column doesn't exist (migration not applied),
+ *  falls back to the legacy select and returns bio: null. */
 export async function fetchPublicProfileByUsername(username: string): Promise<PublicProfile | null> {
-  const { data } = await supabase
+  let res = await supabase
     .from("profiles")
     .select("id, username, is_seed, bio")
     .eq("username", username)
     .single();
+  let bioSupported = !res.error;
+  if (res.error) {
+    res = await supabase
+      .from("profiles")
+      .select("id, username, is_seed")
+      .eq("username", username)
+      .single();
+  }
+  const data: any = res.data;
   if (!data || data.is_seed) return null;
-  return { id: data.id, username: data.username, bio: data.bio ?? null };
+  return { id: data.id, username: data.username, bio: bioSupported ? (data.bio ?? null) : null };
 }
 
 /** Public threads by a user — only those marked is_public=true. */

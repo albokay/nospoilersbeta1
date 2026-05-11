@@ -21,18 +21,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase
+    // Try with bio first; if the bio column doesn't exist in this env
+    // (migration 20260510_profile_bio.sql not yet applied), fall back
+    // to the legacy select. Without this fallback, the failed select
+    // returns data=null and profile gets set to null — which cascades
+    // to /v3/journal and /profile rendering blank because both are
+    // gated on profile.username being defined.
+    let res = await supabase
       .from("profiles")
       .select("id, username, is_seed, is_admin, bio")
       .eq("id", userId)
       .single();
-    if (data) {
+    let bioSupported = !res.error;
+    if (res.error) {
+      res = await supabase
+        .from("profiles")
+        .select("id, username, is_seed, is_admin")
+        .eq("id", userId)
+        .single();
+    }
+    if (res.data) {
       setProfile({
-        id: data.id,
-        username: data.username,
-        is_seed: data.is_seed,
-        is_admin: data.is_admin,
-        bio: data.bio ?? null,
+        id: res.data.id,
+        username: res.data.username,
+        is_seed: res.data.is_seed,
+        is_admin: res.data.is_admin,
+        bio: bioSupported ? (res.data.bio ?? null) : null,
       });
     } else {
       setProfile(null);
