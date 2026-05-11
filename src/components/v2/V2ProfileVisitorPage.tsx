@@ -67,6 +67,9 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
   const [ownerPublicThreads, setOwnerPublicThreads] = useState<Thread[]>([]);
   const [visitorProgress, setVisitorProgress] = useState<Record<string, ProgressEntry>>({});
   const [sharedRooms, setSharedRooms] = useState<SharedRoomRow[]>([]);
+  // Owner's bio — read-only on the visitor view. Populated from
+  // fetchPublicProfileByUsername (extended in commit D to return bio).
+  const [ownerBio, setOwnerBio] = useState<string | null>(null);
 
   // Bootstrap owner data — works for logged-out visitors too.
   useEffect(() => {
@@ -81,6 +84,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
           return;
         }
         setOwnerId(p.id);
+        setOwnerBio(p.bio);
         return Promise.all([
           fetchShows(),
           fetchPublicProgressForUser(p.id),
@@ -232,6 +236,24 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
         <div style={{ fontSize: 14, color: "var(--dos-gray)", marginBottom: 12 }}>
           @{username}
         </div>
+        {/* Owner's bio if set. Read-only on visitor view; the owner
+            edits via V2ProfileSelfPage's BioField. Migration:
+            20260510_profile_bio.sql. */}
+        {ownerBio && (
+          <p
+            style={{
+              fontFamily: "Lora, Georgia, serif",
+              fontStyle: "italic",
+              fontSize: 17,
+              color: "var(--dos-fg)",
+              maxWidth: 540,
+              margin: "0 auto 12px",
+              lineHeight: 1.5,
+            }}
+          >
+            {ownerBio}
+          </p>
+        )}
         {!user && (
           <div
             style={{

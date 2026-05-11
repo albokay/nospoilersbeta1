@@ -8,6 +8,8 @@ import {
   setShelfBlurb,
   setStoppedWatching,
   removeShowFromProfile,
+  setProfileBio,
+  V2_BIO_MAX,
   type V2BlurbKind,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
@@ -62,6 +64,113 @@ function formatJoinedSince(createdAt?: string): string {
   if (!createdAt) return "";
   const d = new Date(createdAt);
   return d.toLocaleString("en-US", { month: "long", year: "numeric" });
+}
+
+// Inline editable bio for the profile header. Same pattern as BlurbField
+// but writes to profiles.bio (via setProfileBio) instead of a per-show
+// shelf blurb. Click placeholder → textarea; blur or Cmd/Ctrl+Enter
+// saves; Esc cancels. Whitespace-only persists as NULL so the placeholder
+// re-renders. Local bio state lives in V2ProfileSelfPage and is mirrored
+// from auth.profile.bio on mount; after save we update local state
+// immediately for snappy feedback (the auth.profile won't re-fetch
+// until the next session resolve, but that's fine for this surface).
+function BioField({
+  value,
+  placeholder,
+  userId,
+  onSaved,
+}: {
+  value: string | null;
+  placeholder: string;
+  userId: string;
+  onSaved: (next: string | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(value ?? "");
+  }, [value]);
+
+  async function commit() {
+    if (saving) return;
+    const next = draft.trim();
+    if ((next || "") === (value ?? "")) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await setProfileBio(userId, next || null);
+      onSaved(next || null);
+      setEditing(false);
+    } catch (err) {
+      console.warn("setProfileBio failed (recoverable):", err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <textarea
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setDraft(value ?? "");
+            setEditing(false);
+          } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            commit();
+          }
+        }}
+        placeholder={placeholder}
+        maxLength={V2_BIO_MAX}
+        style={{
+          width: "100%",
+          maxWidth: 540,
+          minHeight: 80,
+          fontSize: 17,
+          lineHeight: 1.5,
+          fontFamily: "Lora, Georgia, serif",
+          fontStyle: "italic",
+          color: "var(--dos-fg)",
+          background: "rgba(255,255,255,0.18)",
+          border: "2px solid #fff",
+          borderRadius: 14,
+          padding: 12,
+          resize: "vertical",
+          outline: "none",
+        }}
+      />
+    );
+  }
+
+  const isPlaceholder = !value;
+  return (
+    <p
+      onClick={() => setEditing(true)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter") setEditing(true); }}
+      style={{
+        cursor: "text",
+        fontFamily: "Lora, Georgia, serif",
+        fontStyle: "italic",
+        fontSize: 17,
+        color: isPlaceholder ? "var(--dos-gray)" : "var(--dos-fg)",
+        opacity: isPlaceholder ? 0.7 : 1,
+        maxWidth: 540,
+        margin: 0,
+        lineHeight: 1.5,
+      }}
+    >
+      {value || placeholder}
+    </p>
+  );
 }
 
 // Inline editable blurb. Click pencil → text field; Enter / blur saves;
@@ -187,6 +296,14 @@ export default function V2ProfileSelfPage() {
   const [removeSubmitting, setRemoveSubmitting] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
+  // Local mirror of profile.bio so post-save updates feel snappy without
+  // waiting for AuthProvider's loadProfile to re-fetch. Initial value
+  // syncs from auth.profile when it lands.
+  const [bio, setBio] = useState<string | null>(profile?.bio ?? null);
+  useEffect(() => {
+    setBio(profile?.bio ?? null);
+  }, [profile?.bio]);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -272,22 +389,19 @@ export default function V2ProfileSelfPage() {
         >
           @{profile?.username ?? "—"}
         </h1>
-        {/* Bio placeholder — clickable inline-edit lands in Commit D
-            (needs profiles.bio column migration). For now we show the
-            new placeholder copy so the page reads correctly. */}
-        <p
-          style={{
-            fontFamily: "Lora, Georgia, serif",
-            fontStyle: "italic",
-            fontSize: 17,
-            color: "var(--dos-gray)",
-            maxWidth: 540,
-            margin: 0,
-            lineHeight: 1.5,
-          }}
-        >
-          share something about who you are as a TV viewer…
-        </p>
+        {/* Bio — inline editable. Click the placeholder (or existing bio
+            text) to open a textarea; blur or Cmd/Ctrl+Enter saves; Esc
+            cancels. Persists to profiles.bio (migration
+            20260510_profile_bio.sql). Visible to anyone viewing this
+            user's public profile. */}
+        {user && (
+          <BioField
+            value={bio}
+            placeholder="share something about who you are as a TV viewer…"
+            userId={user.id}
+            onSaved={(next) => setBio(next)}
+          />
+        )}
       </header>
 
       {/* === META PROSE === */}

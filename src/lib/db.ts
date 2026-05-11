@@ -1248,6 +1248,28 @@ export async function setCanonPin(
 
 export type V2BlurbKind = "watching_quote" | "want_reason" | "canon_take" | "stopped_reason";
 
+// Profile bio character cap. Same magnitude as V2_BLURB_MAX (280) so the
+// per-show shelf blurbs and the page-level bio share a length budget the
+// user can mentally model.
+export const V2_BIO_MAX = 280;
+
+/**
+ * Update the user's profile bio. RLS gates this to id = auth.uid() (see
+ * profiles_update policy). Whitespace-only saves as NULL so the
+ * placeholder copy re-renders rather than the user's empty string.
+ */
+export async function setProfileBio(userId: string, text: string | null): Promise<void> {
+  if (text !== null && text.length > V2_BIO_MAX) {
+    throw new Error(`Bio exceeds ${V2_BIO_MAX} characters.`);
+  }
+  const trimmed = text === null ? null : (text.trim() || null);
+  const { error } = await supabase
+    .from("profiles")
+    .update({ bio: trimmed })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
 export async function setShelfBlurb(
   userId: string,
   showId: string,
@@ -1424,17 +1446,17 @@ export async function fetchBrowseProgress(
 
 // ── Public profile ────────────────────────────────────────────────────────────
 
-export type PublicProfile = { id: string; username: string };
+export type PublicProfile = { id: string; username: string; bio: string | null };
 
-/** Resolves a username → userId. Returns null if not found or is a seed user. */
+/** Resolves a username → userId + bio. Returns null if not found or is a seed user. */
 export async function fetchPublicProfileByUsername(username: string): Promise<PublicProfile | null> {
   const { data } = await supabase
     .from("profiles")
-    .select("id, username, is_seed")
+    .select("id, username, is_seed, bio")
     .eq("username", username)
     .single();
   if (!data || data.is_seed) return null;
-  return { id: data.id, username: data.username };
+  return { id: data.id, username: data.username, bio: data.bio ?? null };
 }
 
 /** Public threads by a user — only those marked is_public=true. */
