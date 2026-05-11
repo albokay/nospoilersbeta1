@@ -29,7 +29,11 @@ import { navigateToShow } from "./v2nav";
 
 type ShelfStatus = "watching" | "want" | "finished" | "stopped";
 
+// Mirrors V2ProfileSelfPage.classifyShow — explicit shelf_override (owner's
+// last manual chevron-move) wins over both stoppedWatching and progress
+// derivation. Visitors see the owner's shelves as the owner organized them.
 function classifyShow(p: ProgressEntry, show: Show | undefined): ShelfStatus {
+  if (p.shelfOverride) return p.shelfOverride;
   if (p.stoppedWatching) return "stopped";
   if (p.s === 0 && p.e === 0) return "want";
   if (show?.seasons && show.seasons.length > 0) {
@@ -40,6 +44,39 @@ function classifyShow(p: ProgressEntry, show: Show | undefined): ShelfStatus {
     if (checkS >= finalS && checkE >= finalE) return "finished";
   }
   return "watching";
+}
+
+// Mirrors V2ProfileSelfPage.sortShelf — position-mode if any row has a
+// shelf_position; else alphabetical with pin priority for Finished.
+function sortShelf(
+  sids: string[],
+  shelf: ShelfStatus,
+  shows: Show[],
+  progress: Record<string, ProgressEntry>
+): string[] {
+  const byName = (a: string, b: string) => {
+    const an = shows.find((s) => s.id === a)?.name ?? a;
+    const bn = shows.find((s) => s.id === b)?.name ?? b;
+    return an.localeCompare(bn);
+  };
+  const anyPositioned = sids.some((s) => progress[s]?.shelfPosition != null);
+  if (anyPositioned) {
+    return [...sids].sort((a, b) => {
+      const pa = progress[a]?.shelfPosition;
+      const pb = progress[b]?.shelfPosition;
+      if (pa == null && pb == null) return byName(a, b);
+      if (pa == null) return 1;
+      if (pb == null) return -1;
+      if (pa === pb) return byName(a, b);
+      return pa - pb;
+    });
+  }
+  if (shelf === "finished") {
+    const pinned = sids.filter((sid) => progress[sid]?.canonPin).sort(byName);
+    const unpinned = sids.filter((sid) => !progress[sid]?.canonPin).sort(byName);
+    return [...pinned, ...unpinned];
+  }
+  return [...sids].sort(byName);
 }
 
 function progressShort(p: ProgressEntry): string {
@@ -138,21 +175,16 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
       const show = shows.find((s) => s.id === sid);
       out[classifyShow(p, show)].push(sid);
     }
-    const byName = (a: string, b: string) => {
-      const an = shows.find((s) => s.id === a)?.name ?? a;
-      const bn = shows.find((s) => s.id === b)?.name ?? b;
-      return an.localeCompare(bn);
-    };
-    out.watching.sort(byName);
-    out.want.sort(byName);
-    out.finished.sort(byName);
-    out.stopped.sort(byName);
+    out.watching = sortShelf(out.watching, "watching", shows, ownerProgress);
+    out.want = sortShelf(out.want, "want", shows, ownerProgress);
+    out.finished = sortShelf(out.finished, "finished", shows, ownerProgress);
+    out.stopped = sortShelf(out.stopped, "stopped", shows, ownerProgress);
     return out;
   }, [ownerProgress, shows]);
 
-  const finishedPinned = buckets.finished.filter((sid) => ownerProgress[sid]?.canonPin);
-  const finishedUnpinned = buckets.finished.filter((sid) => !ownerProgress[sid]?.canonPin);
-  const finishedDisplay = [...finishedPinned, ...finishedUnpinned];
+  // sortShelf already handles pin-priority fallback when no positions exist,
+  // so buckets.finished is already correctly ordered for display.
+  const finishedDisplay = buckets.finished;
 
   // Per-show context maps for fast lookup during render.
   const sharedRoomByShow = useMemo(() => {

@@ -1097,11 +1097,29 @@ export async function fetchAdminUserActivity(userId: string): Promise<AdminUserA
 // ── Progress ──────────────────────────────────────────────────────────────────
 
 export async function fetchProgress(userId: string): Promise<Record<string, import("../types").ProgressEntry>> {
-  const { data, error } = await supabase
-    .from("progress")
-    .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason")
-    .eq("user_id", userId);
-  if (error) throw error;
+  // Try-with-fallback: select including the 2026-05-11 shelf-display columns
+  // first; on failure (column doesn't exist — code-first deploy before the
+  // migration runs) fall back to the legacy select. Same pattern as the bio
+  // migration. Safe to drop the fallback once every env has the columns.
+  let data: any[] | null = null;
+  let usedFallback = false;
+  {
+    const res = await supabase
+      .from("progress")
+      .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason, shelf_override, shelf_position")
+      .eq("user_id", userId);
+    if (res.error) {
+      const legacy = await supabase
+        .from("progress")
+        .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason")
+        .eq("user_id", userId);
+      if (legacy.error) throw legacy.error;
+      data = legacy.data;
+      usedFallback = true;
+    } else {
+      data = res.data;
+    }
+  }
   const result: Record<string, import("../types").ProgressEntry> = {};
   for (const row of data ?? []) {
     result[row.show_id] = {
@@ -1121,6 +1139,9 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
       wantReason:      row.want_reason ?? undefined,
       canonTake:       row.canon_take ?? undefined,
       stoppedReason:   row.stopped_reason ?? undefined,
+      // v2 profile-display columns (2026-05-11). null when on legacy fallback.
+      shelfOverride:   usedFallback ? null : (row.shelf_override ?? null),
+      shelfPosition:   usedFallback ? null : (row.shelf_position ?? null),
     };
   }
   return result;
@@ -1244,6 +1265,58 @@ export async function setCanonPin(
     .eq("user_id", userId)
     .eq("show_id", showId);
   if (error) throw error;
+}
+
+// === v2 profile-display layer (2026-05-11) =====================================
+//
+// shelfOverride pins a (user, show) to a specific shelf on the V2 profile UI
+// regardless of progress / stopped_watching. NULL = derive shelf from progress
+// (legacy behavior). Override takes priority over both stoppedWatching and the
+// (s, e) derivation when set.
+//
+// shelfPosition orders rows within their resolved shelf. After the first drag
+// in a shelf the V2 client writes positions for ALL items in that shelf via
+// setShelfPositions, so position-mode is consistent within a shelf.
+//
+// Both writes are owner-only via the existing progress RLS policy.
+
+export type ShelfName = "watching" | "want" | "finished" | "stopped";
+
+export async function setShelfOverride(
+  userId: string,
+  showId: string,
+  value: ShelfName | null
+): Promise<void> {
+  const { error } = await supabase
+    .from("progress")
+    .update({ shelf_override: value })
+    .eq("user_id", userId)
+    .eq("show_id", showId);
+  if (error) throw error;
+}
+
+// Bulk-update positions for a list of (showId, position) pairs in one user's
+// progress rows. Used by the V2 profile drag-reorder: after a drop, the client
+// computes new indices for every visible row in the affected shelf and ships
+// them in one call. N parallel UPDATEs (one per row) — fine for shelf sizes in
+// the 10–50 range we expect at beta scale.
+export async function setShelfPositions(
+  userId: string,
+  updates: { showId: string; position: number | null }[]
+): Promise<void> {
+  if (!updates.length) return;
+  const errors: any[] = [];
+  await Promise.all(
+    updates.map(async (u) => {
+      const { error } = await supabase
+        .from("progress")
+        .update({ shelf_position: u.position })
+        .eq("user_id", userId)
+        .eq("show_id", u.showId);
+      if (error) errors.push(error);
+    })
+  );
+  if (errors.length) throw errors[0];
 }
 
 export type V2BlurbKind = "watching_quote" | "want_reason" | "canon_take" | "stopped_reason";
@@ -1561,6 +1634,10 @@ export async function fetchPublicProgressForUser(
       wantReason:      row.want_reason ?? undefined,
       canonTake:       row.canon_take ?? undefined,
       stoppedReason:   row.stopped_reason ?? undefined,
+      // v2 profile-display columns (2026-05-11). undefined when the RPC is
+      // still on the pre-v3 shape; default to null in that case.
+      shelfOverride:   (row.shelf_override ?? null) as ("watching" | "want" | "finished" | "stopped" | null),
+      shelfPosition:   row.shelf_position ?? null,
     };
   }
   return result;

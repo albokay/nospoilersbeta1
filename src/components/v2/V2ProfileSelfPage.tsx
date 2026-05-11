@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import {
@@ -10,15 +10,36 @@ import {
   removeShowFromProfile,
   setProfileBio,
   upsertRewatchStatus,
+  setShelfOverride,
+  setShelfPositions,
   V2_BIO_MAX,
   type V2BlurbKind,
+  type ShelfName,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
 import type { ProgressEntry } from "../../types";
 import V2Layout from "./V2Layout";
 import SearchShows from "../SearchShows";
 import Modal from "../Modal";
-import { Plus, Pin, Trash2 } from "lucide-react";
+import { Plus, Pin, Trash2, SquarePen, GripVertical, ChevronDown } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // Shared profile-card style — sharp corners, transparent fill, 2px white
 // outline. Lets the canon-yellow page bg show through; the white outline
@@ -43,7 +64,13 @@ const PROFILE_ADD_TILE: React.CSSProperties = {
 
 type ShelfStatus = "watching" | "want" | "finished" | "stopped";
 
+// Shelf classification. Priority order: explicit shelf_override (user's last
+// manual choice via the V2 profile chevron-move) > stoppedWatching (V3
+// close-show cascade) > progress-derived (s, e). Override takes precedence
+// even over the stopped flag — a user can chevron-move a cascade-stopped show
+// back to Watching/Want/Finished and the override wins for display.
 function classifyShow(p: ProgressEntry, show: Show | undefined): ShelfStatus {
+  if (p.shelfOverride) return p.shelfOverride;
   if (p.stoppedWatching) return "stopped";
   if (p.s === 0 && p.e === 0) return "want";
   if (show?.seasons && show.seasons.length > 0) {
@@ -54,6 +81,40 @@ function classifyShow(p: ProgressEntry, show: Show | undefined): ShelfStatus {
     if (checkS >= finalS && checkE >= finalE) return "finished";
   }
   return "watching";
+}
+
+// Sort a shelf's show-id list. If ANY row in the shelf has a non-null
+// shelf_position, use position-mode (sort by position asc, nulls last). Else
+// fall back to alphabetical, with canon-pin priority for Finished (legacy).
+function sortShelf(
+  sids: string[],
+  shelf: ShelfStatus,
+  shows: Show[],
+  progress: Record<string, ProgressEntry>
+): string[] {
+  const byName = (a: string, b: string) => {
+    const an = shows.find((s) => s.id === a)?.name ?? a;
+    const bn = shows.find((s) => s.id === b)?.name ?? b;
+    return an.localeCompare(bn);
+  };
+  const anyPositioned = sids.some((s) => progress[s]?.shelfPosition != null);
+  if (anyPositioned) {
+    return [...sids].sort((a, b) => {
+      const pa = progress[a]?.shelfPosition;
+      const pb = progress[b]?.shelfPosition;
+      if (pa == null && pb == null) return byName(a, b);
+      if (pa == null) return 1;
+      if (pb == null) return -1;
+      if (pa === pb) return byName(a, b);
+      return pa - pb;
+    });
+  }
+  if (shelf === "finished") {
+    const pinned = sids.filter((sid) => progress[sid]?.canonPin).sort(byName);
+    const unpinned = sids.filter((sid) => !progress[sid]?.canonPin).sort(byName);
+    return [...pinned, ...unpinned];
+  }
+  return [...sids].sort(byName);
 }
 
 function progressShort(p: ProgressEntry): string {
@@ -332,26 +393,19 @@ export default function V2ProfileSelfPage() {
       const show = shows.find((s) => s.id === sid);
       out[classifyShow(p, show)].push(sid);
     }
-    // alphabetical within each shelf for stability
-    const byName = (a: string, b: string) => {
-      const an = shows.find((s) => s.id === a)?.name ?? a;
-      const bn = shows.find((s) => s.id === b)?.name ?? b;
-      return an.localeCompare(bn);
-    };
-    out.watching.sort(byName);
-    out.want.sort(byName);
-    out.finished.sort(byName);
-    out.stopped.sort(byName);
+    // Per-shelf sort: position-mode if any row has a position, else
+    // alphabetical (with pin priority retained for finished as legacy).
+    out.watching = sortShelf(out.watching, "watching", shows, progress);
+    out.want = sortShelf(out.want, "want", shows, progress);
+    out.finished = sortShelf(out.finished, "finished", shows, progress);
+    out.stopped = sortShelf(out.stopped, "stopped", shows, progress);
     return out;
   }, [progress, shows]);
 
-  // Pinned canon shows surface above the see-all link.
-  const finishedPinned = buckets.finished.filter((sid) => progress[sid]?.canonPin);
-  const finishedUnpinned = buckets.finished.filter((sid) => !progress[sid]?.canonPin);
-  // For checkpoint 4 we render: pinned first, then unpinned, then a footer
-  // "see all N shows" CTA. The expanded view (true canon expansion) is
-  // tabled per the design spec; the CTA is visible-only.
-  const finishedDisplay = [...finishedPinned, ...finishedUnpinned];
+  // Finished display: when no row has been drag-positioned, fall back to the
+  // legacy pinned-first-then-unpinned ordering. sortShelf already does this,
+  // but the see-all CTA still uses the total count separately below.
+  const finishedDisplay = buckets.finished;
 
   if (!authLoading && !user) {
     return <V2Layout palette="profile"><div /></V2Layout>;
@@ -359,6 +413,81 @@ export default function V2ProfileSelfPage() {
 
   function updateLocalProgress(showId: string, patch: Partial<ProgressEntry>) {
     setProgress((prev) => ({ ...prev, [showId]: { ...prev[showId], ...patch } }));
+  }
+
+  // === Edit / move / reorder state =========================================
+  //
+  // editingShelves: which shelves are in edit mode. Independent per-shelf
+  //   toggles via the SquarePen button in each ShelfHead.
+  // openChevronSid: which ticket's move-to dropdown is open (single, since
+  //   the dropdown is portal-free + opening another auto-closes the prior).
+  const [editingShelves, setEditingShelves] = useState<Set<ShelfStatus>>(new Set());
+  const [openChevronSid, setOpenChevronSid] = useState<string | null>(null);
+
+  function toggleShelfEdit(shelf: ShelfStatus) {
+    setEditingShelves((prev) => {
+      const next = new Set(prev);
+      if (next.has(shelf)) next.delete(shelf);
+      else next.add(shelf);
+      return next;
+    });
+    // Closing the chevron when exiting edit mode is implicit — the dropdown
+    // only renders when its ticket is in edit mode.
+    setOpenChevronSid(null);
+  }
+
+  // Chevron-move: write shelf_override + clear shelf_position (the row enters
+  // its new shelf with no explicit position; lands at the end alphabetically
+  // until the user drag-reorders the new shelf). Optimistic local update so
+  // the ticket appears on the new shelf immediately.
+  async function handleMoveToShelf(showId: string, target: ShelfName) {
+    if (!user) return;
+    setOpenChevronSid(null);
+    try {
+      await setShelfOverride(user.id, showId, target);
+      updateLocalProgress(showId, { shelfOverride: target, shelfPosition: null });
+    } catch (err) {
+      console.warn("setShelfOverride failed:", err);
+    }
+  }
+
+  // dnd-kit sensors. PointerSensor with activationConstraint avoids
+  // hijacking clicks on the chevron/grip; KeyboardSensor is the standard
+  // accessibility add.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Drag-end handler builder: returns a handler scoped to a specific shelf.
+  // On drop, computes the new ordering for that shelf, optimistically updates
+  // local positions, then writes positions for ALL items in that shelf.
+  function makeDragEndHandler(shelf: ShelfStatus) {
+    return async function handleDragEnd(ev: DragEndEvent) {
+      const { active, over } = ev;
+      if (!user || !over || active.id === over.id) return;
+      const current = buckets[shelf];
+      const oldIndex = current.indexOf(String(active.id));
+      const newIndex = current.indexOf(String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return;
+      const reordered = arrayMove(current, oldIndex, newIndex);
+      // Optimistic: assign 0..N positions locally, then persist.
+      setProgress((prev) => {
+        const next = { ...prev };
+        reordered.forEach((sid, i) => {
+          if (next[sid]) next[sid] = { ...next[sid], shelfPosition: i };
+        });
+        return next;
+      });
+      try {
+        await setShelfPositions(
+          user.id,
+          reordered.map((sid, i) => ({ showId: sid, position: i }))
+        );
+      } catch (err) {
+        console.warn("setShelfPositions failed:", err);
+      }
+    };
   }
 
   return (
@@ -434,89 +563,119 @@ export default function V2ProfileSelfPage() {
       {/* === WATCHING NOW === */}
       {buckets.watching.length > 0 && (
         <section style={{ marginBottom: 56 }}>
-          <ShelfHead eyebrow="what you're in the middle of:" title="Watching Now" />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14 }}>
-            {buckets.watching.map((sid) => {
-              const show = shows.find((s) => s.id === sid);
-              const p = progress[sid];
-              if (!show || !p || !user) return null;
-              return (
-                <article
-                  key={sid}
-                  className="card"
-                  style={{
-                    ...PROFILE_CARD,
-                    padding: "22px 26px 36px",
-                    position: "relative",
-                  }}
-                >
-                  <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                    <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
-                      <ProgressBadge progress={p} />
-                    </div>
-                    {p.isRewatching && <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>rewatch</span>}
-                  </div>
-                  <div
-                    style={{
-                      paddingLeft: 14,
-                      borderLeft: `2px solid ${progress[sid]?.watchingQuote ? "var(--danger)" : "rgba(0,0,0,0.12)"}`,
-                    }}
-                  >
-                    <BlurbField
-                      kind="watching_quote"
-                      value={p.watchingQuote}
-                      placeholder="add a first impression…"
-                      italic
-                      userId={user.id}
-                      showId={sid}
-                      onSaved={(v) => updateLocalProgress(sid, { watchingQuote: v })}
-                    />
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+          <ShelfHead
+            eyebrow="what you're in the middle of:"
+            title="Watching Now"
+            editing={editingShelves.has("watching")}
+            onToggleEdit={() => toggleShelfEdit("watching")}
+          />
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={makeDragEndHandler("watching")}>
+            <SortableContext items={buckets.watching} strategy={verticalListSortingStrategy}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14 }}>
+                {buckets.watching.map((sid) => {
+                  const show = shows.find((s) => s.id === sid);
+                  const p = progress[sid];
+                  if (!show || !p || !user) return null;
+                  const isEditing = editingShelves.has("watching");
+                  return (
+                    <SortableCard
+                      key={sid}
+                      sid={sid}
+                      editing={isEditing}
+                      currentShelf="watching"
+                      chevronOpen={openChevronSid === sid}
+                      onChevronToggle={() => setOpenChevronSid((cur) => (cur === sid ? null : sid))}
+                      onMoveToShelf={(target) => handleMoveToShelf(sid, target)}
+                      className="card"
+                      style={{
+                        ...PROFILE_CARD,
+                        padding: isEditing ? "36px 26px 36px" : "22px 26px 36px",
+                        position: "relative",
+                      }}
+                    >
+                      <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                        <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
+                          <ProgressBadge progress={p} />
+                        </div>
+                        {p.isRewatching && <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>rewatch</span>}
+                      </div>
+                      <div
+                        style={{
+                          paddingLeft: 14,
+                          borderLeft: `2px solid ${progress[sid]?.watchingQuote ? "var(--danger)" : "rgba(0,0,0,0.12)"}`,
+                        }}
+                      >
+                        <BlurbField
+                          kind="watching_quote"
+                          value={p.watchingQuote}
+                          placeholder="add a first impression…"
+                          italic
+                          userId={user.id}
+                          showId={sid}
+                          onSaved={(v) => updateLocalProgress(sid, { watchingQuote: v })}
+                        />
+                      </div>
+                    </SortableCard>
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
         </section>
       )}
 
       {/* === WANT TO WATCH (always renders for the + add tile) === */}
       <section style={{ marginBottom: 56 }}>
-        <ShelfHead eyebrow="on your list, not yet started:" title="Want to Watch" />
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {buckets.want.map((sid) => {
-            const show = shows.find((s) => s.id === sid);
-            const p = progress[sid];
-            if (!show || !p || !user) return null;
-            return (
-              <article
-                key={sid}
-                className="card"
-                style={{
-                  ...PROFILE_CARD,
-                  padding: "14px 60px 14px 22px",
-                  position: "relative",
-                }}
-              >
-                <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
-                <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 14 }}>
-                  <span style={{ fontSize: 17, fontWeight: 600, color: "var(--dos-fg)" }}>{show.name}</span>
-                  <span style={{ flex: 1, minWidth: 200 }}>
-                    <BlurbField
-                      kind="want_reason"
-                      value={p.wantReason}
-                      placeholder="add a reason…"
-                      italic
-                      userId={user.id}
-                      showId={sid}
-                      onSaved={(v) => updateLocalProgress(sid, { wantReason: v })}
-                    />
-                  </span>
-                </div>
-              </article>
-            );
-          })}
+        <ShelfHead
+          eyebrow="on your list, not yet started:"
+          title="Want to Watch"
+          editing={editingShelves.has("want")}
+          onToggleEdit={() => toggleShelfEdit("want")}
+        />
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={makeDragEndHandler("want")}>
+          <SortableContext items={buckets.want} strategy={verticalListSortingStrategy}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {buckets.want.map((sid) => {
+                const show = shows.find((s) => s.id === sid);
+                const p = progress[sid];
+                if (!show || !p || !user) return null;
+                const isEditing = editingShelves.has("want");
+                return (
+                  <SortableCard
+                    key={sid}
+                    sid={sid}
+                    editing={isEditing}
+                    currentShelf="want"
+                    chevronOpen={openChevronSid === sid}
+                    onChevronToggle={() => setOpenChevronSid((cur) => (cur === sid ? null : sid))}
+                    onMoveToShelf={(target) => handleMoveToShelf(sid, target)}
+                    className="card"
+                    style={{
+                      ...PROFILE_CARD,
+                      padding: isEditing ? "36px 60px 14px 22px" : "14px 60px 14px 22px",
+                      position: "relative",
+                    }}
+                  >
+                    <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
+                    <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 14 }}>
+                      <span style={{ fontSize: 17, fontWeight: 600, color: "var(--dos-fg)" }}>{show.name}</span>
+                      <span style={{ flex: 1, minWidth: 200 }}>
+                        <BlurbField
+                          kind="want_reason"
+                          value={p.wantReason}
+                          placeholder="add a reason…"
+                          italic
+                          userId={user.id}
+                          showId={sid}
+                          onSaved={(v) => updateLocalProgress(sid, { wantReason: v })}
+                        />
+                      </span>
+                    </div>
+                  </SortableCard>
+                );
+              })}
 
           {/* + add tile — opens inline SearchShows. The component already
               defaults to (0,0) per 80299d9 so any pick lands as want-to-watch. */}
@@ -591,29 +750,45 @@ export default function V2ProfileSelfPage() {
               </button>
             </div>
           )}
-        </div>
+            </div>
+          </SortableContext>
+        </DndContext>
       </section>
 
       {/* === FINISHED WATCHING === */}
       {finishedDisplay.length > 0 && (
         <section style={{ marginBottom: 56 }}>
-          <ShelfHead eyebrow="shows you've completed:" title="Finished Watching" />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
-            {finishedDisplay.map((sid) => {
-              const show = shows.find((s) => s.id === sid);
-              const p = progress[sid];
-              if (!show || !p || !user) return null;
-              const pinned = !!p.canonPin;
-              return (
-                <article
-                  key={sid}
-                  className="card"
-                  style={{
-                    ...PROFILE_CARD,
-                    padding: "20px 22px 36px",
-                    position: "relative",
-                  }}
-                >
+          <ShelfHead
+            eyebrow="shows you've completed:"
+            title="Finished Watching"
+            editing={editingShelves.has("finished")}
+            onToggleEdit={() => toggleShelfEdit("finished")}
+          />
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={makeDragEndHandler("finished")}>
+            <SortableContext items={finishedDisplay} strategy={rectSortingStrategy}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                {finishedDisplay.map((sid) => {
+                  const show = shows.find((s) => s.id === sid);
+                  const p = progress[sid];
+                  if (!show || !p || !user) return null;
+                  const pinned = !!p.canonPin;
+                  const isEditing = editingShelves.has("finished");
+                  return (
+                    <SortableCard
+                      key={sid}
+                      sid={sid}
+                      editing={isEditing}
+                      currentShelf="finished"
+                      chevronOpen={openChevronSid === sid}
+                      onChevronToggle={() => setOpenChevronSid((cur) => (cur === sid ? null : sid))}
+                      onMoveToShelf={(target) => handleMoveToShelf(sid, target)}
+                      className="card"
+                      style={{
+                        ...PROFILE_CARD,
+                        padding: isEditing ? "36px 22px 36px" : "20px 22px 36px",
+                        position: "relative",
+                      }}
+                    >
                   <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                   <button
                     onClick={async () => {
@@ -647,22 +822,24 @@ export default function V2ProfileSelfPage() {
                   >
                     {pinned ? "canon" : <Pin size={14} color="currentColor" />}
                   </button>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2, paddingRight: 64, marginBottom: 10 }}>
-                    {show.name}
-                  </div>
-                  <BlurbField
-                    kind="canon_take"
-                    value={p.canonTake}
-                    placeholder="add a take…"
-                    italic
-                    userId={user.id}
-                    showId={sid}
-                    onSaved={(v) => updateLocalProgress(sid, { canonTake: v })}
-                  />
-                </article>
-              );
-            })}
-          </div>
+                      <div style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2, paddingRight: 64, marginBottom: 10 }}>
+                        {show.name}
+                      </div>
+                      <BlurbField
+                        kind="canon_take"
+                        value={p.canonTake}
+                        placeholder="add a take…"
+                        italic
+                        userId={user.id}
+                        showId={sid}
+                        onSaved={(v) => updateLocalProgress(sid, { canonTake: v })}
+                      />
+                    </SortableCard>
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
           {/* see-all CTA — wired in a later checkpoint when the expanded view is designed. */}
           <div style={{ textAlign: "center", marginTop: 18 }}>
             <button
@@ -684,40 +861,56 @@ export default function V2ProfileSelfPage() {
           the Watching Now title row, then the blurb below. */}
       {buckets.stopped.length > 0 && (
         <section style={{ marginBottom: 56 }}>
-          <ShelfHead eyebrow="shows you've stopped, for now:" title="Stopped Watching" />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
-            {buckets.stopped.map((sid) => {
-              const show = shows.find((s) => s.id === sid);
-              const p = progress[sid];
-              if (!show || !p || !user) return null;
-              return (
-                <article
-                  key={sid}
-                  className="card"
-                  style={{
-                    ...PROFILE_CARD,
-                    padding: "20px 22px 36px",
-                    position: "relative",
-                  }}
-                >
-                  <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
-                  <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-                    <span style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
-                    <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>stopped at {progressShort(p)}</span>
-                  </div>
-                  <BlurbField
-                    kind="stopped_reason"
-                    value={p.stoppedReason}
-                    placeholder="add a reason…"
-                    italic
-                    userId={user.id}
-                    showId={sid}
-                    onSaved={(v) => updateLocalProgress(sid, { stoppedReason: v })}
-                  />
-                </article>
-              );
-            })}
-          </div>
+          <ShelfHead
+            eyebrow="shows you've stopped, for now:"
+            title="Stopped Watching"
+            editing={editingShelves.has("stopped")}
+            onToggleEdit={() => toggleShelfEdit("stopped")}
+          />
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={makeDragEndHandler("stopped")}>
+            <SortableContext items={buckets.stopped} strategy={rectSortingStrategy}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                {buckets.stopped.map((sid) => {
+                  const show = shows.find((s) => s.id === sid);
+                  const p = progress[sid];
+                  if (!show || !p || !user) return null;
+                  const isEditing = editingShelves.has("stopped");
+                  return (
+                    <SortableCard
+                      key={sid}
+                      sid={sid}
+                      editing={isEditing}
+                      currentShelf="stopped"
+                      chevronOpen={openChevronSid === sid}
+                      onChevronToggle={() => setOpenChevronSid((cur) => (cur === sid ? null : sid))}
+                      onMoveToShelf={(target) => handleMoveToShelf(sid, target)}
+                      className="card"
+                      style={{
+                        ...PROFILE_CARD,
+                        padding: isEditing ? "36px 22px 36px" : "20px 22px 36px",
+                        position: "relative",
+                      }}
+                    >
+                      <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
+                      <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+                        <span style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
+                        <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>stopped at {progressShort(p)}</span>
+                      </div>
+                      <BlurbField
+                        kind="stopped_reason"
+                        value={p.stoppedReason}
+                        placeholder="add a reason…"
+                        italic
+                        userId={user.id}
+                        showId={sid}
+                        onSaved={(v) => updateLocalProgress(sid, { stoppedReason: v })}
+                      />
+                    </SortableCard>
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
         </section>
       )}
 
@@ -790,15 +983,235 @@ export default function V2ProfileSelfPage() {
   );
 }
 
-function ShelfHead({ eyebrow, title }: { eyebrow: string; title: string }) {
+function ShelfHead({
+  eyebrow,
+  title,
+  editing,
+  onToggleEdit,
+}: {
+  eyebrow: string;
+  title: string;
+  editing?: boolean;
+  onToggleEdit?: () => void;
+}) {
   return (
     <div style={{ marginBottom: 22 }}>
       <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-gray)", marginBottom: 4 }}>
         {eyebrow}
       </div>
-      <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 600, fontSize: 28, letterSpacing: "0.04em", color: "var(--dos-fg)", textTransform: "uppercase", margin: 0 }}>
-        {title}
-      </h2>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+        <h2 style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 600, fontSize: 28, letterSpacing: "0.04em", color: "var(--dos-fg)", textTransform: "uppercase", margin: 0 }}>
+          {title}
+        </h2>
+        {onToggleEdit && (
+          <button
+            onClick={onToggleEdit}
+            aria-label={editing ? "done editing" : "edit shelf"}
+            title={editing ? "exit edit mode" : "edit / reorder this shelf"}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--dos-gray)",
+              padding: 4,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontFamily: "Lora, Georgia, serif",
+              fontStyle: "italic",
+              fontSize: 14,
+              lineHeight: 1,
+            }}
+          >
+            {editing ? "done?" : <SquarePen size={16} color="currentColor" />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// === SortableCard ============================================================
+//
+// Thin wrapper that participates in dnd-kit when its shelf is in edit mode.
+// When editing, overlays a GripVertical (drag handle) + ChevronDown (move-to
+// dropdown trigger) in the top-left corner of the card. The chevron's
+// dropdown is rendered as a sibling absolute-positioned panel below the
+// trigger; only one dropdown is open at a time (parent-managed).
+function SortableCard({
+  sid,
+  editing,
+  currentShelf,
+  chevronOpen,
+  onChevronToggle,
+  onMoveToShelf,
+  className,
+  style,
+  children,
+}: {
+  sid: string;
+  editing: boolean;
+  currentShelf: ShelfStatus;
+  chevronOpen: boolean;
+  onChevronToggle: () => void;
+  onMoveToShelf: (target: ShelfName) => void;
+  className?: string;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: sid,
+    disabled: !editing,
+  });
+  const wrapperStyle: React.CSSProperties = {
+    ...style,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <article ref={setNodeRef} className={className} style={wrapperStyle}>
+      {editing && (
+        <EditCornerOverlay
+          dragAttributes={attributes}
+          dragListeners={listeners}
+          currentShelf={currentShelf}
+          chevronOpen={chevronOpen}
+          onChevronToggle={onChevronToggle}
+          onMoveToShelf={onMoveToShelf}
+        />
+      )}
+      {children}
+    </article>
+  );
+}
+
+const SHELF_LABELS: Record<ShelfStatus, string> = {
+  watching: "Watching Now",
+  want: "Want to Watch",
+  finished: "Finished Watching",
+  stopped: "Stopped Watching",
+};
+
+function EditCornerOverlay({
+  dragAttributes,
+  dragListeners,
+  currentShelf,
+  chevronOpen,
+  onChevronToggle,
+  onMoveToShelf,
+}: {
+  dragAttributes: any;
+  dragListeners: any;
+  currentShelf: ShelfStatus;
+  chevronOpen: boolean;
+  onChevronToggle: () => void;
+  onMoveToShelf: (target: ShelfName) => void;
+}) {
+  const others = (Object.keys(SHELF_LABELS) as ShelfStatus[]).filter((s) => s !== currentShelf);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!chevronOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!dropdownRef.current) return;
+      if (!dropdownRef.current.contains(e.target as Node)) onChevronToggle();
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [chevronOpen, onChevronToggle]);
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 8,
+        left: 8,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 2,
+        zIndex: 5,
+      }}
+    >
+      <button
+        {...dragAttributes}
+        {...dragListeners}
+        aria-label="drag to reorder"
+        title="drag to reorder"
+        style={{
+          background: "transparent",
+          border: "none",
+          padding: 4,
+          color: "var(--dos-gray)",
+          cursor: "grab",
+          touchAction: "none",
+          display: "inline-flex",
+          alignItems: "center",
+        }}
+      >
+        <GripVertical size={16} color="currentColor" />
+      </button>
+      <div ref={dropdownRef} style={{ position: "relative", display: "inline-flex" }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onChevronToggle(); }}
+          aria-label="move to another shelf"
+          title="move to another shelf"
+          style={{
+            background: "transparent",
+            border: "none",
+            padding: 4,
+            color: "var(--dos-gray)",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+          }}
+        >
+          <ChevronDown size={16} color="currentColor" />
+        </button>
+        {chevronOpen && (
+          <div
+            role="menu"
+            style={{
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              left: 0,
+              minWidth: 200,
+              background: "#fff",
+              border: "1px solid var(--dos-border, #ddd)",
+              borderRadius: 8,
+              boxShadow: "0 6px 24px rgba(0,0,0,0.15)",
+              padding: 8,
+              zIndex: 20,
+            }}
+          >
+            <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 12, color: "var(--dos-gray)", padding: "4px 6px 6px" }}>
+              move to:
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {others.map((target) => (
+                <button
+                  key={target}
+                  onClick={() => onMoveToShelf(target)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: "8px 10px",
+                    textAlign: "left",
+                    fontFamily: "Inter, sans-serif",
+                    fontSize: 14,
+                    color: "var(--dos-fg)",
+                    cursor: "pointer",
+                    borderRadius: 4,
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.05)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                >
+                  {SHELF_LABELS[target]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

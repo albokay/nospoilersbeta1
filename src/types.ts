@@ -129,4 +129,12 @@ export type ProgressEntry = {
   wantReason?: string;
   canonTake?: string;
   stoppedReason?: string;
+  // v2 profile-display layer (2026-05-11). Purely visual organization on
+  // the V2 profile page. shelfOverride pins a row to a specific shelf
+  // regardless of progress (null = derive); shelfPosition orders rows
+  // within their resolved shelf (null = fall back to alphabetical).
+  // Never affect spoiler filtering, post tagging, or behavior outside
+  // the V2 profile UI.
+  shelfOverride?: "watching" | "want" | "finished" | "stopped" | null;
+  shelfPosition?: number | null;
 };
