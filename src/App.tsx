@@ -699,19 +699,24 @@ function AppShell() {
 
   // ── Shared SearchShows handler (used in both header and homepage) ─
   const searchShowsHandlers = {
-    onShowCreated: (newShow: Show, entry: ProgressEntry, action: "friendRoom", friendGroup: FriendGroup) => {
+    onShowCreated: (newShow: Show, entry: ProgressEntry, action: "friendRoom" | "solo", friendGroup: FriendGroup | null) => {
       setShows(prev => prev.find(s => s.id === newShow.id) ? prev : [...prev, newShow]);
       setWatchStatusFor(newShow.id, entry);
       // Mark the new tab so ProfilePage's showTabOrder floats it to the front
       // even before any real activity accumulates for it.
       if (user) markTabCreated(user.id, newShow.id);
-      // SearchShows now creates the friend room itself (combined onboarding
-      // flow). Optimistically add it to the top-nav pills, then drop the
-      // user straight into the new room — no second modal bounce.
-      setAllFriendGroups(prev =>
-        prev.find(x => x.id === friendGroup.id) ? prev : [{ ...friendGroup, lastActivityAt: Date.now() }, ...prev]
-      );
-      navigate(`/show/${newShow.id}`, { state: { activeGroupId: friendGroup.id } });
+      if (action === "friendRoom" && friendGroup) {
+        // Friend-room path: optimistically add to the top-nav pills, then
+        // drop the user straight into the new room.
+        setAllFriendGroups(prev =>
+          prev.find(x => x.id === friendGroup.id) ? prev : [{ ...friendGroup, lastActivityAt: Date.now() }, ...prev]
+        );
+        navigate(`/show/${newShow.id}`, { state: { activeGroupId: friendGroup.id } });
+      } else {
+        // Solo path: no friend room — land the user on their journal tab
+        // for the new show (auto-unhides via ProfilePage's activeTab state).
+        navigate("/profile", { state: { activeTab: newShow.id } });
+      }
       requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
     },
     onBrowsePublic: (showId: string, showName: string, _entry: ProgressEntry, seasons: number[]) => {

@@ -469,7 +469,10 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
             background: "transparent",
             border: `2px solid ${RULE}`,
             borderRadius: 0,
-            padding: "36px 40px",
+            // Asymmetric top padding for a "top of a piece of lined paper"
+            // feel — the title sits on the top line with a generous header
+            // margin above it before the body's ruled section begins.
+            padding: "96px 40px 36px 40px",
             marginBottom: 24,
             display: "flex",
             flexDirection: "column",

@@ -744,7 +744,7 @@ export default function V2ProfileSelfPage() {
                 </button>
                 <button
                   className="btn"
-                  style={{ fontSize: 14, background: "var(--danger)", border: "2px solid #fff", color: "#fff" }}
+                  style={{ fontSize: 14, background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff" }}
                   disabled={removeSubmitting}
                   onClick={async () => {
                     if (!user || !profile || !sid) return;
@@ -845,7 +845,7 @@ function ProgressBadge({ progress }: { progress: ProgressEntry }) {
         fontVariantNumeric: "tabular-nums",
       }}
     >
-      ◐ {progressShort(progress)}
+      {progressShort(progress)}
     </span>
   );
 }

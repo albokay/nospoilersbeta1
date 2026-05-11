@@ -57,7 +57,9 @@ export async function prefetchComposeData(userId: string, showId: string): Promi
       displayType: r.display_type,
       tvmazeTypes: r.tvmaze_types,
       genres: r.genres,
-    }) as PromptEntry);
+      progressTags: r.progress_tags,
+      themes: r.themes,
+    }));
     cache.set(key(userId, showId), {
       show,
       progress,

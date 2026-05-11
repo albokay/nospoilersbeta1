@@ -145,7 +145,7 @@ export default function SearchShows({
 }: {
   shows: Show[];
   progress?: Record<string, ProgressEntry>;
-  onShowCreated?: (show: Show, entry: ProgressEntry, action: "friendRoom", friendGroup: FriendGroup) => void;
+  onShowCreated?: (show: Show, entry: ProgressEntry, action: "friendRoom" | "solo", friendGroup: FriendGroup | null) => void;
   onBrowsePublic?: (showId: string, showName: string, entry: ProgressEntry, seasons: number[]) => void;
   // Called when the user searches a show they've already onboarded onto
   // (real progress row exists) and no active sessionStorage browse override
@@ -357,6 +357,32 @@ export default function SearchShows({
     }
   };
 
+  // Solo path: create the show + set progress, no friend room. Caller
+  // navigates the user into their journal tab for the show.
+  const handleCreateSolo = async () => {
+    if (!user) { onAuthRequired?.(); return; }
+    const entry = buildEntry();
+    if (!confirming || !entry) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const seasons = confirmingSeasons ?? [1];
+      const id = slugify(confirming.name);
+      const newShow = await createShow({
+        id, name: confirming.name, seasons,
+        tvmazeId: String(confirming.id),
+        status: confirming.status === "Running" ? "Running" : "Ended",
+      });
+      setQuery(newShow.name);
+      resetModal();
+      onShowCreated?.(newShow, entry, "solo", null);
+    } catch (e: any) {
+      setCreateError(e?.message ?? "Something went wrong. Try again.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   // Rewatch must be strictly less than highest — required for the rewatch
   // post-tagging model (posts tag at highest, display the rewatch pair).
   const rewatchValid =
@@ -458,15 +484,6 @@ export default function SearchShows({
               </div>
             </div>
 
-            {/* "Create a friend room" subheader + new copy — sets the
-                user's intent before they fill out progress + room name. */}
-            <div>
-              <h3 className="title" style={{ margin: "0 0 8px", fontSize: 16 }}>Create a friend room</h3>
-              <p style={{ margin: 0, fontSize: 14, opacity: 0.85, lineHeight: 1.5 }}>
-                This will be where you and your friends talk about <strong>{confirming.name}</strong>. Whatever anyone writes here will only be visible to you and your friends. You can decide who to invite later.
-              </p>
-            </div>
-
             {/* Watch-status questionnaire */}
             <div>
               <p className="muted" style={{ fontSize: 14, margin: "0 0 10px" }}>
@@ -545,22 +562,25 @@ export default function SearchShows({
               </div>
             )}
 
-            {/* Room name input */}
-            <input
-              className="badge"
-              placeholder="give your room a unique name"
-              value={roomName}
-              onChange={e => setRoomName(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && canSubmit && roomName.trim()) handleCreateRoom(); }}
-              style={{ width: "100%", height: 40 }}
-            />
+            {/* Divider */}
+            <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "4px 0" }} />
 
-            {createError && (
-              <div style={{ color: "var(--danger)", fontSize: 13 }}>{createError}</div>
-            )}
-
-            {/* Action buttons */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+            {/* Create a friend room section */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <h3 className="title" style={{ margin: "0 0 8px", fontSize: 16 }}>Create a friend room</h3>
+                <p style={{ margin: 0, fontSize: 14, opacity: 0.85, lineHeight: 1.5 }}>
+                  This will be where you and your friends talk about <strong>{confirming.name}</strong>. Whatever anyone writes here will only be visible to you and your friends. You can decide who to invite later.
+                </p>
+              </div>
+              <input
+                className="badge"
+                placeholder="give your room a unique name"
+                value={roomName}
+                onChange={e => setRoomName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && canSubmit && roomName.trim()) handleCreateRoom(); }}
+                style={{ width: "100%", height: 40 }}
+              />
               {(() => {
                 const submitDisabled = !canSubmit || !roomName.trim();
                 return (
@@ -569,6 +589,32 @@ export default function SearchShows({
                   </button>
                 );
               })()}
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "4px 0" }} />
+
+            {/* Solo section */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <p style={{ margin: 0, fontSize: 14, opacity: 0.85, lineHeight: 1.5 }}>
+                Are you watching by yourself for now?
+              </p>
+              <button
+                className="btn"
+                onClick={handleCreateSolo}
+                disabled={!canSubmit}
+                style={{ width: "100%", opacity: !canSubmit ? 0.4 : 1 }}
+              >
+                {creating ? "Creating…" : "Log and write for yourself"}
+              </button>
+            </div>
+
+            {createError && (
+              <div style={{ color: "var(--danger)", fontSize: 13 }}>{createError}</div>
+            )}
+
+            {/* Cancel */}
+            <div style={{ marginTop: 4 }}>
               <button className="btn" onClick={resetModal} disabled={creating} style={{ width: "100%", opacity: 0.7 }}>
                 Cancel
               </button>

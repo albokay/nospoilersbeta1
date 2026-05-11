@@ -632,7 +632,7 @@ function ProgressBadge({ progress }: { progress: ProgressEntry }) {
         fontVariantNumeric: "tabular-nums",
       }}
     >
-      ◐ {progressShort(progress)}
+      {progressShort(progress)}
     </span>
   );
 }
