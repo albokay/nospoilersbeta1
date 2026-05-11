@@ -1911,7 +1911,7 @@ export default function V3JournalPage({
                 </button>
                 <button
                   className="btn"
-                  style={{ fontSize: 14, background: "#7abd8e", border: "none", color: "#fff" }}
+                  style={{ fontSize: 14, background: "#7abd8e", border: "2px solid #fff", color: "#fff" }}
                   disabled={stopSubmitting}
                   onClick={async () => {
                     if (!user || !profile || !sid) return;

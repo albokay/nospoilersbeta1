@@ -13,7 +13,7 @@ import type { Show } from "../../lib/db";
 import type { ProgressEntry } from "../../types";
 import V2Layout from "./V2Layout";
 import SearchShows from "../SearchShows";
-import { Pencil, Plus, Pin } from "lucide-react";
+import { Plus, Pin } from "lucide-react";
 
 // Shared profile-card style — sharp corners, transparent fill, 2px white
 // outline. Lets the canon-yellow page bg show through; the white outline
@@ -195,6 +195,10 @@ export default function V2ProfileSelfPage() {
   const buckets = useMemo(() => {
     const out: Record<ShelfStatus, string[]> = { watching: [], want: [], finished: [], stopped: [] };
     for (const sid of Object.keys(progress)) {
+      // TSP (Sidebar Protocol demo show) is a private onboarding/demo
+      // surface — never surface it on the public-facing profile, even
+      // for the profile owner. Stays filtered out of all four shelves.
+      if (sid === "tsp") continue;
       const p = progress[sid];
       const show = shows.find((s) => s.id === sid);
       out[classifyShow(p, show)].push(sid);
@@ -237,27 +241,11 @@ export default function V2ProfileSelfPage() {
         rightTo: "/v3/journal",
       }}
     >
-      {/* === PROFILE IDENTITY === */}
-      <header style={{ textAlign: "center", marginBottom: 32 }}>
-        <div
-          style={{
-            width: 88,
-            height: 88,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.25)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontFamily: "Lora, Georgia, serif",
-            fontStyle: "italic",
-            fontSize: 36,
-            fontWeight: 500,
-            marginBottom: 18,
-          }}
-        >
-          {(profile?.username ?? "?").charAt(0).toUpperCase()}
-        </div>
+      {/* === PROFILE IDENTITY ===
+          Left-justified, no avatar / no @subhead / no edit+share buttons.
+          The heading itself carries the @username; bio sits below as a
+          quiet placeholder until Commit D wires inline-editing. */}
+      <header style={{ textAlign: "left", marginBottom: 32 }}>
         <h1
           style={{
             fontFamily: "Lora, Georgia, serif",
@@ -268,16 +256,14 @@ export default function V2ProfileSelfPage() {
             color: "var(--dos-fg)",
             textTransform: "uppercase",
             margin: 0,
-            marginBottom: 8,
+            marginBottom: 14,
           }}
         >
-          {profile?.username ?? "—"}
-        </h1>
-        <div style={{ fontSize: 14, color: "var(--dos-gray)", marginBottom: 12 }}>
           @{profile?.username ?? "—"}
-        </div>
-        {/* Bio area — edit-profile flow tabled per spec; showing the placeholder
-            quietly until that lands. */}
+        </h1>
+        {/* Bio placeholder — clickable inline-edit lands in Commit D
+            (needs profiles.bio column migration). For now we show the
+            new placeholder copy so the page reads correctly. */}
         <p
           style={{
             fontFamily: "Lora, Georgia, serif",
@@ -285,26 +271,18 @@ export default function V2ProfileSelfPage() {
             fontSize: 17,
             color: "var(--dos-gray)",
             maxWidth: 540,
-            margin: "0 auto",
+            margin: 0,
             lineHeight: 1.5,
           }}
         >
-          add a bio…
+          share something about who you are as a TV viewer…
         </p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 22 }}>
-          <button className="btn h40" disabled title="edit-profile flow tabled per spec" style={{ opacity: 0.6, cursor: "not-allowed", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Pencil size={13} /> edit profile
-          </button>
-          <button className="btn h40" onClick={() => navigate(`/u/${profile?.username ?? ""}`)} title="opens your live public profile in this tab">
-            share profile
-          </button>
-        </div>
       </header>
 
       {/* === META PROSE === */}
       <p
         style={{
-          textAlign: "center",
+          textAlign: "left",
           margin: "24px 0 56px",
           fontFamily: "Lora, Georgia, serif",
           fontStyle: "italic",
@@ -314,7 +292,7 @@ export default function V2ProfileSelfPage() {
         }}
       >
         <strong style={{ fontStyle: "normal", fontWeight: 600, color: "var(--dos-fg)" }}>
-          {Object.keys(progress).length} shows
+          {Object.keys(progress).filter((s) => s !== "tsp").length} shows
         </strong>
         {" · "}
         <strong style={{ fontStyle: "normal", fontWeight: 600, color: "var(--dos-fg)" }}>
@@ -346,12 +324,12 @@ export default function V2ProfileSelfPage() {
                     position: "relative",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
-                    <div style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</div>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                    <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
+                      <ProgressBadge progress={p} />
+                    </div>
                     {p.isRewatching && <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>rewatch</span>}
-                  </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <ProgressBadge progress={p} />
                   </div>
                   <div
                     style={{
@@ -561,11 +539,15 @@ export default function V2ProfileSelfPage() {
         </section>
       )}
 
-      {/* === STOPPED WATCHING === */}
+      {/* === STOPPED WATCHING ===
+          Same double-column grid as Finished Watching for shelf parity:
+          repeat(auto-fit, minmax(280px, 1fr)) collapses to single column
+          on narrow viewports. Title + "stopped at SXXEXX" inline like
+          the Watching Now title row, then the blurb below. */}
       {buckets.stopped.length > 0 && (
         <section style={{ marginBottom: 56 }}>
           <ShelfHead eyebrow="shows you've stopped, for now:" title="Stopped Watching" />
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
             {buckets.stopped.map((sid) => {
               const show = shows.find((s) => s.id === sid);
               const p = progress[sid];
@@ -576,18 +558,12 @@ export default function V2ProfileSelfPage() {
                   className="card"
                   style={{
                     ...PROFILE_CARD,
-                    padding: "16px 22px",
-                    display: "grid",
-                    gridTemplateColumns: "220px 1fr",
-                    gap: 24,
-                    alignItems: "baseline",
+                    padding: "20px 22px",
                   }}
                 >
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--dos-fg)" }}>
-                    {show.name}
-                    <span style={{ display: "block", marginTop: 3, fontSize: 11, fontWeight: 500, color: "var(--dos-gray)" }}>
-                      stopped at {progressShort(p)}
-                    </span>
+                  <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+                    <span style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
+                    <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>stopped at {progressShort(p)}</span>
                   </div>
                   <BlurbField
                     kind="stopped_reason"

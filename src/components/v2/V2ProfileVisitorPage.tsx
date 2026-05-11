@@ -127,6 +127,9 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
   const buckets = useMemo(() => {
     const out: Record<ShelfStatus, string[]> = { watching: [], want: [], finished: [], stopped: [] };
     for (const sid of Object.keys(ownerProgress)) {
+      // TSP demo show is a private onboarding surface — never appears
+      // on the public-facing profile (mirrors V2ProfileSelfPage).
+      if (sid === "tsp") continue;
       const p = ownerProgress[sid];
       const show = shows.find((s) => s.id === sid);
       out[classifyShow(p, show)].push(sid);
@@ -258,7 +261,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
         }}
       >
         <strong style={{ fontStyle: "normal", fontWeight: 600, color: "var(--dos-fg)" }}>
-          {Object.keys(ownerProgress).length} shows
+          {Object.keys(ownerProgress).filter((s) => s !== "tsp").length} shows
         </strong>
         {" · "}
         <strong style={{ fontStyle: "normal", fontWeight: 600, color: "var(--dos-fg)" }}>
@@ -288,12 +291,12 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
                     padding: "22px 26px",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
-                    <div style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</div>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                    <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
+                      <ProgressBadge progress={p} />
+                    </div>
                     {p.isRewatching && <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>rewatch</span>}
-                  </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <ProgressBadge progress={p} />
                   </div>
                   {p.watchingQuote && (
                     <div
@@ -452,11 +455,13 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
         </section>
       )}
 
-      {/* === STOPPED WATCHING === */}
+      {/* === STOPPED WATCHING ===
+          Same double-column grid as Finished Watching for shelf parity
+          (mirrors V2ProfileSelfPage). */}
       {buckets.stopped.length > 0 && (
         <section style={{ marginBottom: 56 }}>
           <ShelfHead eyebrow={`shows @${username} has stopped, for now:`} title="Stopped Watching" />
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
             {buckets.stopped.map((sid) => {
               const show = shows.find((s) => s.id === sid);
               const p = ownerProgress[sid];
@@ -467,18 +472,12 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
                   className="card"
                   style={{
                     ...PROFILE_CARD,
-                    padding: "16px 22px",
-                    display: "grid",
-                    gridTemplateColumns: "220px 1fr",
-                    gap: 24,
-                    alignItems: "baseline",
+                    padding: "20px 22px",
                   }}
                 >
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--dos-fg)" }}>
-                    {show.name}
-                    <span style={{ display: "block", marginTop: 3, fontSize: 11, fontWeight: 500, color: "var(--dos-gray)" }}>
-                      stopped at {progressShort(p)}
-                    </span>
+                  <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+                    <span style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}>{show.name}</span>
+                    <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>stopped at {progressShort(p)}</span>
                   </div>
                   {p.stoppedReason && (
                     <div
