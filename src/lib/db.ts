@@ -3569,3 +3569,138 @@ export async function acceptInvitation(token: string): Promise<string | null> {
   if (error || !data?.ok) return null;
   return (data as any).group_id ?? null;
 }
+
+// === Profile "Thoughts on..." pieces (2026-05-12, checkpoint 1) ===========
+//
+// Show-agnostic reflective writing that lives entirely on the V2 public
+// profile. Two states: private (is_public=false, owner-only) or public
+// (is_public=true, visible to visitors). UI enforces a one-way state
+// machine — private→public is allowed, public→private is NOT. The
+// `last_published_at` column is set on the private→public transition
+// (and on fresh public inserts); never bumped on a public-piece edit.
+//
+// Reads are RLS-gated: visible if is_public=true OR caller owns the row.
+// No RPC indirection needed — the privacy boundary is just is_public.
+
+type ProfileThoughtRow = {
+  id: string;
+  author_id: string;
+  title_completion: string;
+  body: string;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+  last_published_at: string | null;
+};
+
+const PROFILE_THOUGHT_COLS = "id, author_id, title_completion, body, is_public, created_at, updated_at, last_published_at";
+
+function rowToProfileThought(row: ProfileThoughtRow): import("../types").ProfileThought {
+  return {
+    id: row.id,
+    authorId: row.author_id,
+    titleCompletion: row.title_completion,
+    body: row.body,
+    isPublic: row.is_public,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lastPublishedAt: row.last_published_at,
+  };
+}
+
+/** Fetch every piece a user owns (private + public). Ordered by created_at
+ *  desc; callers (V2ProfileSelfPage) re-sort client-side to put the
+ *  currently-featured public piece first per the owner-view rule. */
+export async function fetchProfileThoughtsForOwner(
+  userId: string
+): Promise<import("../types").ProfileThought[]> {
+  const { data, error } = await supabase
+    .from("profile_thoughts")
+    .select(PROFILE_THOUGHT_COLS)
+    .eq("author_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToProfileThought as any);
+}
+
+/** Fetch a user's public pieces only — for the visitor view. Ordered by
+ *  last_published_at desc so the most recently published is first. RLS would
+ *  hide private rows from a visitor anyway; the explicit is_public filter
+ *  is defense-in-depth + makes the intent obvious at the call site. */
+export async function fetchPublicProfileThoughtsByUserId(
+  userId: string
+): Promise<import("../types").ProfileThought[]> {
+  const { data, error } = await supabase
+    .from("profile_thoughts")
+    .select(PROFILE_THOUGHT_COLS)
+    .eq("author_id", userId)
+    .eq("is_public", true)
+    .order("last_published_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(rowToProfileThought as any);
+}
+
+/** Insert a new piece. If isPublic is true, last_published_at is set to now()
+ *  so the row immediately participates in the visitor-view sort. */
+export async function insertProfileThought(args: {
+  authorId: string;
+  titleCompletion: string;
+  body: string;
+  isPublic: boolean;
+}): Promise<import("../types").ProfileThought> {
+  const insert: any = {
+    author_id: args.authorId,
+    title_completion: args.titleCompletion,
+    body: args.body,
+    is_public: args.isPublic,
+  };
+  if (args.isPublic) insert.last_published_at = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("profile_thoughts")
+    .insert(insert)
+    .select(PROFILE_THOUGHT_COLS)
+    .single();
+  if (error) throw error;
+  return rowToProfileThought(data as ProfileThoughtRow);
+}
+
+/** Update an existing piece. Pass `bumpPublishedAt: true` ONLY on a true
+ *  private→public transition (caller knows the prior state). Public→public
+ *  edits should omit `bumpPublishedAt` so the row's featured position is
+ *  preserved (edits don't reshuffle the carousel order — per spec).
+ *
+ *  This function does NOT enforce the no-public→private rule; callers (the
+ *  compose modal) are responsible for never passing isPublic:false on a row
+ *  that's already public. RLS allows the write regardless because owners
+ *  can edit any field on their own rows; the UI is the gatekeeper. */
+export async function updateProfileThought(
+  id: string,
+  updates: {
+    titleCompletion?: string;
+    body?: string;
+    isPublic?: boolean;
+    bumpPublishedAt?: boolean;
+  }
+): Promise<import("../types").ProfileThought> {
+  const patch: any = {};
+  if (updates.titleCompletion !== undefined) patch.title_completion = updates.titleCompletion;
+  if (updates.body !== undefined) patch.body = updates.body;
+  if (updates.isPublic !== undefined) patch.is_public = updates.isPublic;
+  if (updates.bumpPublishedAt) patch.last_published_at = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("profile_thoughts")
+    .update(patch)
+    .eq("id", id)
+    .select(PROFILE_THOUGHT_COLS)
+    .single();
+  if (error) throw error;
+  return rowToProfileThought(data as ProfileThoughtRow);
+}
+
+export async function deleteProfileThought(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("profile_thoughts")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}

@@ -138,3 +138,20 @@ export type ProgressEntry = {
   shelfOverride?: "watching" | "want" | "finished" | "stopped" | null;
   shelfPosition?: number | null;
 };
+
+// "Thoughts on..." pieces — show-agnostic reflective writing that lives on
+// the V2 public profile. State is two-valued: private (owner-only) or
+// public/featured (visible to visitors). The opener "Thoughts on " is locked
+// at the UI layer; titleCompletion holds the user-written remainder.
+// last_published_at is set on the private→public transition (and on fresh
+// public inserts), never bumped on edits. (2026-05-12)
+export type ProfileThought = {
+  id: string;
+  authorId: string;
+  titleCompletion: string;
+  body: string;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastPublishedAt: string | null;
+};
