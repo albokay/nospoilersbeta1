@@ -613,30 +613,34 @@ export default function V2ProfileSelfPage() {
                   </span>
                   <ArrowRight size={14} color="currentColor" />
                 </button>
-                <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-fg)" }}>
-                  Thoughts on {cyclingPrompt}…
+                {/* Prompt + cycle grouped in one inline-flex unit so the
+                    refresh button stays with the prompt text on wrap. */}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-fg)" }}>
+                    Thoughts on {cyclingPrompt}…
+                  </span>
+                  {/* Cycle circle — small white circle, canon-green icon. */}
+                  <button
+                    onClick={cyclePromptSuggestion}
+                    aria-label="cycle prompt"
+                    title="cycle to another prompt"
+                    style={{
+                      width: 22,
+                      height: 22,
+                      background: "#fff",
+                      border: "none",
+                      borderRadius: "50%",
+                      color: "#7abd8e",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <RefreshCw size={12} color="currentColor" strokeWidth={2.5} />
+                  </button>
                 </span>
-                {/* Cycle circle — small white circle, canon-green icon. */}
-                <button
-                  onClick={cyclePromptSuggestion}
-                  aria-label="cycle prompt"
-                  title="cycle to another prompt"
-                  style={{
-                    width: 22,
-                    height: 22,
-                    background: "#fff",
-                    border: "none",
-                    borderRadius: "50%",
-                    color: "#7abd8e",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    flexShrink: 0,
-                  }}
-                >
-                  <RefreshCw size={12} color="currentColor" strokeWidth={2.5} />
-                </button>
               </div>
             </>
           )}
