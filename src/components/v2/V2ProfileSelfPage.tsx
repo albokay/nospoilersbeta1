@@ -609,25 +609,25 @@ export default function V2ProfileSelfPage() {
                   }}
                 >
                   <span style={{ textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 4 }}>
-                    write a new one
+                    write a new one?
                   </span>
                   <ArrowRight size={14} color="currentColor" />
                 </button>
                 <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-fg)" }}>
                   Thoughts on {cyclingPrompt}.
                 </span>
-                {/* Cycle circle — canon-green fill, white icon. */}
+                {/* Cycle circle — small white circle, canon-green icon. */}
                 <button
                   onClick={cyclePromptSuggestion}
                   aria-label="cycle prompt"
                   title="cycle to another prompt"
                   style={{
-                    width: 26,
-                    height: 26,
-                    background: "#7abd8e",
+                    width: 22,
+                    height: 22,
+                    background: "#fff",
                     border: "none",
                     borderRadius: "50%",
-                    color: "#fff",
+                    color: "#7abd8e",
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -635,7 +635,7 @@ export default function V2ProfileSelfPage() {
                     flexShrink: 0,
                   }}
                 >
-                  <RefreshCw size={14} color="currentColor" />
+                  <RefreshCw size={12} color="currentColor" />
                 </button>
               </div>
             </>

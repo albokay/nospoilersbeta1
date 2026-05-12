@@ -99,6 +99,10 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
   const [discardOpen, setDiscardOpen] = useState(false);
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  // Ref on the modal card (the scrolling parent). Used by autosize to push
+  // scroll to the very bottom so the action row (× not now + publish/save)
+  // stays visible as the body grows past the modal's initial frame.
+  const modalCardRef = useRef<HTMLDivElement | null>(null);
 
   // Title is rendered as a contenteditable <span> inside a flowing container
   // alongside the locked "Thoughts on" prefix + the inline "another prompt"
@@ -127,11 +131,14 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
     const target = Math.max(BODY_MIN_LINES * LH, Math.ceil(ta.scrollHeight / LH) * LH);
     ta.style.height = `${target}px`;
     ta.style.minHeight = `${target}px`;
-    // Once the body grows past the modal's visible area, follow the cursor
-    // so newly typed lines stay in view. scrollIntoView only scrolls the
-    // nearest scrollable ancestor (= the modal card via maxHeight + auto
-    // overflowY), not the page, so the browser viewport stays put.
-    ta.scrollIntoView({ block: "end" });
+    // Once the body grows past the modal's visible area, scroll the modal
+    // card all the way to its bottom so the action row stays visible. (We
+    // previously called scrollIntoView on the body which only revealed the
+    // textarea's bottom edge — the action row was just below it and stayed
+    // clipped.) Scrolling the modal-card ref directly avoids the page
+    // viewport ever scrolling.
+    const card = modalCardRef.current;
+    if (card) card.scrollTop = card.scrollHeight;
   }
   useEffect(() => { autosize(); }, [body]);
 
@@ -223,6 +230,7 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
             maxHeight + overflowY:auto contains the scroll inside the modal
             so the browser viewport doesn't scroll when the body grows long. */}
         <div
+          ref={modalCardRef}
           style={{
             background: CREAM_BG,
             color: INK,

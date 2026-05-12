@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { ProfileThought } from "../../types";
+import Tooltip from "../Tooltip";
 
 // "Thoughts on..." carousel — one ticket visible at a time, chevron-step
 // navigation. Renders only when there are pieces; empty state is owned by
@@ -115,11 +116,15 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
   const canDelete = ownerMode && !!ownerHandlers;
   const canPublish = ownerMode && !!ownerHandlers && !current.isPublic;
 
-  // Outline treatment per spec: dashed canon-green for private, dotted white
-  // for public. No fill — content reads over the page's canon-yellow bg.
+  // Visual treatment per spec:
+  //   - public:  no fill (transparent), 2px dotted white outline, white text.
+  //   - private: canon-green fill, 2px dashed white outline, white text.
+  // Either way text + icons render white (the article's `color` cascade
+  // covers any child using currentColor or inherited color).
   const outlineStyle = current.isPublic
     ? "2px dotted rgba(255,255,255,0.85)"
-    : "2px dashed #7abd8e";
+    : "2px dashed #fff";
+  const ticketBg = current.isPublic ? "transparent" : "#7abd8e";
 
   // Show expand toggle when the body is long enough that 2-line clamp would
   // hide content. Heuristic: > 120 chars or contains a newline. Always show
@@ -154,11 +159,14 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
         style={{
           display: "block",
           width: "100%",
-          background: "transparent",
+          background: ticketBg,
           border: outlineStyle,
           borderRadius: 24,
           padding: "20px 24px",
-          color: "var(--dos-fg)",
+          // Always white. Public bg = canon yellow page color (white reads);
+          // private bg = canon green (white reads). currentColor carries
+          // through to nested icons + text using inherited color.
+          color: "#fff",
           animation:
             slideDir === "right" ? "pt-slide-from-right 480ms ease-out" :
             slideDir === "left"  ? "pt-slide-from-left 480ms ease-out"  : "none",
@@ -167,14 +175,32 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
           boxSizing: "border-box",
         }}
       >
-          {/* Header row — title (+ lock icon for private) on the left, owner
-              affordances (edit / publish / delete) on the right. */}
+          {/* Private indicator row — lock icon + "only you see this thought"
+              label sit above the title. Mirrors the styling of the populated-
+              state below-carousel "write a new one?" link (italic Lora 14
+              + dotted underline). */}
+          {!current.isPublic && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 8, color: "#fff" }}>
+              <LockKeyhole size={14} color="currentColor" />
+              <span
+                style={{
+                  fontFamily: "Lora, Georgia, serif",
+                  fontStyle: "italic",
+                  fontSize: 14,
+                  textDecoration: "underline",
+                  textDecorationStyle: "dotted",
+                  textUnderlineOffset: 4,
+                }}
+              >
+                only you see this thought
+              </span>
+            </div>
+          )}
+
+          {/* Header row — title on the left, owner affordances on the right. */}
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
             <div style={{ display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", minWidth: 0, flex: 1 }}>
-              {!current.isPublic && (
-                <LockKeyhole size={16} color="#7abd8e" style={{ alignSelf: "center", flexShrink: 0 }} />
-              )}
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.25 }}>
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: 22, fontWeight: 600, color: "currentColor", lineHeight: 1.25 }}>
                 Thoughts on {current.titleCompletion}.
               </span>
             </div>
@@ -187,12 +213,20 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
                   icon={<Pencil size={14} color="currentColor" />}
                 />
                 {canPublish && (
-                  <IconButton
-                    onClick={() => handlePublish(current)}
-                    label={publishingId === current.id ? "publishing…" : "publish to profile"}
-                    icon={<Globe size={14} color="currentColor" />}
-                    disabled={publishingId === current.id}
-                  />
+                  <Tooltip
+                    text="Turn this into a public thought."
+                    direction="above"
+                    align="center"
+                    portal
+                    width={220}
+                  >
+                    <IconButton
+                      onClick={() => handlePublish(current)}
+                      label={publishingId === current.id ? "publishing…" : "publish to profile"}
+                      icon={<Globe size={14} color="currentColor" />}
+                      disabled={publishingId === current.id}
+                    />
+                  </Tooltip>
                 )}
                 {canDelete && (
                   <IconButton
@@ -211,7 +245,7 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
               fontFamily: "Inter, sans-serif",
               fontSize: 15,
               lineHeight: 1.6,
-              color: "var(--dos-fg)",
+              color: "currentColor",
               whiteSpace: "pre-wrap",
               ...(isCurrentExpanded
                 ? {}
@@ -234,7 +268,8 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
               style={{
                 background: "transparent",
                 border: "none",
-                color: "var(--dos-gray)",
+                color: "currentColor",
+                opacity: 0.85,
                 fontFamily: "Lora, Georgia, serif",
                 fontStyle: "italic",
                 fontSize: 13,
@@ -388,8 +423,8 @@ function IconButton({
         cursor: disabled ? "not-allowed" : "pointer",
         padding: 6,
         borderRadius: 9999,
-        color: "var(--dos-gray)",
-        opacity: disabled ? 0.4 : 0.7,
+        color: "currentColor",
+        opacity: disabled ? 0.4 : 0.85,
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
