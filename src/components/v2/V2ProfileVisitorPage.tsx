@@ -9,10 +9,12 @@ import {
   fetchPublicProgressForUser,
   fetchPublicThreadsForUser,
   fetchSharedRoomsForUsers,
+  fetchPublicProfileThoughtsByUserId,
 } from "../../lib/db";
 import type { Show, SharedRoomRow } from "../../lib/db";
-import type { ProgressEntry, Thread } from "../../types";
+import type { ProgressEntry, Thread, ProfileThought } from "../../types";
 import V2Layout from "./V2Layout";
+import ProfileThoughtsCarousel from "./ProfileThoughtsCarousel";
 
 // Same shared profile-card style as V2ProfileSelfPage — sharp corners,
 // transparent fill, 2px white outline. The visitor view mirrors the
@@ -104,9 +106,10 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
   const [ownerPublicThreads, setOwnerPublicThreads] = useState<Thread[]>([]);
   const [visitorProgress, setVisitorProgress] = useState<Record<string, ProgressEntry>>({});
   const [sharedRooms, setSharedRooms] = useState<SharedRoomRow[]>([]);
-  // Owner's bio — read-only on the visitor view. Populated from
-  // fetchPublicProfileByUsername (extended in commit D to return bio).
-  const [ownerBio, setOwnerBio] = useState<string | null>(null);
+  // Owner's public "Thoughts on..." pieces — read-only on the visitor view.
+  // RLS filters to is_public=true at the DB layer; the explicit filter in
+  // fetchPublicProfileThoughtsByUserId is defense-in-depth.
+  const [ownerThoughts, setOwnerThoughts] = useState<ProfileThought[]>([]);
 
   // Bootstrap owner data — works for logged-out visitors too.
   useEffect(() => {
@@ -121,16 +124,17 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
           return;
         }
         setOwnerId(p.id);
-        setOwnerBio(p.bio);
         return Promise.all([
           fetchShows(),
           fetchPublicProgressForUser(p.id),
           fetchPublicThreadsForUser(p.id),
-        ]).then(([allShows, prog, threads]) => {
+          fetchPublicProfileThoughtsByUserId(p.id),
+        ]).then(([allShows, prog, threads, thoughts]) => {
           if (cancelled) return;
           setShows(allShows);
           setOwnerProgress(prog);
           setOwnerPublicThreads(threads);
+          setOwnerThoughts(thoughts);
         });
       })
       .catch((err) => {
@@ -268,24 +272,9 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
         <div style={{ fontSize: 14, color: "var(--dos-gray)", marginBottom: 12 }}>
           @{username}
         </div>
-        {/* Owner's bio if set. Read-only on visitor view; the owner
-            edits via V2ProfileSelfPage's BioField. Migration:
-            20260510_profile_bio.sql. */}
-        {ownerBio && (
-          <p
-            style={{
-              fontFamily: "Lora, Georgia, serif",
-              fontStyle: "italic",
-              fontSize: 17,
-              color: "var(--dos-fg)",
-              maxWidth: 540,
-              margin: "0 auto 12px",
-              lineHeight: 1.5,
-            }}
-          >
-            {ownerBio}
-          </p>
-        )}
+        {/* Bio rendering removed 2026-05-12 — visitors no longer see the
+            old inline bio. The owner's "Thoughts on..." carousel renders
+            below the header instead (see the section below). */}
         {!user && (
           <div
             style={{
@@ -301,6 +290,21 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
           </div>
         )}
       </header>
+
+      {/* === THOUGHTS ON... (visitor view) ===
+          Read-only carousel of the owner's public thoughts. Section is
+          hidden entirely when the owner has no public pieces — per spec,
+          visitors should never see an empty-state placeholder telling
+          them the owner hasn't written anything. Private pieces are
+          filtered at the DB layer (RLS) + at the fetch (defense in depth). */}
+      {ownerThoughts.length > 0 && (
+        <section style={{ marginBottom: 40 }}>
+          <ProfileThoughtsCarousel
+            thoughts={ownerThoughts}
+            ownerMode={false}
+          />
+        </section>
+      )}
 
       {/* === META PROSE === */}
       <p
