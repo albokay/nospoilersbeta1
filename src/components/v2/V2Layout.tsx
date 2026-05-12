@@ -203,32 +203,34 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
               >
                 {pairedHeader.left}
               </div>
-              {/* Arrow lives outside the <a> per spec — visually paired via
-                  the inline-flex gap, but only the text is the click target.
-                  Inter / weight 600 / italic / canon green gives the link
-                  header-level emphasis without competing in font family. */}
-              <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
-                <ArrowRight size={16} color="#7abd8e" style={{ alignSelf: "center" }} />
-                <a
-                  href={pairedHeader.rightTo}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate(pairedHeader.rightTo);
-                  }}
-                  style={{
-                    fontFamily: "Inter, sans-serif",
-                    fontStyle: "italic",
-                    fontSize: 22,
-                    fontWeight: 600,
-                    color: "#7abd8e",
-                    textDecoration: "none",
-                    cursor: "pointer",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {pairedHeader.rightLabel}
-                </a>
-              </span>
+              {/* Lora italic 16, white-outline transparent-fill pill, full-
+                  opacity white text. Pill radius matches the site's .btn
+                  convention (9999px). Arrow lives inside the pill. */}
+              <a
+                href={pairedHeader.rightTo}
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(pairedHeader.rightTo);
+                }}
+                style={{
+                  fontFamily: "Lora, Georgia, serif",
+                  fontStyle: "italic",
+                  fontSize: 16,
+                  color: "#fff",
+                  background: "transparent",
+                  border: "2px solid #fff",
+                  borderRadius: 9999,
+                  padding: "6px 14px",
+                  textDecoration: "none",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  lineHeight: 1.2,
+                }}
+              >
+                <ArrowRight size={14} /> {pairedHeader.rightLabel}
+              </a>
             </div>
           )}
 

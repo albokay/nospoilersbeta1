@@ -903,29 +903,32 @@ export default function V3JournalPage({
                     page (/v2/profile). Lives next to "this is your journal"
                     so the user can hop between their two homes. */}
                 {profile?.username && (
-                  // Arrow lives outside the <a> per spec — visually paired via
-                  // the inline-flex gap, but only the text is the click target.
-                  // Inter / weight 600 / italic / canon yellow gives the link
-                  // header-level emphasis without competing in font family.
-                  <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
-                    <ArrowRight size={16} color="#dea838" style={{ alignSelf: "center" }} />
-                    <a
-                      href="/v2/profile"
-                      onClick={(e) => { e.preventDefault(); navigate("/v2/profile"); }}
-                      style={{
-                        fontFamily: "Inter, sans-serif",
-                        fontStyle: "italic",
-                        fontSize: 22,
-                        fontWeight: 600,
-                        color: "#dea838",
-                        textDecoration: "none",
-                        cursor: "pointer",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      go to your public profile
-                    </a>
-                  </span>
+                  // Lora italic 16 (pre-styling-experiment shape), wrapped in a
+                  // white-outline transparent-fill pill. White text at full
+                  // opacity. Pill radius matches the site's .btn convention
+                  // (9999px). Arrow lives inside the pill.
+                  <a
+                    href="/v2/profile"
+                    onClick={(e) => { e.preventDefault(); navigate("/v2/profile"); }}
+                    style={{
+                      fontFamily: "Lora, Georgia, serif",
+                      fontStyle: "italic",
+                      fontSize: 16,
+                      color: "#fff",
+                      background: "transparent",
+                      border: "2px solid #fff",
+                      borderRadius: 9999,
+                      padding: "6px 14px",
+                      textDecoration: "none",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    <ArrowRight size={14} /> go to your public profile
+                  </a>
                 )}
               </div>
               {!activeTab && (
