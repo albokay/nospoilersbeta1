@@ -903,25 +903,29 @@ export default function V3JournalPage({
                     page (/v2/profile). Lives next to "this is your journal"
                     so the user can hop between their two homes. */}
                 {profile?.username && (
-                  <a
-                    href="/v2/profile"
-                    onClick={(e) => { e.preventDefault(); navigate("/v2/profile"); }}
-                    style={{
-                      fontFamily: "Lora, Georgia, serif",
-                      fontStyle: "italic",
-                      fontSize: 16,
-                      color: "var(--dos-gray)",
-                      textDecoration: "none",
-                      borderBottom: "1px dotted var(--dos-gray)",
-                      paddingBottom: 1,
-                      cursor: "pointer",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <ArrowRight size={14} /> go to your public profile
-                  </a>
+                  // Arrow lives outside the <a> per spec — visually paired via
+                  // the inline-flex gap, but only the text is the click target.
+                  // Inter / weight 600 / italic / canon yellow gives the link
+                  // header-level emphasis without competing in font family.
+                  <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+                    <ArrowRight size={16} color="#dea838" style={{ alignSelf: "center" }} />
+                    <a
+                      href="/v2/profile"
+                      onClick={(e) => { e.preventDefault(); navigate("/v2/profile"); }}
+                      style={{
+                        fontFamily: "Inter, sans-serif",
+                        fontStyle: "italic",
+                        fontSize: 22,
+                        fontWeight: 600,
+                        color: "#dea838",
+                        textDecoration: "none",
+                        cursor: "pointer",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      go to your public profile
+                    </a>
+                  </span>
                 )}
               </div>
               {!activeTab && (

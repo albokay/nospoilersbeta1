@@ -203,28 +203,32 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
               >
                 {pairedHeader.left}
               </div>
-              <a
-                href={pairedHeader.rightTo}
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(pairedHeader.rightTo);
-                }}
-                style={{
-                  fontFamily: "Lora, Georgia, serif",
-                  fontStyle: "italic",
-                  fontSize: 16,
-                  color: "var(--dos-gray)",
-                  textDecoration: "none",
-                  borderBottom: "1px dotted var(--dos-gray)",
-                  paddingBottom: 1,
-                  cursor: "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <ArrowRight size={14} /> {pairedHeader.rightLabel}
-              </a>
+              {/* Arrow lives outside the <a> per spec — visually paired via
+                  the inline-flex gap, but only the text is the click target.
+                  Inter / weight 600 / italic / canon green gives the link
+                  header-level emphasis without competing in font family. */}
+              <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+                <ArrowRight size={16} color="#7abd8e" style={{ alignSelf: "center" }} />
+                <a
+                  href={pairedHeader.rightTo}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(pairedHeader.rightTo);
+                  }}
+                  style={{
+                    fontFamily: "Inter, sans-serif",
+                    fontStyle: "italic",
+                    fontSize: 22,
+                    fontWeight: 600,
+                    color: "#7abd8e",
+                    textDecoration: "none",
+                    cursor: "pointer",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {pairedHeader.rightLabel}
+                </a>
+              </span>
             </div>
           )}
 
