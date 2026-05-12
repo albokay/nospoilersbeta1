@@ -15,10 +15,11 @@ import type { ProfileThought } from "../../types";
 // navigation. Renders only when there are pieces; empty state is owned by
 // the parent (V2ProfileSelfPage). Slide animation on step.
 //
-// Owner-mode affordances per piece state (matches the spec):
+// Owner-mode affordances per piece state:
 //   - private:                edit + publish (private→public) + delete
-//   - featured public (1st):  edit (no delete; spec keeps featured durable)
-//   - non-featured public:    edit + delete
+//   - public (featured + non): edit + delete
+// (Original spec excluded delete on the featured public piece, but the
+// owner can now delete any ticket they own — fewer rules to remember.)
 //
 // Visitor mode: no affordances. The parent is responsible for filtering to
 // public-only before passing `thoughts` in.
@@ -58,11 +59,6 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
 
   if (!thoughts.length) return null;
 
-  // Featured = the first public piece in the sorted list. Parent sorts the
-  // owner view as [featured public, …, by created_at desc] and the visitor
-  // view as [public, …, by last_published_at desc] — in both cases index 0
-  // of the public subset is featured.
-  const featuredId = thoughts.find((t) => t.isPublic)?.id ?? null;
   const current = thoughts[Math.min(currentIndex, thoughts.length - 1)];
 
   function goPrev() {
@@ -115,9 +111,8 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
   }
 
   const showArrows = thoughts.length > 1;
-  const isCurrentFeatured = current.isPublic && current.id === featuredId;
   const isCurrentExpanded = expandedIds.has(current.id);
-  const canDelete = ownerMode && !!ownerHandlers && (!isCurrentFeatured || !current.isPublic);
+  const canDelete = ownerMode && !!ownerHandlers;
   const canPublish = ownerMode && !!ownerHandlers && !current.isPublic;
 
   // Outline treatment per spec: dashed canon-green for private, dotted white
