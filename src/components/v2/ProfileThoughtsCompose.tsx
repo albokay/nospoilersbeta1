@@ -265,19 +265,33 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
               font-style: italic;
               pointer-events: none;
             }
-            /* theme.ts:101 forces .btn.post canon-green !important under
-               body.public-context. Beat it with a more-specific class +
-               !important so the publish button can flip to canon yellow
-               on the featured destination. */
-            body.public-context .btn.post.v2-thoughts-publish-featured,
-            .btn.post.v2-thoughts-publish-featured {
-              background: #dea838 !important;
-              border-color: #fff !important;
+            /* Publish button. theme.ts:101 forces .btn.post canon-green
+               !important under body.public-context, so any inline style
+               loses. We add an always-on class to take control of border
+               (always transparent → no outline in either state) and the
+               featured-only class to flip the fill to canon yellow.
+               outline:none also kills browser focus rings which can read
+               as a faint outline on click. */
+            body.public-context .btn.post.v2-thoughts-publish-button,
+            .btn.post.v2-thoughts-publish-button {
+              border-color: transparent !important;
+              outline: none !important;
+              box-shadow: none !important;
             }
-            body.public-context .btn.post.v2-thoughts-publish-featured:hover,
-            .btn.post.v2-thoughts-publish-featured:hover {
+            body.public-context .btn.post.v2-thoughts-publish-button:focus,
+            body.public-context .btn.post.v2-thoughts-publish-button:focus-visible,
+            .btn.post.v2-thoughts-publish-button:focus,
+            .btn.post.v2-thoughts-publish-button:focus-visible {
+              outline: none !important;
+              box-shadow: none !important;
+            }
+            body.public-context .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured,
+            .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured {
+              background: #dea838 !important;
+            }
+            body.public-context .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured:hover,
+            .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured:hover {
               background: #c9962f !important;
-              border-color: #fff !important;
             }
           `}</style>
 
@@ -464,10 +478,11 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                // Add the v2-thoughts-publish-featured class when destination
-                // is featured so the canon-yellow CSS override (above) wins
-                // over body.public-context's !important canon-green rule.
-                className={`btn post h40${destination === "featured" ? " v2-thoughts-publish-featured" : ""}`}
+                // v2-thoughts-publish-button is always on — gives us a
+                // specificity hook to force transparent border (no outline)
+                // regardless of context. v2-thoughts-publish-featured adds
+                // when destination=featured to flip fill to canon yellow.
+                className={`btn post h40 v2-thoughts-publish-button${destination === "featured" ? " v2-thoughts-publish-featured" : ""}`}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
