@@ -540,23 +540,32 @@ export default function V2ProfileSelfPage() {
         <section style={{ marginBottom: 40 }}>
           {thoughts.length === 0 ? (
             <div style={{ textAlign: "left", maxWidth: 540 }}>
-              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 18, color: "var(--dos-fg)", marginBottom: 18 }}>
-                leave something here that lasts.
+              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 22, color: "var(--dos-fg)", marginBottom: 6, lineHeight: 1.3 }}>
+                Thoughts on {cyclingPrompt}…
               </div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 22, opacity: 0.9 }}>
-                <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-fg)" }}>
-                  Thoughts on {cyclingPrompt}.
-                </span>
+              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-fg)", marginBottom: 22, opacity: 0.7 }}>
+                (leave something here that lasts.)
+              </div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <button
                   onClick={cyclePromptSuggestion}
-                  aria-label="cycle prompt"
-                  title="cycle to another prompt"
-                  style={{ background: "transparent", border: "none", color: "var(--dos-fg)", cursor: "pointer", padding: 4, opacity: 0.6, display: "inline-flex", alignItems: "center" }}
+                  aria-label="cycle to a different prompt"
+                  title="cycle to a different prompt"
+                  className="h40"
+                  style={{
+                    background: "transparent",
+                    border: "2px solid #fff",
+                    color: "#fff",
+                    borderRadius: 9999,
+                    padding: "0 18px",
+                    fontFamily: "Lora, Georgia, serif",
+                    fontStyle: "italic",
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
                 >
-                  <RefreshCw size={14} color="currentColor" />
+                  different prompt?
                 </button>
-              </div>
-              <div>
                 <button
                   onClick={handleWriteNew}
                   className="btn post h40"
