@@ -590,8 +590,11 @@ export default function V2ProfileSelfPage() {
               />
               {/* Soft below-carousel "write a new one" with a cycling prompt
                   suggestion. Order: write-new link → Thoughts on prompt →
-                  cycle circle. Always present, never demanding. */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, flexWrap: "wrap", opacity: 0.9 }}>
+                  cycle circle. Always present, never demanding.
+                  Outer alignItems=baseline so when the prompt wraps to a
+                  second line, the writeNew link stays on the first baseline
+                  rather than centering vertically with a 2-line prompt. */}
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 16, flexWrap: "wrap", opacity: 0.9 }}>
                 <button
                   onClick={handleWriteNew}
                   style={{
@@ -606,6 +609,7 @@ export default function V2ProfileSelfPage() {
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 4,
+                    flexShrink: 0,
                   }}
                 >
                   <span style={{ textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 4 }}>
@@ -613,34 +617,47 @@ export default function V2ProfileSelfPage() {
                   </span>
                   <ArrowRight size={14} color="currentColor" />
                 </button>
-                {/* Prompt + cycle grouped in one inline-flex unit so the
-                    refresh button stays with the prompt text on wrap. */}
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-fg)" }}>
-                    Thoughts on {cyclingPrompt}…
-                  </span>
-                  {/* Cycle circle — small white circle, canon-green icon. */}
-                  <button
-                    onClick={cyclePromptSuggestion}
-                    aria-label="cycle prompt"
-                    title="cycle to another prompt"
-                    style={{
-                      width: 22,
-                      height: 22,
-                      background: "#fff",
-                      border: "none",
-                      borderRadius: "50%",
-                      color: "#7abd8e",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <RefreshCw size={12} color="currentColor" strokeWidth={2.5} />
-                  </button>
-                </span>
+                {/* Prompt as a single flex item that takes the remaining
+                    width; its text content wraps freely at spaces, but the
+                    LAST 3 WORDS + refresh circle are wrapped in a nowrap
+                    inline-flex so only that tail drops to line 2 if needed.
+                    Prompts shorter than 3 words become the entire tail. */}
+                {(() => {
+                  const TAIL_WORDS = 3;
+                  const parts = cyclingPrompt.split(" ");
+                  const tailStart = Math.max(0, parts.length - TAIL_WORDS);
+                  const promptPrefix = parts.slice(0, tailStart).join(" ");
+                  const promptTail = parts.slice(tailStart).join(" ");
+                  return (
+                    <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-fg)", flex: "1 1 0", minWidth: 0 }}>
+                      Thoughts on{promptPrefix ? <>{" "}{promptPrefix}</> : null}{" "}
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>
+                        {promptTail}…
+                        <button
+                          onClick={cyclePromptSuggestion}
+                          aria-label="cycle prompt"
+                          title="cycle to another prompt"
+                          style={{
+                            width: 22,
+                            height: 22,
+                            background: "#fff",
+                            border: "none",
+                            borderRadius: "50%",
+                            color: "#7abd8e",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            flexShrink: 0,
+                            verticalAlign: "middle",
+                          }}
+                        >
+                          <RefreshCw size={12} color="currentColor" strokeWidth={2.5} />
+                        </button>
+                      </span>
+                    </span>
+                  );
+                })()}
               </div>
             </>
           )}
