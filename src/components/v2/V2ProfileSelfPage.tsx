@@ -614,7 +614,7 @@ export default function V2ProfileSelfPage() {
                   <ArrowRight size={14} color="currentColor" />
                 </button>
                 <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-fg)" }}>
-                  Thoughts on {cyclingPrompt}.
+                  Thoughts on {cyclingPrompt}…
                 </span>
                 {/* Cycle circle — small white circle, canon-green icon. */}
                 <button
@@ -635,7 +635,7 @@ export default function V2ProfileSelfPage() {
                     flexShrink: 0,
                   }}
                 >
-                  <RefreshCw size={12} color="currentColor" />
+                  <RefreshCw size={12} color="currentColor" strokeWidth={2.5} />
                 </button>
               </div>
             </>

@@ -187,9 +187,6 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
                   fontFamily: "Lora, Georgia, serif",
                   fontStyle: "italic",
                   fontSize: 14,
-                  textDecoration: "underline",
-                  textDecorationStyle: "dotted",
-                  textUnderlineOffset: 4,
                 }}
               >
                 only you see this thought
