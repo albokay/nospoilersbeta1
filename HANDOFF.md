@@ -1,6 +1,6 @@
-# Sidebar — Technical State (2026-05-11)
+# Sidebar — Technical State (2026-05-12)
 
-> **2026-05-11 — Latest landed: V2 profile shelf editor** (per-shelf edit toggle via SquarePen → "done?"; grip-vertical drag-to-reorder + chevron cross-shelf-move overlay on every ticket in edit mode; new `shelf_override` + `shelf_position` columns on `progress` decouple profile display from watch progress entirely — moves never touch spoiler tags / journal tabs / friend rooms; classification priority is `override > stoppedWatching > derive`), **onboarding modal solo path** ("Log and write for yourself" button + reorder), **compose paper repair** (title now sits on continuous white through to the ruled body; prompt button silently broken since the V3 hover-prefetch landed — `composeDataCache` mapper was dropping `progressTags`/`themes`), **clickable show names** on every V2 profile shelf, and **cross-link pill-shape** companion link between `/v3/journal` and `/v2/profile`. Two migrations applied to prod 2026-05-11: `20260511_shelf_override_and_position.sql` + `20260511_v2_get_public_progress_v3.sql`. See §7 arcs (top of recent-work list).
+> **2026-05-12 — Latest landed: "Thoughts on…" feature on the V2 public profile.** A new show-agnostic writing form that lives entirely on the profile, replacing the inline bio. Locked italic-Lora "Thoughts on" opener + user-written completion + body. Two states (private = owner-only / public = visible to visitors); private→public is a one-way transition. Top of the profile is a horizontal ticket carousel (one ticket visible at a time, chevron-step); compose happens in a full-screen modal overlay (contenteditable flowing title with cycling-prompt pill, ruled-paper body, scoped internal scroll). New `profile_thoughts` table + RLS; migration `20260512_profile_thoughts.sql` applied to prod. Bio column kept dormant in DB (reminder open to drop it + the auth-tolerant fallback once the feature feels stable). See §7 arcs (top of recent-work list).
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -1320,6 +1320,99 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-12 — Profile "Thoughts on…" feature + extensive polish (20+ commits)
+
+A new show-agnostic writing form on the V2 public profile, replacing the inline bio. Each piece has a locked "Thoughts on" opener (italic Lora) + user-written completion + body. Two states: **private** (owner-only) or **public/featured** (visible to visitors). The top of the profile is now a horizontal ticket carousel — one ticket visible at a time, chevron-step. Compose happens in a full-screen modal overlay (not a route). No friend-room or public-aggregate destination — pieces live entirely on the user's profile.
+
+**Triggered by:** off-doc spec at `docs/sidebar_spec_thoughts_on.md` (read into the conversation). Confirmed understanding + answered 10 spec-clarifying questions before any code — most consequential of those: `last_published_at` semantics on edits (only bump on private→public transition), and the public→private prohibition (UI-gated, no DB enforcement).
+
+Implemented in **6 sequential checkpoints** per the spec's order-of-operations, each its own commit. Then ~15 polish commits over the same arc.
+
+**Commits (chronological):**
+
+| Commit | Scope |
+|---|---|
+| `0c3bb07` | **Checkpoint 1.** Schema + data layer. New `profile_thoughts` table + RLS migration; ProfileThought type; CRUD helpers in db.ts. |
+| `517452b` | **Checkpoint 2.** ProfileThoughtsCompose modal + prompt library (12 seed prompts). |
+| `63df891` | **Checkpoint 3.** ProfileThoughtsCarousel — standalone, mock-data-driven. |
+| `3769554` | **Checkpoint 4.** Wire up on V2ProfileSelfPage. Empty state + populated state + compose-modal triggers + CRUD handlers. |
+| `69ee87c` | **Checkpoint 5.** Visitor parity on V2ProfileVisitorPage. Read-only carousel, public-only data, hidden when no public pieces. |
+| `b8663e4` | **Checkpoint 6.** Bio dead-code cleanup. Removed BioField component + state + `setProfileBio` + `V2_BIO_MAX`. profiles.bio column kept dormant. |
+| `b1e14aa` | Featured public ticket is also deletable (drops the spec's "no delete on featured" carve-out). |
+| `b37e475` | Empty-state emphasis swap + inline button row (prompt prominent / parenthetical demoted). |
+| `6a26111` | Alignment + reorder + orphan prevention. profile-journal-heading class on header/section/meta-prose; `preventLastWordOrphan` lifted to `src/lib/utils.ts`. |
+| `6953b30` | Carousel timing/layout polish (slide+fade 480ms two-phase keyframes; chevrons absolute-positioned) + compose modal rebuild (contenteditable flowing title; canon-yellow delete-confirm). |
+| `4c9927e` | Ticket border-radius 12 → 24 (matches site `.card` standard). |
+| `e1fadf4` | Modal scroll internal + flowing title + sharp corners. maxHeight + overflowY:auto on the modal card. |
+| `1d1cd74` | Autosize grows AND shrinks the body. Body min lines 6 → 11. Populated-state cycle button → canon-green circle. |
+| `1925c07` | **Canon-yellow publish-button fight.** theme.ts:101's `body.public-context .btn.post { background: !important }` was beating React inline style. Fixed via a more-specific scoped CSS class + own `!important`. |
+| `101e65d` | Drop outline + browser focus ring from both publish-button states. |
+| `9f89b3f` | Private ticket: canon-green fill + dashed white outline; "only you see this thought" label + lock icon. Globe → Tooltip ("Turn this into a public thought."). Modal scroll → modal-card bottom (was textarea bottom). |
+| `e9092fa` | Drop dotted underline on private label; ellipsis on below-carousel prompt; refresh strokeWidth 2.5. |
+| `fbf2cd1` | Keep cycle button glued to prompt on wrap (single inline-flex unit); "Thoughts on" italic Lora in ticket. |
+| `d377204` | Last-3-words + refresh nowrap tail group; prompt span `flex: 1 1 0` so line 2 aligns with "Thoughts on", not "write a new one?". |
+| `5bcfc6a` | Revert ticket "Thoughts on" weight 600 → 500 (italic, no bold). |
+
+**By piece:**
+
+1. **Schema** ([20260512_profile_thoughts.sql](supabase/migrations/20260512_profile_thoughts.sql)). `profile_thoughts(id uuid PK, author_id uuid FK profiles ON DELETE CASCADE, title_completion text CHECK length 1..200, body text non-empty, is_public bool default false, created_at, updated_at, last_published_at nullable)`. Two indexes: `(author_id, last_published_at DESC) WHERE is_public` for visitor reads, `(author_id, created_at DESC)` for owner reads. Trigger `touch_profile_thoughts_updated_at` with `SET search_path = public` (advisor-clean). RLS: SELECT visible when `is_public=true OR author_id=auth.uid()`; INSERT/UPDATE/DELETE owner-only. No RPC — privacy boundary is simple and RLS-gated SELECT is sufficient.
+
+2. **Data layer** ([db.ts:1346-1437](src/lib/db.ts:1346)). `ProfileThought` type. CRUD helpers: `fetchProfileThoughtsForOwner` (sorted by created_at desc), `fetchPublicProfileThoughtsByUserId` (filtered + sorted by last_published_at desc), `insertProfileThought` (sets last_published_at if isPublic), `updateProfileThought` (caller-controlled `bumpPublishedAt` flag — true ONLY on the private→public transition), `deleteProfileThought`.
+
+3. **Compose modal** ([ProfileThoughtsCompose.tsx](src/components/v2/ProfileThoughtsCompose.tsx)). Full-screen overlay. Backdrop centers + 40px padding; modal card has `maxHeight: calc(100vh - 80px)` + `overflowY: auto` so scroll stays inside. Sharp corners (radius 0). Cream surround framing a white paper container; the paper holds title + body. Title rendered as a contenteditable flowing stream: locked italic-Lora "Thoughts on " prefix → editable span → inline "another prompt" pill (canon green, white icon+text). Second line of a long title aligns with the prefix (natural contenteditable inline flow). Fixed 2-line title height (TITLE_LH × 2) so cycling doesn't reshape the modal. Body: ruled-paper textarea via scoped CSS class `.v2-thoughts-paper-body` with `background-image: ${RULE_GRADIENT} !important` to claw back from theme.ts:296's global text bg rule. Body min lines = 11. Autosize: `style.height = "auto"` then to target (no max-with-current so deletes shrink); then `modalCardRef.current.scrollTop = scrollHeight` so the action row stays visible as the body grows past the initial frame.
+   
+   Destination chooser: two pills (private → canon-green, featured → canon-yellow) stacked bottom-LEFT. Action row (× not now + save/publish) bottom-RIGHT, aligned to bottom pill via `align-items: flex-end`. Publish button's fill flips to canon yellow when destination = featured; both states are outline-free (the `v2-thoughts-publish-button` always-on class kills the border + focus ring with !important).
+   
+   Discard-confirm modal mirrors V2ComposePage's. Body scroll locked while open. Enter in title is blocked; Cmd/Ctrl+Enter submits.
+
+4. **Carousel** ([ProfileThoughtsCarousel.tsx](src/components/v2/ProfileThoughtsCarousel.tsx)). Single ticket visible. Chevrons absolute-positioned at the article's left/right outer edges (`left: -32`, `right: -32`) so navigation doesn't shift the article's left edge. Slide+fade animation: two-phase keyframes hold `opacity: 0` until 50% of the timeline, total 480ms ease-out; ticket re-keyed on every step. Border-radius 24 (matches `.card`).
+   
+   Public ticket: transparent fill, 2px dotted white outline, white title/body. Private ticket: canon-green fill, 2px dashed white outline, white title/body — plus a privacy-indicator row above the title (lock-keyhole icon + "only you see this thought" in italic Lora 14). Article-level `color: #fff`; all children use `color: currentColor` so the cascade carries through to text + icons in both states.
+   
+   Owner affordances on the current ticket: edit (pencil), publish (globe, private→public, wrapped in a Tooltip → "Turn this into a public thought."), delete (trash with confirm modal: canon-yellow fill, white text, "Are you sure you want to delete this thought?"). Visitor mode: no affordances.
+   
+   Body 2-line clamp; expand/collapse when body > 120 chars or contains a newline. Title prefix "Thoughts on" rendered as italic Lora 500 (the user-typed completion stays Inter 600 at 22px).
+
+5. **Wire-up on V2ProfileSelfPage**. New section between header + meta-prose. Empty state: large italic Lora "Thoughts on {prompt}…" + button row (`different prompt?` white-outline pill + canon-green `write a thought →`) + parenthetical "(leave something here that lasts.)". Populated state: carousel + below-carousel link "write a new one? →" + "Thoughts on {prompt}…" + small canon-green refresh circle. Below-carousel layout: prompt span `flex: 1 1 0`, last-3-words + refresh circle bound in `white-space: nowrap` inline-flex tail so only the tail drops to line 2 when the prompt is too long; line 2 aligns with "Thoughts on", not with "write a new one?". Outer flex aligns to baseline.
+   
+   Cycling-prompt state shared between empty + populated states (single `cyclingPrompt` in V2ProfileSelfPage); `handleWriteNew` seeds the modal with whatever prompt the user is currently looking at via the cycling-prompt UI. Modal then cycles further internally.
+
+6. **Visitor view on V2ProfileVisitorPage**. Bio rendering removed. Carousel rendered in `ownerMode={false}` with public-only data (parent-filtered via `fetchPublicProfileThoughtsByUserId`). Hidden entirely when the owner has zero public pieces — visitors never see a placeholder.
+
+7. **Bio removal**. BioField component + `bio`/`setBio` state + sync useEffect + `setProfileBio` import + `V2_BIO_MAX` import all dropped from V2ProfileSelfPage. `setProfileBio` function + `V2_BIO_MAX` constant dropped from db.ts (no callers left). `profiles.bio` column stays dormant in DB. auth.tsx's `loadProfile` + `fetchPublicProfileByUsername` still pull the column via the bio-tolerant try-with-fallback SELECT — harmless, will drop in a separate later pass once nothing reads it.
+
+**Prompt library** ([profileThoughtPrompts.ts](src/lib/profileThoughtPrompts.ts)). 12 seed prompts. `pickProfileThoughtPrompt(current)` returns a fresh prompt not equal to the current one. TS constant file — iterate by editing the file. If the library ever needs admin editing, migrate to a `profile_thought_prompts` table parallel to the existing `prompts` pattern.
+
+**Behavior contract:**
+- "Featured" = positional. The most recent public piece by `last_published_at desc`. No separate flag column.
+- Owner-view sort: featured public first, then everything else (private + older public) by created_at desc.
+- Visitor-view sort: public only, by last_published_at desc.
+- **Private → Public transition allowed. Public → Private is NOT.** UI gates entirely (modal destination chooser hidden in edit-public mode). Once public, only edit (stays public) or delete.
+- `last_published_at` set on the private→public transition + on fresh public inserts. Never bumped on a public-piece edit. Never cleared. (Owner explicit choice: editing ≠ republishing.)
+- Edit pencil on every owned ticket → opens compose modal in `edit-private` or `edit-public` mode, content pre-loaded.
+- Publish (Globe) on private tickets → direct private→public, no modal (single setShelfOverride-style write).
+- Delete (Trash) on every owned ticket — featured included (drops the spec's original carve-out).
+- Cycling prompt shared between empty-state and below-carousel UIs.
+
+**Two-step deploy required:**
+- `0c3bb07` — run `20260512_profile_thoughts.sql` in Supabase SQL editor. Until applied, the carousel fails to fetch and the empty-state renders in its place.
+
+**Deferred items added this arc (still open):**
+
+- **`profiles.bio` column kept dormant in DB.** Bio UI + setter all removed; loaders still SELECT the column via the bio-tolerant fallback. Drop the column + the auth-side fallback in a separate small pass once we're confident no path reads it. (Owner asked to be reminded once the thoughts feature feels stable.)
+- **Contenteditable title accepts newlines on paste.** `Enter` keypress is blocked (Cmd/Ctrl+Enter submits), but pasting multi-line text could insert raw newlines into `titleCompletion`. Rare edge case; user can clean up. Defer until observed.
+- **Carousel article color is hardcoded `#fff`.** Works because every current consumer renders inside body.public-context. A future render outside that context would have white-on-bright text. Not a current concern.
+
+**Conventions established or reinforced this arc:**
+
+- **CSS `!important` always beats React's inline `style` prop.** When a theme-level rule under a body-class context has `!important` (e.g. `body.public-context .btn.post { background: #7abd8e !important }`), inline `style` cannot override it. Use a more-specific scoped class with its own `!important` instead. **Documented during the canon-yellow publish-button fight** (commits `1925c07`, `101e65d`) — the first attempt at `style={{ background: "#dea838" }}` silently no-op'd. Lesson generalizes: any UI feature that toggles a button's color under a context that uses `!important` styling needs class-based override.
+- **Compose-style modal pattern.** Cream surround + white paper container + ruled-paper body via scoped CSS class (`.v2-thoughts-paper-body`) to claw back from theme.ts:296's global textarea bg !important. Internal scroll: `maxHeight: calc(100vh - 80px)` + `overflowY: auto` on the modal card with a ref so autosize can directly set `scrollTop = scrollHeight`. Reuse this shape for any future single-piece writing modal.
+- **Contenteditable + React-state-via-ref.** `contentEditable={true}` on a span, `useRef` to read `textContent` on input, `useEffect` to sync DOM ← state when state changes externally (e.g. cycle prompt), check `el.textContent !== value` to avoid clobbering cursor while typing. `:empty::before` works for empty-state placeholder text. Captured for any future flowing-inline-with-locked-prefix surface.
+- **Selective text-wrap via nowrap sub-group.** When you want one flex item to wrap text freely but keep a tail (last N words + a tightly-coupled UI element) bound on wrap: flex item with `flex: 1 1 0; min-width: 0` (never wraps as a flex line) + a `display: inline-flex; white-space: nowrap` span at the end containing the tail. Result: most of the text fills line 1; only the tail drops to line 2. Line 2 starts at the flex item's left edge, NOT the parent's. First codified this arc; reuse for any "prompt + button" inline UI.
+- **Publish-button color reflects destination.** Featured → canon yellow. Private → canon green. Edit-public mode → locked yellow. Consistent visual mapping makes the chooser state obvious.
+- **Tooltip default styling under V2 profile is canon-yellow + white text + 18px radius + drop-shadow.** No custom override needed — `var(--dos-bg)` resolves to canon yellow under body.public-context, and the default Tooltip's other tokens match the requested look. Reuse for any future profile-context tooltip.
+- **`preventLastWordOrphan` lifted to `src/lib/utils.ts`** (during the prior arc) and reused here on auto-suggested prompts. ShowSection still has a local copy; consolidate when that file next gets touched.
 
 ### 2026-05-11 — V2 profile shelf editor + onboarding solo path + compose paper repair (7 commits)
 
