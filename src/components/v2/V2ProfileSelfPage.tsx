@@ -26,6 +26,7 @@ import Modal from "../Modal";
 import ProfileThoughtsCompose, { type ProfileThoughtsComposeMode, type ProfileThoughtsSubmitPayload } from "./ProfileThoughtsCompose";
 import ProfileThoughtsCarousel from "./ProfileThoughtsCarousel";
 import { pickProfileThoughtPrompt } from "../../lib/profileThoughtPrompts";
+import { preventLastWordOrphan } from "../../lib/utils";
 import { Plus, Pin, Trash2, SquarePen, GripVertical, ChevronDown, RefreshCw, ArrowRight } from "lucide-react";
 import {
   DndContext,
@@ -507,9 +508,10 @@ export default function V2ProfileSelfPage() {
     >
       {/* === PROFILE IDENTITY ===
           Left-justified, no avatar / no @subhead / no edit+share buttons.
-          The heading itself carries the @username; bio sits below as a
-          quiet placeholder until Commit D wires inline-editing. */}
-      <header style={{ textAlign: "left", marginBottom: 32 }}>
+          The heading itself carries the @username. The profile-journal-heading
+          class aligns it with V2Layout's pairedHeader ("this is your public
+          profile") at ≥731px viewports (theme.ts:450). */}
+      <header className="profile-journal-heading" style={{ textAlign: "left", marginBottom: 32 }}>
         <h1
           style={{
             fontFamily: "Lora, Georgia, serif",
@@ -537,16 +539,13 @@ export default function V2ProfileSelfPage() {
           the cycling prompt, shared state). The compose modal is mounted
           at the bottom of this component as a fixed-position overlay. */}
       {thoughtsLoaded && user && (
-        <section style={{ marginBottom: 40 }}>
+        <section className="profile-journal-heading" style={{ marginBottom: 40 }}>
           {thoughts.length === 0 ? (
             <div style={{ textAlign: "left", maxWidth: 540 }}>
-              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 22, color: "var(--dos-fg)", marginBottom: 6, lineHeight: 1.3 }}>
-                Thoughts on {cyclingPrompt}…
+              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 22, color: "var(--dos-fg)", marginBottom: 22, lineHeight: 1.3 }}>
+                {preventLastWordOrphan(`Thoughts on ${cyclingPrompt}…`)}
               </div>
-              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-fg)", marginBottom: 22, opacity: 0.7 }}>
-                (leave something here that lasts.)
-              </div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
                 <button
                   onClick={cyclePromptSuggestion}
                   aria-label="cycle to a different prompt"
@@ -573,6 +572,9 @@ export default function V2ProfileSelfPage() {
                 >
                   write a thought <ArrowRight size={14} />
                 </button>
+              </div>
+              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-fg)", opacity: 0.7 }}>
+                (leave something here that lasts.)
               </div>
             </div>
           ) : (
@@ -626,6 +628,7 @@ export default function V2ProfileSelfPage() {
 
       {/* === META PROSE === */}
       <p
+        className="profile-journal-heading"
         style={{
           textAlign: "left",
           margin: "24px 0 56px",

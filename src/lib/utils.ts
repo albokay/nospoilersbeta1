@@ -108,3 +108,21 @@ export const visibleRepliesCount = (
   };
   return list.filter(chainVisible).length;
 };
+
+/**
+ * Replace the LAST space in `s` with a non-breaking space (U+00A0) so the
+ * final two words stay glued. When the rendered text wraps, the browser
+ * breaks at the previous space instead, guaranteeing ≥2 words on the last
+ * line whenever wrapping occurs. No-op for ≤1-word strings.
+ *
+ * Mirrors the helper introduced in ShowSection.tsx (per HANDOFF §"Recent
+ * work" → 2026-04-22 banner-wrap arc). Lifted here 2026-05-12 so the V2
+ * profile's "Thoughts on…" prompt can use the same orphan-prevention.
+ * ShowSection still has a local copy; consolidate when that file gets
+ * touched next.
+ */
+export const preventLastWordOrphan = (s: string): string => {
+  const lastSpace = s.lastIndexOf(" ");
+  if (lastSpace === -1) return s;
+  return s.slice(0, lastSpace) + " " + s.slice(lastSpace + 1);
+};
