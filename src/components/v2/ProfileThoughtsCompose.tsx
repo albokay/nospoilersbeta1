@@ -32,6 +32,19 @@ const BODY_MIN_LINES = 6;
 const TITLE_SOFT_CAP = 100;
 const TITLE_HARD_CAP = 150;
 
+// Title row line-height. Independent of body LH because the title is bigger
+// (26px font vs 16px) — its own ruled-paper gradient period.
+const TITLE_LH = 34;
+const TITLE_RULE_GRADIENT = `repeating-linear-gradient(
+  to bottom,
+  transparent 0px,
+  transparent ${TITLE_LH - 2}px,
+  ${RULE_FAINT} ${TITLE_LH - 2}px,
+  ${RULE_FAINT} ${TITLE_LH - 1}px,
+  transparent ${TITLE_LH - 1}px,
+  transparent ${TITLE_LH}px
+)`;
+
 export type ProfileThoughtsComposeMode = "create" | "edit-private" | "edit-public";
 
 export type ProfileThoughtsSubmitPayload = {
@@ -86,19 +99,21 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
   const [discardOpen, setDiscardOpen] = useState(false);
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
-  const titleRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Title autosize — grow up to 2 lines, then cap. Keeps the title field
-  // visually flowing into a second line when long without unbounded growth.
-  function autosizeTitle() {
-    const ta = titleRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    const TWO_LINE_MAX = Math.ceil(26 * 1.3 * 2); // matches inline maxHeight
-    const next = Math.min(ta.scrollHeight, TWO_LINE_MAX);
-    ta.style.height = `${next}px`;
-  }
-  useEffect(() => { autosizeTitle(); }, [titleCompletion]);
+  // Title is rendered as a contenteditable <span> inside a flowing container
+  // alongside the locked "Thoughts on" prefix + the inline "another prompt"
+  // button. Sync external changes (initial mount, cycle prompt) to the DOM
+  // via the ref; user typing updates state via onInput. The check
+  // `textContent !== titleCompletion` keeps the cursor stable while typing
+  // (state already matches DOM, so the effect is a no-op).
+  const titleEditableRef = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    const el = titleEditableRef.current;
+    if (!el) return;
+    if (el.textContent !== titleCompletion) {
+      el.textContent = titleCompletion;
+    }
+  }, [titleCompletion]);
 
   // Auto-grow textarea — snaps to 28px multiples. Same shape as
   // [V2ComposePage.tsx:172](src/components/v2/V2ComposePage.tsx:172).
@@ -194,20 +209,23 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
           background: "rgba(0,0,0,0.5)",
           zIndex: 9990,
           display: "flex",
-          alignItems: "flex-start",
+          alignItems: "center",
           justifyContent: "center",
-          overflowY: "auto",
-          padding: "60px 20px",
+          padding: "40px 20px",
         }}
         onClick={(e) => { if (e.target === e.currentTarget) attemptClose(); }}
       >
-        {/* Modal card. Cream surround framing the white paper. */}
+        {/* Modal card. Sharp corners, cream surround framing the white paper.
+            maxHeight + overflowY:auto contains the scroll inside the modal
+            so the browser viewport doesn't scroll when the body grows long. */}
         <div
           style={{
             background: CREAM_BG,
             color: INK,
             width: "min(720px, 100%)",
-            borderRadius: 12,
+            maxHeight: "calc(100vh - 80px)",
+            overflowY: "auto",
+            borderRadius: 0,
             padding: "32px 36px 28px",
             position: "relative",
             boxShadow: "0 16px 60px rgba(0,0,0,0.25)",
@@ -231,95 +249,119 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
               font-style: italic;
               font-weight: 400;
             }
-            .v2-thoughts-title-input {
-              background-color: transparent !important;
-              background-image: none !important;
-              color: ${INK} !important;
+            /* Title content-editable region. Empty-state placeholder via ::before. */
+            .v2-thoughts-title-editable {
+              outline: none;
+              white-space: pre-wrap;
+              overflow-wrap: break-word;
             }
-            .v2-thoughts-title-input::placeholder {
+            .v2-thoughts-title-editable:empty::before {
+              content: "…";
               color: ${INK_FAINT};
               font-style: italic;
-              font-weight: 500;
+              pointer-events: none;
             }
           `}</style>
 
           {/* White paper container. Title + body share the same writing
               surface; the title sits on white at the top, ruled lines start
-              with the body textarea below. Mirrors V2ComposePage's structure. */}
+              with the body textarea below. Sharp corners per spec. */}
           <div
             style={{
               background: "#fff",
               border: `2px solid ${RULE}`,
-              borderRadius: 4,
+              borderRadius: 0,
               padding: "32px 32px 24px",
               marginBottom: 24,
             }}
           >
-            {/* Title row — "Thoughts on" italic Lora + textarea (no trailing
-                period). flexWrap allows the textarea to drop to a second line
-                when content overflows. Title textarea is rows=1 and grows up
-                to a 2-line cap via the autosize effect below. */}
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-              <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontWeight: 500, fontSize: 26, color: INK, lineHeight: 1.3, flexShrink: 0 }}>
-                Thoughts on
+            {/* Title block. The locked "Thoughts on" prefix, the editable
+                completion, and the inline "another prompt" button all flow
+                as one inline-block stream so wrap aligns the second line
+                with the prefix's left edge (per spec #4). Fixed 2-line
+                height so a 1-line title doesn't shrink the modal (#3).
+                Ruled-paper gradient at title-LH period gives each line an
+                underline matching the body's rule styling (#2). */}
+            <div
+              style={{
+                fontSize: 26,
+                lineHeight: `${TITLE_LH}px`,
+                color: INK,
+                height: `${TITLE_LH * 2}px`,
+                overflow: "hidden",
+                marginBottom: 16,
+                backgroundImage: TITLE_RULE_GRADIENT,
+                backgroundPosition: "0 0",
+                backgroundSize: `100% ${TITLE_LH}px`,
+                backgroundRepeat: "repeat",
+              }}
+            >
+              <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontWeight: 500, color: INK }}>
+                Thoughts on{" "}
               </span>
-              <textarea
-                ref={titleRef}
-                className="v2-thoughts-title-input"
-                value={titleCompletion}
-                onChange={(e) => setTitleCompletion(e.target.value.slice(0, TITLE_HARD_CAP))}
-                maxLength={TITLE_HARD_CAP}
-                placeholder="…"
-                rows={1}
+              <span
+                ref={titleEditableRef}
+                className="v2-thoughts-title-editable"
+                contentEditable={!submitting}
+                suppressContentEditableWarning
+                onInput={(e) => {
+                  const t = (e.currentTarget as HTMLSpanElement).textContent || "";
+                  // Truncate at hard cap. Done in state only; DOM keeps user's
+                  // current input — slicing the DOM would move the cursor.
+                  setTitleCompletion(t.length > TITLE_HARD_CAP ? t.slice(0, TITLE_HARD_CAP) : t);
+                }}
+                onKeyDown={(e) => {
+                  // Block raw Enter — title is single-flow text, no newlines.
+                  // Submit on Cmd/Ctrl+Enter for parity with the body modal.
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (e.metaKey || e.ctrlKey) handleSubmit();
+                  }
+                }}
                 style={{
-                  flex: "1 1 240px",
-                  minWidth: 120,
                   fontFamily: "Inter, sans-serif",
-                  fontSize: 26,
                   fontWeight: 600,
                   color: INK,
-                  background: "transparent",
-                  border: "none",
-                  outline: "none",
-                  padding: 0,
-                  margin: 0,
-                  lineHeight: 1.3,
-                  resize: "none",
-                  overflow: "hidden",
-                  overflowWrap: "break-word",
-                  maxHeight: `${Math.ceil(26 * 1.3 * 2)}px`, // 2-line cap
+                  display: "inline",
                 }}
               />
-            </div>
-
-            {/* Cycle prompt + soft-cap counter row */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              {/* Inline cycle-prompt pill. Sits at the end of the title
+                  content stream — moves with title length (#5). Canon-green
+                  fill, white text+icon, standard pill radius (#6). */}
               <button
                 onClick={cyclePrompt}
                 disabled={submitting}
+                title="cycle through prompt suggestions"
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  color: INK_SOFT,
-                  fontFamily: "Lora, Georgia, serif",
-                  fontStyle: "italic",
-                  fontSize: 13,
-                  cursor: submitting ? "not-allowed" : "pointer",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  padding: 0,
+                  marginLeft: 10,
+                  verticalAlign: "middle",
+                  background: "#7abd8e",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 9999,
+                  padding: "4px 12px",
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: submitting ? "not-allowed" : "pointer",
+                  lineHeight: 1,
                 }}
-                title="cycle through prompt suggestions"
               >
                 <RefreshCw size={12} color="currentColor" /> another prompt
               </button>
-              {showCounter && (
+            </div>
+
+            {/* Soft-cap counter row */}
+            {showCounter && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
                 <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: counterColor }}>
                   {titleLen}/{TITLE_SOFT_CAP}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Body — ruled-paper textarea inside the same white paper. */}
             <textarea
@@ -415,9 +457,19 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 6,
+                  gap: 0,
                   cursor: submitting ? "not-allowed" : "pointer",
                   minWidth: 160,
+                  // Featured destination flips publish-button fill to canon
+                  // yellow so the button color foreshadows the destination
+                  // pill that's selected. Private + edit-public keep the
+                  // .btn.post canon-green default.
+                  ...(destination === "featured" && !destinationLocked
+                    ? { background: "#dea838", borderColor: "#dea838" }
+                    : {}),
+                  ...(destinationLocked
+                    ? { background: "#dea838", borderColor: "#dea838" }
+                    : {}),
                 }}
               >
                 {submitting ? <>saving<LoadingDots /></> : <>{actionLabel}<ArrowRight size={14} /></>}
@@ -561,7 +613,7 @@ function DestinationPill({
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: bg }} />
         )}
       </span>
-      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: fg, lineHeight: 1.2, whiteSpace: "nowrap" }}>
+      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 500, color: fg, lineHeight: 1.2, whiteSpace: "nowrap" }}>
         {label}
       </span>
     </button>
