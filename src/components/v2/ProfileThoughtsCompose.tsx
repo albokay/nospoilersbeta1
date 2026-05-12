@@ -265,6 +265,20 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
               font-style: italic;
               pointer-events: none;
             }
+            /* theme.ts:101 forces .btn.post canon-green !important under
+               body.public-context. Beat it with a more-specific class +
+               !important so the publish button can flip to canon yellow
+               on the featured destination. */
+            body.public-context .btn.post.v2-thoughts-publish-featured,
+            .btn.post.v2-thoughts-publish-featured {
+              background: #dea838 !important;
+              border-color: #fff !important;
+            }
+            body.public-context .btn.post.v2-thoughts-publish-featured:hover,
+            .btn.post.v2-thoughts-publish-featured:hover {
+              background: #c9962f !important;
+              border-color: #fff !important;
+            }
           `}</style>
 
           {/* White paper container. Title + body share the same writing
@@ -450,7 +464,10 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="btn post h40"
+                // Add the v2-thoughts-publish-featured class when destination
+                // is featured so the canon-yellow CSS override (above) wins
+                // over body.public-context's !important canon-green rule.
+                className={`btn post h40${destination === "featured" ? " v2-thoughts-publish-featured" : ""}`}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -458,13 +475,6 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
                   gap: 0,
                   cursor: submitting ? "not-allowed" : "pointer",
                   minWidth: 160,
-                  // Featured destination flips publish-button fill to canon
-                  // yellow; white outline (from .btn.post) stays. Private
-                  // keeps the canon-green default. edit-public is also
-                  // locked-featured → yellow.
-                  ...(destination === "featured"
-                    ? { background: "#dea838" }
-                    : {}),
                 }}
               >
                 {submitting ? <>saving<LoadingDots /></> : <>{actionLabel}<ArrowRight size={14} /></>}
