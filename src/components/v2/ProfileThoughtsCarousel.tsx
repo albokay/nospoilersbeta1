@@ -198,7 +198,7 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
             <div style={{ display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", minWidth: 0, flex: 1 }}>
               <span style={{ fontFamily: "Inter, sans-serif", fontSize: 22, fontWeight: 600, color: "currentColor", lineHeight: 1.25 }}>
-                <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontWeight: 600 }}>Thoughts on</span>
+                <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontWeight: 500 }}>Thoughts on</span>
                 {" "}{current.titleCompletion}.
               </span>
             </div>
