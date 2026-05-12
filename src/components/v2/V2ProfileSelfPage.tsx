@@ -12,16 +12,23 @@ import {
   upsertRewatchStatus,
   setShelfOverride,
   setShelfPositions,
+  fetchProfileThoughtsForOwner,
+  insertProfileThought,
+  updateProfileThought,
+  deleteProfileThought,
   V2_BIO_MAX,
   type V2BlurbKind,
   type ShelfName,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
-import type { ProgressEntry } from "../../types";
+import type { ProgressEntry, ProfileThought } from "../../types";
 import V2Layout from "./V2Layout";
 import SearchShows from "../SearchShows";
 import Modal from "../Modal";
-import { Plus, Pin, Trash2, SquarePen, GripVertical, ChevronDown } from "lucide-react";
+import ProfileThoughtsCompose, { type ProfileThoughtsComposeMode, type ProfileThoughtsSubmitPayload } from "./ProfileThoughtsCompose";
+import ProfileThoughtsCarousel from "./ProfileThoughtsCarousel";
+import { pickProfileThoughtPrompt } from "../../lib/profileThoughtPrompts";
+import { Plus, Pin, Trash2, SquarePen, GripVertical, ChevronDown, RefreshCw, ArrowRight } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -63,6 +70,28 @@ const PROFILE_ADD_TILE: React.CSSProperties = {
 };
 
 type ShelfStatus = "watching" | "want" | "finished" | "stopped";
+
+// Owner-view sort for "Thoughts on…" pieces. Per spec:
+//   - The currently-featured public piece (most recent by last_published_at)
+//     is first.
+//   - All other pieces (private + older public) come behind it by
+//     created_at desc.
+// If the user has no public pieces, everything is just created_at desc.
+function sortOwnerProfileThoughts(thoughts: ProfileThought[]): ProfileThought[] {
+  const publicByPublished = thoughts
+    .filter((t) => t.isPublic)
+    .sort((a, b) => {
+      const aT = a.lastPublishedAt ? new Date(a.lastPublishedAt).getTime() : 0;
+      const bT = b.lastPublishedAt ? new Date(b.lastPublishedAt).getTime() : 0;
+      return bT - aT;
+    });
+  const featured = publicByPublished[0] ?? null;
+  const byCreatedDesc = (a: ProfileThought, b: ProfileThought) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  if (!featured) return [...thoughts].sort(byCreatedDesc);
+  const rest = thoughts.filter((t) => t.id !== featured.id).sort(byCreatedDesc);
+  return [featured, ...rest];
+}
 
 // Shelf classification. Priority order: explicit shelf_override (user's last
 // manual choice via the V2 profile chevron-move) > stoppedWatching (V3
@@ -361,26 +390,118 @@ export default function V2ProfileSelfPage() {
   // Local mirror of profile.bio so post-save updates feel snappy without
   // waiting for AuthProvider's loadProfile to re-fetch. Initial value
   // syncs from auth.profile when it lands.
+  // NOTE: 2026-05-12 — the bio surface is being replaced by the "Thoughts
+  // on..." carousel; the BioField rendering call site has been removed.
+  // State + BioField component definition stay in place until checkpoint 6
+  // cleans them up. Bio column on profiles remains dormant in DB.
   const [bio, setBio] = useState<string | null>(profile?.bio ?? null);
   useEffect(() => {
     setBio(profile?.bio ?? null);
   }, [profile?.bio]);
 
+  // "Thoughts on..." state — owner's pieces, compose-modal state, and a
+  // cycling-prompt suggestion shared between the empty state and the
+  // below-carousel "write a new one" affordance.
+  const [thoughts, setThoughts] = useState<ProfileThought[]>([]);
+  const [thoughtsLoaded, setThoughtsLoaded] = useState(false);
+  const [composeOpen, setComposeOpen] = useState<{
+    mode: ProfileThoughtsComposeMode;
+    initialContent: { titleCompletion: string; body: string } | null;
+    editingId?: string;
+  } | null>(null);
+  const [cyclingPrompt, setCyclingPrompt] = useState<string>(() => pickProfileThoughtPrompt(null));
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    Promise.all([fetchShows(), fetchProgress(user.id)])
-      .then(([s, p]) => {
+    Promise.all([
+      fetchShows(),
+      fetchProgress(user.id),
+      fetchProfileThoughtsForOwner(user.id),
+    ])
+      .then(([s, p, t]) => {
         if (cancelled) return;
         setShows(s);
         setProgress(p);
+        setThoughts(t);
+        setThoughtsLoaded(true);
       })
       .catch((err) => {
         if (cancelled) return;
         console.warn("V2ProfileSelfPage bootstrap failed:", err);
+        // Unblock empty-state rendering even on partial failure so the user
+        // can write a new piece. fetchProfileThoughtsForOwner failures will
+        // surface again on the next mount.
+        setThoughtsLoaded(true);
       });
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  // === Thoughts on... handlers ============================================
+
+  const sortedThoughts = useMemo(() => sortOwnerProfileThoughts(thoughts), [thoughts]);
+
+  function handleWriteNew() {
+    // Seed the modal with whatever prompt the user is currently looking at
+    // via the cycling-prompt UI. Modal's own ↻ button can cycle further.
+    setComposeOpen({
+      mode: "create",
+      initialContent: { titleCompletion: cyclingPrompt, body: "" },
+    });
+  }
+
+  function handleEditThought(t: ProfileThought) {
+    setComposeOpen({
+      mode: t.isPublic ? "edit-public" : "edit-private",
+      initialContent: { titleCompletion: t.titleCompletion, body: t.body },
+      editingId: t.id,
+    });
+  }
+
+  async function handleComposeSubmit(payload: ProfileThoughtsSubmitPayload) {
+    if (!user || !composeOpen) return;
+    if (composeOpen.editingId) {
+      const editingThought = thoughts.find((t) => t.id === composeOpen.editingId);
+      const wasPublic = editingThought?.isPublic ?? false;
+      const transitionToPublic = !wasPublic && payload.isPublic;
+      const updated = await updateProfileThought(composeOpen.editingId, {
+        titleCompletion: payload.titleCompletion,
+        body: payload.body,
+        // Omit isPublic in edit-public mode — destination is locked to
+        // featured and can't change, so we skip the spurious write. In
+        // edit-private mode the toggle could go either way; pass it through.
+        ...(composeOpen.mode === "edit-public" ? {} : { isPublic: payload.isPublic }),
+        bumpPublishedAt: transitionToPublic,
+      });
+      setThoughts((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+    } else {
+      const inserted = await insertProfileThought({
+        authorId: user.id,
+        titleCompletion: payload.titleCompletion,
+        body: payload.body,
+        isPublic: payload.isPublic,
+      });
+      setThoughts((prev) => [inserted, ...prev]);
+    }
+  }
+
+  async function handlePublishThought(t: ProfileThought) {
+    if (!user) return;
+    const updated = await updateProfileThought(t.id, {
+      isPublic: true,
+      bumpPublishedAt: true,
+    });
+    setThoughts((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+  }
+
+  async function handleDeleteThought(t: ProfileThought) {
+    await deleteProfileThought(t.id);
+    setThoughts((prev) => prev.filter((x) => x.id !== t.id));
+  }
+
+  function cyclePromptSuggestion() {
+    setCyclingPrompt((cur) => pickProfileThoughtPrompt(cur));
+  }
 
   const buckets = useMemo(() => {
     const out: Record<ShelfStatus, string[]> = { watching: [], want: [], finished: [], stopped: [] };
@@ -519,20 +640,95 @@ export default function V2ProfileSelfPage() {
         >
           @{profile?.username ?? "—"}
         </h1>
-        {/* Bio — inline editable. Click the placeholder (or existing bio
-            text) to open a textarea; blur or Cmd/Ctrl+Enter saves; Esc
-            cancels. Persists to profiles.bio (migration
-            20260510_profile_bio.sql). Visible to anyone viewing this
-            user's public profile. */}
-        {user && (
-          <BioField
-            value={bio}
-            placeholder="share something about who you are as a TV viewer…"
-            userId={user.id}
-            onSaved={(next) => setBio(next)}
-          />
-        )}
+        {/* Bio field removed 2026-05-12 — replaced by the "Thoughts on..."
+            section below. profiles.bio column kept dormant in DB. */}
       </header>
+
+      {/* === THOUGHTS ON... ===
+          The carousel sits at the top of the profile (per spec). When the
+          owner has no pieces, renders an empty state with a cycling prompt
+          suggestion + "write a thought" CTA. When populated, the carousel
+          renders + a soft "write a new one" affordance below it (also with
+          the cycling prompt, shared state). The compose modal is mounted
+          at the bottom of this component as a fixed-position overlay. */}
+      {thoughtsLoaded && user && (
+        <section style={{ marginBottom: 40 }}>
+          {thoughts.length === 0 ? (
+            <div style={{ textAlign: "left", maxWidth: 540 }}>
+              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 18, color: "var(--dos-fg)", marginBottom: 18 }}>
+                leave something here that lasts.
+              </div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 22, opacity: 0.9 }}>
+                <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-fg)" }}>
+                  Thoughts on {cyclingPrompt}.
+                </span>
+                <button
+                  onClick={cyclePromptSuggestion}
+                  aria-label="cycle prompt"
+                  title="cycle to another prompt"
+                  style={{ background: "transparent", border: "none", color: "var(--dos-fg)", cursor: "pointer", padding: 4, opacity: 0.6, display: "inline-flex", alignItems: "center" }}
+                >
+                  <RefreshCw size={14} color="currentColor" />
+                </button>
+              </div>
+              <div>
+                <button
+                  onClick={handleWriteNew}
+                  className="btn post h40"
+                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                >
+                  write a thought <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <ProfileThoughtsCarousel
+                thoughts={sortedThoughts}
+                ownerMode
+                ownerHandlers={{
+                  onEdit: handleEditThought,
+                  onPublish: handlePublishThought,
+                  onDelete: handleDeleteThought,
+                }}
+              />
+              {/* Soft below-carousel "write a new one" with a cycling prompt
+                  suggestion. Always present, never demanding (per spec). */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, flexWrap: "wrap", opacity: 0.85 }}>
+                <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-fg)" }}>
+                  Thoughts on {cyclingPrompt}.
+                </span>
+                <button
+                  onClick={cyclePromptSuggestion}
+                  aria-label="cycle prompt"
+                  title="cycle to another prompt"
+                  style={{ background: "transparent", border: "none", color: "var(--dos-fg)", cursor: "pointer", padding: 2, opacity: 0.6, display: "inline-flex", alignItems: "center" }}
+                >
+                  <RefreshCw size={12} color="currentColor" />
+                </button>
+                <button
+                  onClick={handleWriteNew}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--dos-fg)",
+                    fontFamily: "Lora, Georgia, serif",
+                    fontStyle: "italic",
+                    fontSize: 14,
+                    cursor: "pointer",
+                    padding: 0,
+                    textDecoration: "underline",
+                    textDecorationStyle: "dotted",
+                    textUnderlineOffset: 4,
+                  }}
+                >
+                  write a new one →
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {/* === META PROSE === */}
       <p
@@ -996,6 +1192,19 @@ export default function V2ProfileSelfPage() {
           </Modal>
         );
       })()}
+
+      {/* Thoughts on... compose modal — full-screen overlay. Mounted at the
+          bottom of the V2Layout children so its position:fixed escapes the
+          page's content flow. State is null when closed; an object with
+          mode + initialContent + (optional) editingId when open. */}
+      {composeOpen && (
+        <ProfileThoughtsCompose
+          mode={composeOpen.mode}
+          initialContent={composeOpen.initialContent}
+          onSubmit={handleComposeSubmit}
+          onClose={() => setComposeOpen(null)}
+        />
+      )}
     </V2Layout>
   );
 }
