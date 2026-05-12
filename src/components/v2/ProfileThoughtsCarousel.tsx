@@ -128,54 +128,45 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
 
   return (
     <div style={{ position: "relative" }}>
-      {/* Slide keyframes — short + subtle to match Sidebar's calm pacing. */}
+      {/* Slide keyframes — two-phase: slide holds opacity 0 until ~50%, then
+          fades in while the transform finishes. Total duration 480ms for a
+          calm, deliberate transition that doesn't feel snappy. */}
       <style>{`
-        @keyframes pt-slide-from-right { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes pt-slide-from-left  { from { transform: translateX(-40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes pt-slide-from-right {
+          0%   { transform: translateX(70px); opacity: 0; }
+          50%  { transform: translateX(20px); opacity: 0; }
+          100% { transform: translateX(0);    opacity: 1; }
+        }
+        @keyframes pt-slide-from-left {
+          0%   { transform: translateX(-70px); opacity: 0; }
+          50%  { transform: translateX(-20px); opacity: 0; }
+          100% { transform: translateX(0);     opacity: 1; }
+        }
       `}</style>
 
-      <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
-        {showArrows ? (
-          <button
-            onClick={goPrev}
-            disabled={currentIndex === 0}
-            aria-label="previous thought"
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--dos-fg)",
-              padding: 8,
-              cursor: currentIndex === 0 ? "default" : "pointer",
-              opacity: currentIndex === 0 ? 0.2 : 0.7,
-              alignSelf: "center",
-              display: "inline-flex",
-              alignItems: "center",
-              flexShrink: 0,
-            }}
-          >
-            <ChevronLeft size={20} color="currentColor" />
-          </button>
-        ) : null}
-
-        <article
-          // Re-keying on `${id}-${index}` forces remount on step so the
-          // keyframe animation runs every time the user navigates.
-          key={`${current.id}-${currentIndex}`}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            background: "transparent",
-            border: outlineStyle,
-            borderRadius: 12,
-            padding: "20px 24px",
-            color: "var(--dos-fg)",
-            animation:
-              slideDir === "right" ? "pt-slide-from-right 180ms ease" :
-              slideDir === "left"  ? "pt-slide-from-left 180ms ease"  : "none",
-            position: "relative",
-            minHeight: 160,
-          }}
-        >
+      {/* Article spans the full content column so its left edge stays aligned
+          with the profile name header. Chevrons are absolute-positioned at the
+          left/right edges so they don't push the article rightward. */}
+      <article
+        // Re-keying on `${id}-${index}` forces remount on step so the
+        // keyframe animation runs every time the user navigates.
+        key={`${current.id}-${currentIndex}`}
+        style={{
+          display: "block",
+          width: "100%",
+          background: "transparent",
+          border: outlineStyle,
+          borderRadius: 12,
+          padding: "20px 24px",
+          color: "var(--dos-fg)",
+          animation:
+            slideDir === "right" ? "pt-slide-from-right 480ms ease-out" :
+            slideDir === "left"  ? "pt-slide-from-left 480ms ease-out"  : "none",
+          position: "relative",
+          minHeight: 160,
+          boxSizing: "border-box",
+        }}
+      >
           {/* Header row — title (+ lock icon for private) on the left, owner
               affordances (edit / publish / delete) on the right. */}
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
@@ -262,33 +253,62 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
               )}
             </button>
           )}
-        </article>
+      </article>
 
-        {showArrows ? (
+      {/* Chevrons — absolute-positioned outside the article so navigating
+          between tickets doesn't shift the article's left edge. Left chevron
+          sits in the journalShift gutter (≥731px); right chevron in the
+          container's right margin. Hidden via display:none when only one
+          piece exists. */}
+      {showArrows && (
+        <>
+          <button
+            onClick={goPrev}
+            disabled={currentIndex === 0}
+            aria-label="previous thought"
+            style={{
+              position: "absolute",
+              left: -32,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "transparent",
+              border: "none",
+              color: "var(--dos-fg)",
+              padding: 8,
+              cursor: currentIndex === 0 ? "default" : "pointer",
+              opacity: currentIndex === 0 ? 0.2 : 0.7,
+              display: "inline-flex",
+              alignItems: "center",
+            }}
+          >
+            <ChevronLeft size={20} color="currentColor" />
+          </button>
           <button
             onClick={goNext}
             disabled={currentIndex >= thoughts.length - 1}
             aria-label="next thought"
             style={{
+              position: "absolute",
+              right: -32,
+              top: "50%",
+              transform: "translateY(-50%)",
               background: "transparent",
               border: "none",
               color: "var(--dos-fg)",
               padding: 8,
               cursor: currentIndex >= thoughts.length - 1 ? "default" : "pointer",
               opacity: currentIndex >= thoughts.length - 1 ? 0.2 : 0.7,
-              alignSelf: "center",
               display: "inline-flex",
               alignItems: "center",
-              flexShrink: 0,
             }}
           >
             <ChevronRight size={20} color="currentColor" />
           </button>
-        ) : null}
-      </div>
+        </>
+      )}
 
-      {/* Delete-confirm modal — mirrors the V3 stop-watching modal shape
-          (rounded white card, canon-red action button). */}
+      {/* Delete-confirm modal — canon-yellow fill, white text. Cancel reads
+          as a quiet outline (white-on-yellow); Delete is canon-red fill. */}
       {pendingDeleteId && (() => {
         const t = thoughts.find((x) => x.id === pendingDeleteId);
         if (!t) return null;
@@ -310,33 +330,27 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
           >
             <div
               style={{
-                background: "#fff",
+                background: "#dea838",
                 borderRadius: 18,
-                padding: "20px 24px",
+                padding: "24px 28px",
                 maxWidth: 440,
                 width: "100%",
-                color: "var(--dos-fg)",
+                color: "#fff",
               }}
             >
-              <p style={{ margin: "0 0 12px", fontSize: 17, lineHeight: 1.5, fontWeight: 600 }}>
-                Delete this thought?
-              </p>
-              <p style={{ margin: "0 0 18px", fontSize: 14, lineHeight: 1.5, opacity: 0.85 }}>
-                <em>Thoughts on {t.titleCompletion}.</em><br />
-                This can't be undone.
+              <p style={{ margin: "0 0 22px", fontSize: 17, lineHeight: 1.5, fontWeight: 600 }}>
+                Are you sure you want to delete this thought?
               </p>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 <button
-                  className="btn"
-                  style={{ fontSize: 14, background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
+                  style={{ fontSize: 14, background: "transparent", border: "2px solid #fff", color: "#fff", borderRadius: 9999, padding: "8px 16px", cursor: deleting ? "not-allowed" : "pointer", fontWeight: 500 }}
                   onClick={() => setPendingDeleteId(null)}
                   disabled={deleting}
                 >
                   Cancel
                 </button>
                 <button
-                  className="btn"
-                  style={{ fontSize: 14, background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff" }}
+                  style={{ fontSize: 14, background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff", borderRadius: 9999, padding: "8px 16px", cursor: deleting ? "not-allowed" : "pointer", fontWeight: 600 }}
                   disabled={deleting}
                   onClick={confirmDelete}
                 >
