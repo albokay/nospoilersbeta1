@@ -156,7 +156,7 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
           width: "100%",
           background: "transparent",
           border: outlineStyle,
-          borderRadius: 12,
+          borderRadius: 24,
           padding: "20px 24px",
           color: "var(--dos-fg)",
           animation:
