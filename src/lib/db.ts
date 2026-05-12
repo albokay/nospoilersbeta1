@@ -1321,27 +1321,11 @@ export async function setShelfPositions(
 
 export type V2BlurbKind = "watching_quote" | "want_reason" | "canon_take" | "stopped_reason";
 
-// Profile bio character cap. Same magnitude as V2_BLURB_MAX (280) so the
-// per-show shelf blurbs and the page-level bio share a length budget the
-// user can mentally model.
-export const V2_BIO_MAX = 280;
-
-/**
- * Update the user's profile bio. RLS gates this to id = auth.uid() (see
- * profiles_update policy). Whitespace-only saves as NULL so the
- * placeholder copy re-renders rather than the user's empty string.
- */
-export async function setProfileBio(userId: string, text: string | null): Promise<void> {
-  if (text !== null && text.length > V2_BIO_MAX) {
-    throw new Error(`Bio exceeds ${V2_BIO_MAX} characters.`);
-  }
-  const trimmed = text === null ? null : (text.trim() || null);
-  const { error } = await supabase
-    .from("profiles")
-    .update({ bio: trimmed })
-    .eq("id", userId);
-  if (error) throw error;
-}
+// setProfileBio + V2_BIO_MAX removed 2026-05-12 — the bio surface was
+// replaced by the "Thoughts on..." carousel (commits 0c3bb07 → 69ee87c).
+// profiles.bio column stays dormant in DB; auth.tsx's loadProfile still
+// pulls it via the bio-tolerant SELECT. Drop the column + the auth-side
+// fallback in a later pass if/when nothing depends on it.
 
 export async function setShelfBlurb(
   userId: string,

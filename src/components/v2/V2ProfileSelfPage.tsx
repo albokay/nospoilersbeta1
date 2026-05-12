@@ -8,7 +8,6 @@ import {
   setShelfBlurb,
   setStoppedWatching,
   removeShowFromProfile,
-  setProfileBio,
   upsertRewatchStatus,
   setShelfOverride,
   setShelfPositions,
@@ -16,7 +15,6 @@ import {
   insertProfileThought,
   updateProfileThought,
   deleteProfileThought,
-  V2_BIO_MAX,
   type V2BlurbKind,
   type ShelfName,
 } from "../../lib/db";
@@ -157,112 +155,11 @@ function formatJoinedSince(createdAt?: string): string {
   return d.toLocaleString("en-US", { month: "long", year: "numeric" });
 }
 
-// Inline editable bio for the profile header. Same pattern as BlurbField
-// but writes to profiles.bio (via setProfileBio) instead of a per-show
-// shelf blurb. Click placeholder → textarea; blur or Cmd/Ctrl+Enter
-// saves; Esc cancels. Whitespace-only persists as NULL so the placeholder
-// re-renders. Local bio state lives in V2ProfileSelfPage and is mirrored
-// from auth.profile.bio on mount; after save we update local state
-// immediately for snappy feedback (the auth.profile won't re-fetch
-// until the next session resolve, but that's fine for this surface).
-function BioField({
-  value,
-  placeholder,
-  userId,
-  onSaved,
-}: {
-  value: string | null;
-  placeholder: string;
-  userId: string;
-  onSaved: (next: string | null) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value ?? "");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setDraft(value ?? "");
-  }, [value]);
-
-  async function commit() {
-    if (saving) return;
-    const next = draft.trim();
-    if ((next || "") === (value ?? "")) {
-      setEditing(false);
-      return;
-    }
-    setSaving(true);
-    try {
-      await setProfileBio(userId, next || null);
-      onSaved(next || null);
-      setEditing(false);
-    } catch (err) {
-      console.warn("setProfileBio failed (recoverable):", err);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (editing) {
-    return (
-      <textarea
-        autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            setDraft(value ?? "");
-            setEditing(false);
-          } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            commit();
-          }
-        }}
-        placeholder={placeholder}
-        maxLength={V2_BIO_MAX}
-        style={{
-          width: "100%",
-          maxWidth: 540,
-          minHeight: 80,
-          fontSize: 17,
-          lineHeight: 1.5,
-          fontFamily: "Lora, Georgia, serif",
-          fontStyle: "italic",
-          color: "var(--dos-fg)",
-          background: "rgba(255,255,255,0.18)",
-          border: "2px solid #fff",
-          borderRadius: 14,
-          padding: 12,
-          resize: "vertical",
-          outline: "none",
-        }}
-      />
-    );
-  }
-
-  const isPlaceholder = !value;
-  return (
-    <p
-      onClick={() => setEditing(true)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter") setEditing(true); }}
-      style={{
-        cursor: "text",
-        fontFamily: "Lora, Georgia, serif",
-        fontStyle: "italic",
-        fontSize: 17,
-        color: isPlaceholder ? "var(--dos-gray)" : "var(--dos-fg)",
-        opacity: isPlaceholder ? 0.7 : 1,
-        maxWidth: 540,
-        margin: 0,
-        lineHeight: 1.5,
-      }}
-    >
-      {value || placeholder}
-    </p>
-  );
-}
+// BioField removed 2026-05-12 — replaced by the "Thoughts on..." carousel
+// (checkpoints 4 + 5). profiles.bio column kept dormant in DB; the bio-
+// tolerant SELECT in auth.tsx still pulls it harmlessly. Drop the column +
+// the auth-side fallback in a later pass if/when we're sure nothing reads
+// the column anymore.
 
 // Inline editable blurb. Click pencil → text field; Enter / blur saves;
 // Esc cancels. Whitespace-only saves as null per setShelfBlurb's contract.
@@ -386,18 +283,6 @@ export default function V2ProfileSelfPage() {
   const [removeShowId, setRemoveShowId] = useState<string | null>(null);
   const [removeSubmitting, setRemoveSubmitting] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
-
-  // Local mirror of profile.bio so post-save updates feel snappy without
-  // waiting for AuthProvider's loadProfile to re-fetch. Initial value
-  // syncs from auth.profile when it lands.
-  // NOTE: 2026-05-12 — the bio surface is being replaced by the "Thoughts
-  // on..." carousel; the BioField rendering call site has been removed.
-  // State + BioField component definition stay in place until checkpoint 6
-  // cleans them up. Bio column on profiles remains dormant in DB.
-  const [bio, setBio] = useState<string | null>(profile?.bio ?? null);
-  useEffect(() => {
-    setBio(profile?.bio ?? null);
-  }, [profile?.bio]);
 
   // "Thoughts on..." state — owner's pieces, compose-modal state, and a
   // cycling-prompt suggestion shared between the empty state and the
