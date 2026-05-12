@@ -589,19 +589,9 @@ export default function V2ProfileSelfPage() {
                 }}
               />
               {/* Soft below-carousel "write a new one" with a cycling prompt
-                  suggestion. Always present, never demanding (per spec). */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, flexWrap: "wrap", opacity: 0.85 }}>
-                <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-fg)" }}>
-                  Thoughts on {cyclingPrompt}.
-                </span>
-                <button
-                  onClick={cyclePromptSuggestion}
-                  aria-label="cycle prompt"
-                  title="cycle to another prompt"
-                  style={{ background: "transparent", border: "none", color: "var(--dos-fg)", cursor: "pointer", padding: 2, opacity: 0.6, display: "inline-flex", alignItems: "center" }}
-                >
-                  <RefreshCw size={12} color="currentColor" />
-                </button>
+                  suggestion. Order: write-new link → Thoughts on prompt →
+                  cycle circle. Always present, never demanding. */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, flexWrap: "wrap", opacity: 0.9 }}>
                 <button
                   onClick={handleWriteNew}
                   style={{
@@ -613,12 +603,39 @@ export default function V2ProfileSelfPage() {
                     fontSize: 14,
                     cursor: "pointer",
                     padding: 0,
-                    textDecoration: "underline",
-                    textDecorationStyle: "dotted",
-                    textUnderlineOffset: 4,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
                   }}
                 >
-                  write a new one →
+                  <span style={{ textDecoration: "underline", textDecorationStyle: "dotted", textUnderlineOffset: 4 }}>
+                    write a new one
+                  </span>
+                  <ArrowRight size={14} color="currentColor" />
+                </button>
+                <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-fg)" }}>
+                  Thoughts on {cyclingPrompt}.
+                </span>
+                {/* Cycle circle — canon-green fill, white icon. */}
+                <button
+                  onClick={cyclePromptSuggestion}
+                  aria-label="cycle prompt"
+                  title="cycle to another prompt"
+                  style={{
+                    width: 26,
+                    height: 26,
+                    background: "#7abd8e",
+                    border: "none",
+                    borderRadius: "50%",
+                    color: "#fff",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  <RefreshCw size={14} color="currentColor" />
                 </button>
               </div>
             </>

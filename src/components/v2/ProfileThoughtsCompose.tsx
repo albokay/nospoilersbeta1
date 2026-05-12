@@ -26,7 +26,7 @@ const RULE_GRADIENT = `repeating-linear-gradient(
   transparent ${LH - 1}px,
   transparent ${LH}px
 )`;
-const BODY_MIN_LINES = 6;
+const BODY_MIN_LINES = 11;
 
 // Title soft cap (visual counter turns red); hard cap blocks further input.
 const TITLE_SOFT_CAP = 100;
@@ -120,14 +120,18 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
   function autosize() {
     const ta = bodyRef.current;
     if (!ta) return;
-    const prev = ta.style.height;
+    // Reset then re-measure so we can both grow AND shrink with content.
+    // Drop the previous "max(target, current)" pattern — that path only
+    // grew, which left the textarea oversized after the user deleted lines.
     ta.style.height = "auto";
-    const sh = ta.scrollHeight;
-    ta.style.height = prev;
-    const target = Math.max(BODY_MIN_LINES * LH, Math.ceil(sh / LH) * LH);
-    const current = parseInt(ta.style.height, 10) || BODY_MIN_LINES * LH;
-    ta.style.height = `${Math.max(target, current)}px`;
+    const target = Math.max(BODY_MIN_LINES * LH, Math.ceil(ta.scrollHeight / LH) * LH);
+    ta.style.height = `${target}px`;
     ta.style.minHeight = `${target}px`;
+    // Once the body grows past the modal's visible area, follow the cursor
+    // so newly typed lines stay in view. scrollIntoView only scrolls the
+    // nearest scrollable ancestor (= the modal card via maxHeight + auto
+    // overflowY), not the page, so the browser viewport stays put.
+    ta.scrollIntoView({ block: "end" });
   }
   useEffect(() => { autosize(); }, [body]);
 
@@ -278,10 +282,8 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
             {/* Title block. The locked "Thoughts on" prefix, the editable
                 completion, and the inline "another prompt" button all flow
                 as one inline-block stream so wrap aligns the second line
-                with the prefix's left edge (per spec #4). Fixed 2-line
-                height so a 1-line title doesn't shrink the modal (#3).
-                Ruled-paper gradient at title-LH period gives each line an
-                underline matching the body's rule styling (#2). */}
+                with the prefix's left edge. Fixed 2-line height so a
+                1-line title doesn't shrink the modal. */}
             <div
               style={{
                 fontSize: 26,
@@ -290,10 +292,6 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
                 height: `${TITLE_LH * 2}px`,
                 overflow: "hidden",
                 marginBottom: 16,
-                backgroundImage: TITLE_RULE_GRADIENT,
-                backgroundPosition: "0 0",
-                backgroundSize: `100% ${TITLE_LH}px`,
-                backgroundRepeat: "repeat",
               }}
             >
               <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontWeight: 500, color: INK }}>
@@ -461,14 +459,11 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
                   cursor: submitting ? "not-allowed" : "pointer",
                   minWidth: 160,
                   // Featured destination flips publish-button fill to canon
-                  // yellow so the button color foreshadows the destination
-                  // pill that's selected. Private + edit-public keep the
-                  // .btn.post canon-green default.
-                  ...(destination === "featured" && !destinationLocked
-                    ? { background: "#dea838", borderColor: "#dea838" }
-                    : {}),
-                  ...(destinationLocked
-                    ? { background: "#dea838", borderColor: "#dea838" }
+                  // yellow; white outline (from .btn.post) stays. Private
+                  // keeps the canon-green default. edit-public is also
+                  // locked-featured → yellow.
+                  ...(destination === "featured"
+                    ? { background: "#dea838" }
                     : {}),
                 }}
               >
