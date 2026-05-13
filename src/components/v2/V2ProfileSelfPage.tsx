@@ -507,11 +507,30 @@ export default function V2ProfileSelfPage() {
       }}
     >
       {/* === PROFILE IDENTITY ===
-          Left-justified, no avatar / no @subhead / no edit+share buttons.
-          The heading itself carries the @username. The profile-journal-heading
-          class aligns it with V2Layout's pairedHeader ("this is your public
-          profile") at ≥731px viewports (theme.ts:450). */}
-      <header className="profile-journal-heading" style={{ textAlign: "left", marginBottom: 32 }}>
+          Centered, full column width — visual parity with the visitor view
+          (V2ProfileVisitorPage). The pairedHeader ("this is your public
+          profile" / "go to your journal") in V2Layout stays where it is;
+          this header sits below it spanning the column. */}
+      <header style={{ textAlign: "center", marginBottom: 32 }}>
+        <div
+          style={{
+            width: 88,
+            height: 88,
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.25)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontFamily: "Lora, Georgia, serif",
+            fontStyle: "italic",
+            fontSize: 36,
+            fontWeight: 500,
+            marginBottom: 18,
+          }}
+        >
+          {(profile?.username ?? "?").charAt(0).toUpperCase()}
+        </div>
         <h1
           style={{
             fontFamily: "Lora, Georgia, serif",
@@ -522,13 +541,10 @@ export default function V2ProfileSelfPage() {
             color: "var(--dos-fg)",
             textTransform: "uppercase",
             margin: 0,
-            marginBottom: 14,
           }}
         >
           @{profile?.username ?? "—"}
         </h1>
-        {/* Bio field removed 2026-05-12 — replaced by the "Thoughts on..."
-            section below. profiles.bio column kept dormant in DB. */}
       </header>
 
       {/* === THOUGHTS ON... ===
@@ -539,9 +555,9 @@ export default function V2ProfileSelfPage() {
           the cycling prompt, shared state). The compose modal is mounted
           at the bottom of this component as a fixed-position overlay. */}
       {thoughtsLoaded && user && (
-        <section className="profile-journal-heading" style={{ marginBottom: 40 }}>
+        <section style={{ marginBottom: 40, textAlign: "center" }}>
           {thoughts.length === 0 ? (
-            <div style={{ textAlign: "left", maxWidth: 540 }}>
+            <div style={{ textAlign: "center", maxWidth: 540, margin: "0 auto" }}>
               <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 22, color: "var(--dos-fg)", marginBottom: 22, lineHeight: 1.3 }}>
                 {preventLastWordOrphan(`Thoughts on ${cyclingPrompt}…`)}
               </div>
@@ -594,7 +610,7 @@ export default function V2ProfileSelfPage() {
                   Outer alignItems=baseline so when the prompt wraps to a
                   second line, the writeNew link stays on the first baseline
                   rather than centering vertically with a 2-line prompt. */}
-              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 16, flexWrap: "wrap", opacity: 0.9 }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 10, marginTop: 16, flexWrap: "wrap", opacity: 0.9 }}>
                 <button
                   onClick={handleWriteNew}
                   style={{
@@ -666,9 +682,8 @@ export default function V2ProfileSelfPage() {
 
       {/* === META PROSE === */}
       <p
-        className="profile-journal-heading"
         style={{
-          textAlign: "left",
+          textAlign: "center",
           margin: "24px 0 56px",
           fontFamily: "Lora, Georgia, serif",
           fontStyle: "italic",

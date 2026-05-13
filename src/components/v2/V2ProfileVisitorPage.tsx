@@ -264,14 +264,11 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
             color: "var(--dos-fg)",
             textTransform: "uppercase",
             margin: 0,
-            marginBottom: 8,
+            marginBottom: 12,
           }}
         >
-          {username}
-        </h1>
-        <div style={{ fontSize: 14, color: "var(--dos-gray)", marginBottom: 12 }}>
           @{username}
-        </div>
+        </h1>
         {/* Bio rendering removed 2026-05-12 — visitors no longer see the
             old inline bio. The owner's "Thoughts on..." carousel renders
             below the header instead (see the section below). */}
