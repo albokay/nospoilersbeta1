@@ -10,6 +10,7 @@ import type { PromptRow } from "../lib/db";
 import { prefetchComposeData } from "../lib/composeDataCache";
 import { getCachedActivity, setCachedActivity, invalidateJournalCache } from "../lib/journalCache";
 import { useAuth } from "../lib/auth";
+import SidebarAvatar from "./SidebarAvatar";
 import { canView, timeAgo } from "../lib/utils";
 import { linkifyText } from "../lib/linkify";
 import EpisodeTag from "./EpisodeTag";
@@ -1477,7 +1478,7 @@ export default function V3JournalPage({
                             • {groupName
                                 ? <span style={{ fontStyle: "italic" }}>in {groupName}</span>
                                 : <span style={{ fontStyle: "italic" }}>publicly</span>}{" "}
-                            • <span className="username">@{r.author}</span>
+                            • <span className="username" style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle" }}><SidebarAvatar username={r.author} size={14} />{r.author}</span>
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -1604,7 +1605,7 @@ export default function V3JournalPage({
                             <span style={{ color: "var(--dos-cyan)" }}>
                               <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
                             </span>{" "}
-                            • <span className="username">@{r.author}</span>
+                            • <span className="username" style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle" }}><SidebarAvatar username={r.author} size={14} />{r.author}</span>
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>

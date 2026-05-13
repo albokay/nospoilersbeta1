@@ -12,6 +12,7 @@ import { supabase } from "../../lib/supabaseClient";
 import type { Show } from "../../lib/db";
 import type { ProgressEntry, Thread } from "../../types";
 import V2Layout from "./V2Layout";
+import SidebarAvatar from "../SidebarAvatar";
 import { navigateToShow } from "./v2nav";
 import OneSelectProgress from "../OneSelectProgress";
 import { ArrowRight } from "lucide-react";
@@ -253,9 +254,9 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           <a
             href={`/v2/u/${username}`}
             onClick={(e) => { e.preventDefault(); navigate(`/v2/u/${username}`); }}
-            style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", paddingBottom: 1 }}
+            style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", paddingBottom: 1, display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" }}
           >
-            @{username}'s profile
+            <SidebarAvatar userId={ownerId} username={username} size={16} />{username}'s profile
           </a>
         </div>
         <a
@@ -273,9 +274,9 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           <a
             href={`/v2/u/${username}`}
             onClick={(e) => { e.preventDefault(); navigate(`/v2/u/${username}`); }}
-            style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)" }}
+            style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" }}
           >
-            @{username}
+            <SidebarAvatar userId={ownerId} username={username} size={16} />{username}
           </a>
           's public posts on:
         </div>
@@ -393,6 +394,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
               key={t.id}
               thread={t}
               username={username}
+              ownerId={ownerId}
               showId={show.id}
               replyCount={replyCounts[t.id] ?? 0}
               onOpen={() => navigateToShow(navigate, show.id, { threadId: t.id })}
@@ -527,12 +529,14 @@ function PreClaimCard({
 function Entry({
   thread,
   username,
+  ownerId,
   showId,
   replyCount,
   onOpen,
 }: {
   thread: Thread;
   username: string;
+  ownerId: string | null;
   showId: string;
   replyCount: number;
   onOpen: () => void;
@@ -568,7 +572,7 @@ function Entry({
         <span style={{ fontSize: 13, color: "var(--dos-gray)" }}>{timeAgo(thread.updatedAt)}</span>
       </div>
       <div style={{ fontSize: 13, color: "var(--dos-gray)", marginBottom: 14 }}>
-        by <strong style={{ color: "var(--dos-fg)", fontWeight: 500 }}>@{username}</strong>
+        by <strong style={{ color: "var(--dos-fg)", fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle" }}><SidebarAvatar userId={ownerId} username={username} size={16} />{username}</strong>
       </div>
       <div
         style={{

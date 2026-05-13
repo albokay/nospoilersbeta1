@@ -22,6 +22,7 @@ import type { Show } from "../../lib/db";
 import type { Thread, Reply, ProgressEntry, FriendGroup } from "../../types";
 import SearchShows from "../SearchShows";
 import SidebarLogo from "../SidebarLogo";
+import SidebarAvatar from "../SidebarAvatar";
 import EpisodeTag from "../EpisodeTag";
 import OneSelectProgress from "../OneSelectProgress";
 import EmptyProfileWelcome from "../EmptyProfileWelcome";
@@ -837,7 +838,7 @@ export default function V2JournalPage() {
                         {" • "}
                         {groupName ? <span style={{ fontStyle: "italic" }}>in {groupName}</span> : <span style={{ fontStyle: "italic" }}>publicly</span>}
                         {" • "}
-                        <span className="username">@{r.author}</span>
+                        <span className="username" style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle" }}><SidebarAvatar username={r.author} size={14} />{r.author}</span>
                       </div>
                       <div className="clamp3" style={{ marginTop: 6, fontSize: 15 }}>{linkifyText(r.body)}</div>
                     </div>
@@ -916,7 +917,7 @@ export default function V2JournalPage() {
                       <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
                         <EpisodeTag season={r.season} episode={r.episode} isRewatch={r.isRewatch} rewatchS={r.rewatchS} rewatchE={r.rewatchE} parens={false} />
                         {" • "}
-                        <span className="username">@{r.author}</span>
+                        <span className="username" style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle" }}><SidebarAvatar username={r.author} size={14} />{r.author}</span>
                       </div>
                       <div className="clamp3" style={{ marginTop: 6, fontSize: 15 }}>{linkifyText(r.body)}</div>
                     </div>

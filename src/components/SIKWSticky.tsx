@@ -13,6 +13,7 @@ import {
 } from "../lib/db";
 import LoadingDots from "./LoadingDots";
 import CanonRadio from "./CanonRadio";
+import SidebarAvatar from "./SidebarAvatar";
 
 // ── Visual constants ─────────────────────────────────────────────────────
 // SIKW shares the left-rail amber sticky surface with polls. Same palette,
@@ -211,8 +212,8 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
               color: CANON_NAVY,
             }}
           >
-            <div style={{ fontStyle: "italic", color: "rgba(26,58,74,0.6)", marginBottom: 2 }}>
-              @{r.replierUsername || "(someone)"}
+            <div style={{ fontStyle: "italic", color: "rgba(26,58,74,0.6)", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <SidebarAvatar userId={r.replierId} username={r.replierUsername} size={16} />{r.replierUsername || "(someone)"}
             </div>
             <div>{renderReplyContent(r)}</div>
           </div>
@@ -465,7 +466,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
         {cIsAsker ? (
           <div style={askerLineStyle()}>you asked:</div>
         ) : (
-          <div style={askerLineStyle()}>@{cAsker || "a friend"} asked:</div>
+          <div style={{ ...askerLineStyle(), display: "inline-flex", alignItems: "center", gap: 6 }}><SidebarAvatar userId={cAsk.askerId} username={cAsker} size={18} />{cAsker || "a friend"} asked:</div>
         )}
 
         {/* Question */}

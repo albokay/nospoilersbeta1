@@ -13,6 +13,7 @@ import {
 import { dismissClosedPoll } from "../lib/db";
 import LoadingDots from "./LoadingDots";
 import CanonRadio from "./CanonRadio";
+import SidebarAvatar from "./SidebarAvatar";
 import type { PollDurationCode } from "../types";
 
 // ── Visual constants ─────────────────────────────────────────────────────
@@ -441,7 +442,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
               <div style={{ fontStyle: "italic", fontSize: 11, color: FADED_TEXT, lineHeight: 1.5, marginBottom: 6, opacity: voters.length === 0 ? 0.55 : 1 }}>
                 {voters.length === 0
                   ? "no votes"
-                  : voters.map((u, i) => <div key={i}>@{u}</div>)}
+                  : voters.map((u, i) => <div key={i} style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle", marginRight: 8 }}><SidebarAvatar username={u} size={14} />{u}</div>)}
               </div>
               <div
                 style={{
@@ -470,8 +471,8 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
             {writeIns.map((w, i) => (
               <div key={i} style={{ fontSize: 12, color: TEXT_COLOR, marginBottom: 4 }}>
                 <span style={{ fontStyle: "italic" }}>"{w.text}"</span>
-                <span style={{ fontStyle: "italic", color: FADED_TEXT, marginLeft: 6 }}>
-                  — @{w.responderUsername || "(someone)"}
+                <span style={{ fontStyle: "italic", color: FADED_TEXT, marginLeft: 6, display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle" }}>
+                  — <SidebarAvatar username={w.responderUsername} size={16} />{w.responderUsername || "(someone)"}
                 </span>
               </div>
             ))}

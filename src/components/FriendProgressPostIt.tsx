@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchPublicProgressForUser } from "../lib/db";
 import NudgePopover, { type NudgeDirection } from "./NudgePopover";
+import SidebarAvatar from "./SidebarAvatar";
 import AskTheRoomPicker from "./AskTheRoomPicker";
 import PollComposer from "./PollComposer";
 import SIKWComposer from "./SIKWComposer";
@@ -253,8 +254,12 @@ export default function FriendProgressPostIt({
                 borderBottom: `1px dotted ${HANDLE_COLOR}`,
                 cursor: "pointer",
                 padding: "0 1px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                verticalAlign: "middle",
               }
-            : { fontStyle: "italic", color: HANDLE_COLOR };
+            : { fontStyle: "italic", color: HANDLE_COLOR, display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" };
 
           const handle = (
             <span
@@ -274,7 +279,7 @@ export default function FriendProgressPostIt({
               }
               style={handleStyle}
             >
-              @{s.username}
+              <SidebarAvatar userId={s.userId} username={s.username} size={20} />{s.username}
             </span>
           );
           const lineStyle: React.CSSProperties = { whiteSpace: "nowrap" };

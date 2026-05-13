@@ -3,6 +3,7 @@ import { X, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { hasRecentPing, sendMessage } from "../lib/db";
 import LoadingDots from "./LoadingDots";
+import SidebarAvatar from "./SidebarAvatar";
 import CanonRadio from "./CanonRadio";
 import type { PingType } from "../types";
 
@@ -307,9 +308,12 @@ export default function NudgePopover({
               fontWeight: 600,
               color: CANON_NAVY,
               fontFamily: '"Lora", Georgia, serif',
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            @{recipientUsername}
+            <SidebarAvatar userId={recipientId} username={recipientUsername} size={24} />{recipientUsername}
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
             {relativePositionLabel(direction, count)}

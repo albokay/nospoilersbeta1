@@ -4,6 +4,7 @@ import { useAuth } from "../../lib/auth";
 import { LogOut, BookOpen, BookMarked, ArrowLeft, ArrowRight } from "lucide-react";
 import FeedbackWidget from "../FeedbackWidget";
 import SidebarLogo from "../SidebarLogo";
+import SidebarAvatar from "../SidebarAvatar";
 import Tooltip from "../Tooltip";
 
 type Palette = "journal" | "profile" | "compose";
@@ -143,7 +144,7 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
               {onProfileFamily ? (
                 <>
                   <BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} />
-                  <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>you are {profile.username}</span>
+                  <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}>you are <SidebarAvatar userId={user.id} username={profile.username} size={18} />{profile.username}</span>
                 </>
               ) : (
                 <>

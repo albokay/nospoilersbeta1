@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, Suspense, lazy } from "react";
 import LoadingDots from "./components/LoadingDots";
+import SidebarAvatar from "./components/SidebarAvatar";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
@@ -868,7 +869,7 @@ function AppShell() {
               style={(showProfile || showV3Journal) ? { cursor: "default" } : undefined}
             >
               {(showProfile || showV3Journal)
-                ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>you are {username}</span></>
+                ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}>you are <SidebarAvatar userId={user?.id} username={username ?? undefined} size={18} />{username}</span></>
                 : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
               }
             </button>
