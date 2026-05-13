@@ -15,6 +15,7 @@ import type { Show, SharedRoomRow } from "../../lib/db";
 import type { ProgressEntry, Thread, ProfileThought } from "../../types";
 import V2Layout from "./V2Layout";
 import ProfileThoughtsCarousel from "./ProfileThoughtsCarousel";
+import SidebarAvatar from "../SidebarAvatar";
 
 // Same shared profile-card style as V2ProfileSelfPage — sharp corners,
 // transparent fill, 2px white outline. The visitor view mirrors the
@@ -235,24 +236,8 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
     <V2Layout palette="profile">
       {/* === PROFILE IDENTITY === */}
       <header style={{ textAlign: "center", paddingTop: 24, marginBottom: 32 }}>
-        <div
-          style={{
-            width: 88,
-            height: 88,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.25)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontFamily: "Lora, Georgia, serif",
-            fontStyle: "italic",
-            fontSize: 36,
-            fontWeight: 500,
-            marginBottom: 18,
-          }}
-        >
-          {username.charAt(0).toUpperCase()}
+        <div style={{ display: "inline-block", marginBottom: 18 }}>
+          <SidebarAvatar userId={ownerId} username={username} size={88} />
         </div>
         <h1
           style={{

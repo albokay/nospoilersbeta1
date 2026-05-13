@@ -25,6 +25,7 @@ import SearchShows from "../SearchShows";
 import Modal from "../Modal";
 import ProfileThoughtsCompose, { type ProfileThoughtsComposeMode, type ProfileThoughtsSubmitPayload } from "./ProfileThoughtsCompose";
 import ProfileThoughtsCarousel from "./ProfileThoughtsCarousel";
+import SidebarAvatar from "../SidebarAvatar";
 import { pickProfileThoughtPrompt } from "../../lib/profileThoughtPrompts";
 import { preventLastWordOrphan } from "../../lib/utils";
 import { Plus, Pin, Trash2, SquarePen, GripVertical, ChevronDown, RefreshCw, ArrowRight } from "lucide-react";
@@ -512,24 +513,8 @@ export default function V2ProfileSelfPage() {
           profile" / "go to your journal") in V2Layout stays where it is;
           this header sits below it spanning the column. */}
       <header style={{ textAlign: "center", paddingTop: 24, marginBottom: 32 }}>
-        <div
-          style={{
-            width: 88,
-            height: 88,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.25)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontFamily: "Lora, Georgia, serif",
-            fontStyle: "italic",
-            fontSize: 36,
-            fontWeight: 500,
-            marginBottom: 18,
-          }}
-        >
-          {(profile?.username ?? "?").charAt(0).toUpperCase()}
+        <div style={{ display: "inline-block", marginBottom: 18 }}>
+          <SidebarAvatar userId={user?.id} username={profile?.username ?? undefined} size={88} />
         </div>
         <h1
           style={{
