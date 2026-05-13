@@ -511,7 +511,7 @@ export default function V2ProfileSelfPage() {
           (V2ProfileVisitorPage). The pairedHeader ("this is your public
           profile" / "go to your journal") in V2Layout stays where it is;
           this header sits below it spanning the column. */}
-      <header style={{ textAlign: "center", marginBottom: 32 }}>
+      <header style={{ textAlign: "center", paddingTop: 24, marginBottom: 32 }}>
         <div
           style={{
             width: 88,

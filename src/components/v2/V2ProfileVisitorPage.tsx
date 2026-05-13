@@ -234,7 +234,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
   return (
     <V2Layout palette="profile">
       {/* === PROFILE IDENTITY === */}
-      <header style={{ textAlign: "center", marginBottom: 32 }}>
+      <header style={{ textAlign: "center", paddingTop: 24, marginBottom: 32 }}>
         <div
           style={{
             width: 88,

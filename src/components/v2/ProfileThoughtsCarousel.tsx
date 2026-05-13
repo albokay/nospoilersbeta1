@@ -163,6 +163,7 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
           border: outlineStyle,
           borderRadius: 24,
           padding: "20px 24px",
+          textAlign: "left",
           // Always white. Public bg = canon yellow page color (white reads);
           // private bg = canon green (white reads). currentColor carries
           // through to nested icons + text using inherited color.
