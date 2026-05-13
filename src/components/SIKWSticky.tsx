@@ -212,8 +212,8 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
               color: CANON_NAVY,
             }}
           >
-            <div style={{ fontStyle: "italic", color: "rgba(26,58,74,0.6)", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <SidebarAvatar userId={r.replierId} username={r.replierUsername} size={16} />{r.replierUsername || "(someone)"}
+            <div style={{ fontStyle: "italic", color: "rgba(26,58,74,0.6)", marginBottom: 2 }}>
+              @{r.replierUsername || "(someone)"}
             </div>
             <div>{renderReplyContent(r)}</div>
           </div>

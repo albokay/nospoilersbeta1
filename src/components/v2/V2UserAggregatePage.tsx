@@ -254,9 +254,9 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           <a
             href={`/v2/u/${username}`}
             onClick={(e) => { e.preventDefault(); navigate(`/v2/u/${username}`); }}
-            style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", paddingBottom: 1, display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" }}
+            style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", paddingBottom: 1 }}
           >
-            <SidebarAvatar userId={ownerId} username={username} size={16} />{username}'s profile
+            @{username}'s profile
           </a>
         </div>
         <a
@@ -274,9 +274,9 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           <a
             href={`/v2/u/${username}`}
             onClick={(e) => { e.preventDefault(); navigate(`/v2/u/${username}`); }}
-            style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" }}
+            style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)" }}
           >
-            <SidebarAvatar userId={ownerId} username={username} size={16} />{username}
+            @{username}
           </a>
           's public posts on:
         </div>

@@ -1,7 +1,6 @@
 import React, { useEffect, useLayoutEffect, useState } from "react";
 import { X } from "lucide-react";
 import { fetchNextRoomPing, dismissPing } from "../lib/db";
-import SidebarAvatar from "./SidebarAvatar";
 import type { Ping } from "../types";
 
 // ── Visual constants ─────────────────────────────────────────────────────
@@ -125,7 +124,7 @@ export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
       </button>
 
       <div style={{ fontSize: 12, marginBottom: 6, paddingRight: 16 }}>
-        <span style={{ fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" }}><SidebarAvatar userId={ping.senderId} username={ping.senderUsername} size={18} />{senderHandle}</span>{" "}
+        <span style={{ fontWeight: 500 }}>@{senderHandle}</span>{" "}
         <span style={{ opacity: 0.7 }}>pinged you:</span>
       </div>
       <div

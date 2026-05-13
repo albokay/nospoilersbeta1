@@ -7,10 +7,14 @@ import Avatar from "boring-avatars";
  * import boring-avatars directly. One file owns variant + palette + seed
  * strategy so swapping any of them is a single-file change.
  *
- * Seed: prefer userId (stable across username changes); fall back to
- * username when an id isn't available at the call site. If username-change
- * ever ships, plumb authorId through the data layer so this fallback isn't
- * exercised on user-attributable surfaces.
+ * Seed: username, every time. Originally userId-first with username
+ * fallback, but most byline surfaces only carry the username string —
+ * the mixed-seed model made the same user render as different avatars
+ * across the site (e.g. byline used "libdenk" while NudgePopover used
+ * the UUID). Pinning to username gives one avatar per user everywhere.
+ * Tradeoff: if username-change ever ships, a user's avatar would change
+ * with their handle. Sidebar doesn't expose username editing today, so
+ * the tradeoff is theoretical for now.
  *
  * Palette: Sidebar canon — yellow / green / dark-blue / light-blue / red.
  * Hexes mirrored from theme.ts:6-18 (the CSS-vars source of truth).
@@ -33,7 +37,7 @@ type SidebarAvatarProps = {
 };
 
 export default function SidebarAvatar({ userId, username, size = 24 }: SidebarAvatarProps) {
-  const seed = userId || username || "anon";
+  const seed = username || userId || "anon";
   return (
     <Avatar
       name={seed}

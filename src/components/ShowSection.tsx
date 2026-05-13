@@ -83,7 +83,6 @@ import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
 import SIKWSticky from "./SIKWSticky";
 import Username from "./Username";
-import SidebarAvatar from "./SidebarAvatar";
 import type { PendingReference } from "./ResponseComposer";
 import PromptCard from "./PromptCard";
 import type { PromptEntry } from "../lib/promptData";
@@ -2394,12 +2393,12 @@ export default function ShowSection({
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {groupMembers.map(m => (
                     <div key={m.userId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><SidebarAvatar userId={m.userId} username={m.username} size={20} />{m.username}{m.userId === grp?.createdBy ? <Crown size={14} color="var(--icon-color)" /> : ""}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>@{m.username}{m.userId === grp?.createdBy ? <Crown size={14} color="var(--icon-color)" /> : ""}</span>
                     </div>
                   ))}
                   {departedMembers.map(d => (
                     <div key={d.userId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14, opacity: 0.5 }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><SidebarAvatar userId={d.userId} username={d.username} size={20} />{d.username} <em style={{ fontSize: 12 }}>has left the room</em></span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>@{d.username} <em style={{ fontSize: 12 }}>has left the room</em></span>
                     </div>
                   ))}
                 </div>
