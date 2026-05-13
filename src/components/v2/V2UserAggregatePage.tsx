@@ -16,18 +16,14 @@ import V2Layout from "./V2Layout";
 import SidebarAvatar from "../SidebarAvatar";
 import { navigateToShow } from "./v2nav";
 import OneSelectProgress from "../OneSelectProgress";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Clock, Mail } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LoadingDots from "../LoadingDots";
+import LikeBadge from "../LikeBadge";
 import { canView, timeAgo } from "../../lib/utils";
-import { linkifyText } from "../../lib/linkify";
 
 type ClaimSource = "user-progress" | "session" | null;
 
-function progressShort(p: { s: number; e: number }): string {
-  if (p.s === 0 && p.e === 0) return "haven't started";
-  return `S${String(p.s).padStart(2, "0")} E${String(p.e).padStart(2, "0")}`;
-}
 
 // Session-storage browse progress — same key family used by the live
 // SearchShows browse-public flow (see SearchShows.tsx:255).
@@ -229,21 +225,54 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
 
   return (
     <V2Layout palette="profile">
-      {/* === VIEW BAR ===
-          Single right-aligned button, styled to match the friend-room
-          "to public conversation" button (ShowSection.tsx:1867). The
-          "coming from @username's profile" eyebrow was dropped per the
-          2026-05-13 redesign — the page heading itself names the owner. */}
+      {/* === EYEBROW ===
+          Inter (default), small, lowercase — matches the general public
+          space's "public writing about:" eyebrow style (ShowSection.tsx:
+          1896). The @username link keeps a dashed underline; the rest of
+          the line is plain text. */}
+      <div style={{ fontSize: 13, fontWeight: 400, lineHeight: 1.2, color: "var(--dos-light)", marginBottom: 4 }}>
+        <a
+          href={`/v2/u/${username}`}
+          onClick={(e) => { e.preventDefault(); navigate(`/v2/u/${username}`); }}
+          style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dashed var(--dos-gray)" }}
+        >
+          @{username}
+        </a>
+        's public posts on:
+      </div>
+
+      {/* === H1 ROW ===
+          SHOW NAME on the left, "all public posts on SHOW →" button on
+          the right (mirrors the friend-room "to public conversation"
+          button placement, ShowSection.tsx:1867). Flex-wrap allows the
+          button to drop to a new line on narrow viewports. */}
       <div
         style={{
           display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "baseline",
-          flexWrap: "wrap",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
           gap: 12,
-          marginBottom: 28,
+          flexWrap: "wrap",
+          marginBottom: 14,
         }}
       >
+        <h1
+          style={{
+            fontFamily: "Lora, Georgia, serif",
+            fontWeight: 700,
+            fontSize: 44,
+            letterSpacing: "0.02em",
+            color: "var(--dos-fg)",
+            textTransform: "uppercase",
+            lineHeight: 1.05,
+            margin: 0,
+            flex: "0 1 auto",
+            minWidth: 0,
+            overflowWrap: "break-word",
+          }}
+        >
+          {show.name}
+        </h1>
         <button
           className="btn"
           onClick={() => navigateToShow(navigate, show.id)}
@@ -261,93 +290,69 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         </button>
       </div>
 
-      {/* === PAGE HEADING === */}
-      <header style={{ marginBottom: 28 }}>
-        <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-gray)", marginBottom: 4 }}>
-          <a
-            href={`/v2/u/${username}`}
-            onClick={(e) => { e.preventDefault(); navigate(`/v2/u/${username}`); }}
-            style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)" }}
-          >
-            @{username}
-          </a>
-          's public posts on:
-        </div>
-        <h1
-          style={{
-            fontFamily: "Lora, Georgia, serif",
-            fontWeight: 700,
-            fontSize: 44,
-            letterSpacing: "0.02em",
-            color: "var(--dos-fg)",
-            textTransform: "uppercase",
-            lineHeight: 1.05,
-            margin: 0,
-            marginBottom: 10,
-          }}
-        >
-          {show.name}
-        </h1>
-        {totalCount > 0 && (
-          <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-gray)", lineHeight: 1.55, margin: 0 }}>
-            <strong style={{ fontStyle: "normal", fontWeight: 600, color: "var(--dos-fg)" }}>
-              @{username} has {totalCount} public {totalCount === 1 ? "post" : "posts"} about {show.name}.
-            </strong>
-            {hasOwnerProgress && (
-              <> They've watched Season {String(ownerProgress!.s).padStart(2, "0")} Episode {String(ownerProgress!.e).padStart(2, "0")}.</>
-            )}
-            {" How far along are you?"}
-          </p>
-        )}
-      </header>
-
-      {/* === WATCH PROGRESS DROPDOWN ===
-          Always visible. For visitors who already have progress on this
-          show (DB row for logged-in users with a journal tab, or session
-          browse-progress), the dropdown pre-fills with that value and
-          posts render immediately. For first-time visitors it shows
-          "haven't started" (s:0,e:0), allowZero gates "haven't started"
-          on curS===0 && curE===0. Picker's built-in confirm-modal handles
-          the commit step — onConfirm fires only after the modal Confirm,
-          so picking a value alone doesn't write anything. */}
+      {/* === NAV ROW ===
+          Profile explanation on the left, progress dropdown on the
+          right (mirrors the general public space's nav row layout where
+          the "you've watched: SE" pill sits at the far right). The
+          explanation flexes to fill remaining space and wraps freely. */}
       <div
         style={{
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
-          gap: 8,
-          marginBottom: 28,
+          gap: 16,
           flexWrap: "wrap",
+          marginBottom: 28,
         }}
       >
-        <OneSelectProgress
-          show={show}
-          value={visitorProgress ? { s: visitorProgress.s, e: visitorProgress.e } : { s: 0, e: 0 }}
-          onConfirm={handleConfirmProgress}
-          allowZero={true}
-        />
+        <p
+          style={{
+            margin: 0,
+            fontSize: 14,
+            color: "var(--dos-light)",
+            lineHeight: 1.5,
+            flex: "1 1 200px",
+            minWidth: 0,
+          }}
+        >
+          {totalCount > 0 ? (
+            <>
+              <strong style={{ fontWeight: 600 }}>@{username}</strong>
+              {hasOwnerProgress && (
+                <> has watched Season {String(ownerProgress!.s).padStart(2, "0")} Episode {String(ownerProgress!.e).padStart(2, "0")} and</>
+              )}
+              {" "}has written {totalCount} {totalCount === 1 ? "entry" : "entries"}. How far along are you?
+            </>
+          ) : null}
+        </p>
+        <div style={{ flexShrink: 0 }}>
+          <OneSelectProgress
+            show={show}
+            value={visitorProgress ? { s: visitorProgress.s, e: visitorProgress.e } : { s: 0, e: 0 }}
+            onConfirm={handleConfirmProgress}
+            allowZero={true}
+          />
+        </div>
       </div>
 
-      {/* === POSTS ===
-          Render only once the visitor has confirmed a progress value.
-          claimed === true means visitorProgress is non-null (either
-          loaded from DB / session at mount, or freshly written via
-          handleConfirmProgress). */}
-      {claimed && (
+      {/* === BODY ===
+          Three terminal states:
+          1. totalCount === 0 → pioneer empty state (owner has no posts).
+          2. claimed && visibleThreads.length > 0 → thread cards.
+          3. claimed && visibleThreads.length === 0 && lockedCount > 0 →
+             dashed-box "X more posts… after where you are".
+          Unclaimed (no confirmed visitor progress) → nothing under the
+          nav row. */}
+      {totalCount === 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 0 48px", gap: 12 }}>
+          <Clock size={24} color="var(--icon-color)" />
+          <div className="muted" style={{ fontSize: 14, textAlign: "center", maxWidth: 360, lineHeight: 1.5 }}>
+            <p style={{ margin: 0 }}>@{username} doesn't have anything for you to read yet. It's only a matter of time&hellip;</p>
+            <p style={{ margin: "12px 0 0" }}>But this is your chance to be a pioneer. When you post publicly on your profile, your writing will be visible to others.</p>
+          </div>
+        </div>
+      ) : claimed ? (
         <>
-          {visibleThreads.length === 0 && (
-            <div
-              style={{
-                fontFamily: "Lora, Georgia, serif",
-                fontStyle: "italic",
-                fontSize: 15,
-                color: "var(--dos-gray)",
-                textAlign: "center",
-                padding: "24px 0 32px",
-              }}
-            >
-              none of @{username}'s posts are visible at your progress yet.
-            </div>
-          )}
           {visibleThreads.map((t) => (
             <Entry
               key={t.id}
@@ -360,19 +365,6 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
             />
           ))}
 
-          <div
-            style={{
-              textAlign: "center",
-              margin: "24px 0",
-              fontFamily: "Lora, Georgia, serif",
-              fontStyle: "italic",
-              fontSize: 13,
-              color: "var(--dos-gray)",
-            }}
-          >
-            ◐ you're here, at {progressShort(visitorProgress!)}
-          </div>
-
           {lockedCount > 0 && (
             <div
               style={{
@@ -380,33 +372,38 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
                 border: "2px dashed rgba(255,255,255,0.6)",
                 borderRadius: 16,
                 padding: "20px 28px",
+                marginTop: visibleThreads.length > 0 ? 24 : 0,
                 textAlign: "center",
-                fontFamily: "Lora, Georgia, serif",
-                fontStyle: "italic",
+                fontFamily: "Inter, sans-serif",
                 fontSize: 15,
                 color: "var(--dos-gray)",
                 lineHeight: 1.55,
               }}
             >
-              <strong style={{ fontStyle: "normal", fontWeight: 600, color: "var(--dos-fg)" }}>
+              <strong style={{ fontWeight: 600, color: "var(--dos-fg)" }}>
                 {lockedCount} more {lockedCount === 1 ? "post" : "posts"}
               </strong>{" "}
               from @{username}, tagged to episodes after where you are. They will appear when you mark more episodes watched.
             </div>
           )}
         </>
-      )}
+      ) : null}
     </V2Layout>
   );
 }
 
 // === ENTRY ====================================================================
+//
+// Thread card matching the general public space's card (ShowSection.tsx:2808
+// area). Whole card is clickable — opens the thread in the general public
+// space via navigateToShow with the threadId; respond / star / etc happen
+// inside the opened thread, not on the card. Star here is read-only (visual
+// parity only); the actual star action lives inside the thread view.
 
 function Entry({
   thread,
   username,
   ownerId,
-  showId,
   replyCount,
   onOpen,
 }: {
@@ -418,71 +415,59 @@ function Entry({
   onOpen: () => void;
 }) {
   return (
-    <article
-      className="card"
-      style={{
-        background: "rgba(255,250,235,0.55)",
-        border: "none",
-        padding: "24px 28px",
-        marginBottom: 14,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 4 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-          <h3
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontSize: 22,
-              fontWeight: 600,
-              color: "var(--dos-fg)",
-              lineHeight: 1.25,
-              margin: 0,
-            }}
-          >
+    <div style={{ position: "relative", margin: "0 0 12px 0" }}>
+      <div
+        className="card threadCard"
+        style={{
+          margin: 0,
+          cursor: "pointer",
+          position: "relative",
+          paddingTop: 12,
+          paddingBottom: 36,
+          border: "4px solid var(--dos-border)",
+        }}
+        onClick={onOpen}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2 style={{ margin: 0, fontSize: 22 }} className="title">
             {thread.titleBase}
-          </h3>
-          <span style={{ fontSize: 13, color: "var(--dos-gray)", fontWeight: 500 }}>
-            <EpisodeTag season={thread.season} episode={thread.episode} isRewatch={thread.isRewatch} rewatchS={thread.rewatchS} rewatchE={thread.rewatchE} parens={false} />
+            <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
+              <EpisodeTag
+                season={thread.season}
+                episode={thread.episode}
+                isRewatch={thread.isRewatch}
+                rewatchS={thread.rewatchS}
+                rewatchE={thread.rewatchE}
+              />
+            </span>
+            {thread.isEdited && (
+              <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
+            )}
+          </h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <LikeBadge count={0} readOnly title="open post to vote" />
+          </div>
+        </div>
+
+        <div className="muted" style={{ marginTop: 4, fontSize: 14, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          Started by{" "}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle", fontWeight: 700 }}>
+            <SidebarAvatar userId={ownerId} username={username} size={16} />
+            {username}
+          </span>
+          {" "}• {timeAgo(thread.updatedAt)}
+        </div>
+
+        <div style={{ marginTop: 6 }}>
+          <div className="clamp3">{thread.preview}</div>
+        </div>
+
+        <div className="replyCount" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span>
+            <Mail size={14} color="var(--icon-color)" style={{ verticalAlign: "middle" }} /> {replyCount}
           </span>
         </div>
-        <span style={{ fontSize: 13, color: "var(--dos-gray)" }}>{timeAgo(thread.updatedAt)}</span>
       </div>
-      <div style={{ fontSize: 13, color: "var(--dos-gray)", marginBottom: 14 }}>
-        by <strong style={{ color: "var(--dos-fg)", fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle" }}><SidebarAvatar userId={ownerId} username={username} size={16} />{username}</strong>
-      </div>
-      <div
-        style={{
-          fontFamily: "Inter, sans-serif",
-          fontSize: 15,
-          lineHeight: 1.65,
-          color: "var(--dos-fg)",
-          whiteSpace: "pre-wrap",
-        }}
-      >
-        {linkifyText(thread.body)}
-      </div>
-      <div
-        style={{
-          marginTop: 18,
-          paddingTop: 14,
-          borderTop: "1px solid rgba(255,255,255,0.35)",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <button className="btn post h40" onClick={onOpen} style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}>
-          ✎ write a response
-        </button>
-        <button className="btn h40" onClick={onOpen} style={{ fontSize: 12 }}>
-          quote
-        </button>
-        <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 12, color: "var(--dos-gray)" }}>
-          {replyCount === 0 ? "no responses yet" : `${replyCount} ${replyCount === 1 ? "response" : "responses"}`}
-        </span>
-      </div>
-    </article>
+    </div>
   );
 }
