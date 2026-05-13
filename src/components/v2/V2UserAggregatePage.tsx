@@ -5,6 +5,7 @@ import {
   fetchShows,
   fetchProgress,
   fetchPublicProfileByUsername,
+  fetchPublicProgressForUser,
   fetchPublicThreadsForUser,
   upsertProgress,
 } from "../../lib/db";
@@ -26,17 +27,6 @@ type ClaimSource = "user-progress" | "session" | null;
 function progressShort(p: { s: number; e: number }): string {
   if (p.s === 0 && p.e === 0) return "haven't started";
   return `S${String(p.s).padStart(2, "0")} E${String(p.e).padStart(2, "0")}`;
-}
-
-function formatRangeDate(ts?: number): string {
-  if (!ts) return "";
-  const d = new Date(ts);
-  return d.toLocaleString("en-US", { month: "long", day: "numeric" });
-}
-
-function relativeShort(ts: number): string {
-  // Calls existing timeAgo for the recent end of the range.
-  return timeAgo(ts);
 }
 
 // Session-storage browse progress — same key family used by the live
@@ -66,7 +56,9 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
   const [visitorProgress, setVisitorProgress] = useState<ProgressEntry | null>(null);
   const [claimSource, setClaimSource] = useState<ClaimSource>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // Owner's progress on THIS show. Shown in the heading as "They've watched
+  // Season X Episode Y" so the visitor can calibrate against the owner.
+  const [ownerProgress, setOwnerProgress] = useState<ProgressEntry | null>(null);
 
   // Bootstrap — works for logged-out visitors too.
   useEffect(() => {
@@ -81,10 +73,12 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         return Promise.all([
           fetchShows(),
           fetchPublicThreadsForUser(p.id),
-        ]).then(async ([allShows, threads]) => {
+          fetchPublicProgressForUser(p.id),
+        ]).then(async ([allShows, threads, ownerProg]) => {
           if (cancelled) return;
           const s = allShows.find((x) => x.id === showId);
           setShow(s ?? null);
+          setOwnerProgress(ownerProg[showId] ?? null);
           // Filter to this show only.
           const onShow = threads.filter((t) => t.showId === showId);
           setAllOwnerThreads(onShow);
@@ -177,14 +171,6 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
 
   const lockedCount = allOwnerThreads.length - visibleThreads.length;
 
-  // Date range for the meta line — first → last (by createdAt).
-  const sortedByCreated = useMemo(
-    () => [...allOwnerThreads].sort((a, b) => a.createdAt - b.createdAt),
-    [allOwnerThreads]
-  );
-  const firstTs = sortedByCreated[0]?.createdAt;
-  const lastTs = sortedByCreated[sortedByCreated.length - 1]?.createdAt;
-
   async function handleConfirmProgress(v: { s: number; e: number }) {
     if (!show) return;
     const entry: ProgressEntry = { s: v.s, e: v.e };
@@ -207,7 +193,6 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
     }
     setVisitorProgress((prev) => ({ ...prev, ...entry }));
     if (claimSource !== "user-progress") setClaimSource("session");
-    setPickerOpen(false);
   }
 
   // === GUARDS ===
@@ -236,40 +221,48 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   const claimed = !!visitorProgress;
   const totalCount = allOwnerThreads.length;
 
+  // Owner progress sentence — only renders when we actually have a
+  // non-zero progress row for the owner on this show. If the owner has
+  // posts but no public progress row (edge case), we skip the sentence
+  // rather than printing "Season 00 Episode 00".
+  const hasOwnerProgress = !!ownerProgress && !(ownerProgress.s === 0 && ownerProgress.e === 0);
+
   return (
     <V2Layout palette="profile">
-      {/* === VIEW BAR === */}
+      {/* === VIEW BAR ===
+          Single right-aligned button, styled to match the friend-room
+          "to public conversation" button (ShowSection.tsx:1867). The
+          "coming from @username's profile" eyebrow was dropped per the
+          2026-05-13 redesign — the page heading itself names the owner. */}
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           alignItems: "baseline",
           flexWrap: "wrap",
           gap: 12,
           marginBottom: 28,
         }}
       >
-        <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-gray)" }}>
-          coming from{" "}
-          <a
-            href={`/v2/u/${username}`}
-            onClick={(e) => { e.preventDefault(); navigate(`/v2/u/${username}`); }}
-            style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", paddingBottom: 1 }}
-          >
-            @{username}'s profile
-          </a>
-        </div>
-        <a
-          href={`/show/${show.id}`}
-          onClick={(e) => { e.preventDefault(); navigateToShow(navigate, show.id); }}
-          style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-gray)", textDecoration: "none", borderBottom: "1px dotted var(--dos-gray)", paddingBottom: 1, display: "inline-flex", alignItems: "center", gap: 6 }}
+        <button
+          className="btn"
+          onClick={() => navigateToShow(navigate, show.id)}
+          style={{
+            whiteSpace: "nowrap",
+            fontSize: 13,
+            flexShrink: 0,
+            padding: "3px 12px",
+            background: "transparent",
+            border: "2px solid #fff",
+            color: "#fff",
+          }}
         >
-          see all public posts on {show.name} <ArrowRight size={13} />
-        </a>
+          all public posts on {show.name} <ArrowRight size={14} color="var(--icon-color)" style={{ verticalAlign: "middle" }} />
+        </button>
       </div>
 
       {/* === PAGE HEADING === */}
-      <header style={{ marginBottom: 36 }}>
+      <header style={{ marginBottom: 28 }}>
         <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-gray)", marginBottom: 4 }}>
           <a
             href={`/v2/u/${username}`}
@@ -290,91 +283,57 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
             textTransform: "uppercase",
             lineHeight: 1.05,
             margin: 0,
-            marginBottom: 8,
+            marginBottom: 10,
           }}
         >
           {show.name}
         </h1>
         {totalCount > 0 && (
-          <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "var(--dos-gray)" }}>
+          <p style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-gray)", lineHeight: 1.55, margin: 0 }}>
             <strong style={{ fontStyle: "normal", fontWeight: 600, color: "var(--dos-fg)" }}>
-              {totalCount} {totalCount === 1 ? "post" : "posts"}
+              @{username} has {totalCount} public {totalCount === 1 ? "post" : "posts"} about {show.name}.
             </strong>
-            {firstTs && lastTs && firstTs !== lastTs && (
-              <> · written between {formatRangeDate(firstTs)} and {relativeShort(lastTs)}</>
+            {hasOwnerProgress && (
+              <> They've watched Season {String(ownerProgress!.s).padStart(2, "0")} Episode {String(ownerProgress!.e).padStart(2, "0")}.</>
             )}
-            {firstTs && lastTs && firstTs === lastTs && (
-              <> · written {relativeShort(lastTs)}</>
-            )}
+            {" How far along are you?"}
           </p>
         )}
       </header>
 
-      {/* === BODY: pre-claim or post-claim === */}
-      {!claimed ? (
-        <PreClaimCard
-          username={username}
-          showName={show.name}
-          totalCount={totalCount}
-          pickerOpen={pickerOpen}
-          setPickerOpen={setPickerOpen}
+      {/* === WATCH PROGRESS DROPDOWN ===
+          Always visible. For visitors who already have progress on this
+          show (DB row for logged-in users with a journal tab, or session
+          browse-progress), the dropdown pre-fills with that value and
+          posts render immediately. For first-time visitors it shows
+          "haven't started" (s:0,e:0), allowZero gates "haven't started"
+          on curS===0 && curE===0. Picker's built-in confirm-modal handles
+          the commit step — onConfirm fires only after the modal Confirm,
+          so picking a value alone doesn't write anything. */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 28,
+          flexWrap: "wrap",
+        }}
+      >
+        <OneSelectProgress
           show={show}
+          value={visitorProgress ? { s: visitorProgress.s, e: visitorProgress.e } : { s: 0, e: 0 }}
           onConfirm={handleConfirmProgress}
+          allowZero={true}
         />
-      ) : (
-        <>
-          {/* progress status bar */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              marginBottom: 28,
-              flexWrap: "wrap",
-            }}
-          >
-            <span
-              className="btn post h40"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "default",
-              }}
-            >
-              ◐ you're at {progressShort(visitorProgress!)}
-            </span>
-            {!pickerOpen && (
-              <button
-                onClick={() => setPickerOpen(true)}
-                className="btn h40"
-                style={{ fontSize: 12 }}
-              >
-                change progress
-              </button>
-            )}
-            {pickerOpen && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <OneSelectProgress
-                  show={show}
-                  value={{ s: visitorProgress!.s, e: visitorProgress!.e }}
-                  onConfirm={handleConfirmProgress}
-                  allowZero={false}
-                />
-                <button
-                  onClick={() => setPickerOpen(false)}
-                  className="btn h40"
-                  style={{ fontSize: 12 }}
-                >
-                  cancel
-                </button>
-              </div>
-            )}
-          </div>
+      </div>
 
-          {/* visible entries */}
+      {/* === POSTS ===
+          Render only once the visitor has confirmed a progress value.
+          claimed === true means visitorProgress is non-null (either
+          loaded from DB / session at mount, or freshly written via
+          handleConfirmProgress). */}
+      {claimed && (
+        <>
           {visibleThreads.length === 0 && (
             <div
               style={{
@@ -401,7 +360,6 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
             />
           ))}
 
-          {/* you-are-here divider */}
           <div
             style={{
               textAlign: "center",
@@ -415,7 +373,6 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
             ◐ you're here, at {progressShort(visitorProgress!)}
           </div>
 
-          {/* locked summary */}
           {lockedCount > 0 && (
             <div
               style={{
@@ -440,87 +397,6 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         </>
       )}
     </V2Layout>
-  );
-}
-
-// === PRE-CLAIM CARD ===========================================================
-//
-// Single dashed-border card centered on the page. Clicking the pill reveals
-// the standard OneSelectProgress picker; selection + confirm fires
-// onConfirm and the parent transitions to the post-claim render.
-
-function PreClaimCard({
-  username,
-  showName,
-  totalCount,
-  pickerOpen,
-  setPickerOpen,
-  show,
-  onConfirm,
-}: {
-  username: string;
-  showName: string;
-  totalCount: number;
-  pickerOpen: boolean;
-  setPickerOpen: (b: boolean) => void;
-  show: Show;
-  onConfirm: (v: { s: number; e: number }) => void;
-}) {
-  return (
-    <article
-      style={{
-        background: "transparent",
-        border: "2px dashed rgba(255,255,255,0.6)",
-        borderRadius: 18,
-        padding: "32px 36px",
-        maxWidth: 580,
-        margin: "32px auto",
-        textAlign: "center",
-      }}
-    >
-      <p
-        style={{
-          fontFamily: "Lora, Georgia, serif",
-          fontSize: 16,
-          color: "var(--dos-fg)",
-          lineHeight: 1.55,
-          marginBottom: 22,
-        }}
-      >
-        <strong style={{ fontWeight: 600 }}>
-          @{username} has {totalCount} public {totalCount === 1 ? "post" : "posts"} about {showName}.
-        </strong>
-        {" "}
-        <span style={{ fontStyle: "italic", color: "var(--dos-gray)" }}>
-          They're spoiler-gated by where you are in the show. Tell us where you are and {totalCount === 1 ? "the post" : "the posts"} will unfold.
-        </span>
-      </p>
-      {!pickerOpen ? (
-        <button
-          onClick={() => setPickerOpen(true)}
-          className="btn post h40"
-          style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-        >
-          ◐ tell us where you are
-        </button>
-      ) : (
-        <div style={{ display: "inline-flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 8 }}>
-          <OneSelectProgress
-            show={show}
-            value={{ s: 1, e: 1 }}
-            onConfirm={onConfirm}
-            allowZero={false}
-          />
-          <button
-            onClick={() => setPickerOpen(false)}
-            className="btn h40"
-            style={{ fontSize: 12 }}
-          >
-            cancel
-          </button>
-        </div>
-      )}
-    </article>
   );
 }
 
