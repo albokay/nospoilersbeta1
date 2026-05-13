@@ -37,7 +37,7 @@ export default function SidebarAvatar({ userId, username, size = 24 }: SidebarAv
   return (
     <Avatar
       name={seed}
-      variant="beam"
+      variant="bauhaus"
       size={size}
       colors={CANON_PALETTE}
     />
