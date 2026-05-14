@@ -110,7 +110,7 @@ export default function TreatedArt({
   const style: React.CSSProperties = {
     position: anchor === "fixed" ? "fixed" : "absolute",
     bottom: 0,
-    width: "min(640px, 60vw)",
+    width: "min(448px, 42vw)",
     height: "auto",
     opacity: loaded ? 0.85 : 0,
     transform,
