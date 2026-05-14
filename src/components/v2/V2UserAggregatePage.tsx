@@ -14,6 +14,7 @@ import type { Show } from "../../lib/db";
 import type { ProgressEntry, Thread } from "../../types";
 import V2Layout from "./V2Layout";
 import SidebarAvatar from "../SidebarAvatar";
+import TreatedArt from "../TreatedArt";
 import { navigateToShow } from "./v2nav";
 import OneSelectProgress from "../OneSelectProgress";
 import { ArrowRight, Clock, Mail } from "lucide-react";
@@ -388,6 +389,11 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           )}
         </>
       ) : null}
+
+      {/* Treated art — driven by the page's fixed showId (the show
+          being aggregated). No random pick; the show IS the page
+          context. */}
+      <TreatedArt showId={showId} anchor="fixed" />
     </V2Layout>
   );
 }

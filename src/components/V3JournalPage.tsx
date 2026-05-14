@@ -11,6 +11,7 @@ import { prefetchComposeData } from "../lib/composeDataCache";
 import { getCachedActivity, setCachedActivity, invalidateJournalCache } from "../lib/journalCache";
 import { useAuth } from "../lib/auth";
 import SidebarAvatar from "./SidebarAvatar";
+import TreatedArt from "./TreatedArt";
 import { canView, timeAgo } from "../lib/utils";
 import { linkifyText } from "../lib/linkify";
 import EpisodeTag from "./EpisodeTag";
@@ -885,7 +886,12 @@ export default function V3JournalPage({
   useEffect(() => { return () => { onTabsChangeRef.current?.(null); }; }, []);
 
   return (
-    <section className="container journalShift" style={{ paddingBottom: 28 }}>
+    // position: relative anchors the scroll-anchored TreatedArt at the
+    // bottom of the journal content (not the viewport). As more
+    // threads load and the section grows taller, the art rides along
+    // at the new bottom — exactly the "always at the bottom of the
+    // scroll" behavior the spec specifies for anchor="scroll".
+    <section className="container journalShift" style={{ paddingBottom: 28, position: "relative" }}>
       {loading && <div className="muted" style={{ padding: "24px 0" }}>Loading your profile<LoadingDots /></div>}
 
       {!loading && (
@@ -2005,6 +2011,11 @@ export default function V3JournalPage({
           </Modal>
         );
       })()}
+
+      {/* Treated art — scroll-anchored at the bottom of the journal
+          content. Re-keys on activeTab so switching tabs re-mounts
+          the component (fresh color + side roll for the new show). */}
+      <TreatedArt key={activeTab || "no-tab"} showId={activeTab || null} anchor="scroll" />
     </section>
   );
 }

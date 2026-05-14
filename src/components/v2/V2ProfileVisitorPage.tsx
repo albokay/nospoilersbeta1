@@ -16,6 +16,7 @@ import type { ProgressEntry, Thread, ProfileThought } from "../../types";
 import V2Layout from "./V2Layout";
 import ProfileThoughtsCarousel from "./ProfileThoughtsCarousel";
 import SidebarAvatar from "../SidebarAvatar";
+import TreatedArt from "../TreatedArt";
 
 // Same shared profile-card style as V2ProfileSelfPage — sharp corners,
 // transparent fill, 2px white outline. The visitor view mirrors the
@@ -104,6 +105,19 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
   const [notFound, setNotFound] = useState(false);
   const [shows, setShows] = useState<Show[]>([]);
   const [ownerProgress, setOwnerProgress] = useState<Record<string, ProgressEntry>>({});
+
+  // Treated art — random show pick from the owner's progress list,
+  // locked once data first loads. Stable for the life of this mount;
+  // page revisit / username change re-mounts and re-rolls. "tsp" is
+  // the onboarding seed and isn't shown on the public profile, so it
+  // doesn't seed the art either.
+  const [artShowId, setArtShowId] = useState<string | null>(null);
+  useEffect(() => {
+    if (artShowId) return;
+    const candidates = Object.keys(ownerProgress).filter((s) => s !== "tsp");
+    if (candidates.length === 0) return;
+    setArtShowId(candidates[Math.floor(Math.random() * candidates.length)]);
+  }, [ownerProgress, artShowId]);
   const [ownerPublicThreads, setOwnerPublicThreads] = useState<Thread[]>([]);
   const [visitorProgress, setVisitorProgress] = useState<Record<string, ProgressEntry>>({});
   const [sharedRooms, setSharedRooms] = useState<SharedRoomRow[]>([]);
@@ -538,6 +552,11 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
           </div>
         </section>
       )}
+
+      {/* Treated art — random show picked from this owner's progress
+          list. See src/components/TreatedArt.tsx for per-mount
+          semantics + the bleed/tilt details. */}
+      <TreatedArt key={artShowId ?? "pending"} showId={artShowId} anchor="fixed" />
     </V2Layout>
   );
 }
