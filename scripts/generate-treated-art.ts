@@ -22,7 +22,13 @@
 // .env.local is irrelevant to this script; we need the service role to
 // write to Storage.
 
-import "dotenv/config";
+import { config as dotenvConfig } from "dotenv";
+// .env.local takes precedence (Vite convention — that's where the live
+// app's VITE_SUPABASE_URL lives); fall through to .env for anything not
+// set there. `override: false` keeps real shell env vars winning over
+// either file, which is the conventional precedence.
+dotenvConfig({ path: ".env.local" });
+dotenvConfig({ path: ".env" });
 import { createClient } from "@supabase/supabase-js";
 import { removeBackground } from "@imgly/background-removal-node";
 import sharp from "sharp";
@@ -54,17 +60,39 @@ type Args = {
   show?: string;
   color?: string;
   force: boolean;
+  clear: boolean;
 };
 
 function parseArgs(argv: string[]): Args {
-  const out: Args = { force: false };
+  const out: Args = { force: false, clear: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--show" && argv[i + 1]) { out.show = argv[++i]; continue; }
     if (a === "--color" && argv[i + 1]) { out.color = argv[++i]; continue; }
     if (a === "--force") { out.force = true; continue; }
+    if (a === "--clear") { out.clear = true; continue; }
   }
   return out;
+}
+
+async function clearBucket(supabase: any): Promise<void> {
+  const { data: objects, error } = await supabase.storage.from(STORAGE_BUCKET).list("", { limit: 1000 });
+  if (error) {
+    console.error("Failed to list bucket:", error.message);
+    process.exit(1);
+  }
+  if (!objects || objects.length === 0) {
+    console.log("Bucket is already empty.");
+    return;
+  }
+  const names: string[] = objects.map((o: { name: string }) => o.name);
+  console.log(`Deleting ${names.length} object(s) from "${STORAGE_BUCKET}"…`);
+  const { error: delErr } = await supabase.storage.from(STORAGE_BUCKET).remove(names);
+  if (delErr) {
+    console.error("Delete failed:", delErr.message);
+    process.exit(1);
+  }
+  console.log(`Cleared ${names.length} object(s).`);
 }
 
 // supabase client typed loosely — ReturnType<typeof createClient> resolves
@@ -107,23 +135,34 @@ async function generateOne(
     return { status: "failed", detail: `source fetch ${srcRes.status}` };
   }
   const srcBuf = Buffer.from(await srcRes.arrayBuffer());
+  // Diagnostic: log content-type + first magic-bytes signature. JPEG
+  // starts with `ffd8ff`, PNG with `89504e47`, WEBP fourth chunk has
+  // `WEBP`. If we see HTML/JSON here, the URL fetched the wrong thing.
+  const contentType = srcRes.headers.get("content-type") || "(none)";
+  const magic = srcBuf.subarray(0, 8).toString("hex");
+  console.log(`    source: ${imageUrl}`);
+  console.log(`    content-type=${contentType}, bytes=${srcBuf.length}, magic=${magic}`);
 
-  // 3. Background removal. First call per process downloads the ONNX
-  //    model (~80MB medium variant) to a temp dir; subsequent calls in
-  //    the same process reuse it.
-  const cutoutBlob = await removeBackground(srcBuf, {
+  // 3. Background removal — pass the source as a Blob with explicit
+  //    type. @imgly's format detection on raw Buffers sometimes fails
+  //    on certain JPEG variants; wrapping in a typed Blob gives it the
+  //    hint it needs.
+  const srcBlob = new Blob([srcBuf], { type: contentType.startsWith("image/") ? contentType : "image/jpeg" });
+  const cutoutBlob = await removeBackground(srcBlob, {
     model: "medium",
     output: { format: "image/png" },
   });
   const cutoutBuf = Buffer.from(await cutoutBlob.arrayBuffer());
 
-  // 4. Monochrome tint. sharp.tint() applies a single color across the
-  //    full luminance range; greyscale() first removes source hue so
-  //    the tint maps purely from luminance.
+  // 4. Monochrome tint. sharp.tint() applies the provided chroma while
+  //    preserving the image's luminance — exactly the monochrome-tint
+  //    treatment described in the spec, in one step. Note: do NOT
+  //    chain .greyscale() before this; greyscale produces a 1-channel
+  //    image and tint can't apply chroma to a 1-channel input, so the
+  //    result comes out plain black-and-white.
   const { r, g, b } = hexToRgb(CANON_PALETTE[color]);
   const tintedBuf = await sharp(cutoutBuf)
     .ensureAlpha()
-    .greyscale()
     .tint({ r, g, b })
     .png({ compressionLevel: 9 })
     .toBuffer();
@@ -163,6 +202,14 @@ async function main() {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+
+  // --clear runs a single bucket-wipe and exits. Doesn't pair with
+  // generation; if you want to wipe and regenerate, run --clear, then
+  // re-run the script without it.
+  if (args.clear) {
+    await clearBucket(supabase);
+    process.exit(0);
+  }
 
   // Fetch shows that have a tvmaze_id (no point trying on shows without
   // a source image). Filter by --show if provided.
