@@ -112,7 +112,7 @@ export default function TreatedArt({
     bottom: 0,
     width: "min(448px, 42vw)",
     height: "auto",
-    opacity: loaded ? 0.85 : 0,
+    opacity: loaded ? 0.75 : 0,
     transform,
     transformOrigin: "center center",
     transition: "opacity 400ms ease-out",
