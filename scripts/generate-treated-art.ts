@@ -33,10 +33,12 @@ import { createClient } from "@supabase/supabase-js";
 import { removeBackground } from "@imgly/background-removal-node";
 import sharp from "sharp";
 
-// Canon palette — keep in sync with theme.ts canon hexes and the
-// client-side src/lib/treatedArt.ts color list. "cream" = canon white.
+// Canon palette — keep in sync with the client-side CANON_TREATED_COLORS
+// list in src/components/TreatedArt.tsx. "cream" = canon white. Red was
+// dropped from the treated-art palette (visual QA: too harsh against
+// page bg); existing red PNGs in storage are orphaned but harmless —
+// nothing requests them. Re-run with --clear if you want a clean slate.
 const CANON_PALETTE: Record<string, string> = {
-  red:          "#f45028",
   yellow:       "#dea838",
   green:        "#7abd8e",
   "dark-blue":  "#355eb8",

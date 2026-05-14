@@ -46,8 +46,11 @@ import React, { useState } from "react";
  *     clockwise (same effect, mirrored).
  */
 
+// Canon palette for treated art. Red was dropped after visual QA —
+// the warm red read too harsh against page backgrounds. Keep the list
+// in sync with scripts/generate-treated-art.ts so the worker doesn't
+// generate colors the client never asks for.
 const CANON_TREATED_COLORS = [
-  "red",
   "yellow",
   "green",
   "dark-blue",
