@@ -88,25 +88,38 @@ export default function TreatedArt({
 
   const url = buildUrl(showId, color);
 
-  // Rotation direction by anchor side: left tilts CW (positive deg),
-  // right tilts CCW (negative deg). Both pull the top edge toward the
-  // page's vertical centerline, which reads as "leaning into the page"
-  // regardless of which corner the art is anchored to.
-  const rotation = side === "left" ? "rotate(15deg)" : "rotate(-15deg)";
+  // Tilt + bleed.
+  //
+  // Rotation: left tilts CW (positive deg), right tilts CCW (negative
+  // deg). Both pull the top edge toward the page's vertical centerline
+  // so the art leans "into" the page from whichever corner.
+  //
+  // Translation pushes the art past the viewport edges so a portion
+  // bleeds off-screen rather than sitting fully inside the layout:
+  //   - translateY(40%): 40% of the image extends below the viewport
+  //     (or below the scroll container, for anchor="scroll").
+  //   - translateX(±20%): 20% extends past the anchor side.
+  // Order matters — translate is applied first (right-to-left in CSS),
+  // so the rotation happens after the bleed and the visible portion
+  // tilts cleanly without compounding off-axis drift.
+  const rotateDeg = side === "left" ? 15 : -15;
+  const translateXPct = side === "left" ? -20 : 20;
+  const translateYPct = 40;
+  const transform = `translate(${translateXPct}%, ${translateYPct}%) rotate(${rotateDeg}deg)`;
 
   const style: React.CSSProperties = {
     position: anchor === "fixed" ? "fixed" : "absolute",
-    bottom: 24,
+    bottom: 0,
     width: "min(640px, 60vw)",
     height: "auto",
     opacity: loaded ? 0.85 : 0,
-    transform: rotation,
+    transform,
     transformOrigin: "center center",
     transition: "opacity 400ms ease-out",
     pointerEvents: "none",
     zIndex: 0,
     userSelect: "none",
-    ...(side === "left" ? { left: 24 } : { right: 24 }),
+    ...(side === "left" ? { left: 0 } : { right: 0 }),
   };
 
   return (
