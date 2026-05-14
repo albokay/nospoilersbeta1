@@ -95,6 +95,66 @@ async function clearBucket(supabase: any): Promise<void> {
   console.log(`Cleared ${names.length} object(s).`);
 }
 
+// TVMaze /shows/{id}/images preference order — picks the most likely
+// "single isolated subject" image and skips environmental / typography
+// shots that confuse @imgly's background removal. Returns null only
+// when even the legacy primary image is missing.
+type TvmazeImage = {
+  type?: string;
+  main?: boolean;
+  resolutions?: {
+    original?: { url?: string };
+    medium?: { url?: string };
+  };
+};
+
+async function pickTvmazeImageUrl(tvmazeId: number): Promise<string | null> {
+  // /shows/{id}/images — all images, typed.
+  try {
+    const r = await fetch(`https://api.tvmaze.com/shows/${tvmazeId}/images`);
+    if (r.ok) {
+      const list = (await r.json()) as TvmazeImage[];
+      if (Array.isArray(list) && list.length > 0) {
+        const urlOf = (img: TvmazeImage): string | undefined =>
+          img.resolutions?.original?.url || img.resolutions?.medium?.url;
+
+        const posters = list.filter((i) => i.type === "poster");
+        const banners = list.filter((i) => i.type === "banner");
+
+        // Preference order: main+poster, any poster, main+banner, any
+        // banner. Skip background / typography entirely.
+        const mainPoster = posters.find((i) => i.main && urlOf(i));
+        if (mainPoster) { console.log(`    image: main poster`); return urlOf(mainPoster)!; }
+
+        const anyPoster = posters.find(urlOf);
+        if (anyPoster) { console.log(`    image: poster`); return urlOf(anyPoster)!; }
+
+        const mainBanner = banners.find((i) => i.main && urlOf(i));
+        if (mainBanner) { console.log(`    image: main banner`); return urlOf(mainBanner)!; }
+
+        const anyBanner = banners.find(urlOf);
+        if (anyBanner) { console.log(`    image: banner`); return urlOf(anyBanner)!; }
+      }
+    }
+  } catch {
+    // Fall through to the legacy /shows/{id} primary image.
+  }
+
+  // Last-ditch fallback: the primary image off /shows/{id}. May be any
+  // type, including background or typography — accepted as a "better
+  // than nothing" path.
+  try {
+    const r = await fetch(`https://api.tvmaze.com/shows/${tvmazeId}`);
+    if (!r.ok) return null;
+    const show = (await r.json()) as { image?: { original?: string; medium?: string } };
+    const url = show.image?.original || show.image?.medium;
+    if (url) { console.log(`    image: legacy primary (untyped)`); return url; }
+  } catch {
+    // Both endpoints unreachable — nothing to do.
+  }
+  return null;
+}
+
 // supabase client typed loosely — ReturnType<typeof createClient> resolves
 // to the library's default generics (never), but createClient(url, key)
 // (without explicit Database types) infers a concrete public-schema
@@ -118,15 +178,21 @@ async function generateOne(
     }
   }
 
-  // 1. Fetch TVMaze record.
-  const tvmazeRes = await fetch(`https://api.tvmaze.com/shows/${tvmazeId}`);
-  if (!tvmazeRes.ok) {
-    return { status: "failed", detail: `tvmaze ${tvmazeRes.status}` };
-  }
-  const tvmaze = (await tvmazeRes.json()) as { image?: { original?: string; medium?: string } };
-  const imageUrl = tvmaze.image?.original || tvmaze.image?.medium;
+  // 1. Pick the best TVMaze image. TVMaze's /shows/{id}/images endpoint
+  //    returns all images for a show with a `type` field — "poster",
+  //    "background", "banner", "typography". Poster images typically
+  //    isolate a subject or character; background images are wide
+  //    environmental shots that confuse @imgly's bg-removal; typography
+  //    is just the show logo (useless for cutouts). Preference order:
+  //      1. main+poster (TVMaze's flagged primary poster)
+  //      2. any poster
+  //      3. main+banner
+  //      4. any banner
+  //      5. the legacy /shows/{id} primary image (last-ditch fallback)
+  //    Background and typography types are explicitly skipped.
+  const imageUrl = await pickTvmazeImageUrl(tvmazeId);
   if (!imageUrl) {
-    return { status: "skipped", detail: "no source image on tvmaze" };
+    return { status: "skipped", detail: "no usable image on tvmaze" };
   }
 
   // 2. Download source.
