@@ -1,0 +1,113 @@
+import React, { useState } from "react";
+
+/**
+ * TreatedArt — decorative cutout-plus-tint image anchored at the
+ * bottom of a V2/V3 page. Source images are pre-generated and live in
+ * the Supabase Storage public bucket "treated-art" at the key
+ * `${showId}-${color}.png` (see scripts/generate-treated-art.ts).
+ *
+ * Per-mount semantics:
+ *   - Color and side (left vs right) are rolled once when the
+ *     component mounts and stay stable for the life of that instance.
+ *   - To get a fresh roll on a page-internal change (e.g. switching
+ *     journal tabs), the PARENT keys the element on the trigger:
+ *     `<TreatedArt key={activeShowId} showId={activeShowId} … />`.
+ *     React unmounts + remounts on key change → useState re-rolls.
+ *   - On page revisit / fresh page mount, the component naturally
+ *     re-rolls along with the rest of the tree.
+ *
+ * Loading + fade-in:
+ *   - The <img> uses loading="lazy" and never blocks first paint.
+ *   - Opacity starts at 0; on <img> onLoad it transitions to 1 over
+ *     ~400ms, so the late arrival doesn't pop.
+ *   - On 404 (cache miss for this (showId, color) combo — i.e. the
+ *     pre-warm script hasn't generated this yet) the image stays
+ *     invisible. No error UI; treated art is purely atmospheric.
+ *
+ * Layout:
+ *   - `anchor="fixed"` → position: fixed; viewport-anchored.
+ *   - `anchor="scroll"` → position: absolute; anchored to the nearest
+ *     positioned ancestor. The page that wires this must wrap its
+ *     content in a position:relative container tall enough to contain
+ *     the scrolling content — see Phase 3 wiring.
+ *   - z-index: 0 + pointer-events: none → never receives input, never
+ *     occludes interactive content. The site's own elements default
+ *     to z-index: auto which stacks above 0.
+ *
+ * Sizing:
+ *   - width: min(360px, 35vw) — visible but not dominant; auto height
+ *     preserves the cutout's native aspect ratio. First-pass values
+ *     per the spec; tunable later without API changes.
+ */
+
+const CANON_TREATED_COLORS = [
+  "red",
+  "yellow",
+  "green",
+  "dark-blue",
+  "light-blue",
+  "cream",
+] as const;
+type TreatedColor = (typeof CANON_TREATED_COLORS)[number];
+
+type Side = "left" | "right";
+
+function pickRandom<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function buildUrl(showId: string, color: TreatedColor): string {
+  // VITE_SUPABASE_URL is the same env var the rest of the app reads.
+  // If it's missing (local dev with a stub .env.local), the URL will
+  // be malformed and the <img> will silently fail to load — which is
+  // the correct degrade behavior for atmospheric art.
+  const base = (import.meta.env.VITE_SUPABASE_URL as string) || "";
+  return `${base}/storage/v1/object/public/treated-art/${showId}-${color}.png`;
+}
+
+export default function TreatedArt({
+  showId,
+  anchor,
+}: {
+  showId: string | null | undefined;
+  anchor: "fixed" | "scroll";
+}) {
+  const [color] = useState<TreatedColor>(() => pickRandom(CANON_TREATED_COLORS));
+  const [side] = useState<Side>(() => (Math.random() < 0.5 ? "left" : "right"));
+  const [loaded, setLoaded] = useState(false);
+
+  // No showId → nothing to anchor to. Render nothing (don't fire a
+  // doomed image request to a malformed URL).
+  if (!showId) return null;
+
+  const url = buildUrl(showId, color);
+
+  const style: React.CSSProperties = {
+    position: anchor === "fixed" ? "fixed" : "absolute",
+    bottom: 24,
+    width: "min(360px, 35vw)",
+    height: "auto",
+    opacity: loaded ? 1 : 0,
+    transition: "opacity 400ms ease-out",
+    pointerEvents: "none",
+    zIndex: 0,
+    userSelect: "none",
+    ...(side === "left" ? { left: 24 } : { right: 24 }),
+  };
+
+  return (
+    <img
+      src={url}
+      alt=""
+      aria-hidden="true"
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+      style={style}
+      onLoad={() => setLoaded(true)}
+      // 404s for un-pre-warmed (showId, color) combos are expected;
+      // leave the image invisible and move on. No console noise.
+      onError={() => {}}
+    />
+  );
+}

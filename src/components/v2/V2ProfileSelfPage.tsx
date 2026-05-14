@@ -26,6 +26,7 @@ import Modal from "../Modal";
 import ProfileThoughtsCompose, { type ProfileThoughtsComposeMode, type ProfileThoughtsSubmitPayload } from "./ProfileThoughtsCompose";
 import ProfileThoughtsCarousel from "./ProfileThoughtsCarousel";
 import SidebarAvatar from "../SidebarAvatar";
+import TreatedArt from "../TreatedArt";
 import { pickProfileThoughtPrompt } from "../../lib/profileThoughtPrompts";
 import { preventLastWordOrphan } from "../../lib/utils";
 import { Plus, Pin, Trash2, SquarePen, GripVertical, ChevronDown, RefreshCw, ArrowRight } from "lucide-react";
@@ -276,6 +277,19 @@ export default function V2ProfileSelfPage() {
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [addOpen, setAddOpen] = useState(false);
+
+  // Treated art — random show pick from this profile's progress list,
+  // locked once when progress data first loads. Stable for the life of
+  // this mount; revisit / remount picks a fresh show. "tsp" is the
+  // onboarding seed show and isn't shown on the public profile, so
+  // it's filtered out of the candidate pool too.
+  const [artShowId, setArtShowId] = useState<string | null>(null);
+  useEffect(() => {
+    if (artShowId) return;
+    const candidates = Object.keys(progress).filter((s) => s !== "tsp");
+    if (candidates.length === 0) return;
+    setArtShowId(candidates[Math.floor(Math.random() * candidates.length)]);
+  }, [progress, artShowId]);
 
   // "Remove this show from profile" — small Trash button on every show
   // card opens a confirmation modal. On confirm, runs
@@ -1140,6 +1154,12 @@ export default function V2ProfileSelfPage() {
           onClose={() => setComposeOpen(null)}
         />
       )}
+
+      {/* Treated art — fixed to viewport bottom-corner, random show
+          picked from this profile's progress list. Renders nothing
+          until artShowId is set (i.e. until progress data lands).
+          See src/components/TreatedArt.tsx for per-mount semantics. */}
+      <TreatedArt key={artShowId ?? "pending"} showId={artShowId} anchor="fixed" />
     </V2Layout>
   );
 }
