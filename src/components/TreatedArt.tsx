@@ -34,10 +34,16 @@ import React, { useState } from "react";
  *     occludes interactive content. The site's own elements default
  *     to z-index: auto which stacks above 0.
  *
- * Sizing:
- *   - width: min(360px, 35vw) — visible but not dominant; auto height
- *     preserves the cutout's native aspect ratio. First-pass values
- *     per the spec; tunable later without API changes.
+ * Sizing + tilt:
+ *   - width: min(640px, 60vw) — about 175% of the original first-pass
+ *     size, scaled up after visual QA showed the art felt undersized
+ *     at the originally proposed dimensions.
+ *   - opacity target: 0.85 — softens the cutout against the page bg
+ *     so it reads as atmospheric rather than dominant.
+ *   - rotation: 15° leaning the art into the page from whichever
+ *     corner it sits in. Left-anchored art rotates clockwise (top
+ *     tilts toward center); right-anchored art rotates counter-
+ *     clockwise (same effect, mirrored).
  */
 
 const CANON_TREATED_COLORS = [
@@ -82,12 +88,20 @@ export default function TreatedArt({
 
   const url = buildUrl(showId, color);
 
+  // Rotation direction by anchor side: left tilts CW (positive deg),
+  // right tilts CCW (negative deg). Both pull the top edge toward the
+  // page's vertical centerline, which reads as "leaning into the page"
+  // regardless of which corner the art is anchored to.
+  const rotation = side === "left" ? "rotate(15deg)" : "rotate(-15deg)";
+
   const style: React.CSSProperties = {
     position: anchor === "fixed" ? "fixed" : "absolute",
     bottom: 24,
-    width: "min(360px, 35vw)",
+    width: "min(640px, 60vw)",
     height: "auto",
-    opacity: loaded ? 1 : 0,
+    opacity: loaded ? 0.85 : 0,
+    transform: rotation,
+    transformOrigin: "center center",
     transition: "opacity 400ms ease-out",
     pointerEvents: "none",
     zIndex: 0,
