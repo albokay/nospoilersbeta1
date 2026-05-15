@@ -1,6 +1,8 @@
-# Sidebar — Technical State (2026-05-12)
+# Sidebar — Technical State (2026-05-15)
 
-> **2026-05-12 — Latest landed: "Thoughts on…" feature on the V2 public profile.** A new show-agnostic writing form that lives entirely on the profile, replacing the inline bio. Locked italic-Lora "Thoughts on" opener + user-written completion + body. Two states (private = owner-only / public = visible to visitors); private→public is a one-way transition. Top of the profile is a horizontal ticket carousel (one ticket visible at a time, chevron-step); compose happens in a full-screen modal overlay (contenteditable flowing title with cycling-prompt pill, ruled-paper body, scoped internal scroll). New `profile_thoughts` table + RLS; migration `20260512_profile_thoughts.sql` applied to prod. Bio column kept dormant in DB (reminder open to drop it + the auth-tolerant fallback once the feature feels stable). See §7 arcs (top of recent-work list).
+> **2026-05-15 — Latest landed: Treated Art System.** Atmospheric cutout-plus-tint imagery anchored at the bottom corners of V2/V3 pages. Pipeline runs on the developer's laptop (Vercel Hobby's 10s function cap can't accommodate the @imgly bg-removal step), uploads to Supabase Storage public bucket `treated-art`. New component `src/components/TreatedArt.tsx` reads PNGs directly from Storage URLs; cache misses silently no-op. Wired into V2ProfileSelfPage, V2ProfileVisitorPage, V2UserAggregatePage (`anchor="fixed"`) and V3JournalPage (`anchor="scroll"`, re-keys on tab switch). Friend rooms + general public aggregate are V1 (`ShowSection.tsx`) and explicitly out of scope. 5-color palette (yellow / green / dark-blue / light-blue / cream — red dropped after visual QA). See §7 arcs.
+>
+> **Two arcs landed just before this one (2026-05-13 / 14):** the SidebarAvatar (boring-avatars) system across thread/response bylines + identity headers, and the V2UserAggregatePage redesign (dropdown-from-start, friend-room-style page-up button, pioneer empty state, thread cards matching the public-space `.card.threadCard` shape).
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -11,7 +13,7 @@
 - **Frontend:** React 18 + TypeScript + Vite, single `App.tsx` shell that derives view state from URL via `react-router-dom` wildcard route. Top-level rendering is gated by (a) the **mobile lockout** (`isMobileLocked && !isAdmin` short-circuits everything at `window.innerWidth < 768`) and (b) **auth-routing effects** that redirect signed-out users off `/profile` → `/` and signed-in non-admins off `/` → `/profile` (admins exempt; `/invite/:token` exempt). See §8.
 - **Backend:** Supabase (Postgres + Auth + Realtime + Edge Functions). One Edge Function: `send-invite` (Resend email).
 - **Styling:** Single CSS string injected at boot from `src/styles/theme.ts`. DOS/canon palette, body-class context theming (`has-header`, `group-context`, `public-context`).
-- **Hosting:** Netlify auto-deploy on push to `main` (see `CLAUDE.md`, `netlify.toml`).
+- **Hosting:** Vercel auto-deploy on push to `main` (see `vercel.json`). `netlify.toml` is checked-in dead config from an earlier Netlify era — its CSP `[[headers]]` block is NOT enforced. Hobby plan; serverless function timeout caps at 10s, which is why the treated-art pipeline runs as a local pre-warm script rather than a Vercel function (see §7 arc 2026-05-15).
 - **Auth:** Supabase Auth via `src/lib/auth.tsx` `AuthProvider`. Session subscription updates `user`/`profile` globally.
 - **State:** All major state lifted to `App.tsx` (~1367 lines): `progress`, `shows`, `repliesToUser`, `allFriendGroups`, likes, profile-tab data. No Redux/Zustand.
 - **Data layer:** `src/lib/db.ts` (~1574 lines) — every Supabase call is here, with snake_case→camelCase mappers (`rowToThread`, `rowToReply`, `rowToFriendGroup`, `rowToInvitation`).
@@ -1320,6 +1322,159 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-15 — Treated Art System (cutout + monochrome tint, V2/V3 surfaces only)
+
+Decorative atmospheric imagery anchored at the bottom corners of V2/V3 pages — a per-show cutout-plus-tint PNG that fades in once the image loads, tilts toward the page center, and bleeds ~40% off the bottom + ~20% off the anchor side. Tint color and corner side are rolled per mount. Cache misses (uncreated `(showId, color)` combos) silently no-op; the art is purely decorative and never blocks render.
+
+**Architecture decision: local pre-warm, not on-demand.** Vercel Hobby caps serverless functions at 10s. The first-time @imgly bg-removal step alone runs ~5–15s (plus model download on cold containers ~10s more); a single pipeline run can be ~15–30s. That exceeds Hobby's budget. Instead, the pipeline is a local Node script (`scripts/generate-treated-art.ts`) run from the developer's laptop, writing to Supabase Storage. The frontend reads PNGs directly from Storage URLs — no Vercel function involved. Trade-off: new shows added to the catalog have no treated art until the script is re-run. Acceptable for current cadence; automation paths flagged in Outstanding action items.
+
+**Pipeline (script):**
+
+1. Resolves `showId` → `tvmaze_id` in the `shows` table.
+2. Hits TVMaze's `/shows/{id}/images` endpoint and walks a preference order: `main+poster` → any poster → `main+banner` → any banner → legacy `/shows/{id}` primary image. Skips `background` (wide environmental shots that confuse bg-removal) and `typography` (just the show logo). Image-type used is logged per run.
+3. Downloads source image; wraps the Buffer in a typed `Blob` because @imgly's format detection on raw Buffers fails on some JPEG variants — wrapping with explicit `content-type` is the fix.
+4. `@imgly/background-removal-node` removes the background (Node-native U²-Net via ONNX; medium model ~80MB, downloads to `/tmp` on first run, reused across same-process calls).
+5. `sharp.ensureAlpha().tint({r,g,b}).png()` applies the monochrome tint. **Do NOT chain `.greyscale()` before `.tint()`** — greyscale produces a 1-channel image and `tint` can't apply chroma to single-channel input (output stays plain black-and-white). Sharp's `tint()` already preserves the source luminance natively.
+6. Uploads to public bucket `treated-art` at key `${showId}-${color}.png` with `upsert: true` and `cacheControl: 31536000`.
+
+**Component ([src/components/TreatedArt.tsx](src/components/TreatedArt.tsx)).** Props: `{ showId, anchor: "fixed" | "scroll" }`. Per-mount semantics — color (1 of 5) and side (left/right) rolled once via `useState` initializer when the component mounts; parent re-keys on `showId` for a fresh roll. `<img loading="lazy">` with `onLoad` flipping `opacity` 0 → 0.75 over a 400ms transition. Layout: `bottom: 0`, side: 0, `transform: translateX(±20%) translateY(40%) rotate(±15deg)` — translation pushes ~40% off-bottom + ~20% off-side; rotation tilts toward page center (left tilts CW, right tilts CCW). `width: min(448px, 42vw)`, `pointer-events: none`, `z-index: 0`. Fixed-position elements don't trigger horizontal scrollbars when transform-pushed off-viewport; verified.
+
+**Surfaces wired (4 of 4 in-scope):**
+
+| Surface | Anchor | showId source |
+|---|---|---|
+| [V2ProfileSelfPage.tsx](src/components/v2/V2ProfileSelfPage.tsx) | `fixed` | random from viewer's progress list (excludes `tsp`) |
+| [V2ProfileVisitorPage.tsx](src/components/v2/V2ProfileVisitorPage.tsx) | `fixed` | random from owner's progress list (excludes `tsp`) |
+| [V2UserAggregatePage.tsx](src/components/v2/V2UserAggregatePage.tsx) | `fixed` | the page's `showId` prop (no random pick) |
+| [V3JournalPage.tsx](src/components/V3JournalPage.tsx) | `scroll` | tracks `activeTab`, re-keys on tab switch. The outer `<section>` got `position: relative` so the absolute-positioned art anchors at the bottom of the journal content, not the viewport. Rides along as more threads load. |
+
+**Out of scope (V2/V3 only):** friend rooms + general public aggregate are V1 (`ShowSection.tsx`) and intentionally untouched. If the V2/V3 constraint is ever lifted, the wiring there is a single-component insertion.
+
+**Canon palette (5 colors after red drop):** yellow `#dea838`, green `#7abd8e`, dark-blue `#355eb8`, light-blue `#adc8d7`, cream `#fffaf0` (canon white). Red `#f45028` was dropped after visual QA — read as too harsh against the page backgrounds. Hexes are mirrored between [scripts/generate-treated-art.ts](scripts/generate-treated-art.ts) and the client's [TreatedArt.tsx](src/components/TreatedArt.tsx) — keep them in sync; comments in both files point at each other.
+
+**Pre-warm script flags:**
+- `npm run treated-art:generate` — every show with a `tvmaze_id` × all 5 colors. Skips cached entries by default.
+- `npm run treated-art:generate -- --show <id>` — single show, all 5 colors.
+- `npm run treated-art:generate -- --color <name>` — every show, single color.
+- `npm run treated-art:generate -- --force` — overwrite cached entries.
+- `npm run treated-art:generate -- --clear` — wipe every object in the bucket and exit.
+
+**Manual prereqs (one-time, per dev laptop):**
+
+- Supabase Storage bucket `treated-art` created with **public read** (no RLS policies needed; default public bucket).
+- `.env.local` has `SUPABASE_SERVICE_ROLE_KEY` (gitignored, local-only — NEVER paste into Vercel envs since the pipeline doesn't run there). Script reads `VITE_SUPABASE_URL` (already present for the live app) for the project URL.
+
+**New deps:**
+
+- `@imgly/background-removal-node@^1.4.5` — Node-native U²-Net via ONNX.
+- `sharp@^0.34.5` — image manipulation. Note: both packages bundle their own libvips, producing a benign `GNotificationCenterDelegate` double-class warning at script startup; can be ignored.
+- `@supabase/supabase-js` already a runtime dep; spec kept at `^2.45.0` (don't bump — frontend bundle size sensitive).
+
+**Manual overrides:** uploading a hand-curated PNG directly to the bucket with filename `${showId}-${color}.png` (case-sensitive, lowercase, transparent-bg PNG) overrides the script — the script's idempotency check (`list` + `search`) skips anything already in the bucket. Hybrid workflow supported: hand-curate hero shows, let the script fill in the long tail. Use `--force` or `--clear` if you want to overwrite curated files.
+
+**Conventions established this arc:**
+
+- **Atmospheric components fade in, never block render.** Pattern: `useState(false)` for `loaded`, `opacity: loaded ? <target> : 0`, `transition: opacity Nms ease-out`, `onLoad={() => setLoaded(true)}`. Combined with `loading="lazy"` and `pointer-events: none`, the element costs nothing on first paint and degrades gracefully on cache miss.
+- **`sharp.tint()` is the one-step monochrome treatment.** Don't chain `.greyscale()` before it — greyscale collapses to single-channel which tint can't recolor. Sharp's tint already preserves luminance; just `ensureAlpha().tint({r,g,b}).png()`.
+- **TVMaze image-type preference order over the primary `/shows/{id}` image.** The legacy primary image is whatever TVMaze flagged; image quality for our bg-removal use case is much higher when we explicitly prefer `type=poster`. The `/shows/{id}/images` endpoint with type filtering is the right entry point for any future image-pipeline work too.
+- **Local pre-warm scripts are first-class.** When a pipeline doesn't fit a Vercel function budget, a local Node script writing to Supabase Storage + a frontend that reads URLs directly is a clean architecture — no queue, no webhook, no on-demand generation. Trade-off is manual cadence for catalog updates, which is fine when the developer controls catalog additions.
+
+**Two-step deploys this arc required:** none (no migrations, no edge function changes).
+
+**Outstanding follow-ups added to §"Outstanding action items":**
+
+- Pre-warm the full catalog locally (one-time).
+- Decide on automation path for new shows (GitHub Actions cron vs. Vercel Pro on-demand vs. manual).
+- Sharp pipeline tuning (contrast / saturation / blur) deferred until visual QA in real page context across many shows.
+
+### 2026-05-14 — V2UserAggregatePage redesign (gate removed, page mirrors public-space shape)
+
+The per-user public-posts aggregation page (`/v2/u/:username/show/:showId/posts`) got a multi-pass rework. Previously a two-state surface: "tell us where you are" gate → post-claim view. Now a single always-visible layout with the watch-progress dropdown ready from the start, mirroring the layout language of the general public space (`ShowSection.tsx`) so the page reads as a per-user slice of that space.
+
+**Layout changes:**
+
+- "Coming from @user's profile" eyebrow dropped (the page heading itself names the owner).
+- "See all public posts on SHOW →" button restyled to match the friend-room "to public conversation" button (white-outline `.btn`, ArrowRight), moved up to sit on the same row as the SHOW NAME H1.
+- Below the H1, a new nav row holds the profile explanation on the left and the watch-progress dropdown on the right — mirrors ShowSection's nav row where "you've watched: SE" sits at the far right.
+- Heading paragraph rewritten: `@user has watched Season XX Episode YY and has written N entries. How far along are you?` — singular `entry` / plural `entries`. The "has watched…" clause drops when the owner has no public progress row.
+- Owner progress fetched via `fetchPublicProgressForUser(ownerId)` and stored alongside the existing `ownerThreads` fetch.
+
+**Behavior changes:**
+
+- Pre-claim gate removed. Dropdown is always visible. For visitors with existing progress on this show (DB row for logged-in users, sessionStorage browse-progress for visitors without a journal tab), the dropdown pre-fills with that value and posts render immediately. For first-time visitors it shows "haven't started" preselected; posts stay hidden until they pick a value.
+- Changing the dropdown opens `OneSelectProgress`'s built-in confirm modal (`requireConfirm={true}`); on accept, progress commits via `handleConfirmProgress` and the visible-posts filter re-runs. No external Confirm button — the picker's modal handles it.
+
+**Body states:**
+
+- `totalCount === 0` → pioneer empty state mirroring ShowSection's general-public empty state. `Clock` icon + centered Inter copy: `@user doesn't have anything for you to read yet. It's only a matter of time… But this is your chance to be a pioneer. When you post publicly on your profile, your writing will be visible to others.`
+- `claimed && visibleThreads.length > 0` → thread cards. Entry component rewritten to render the same `.card.threadCard` shape used in ShowSection's public list: title + episode tag, `Started by [avatar] {username} • timeAgo` byline, clamp-3 preview, read-only `LikeBadge` (star) top-right, `Mail` + reply count bottom-right. Whole card is clickable → `navigateToShow(show.id, { threadId })` opens the thread in the live public space where reply/star/quote all work as normal.
+- `claimed && visibleThreads.length === 0 && lockedCount > 0` → dashed-box "{N} more posts from @user, tagged to episodes after where you are." Locked-summary copy kept; font switched from Lora italic to Inter.
+
+**Removed:** the "◐ you're here, at SXX EYY" divider; the per-card "✎ write a response" / "quote" buttons (replies happen inside the opened thread now); the `firstTs/lastTs` date range derivation. `◐` no longer used anywhere in the codebase.
+
+**Files touched:** [V2UserAggregatePage.tsx](src/components/v2/V2UserAggregatePage.tsx).
+
+**Conventions established this arc:**
+
+- **Profile-adjacent pages mirror the public-space layout vocabulary** rather than inventing their own. The page-level "to public conversation" button, the nav row with right-aligned "you've watched" pill, the `.card.threadCard` shape — all borrowed directly from ShowSection. Saves design tokens and keeps the visitor's mental model consistent.
+- **`OneSelectProgress` confirm-modal is the right commit mechanism for visitor-side progress changes.** Don't staple an external Confirm button on top of the picker — the built-in modal already gives the "you're about to update progress" confirmation step.
+- **Render the thread card, not an inline expanded preview.** The aggregate page is a gateway to the public space, not a substitute for it. Card → click → land in the real thread view.
+
+### 2026-05-13 — SidebarAvatar system (Boring Avatars) across bylines + identity headers
+
+New shared component [src/components/SidebarAvatar.tsx](src/components/SidebarAvatar.tsx) wrapping `boring-avatars`. Variant: `bauhaus` (initially `beam`, swapped after side-by-side QA). Palette: 5 canon hexes hardcoded with a comment pointing at `theme.ts:6-18` as the source of truth (boring-avatars' `colors` prop is a runtime string[]; CSS-var indirection isn't available). Seed: **username** (originally `userId ?? username`; pinned to username-only after observing that the mixed-seed model produced different avatars for the same user across surfaces — NudgePopover had `recipientId` (UUID), bylines had `r.author` (string), so the same user rendered as different avatars on different surfaces). Trade-off: if username editing ever ships, avatars would change with the handle — Sidebar doesn't expose username editing today.
+
+**Two visual modes:**
+
+1. **Centered identity placeholder (88px) on profile pages.** Replaces the previous letter-only circle placeholder. Renders on [V2ProfileSelfPage.tsx](src/components/v2/V2ProfileSelfPage.tsx) and [V2ProfileVisitorPage.tsx](src/components/v2/V2ProfileVisitorPage.tsx) above the `@USERNAME` H1.
+2. **Inline (~14–24px) on every standalone username render except profile-page H1s.** The Boring Avatar takes the place of the `@` glyph — avatar and `@` are mutually exclusive. Profile-page H1s keep `@USERNAME` text since the centered placeholder already carries the avatar.
+
+**Surfaces with inline avatars:**
+
+- [Username.tsx](src/components/Username.tsx) — wraps three callsites: ShowSection thread "Started by @author", InlineThreadView thread byline, RepliesList reply byline. Modifying this one component covered all three.
+- [App.tsx](src/App.tsx) + [V2Layout.tsx](src/components/v2/V2Layout.tsx) — "you are {username}" pill in both header chromes.
+- [ProfilePage.tsx](src/components/ProfilePage.tsx), [V3JournalPage.tsx](src/components/V3JournalPage.tsx), [V2JournalPage.tsx](src/components/v2/V2JournalPage.tsx) — response-card bylines in two sections each.
+- [V2UserAggregatePage.tsx](src/components/v2/V2UserAggregatePage.tsx) — `by @username` post byline.
+- [NudgePopover.tsx](src/components/NudgePopover.tsx) — recipient identity at the top of the popover (modal header).
+- [SIKWSticky.tsx](src/components/SIKWSticky.tsx) — only the `@{asker} asked:` header. Reply-byline avatars *inside* the sticky body were removed in the scope-reduction pass.
+
+**Surfaces deliberately skipped** (in-prose, button copy, error/empty copy, tombstones — anywhere the `@user` token sits inside a sentence rather than standing alone):
+
+- V2ProfileVisitorPage eyebrow "what @user is in the middle of:" / V2UserAggregatePage eyebrow profile-link "@user's profile" + "@user".
+- Button copy ("invite @user to a friend room", "see @user's public posts on SHOW").
+- Error / empty-state copy ("none of @user's posts are visible at your progress yet.", "no Sidebar profile for @user.").
+- Tombstones ("(@user) deleted their post" / similar).
+- ShowSection friend-room member list (active + departed) — member rows, not bylines or headers, removed during scope reduction.
+- FriendProgressPostIt, IncomingPingSticky, PollSticky voter rows + write-in bylines, SIKWSticky in-body reply bylines — all sticky-content surfaces, removed during scope reduction.
+
+The full scope-reduction rule: **avatars only on thread/response bylines and modal-style identity headers.** In-prose mentions stay as `@user` text — the `@` and the avatar are mutually exclusive but the `@` only goes away where it's being replaced.
+
+**New dep:** `boring-avatars@^2.0.4`. Bundles a `~5kB` gzipped React component that emits inline SVG (no network fetches, no images).
+
+**Convention:** any future user-identity surface should default to `<SidebarAvatar username={…} />` (or `<Username name={…} … />` if the username is also clickable). Don't import `boring-avatars` directly — the wrapper is the single point of variant/palette/seed control, by design (per the original spec's reversibility note).
+
+### 2026-05-13 — V2 profile pages visual pass (own + visitor parity)
+
+Mirror pass to bring the own profile (V2ProfileSelfPage) into visual parity with the visitor profile (V2ProfileVisitorPage). Plus inline avatar wiring (above arc) and ticket-internals alignment fixes.
+
+**Identity header changes (own profile):**
+
+- Profile name, Thoughts feature, and watching-stats meta-prose all dropped the `.profile-journal-heading` class that shifted them +56px right (which aligned them under the paired-header at ≥769px). Now they all center within the full content column.
+- Restored the 88px centered icon placeholder above the @USERNAME H1 (originally only the visitor view had this; the own view used a left-aligned heading with no icon).
+- Added `paddingTop: 24` to the identity header `<header>` so the avatar sits a bit lower beneath the paired header band, matching the visitor view's vertical rhythm.
+
+**Identity header changes (visitor profile):**
+
+- H1 now reads `@{username}` (with the @ in the text); subhead `@{username}` row beneath the H1 dropped. The avatar lives in the centered placeholder above; the H1 carries the textual handle.
+
+**Ticket-internals (ProfileThoughtsCarousel):**
+
+- The ticket `<article>` got an explicit `textAlign: "left"` because my prior centering of the Thoughts `<section>` was bleeding into the ticket's body + expand button. The article now pins its own text alignment regardless of parent context.
+
+**Files touched:** [V2ProfileSelfPage.tsx](src/components/v2/V2ProfileSelfPage.tsx), [V2ProfileVisitorPage.tsx](src/components/v2/V2ProfileVisitorPage.tsx), [ProfileThoughtsCarousel.tsx](src/components/v2/ProfileThoughtsCarousel.tsx).
+
+**Convention:** when centering a `<section>`, watch for inheritance into nested cards/tickets that have their own internal alignment needs. Pin `textAlign` on the inner article rather than relying on the parent.
 
 ### 2026-05-12 — Profile "Thoughts on…" feature + extensive polish (20+ commits)
 
@@ -3103,6 +3258,15 @@ Both pre-launch blockers from the pings/polls arc shipped on 2026-05-07: rate li
 - **(Future v2) Multi-poll/ask stacking.** PollSticky and SIKWSticky both render at fixed `top: 200` / `top: 260` on `left: 32`. The shared one-active-item slot per asker per room currently prevents simultaneous active items in the same room, so the two stickies don't visually collide in practice. If that constraint ever loosens (e.g. one poll AND one ask from different askers at the same time), they'd overlap. Refactor to a single `LeftSticky` orchestrator if it ever shows up in real use.
 
 - **(Acceptable, defer indefinitely) Lazy-close-on-duration-expiry depends on a room visit.** `lazy_close_room_polls` / `lazy_close_room_asks` only run when somebody mounts PollSticky / SIKWSticky. Race-safe via the `closed_at IS NULL` guard. If no member visits a room for a long time after a poll/ask's duration expires, the close email never fires — the poll/ask still closes cleanly the next time someone walks in, just no notification at the expiry moment. Acceptable at current cadence; would matter only for heavy churn rooms with long absences.
+
+**Treated-art follow-ups** (from the 2026-05-15 arc):
+
+- **Pre-warm the full catalog locally** with `npm run treated-art:generate`. Until run, V2/V3 surfaces with `<TreatedArt />` silently miss (the component fades nothing in when the source PNG isn't in the bucket). One-time ~20–40 min run; subsequent runs are instant for cached entries.
+- **Decide on automation for new shows.** Currently a new show added to the catalog has no treated art until the script is re-run manually. Three paths flagged in the arc: (a) status quo (manual re-run when remembered; silent misses are atmospheric, not functional, so this is tolerable); (b) GitHub Actions on a cron schedule running the script in CI with the service-role key as a GH secret; (c) Vercel Pro upgrade → revive the on-demand `/api/treated-art-generate` endpoint that the function-timeout constraint blocked. Defer until the catalog grows or new-show cadence picks up.
+- **Sharp pipeline tuning** (contrast / saturation / blur / etc.). The current pipeline is `ensureAlpha().tint(rgb)` only — no contrast curve, no saturation boost, no edge smoothing. Tuning in isolation against a PNG viewer is harder than tuning in real page context; deferred until the catalog has art for most shows and the visual feel is judgeable site-wide.
+- **Whether to extend treated art to V1 ShowSection** (friend rooms + general public aggregate). Currently scoped V2/V3-only per spec. If V2/V3 becomes the primary surface and V1 stays as fallback, this stays scoped-out forever; if V1 keeps significant traffic, lift the restriction with a single `<TreatedArt />` insertion in `ShowSection.tsx` plus a per-mode `anchor` decision.
+- **Hand-curate cutouts for shows where @imgly produces poor results.** Wide environmental backdrops and busy collage posters can confuse the bg-removal model. Manual PNG uploads to the `treated-art` bucket with the exact `${showId}-${color}.png` filename (transparent-bg, lowercase) override the script — the idempotency check skips anything already in the bucket. Use `--force` or `--clear` to overwrite curated files.
+- **Decide whether to keep `boring-avatars` and `@imgly/background-removal-node` + `sharp` long-term.** All three were added in the May 2026 arcs. If any get replaced (e.g. hand-curated avatars, hosted bg-removal API), the wrappers are the single point of swap: `src/components/SidebarAvatar.tsx` for avatars, `scripts/generate-treated-art.ts` for treated-art generation.
 
 ## Edge function deploy notes
 
