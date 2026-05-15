@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
@@ -119,22 +119,6 @@ export default function V2RoomMap({
 
   const rows = useMemo(() => flattenSeasons(touchedSeasons), [touchedSeasons]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-
-  // Initial scroll: center the viewer's effective-progress row in the scroll
-  // container on first mount. No animation.
-  useEffect(() => {
-    const eff = effectiveProgress(viewerProgress);
-    if (!eff || !scrollRef.current) return;
-    const targetIdx = rows.findIndex((r) => r.season === eff.s && r.episode === eff.e);
-    if (targetIdx < 0) return;
-    const el = scrollRef.current;
-    const targetY = targetIdx * ROW_HEIGHT;
-    const center = targetY - (el.clientHeight - HEADER_HEIGHT) / 2 + CELL / 2;
-    el.scrollTop = Math.max(0, center);
-    // Run once on mount only — viewer doesn't expect a re-scroll on every
-    // progress change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Pre-compute per-member: last reached row index (-1 if none), and a map
   // from `${s}-${e}` → entry / rating, for O(1) cell lookups.
