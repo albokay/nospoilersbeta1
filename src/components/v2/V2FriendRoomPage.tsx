@@ -122,6 +122,9 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
             isDeparted: departedUsernames.has(t.author),
             updatedAt: t.updatedAt,
             replyCount: groupResult.replyCounts[t.id] ?? 0,
+            // Full thread object — V2InlineThread mounts on expand and
+            // expects the Thread shape (not the lean entry projection).
+            thread: t,
           }));
 
         const mapMembersOut: V2RoomMapMember[] = roomMapData.map((m: RoomMapMember) => ({
@@ -397,6 +400,9 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 entries={feedEntries}
                 onOpenThread={handleOpenThread}
                 sortOrder={sortOrder}
+                groupId={groupId}
+                viewerProgress={progressForShow}
+                userId={user?.id ?? ""}
               />
             )}
           </div>

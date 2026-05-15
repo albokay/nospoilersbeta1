@@ -12,6 +12,8 @@ import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import SidebarAvatar from "../SidebarAvatar";
 import { timeAgo } from "../../lib/utils";
+import V2InlineThread from "./V2InlineThread";
+import type { ProgressEntry, Thread } from "../../types";
 
 // V2 friend room feed — episode-ascending list of entry tickets.
 //
@@ -45,6 +47,10 @@ export type V2RoomFeedEntry = {
   isDeparted?: boolean;
   updatedAt: number;
   replyCount: number;
+  /** Full Thread object — needed when the ticket expands and mounts
+      V2InlineThread, which expects the Thread shape (not the lean entry
+      projection). Built from the raw fetchGroupThreads result. */
+  thread: Thread;
 };
 
 export type V2RoomFeedHandle = {
@@ -56,12 +62,26 @@ export type V2RoomFeedProps = {
   onOpenThread: (threadId: string) => void;
   /** Episode-tag sort direction. Default "asc". */
   sortOrder?: "asc" | "desc";
+  /** Room context — required so the inline thread mount can scope its
+      data fetch (replies + likes + citations) to the right group. */
+  groupId: string;
+  viewerProgress: ProgressEntry | null;
+  userId: string;
+  onAuthRequired?: () => void;
 };
 
 const HIGHLIGHT_MS = 1500;
 
 const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2RoomFeed(
-  { entries, onOpenThread, sortOrder = "asc" },
+  {
+    entries,
+    onOpenThread,
+    sortOrder = "asc",
+    groupId,
+    viewerProgress,
+    userId,
+    onAuthRequired,
+  },
   ref,
 ) {
   // Episode sort. Within an episode, chronological by updatedAt always
@@ -76,7 +96,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     });
   }, [entries, sortOrder]);
 
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Single-expansion: at most one thread expanded at a time. Expanding
+  // another quietly collapses the previously-open one (no scroll-jump —
+  // the page layout reflows naturally; the user's viewport scroll position
+  // stays where it was).
+  const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const ticketRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const highlightTimer = useRef<number | null>(null);
@@ -99,15 +123,42 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
 
   useImperativeHandle(ref, () => ({ scrollToEntry }), [scrollToEntry]);
 
+  // Scroll the ticket's top into view smoothly. Used by both collapse
+  // paths (bottom button and the inline "second collapse" in V2InlineThread)
+  // so the user lands at the top of the entry they just closed.
+  const scrollTicketTop = useCallback((threadId: string) => {
+    const el = ticketRefs.current[threadId];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const handleCollapseTop = useCallback(
+    (threadId: string) => {
+      setExpandedThreadId(null);
+      // Defer so the layout reflows before we scroll to the (now shorter)
+      // ticket's top edge.
+      setTimeout(() => scrollTicketTop(threadId), 0);
+    },
+    [scrollTicketTop],
+  );
+
   const toggleExpand = (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setExpanded((m) => ({ ...m, [threadId]: !m[threadId] }));
+    if (expandedThreadId === threadId) {
+      // Collapsing the currently-expanded ticket — scroll to its top.
+      handleCollapseTop(threadId);
+    } else {
+      // Expanding a different ticket (or first-time expand). Single-expansion
+      // is enforced by the state shape — the previously-open thread quietly
+      // collapses.
+      setExpandedThreadId(threadId);
+    }
   };
 
   return (
     <div>
       {sorted.map((entry) => {
-        const isExpanded = !!expanded[entry.threadId];
+        const isExpanded = expandedThreadId === entry.threadId;
         const isHighlighted = highlightedId === entry.threadId;
         return (
           <div
@@ -168,7 +219,14 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
 
               <div style={{ marginTop: 6 }}>
                 {isExpanded ? (
-                  <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{entry.body}</div>
+                  <V2InlineThread
+                    thread={entry.thread}
+                    groupId={groupId}
+                    viewerProgress={viewerProgress}
+                    userId={userId}
+                    onCollapseTop={() => handleCollapseTop(entry.threadId)}
+                    onAuthRequired={onAuthRequired}
+                  />
                 ) : (
                   <div className="clamp3">{entry.preview}</div>
                 )}
