@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Settings, SquarePen, Users, X } from "lucide-react";
+import { ArrowRight, Settings, SquarePen, Users } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -20,7 +20,7 @@ import V2RoomFeed, {
   type V2RoomFeedHandle,
 } from "./V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember } from "./V2RoomMap";
-import Modal from "../Modal";
+import V2GroupSettingsModal from "./V2GroupSettingsModal";
 import LoadingDots from "../LoadingDots";
 import OneSelectProgress from "../OneSelectProgress";
 import { navigateToShow } from "./v2nav";
@@ -391,21 +391,18 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
         </div>
       </div>
 
-      {/* Settings placeholder — real modal lands in checkpoint 5b */}
       {settingsOpen && (
-        <Modal onClose={() => setSettingsOpen(false)} width="min(420px,90vw)">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-            <h3 className="title" style={{ margin: 0, fontSize: 18 }}>
-              Room settings
-            </h3>
-            <button className="close-x" onClick={() => setSettingsOpen(false)}>
-              <X size={14} />
-            </button>
-          </div>
-          <div className="muted" style={{ fontSize: 14, padding: "16px 4px 8px" }}>
-            Settings (members, invites, rename, leave) land in the next commit.
-          </div>
-        </Modal>
+        <V2GroupSettingsModal
+          room={room}
+          onClose={() => setSettingsOpen(false)}
+          onLeft={() => {
+            setSettingsOpen(false);
+            navigate("/v3/journal");
+          }}
+          onRenamed={(newName) => {
+            setRoom((prev) => (prev ? { ...prev, name: newName } : prev));
+          }}
+        />
       )}
     </V2Layout>
   );
