@@ -3777,6 +3777,50 @@ export async function fetchRoomMapData(groupId: string): Promise<RoomMapMember[]
  * UI lands in a follow-up spec; this is exposed now so the data layer is in
  * place. DB CHECK enforces rating in 1..5; RLS pins user_id to auth.uid().
  */
+/**
+ * Single-call data fetch for one expanded thread inside the V2 friend room.
+ * Bundles thread + chain-visible replies (group-scoped) + the caller's
+ * thread/reply likes + citations into the thread's entry body and into
+ * each reply, in two parallel fan-outs.
+ *
+ * Returns null when the thread doesn't exist (deleted, RLS-hidden, etc).
+ */
+export async function fetchV2ThreadDetail(
+  threadId: string,
+  groupId: string,
+  userId: string,
+): Promise<{
+  thread: import("../types").Thread;
+  replies: import("../types").Reply[];
+  threadLikedByMe: boolean;
+  replyLikedByMe: Set<string>;
+  threadCitations: CitationEntry[];
+  replyCitations: Map<string, CitationEntry[]>;
+} | null> {
+  const [thread, replies] = await Promise.all([
+    fetchThreadById(threadId),
+    fetchRepliesForThread(threadId, groupId),
+  ]);
+  if (!thread) return null;
+
+  const replyIds = replies.map((r) => r.id);
+  const [threadLikes, replyLikes, threadCitations, replyCitations] = await Promise.all([
+    fetchUserThreadLikes(userId, [threadId]),
+    fetchUserReplyLikes(userId, replyIds),
+    fetchCitationsForThread(threadId),
+    fetchCitationsForReplies(replyIds),
+  ]);
+
+  return {
+    thread,
+    replies,
+    threadLikedByMe: threadLikes.has(threadId),
+    replyLikedByMe: replyLikes,
+    threadCitations,
+    replyCitations,
+  };
+}
+
 export async function upsertEpisodeRating(args: {
   userId: string;
   showId: string;
