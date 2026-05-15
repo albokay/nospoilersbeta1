@@ -102,30 +102,32 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
           roomMapData.filter((m) => m.isDeparted).map((m) => m.username ?? "").filter(Boolean),
         );
 
-        const entries: V2RoomFeedEntry[] = groupResult.threads
-          .filter((t) => !t.isDeleted)
-          .map((t) => ({
-            threadId: t.id,
-            s: t.season,
-            e: t.episode,
-            title: t.titleBase,
-            body: t.body,
-            preview: t.preview,
-            // Thread doesn't expose author_id today; SidebarAvatar seeds by
-            // username so the empty string is harmless.
-            authorId: "",
-            authorUsername: t.author,
-            isRewatch: t.isRewatch,
-            rewatchS: t.rewatchS,
-            rewatchE: t.rewatchE,
-            isEdited: t.isEdited,
-            isDeparted: departedUsernames.has(t.author),
-            updatedAt: t.updatedAt,
-            replyCount: groupResult.replyCounts[t.id] ?? 0,
-            // Full thread object — V2InlineThread mounts on expand and
-            // expects the Thread shape (not the lean entry projection).
-            thread: t,
-          }));
+        // fetchGroupThreads already drops no-reply tombstones — anything
+        // soft-deleted that arrives here had visible replies and should
+        // render as a tombstone (gravestone copy in the feed).
+        const entries: V2RoomFeedEntry[] = groupResult.threads.map((t) => ({
+          threadId: t.id,
+          s: t.season,
+          e: t.episode,
+          title: t.titleBase,
+          body: t.body,
+          preview: t.preview,
+          // Thread doesn't expose author_id today; SidebarAvatar seeds by
+          // username so the empty string is harmless.
+          authorId: "",
+          authorUsername: t.author,
+          isRewatch: t.isRewatch,
+          rewatchS: t.rewatchS,
+          rewatchE: t.rewatchE,
+          isEdited: t.isEdited,
+          isDeparted: departedUsernames.has(t.author),
+          isDeleted: t.isDeleted ?? false,
+          updatedAt: t.updatedAt,
+          replyCount: groupResult.replyCounts[t.id] ?? 0,
+          // Full thread object — V2InlineThread mounts on expand and
+          // expects the Thread shape (not the lean entry projection).
+          thread: t,
+        }));
 
         const mapMembersOut: V2RoomMapMember[] = roomMapData.map((m: RoomMapMember) => ({
           userId: m.userId,
@@ -186,6 +188,52 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     if (!show) return;
     navigateToShow(navigate, show.id);
   }, [navigate, show]);
+
+  // Edit succeeded — patch the matching entry's content in feedEntries so
+  // the card re-renders with the new title / body / preview / tag / edited
+  // flag, no refetch needed.
+  const handleThreadEdited = useCallback((updated: Thread) => {
+    setFeedEntries((prev) =>
+      prev.map((e) =>
+        e.threadId === updated.id
+          ? {
+              ...e,
+              title: updated.titleBase,
+              body: updated.body,
+              preview: updated.preview,
+              s: updated.season,
+              e: updated.episode,
+              isEdited: updated.isEdited,
+              thread: updated,
+            }
+          : e,
+      ),
+    );
+  }, []);
+
+  // Delete succeeded — if the entry had any replies, leave it in the feed
+  // as a tombstone (gravestone copy renders in V2RoomFeed when isDeleted);
+  // otherwise drop it from the feed entirely. V2InlineThread.onThreadDeleted
+  // also signals V2RoomFeed to auto-collapse, so the user lands on the
+  // post-delete feed state without anything still expanded.
+  const handleThreadDeleted = useCallback((threadId: string) => {
+    setFeedEntries((prev) => {
+      const entry = prev.find((e) => e.threadId === threadId);
+      if (!entry) return prev;
+      if (entry.replyCount === 0) {
+        return prev.filter((e) => e.threadId !== threadId);
+      }
+      return prev.map((e) =>
+        e.threadId === threadId
+          ? {
+              ...e,
+              isDeleted: true,
+              thread: { ...e.thread, isDeleted: true },
+            }
+          : e,
+      );
+    });
+  }, []);
 
   // Progress update from the watch-progress pill.
   const handleProgressConfirm = useCallback(
@@ -403,6 +451,8 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 groupId={groupId}
                 viewerProgress={progressForShow}
                 userId={user?.id ?? ""}
+                onThreadEdited={handleThreadEdited}
+                onThreadDeleted={handleThreadDeleted}
               />
             )}
           </div>

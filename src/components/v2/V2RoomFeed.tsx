@@ -45,6 +45,9 @@ export type V2RoomFeedEntry = {
   isEdited?: boolean;
   /** Author has departed this room. Adds the inline "has left the room" tag. */
   isDeparted?: boolean;
+  /** Soft-deleted but kept in the feed because the thread has replies. Renders
+      as a tombstone (gravestone copy in place of title/body; no star). */
+  isDeleted?: boolean;
   updatedAt: number;
   replyCount: number;
   /** Full Thread object — needed when the ticket expands and mounts
@@ -68,6 +71,9 @@ export type V2RoomFeedProps = {
   viewerProgress: ProgressEntry | null;
   userId: string;
   onAuthRequired?: () => void;
+  /** Forwarded from V2InlineThread — parent decides how to update the feed. */
+  onThreadEdited?: (updated: Thread) => void;
+  onThreadDeleted?: (threadId: string) => void;
 };
 
 const HIGHLIGHT_MS = 1500;
@@ -81,6 +87,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     viewerProgress,
     userId,
     onAuthRequired,
+    onThreadEdited,
+    onThreadDeleted,
   },
   ref,
 ) {
@@ -186,23 +194,32 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}>
                     <Users size={14} color="var(--icon-color)" />
                   </span>
-                  {entry.title}
-                  <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
-                    <EpisodeTag
-                      season={entry.s}
-                      episode={entry.e}
-                      isRewatch={entry.isRewatch}
-                      rewatchS={entry.rewatchS}
-                      rewatchE={entry.rewatchE}
-                    />
-                  </span>
-                  {entry.isEdited && (
-                    <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
+                  {entry.isDeleted ? "(deleted entry)" : entry.title}
+                  {!entry.isDeleted && (
+                    <>
+                      <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
+                        <EpisodeTag
+                          season={entry.s}
+                          episode={entry.e}
+                          isRewatch={entry.isRewatch}
+                          rewatchS={entry.rewatchS}
+                          rewatchE={entry.rewatchE}
+                        />
+                      </span>
+                      {entry.isEdited && (
+                        <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
+                      )}
+                    </>
                   )}
                 </h2>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <LikeBadge count={0} readOnly title="open post to vote" />
-                </div>
+                {/* Star: read-only placeholder in collapsed state; hidden when
+                    expanded (the interactive star lives in V2InlineThread's
+                    action row) and on tombstones. */}
+                {!isExpanded && !entry.isDeleted && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <LikeBadge count={0} readOnly title="open post to vote" />
+                  </div>
+                )}
               </div>
 
               <div className="muted" style={{ marginTop: 4, fontSize: 14, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -226,7 +243,19 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     userId={userId}
                     onCollapseTop={() => handleCollapseTop(entry.threadId)}
                     onAuthRequired={onAuthRequired}
+                    onThreadEdited={onThreadEdited}
+                    onThreadDeleted={(tid) => {
+                      // Auto-collapse the deleted thread so the user sees
+                      // the post-delete state of the feed (drop or
+                      // tombstone) without it still being expanded.
+                      setExpandedThreadId(null);
+                      onThreadDeleted?.(tid);
+                    }}
                   />
+                ) : entry.isDeleted ? (
+                  <div style={{ fontStyle: "italic", color: "#1a3a4a", opacity: 0.7 }}>
+                    @{entry.authorUsername} deleted their entry.
+                  </div>
                 ) : (
                   <div className="clamp3">{entry.preview}</div>
                 )}
