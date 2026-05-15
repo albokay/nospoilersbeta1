@@ -335,20 +335,25 @@ export default function V2InlineThread({
 
   // The two collapse buttons (above-replies and end-of-thread) share the
   // same call path — onCollapseTop is wired in V2RoomFeed to clear
-  // expansion + scroll the ticket top into view (instantly).
+  // expansion + scroll the ticket top into view (instantly). Styled as
+  // plain white text + chevron — no border, no fill (default or hover).
   const collapseButton = (
     <button
-      className="btn"
       onClick={onCollapseTop}
       style={{
+        background: "transparent",
+        border: "none",
+        color: "#fff",
+        cursor: "pointer",
         fontSize: 13,
-        padding: "4px 12px",
+        padding: "4px 8px",
         display: "inline-flex",
         alignItems: "center",
         gap: 5,
+        fontFamily: "inherit",
       }}
     >
-      <ChevronUp size={13} /> collapse
+      <ChevronUp size={13} color="#fff" /> collapse
     </button>
   );
 
@@ -409,20 +414,20 @@ export default function V2InlineThread({
           lives in the title row (owned by V2RoomFeed). Hidden on
           tombstones and while editing. */}
       {!isTombstone && !editing && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "12px 0", marginTop: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, padding: "8px 0", marginTop: 4, flexWrap: "wrap" }}>
           {isOwn && (
             <>
               <button
                 className="btn"
                 onClick={openEdit}
-                style={{ fontSize: 13 }}
+                style={{ fontSize: 13, padding: "3px 12px" }}
               >
                 Edit
               </button>
               <button
                 className="btn btn-danger"
                 onClick={openDelete}
-                style={{ fontSize: 13 }}
+                style={{ fontSize: 13, padding: "3px 12px" }}
               >
                 Delete
               </button>
@@ -431,7 +436,7 @@ export default function V2InlineThread({
           <button
             className="btn"
             onClick={handleQuoteThread}
-            style={{ fontSize: 13 }}
+            style={{ fontSize: 13, padding: "3px 12px" }}
           >
             Quote…
           </button>

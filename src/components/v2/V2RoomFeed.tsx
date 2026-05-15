@@ -432,10 +432,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 )}
               </div>
 
-              {/* Bottom-right: "expand" button on collapsed cards only.
-                  When expanded, V2InlineThread renders the two collapse
-                  buttons (above replies + end of thread) and the reply
-                  count above the replies — so this corner has no use. */}
+              {/* Bottom-right: expand indicator on collapsed cards only.
+                  The whole card is clickable to expand, so this is a
+                  subtle affordance — just a white down chevron, no button
+                  styling. When expanded, V2InlineThread renders the
+                  collapse buttons. */}
               {!isExpanded && !entry.isDeleted && (
                 <div
                   style={{
@@ -448,18 +449,20 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   }}
                 >
                   <button
-                    className="btn"
                     onClick={(e) => toggleExpand(entry.threadId, e)}
+                    aria-label="Expand"
                     style={{
-                      fontSize: 13,
-                      padding: "4px 12px",
+                      background: "transparent",
+                      border: "none",
+                      color: "#fff",
+                      cursor: "pointer",
+                      padding: 4,
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 5,
+                      fontFamily: "inherit",
                     }}
                   >
-                    <ChevronDown size={13} />
-                    expand
+                    <ChevronDown size={20} color="#fff" />
                   </button>
                 </div>
               )}
