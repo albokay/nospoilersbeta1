@@ -22,9 +22,11 @@ import { timeAgo } from "../../lib/utils";
 //
 // External scroll-and-highlight (used by the map's cell-click): callers
 // pass a ref and invoke `scrollToEntry(threadId)`. The component scrolls
-// the ticket into view, applies a transient highlight class, and clears
-// it after ~1.6s. The highlight CSS itself lands in checkpoint 6 — for
-// now we set the data attribute so checkpoint 6 just adds the rule.
+// the ticket into view and flips the ticket's outer border to canon blue
+// (`#355eb8`) for ~1.5s — the same visual signal `ShowSection.tsx` uses
+// for newly-visible threads after a progress bump (its `isNew` branch on
+// the card border). No keyframe animation; just a snap on/off of the
+// border color, matching the live treatment exactly.
 
 export type V2RoomFeedEntry = {
   threadId: string;
@@ -54,7 +56,7 @@ export type V2RoomFeedProps = {
   onOpenThread: (threadId: string) => void;
 };
 
-const HIGHLIGHT_MS = 1600;
+const HIGHLIGHT_MS = 1500;
 
 const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2RoomFeed(
   { entries, onOpenThread },
@@ -111,7 +113,6 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               ticketRefs.current[entry.threadId] = el;
             }}
             data-thread-id={entry.threadId}
-            data-highlight={isHighlighted ? "true" : undefined}
             style={{ position: "relative", margin: "0 0 12px 0" }}
           >
             <div
@@ -122,7 +123,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 position: "relative",
                 paddingTop: 12,
                 paddingBottom: 36,
-                border: "4px solid var(--dos-border)",
+                border: isHighlighted ? "4px solid #355eb8" : "4px solid var(--dos-border)",
               }}
               onClick={() => onOpenThread(entry.threadId)}
             >
