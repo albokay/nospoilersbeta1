@@ -13,6 +13,7 @@ import LikeBadge from "../LikeBadge";
 import SidebarAvatar from "../SidebarAvatar";
 import { timeAgo } from "../../lib/utils";
 import V2InlineThread from "./V2InlineThread";
+import Modal from "../Modal";
 import type { ProgressEntry, Thread } from "../../types";
 
 // V2 friend room feed — episode-ascending list of entry tickets.
@@ -113,6 +114,18 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   const ticketRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const highlightTimer = useRef<number | null>(null);
 
+  // Draft-guard: the currently-expanded thread's composer reports its draft
+  // state via onDraftChange. If it has unsaved text, intercept the next
+  // expansion-state change (collapse OR cross-thread expand) with a confirm
+  // modal. `pendingCollapseTarget` holds the user-intended next state:
+  //   - "self" → collapse the currently-expanded thread
+  //   - <threadId> → expand a different thread (auto-collapsing current)
+  //   - null → no pending change
+  const [hasDraft, setHasDraft] = useState(false);
+  const [pendingCollapseTarget, setPendingCollapseTarget] = useState<
+    string | "self" | null
+  >(null);
+
   useEffect(() => () => {
     if (highlightTimer.current) window.clearTimeout(highlightTimer.current);
   }, []);
@@ -140,7 +153,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  const handleCollapseTop = useCallback(
+  // Apply the actual collapse without any draft-guard gating. Called from
+  // the draft-guard confirmation path and from the no-draft direct path.
+  const applyCollapse = useCallback(
     (threadId: string) => {
       setExpandedThreadId(null);
       // Defer so the layout reflows before we scroll to the (now shorter)
@@ -150,18 +165,52 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     [scrollTicketTop],
   );
 
+  const handleCollapseTop = useCallback(
+    (threadId: string) => {
+      if (hasDraft) {
+        setPendingCollapseTarget("self");
+        return;
+      }
+      applyCollapse(threadId);
+    },
+    [hasDraft, applyCollapse],
+  );
+
   const toggleExpand = (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (expandedThreadId === threadId) {
-      // Collapsing the currently-expanded ticket — scroll to its top.
+      // Collapsing the currently-expanded ticket — same path as the inline
+      // collapse buttons. Draft-guard applies.
       handleCollapseTop(threadId);
     } else {
-      // Expanding a different ticket (or first-time expand). Single-expansion
-      // is enforced by the state shape — the previously-open thread quietly
-      // collapses.
+      // Expanding a different ticket. If the current thread has unsaved
+      // draft text, gate with the confirm modal; otherwise just swap.
+      if (hasDraft && expandedThreadId) {
+        setPendingCollapseTarget(threadId);
+        return;
+      }
       setExpandedThreadId(threadId);
+      // V2InlineThread for the new thread will fire onDraftChange(false)
+      // once its composer mounts; reset proactively so stale state doesn't
+      // gate the very next change.
+      setHasDraft(false);
     }
   };
+
+  const confirmDiscardDraft = useCallback(() => {
+    const target = pendingCollapseTarget;
+    setPendingCollapseTarget(null);
+    setHasDraft(false);
+    if (target === "self" && expandedThreadId) {
+      applyCollapse(expandedThreadId);
+    } else if (target && target !== "self") {
+      setExpandedThreadId(target);
+    }
+  }, [pendingCollapseTarget, expandedThreadId, applyCollapse]);
+
+  const cancelDiscardDraft = useCallback(() => {
+    setPendingCollapseTarget(null);
+  }, []);
 
   return (
     <div>
@@ -249,8 +298,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       // the post-delete state of the feed (drop or
                       // tombstone) without it still being expanded.
                       setExpandedThreadId(null);
+                      setHasDraft(false);
                       onThreadDeleted?.(tid);
                     }}
+                    onDraftChange={setHasDraft}
                   />
                 ) : entry.isDeleted ? (
                   <div style={{ fontStyle: "italic", color: "#1a3a4a", opacity: 0.7 }}>
@@ -298,6 +349,36 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
           </div>
         );
       })}
+
+      {/* Discard-draft confirm — gates collapse and cross-thread expansion
+          when the current composer has unsaved text. Same modal for both
+          triggers per spec. */}
+      {pendingCollapseTarget !== null && (
+        <Modal onClose={cancelDiscardDraft} width="min(440px,90vw)">
+          <div style={{ textAlign: "center", padding: "8px 0" }}>
+            <h3 className="title" style={{ margin: "0 0 16px", fontSize: 18 }}>Discard your reply?</h3>
+            <p style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.8, margin: "0 0 24px" }}>
+              If you open another thread, you will lose what you've been writing. Are you sure?
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
+              <button
+                className="btn"
+                onClick={cancelDiscardDraft}
+                style={{ background: "transparent", border: "2px solid #fff", color: "#fff" }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn"
+                onClick={confirmDiscardDraft}
+                style={{ background: "var(--danger)", border: "none", color: "#fff" }}
+              >
+                Yes, I'm sure
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 });

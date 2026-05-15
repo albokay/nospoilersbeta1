@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Pencil, Quote, Trash2 } from "lucide-react";
 import LikeBadge from "../LikeBadge";
 import Modal from "../Modal";
 import RepliesList from "../RepliesList";
+import ResponseComposer, { type PendingReference } from "../ResponseComposer";
 import { useAuth } from "../../lib/auth";
 import {
   deleteThread as dbDeleteThread,
@@ -39,6 +40,10 @@ export type V2InlineThreadProps = {
   /** Fired after the author soft-deletes the thread. Parent decides whether
    *  to drop the entry (no replies) or convert it to a tombstone. */
   onThreadDeleted?: (threadId: string) => void;
+  /** Fires whenever the composer's draft state changes (non-empty / empty).
+   *  Parent uses this to gate collapse / cross-thread-expansion with a
+   *  "you will lose what you've been writing" confirm modal. */
+  onDraftChange?: (hasDraft: boolean) => void;
 };
 
 export default function V2InlineThread({
@@ -50,10 +55,22 @@ export default function V2InlineThread({
   onAuthRequired,
   onThreadEdited,
   onThreadDeleted,
+  onDraftChange,
 }: V2InlineThreadProps) {
   const { profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
   const isTombstone = !!thread.isDeleted;
+
+  // Composer + pending-reference + draft-tracking state
+  const composerWrapperRef = useRef<HTMLDivElement>(null);
+  const composerInnerRef = useRef<HTMLDivElement>(null);
+  const [pendingReference, setPendingReference] = useState<PendingReference | null>(null);
+  // composerKey lets us remount the composer to clear its internal body
+  // state when the user clicks Cancel (the live ResponseComposer's body is
+  // uncontrolled — remount is the cheapest reset path).
+  const [composerKey, setComposerKey] = useState(0);
+  // refreshKey forces RepliesList to refetch when a new reply lands.
+  const [repliesKey, setRepliesKey] = useState(0);
 
   // ── Fetched state ───────────────────────────────────────────────────────
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -255,10 +272,51 @@ export default function V2InlineThread({
     }
   };
 
-  // ── Quote (stub — composer + pending-reference wiring lands in 4) ───────
+  // ── Quote — stages a pendingReference into the composer. Same pattern
+  // as the live thread view: clicking quote on the entry sets the ref so
+  // the composer renders the quoted body and includes it on submit.
   const handleQuote = () => {
-    console.info("V2InlineThread quote: pendingReference wiring lands in checkpoint 4");
+    setPendingReference({
+      type: "quote",
+      threadId: thread.id,
+      authorName: thread.author,
+      quotedText: thread.body,
+    });
+    // Best-effort scroll the composer into view so the user sees the
+    // staged quote without hunting for it.
+    composerInnerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
+
+  // ── Draft tracking — listen to input events bubbling from the composer
+  // textarea. Set hasDraft based on textarea value. ResponseComposer's body
+  // state is uncontrolled internally; intercepting via the DOM event
+  // avoids touching the live component.
+  const handleComposerInput = useCallback(
+    (e: React.FormEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName !== "TEXTAREA") return;
+      const val = (target as HTMLTextAreaElement).value;
+      onDraftChange?.(val.trim().length > 0);
+    },
+    [onDraftChange],
+  );
+
+  // After a successful submit, ResponseComposer clears its body
+  // programmatically (no input event fires on programmatic state changes
+  // in React). Signal the parent that the draft is empty + bump the
+  // replies key so RepliesList refetches.
+  const handleComposerSubmitted = useCallback(() => {
+    onDraftChange?.(false);
+    setRepliesKey((k) => k + 1);
+  }, [onDraftChange]);
+
+  // Cancel inside the composer — remount to clear the body and notify
+  // the parent that the draft is gone.
+  const handleComposerCancel = useCallback(() => {
+    setComposerKey((k) => k + 1);
+    setPendingReference(null);
+    onDraftChange?.(false);
+  }, [onDraftChange]);
 
   if (loadError) {
     return (
@@ -374,8 +432,68 @@ export default function V2InlineThread({
           onAuthRequired={onAuthRequired ?? (() => {})}
           citations={citations}
           threadCitations={threadCitations}
+          onSetPendingReference={setPendingReference}
+          pendingReference={pendingReference}
+          composerRef={composerInnerRef}
+          onScrollToComposer={() =>
+            composerInnerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+          }
+          refreshKey={repliesKey}
         />
       </div>
+
+      {/* Reply composer — always-on at the bottom of the inline view. The
+          wrapper captures bubbling input events from the textarea so the
+          parent can gate collapse / cross-thread expansion when there's
+          unsaved draft text. composerKey forces remount on cancel to
+          clear the (uncontrolled) body state. */}
+      {!isTombstone && (
+        <div
+          ref={composerWrapperRef}
+          onInput={handleComposerInput}
+          style={{ marginTop: 24 }}
+        >
+          <ResponseComposer
+            key={composerKey}
+            threadId={thread.id}
+            showId={thread.showId}
+            viewerSeason={viewerProgress?.s ?? thread.season}
+            viewerEpisode={viewerProgress?.e ?? thread.episode}
+            postTagSeason={
+              viewerProgress?.isRewatching && viewerProgress.highestS != null
+                ? viewerProgress.highestS
+                : viewerProgress?.s ?? thread.season
+            }
+            postTagEpisode={
+              viewerProgress?.isRewatching && viewerProgress.highestE != null
+                ? viewerProgress.highestE
+                : viewerProgress?.e ?? thread.episode
+            }
+            isRewatch={viewerProgress?.isRewatching ?? false}
+            rewatchSnapshotSeason={
+              viewerProgress?.isRewatching
+                ? viewerProgress.rewatchS ?? viewerProgress.s
+                : undefined
+            }
+            rewatchSnapshotEpisode={
+              viewerProgress?.isRewatching
+                ? viewerProgress.rewatchE ?? viewerProgress.e
+                : undefined
+            }
+            onSubmitted={handleComposerSubmitted}
+            onCancel={handleComposerCancel}
+            pendingReference={pendingReference}
+            onClearReference={() => setPendingReference(null)}
+            composerRef={composerInnerRef}
+            onAuthRequired={onAuthRequired ?? (() => {})}
+            threadAuthor={thread.author}
+            progress={viewerProgress ? { s: viewerProgress.s, e: viewerProgress.e } : undefined}
+            inGroupContext={true}
+            groupId={groupId}
+            threadIsPublic={!!thread.isPublic}
+          />
+        </div>
+      )}
 
       {/* Second collapse button — at the end of the thread per spec. */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
