@@ -3688,3 +3688,113 @@ export async function deleteProfileThought(id: string): Promise<void> {
     .eq("id", id);
   if (error) throw error;
 }
+
+// ── V2 friend room: episode ratings + room map ─────────────────────────────//
+// Drives the right-pane "season map" on /v2/room/:groupId. Rating capture UI
+// ships in a follow-up spec — for this checkpoint, the read RPC + a stub
+// upsert are exposed so the future capture step has typed handles.
+
+export type EpisodeRating = {
+  s: number;
+  e: number;
+  rating: number; // 1..5 — Woah! / Things are cooking. / It was fine. / Losing me. / Nope.
+};
+
+export type RoomMapEntry = {
+  threadId: string;
+  s: number;
+  e: number;
+  title: string;
+  createdAt: number;
+};
+
+export type RoomMapMember = {
+  userId: string;
+  username: string | null;
+  isDeparted: boolean;
+  departedAt: number | null;
+  progress: import("../types").ProgressEntry | null;
+  ratings: EpisodeRating[];
+  entries: RoomMapEntry[];
+};
+
+type RoomMapRPCRow = {
+  user_id: string;
+  username: string | null;
+  is_departed: boolean;
+  departed_at: string | null;
+  progress_season: number | null;
+  progress_episode: number | null;
+  is_rewatching: boolean | null;
+  highest_season: number | null;
+  highest_episode: number | null;
+  ratings: Array<{ s: number; e: number; r: number }> | null;
+  entries: Array<{ thread_id: string; s: number; e: number; title: string; created_at: string }> | null;
+};
+
+function rowToRoomMapMember(row: RoomMapRPCRow): RoomMapMember {
+  const hasProgress =
+    typeof row.progress_season === "number" && typeof row.progress_episode === "number";
+  return {
+    userId: row.user_id,
+    username: row.username,
+    isDeparted: !!row.is_departed,
+    departedAt: row.departed_at ? Date.parse(row.departed_at) : null,
+    progress: hasProgress
+      ? {
+          s: row.progress_season as number,
+          e: row.progress_episode as number,
+          isRewatching: !!row.is_rewatching,
+          highestS: row.highest_season ?? undefined,
+          highestE: row.highest_episode ?? undefined,
+        }
+      : null,
+    ratings: (row.ratings ?? []).map((r) => ({ s: r.s, e: r.e, rating: r.r })),
+    entries: (row.entries ?? []).map((e) => ({
+      threadId: e.thread_id,
+      s: e.s,
+      e: e.e,
+      title: e.title,
+      createdAt: Date.parse(e.created_at),
+    })),
+  };
+}
+
+/**
+ * Single round-trip read for the V2 friend room map. Returns every member
+ * (current + departed-and-not-rejoined) with their progress + ratings on the
+ * room's show + this-room's entries by them. Caller must be a current member
+ * of the group; the SECURITY DEFINER RPC raises `not_a_member` otherwise.
+ */
+export async function fetchRoomMapData(groupId: string): Promise<RoomMapMember[]> {
+  const { data, error } = await supabase.rpc("get_room_map_data", { p_group_id: groupId });
+  if (error) throw error;
+  return ((data ?? []) as RoomMapRPCRow[]).map(rowToRoomMapMember);
+}
+
+/**
+ * Upserts the caller's rating for one (show, season, episode). Rating capture
+ * UI lands in a follow-up spec; this is exposed now so the data layer is in
+ * place. DB CHECK enforces rating in 1..5; RLS pins user_id to auth.uid().
+ */
+export async function upsertEpisodeRating(args: {
+  userId: string;
+  showId: string;
+  season: number;
+  episode: number;
+  rating: number;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("episode_ratings")
+    .upsert(
+      {
+        user_id: args.userId,
+        show_id: args.showId,
+        season_number: args.season,
+        episode_number: args.episode,
+        rating: args.rating,
+      },
+      { onConflict: "user_id,show_id,season_number,episode_number" },
+    );
+  if (error) throw error;
+}
