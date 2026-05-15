@@ -398,10 +398,17 @@ export default function V3JournalPage({
     return () => document.removeEventListener("mousedown", handler);
   }, [tabDropdownOpen]);
   const goToShowRoom = (sid: string, groupId?: string) => {
-    if (groupId) sessionStorage.setItem(`ns_active_group_${sid}`, groupId);
-    else sessionStorage.removeItem(`ns_active_group_${sid}`);
-    openShow(sid);
+    // Friend-room destinations route to the V2 room page; the no-groupId
+    // path (show-only nav from the tab dropdown) stays on the live v1
+    // ShowSection per the V2 scope boundary.
     setTabDropdownOpen(null);
+    if (groupId) {
+      navigate(`/v2/room/${groupId}`);
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+      return;
+    }
+    sessionStorage.removeItem(`ns_active_group_${sid}`);
+    openShow(sid);
   };
 
   // Stop-watching modal — ported from V2JournalPage. Opens from the

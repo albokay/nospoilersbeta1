@@ -5,6 +5,7 @@ import V2ProfileSelfPage from "./V2ProfileSelfPage";
 import V2ProfileVisitorPage from "./V2ProfileVisitorPage";
 import V2UserAggregatePage from "./V2UserAggregatePage";
 import V2ComposePage from "./V2ComposePage";
+import V2FriendRoomPage from "./V2FriendRoomPage";
 
 // Top-level v2 router. Mounted from <App /> as a special-route early-return
 // so v2 stays fully isolated from <AppShell />'s data graph during the
@@ -29,6 +30,10 @@ export default function V2App() {
   if (seg === "compose") {
     const showId = parts[2];
     return <V2ComposePage showId={showId} />;
+  }
+
+  if (seg === "room" && parts[2]) {
+    return <V2FriendRoomPage groupId={parts[2]} />;
   }
 
   if (seg === "u" && parts[2]) {

@@ -7,14 +7,15 @@ import SidebarLogo from "../SidebarLogo";
 import SidebarAvatar from "../SidebarAvatar";
 import Tooltip from "../Tooltip";
 
-type Palette = "journal" | "profile" | "compose";
+type Palette = "journal" | "profile" | "compose" | "room";
 
 type V2LayoutProps = {
   palette: Palette;
   pairedHeader?: { left: string; rightLabel: string; rightTo: string };
   // When true, V2Layout skips its centered max-width <main> and renders
   // children directly. Used by surfaces that manage their own page
-  // geometry — e.g. V2ComposePage (manages its own root + animation).
+  // geometry — e.g. V2ComposePage (manages its own root + animation),
+  // V2FriendRoomPage (manages its own two-pane layout).
   bareMain?: boolean;
   children: React.ReactNode;
 };
@@ -43,6 +44,7 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
     const cls =
       palette === "profile" ? "public-context"
       : palette === "compose" ? "v2-compose-context"
+      : palette === "room" ? "group-context"
       : null;
     if (cls) document.body.classList.add(cls);
     // has-header flips the body gradient so the lighter band sits at the
@@ -55,15 +57,13 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
     };
   }, [palette]);
 
-  // Are we on a profile-family surface? V2Layout is only mounted by v2
-  // profile-family pages today (V2ProfileSelfPage, V2ProfileVisitorPage,
-  // V2UserAggregatePage). The pill convention from AppShell:
-  //   - On profile/journal pages → "you are {username}", cursor:default
-  //   - Elsewhere → "go to your journal" with click
-  // Since v2 surfaces are all profile-family by current usage, we always
-  // render the "you are X" variant. If V2Layout ever gets used by a
-  // non-profile v2 surface, we'd thread a prop here.
-  const onProfileFamily = true;
+  // Are we on a profile-family surface? Profile/journal/compose all render
+  // the "you are {username}" identity pill (cursor:default — you're home).
+  // The friend-room palette is the navigation case: the user is OFF their
+  // home base, so the pill flips to "go to your journal" with a click
+  // handler. This matches the AppShell convention applied to /v3/journal vs
+  // /show/<id> in the live site.
+  const onProfileFamily = palette !== "room";
 
   return (
     <div style={{ minHeight: "100vh", position: "relative" }}>

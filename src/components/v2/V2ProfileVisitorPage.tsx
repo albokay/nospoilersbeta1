@@ -599,7 +599,7 @@ function ContextualCTAs({
       return (
         <button
           className="btn h40"
-          onClick={() => navigateToShow(navigate, showId, { activeGroupId: sharedRoom.groupId })}
+          onClick={() => navigate(`/v2/room/${sharedRoom.groupId}`)}
           style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
         >
           <ArrowRight size={13} /> go to your friend room
