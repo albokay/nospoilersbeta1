@@ -20,14 +20,14 @@ import type { ProgressEntry } from "../../types";
 // matching the viewer's effective progress is centered in view. Username
 // headers stay sticky at the top of the scroll container.
 
-const CELL = 48;          // 48px cell — 8px grid
-const CELL_RADIUS = 14;
-const GAP_BELOW = 16;     // spine + dot live in this strip
-const ROW_HEIGHT = CELL + GAP_BELOW; // 64px
-const COL_GAP = 16;
-const SEASON_LABEL_W = 80;
-const EPISODE_LABEL_W = 32;
-const HEADER_HEIGHT = 200;
+const CELL = 32;          // 32px cell — 8px grid
+const CELL_RADIUS = 8;
+const GAP_BELOW = 8;      // spine + dot live in this strip
+const ROW_HEIGHT = CELL + GAP_BELOW; // 40px
+const COL_GAP = 8;
+const SEASON_LABEL_W = 56;
+const EPISODE_LABEL_W = 24;
+const HEADER_HEIGHT = 120;
 
 // Rating phrase copy — per spec §"The rating system"
 const RATING_PHRASES: Record<number, string> = {
@@ -151,8 +151,12 @@ export default function V2RoomMap({
       ref={scrollRef}
       style={{
         overflowY: "auto",
-        maxHeight: `calc(100vh - 160px)`,
+        maxHeight: `calc(100vh - var(--site-header-h) - 52px)`,
         position: "relative",
+        WebkitMaskImage:
+          "linear-gradient(to bottom, #000 calc(100% - 136px), transparent 100%)",
+        maskImage:
+          "linear-gradient(to bottom, #000 calc(100% - 136px), transparent 100%)",
       }}
     >
       <div
@@ -191,18 +195,25 @@ export default function V2RoomMap({
               <div
                 title={`@${m.username}`}
                 style={{
+                  // transformOrigin: left bottom — the pivot sits at the
+                  // element's pre-rotation bottom-left, which after CCW
+                  // rotation becomes the rotated bottom. Anchoring the "@"
+                  // there keeps the beginning of the username visible at
+                  // the column's bottom; long usernames truncate with
+                  // ellipsis at the rotated TOP (the pre-rotation right
+                  // edge clipped by maxWidth).
                   position: "absolute",
-                  left: "50%",
-                  bottom: 4,
-                  transform: "translateX(-50%) rotate(-90deg)",
-                  transformOrigin: "center bottom",
+                  left: CELL / 2 + 8,
+                  bottom: 8,
+                  transform: "rotate(-90deg)",
+                  transformOrigin: "left bottom",
                   whiteSpace: "nowrap",
                   maxWidth: HEADER_HEIGHT - 16,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: "var(--dos-fg)",
+                  color: "#fff",
                 }}
               >
                 @{m.username}
@@ -229,12 +240,12 @@ export default function V2RoomMap({
               >
                 {row.isFirstOfSeason && (
                   <span
-                    className="editorial"
                     style={{
                       fontStyle: "italic",
                       fontSize: 14,
                       opacity: 0.7,
                       whiteSpace: "nowrap",
+                      color: "#fff",
                     }}
                   >
                     Season {row.season}
@@ -349,10 +360,10 @@ export default function V2RoomMap({
                         <div
                           style={{
                             position: "absolute",
-                            left: CELL / 2 - 5,
-                            top: CELL + 4,
-                            width: 10,
-                            height: 10,
+                            left: CELL / 2 - 3,
+                            top: CELL + 1,
+                            width: 6,
+                            height: 6,
                             borderRadius: "50%",
                             background: "var(--dos-border)",
                             opacity: 0.85,
@@ -375,6 +386,7 @@ export default function V2RoomMap({
                   fontSize: 12,
                   opacity: 0.6,
                   fontStyle: "italic",
+                  color: "#fff",
                 }}
               >
                 e{row.episode}

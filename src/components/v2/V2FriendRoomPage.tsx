@@ -303,7 +303,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                     title="Room settings"
                     style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", marginTop: 8, flexShrink: 0 }}
                   >
-                    <Settings size={20} color="var(--dos-light)" />
+                    <Settings size={20} color="#fff" />
                   </span>
                 </div>
               </div>
@@ -316,11 +316,11 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                   flexShrink: 0,
                   padding: "3px 12px",
                   background: "transparent",
-                  border: "2px solid var(--dos-light)",
-                  color: "var(--dos-light)",
+                  border: "2px solid #fff",
+                  color: "#fff",
                 }}
               >
-                to public conversation <ArrowRight size={14} color="var(--dos-light)" style={{ verticalAlign: "middle" }} />
+                to public conversation <ArrowRight size={14} color="#fff" style={{ verticalAlign: "middle" }} />
               </button>
             </div>
 
