@@ -1,8 +1,8 @@
 # Sidebar — Technical State (2026-05-15)
 
-> **2026-05-15 — Latest landed: V2 friend room.** New `/v2/room/:groupId` parallel build — two-pane layout (entry-ticket feed left/center, per-friend × per-episode season map right) replacing the messaging-shaped live friend room. Map cells coordinate with the feed via click-to-scroll-and-highlight (canon-blue border flash, matches the live "newly visible thread" treatment). New `episode_ratings` table backs the map's per-(user,show,season,episode) 5-step rating; capture UI pinned for a follow-up spec (reads ship now). Cross-member privacy via the `get_room_map_data` SECURITY DEFINER RPC — owner-only RLS on `episode_ratings`, cross-member visibility only through the RPC. Friend room V1 (live `ShowSection.tsx`) stays untouched until cutover; V3JournalPage + V2ProfileVisitorPage cross-links re-routed to the new page. See §7 arc.
+> **2026-05-15 — Latest landed: V2 inline thread.** The V2 friend room's thread view is now inline inside the feed — expanding a ticket renders body + replies + the full action surface (star/edit/delete/quote) + an always-on reply composer, all without leaving the page. New `V2InlineThread.tsx` is mounted by `V2RoomFeed` on the single-expanded ticket; `InlineThreadView.tsx` (v1) is **untouched**. Single-expansion enforced (auto-collapse on cross-thread expand); collapse + cross-thread expand gated by a draft-guard confirm modal when the composer has unsaved text. Soft-delete with replies renders a tombstone in place (`(deleted entry)` / `@author deleted their entry.`) so the conversation thread stays accessible. Whole-card click toggles expansion — the click-out-to-v1-thread path is removed. Direct `/show/<id>/thread/<tid>` URLs still resolve via the live `ShowSection.tsx` for deep-link compatibility. See §7 arc.
 >
-> **Three prior arcs landed earlier this week (2026-05-13 / 14 / 15):** treated art system (atmospheric cutout-plus-tint imagery on V2/V3 surfaces), SidebarAvatar (boring-avatars) across bylines + identity headers, and V2UserAggregatePage redesign (dropdown-from-start, friend-room-style page-up button, pioneer empty state).
+> **Prior arcs landed earlier this week (2026-05-13 / 14 / 15):** the V2 friend room base build (`/v2/room/:groupId` two-pane feed + season map), treated art system (atmospheric cutout-plus-tint imagery on V2/V3 surfaces), SidebarAvatar (boring-avatars) across bylines + identity headers, and V2UserAggregatePage redesign.
 
 > Living handoff document. Read this at the start of every session. Update it whenever architecture decisions are made. **This is the single source of truth** — `PROJECT_NOTES.md` was removed on 2026-04-20; don't recreate it.
 
@@ -1324,6 +1324,44 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-15 — V2 inline thread (`/v2/room/:groupId` self-contained)
+
+The V2 friend room's thread view is now inline inside the feed. Expanding a ticket renders body + replies + entry-level actions (star / edit / delete / quote) + always-on reply composer, all in place. The previous "click ticket → navigate to live `/show/<id>/thread/<tid>`" path is removed; whole-card click now toggles expansion. The v1 surfaces (`InlineThreadView.tsx`, `RepliesList.tsx`, `ResponseComposer.tsx`) are **untouched** — the live thread page still works at the same URL, both as the v1 friend-room participation surface AND as a deep-link target for direct URLs.
+
+**Components:**
+
+| File | Role |
+|---|---|
+| [V2InlineThread.tsx](src/components/v2/V2InlineThread.tsx) | Mounted inside V2RoomFeed's expanded ticket. Fetches thread detail via `fetchV2ThreadDetail` (likes + citations + replies in one call). Renders body / edit form / tombstone, the entry action row, `RepliesList` (reused as-is), and `ResponseComposer` (reused as-is) plus a bottom "collapse" button. |
+| [V2RoomFeed.tsx](src/components/v2/V2RoomFeed.tsx) | Single-expansion enforced (`expandedThreadId: string \| null`). Owns the draft-guard orchestration (see below). Whole-card `onClick` toggles expansion; V2InlineThread wrapped in a stopPropagation div so interactive elements inside don't bubble. |
+| [V2FriendRoomPage.tsx](src/components/v2/V2FriendRoomPage.tsx) | Owns `handleThreadEdited` (patches the entry in feedEntries) and `handleThreadDeleted` (drops if no replies, tombstones if has replies). |
+| [db.ts](src/lib/db.ts) `fetchV2ThreadDetail` | Single-round-trip thread-detail fetch — thread, chain-visible replies (group-scoped), caller's thread/reply likes, citations (thread + replies). |
+
+**Spec answers worth pinning (decided during build):**
+
+- **Single expansion.** Opening thread B while thread A is open quietly auto-collapses A. Page layout reflows naturally; no scroll-jump intervention. State shape (`expandedThreadId: string | null`) makes this structural.
+- **Two collapse buttons** per spec: the existing bottom-right card button (absolute-positioned at the corner) AND a new in-flow "collapse" button at the end of the inline thread. Both call the same `onCollapseTop` path which clears expansion + smooth-scrolls the ticket's top into view.
+- **Draft-guard semantics.** A confirm modal — *"If you open another thread, you will lose what you've been writing. Are you sure?"* — gates BOTH the direct-collapse path AND the cross-thread-expand auto-collapse path when the composer has unsaved text. Draft tracking is via a wrapper `<div>` around `ResponseComposer` that listens to bubbling `input` events from the textarea (avoids modifying the uncontrolled body state of the live ResponseComposer). On submit success: `onSubmitted` callback clears the draft flag explicitly (programmatic state changes don't fire input events in React).
+- **Cancel-inside-composer** clears the body by remounting `ResponseComposer` via a `composerKey` state (its body is uncontrolled — remount is the cheapest reset). Also clears pending-reference and draft flag.
+- **Tombstone on delete.** `deleteThread` is the existing global soft-delete. Read paths already drop no-reply tombstones; with-reply tombstones render in the room as `(deleted entry)` title + italic body `@author deleted their entry.`, no star/action row, replies still readable. Page-level `handleThreadDeleted` drops the entry if `replyCount === 0` and flips `isDeleted: true` + clears thread.isDeleted otherwise.
+- **Whole-card click toggles expansion.** The `onOpenThread` callback prop on V2RoomFeed is removed entirely; V2FriendRoomPage's matching `handleOpenThread` helper is dropped. The card's `<div className="card threadCard">` calls `toggleExpand` directly. V2InlineThread's outer wrapper stops propagation so action-row clicks / composer-textarea keystrokes / edit-form clicks don't bubble back to the card and toggle expansion.
+- **Quote.** Clicking the entry's quote button stages a `PendingReference` (`type: "quote"`, `threadId`, `authorName`, `quotedText`) and scrolls the composer into view. Same pattern as the live thread page; passed to `ResponseComposer` via the `pendingReference` prop, cleared via `onClearReference` on submit or cancel. RepliesList's per-reply quote affordance uses the same pending-reference slot.
+
+**Conventions established this arc:**
+
+- **DOM-event draft tracking for uncontrolled child composers.** When a child component (here, `ResponseComposer`) owns uncontrolled body state and modifying it is off-limits, wrap it in a `<div onInput={...}>` and listen for bubbling `input` events from `<textarea>` / `<input>` descendants. Programmatic state changes (e.g., post-submit clear) don't fire input events — pair the listener with a callback hook on `onSubmitted` to explicitly signal draft-cleared. Useful for any future v2 surface that needs to gate UI on a child's uncontrolled draft state.
+- **Composer-remount-on-cancel via `composerKey`.** Cheapest way to clear an uncontrolled body when the cancel button only fires an `onCancel` callback. Increment a `key={composerKey}` state on the child component; React unmounts + remounts, fresh state. Used for v2's always-on composer; applies to any uncontrolled-child reset pattern.
+- **Click-bubbling discipline for nested interactive surfaces.** When making a whole card a click target AND nesting interactive UI inside it, wrap the inner UI in a `<div onClick={(e) => e.stopPropagation()}>` so descendant clicks don't bubble to the card. Cleaner than adding stopPropagation per interactive child. The card's own children that SHOULD trigger the card click (title, byline, preview body) stay outside this wrapper.
+- **V2 surfaces don't refactor v1 components — they wrap or reuse them.** `RepliesList` and `ResponseComposer` are reused as-is (their existing prop surface is sufficient when paired with thin local orchestration in V2InlineThread). `InlineThreadView` is NOT used in v2 — its prop surface is too coupled to AppShell's state graph. The right pattern for any future "V2 needs feature X from a v1 surface" is to (a) reuse leaf sub-components directly via their existing props, (b) build a new V2 orchestrator with its own local state, (c) leave the v1 top-level surface alone. Avoids regressing the live site while v2 evolves.
+
+**Two-step deploys this arc required:** none (no migrations, no edge function changes).
+
+**Outstanding follow-ups added:** (see V2 friend room follow-ups in §"Outstanding action items" — most pre-existing items still apply; one is resolved by this arc, see below.)
+
+**Resolved by this arc:**
+
+- "Username byline click-to-profile in V2RoomFeed" — still pending as a polish item, but it's no longer the primary entry point to a thread (whole-card click handles that now). Demoted to nice-to-have.
 
 ### 2026-05-15 — V2 friend room: `/v2/room/:groupId` (two-pane feed + season map)
 

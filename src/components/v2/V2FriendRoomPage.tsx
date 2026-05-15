@@ -165,15 +165,6 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     };
   }, [groupId, user?.id]);
 
-  // Ticket open → live thread inside this room's context.
-  const handleOpenThread = useCallback(
-    (threadId: string) => {
-      if (!show) return;
-      navigateToShow(navigate, show.id, { threadId, activeGroupId: groupId });
-    },
-    [navigate, show, groupId],
-  );
-
   // Map cell click → scroll the feed to the ticket and flash highlight.
   const handleCellClick = useCallback((threadId: string) => {
     feedRef.current?.scrollToEntry(threadId);
@@ -446,7 +437,6 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               <V2RoomFeed
                 ref={feedRef}
                 entries={feedEntries}
-                onOpenThread={handleOpenThread}
                 sortOrder={sortOrder}
                 groupId={groupId}
                 viewerProgress={progressForShow}

@@ -63,7 +63,6 @@ export type V2RoomFeedHandle = {
 
 export type V2RoomFeedProps = {
   entries: V2RoomFeedEntry[];
-  onOpenThread: (threadId: string) => void;
   /** Episode-tag sort direction. Default "asc". */
   sortOrder?: "asc" | "desc";
   /** Room context — required so the inline thread mount can scope its
@@ -82,7 +81,6 @@ const HIGHLIGHT_MS = 1500;
 const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2RoomFeed(
   {
     entries,
-    onOpenThread,
     sortOrder = "asc",
     groupId,
     viewerProgress,
@@ -236,7 +234,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 paddingBottom: 36,
                 border: isHighlighted ? "4px solid #355eb8" : "4px solid var(--dos-border)",
               }}
-              onClick={() => onOpenThread(entry.threadId)}
+              onClick={(e) => toggleExpand(entry.threadId, e)}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h2 style={{ margin: 0, fontSize: 22 }} className="title">
@@ -285,24 +283,30 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
 
               <div style={{ marginTop: 6 }}>
                 {isExpanded ? (
-                  <V2InlineThread
-                    thread={entry.thread}
-                    groupId={groupId}
-                    viewerProgress={viewerProgress}
-                    userId={userId}
-                    onCollapseTop={() => handleCollapseTop(entry.threadId)}
-                    onAuthRequired={onAuthRequired}
-                    onThreadEdited={onThreadEdited}
-                    onThreadDeleted={(tid) => {
-                      // Auto-collapse the deleted thread so the user sees
-                      // the post-delete state of the feed (drop or
-                      // tombstone) without it still being expanded.
-                      setExpandedThreadId(null);
-                      setHasDraft(false);
-                      onThreadDeleted?.(tid);
-                    }}
-                    onDraftChange={setHasDraft}
-                  />
+                  // Stop click propagation so interactive elements inside
+                  // the expanded view (action buttons, composer textarea,
+                  // edit form) don't bubble to the card's whole-card
+                  // toggle-expand handler.
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <V2InlineThread
+                      thread={entry.thread}
+                      groupId={groupId}
+                      viewerProgress={viewerProgress}
+                      userId={userId}
+                      onCollapseTop={() => handleCollapseTop(entry.threadId)}
+                      onAuthRequired={onAuthRequired}
+                      onThreadEdited={onThreadEdited}
+                      onThreadDeleted={(tid) => {
+                        // Auto-collapse the deleted thread so the user sees
+                        // the post-delete state of the feed (drop or
+                        // tombstone) without it still being expanded.
+                        setExpandedThreadId(null);
+                        setHasDraft(false);
+                        onThreadDeleted?.(tid);
+                      }}
+                      onDraftChange={setHasDraft}
+                    />
+                  </div>
                 ) : entry.isDeleted ? (
                   <div style={{ fontStyle: "italic", color: "#1a3a4a", opacity: 0.7 }}>
                     @{entry.authorUsername} deleted their entry.
