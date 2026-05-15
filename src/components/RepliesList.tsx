@@ -296,6 +296,7 @@ export default function RepliesList({
   onSetPendingReference, pendingReference, citations, threadCitations, composerRef, onScrollToComposer,
   externalReplies, onRepliesLoaded, refreshKey, groupId, departedUsernames,
   orderMode = "episode",
+  hideRespondButtons = false,
 }: {
   thread: Thread;
   progressForShow?: ViewerProgress;
@@ -326,6 +327,11 @@ export default function RepliesList({
   refreshKey?: number;               // increment to force a re-fetch
   groupId?: string | null;           // scope replies to this friend room (prevents cross-room duplicates)
   departedUsernames?: Set<string>;   // users who have left the room
+  // Suppresses the per-reply "Respond" buttons AND the bottom "Respond
+  // to the thread" CTA. V2 (V2InlineThread) opts in so it can render its
+  // own single "Write a response" button. V1 leaves this false to keep
+  // existing behavior.
+  hideRespondButtons?: boolean;
 }) {
   const { user, profile } = useAuth();
   const { scrollTo: scrollHighlight } = useScrollHighlight();
@@ -959,14 +965,16 @@ export default function RepliesList({
                       Quote…
                     </button>
                   </div>
-                  <button
-                    className="btn"
-                    style={{ fontSize: 13 }}
-                    onClick={() => handleLink(r)}
-                    title="Respond"
-                  >
-                    Respond
-                  </button>
+                  {!hideRespondButtons && (
+                    <button
+                      className="btn"
+                      style={{ fontSize: 13 }}
+                      onClick={() => handleLink(r)}
+                      title="Respond"
+                    >
+                      Respond
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -980,7 +988,7 @@ export default function RepliesList({
          A friend-room thread with seed replies that don't pass the group or
          progress filter should show no button — the in-entry "Write a
          response" button is the sole entry point in that case. */}
-      {replies.some(r => (r.isDeleted || !!localDeleted[r.id]) || isVisible(r).show) && (
+      {!hideRespondButtons && replies.some(r => (r.isDeleted || !!localDeleted[r.id]) || isVisible(r).show) && (
         <div style={{ marginTop: 40, display: "flex", justifyContent: "flex-end" }}>
           <button
             className="btn"

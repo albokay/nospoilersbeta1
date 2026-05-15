@@ -356,7 +356,7 @@ export default function V2InlineThread({
     <>
       {/* Body — gravestone if tombstone; edit form if editing; plain body otherwise */}
       {isTombstone ? (
-        <div style={{ marginTop: 8, fontStyle: "italic", color: "#1a3a4a", opacity: 0.5 }}>
+        <div style={{ marginTop: 8, fontStyle: "italic", color: "#1a3a4a", opacity: 0.35 }}>
           @{thread.author} deleted their entry.
         </div>
       ) : editing ? (
@@ -472,16 +472,23 @@ export default function V2InlineThread({
           composerRef={composerInnerRef}
           onScrollToComposer={openComposer}
           refreshKey={repliesKey}
+          hideRespondButtons
         />
       </div>
 
       {/* "Write a response" trigger — bottom of the replies area. Clicking
           opens the composer, which replaces this button in place. Hidden
           on tombstones (you can't reply to a deleted entry, though existing
-          replies remain readable). */}
+          replies remain readable). Sized large (fontSize 17, padding
+          10/22) to match v1's "Respond to the thread" CTA style; this is
+          the single entry-point for responding to the thread now. */}
       {!isTombstone && !composerOpen && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-          <button className="btn" onClick={openComposer}>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 40 }}>
+          <button
+            className="btn"
+            onClick={openComposer}
+            style={{ fontSize: 17, padding: "10px 22px" }}
+          >
             Write a response
           </button>
         </div>

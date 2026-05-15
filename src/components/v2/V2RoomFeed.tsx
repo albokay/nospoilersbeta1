@@ -312,7 +312,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   // Tombstones de-emphasize the title row but leave any
                   // expanded V2InlineThread content (replies, collapse, etc.)
                   // at full opacity below.
-                  opacity: entry.isDeleted ? 0.5 : 1,
+                  opacity: entry.isDeleted ? 0.35 : 1,
                 }}
               >
                 <h2 style={{ margin: 0, fontSize: 22 }} className="title">
@@ -377,7 +377,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   flexWrap: "wrap",
                   // Tombstone byline matches the title-row opacity so the
                   // entire entry header fades together.
-                  opacity: entry.isDeleted ? 0.5 : undefined,
+                  opacity: entry.isDeleted ? 0.35 : undefined,
                 }}
               >
                 Started by{" "}
@@ -424,7 +424,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     />
                   </div>
                 ) : entry.isDeleted ? (
-                  <div style={{ fontStyle: "italic", color: "#1a3a4a", opacity: 0.5 }}>
+                  <div style={{ fontStyle: "italic", color: "#1a3a4a", opacity: 0.35 }}>
                     @{entry.authorUsername} deleted their entry.
                   </div>
                 ) : (
