@@ -254,7 +254,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
           }}
         >
           {/* ── LEFT/CENTER pane: banner + feed ────────────────────────── */}
-          <div style={{ flex: `0 1 ${FEED_MAX_W}px`, minWidth: 0, marginLeft: "auto" }}>
+          <div style={{ flex: `0 1 ${FEED_MAX_W}px`, minWidth: 0, marginLeft: "auto", transform: "translateX(-240px)" }}>
             {/* Banner row 1 — eyebrow + room name + settings gear + "to public" */}
             <div
               style={{
@@ -377,8 +377,9 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
             style={{
               flex: "0 0 auto",
               position: "sticky",
-              top: "calc(var(--site-header-h) + 12px)",
+              top: "calc(var(--site-header-h) + 60px)",
               alignSelf: "flex-start",
+              transform: "translateX(-144px)",
             }}
           >
             <V2RoomMap

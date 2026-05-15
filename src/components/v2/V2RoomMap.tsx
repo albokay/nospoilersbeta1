@@ -22,10 +22,10 @@ import type { ProgressEntry } from "../../types";
 
 const CELL = 32;          // 32px cell — 8px grid
 const CELL_RADIUS = 8;
-const GAP_BELOW = 8;      // spine + dot live in this strip
-const ROW_HEIGHT = CELL + GAP_BELOW; // 40px
-const COL_GAP = 8;
-const SEASON_LABEL_W = 56;
+const GAP_BELOW = 16;     // spine + dot live in this strip
+const ROW_HEIGHT = CELL + GAP_BELOW; // 48px
+const COL_GAP = 16;
+const SEASON_LABEL_W = 80;
 const EPISODE_LABEL_W = 24;
 const HEADER_HEIGHT = 120;
 
@@ -151,7 +151,7 @@ export default function V2RoomMap({
       ref={scrollRef}
       style={{
         overflowY: "auto",
-        maxHeight: `calc(100vh - var(--site-header-h) - 52px)`,
+        maxHeight: `calc(100vh - var(--site-header-h) - 100px)`,
         position: "relative",
         WebkitMaskImage:
           "linear-gradient(to bottom, #000 calc(100% - 136px), transparent 100%)",
@@ -212,7 +212,7 @@ export default function V2RoomMap({
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   fontSize: 13,
-                  fontWeight: 600,
+                  fontWeight: 400,
                   color: "#fff",
                 }}
               >
@@ -226,8 +226,46 @@ export default function V2RoomMap({
         {/* ── Body rows ────────────────────────────────────────────────── */}
         {rows.map((row, rowIdx) => {
           const rowKey = `${row.season}-${row.episode}`;
+          const showSeasonBreak = row.isFirstOfSeason && rowIdx > 0;
           return (
             <React.Fragment key={rowKey}>
+              {showSeasonBreak && (
+                <>
+                  {/* Season-break spacer: GAP_BELOW of extra space before a
+                      new season so cells from different seasons read as
+                      visually separated. Spine continues through the break
+                      for members reached on both sides. */}
+                  <div style={{ height: GAP_BELOW }} />
+                  {members.map((m, mIdx) => {
+                    const mMap = memberMaps[mIdx];
+                    const prevReached = rowIdx - 1 <= mMap.lastReachedIdx;
+                    const thisReached = rowIdx <= mMap.lastReachedIdx;
+                    const drawSpine = prevReached && thisReached;
+                    return (
+                      <div
+                        key={m.userId}
+                        style={{ width: CELL, height: GAP_BELOW, position: "relative" }}
+                      >
+                        {drawSpine && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              left: CELL / 2 - 1,
+                              top: 0,
+                              width: 2,
+                              height: GAP_BELOW,
+                              background: "var(--dos-border)",
+                              opacity: 0.55,
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                  <div style={{ height: GAP_BELOW }} />
+                </>
+              )}
+
               {/* Season label — only on the first row of each season */}
               <div
                 style={{
@@ -361,7 +399,7 @@ export default function V2RoomMap({
                           style={{
                             position: "absolute",
                             left: CELL / 2 - 3,
-                            top: CELL + 1,
+                            top: CELL + 5,
                             width: 6,
                             height: 6,
                             borderRadius: "50%",
