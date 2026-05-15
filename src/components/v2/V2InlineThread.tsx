@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, Pencil, Quote, Trash2 } from "lucide-react";
-import LikeBadge from "../LikeBadge";
+import { ChevronUp, MessageSquare } from "lucide-react";
 import Modal from "../Modal";
 import RepliesList from "../RepliesList";
 import ResponseComposer, { type PendingReference } from "../ResponseComposer";
@@ -10,9 +9,7 @@ import {
   editThread as dbEditThread,
   fetchV2ThreadDetail,
   likeReply as dbLikeReply,
-  likeThread as dbLikeThread,
   unlikeReply as dbUnlikeReply,
-  unlikeThread as dbUnlikeThread,
   type CitationEntry,
 } from "../../lib/db";
 import { effectiveProgress } from "../../lib/utils";
@@ -20,18 +17,24 @@ import type { ProgressEntry, Thread } from "../../types";
 
 // V2 friend-room inline thread view.
 //
-// Mounted inside V2RoomFeed's expanded ticket state. Renders body + action
-// row (star / edit / delete / quote) + RepliesList + a bottom collapse
-// button. Reply composer + quote-into-composer wiring lands in checkpoint 4.
+// Mounted inside V2RoomFeed's expanded ticket state. Renders body + entry
+// action row (edit / delete / quote / write-a-response) + reply count +
+// replies + composer (when opened) + a "collapse" button above the replies
+// and a second "collapse" button at the very end of the thread. The
+// title-row star is OWNED BY V2RoomFeed (so it doesn't move between
+// collapsed/expanded states); this component reports the caller's like
+// state up via onThreadLikeStateChange after fetch.
 //
-// Tombstone (deleted entry with replies still on it): gravestone body
-// replaces the entry body, the action row is hidden, replies still render.
+// Composer is hidden by default — user clicks "Write a response" to open
+// it. Cancel and submit both close it. Quote also opens it.
 
 export type V2InlineThreadProps = {
   thread: Thread;
   groupId: string;
   viewerProgress: ProgressEntry | null;
   userId: string;
+  /** Visible reply count from the parent's fetchGroupThreads result. */
+  replyCount: number;
   /** Caller scrolls the ticket top into view and clears expansion. */
   onCollapseTop: () => void;
   onAuthRequired?: () => void;
@@ -44,6 +47,9 @@ export type V2InlineThreadProps = {
    *  Parent uses this to gate collapse / cross-thread-expansion with a
    *  "you will lose what you've been writing" confirm modal. */
   onDraftChange?: (hasDraft: boolean) => void;
+  /** Fires after fetchV2ThreadDetail resolves so the parent's title-row
+   *  LikeBadge can reflect the caller's like state. */
+  onThreadLikeStateChange?: (likedByMe: boolean) => void;
 };
 
 export default function V2InlineThread({
@@ -51,31 +57,20 @@ export default function V2InlineThread({
   groupId,
   viewerProgress,
   userId,
+  replyCount,
   onCollapseTop,
   onAuthRequired,
   onThreadEdited,
   onThreadDeleted,
   onDraftChange,
+  onThreadLikeStateChange,
 }: V2InlineThreadProps) {
   const { profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
   const isTombstone = !!thread.isDeleted;
 
-  // Composer + pending-reference + draft-tracking state
-  const composerWrapperRef = useRef<HTMLDivElement>(null);
-  const composerInnerRef = useRef<HTMLDivElement>(null);
-  const [pendingReference, setPendingReference] = useState<PendingReference | null>(null);
-  // composerKey lets us remount the composer to clear its internal body
-  // state when the user clicks Cancel (the live ResponseComposer's body is
-  // uncontrolled — remount is the cheapest reset path).
-  const [composerKey, setComposerKey] = useState(0);
-  // refreshKey forces RepliesList to refetch when a new reply lands.
-  const [repliesKey, setRepliesKey] = useState(0);
-
   // ── Fetched state ───────────────────────────────────────────────────────
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [threadLikes, setThreadLikes] = useState<number>(thread.likes ?? 0);
-  const [threadLikedByMe, setThreadLikedByMe] = useState<boolean>(false);
   const [likesReplies, setLikesReplies] = useState<Record<string, number>>({});
   const [likedByUserReplies, setLikedByUserReplies] = useState<Record<string, boolean>>({});
   const [citations, setCitations] = useState<Map<string, CitationEntry[]>>(new Map());
@@ -93,13 +88,31 @@ export default function V2InlineThread({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
-  // Keep edit field defaults in sync with the source thread (e.g. after an
-  // edit succeeds and the parent re-renders with updated content).
+  // ── Composer + pending-reference + draft-tracking state ─────────────────
+  const composerWrapperRef = useRef<HTMLDivElement>(null);
+  const composerInnerRef = useRef<HTMLDivElement>(null);
+  const [pendingReference, setPendingReferenceRaw] = useState<PendingReference | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerKey, setComposerKey] = useState(0);
+  const [repliesKey, setRepliesKey] = useState(0);
+  const [threadQuoteHint, setThreadQuoteHint] = useState(false);
+
+  // Setting a pending reference (from the entry's Quote button OR from
+  // RepliesList's per-reply quote affordance) auto-opens the composer so
+  // the user immediately sees the staged quote.
+  const setPendingReference = useCallback(
+    (ref: PendingReference | null) => {
+      setPendingReferenceRaw(ref);
+      if (ref) setComposerOpen(true);
+    },
+    [],
+  );
+
+  // Keep edit field defaults in sync with the source thread.
   useEffect(() => {
     setEditTitle(thread.titleBase);
     setEditBody(thread.body);
-    setThreadLikes(thread.likes ?? 0);
-  }, [thread.id, thread.titleBase, thread.body, thread.likes]);
+  }, [thread.id, thread.titleBase, thread.body]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +124,7 @@ export default function V2InlineThread({
           setLoadError("thread not found");
           return;
         }
-        setThreadLikedByMe(detail.threadLikedByMe);
+        onThreadLikeStateChange?.(detail.threadLikedByMe);
         const likes: Record<string, number> = {};
         const likedByMe: Record<string, boolean> = {};
         for (const r of detail.replies) {
@@ -131,30 +144,7 @@ export default function V2InlineThread({
     return () => {
       cancelled = true;
     };
-  }, [thread.id, groupId, userId]);
-
-  // ── Thread-level star (like/unlike) ─────────────────────────────────────
-  const handleToggleLike = useCallback(() => {
-    if (!userId) {
-      onAuthRequired?.();
-      return;
-    }
-    if (threadLikedByMe) {
-      setThreadLikedByMe(false);
-      setThreadLikes((n) => Math.max(0, n - 1));
-      dbUnlikeThread(userId, thread.id).catch(() => {
-        setThreadLikedByMe(true);
-        setThreadLikes((n) => n + 1);
-      });
-    } else {
-      setThreadLikedByMe(true);
-      setThreadLikes((n) => n + 1);
-      dbLikeThread(userId, thread.id).catch(() => {
-        setThreadLikedByMe(false);
-        setThreadLikes((n) => Math.max(0, n - 1));
-      });
-    }
-  }, [userId, threadLikedByMe, thread.id, onAuthRequired]);
+  }, [thread.id, groupId, userId, onThreadLikeStateChange]);
 
   // ── Reply-level like / unlike ───────────────────────────────────────────
   const handleLikeReply = useCallback(
@@ -199,9 +189,6 @@ export default function V2InlineThread({
   );
 
   // ── Edit flow ───────────────────────────────────────────────────────────
-  // Re-tag at the writer's effective progress (highest for rewatchers).
-  // Matches the v1 InlineThreadView retag rule — the "spoiler ceiling"
-  // determines what others can see.
   const editEff = effectiveProgress(viewerProgress);
   const editTagS = editEff?.s ?? thread.season;
   const editTagE = editEff?.e ?? thread.episode;
@@ -272,25 +259,62 @@ export default function V2InlineThread({
     }
   };
 
-  // ── Quote — stages a pendingReference into the composer. Same pattern
-  // as the live thread view: clicking quote on the entry sets the ref so
-  // the composer renders the quoted body and includes it on submit.
-  const handleQuote = () => {
+  // ── Quote — v1 InlineThreadView's handleQuoteThread ported verbatim.
+  // Uses window.getSelection() to capture the user's highlighted text. If
+  // nothing's highlighted, toggle the hint modal explaining how. If text
+  // IS highlighted, stage the pending reference with only that selection
+  // and open the composer.
+  const handleQuoteThread = () => {
+    if (!userId) {
+      onAuthRequired?.();
+      return;
+    }
+    const sel = window.getSelection();
+    const selectedText = sel?.toString().trim() ?? "";
+    if (!selectedText) {
+      setThreadQuoteHint((h) => !h);
+      return;
+    }
+    setThreadQuoteHint(false);
     setPendingReference({
       type: "quote",
       threadId: thread.id,
       authorName: thread.author,
-      quotedText: thread.body,
+      quotedText: selectedText,
     });
-    // Best-effort scroll the composer into view so the user sees the
-    // staged quote without hunting for it.
-    composerInnerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  // ── Draft tracking — listen to input events bubbling from the composer
-  // textarea. Set hasDraft based on textarea value. ResponseComposer's body
-  // state is uncontrolled internally; intercepting via the DOM event
-  // avoids touching the live component.
+  // ── Composer open / cancel / submit ─────────────────────────────────────
+  const openComposer = () => {
+    setComposerOpen(true);
+    // Defer the scroll so the composer's mount completes first.
+    setTimeout(() => {
+      composerInnerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 0);
+  };
+
+  // After a successful submit, ResponseComposer clears its body
+  // programmatically; signal parent + bump replies key + close composer.
+  const handleComposerSubmitted = useCallback(() => {
+    onDraftChange?.(false);
+    setRepliesKey((k) => k + 1);
+    setComposerOpen(false);
+    setPendingReferenceRaw(null);
+  }, [onDraftChange]);
+
+  // Cancel inside the composer — close the composer entirely (not just
+  // clear text). composerKey bump ensures the next open mounts a fresh
+  // ResponseComposer with empty body.
+  const handleComposerCancel = useCallback(() => {
+    setComposerOpen(false);
+    setComposerKey((k) => k + 1);
+    setPendingReferenceRaw(null);
+    onDraftChange?.(false);
+  }, [onDraftChange]);
+
+  // Wrapper input listener — tracks draft state via bubbling textarea
+  // input events. Programmatic state clears (e.g. post-submit) don't fire
+  // input events; handleComposerSubmitted explicitly clears the flag.
   const handleComposerInput = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
@@ -301,23 +325,6 @@ export default function V2InlineThread({
     [onDraftChange],
   );
 
-  // After a successful submit, ResponseComposer clears its body
-  // programmatically (no input event fires on programmatic state changes
-  // in React). Signal the parent that the draft is empty + bump the
-  // replies key so RepliesList refetches.
-  const handleComposerSubmitted = useCallback(() => {
-    onDraftChange?.(false);
-    setRepliesKey((k) => k + 1);
-  }, [onDraftChange]);
-
-  // Cancel inside the composer — remount to clear the body and notify
-  // the parent that the draft is gone.
-  const handleComposerCancel = useCallback(() => {
-    setComposerKey((k) => k + 1);
-    setPendingReference(null);
-    onDraftChange?.(false);
-  }, [onDraftChange]);
-
   if (loadError) {
     return (
       <div className="muted" style={{ fontSize: 14, padding: "16px 0" }}>
@@ -326,7 +333,25 @@ export default function V2InlineThread({
     );
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  // The two collapse buttons (above-replies and end-of-thread) share the
+  // same call path — onCollapseTop is wired in V2RoomFeed to clear
+  // expansion + scroll the ticket top into view (instantly).
+  const collapseButton = (
+    <button
+      className="btn"
+      onClick={onCollapseTop}
+      style={{
+        fontSize: 13,
+        padding: "4px 12px",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+      }}
+    >
+      <ChevronUp size={13} /> collapse
+    </button>
+  );
+
   return (
     <>
       {/* Body — gravestone if tombstone; edit form if editing; plain body otherwise */}
@@ -379,48 +404,62 @@ export default function V2InlineThread({
         </div>
       )}
 
-      {/* Action row — star + edit/delete (owner) + quote (everyone). Hidden
-          on tombstones and while editing. */}
+      {/* Action row — edit/delete (owner) + Quote… + Write a response.
+          Star moved to the title row (owned by V2RoomFeed) — see #7.
+          Hidden on tombstones and while editing. */}
       {!isTombstone && !editing && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 0", marginTop: 8 }}>
-          <LikeBadge
-            count={threadLikes}
-            userLiked={threadLikedByMe}
-            onClick={handleToggleLike}
-            title={threadLikedByMe ? "Unstar" : "Star this entry"}
-          />
-          <div style={{ flex: 1 }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "12px 0", marginTop: 8, flexWrap: "wrap" }}>
           {isOwn && (
             <>
               <button
                 className="btn"
                 onClick={openEdit}
-                style={{ fontSize: 12, padding: "4px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
+                style={{ fontSize: 13 }}
               >
-                <Pencil size={13} /> edit
+                Edit
               </button>
               <button
                 className="btn btn-danger"
                 onClick={openDelete}
-                style={{ fontSize: 12, padding: "4px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
+                style={{ fontSize: 13 }}
               >
-                <Trash2 size={13} /> delete
+                Delete
               </button>
             </>
           )}
           <button
             className="btn"
-            onClick={handleQuote}
-            style={{ fontSize: 12, padding: "4px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
-            title="Quote this entry in a reply (composer lands in checkpoint 4)"
+            onClick={handleQuoteThread}
+            style={{ fontSize: 13 }}
           >
-            <Quote size={13} /> quote
+            Quote…
           </button>
+          {!composerOpen && (
+            <button
+              className="btn"
+              onClick={openComposer}
+              style={{ fontSize: 13 }}
+            >
+              Write a response
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* First collapse button — above the replies per spec. */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+        {collapseButton}
+      </div>
+
+      {/* Reply count indicator — under entry, above replies. */}
+      {replyCount > 0 && (
+        <div className="muted" style={{ fontSize: 14, marginTop: 16, color: "#1a3a4a", opacity: 0.7 }}>
+          {replyCount} {replyCount === 1 ? "response" : "responses"}
         </div>
       )}
 
       {/* Replies list — chain-visibility filter built into RepliesList. */}
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 8 }}>
         <RepliesList
           thread={thread}
           groupId={groupId}
@@ -435,19 +474,14 @@ export default function V2InlineThread({
           onSetPendingReference={setPendingReference}
           pendingReference={pendingReference}
           composerRef={composerInnerRef}
-          onScrollToComposer={() =>
-            composerInnerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
-          }
+          onScrollToComposer={openComposer}
           refreshKey={repliesKey}
         />
       </div>
 
-      {/* Reply composer — always-on at the bottom of the inline view. The
-          wrapper captures bubbling input events from the textarea so the
-          parent can gate collapse / cross-thread expansion when there's
-          unsaved draft text. composerKey forces remount on cancel to
-          clear the (uncontrolled) body state. */}
-      {!isTombstone && (
+      {/* Reply composer — hidden by default. Opens on "Write a response"
+          or when a Quote pending-reference is staged. */}
+      {!isTombstone && composerOpen && (
         <div
           ref={composerWrapperRef}
           onInput={handleComposerInput}
@@ -483,7 +517,7 @@ export default function V2InlineThread({
             onSubmitted={handleComposerSubmitted}
             onCancel={handleComposerCancel}
             pendingReference={pendingReference}
-            onClearReference={() => setPendingReference(null)}
+            onClearReference={() => setPendingReferenceRaw(null)}
             composerRef={composerInnerRef}
             onAuthRequired={onAuthRequired ?? (() => {})}
             threadAuthor={thread.author}
@@ -497,20 +531,29 @@ export default function V2InlineThread({
 
       {/* Second collapse button — at the end of the thread per spec. */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-        <button
-          className="btn"
-          onClick={onCollapseTop}
-          style={{
-            fontSize: 13,
-            padding: "4px 12px",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <ChevronDown size={13} /> collapse
-        </button>
+        {collapseButton}
       </div>
+
+      {/* Quote hint modal — v1's copy ported verbatim. Shown when the user
+          clicks Quote with no text highlighted. */}
+      {threadQuoteHint && (
+        <Modal onClose={() => setThreadQuoteHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
+          <div style={{ padding: "16px 12px 12px" }}>
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+              <MessageSquare size={14} color="currentColor" /> Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
+            </p>
+            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+              The thread stays linear, but the connections between ideas are visible.
+            </p>
+            <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
+              This might feel confusing, but try it out! You can always edit your response after you post it.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={() => setThreadQuoteHint(false)}>Got it</button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showDeleteModal && (
         <Modal onClose={cancelDelete} width="min(420px,90vw)">

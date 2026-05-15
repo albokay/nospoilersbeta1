@@ -101,7 +101,23 @@ export default function V2RoomMap({
   viewerProgress,
   onEntryClick,
 }: V2RoomMapProps) {
-  const rows = useMemo(() => flattenSeasons(seasons), [seasons]);
+  // Filter seasons to those any member has reached AT LEAST episode 1 in.
+  // A member at S2E0 ("haven't started season 2") hasn't reached any S2
+  // episode, so S2 stays hidden until someone actually watches S2E1+.
+  // Rewatcher-aware via effectiveProgress (highest for rewatchers).
+  const touchedSeasons = useMemo(() => {
+    let maxSeasonReached = 0;
+    for (const m of members) {
+      const eff = effectiveProgress(m.progress);
+      if (!eff) continue;
+      const reachedSeason = eff.e >= 1 ? eff.s : eff.s - 1;
+      if (reachedSeason > maxSeasonReached) maxSeasonReached = reachedSeason;
+    }
+    if (maxSeasonReached <= 0) return [];
+    return seasons.slice(0, maxSeasonReached);
+  }, [members, seasons]);
+
+  const rows = useMemo(() => flattenSeasons(touchedSeasons), [touchedSeasons]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Initial scroll: center the viewer's effective-progress row in the scroll

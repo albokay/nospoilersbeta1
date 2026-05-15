@@ -7,13 +7,17 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { ChevronDown, Mail, Users } from "lucide-react";
+import { ChevronDown, Users } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import SidebarAvatar from "../SidebarAvatar";
 import { timeAgo } from "../../lib/utils";
 import V2InlineThread from "./V2InlineThread";
 import Modal from "../Modal";
+import {
+  likeThread as dbLikeThread,
+  unlikeThread as dbUnlikeThread,
+} from "../../lib/db";
 import type { ProgressEntry, Thread } from "../../types";
 
 // V2 friend room feed — episode-ascending list of entry tickets.
@@ -124,6 +128,57 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     string | "self" | null
   >(null);
 
+  // Title-row star state for the currently-expanded thread. The star stays
+  // in the title row across collapsed (readOnly) → expanded (interactive)
+  // transitions; this avoids the "star moves when I open a thread" jump.
+  // Initialized from entry.thread.likes when expansion starts; likedByMe
+  // arrives via onThreadLikeStateChange after V2InlineThread's fetch.
+  const [expandedLikeState, setExpandedLikeState] = useState<
+    { likedByMe: boolean; count: number } | null
+  >(null);
+
+  // Reset star state when expansion changes. Initialize count from the
+  // entry's already-known thread.likes so the star doesn't show a stale
+  // zero between expansion and fetch.
+  useEffect(() => {
+    if (!expandedThreadId) {
+      setExpandedLikeState(null);
+      return;
+    }
+    const entry = entries.find((e) => e.threadId === expandedThreadId);
+    setExpandedLikeState({
+      likedByMe: false,
+      count: entry?.thread.likes ?? 0,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedThreadId]);
+
+  const handleToggleExpandedLike = useCallback(() => {
+    if (!expandedThreadId || !userId || !expandedLikeState) {
+      onAuthRequired?.();
+      return;
+    }
+    const wasLiked = expandedLikeState.likedByMe;
+    // Optimistic toggle
+    setExpandedLikeState({
+      likedByMe: !wasLiked,
+      count: wasLiked
+        ? Math.max(0, expandedLikeState.count - 1)
+        : expandedLikeState.count + 1,
+    });
+    const fail = () => {
+      setExpandedLikeState({
+        likedByMe: wasLiked,
+        count: expandedLikeState.count,
+      });
+    };
+    if (wasLiked) {
+      dbUnlikeThread(userId, expandedThreadId).catch(fail);
+    } else {
+      dbLikeThread(userId, expandedThreadId).catch(fail);
+    }
+  }, [expandedThreadId, userId, expandedLikeState, onAuthRequired]);
+
   useEffect(() => () => {
     if (highlightTimer.current) window.clearTimeout(highlightTimer.current);
   }, []);
@@ -142,13 +197,15 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
 
   useImperativeHandle(ref, () => ({ scrollToEntry }), [scrollToEntry]);
 
-  // Scroll the ticket's top into view smoothly. Used by both collapse
-  // paths (bottom button and the inline "second collapse" in V2InlineThread)
-  // so the user lands at the top of the entry they just closed.
+  // Scroll the ticket's top into view INSTANTLY. Used by both collapse
+  // paths (bottom button and the inline collapse buttons in V2InlineThread)
+  // and by the expand path so the new thread lands at the top of the
+  // viewport. The map-cell highlight scroll still uses smooth (via
+  // scrollToEntry below).
   const scrollTicketTop = useCallback((threadId: string) => {
     const el = ticketRefs.current[threadId];
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.scrollIntoView({ behavior: "auto", block: "start" });
   }, []);
 
   // Apply the actual collapse without any draft-guard gating. Called from
@@ -192,6 +249,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
       // once its composer mounts; reset proactively so stale state doesn't
       // gate the very next change.
       setHasDraft(false);
+      // Instantly scroll the newly-expanded ticket's top into view so the
+      // entry sits at the top of the viewport.
+      setTimeout(() => scrollTicketTop(threadId), 0);
     }
   };
 
@@ -203,8 +263,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
       applyCollapse(expandedThreadId);
     } else if (target && target !== "self") {
       setExpandedThreadId(target);
+      // Scroll the newly-expanded ticket's top into view instantly.
+      setTimeout(() => scrollTicketTop(target), 0);
     }
-  }, [pendingCollapseTarget, expandedThreadId, applyCollapse]);
+  }, [pendingCollapseTarget, expandedThreadId, applyCollapse, scrollTicketTop]);
 
   const cancelDiscardDraft = useCallback(() => {
     setPendingCollapseTarget(null);
@@ -259,12 +321,31 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     </>
                   )}
                 </h2>
-                {/* Star: read-only placeholder in collapsed state; hidden when
-                    expanded (the interactive star lives in V2InlineThread's
-                    action row) and on tombstones. */}
-                {!isExpanded && !entry.isDeleted && (
+                {/* Star: in the title row across both states. Read-only when
+                    the ticket is collapsed; interactive (uses expandedLikeState)
+                    when expanded. Hidden on tombstones. The like state lives
+                    in V2RoomFeed so the star doesn't move between collapsed
+                    and expanded — V2InlineThread reports the caller's
+                    likedByMe via onThreadLikeStateChange after its fetch. */}
+                {!entry.isDeleted && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <LikeBadge count={0} readOnly title="open post to vote" />
+                    {isExpanded && expandedLikeState ? (
+                      <LikeBadge
+                        count={expandedLikeState.count}
+                        userLiked={expandedLikeState.likedByMe}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          handleToggleExpandedLike();
+                        }}
+                        title={expandedLikeState.likedByMe ? "Unstar" : "Star this entry"}
+                      />
+                    ) : (
+                      <LikeBadge
+                        count={0}
+                        readOnly
+                        title="open post to vote"
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -293,6 +374,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       groupId={groupId}
                       viewerProgress={viewerProgress}
                       userId={userId}
+                      replyCount={entry.replyCount}
                       onCollapseTop={() => handleCollapseTop(entry.threadId)}
                       onAuthRequired={onAuthRequired}
                       onThreadEdited={onThreadEdited}
@@ -305,6 +387,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                         onThreadDeleted?.(tid);
                       }}
                       onDraftChange={setHasDraft}
+                      onThreadLikeStateChange={(likedByMe) =>
+                        setExpandedLikeState((prev) =>
+                          prev ? { ...prev, likedByMe } : prev,
+                        )
+                      }
                     />
                   </div>
                 ) : entry.isDeleted ? (
@@ -316,39 +403,37 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 )}
               </div>
 
-              {/* Bottom-right: expand/collapse button. Reply count only renders
-                  in the expanded state per spec — collapsed cards intentionally
-                  hide any signal that responses exist. */}
-              <div
-                style={{
-                  position: "absolute",
-                  right: 12,
-                  bottom: 8,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                {isExpanded && (
-                  <span className="muted" style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <Mail size={14} color="var(--icon-color)" /> {entry.replyCount}
-                  </span>
-                )}
-                <button
-                  className="btn"
-                  onClick={(e) => toggleExpand(entry.threadId, e)}
+              {/* Bottom-right: "expand" button on collapsed cards only.
+                  When expanded, V2InlineThread renders the two collapse
+                  buttons (above replies + end of thread) and the reply
+                  count above the replies — so this corner has no use. */}
+              {!isExpanded && !entry.isDeleted && (
+                <div
                   style={{
-                    fontSize: 13,
-                    padding: "4px 12px",
-                    display: "inline-flex",
+                    position: "absolute",
+                    right: 12,
+                    bottom: 8,
+                    display: "flex",
                     alignItems: "center",
-                    gap: 5,
+                    gap: 10,
                   }}
                 >
-                  <ChevronDown size={13} />
-                  {isExpanded ? "collapse" : "expand"}
-                </button>
-              </div>
+                  <button
+                    className="btn"
+                    onClick={(e) => toggleExpand(entry.threadId, e)}
+                    style={{
+                      fontSize: 13,
+                      padding: "4px 12px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                    }}
+                  >
+                    <ChevronDown size={13} />
+                    expand
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         );
