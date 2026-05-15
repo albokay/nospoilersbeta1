@@ -356,7 +356,7 @@ export default function V2InlineThread({
     <>
       {/* Body — gravestone if tombstone; edit form if editing; plain body otherwise */}
       {isTombstone ? (
-        <div style={{ marginTop: 8, fontStyle: "italic", color: "#1a3a4a", opacity: 0.7 }}>
+        <div style={{ marginTop: 8, fontStyle: "italic", color: "#1a3a4a", opacity: 0.5 }}>
           @{thread.author} deleted their entry.
         </div>
       ) : editing ? (
@@ -404,9 +404,10 @@ export default function V2InlineThread({
         </div>
       )}
 
-      {/* Action row — edit/delete (owner) + Quote… + Write a response.
-          Star moved to the title row (owned by V2RoomFeed) — see #7.
-          Hidden on tombstones and while editing. */}
+      {/* Action row — edit/delete (owner) + Quote…
+          The "Write a response" trigger moved below the replies. Star
+          lives in the title row (owned by V2RoomFeed). Hidden on
+          tombstones and while editing. */}
       {!isTombstone && !editing && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "12px 0", marginTop: 8, flexWrap: "wrap" }}>
           {isOwn && (
@@ -434,22 +435,17 @@ export default function V2InlineThread({
           >
             Quote…
           </button>
-          {!composerOpen && (
-            <button
-              className="btn"
-              onClick={openComposer}
-              style={{ fontSize: 13 }}
-            >
-              Write a response
-            </button>
-          )}
         </div>
       )}
 
-      {/* First collapse button — above the replies per spec. */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-        {collapseButton}
-      </div>
+      {/* First collapse button — above the replies. Only rendered when
+          there are replies to skip past; with replyCount === 0 the second
+          collapse button at the end of the thread is sufficient. */}
+      {replyCount > 0 && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+          {collapseButton}
+        </div>
+      )}
 
       {/* Reply count indicator — under entry, above replies. */}
       {replyCount > 0 && (
@@ -478,6 +474,18 @@ export default function V2InlineThread({
           refreshKey={repliesKey}
         />
       </div>
+
+      {/* "Write a response" trigger — bottom of the replies area. Clicking
+          opens the composer, which replaces this button in place. Hidden
+          on tombstones (you can't reply to a deleted entry, though existing
+          replies remain readable). */}
+      {!isTombstone && !composerOpen && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+          <button className="btn" onClick={openComposer}>
+            Write a response
+          </button>
+        </div>
+      )}
 
       {/* Reply composer — hidden by default. Opens on "Write a response"
           or when a Quote pending-reference is staged. */}

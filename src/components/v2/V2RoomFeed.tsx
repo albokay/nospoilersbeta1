@@ -284,7 +284,13 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               ticketRefs.current[entry.threadId] = el;
             }}
             data-thread-id={entry.threadId}
-            style={{ position: "relative", margin: "0 0 12px 0" }}
+            style={{
+              position: "relative",
+              margin: "0 0 12px 0",
+              // 72px breathing room from the viewport top when scrollIntoView
+              // anchors this ticket (on expand, collapse, and map-cell click).
+              scrollMarginTop: 72,
+            }}
           >
             <div
               className="card threadCard"
@@ -298,7 +304,17 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               }}
               onClick={(e) => toggleExpand(entry.threadId, e)}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  // Tombstones de-emphasize the title row but leave any
+                  // expanded V2InlineThread content (replies, collapse, etc.)
+                  // at full opacity below.
+                  opacity: entry.isDeleted ? 0.5 : 1,
+                }}
+              >
                 <h2 style={{ margin: 0, fontSize: 22 }} className="title">
                   <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}>
                     <Users size={14} color="var(--icon-color)" />
@@ -350,7 +366,20 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 )}
               </div>
 
-              <div className="muted" style={{ marginTop: 4, fontSize: 14, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <div
+                className="muted"
+                style={{
+                  marginTop: 4,
+                  fontSize: 14,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  flexWrap: "wrap",
+                  // Tombstone byline matches the title-row opacity so the
+                  // entire entry header fades together.
+                  opacity: entry.isDeleted ? 0.5 : undefined,
+                }}
+              >
                 Started by{" "}
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle", fontWeight: 700 }}>
                   <SidebarAvatar userId={entry.authorId} username={entry.authorUsername} size={16} />
@@ -395,7 +424,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     />
                   </div>
                 ) : entry.isDeleted ? (
-                  <div style={{ fontStyle: "italic", color: "#1a3a4a", opacity: 0.7 }}>
+                  <div style={{ fontStyle: "italic", color: "#1a3a4a", opacity: 0.5 }}>
                     @{entry.authorUsername} deleted their entry.
                   </div>
                 ) : (
