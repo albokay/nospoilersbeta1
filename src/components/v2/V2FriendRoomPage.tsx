@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Settings, SquarePen, Users } from "lucide-react";
+import { ArrowRight, ChevronDown, Settings, SquarePen, Users } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -54,6 +54,8 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
 
   const feedRef = useRef<V2RoomFeedHandle>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Default to descending — newest episode tag at the top of the feed.
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Bootstrap — fetch room, show, progress, group threads (feed), and the
   // RPC-backed map data (members + ratings + entries) in one effect.
@@ -254,7 +256,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
           }}
         >
           {/* ── LEFT/CENTER pane: banner + feed ────────────────────────── */}
-          <div style={{ flex: `0 1 ${FEED_MAX_W}px`, minWidth: 0, marginLeft: "auto", transform: "translateX(-240px)" }}>
+          <div style={{ flex: `0 1 ${FEED_MAX_W}px`, minWidth: 0, marginLeft: "auto", transform: "translateX(-176px)" }}>
             {/* Banner row 1 — eyebrow + room name + settings gear + "to public" */}
             <div
               style={{
@@ -342,20 +344,46 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               >
                 <SquarePen size={15} /> write
               </button>
-              <OneSelectProgress
-                show={show}
-                value={eff || { s: 1, e: 1 }}
-                onConfirm={handleProgressConfirm}
-                requireConfirm={true}
-                allowZero={eff?.s === 0}
-                rewatchHighest={
-                  progressForShow?.isRewatching &&
-                  progressForShow.highestS != null &&
-                  progressForShow.highestE != null
-                    ? { s: progressForShow.highestS, e: progressForShow.highestE }
-                    : null
-                }
-              />
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                  <select
+                    className="badge h40"
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      paddingRight: 28,
+                      appearance: "none",
+                      WebkitAppearance: "none",
+                      cursor: "pointer",
+                      color: "var(--dos-border)",
+                    }}
+                  >
+                    <option value="desc">newest first</option>
+                    <option value="asc">oldest first</option>
+                  </select>
+                  <ChevronDown
+                    size={14}
+                    color="var(--dos-border)"
+                    style={{ position: "absolute", right: 10, pointerEvents: "none" }}
+                  />
+                </div>
+                <OneSelectProgress
+                  show={show}
+                  value={eff || { s: 1, e: 1 }}
+                  onConfirm={handleProgressConfirm}
+                  requireConfirm={true}
+                  allowZero={eff?.s === 0}
+                  rewatchHighest={
+                    progressForShow?.isRewatching &&
+                    progressForShow.highestS != null &&
+                    progressForShow.highestE != null
+                      ? { s: progressForShow.highestS, e: progressForShow.highestE }
+                      : null
+                  }
+                />
+              </div>
             </div>
 
             {/* ── Feed ─────────────────────────────────────────────── */}
@@ -368,6 +396,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 ref={feedRef}
                 entries={feedEntries}
                 onOpenThread={handleOpenThread}
+                sortOrder={sortOrder}
               />
             )}
           </div>

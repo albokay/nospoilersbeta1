@@ -231,11 +231,12 @@ export default function V2RoomMap({
             <React.Fragment key={rowKey}>
               {showSeasonBreak && (
                 <>
-                  {/* Season-break spacer: GAP_BELOW of extra space before a
-                      new season so cells from different seasons read as
-                      visually separated. Spine continues through the break
-                      for members reached on both sides. */}
-                  <div style={{ height: GAP_BELOW }} />
+                  {/* Season-break spacer: 2x GAP_BELOW of extra space before
+                      a new season — combined with the previous row's regular
+                      GAP_BELOW, the total inter-season gap is 48px. Spine
+                      continues through the break for members reached on
+                      both sides. */}
+                  <div style={{ height: GAP_BELOW * 2 }} />
                   {members.map((m, mIdx) => {
                     const mMap = memberMaps[mIdx];
                     const prevReached = rowIdx - 1 <= mMap.lastReachedIdx;
@@ -244,7 +245,7 @@ export default function V2RoomMap({
                     return (
                       <div
                         key={m.userId}
-                        style={{ width: CELL, height: GAP_BELOW, position: "relative" }}
+                        style={{ width: CELL, height: GAP_BELOW * 2, position: "relative" }}
                       >
                         {drawSpine && (
                           <div
@@ -253,7 +254,7 @@ export default function V2RoomMap({
                               left: CELL / 2 - 1,
                               top: 0,
                               width: 2,
-                              height: GAP_BELOW,
+                              height: GAP_BELOW * 2,
                               background: "var(--dos-border)",
                               opacity: 0.55,
                             }}
@@ -262,7 +263,7 @@ export default function V2RoomMap({
                       </div>
                     );
                   })}
-                  <div style={{ height: GAP_BELOW }} />
+                  <div style={{ height: GAP_BELOW * 2 }} />
                 </>
               )}
 
@@ -315,28 +316,43 @@ export default function V2RoomMap({
                 const aboveViewer =
                   !!viewerEff && isAbove(viewerEff.s, viewerEff.e, row.season, row.episode);
 
+                // Prefix conventions on the cell tooltip:
+                //   - reached + no entry → "watched:" (Lora italic) on line 1
+                //   - has entry → "wrote:" (Inter regular) on line 2 before the title
+                //   - not-reached, or has-entry → no "watched:" prefix on line 1
+                const hasEntry = !!entry;
+                const watchedPrefix = isReached && !hasEntry;
+
                 let entryLine: React.ReactNode = null;
                 if (entry) {
-                  entryLine = aboveViewer ? (
-                    <span style={{ display: "block", fontStyle: "italic", marginTop: 4, opacity: 0.85 }}>
+                  const titlePart = aboveViewer ? (
+                    <span style={{ fontStyle: "italic", opacity: 0.85 }}>
                       (title revealed once you catch up)
                     </span>
                   ) : (
-                    <span
-                      className="editorial"
-                      style={{ display: "block", fontStyle: "italic", marginTop: 4 }}
-                    >
+                    <span className="editorial" style={{ fontStyle: "italic" }}>
                       &ldquo;{entry.title}&rdquo;
+                    </span>
+                  );
+                  entryLine = (
+                    <span style={{ display: "block", marginTop: 4 }}>
+                      wrote: {titlePart}
                     </span>
                   );
                 }
 
                 const tooltipText = (
                   <span>
-                    S
-                    {String(row.season).padStart(2, "0")} E
-                    {String(row.episode).padStart(2, "0")} · @{m.username}
-                    {ratingPhrase && <> — {ratingPhrase}</>}
+                    <span style={{ display: "block" }}>
+                      {watchedPrefix && (
+                        <span className="editorial" style={{ fontStyle: "italic" }}>
+                          watched:{" "}
+                        </span>
+                      )}
+                      S{String(row.season).padStart(2, "0")} E
+                      {String(row.episode).padStart(2, "0")} · @{m.username}
+                      {ratingPhrase && <> — {ratingPhrase}</>}
+                    </span>
                     {entryLine}
                   </span>
                 );
@@ -356,6 +372,11 @@ export default function V2RoomMap({
                         direction="left"
                         width={260}
                         portal
+                        tooltipStyle={{
+                          background: "#fff",
+                          color: "#1a3a4a",
+                          textAlign: "left",
+                        }}
                       >
                         <div
                           onClick={() => {

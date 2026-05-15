@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Mail, Users } from "lucide-react";
+import { ChevronDown, Mail, Users } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import SidebarAvatar from "../SidebarAvatar";
@@ -54,24 +54,27 @@ export type V2RoomFeedHandle = {
 export type V2RoomFeedProps = {
   entries: V2RoomFeedEntry[];
   onOpenThread: (threadId: string) => void;
+  /** Episode-tag sort direction. Default "asc". */
+  sortOrder?: "asc" | "desc";
 };
 
 const HIGHLIGHT_MS = 1500;
 
 const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2RoomFeed(
-  { entries, onOpenThread },
+  { entries, onOpenThread, sortOrder = "asc" },
   ref,
 ) {
-  // Episode-ascending sort. Within an episode, chronological by createdAt
-  // (oldest first) per spec. updatedAt is the closest proxy on the entry
-  // shape — callers pass createdAt-equivalent timestamps.
+  // Episode sort. Within an episode, chronological by updatedAt always
+  // (oldest first). Across episodes, asc/desc controlled by sortOrder
+  // (desc puts the newest episode tag at the top).
   const sorted = useMemo(() => {
+    const dir = sortOrder === "desc" ? -1 : 1;
     return [...entries].sort((a, b) => {
-      if (a.s !== b.s) return a.s - b.s;
-      if (a.e !== b.e) return a.e - b.e;
+      if (a.s !== b.s) return dir * (a.s - b.s);
+      if (a.e !== b.e) return dir * (a.e - b.e);
       return a.updatedAt - b.updatedAt;
     });
-  }, [entries]);
+  }, [entries, sortOrder]);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -192,9 +195,16 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 <button
                   className="btn"
                   onClick={(e) => toggleExpand(entry.threadId, e)}
-                  style={{ fontSize: 13, padding: "4px 12px" }}
+                  style={{
+                    fontSize: 13,
+                    padding: "4px 12px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
                 >
-                  • {isExpanded ? "collapse" : "expand"}
+                  <ChevronDown size={13} />
+                  {isExpanded ? "collapse" : "expand"}
                 </button>
               </div>
             </div>
