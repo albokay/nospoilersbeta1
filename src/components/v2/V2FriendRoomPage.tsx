@@ -182,8 +182,13 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
 
   const handleWrite = useCallback(() => {
     if (!show) return;
-    navigate(`/v2/compose/${show.id}`);
-  }, [navigate, show]);
+    // Pass returnTo so V2ComposePage's discard target is the friend room,
+    // not the /v3/journal default. Without this, a "× not now" from a
+    // user who entered compose via the friend-room Write button ejects
+    // them to journal instead of returning them to the room they came
+    // from. Same returnTo channel the rating-capture flow uses.
+    navigate(`/v2/compose/${show.id}`, { state: { returnTo: location.pathname } });
+  }, [navigate, show, location.pathname]);
 
   const handleToPublic = useCallback(() => {
     if (!show) return;
