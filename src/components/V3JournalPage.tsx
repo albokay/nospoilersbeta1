@@ -4,7 +4,7 @@ import { SquarePen, X, Globe, Users, LockKeyhole, Sparkles, CircleChevronDown, C
 import type { Reply, Thread, FriendGroup } from "../types";
 import { seedShows } from "../lib/mockData";
 import type { Show } from "../lib/db";
-import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated, refreshShowIfStale, fetchRoomActivityVisibility, stopWatching, removeShowFromProfile } from "../lib/db";
+import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUserShowActivity, insertThread, fetchPrompts, fetchFriendGroupsForUser, addThreadToGroup, createFriendGroup, readTabCreated, refreshShowIfStale, fetchRoomActivityVisibility, stopWatching, removeShowFromProfile, persistProgressUpdate, upsertEpisodeRating } from "../lib/db";
 import type { RoomVisibility } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { prefetchComposeData } from "../lib/composeDataCache";
@@ -19,6 +19,7 @@ import Tooltip from "./Tooltip";
 import EmptyProfileWelcome from "./EmptyProfileWelcome";
 import Modal from "./Modal";
 import OneSelectProgress from "./OneSelectProgress";
+import RatingCaptureModal from "./RatingCaptureModal";
 import LoadingDots from "./LoadingDots";
 import PromptCard from "./PromptCard";
 import type { PromptEntry } from "../lib/promptData";
@@ -377,11 +378,51 @@ export default function V3JournalPage({
   const [postSubmitting, setPostSubmitting] = useState(false);
   const [composeDestination, setComposeDestination] = useState<"private" | "public" | string>("");
 
+  // Rating-capture flow: forward picks on the show-tab header progress
+  // dropdown open RatingCaptureModal instead of OneSelectProgress's
+  // internal confirm. On commit we save the rating, advance progress,
+  // and hand off to /v2/compose with returnTo set. See
+  // sidebar_spec_rating_capture.md.
+  const [pendingRating, setPendingRating] = useState<{ showId: string; s: number; e: number } | null>(null);
+
   const closeCompose = () => {
     setComposeOpen(false);
     setComposeDestination("private");
   };
   const postBodyRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Rating-capture handlers. Forward picks on the show-tab header
+  // dropdown hand off here. Capture the showId at pick time (not at
+  // commit time) so a rapid tab switch can't retarget the rating.
+  const handleRatingForwardPick = (showId: string) => (val: { s: number; e: number }) => {
+    setPendingRating({ showId, s: val.s, e: val.e });
+  };
+  const handleRatingCommit = async (rating: number) => {
+    if (!pendingRating || !user?.id) return;
+    const { showId, s, e } = pendingRating;
+    // Rating upsert is fire-and-forget. Failure is non-fatal — user
+    // still advances + lands in compose; only the map cell goes unrated.
+    upsertEpisodeRating({ userId: user.id, showId, season: s, episode: e, rating })
+      .catch((err) => console.warn("upsertEpisodeRating failed:", err));
+    // AWAIT the progress write so V2ComposePage's fetchProgress on mount
+    // doesn't race. persistProgressUpdate handles rewatcher transitions.
+    try {
+      await persistProgressUpdate(user.id, showId, progress[showId], { s, e });
+    } catch (err) {
+      console.warn("rating-flow progress write failed:", err);
+    }
+    // Keep App state in sync for any post-discard return to V3. This
+    // fires a second idempotent upsert via updateProgressFor's internal
+    // path; the rewatcher-derived final entry is the same as the one
+    // persistProgressUpdate just wrote, so the second write is a no-op
+    // in practice (same column values).
+    updateProgressFor?.(showId, { s, e });
+    setPendingRating(null);
+    navigate(`/v2/compose/${showId}`, {
+      state: { fromRating: true, returnTo: location.pathname },
+    });
+  };
+  const handleRatingCancel = () => setPendingRating(null);
 
   // Tab "go to" dropdown
   const [tabDropdownOpen, setTabDropdownOpen] = useState<string | null>(null);
@@ -1259,6 +1300,7 @@ export default function V3JournalPage({
                             show={activeShow}
                             value={postProgress}
                             onConfirm={(val) => updateProgressFor?.(activeTab, val)}
+                            onForwardPick={handleRatingForwardPick(activeTab)}
                             requireConfirm={true}
                             allowZero={postProgress?.s === 0}
                             rewatchHighest={postProgress?.isRewatching && postProgress.highestS != null && postProgress.highestE != null
@@ -2023,6 +2065,15 @@ export default function V3JournalPage({
           content. Re-keys on activeTab so switching tabs re-mounts
           the component (fresh color + side roll for the new show). */}
       <TreatedArt key={activeTab || "no-tab"} showId={activeTab || null} anchor="scroll" />
+
+      {pendingRating && (
+        <RatingCaptureModal
+          season={pendingRating.s}
+          episode={pendingRating.e}
+          onCommit={handleRatingCommit}
+          onCancel={handleRatingCancel}
+        />
+      )}
     </section>
   );
 }

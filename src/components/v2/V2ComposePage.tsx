@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import {
   fetchShows,
@@ -10,8 +10,10 @@ import {
   addThreadToGroup,
   logThreadPrompt,
   persistProgressUpdate,
+  upsertEpisodeRating,
 } from "../../lib/db";
 import OneSelectProgress from "../OneSelectProgress";
+import RatingCaptureModal from "../RatingCaptureModal";
 import { getCachedComposeData, clearComposeDataCache } from "../../lib/composeDataCache";
 import type { Show, PromptRow } from "../../lib/db";
 import type { ProgressEntry, FriendGroup } from "../../types";
@@ -65,7 +67,15 @@ function tagPosition(p: ProgressEntry): { s: number; e: number } {
 
 export default function V2ComposePage({ showId }: { showId?: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile, loading: authLoading } = useAuth();
+
+  // Rating-flow entry markers (set by V2FriendRoomPage + V3JournalPage on
+  // forward-pick → /v2/compose handoff). fromRating drives intro-copy
+  // variant; returnTo overrides the default /v3/journal discard target so
+  // a user who entered via friend-room rating returns to the friend room.
+  const fromRating = Boolean((location.state as { fromRating?: boolean } | null)?.fromRating);
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
 
   // Cream palette + has-header gradient flip. Self-managed (not via
   // V2Layout) so we can run our own dark ink color scheme without
@@ -103,6 +113,13 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [discardOpen, setDiscardOpen] = useState(false);
+
+  // Rating-capture flow: forward pick on this page's progress dropdown
+  // opens RatingCaptureModal instead of OneSelectProgress's internal
+  // confirm. Unlike V2FriendRoomPage / V3JournalPage, the commit here
+  // does NOT navigate — the user stays in the compose form with their
+  // draft intact. See sidebar_spec_rating_capture.md.
+  const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -238,11 +255,48 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
     }
   }
   function doDiscard() {
+    // Rating-flow entries pass location.state.returnTo so the user lands
+    // back where they triggered the progress change (e.g. a friend room
+    // for V2FriendRoomPage entries). Defaults to /v3/journal for all
+    // other entry paths.
+    if (returnTo) {
+      navigate(returnTo);
+      return;
+    }
     // v3 journal mounts at the bare /v3/journal path and selects the active
     // tab via location.state.activeTab (V3JournalPage reads it on mount,
     // same pattern as live ProfilePage). Showless fallback drops the state.
     if (showId) navigate("/v3/journal", { state: { activeTab: showId } });
     else navigate("/v3/journal");
+  }
+
+  // === RATING-FLOW HANDLERS ===
+  // Forward picks on this page's progress dropdown hand off here.
+  // Unlike A/B (V2FriendRoomPage, V3JournalPage), commit does NOT
+  // navigate — the user stays in the compose form with their draft.
+  function handleRatingForwardPick(val: { s: number; e: number }) {
+    setPendingRating(val);
+  }
+  async function handleRatingCommit(rating: number) {
+    if (!pendingRating || !user || !show) return;
+    const target = pendingRating;
+    upsertEpisodeRating({
+      userId: user.id,
+      showId: show.id,
+      season: target.s,
+      episode: target.e,
+      rating,
+    }).catch((err) => console.warn("upsertEpisodeRating failed:", err));
+    try {
+      const updated = await persistProgressUpdate(user.id, show.id, progress ?? undefined, target);
+      setProgress(updated);
+    } catch (err) {
+      console.warn("rating-flow progress write failed:", err);
+    }
+    setPendingRating(null);
+  }
+  function handleRatingCancel() {
+    setPendingRating(null);
   }
 
   // === SUBMIT ===
@@ -438,6 +492,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
                 console.warn("compose: persistProgressUpdate failed:", err);
               }
             }}
+            onForwardPick={handleRatingForwardPick}
           />
           {progress.isRewatching && (
             <div
@@ -456,6 +511,27 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
             </div>
           )}
         </div>
+
+        {/* Rating-flow intro copy. Only renders when the user arrived via
+            the rating-capture handoff (V2FriendRoomPage / V3JournalPage
+            forward-pick). For any other entry path the regular placeholders
+            stand alone. Spec: sidebar_spec_rating_capture.md. */}
+        {fromRating && (
+          <div
+            style={{
+              fontFamily: "Lora, Georgia, serif",
+              fontStyle: "italic",
+              fontSize: 13,
+              color: INK_FAINT,
+              maxWidth: 480,
+              margin: "0 auto 16px",
+              lineHeight: 1.5,
+              textAlign: "center",
+            }}
+          >
+            Get your first thoughts down. Your gut reaction is worth catching before you read anyone else's. Doesn't have to be profound — you can edit later, or even keep it private for now.
+          </div>
+        )}
 
         {/* === PAPER ===
             Sharp-cornered, white-fill outer container. White extends through
@@ -775,6 +851,15 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
             </div>
           </div>
         </div>
+      )}
+
+      {pendingRating && (
+        <RatingCaptureModal
+          season={pendingRating.s}
+          episode={pendingRating.e}
+          onCommit={handleRatingCommit}
+          onCancel={handleRatingCancel}
+        />
       )}
     </div>
   );

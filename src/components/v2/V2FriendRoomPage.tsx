@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, ChevronDown, Settings, SquarePen, Users } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
@@ -8,6 +8,8 @@ import {
   fetchProgress,
   fetchRoomMapData,
   fetchShows,
+  persistProgressUpdate,
+  upsertEpisodeRating,
   type RoomMapMember,
   type Show,
 } from "../../lib/db";
@@ -23,6 +25,7 @@ import V2RoomMap, { type V2RoomMapMember } from "./V2RoomMap";
 import V2GroupSettingsModal from "./V2GroupSettingsModal";
 import LoadingDots from "../LoadingDots";
 import OneSelectProgress from "../OneSelectProgress";
+import RatingCaptureModal from "../RatingCaptureModal";
 import { navigateToShow } from "./v2nav";
 
 // V2 friend room page at /v2/room/:groupId. Two-pane layout: feed of entry
@@ -42,6 +45,7 @@ import { navigateToShow } from "./v2nav";
 
 export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
   const [room, setRoom] = useState<FriendGroup | null>(null);
@@ -51,6 +55,12 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Rating-capture flow: forward picks on the watch-progress dropdown open
+  // RatingCaptureModal instead of OneSelectProgress's internal confirm.
+  // pendingRating holds the destination episode while the modal is open.
+  // See sidebar_spec_rating_capture.md.
+  const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
 
   const feedRef = useRef<V2RoomFeedHandle>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -251,6 +261,57 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     [user?.id, show],
   );
 
+  // Rating-capture handoff: forward pick on the progress dropdown opens
+  // RatingCaptureModal. The modal manages its own tap → 150ms → commit
+  // animation; on commit we save the rating, advance progress, and navigate
+  // to /v2/compose with returnTo set so the user lands back here on discard.
+  const handleForwardPick = useCallback((val: { s: number; e: number }) => {
+    setPendingRating(val);
+  }, []);
+
+  const handleRatingCommit = useCallback(
+    async (rating: number) => {
+      if (!pendingRating || !user?.id || !show) return;
+      const target = pendingRating;
+      // Fire-and-forget rating upsert. Failure is non-fatal — the user
+      // still advances progress and reaches the compose page; only the
+      // map cell goes unrated.
+      upsertEpisodeRating({
+        userId: user.id,
+        showId: show.id,
+        season: target.s,
+        episode: target.e,
+        rating,
+      }).catch((err) => console.warn("upsertEpisodeRating failed:", err));
+      // Persist + AWAIT the progress write so V2ComposePage's fetchProgress
+      // on mount doesn't race. persistProgressUpdate handles rewatcher
+      // transitions correctly.
+      try {
+        const updated = await persistProgressUpdate(
+          user.id,
+          show.id,
+          progressForShow ?? undefined,
+          target,
+        );
+        setProgressForShow(updated);
+      } catch (err) {
+        console.warn("rating-flow progress write failed:", err);
+        // Surface nothing to the user — fall through to navigate anyway so
+        // the rating they just gave isn't visually lost. Worst case the
+        // compose page reads stale progress; user re-picks if needed.
+      }
+      setPendingRating(null);
+      navigate(`/v2/compose/${show.id}`, {
+        state: { fromRating: true, returnTo: location.pathname },
+      });
+    },
+    [pendingRating, user?.id, show, progressForShow, navigate, location.pathname],
+  );
+
+  const handleRatingCancel = useCallback(() => {
+    setPendingRating(null);
+  }, []);
+
   // Geometry constants — keep banner column aligned with the feed pane's
   // left edge so the visual rhythm reads as one column.
   const FEED_MAX_W = 672;
@@ -415,6 +476,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                   show={show}
                   value={eff || { s: 1, e: 1 }}
                   onConfirm={handleProgressConfirm}
+                  onForwardPick={handleForwardPick}
                   requireConfirm={true}
                   allowZero={eff?.s === 0}
                   rewatchHighest={
@@ -478,6 +540,15 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
           onRenamed={(newName) => {
             setRoom((prev) => (prev ? { ...prev, name: newName } : prev));
           }}
+        />
+      )}
+
+      {pendingRating && (
+        <RatingCaptureModal
+          season={pendingRating.s}
+          episode={pendingRating.e}
+          onCommit={handleRatingCommit}
+          onCancel={handleRatingCancel}
         />
       )}
     </V2Layout>

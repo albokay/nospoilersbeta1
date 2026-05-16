@@ -35,7 +35,7 @@ function isWithinPreviousHighest(s: number, e: number, highest?: { s: number; e:
 }
 
 export default function OneSelectProgress({
-  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, compactLabel, allowZero = false, rewatchHighest, plain = false, pillBg
+  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, onForwardPick, compactLabel, allowZero = false, rewatchHighest, plain = false, pillBg
 }: {
   show: any;
   value: any;
@@ -43,6 +43,18 @@ export default function OneSelectProgress({
   onPendingChange?: (b: boolean) => void;
   requireConfirm?: boolean;
   onChangeSelected?: (v: { s: number; e: number }) => void;
+  // Opt-in for the rating-capture flow. When provided AND the user picks a
+  // forward episode, this fires immediately and the internal confirm modal
+  // is suppressed — the caller takes over (renders RatingCaptureModal,
+  // upserts the rating, advances progress via its own onConfirm, navigates).
+  // Backwards picks still trigger the internal red confirm modal because
+  // rating-on-backwards-rewind isn't the desired flow (a backward move is
+  // an unrate scenario, not a new-rating moment).
+  //
+  // Used at V2FriendRoomPage, V3JournalPage (show-tab header), and
+  // V2ComposePage. The 6 V1 callsites (ShowSection, ProfilePage) do NOT
+  // pass this prop — they keep the legacy confirm behavior.
+  onForwardPick?: (v: { s: number; e: number }) => void;
   compactLabel?: string;
   allowZero?: boolean;
   // When the user is rewatching a show, pass the previous highest point.
@@ -98,6 +110,22 @@ export default function OneSelectProgress({
     setPending({ ...next, backwards });
     onPendingChange?.(true);
     onChangeSelected?.({ s: next.s, e: next.e });
+
+    // Rating-capture handoff: forward picks with onForwardPick provided
+    // bypass the internal confirm entirely. Reset internal state on
+    // handoff so the dropdown visually snaps back to the current value;
+    // the caller's rating modal is the source of truth from here.
+    // If the caller commits, they'll call onConfirm and the value prop
+    // will update, retriggering the [currentId] useEffect. If the caller
+    // cancels, the dropdown is already back at currentId — no further work.
+    if (onForwardPick && !backwards) {
+      onForwardPick({ s: next.s, e: next.e });
+      setSelectedId(currentId);
+      setPending(null);
+      onPendingChange?.(false);
+      return;
+    }
+
     if (requireConfirm) setConfirmOpen(true);
   }
 
