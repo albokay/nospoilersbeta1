@@ -420,7 +420,7 @@ export default function V2RoomMap({
                         <Tooltip
                           text={tooltipText}
                           direction="left"
-                          width={260}
+                          width={340}
                           portal
                           tooltipStyle={{
                             background: "#fff",
