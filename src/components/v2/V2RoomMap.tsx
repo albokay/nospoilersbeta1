@@ -414,7 +414,16 @@ export default function V2RoomMap({
                           }}
                         >
                           {isReached && rating && (
-                            <DiceFace rating={rating} size={CELL} />
+                            // Pass the CONTENT area size, not the cell's
+                            // declared width. theme.ts sets a global
+                            // box-sizing: border-box, so the cell's 2px
+                            // border eats 4px from the content area
+                            // (32 - 2*2 = 28). Without this adjustment,
+                            // a size=32 DiceFace overflows the content
+                            // area by 2px right + 2px down, visibly
+                            // shifting the dice off-center toward the
+                            // bottom-right of the visual cell.
+                            <DiceFace rating={rating} size={CELL - 4} />
                           )}
                         </div>
                       );
