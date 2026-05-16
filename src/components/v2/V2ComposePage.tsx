@@ -344,12 +344,11 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
       for (const pid of insertedPromptIds) {
         logThreadPrompt(t.id, pid).catch(() => {});
       }
-      // Land directly on the new thread so the user can immediately read
-      // it / share / reply. Public destinations land in public-context;
-      // friend-room destinations need the active-room sessionStorage marker
-      // so ShowSection mounts the thread inside the room. We're navigating
-      // from /v2/compose (a different route family) so SPA navigate is
-      // safe — App will mount ShowSection fresh.
+      // Active-group sessionStorage marker — kept so V1 ShowSection (if
+      // the user later navigates there) still resolves to the right
+      // friend-room context. The /v2/room/:groupId destination below
+      // doesn't need this for itself, but cross-surface continuity to V1
+      // does. Cheap to write; safe to leave.
       if (destination !== "private" && destination !== "public") {
         try { sessionStorage.setItem(`ns_active_group_${show.id}`, destination); } catch {}
       } else {
@@ -359,7 +358,20 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
       // (the just-published post would otherwise be missing from group/
       // progress derivations on the prefetch's next hover).
       clearComposeDataCache(user.id, show.id);
-      navigate(`/show/${show.id}/thread/${t.id}`);
+
+      // Destination-based post-publish navigation. Lands the user on the
+      // surface where their post is now the most recent entry, rather
+      // than on the thread page itself. Applies to all V2 compose
+      // publishes (rating-flow + non-rating). Per spec
+      // sidebar_spec_rating_capture.md §"What happens after the user
+      // finishes (or skips) compose".
+      if (destination === "private") {
+        navigate("/v3/journal", { state: { activeTab: show.id } });
+      } else if (destination === "public") {
+        navigate(`/show/${show.id}`);
+      } else {
+        navigate(`/v2/room/${destination}`);
+      }
     } catch (err: any) {
       console.warn("submit failed:", err);
       setSubmitError(err?.message || "Post failed. Try again.");
