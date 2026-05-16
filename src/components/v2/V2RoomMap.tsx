@@ -29,14 +29,17 @@ const SEASON_LABEL_W = 80;
 const EPISODE_LABEL_W = 24;
 const HEADER_HEIGHT = 120;
 
-// Rating phrase copy — per spec §"The rating system"
+// Rating phrase copy — per spec §"The rating system" and the dice-display
+// spec (sidebar_spec_rating_dice_display.md). Integer scale ASCENDS with
+// goodness: 1 = worst (Nope. / 1 dot), 6 = best (Woah! / 6 dots). Inverted
+// from the original mapping on 2026-05-16.
 const RATING_PHRASES: Record<number, string> = {
-  1: "Woah!",
-  2: "Things are cooking.",
-  3: "Solid.",
-  4: "I'll keep going.",
-  5: "Losing me.",
-  6: "Nope.",
+  1: "Nope.",
+  2: "Losing me.",
+  3: "I'll keep going.",
+  4: "Solid.",
+  5: "Things are cooking.",
+  6: "Woah!",
 };
 
 export type V2RoomMapEntry = {

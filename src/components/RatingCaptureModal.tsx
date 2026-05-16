@@ -17,13 +17,18 @@ import Modal from "./Modal";
 //   - closing this modal (by unmounting it)
 //   - navigating to /v2/compose
 
+// Integer scale ASCENDS with goodness: 1 = worst, 6 = best. Aligns with
+// the dice-face display on the V2 friend room map (more dots = better)
+// and with natural sort/query semantics. Inverted from the modal's
+// original mapping on 2026-05-16 — pre-existing test-only ratings in
+// prod were discarded per user (no migration).
 export const RATING_LABELS: Record<number, string> = {
-  1: "Woah!",
-  2: "Things are cooking.",
-  3: "Solid.",
-  4: "I'll keep going.",
-  5: "Losing me.",
-  6: "Nope.",
+  1: "Nope.",
+  2: "Losing me.",
+  3: "I'll keep going.",
+  4: "Solid.",
+  5: "Things are cooking.",
+  6: "Woah!",
 };
 
 const COMMIT_DELAY_MS = 150;
@@ -63,7 +68,11 @@ export default function RatingCaptureModal({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {[1, 2, 3, 4, 5, 6].map((r) => {
+        {/* Render top-to-bottom: best (6 = Woah!) → worst (1 = Nope.).
+            The integer scale ascends with goodness; rendering descending
+            here keeps the visual order spec'd in sidebar_spec_rating_capture.md
+            (Woah! at top, Nope. at bottom). */}
+        {[6, 5, 4, 3, 2, 1].map((r) => {
           const showLabel = !locked || selected === r;
           return (
             <button

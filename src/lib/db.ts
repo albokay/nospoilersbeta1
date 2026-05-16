@@ -3697,7 +3697,7 @@ export async function deleteProfileThought(id: string): Promise<void> {
 export type EpisodeRating = {
   s: number;
   e: number;
-  rating: number; // 1..6 — Woah! / Things are cooking. / Solid. / I'll keep going. / Losing me. / Nope.
+  rating: number; // 1..6 — ascends with goodness. 1=Nope. 2=Losing me. 3=I'll keep going. 4=Solid. 5=Things are cooking. 6=Woah!
 };
 
 export type RoomMapEntry = {
