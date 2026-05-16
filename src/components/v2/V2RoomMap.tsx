@@ -2,6 +2,7 @@ import React, { useMemo, useRef } from "react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
+import DiceFace from "./DiceFace";
 
 // V2 friend room — right-pane "season map".
 //
@@ -320,12 +321,19 @@ export default function V2RoomMap({
                 const aboveViewer =
                   !!viewerEff && isAbove(viewerEff.s, viewerEff.e, row.season, row.episode);
 
-                // Prefix conventions on the cell tooltip:
-                //   - reached + no entry → "watched:" (Lora italic) on line 1
-                //   - has entry → "wrote:" (Inter regular) on line 2 before the title
-                //   - not-reached, or has-entry → no "watched:" prefix on line 1
+                // Tooltip line shape per sidebar_spec_rating_dice_display.md:
+                //   - State 1 (reached + rated, no entry) → 2 lines:
+                //       SE · @user
+                //       rated: <phrase>
+                //   - State 2 (reached + entry, with or without rating) → 2-3 lines:
+                //       SE · @user
+                //       wrote: "Title"
+                //       rated: <phrase>  ← only if rated
+                //   - State 3 (reached, no rating, no entry) → 1 line:
+                //       watched: SE · @user
+                //   - State 4 (not reached) → no tooltip at all (wrapper skipped below).
                 const hasEntry = !!entry;
-                const watchedPrefix = isReached && !hasEntry;
+                const isStateThree = isReached && !hasEntry && !ratingPhrase;
 
                 let entryLine: React.ReactNode = null;
                 if (entry) {
@@ -345,19 +353,31 @@ export default function V2RoomMap({
                   );
                 }
 
+                let ratedLine: React.ReactNode = null;
+                if (ratingPhrase) {
+                  ratedLine = (
+                    <span style={{ display: "block", marginTop: 4 }}>
+                      rated:{" "}
+                      <span className="editorial" style={{ fontStyle: "italic" }}>
+                        {ratingPhrase}
+                      </span>
+                    </span>
+                  );
+                }
+
                 const tooltipText = (
                   <span>
                     <span style={{ display: "block" }}>
-                      {watchedPrefix && (
+                      {isStateThree && (
                         <span className="editorial" style={{ fontStyle: "italic" }}>
                           watched:{" "}
                         </span>
                       )}
                       S{String(row.season).padStart(2, "0")} E
                       {String(row.episode).padStart(2, "0")} · @{m.username}
-                      {ratingPhrase && <> — {ratingPhrase}</>}
                     </span>
                     {entryLine}
+                    {ratedLine}
                   </span>
                 );
 
@@ -370,31 +390,48 @@ export default function V2RoomMap({
                       position: "relative",
                     }}
                   >
-                    {!renderEmpty && (
-                      <Tooltip
-                        text={tooltipText}
-                        direction="left"
-                        width={260}
-                        portal
-                        tooltipStyle={{
-                          background: "#fff",
-                          color: "#1a3a4a",
-                          textAlign: "left",
-                        }}
-                      >
+                    {!renderEmpty && (() => {
+                      const cellInner = (
                         <div
                           onClick={() => {
                             if (entry) onEntryClick(entry.threadId);
                           }}
+                          data-rating={rating ?? undefined}
                           style={{
                             width: CELL,
                             height: CELL,
                             cursor: entry ? "pointer" : "default",
                             ...cellShapeStyle(isReached, !!entry),
                           }}
-                        />
-                      </Tooltip>
-                    )}
+                        >
+                          {isReached && rating && (
+                            <DiceFace rating={rating} size={CELL} />
+                          )}
+                        </div>
+                      );
+                      // State 4 (not reached, non-departed) renders the cell
+                      // shape but skips the tooltip wrap entirely — there's
+                      // nothing meaningful to show for an episode the friend
+                      // hasn't reached.
+                      if (!isReached) {
+                        return cellInner;
+                      }
+                      return (
+                        <Tooltip
+                          text={tooltipText}
+                          direction="left"
+                          width={260}
+                          portal
+                          tooltipStyle={{
+                            background: "#fff",
+                            color: "#1a3a4a",
+                            textAlign: "left",
+                          }}
+                        >
+                          {cellInner}
+                        </Tooltip>
+                      );
+                    })()}
 
                     {/* Spine segment below the cell — only when both this
                         and the next row's cell are reached. */}
