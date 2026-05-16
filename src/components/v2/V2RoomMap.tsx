@@ -33,9 +33,10 @@ const HEADER_HEIGHT = 120;
 const RATING_PHRASES: Record<number, string> = {
   1: "Woah!",
   2: "Things are cooking.",
-  3: "It was fine.",
-  4: "Losing me.",
-  5: "Nope.",
+  3: "Solid.",
+  4: "I'll keep going.",
+  5: "Losing me.",
+  6: "Nope.",
 };
 
 export type V2RoomMapEntry = {
