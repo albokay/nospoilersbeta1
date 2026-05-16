@@ -268,6 +268,15 @@ export default function V3JournalPage({
         : visibleTabOrder[0];
       setActiveTab(tab);
       setViewedTabIds(prev => new Set([...prev, tab]));
+      // Apply filter directive alongside activeTab. Used by
+      // V2ComposePage's private-publish nav so the user lands on the
+      // private lane and sees their just-published post immediately,
+      // overriding the per-tab "friends" default. One-shot — gated on
+      // the same location.key as activeTab.
+      const rawRequestedFilter = (location.state as any)?.activeFilter as string | undefined;
+      if (rawRequestedFilter === "private" || rawRequestedFilter === "friends" || rawRequestedFilter === "public") {
+        setFilterByShow(prev => ({ ...prev, [tab]: rawRequestedFilter as JournalFilter }));
+      }
       consumedDirectiveKeyRef.current = location.key;
     } else if (!activeTab) {
       // Initial pick when no directive is present and no tab is selected yet.

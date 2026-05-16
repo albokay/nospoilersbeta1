@@ -365,8 +365,13 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
       // publishes (rating-flow + non-rating). Per spec
       // sidebar_spec_rating_capture.md §"What happens after the user
       // finishes (or skips) compose".
+      //
+      // Private destination also seeds activeFilter="private" so V3's
+      // segmented journal filter pre-selects the private lane — the user
+      // sees their just-published private post immediately, instead of
+      // landing on the default "friends" lane where it isn't visible.
       if (destination === "private") {
-        navigate("/v3/journal", { state: { activeTab: show.id } });
+        navigate("/v3/journal", { state: { activeTab: show.id, activeFilter: "private" } });
       } else if (destination === "public") {
         navigate(`/show/${show.id}`);
       } else {
