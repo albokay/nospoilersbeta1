@@ -27,7 +27,11 @@ export default function Tooltip({
   style?: React.CSSProperties;
   gap?: number;
   useAbsolute?: boolean;
-  width?: number;
+  // Number = fixed pixel width. "auto" = bubble sizes to content
+  // (uses CSS `max-content`). For direction="left" + "auto", positioning
+  // switches to right-anchored so the bubble grows leftward from the
+  // element's left edge instead of being placed assuming a fixed width.
+  width?: number | "auto";
   tooltipStyle?: React.CSSProperties;
   disabled?: boolean;
   // When true, render the bubble into document.body so it escapes any
@@ -60,12 +64,25 @@ export default function Tooltip({
 
   const getFixedStyle = (): React.CSSProperties => {
     if (!rect) return { display: "none" };
-    if (direction === "left") return {
-      position: "fixed",
-      top: rect.top + rect.height / 2,
-      left: rect.left - width - gap,
-      transform: "translateY(-50%)",
-    };
+    if (direction === "left") {
+      // Auto-width: anchor the bubble's RIGHT edge to the element's left
+      // edge (minus gap) so the bubble can grow leftward as content
+      // lengthens, without needing a numeric width upfront.
+      if (width === "auto") {
+        return {
+          position: "fixed",
+          top: rect.top + rect.height / 2,
+          right: window.innerWidth - rect.left + gap,
+          transform: "translateY(-50%)",
+        };
+      }
+      return {
+        position: "fixed",
+        top: rect.top + rect.height / 2,
+        left: rect.left - width - gap,
+        transform: "translateY(-50%)",
+      };
+    }
     if (direction === "right") return {
       position: "fixed",
       top: rect.top + rect.height / 2,
@@ -102,7 +119,10 @@ export default function Tooltip({
             fontWeight: 500,
             lineHeight: 1.4,
             boxShadow: "0 4px 20px rgba(0,0,0,0.32)",
-            width,
+            // "auto" → CSS max-content shrinks the bubble to its widest
+            // inline run. Callers should pair with whiteSpace: nowrap on
+            // line spans and an optional maxWidth in tooltipStyle.
+            width: width === "auto" ? "max-content" : width,
             zIndex: 9999,
             pointerEvents: "none",
             textAlign: "center",

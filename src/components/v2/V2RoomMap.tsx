@@ -335,6 +335,15 @@ export default function V2RoomMap({
                 const hasEntry = !!entry;
                 const isStateThree = isReached && !hasEntry && !ratingPhrase;
 
+                // Title truncation: 45 chars + ellipsis. Guarantees the
+                // "wrote:" line stays on one visual line regardless of
+                // how long the real entry title is.
+                const MAX_TITLE = 45;
+                const displayTitle =
+                  entry && entry.title.length > MAX_TITLE
+                    ? entry.title.slice(0, MAX_TITLE) + "…"
+                    : entry?.title;
+
                 let entryLine: React.ReactNode = null;
                 if (entry) {
                   const titlePart = aboveViewer ? (
@@ -343,11 +352,11 @@ export default function V2RoomMap({
                     </span>
                   ) : (
                     <span className="editorial" style={{ fontStyle: "italic" }}>
-                      &ldquo;{entry.title}&rdquo;
+                      &ldquo;{displayTitle}&rdquo;
                     </span>
                   );
                   entryLine = (
-                    <span style={{ display: "block", marginTop: 4 }}>
+                    <span style={{ display: "block", marginTop: 4, whiteSpace: "nowrap" }}>
                       wrote: {titlePart}
                     </span>
                   );
@@ -356,7 +365,7 @@ export default function V2RoomMap({
                 let ratedLine: React.ReactNode = null;
                 if (ratingPhrase) {
                   ratedLine = (
-                    <span style={{ display: "block", marginTop: 4 }}>
+                    <span style={{ display: "block", marginTop: 4, whiteSpace: "nowrap" }}>
                       rated:{" "}
                       <span className="editorial" style={{ fontStyle: "italic" }}>
                         {ratingPhrase}
@@ -367,7 +376,7 @@ export default function V2RoomMap({
 
                 const tooltipText = (
                   <span>
-                    <span style={{ display: "block" }}>
+                    <span style={{ display: "block", whiteSpace: "nowrap" }}>
                       {isStateThree && (
                         <span className="editorial" style={{ fontStyle: "italic" }}>
                           watched:{" "}
@@ -420,7 +429,7 @@ export default function V2RoomMap({
                         <Tooltip
                           text={tooltipText}
                           direction="left"
-                          width={340}
+                          width="auto"
                           portal
                           tooltipStyle={{
                             background: "#fff",

@@ -29,8 +29,8 @@ export default function DiceFace({
   rating: number;
   size?: number;
 }) {
-  const dotSize = Math.max(2, Math.round(size * 0.1875));  // 6 at 32px — bigger
-  const inset = Math.round(size * 0.21875);                 // 7 at 32px — more inset = more compact
+  const dotSize = Math.max(2, Math.round(size * 0.1875));  // 6 at 32px
+  const inset = Math.round(size * 0.25);                    // 8 at 32px — perimeter dots pulled in, dice footprint centered
   const center = size / 2;
   const far = size - inset;
 
