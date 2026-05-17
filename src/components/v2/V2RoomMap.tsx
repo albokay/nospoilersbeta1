@@ -124,8 +124,12 @@ export default function V2RoomMap({
   // with no transition; phase 'down' = animate back to scale(1) over 150ms
   // ease-out. Two requestAnimationFrames between phases guarantee the 'up'
   // state actually renders (otherwise React would batch the state updates
-  // and the user would only ever see the down-animation). Per spec, the
-  // dots snap to the new face; the bounce carries the personality.
+  // and the user would only ever see the down-animation). After ~200ms
+  // (enough buffer past the 150ms down-animation), state clears back to
+  // null so the cell has NO transform property at all — important because
+  // an unconditional transform (even identity scale(1)) promotes the cell
+  // to its own compositing layer, which causes sub-pixel rendering
+  // differences that mis-align the spine below the cell ("broken line").
   const [bouncingState, setBouncingState] = useState<{ cellKey: string; phase: "up" | "down" } | null>(null);
   const triggerBounce = (cellKey: string) => {
     setBouncingState({ cellKey, phase: "up" });
@@ -136,6 +140,11 @@ export default function V2RoomMap({
         );
       });
     });
+    window.setTimeout(() => {
+      setBouncingState((prev) =>
+        prev && prev.cellKey === cellKey && prev.phase === "down" ? null : prev,
+      );
+    }, 200);
   };
 
   // Next rating in the 1..6 rotation with wrap.
@@ -288,7 +297,6 @@ export default function V2RoomMap({
                     const prevReached = rowIdx - 1 <= mMap.lastReachedIdx;
                     const thisReached = rowIdx <= mMap.lastReachedIdx;
                     const drawSpine = prevReached && thisReached;
-                    const isSelfCol = !!viewerUserId && m.userId === viewerUserId;
                     return (
                       <div
                         key={m.userId}
@@ -302,12 +310,7 @@ export default function V2RoomMap({
                               top: 0,
                               width: 2,
                               height: GAP_BELOW * 2,
-                              // Self-column spine takes the canon-dark-blue
-                              // cell color so the spine visually continues
-                              // out of the dark cells. Otherwise the spine
-                              // (faint navy) reads as "broken" against the
-                              // solid dark-blue cell borders.
-                              background: isSelfCol ? "#355eb8" : "var(--dos-border)",
+                              background: "var(--dos-border)",
                               opacity: 0.55,
                             }}
                           />
@@ -533,11 +536,17 @@ export default function V2RoomMap({
                             width: CELL,
                             height: CELL,
                             cursor: clickAction ? "pointer" : "default",
-                            // Phase 'up' = instant pop (no transition).
-                            // Phase 'down' = animate back over 150ms.
-                            // Default = no transition, scale(1).
-                            transform: bouncePhase === "up" ? "scale(1.12)" : "scale(1)",
-                            transition: bouncePhase === "down" ? "transform 150ms ease-out" : "none",
+                            // Transform is applied ONLY during the bounce
+                            // (phase 'up' = instant pop; phase 'down' =
+                            // animate back). Idle cells have NO transform
+                            // property — an unconditional scale(1) would
+                            // promote every cell to its own compositing
+                            // layer and mis-align the spine below it.
+                            ...(bouncePhase === "up"
+                              ? { transform: "scale(1.12)", transition: "none" }
+                              : bouncePhase === "down"
+                              ? { transform: "scale(1)", transition: "transform 150ms ease-out" }
+                              : {}),
                             ...cellShapeStyle(isReached, !!entry, isSelf),
                           }}
                         >
@@ -581,10 +590,7 @@ export default function V2RoomMap({
                     })()}
 
                     {/* Spine segment below the cell — only when both this
-                        and the next row's cell are reached. Self-column
-                        spine takes the canon-dark-blue cell color so the
-                        line visually continues out of the dark cells
-                        (matches the season-break spine treatment above). */}
+                        and the next row's cell are reached. */}
                     {showSpineBelow && (
                       <div
                         style={{
@@ -593,7 +599,7 @@ export default function V2RoomMap({
                           top: CELL,
                           width: 2,
                           height: GAP_BELOW,
-                          background: isSelf ? "#355eb8" : "var(--dos-border)",
+                          background: "var(--dos-border)",
                           opacity: 0.55,
                         }}
                       />
