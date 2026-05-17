@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
@@ -73,8 +73,17 @@ export type V2RoomMapProps = {
   viewerProgress: ProgressEntry | null;
   /** Viewer's user id — drives the canon-dark-blue self-column treatment. */
   viewerUserId?: string;
+  /** Set of entry threadIds currently intersecting the viewport in the feed.
+      Drives click-to-adjust on self-column state-2 cells: when the cell's
+      entry is visible, click rotates rating; when off-screen, click scrolls. */
+  visibleEntryIds?: Set<string>;
   /** Fires when a cell with an entry is clicked. */
   onEntryClick: (threadId: string) => void;
+  /** Fires when the viewer clicks one of their own cells in a way that
+      changes the rating. Caller persists + updates state. State 3 first
+      click sends rating=1; state 1 and state 2 (when entry visible) send
+      the next rotation value (current+1, wrapping 6→1). */
+  onRateOwnCell?: (season: number, episode: number, newRating: number) => void;
 };
 
 type RowKey = { season: number; episode: number; isFirstOfSeason: boolean };
@@ -107,8 +116,30 @@ export default function V2RoomMap({
   seasons,
   viewerProgress,
   viewerUserId,
+  visibleEntryIds,
   onEntryClick,
+  onRateOwnCell,
 }: V2RoomMapProps) {
+  // Bounce animation — only one cell bounces at a time. Set on click,
+  // cleared after the transition. The CSS scales the cell to 1.12 and
+  // back. Per spec, the dots snap to the new face (no animation); the
+  // bounce carries the personality.
+  const [bouncingCellKey, setBouncingCellKey] = useState<string | null>(null);
+  const bounceTimerRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (bounceTimerRef.current) window.clearTimeout(bounceTimerRef.current);
+  }, []);
+  const triggerBounce = (cellKey: string) => {
+    setBouncingCellKey(cellKey);
+    if (bounceTimerRef.current) window.clearTimeout(bounceTimerRef.current);
+    bounceTimerRef.current = window.setTimeout(() => {
+      setBouncingCellKey(null);
+      bounceTimerRef.current = null;
+    }, 180);
+  };
+
+  // Next rating in the 1..6 rotation with wrap.
+  const nextRating = (cur: number): number => (cur >= 6 ? 1 : cur + 1);
   // Filter seasons to those any member has reached AT LEAST episode 1 in.
   // A member at S2E0 ("haven't started season 2") hasn't reached any S2
   // episode, so S2 stays hidden until someone actually watches S2E1+.
@@ -359,6 +390,44 @@ export default function V2RoomMap({
                 const hasEntry = !!entry;
                 const isStateThree = isReached && !hasEntry && !ratingPhrase;
 
+                // Click-to-adjust-ratings (self column only; viewport-aware).
+                // Spec: sidebar_spec_click_to_adjust_ratings.md
+                //
+                // For self cells:
+                //   - state 3 (no rating, no entry):    click → set rating = 1
+                //   - state 1 (rating, no entry):       click → rotate rating
+                //   - state 2 (rating + entry visible): click → rotate rating
+                //   - state 2 (rating + entry off-screen): click → scroll to entry
+                //
+                // Rating-changing clicks also trigger the bounce + show the
+                // canon-red instruction line in the tooltip. Off-screen-entry
+                // clicks go to scroll and skip both. Other users' cells keep
+                // the existing scroll-to-entry behavior; no instruction line.
+                const cellKey = `${row.season}-${row.episode}`;
+                const entryVisible = !!entry && !!visibleEntryIds?.has(entry.threadId);
+                const isBouncing = bouncingCellKey === cellKey;
+
+                let clickAction: (() => void) | null = null;
+                let showInstruction = false;
+                if (isReached) {
+                  if (isSelf) {
+                    if (entry && !entryVisible) {
+                      clickAction = () => onEntryClick(entry.threadId);
+                    } else if (onRateOwnCell) {
+                      const target = rating ? nextRating(rating) : 1;
+                      clickAction = () => {
+                        onRateOwnCell(row.season, row.episode, target);
+                        triggerBounce(cellKey);
+                      };
+                      showInstruction = true;
+                    } else if (entry) {
+                      clickAction = () => onEntryClick(entry.threadId);
+                    }
+                  } else if (entry) {
+                    clickAction = () => onEntryClick(entry.threadId);
+                  }
+                }
+
                 // Title truncation: 45 chars + ellipsis. Guarantees the
                 // "wrote:" line stays on one visual line regardless of
                 // how long the real entry title is.
@@ -398,6 +467,21 @@ export default function V2RoomMap({
                   );
                 }
 
+                let instructionLine: React.ReactNode = null;
+                if (showInstruction) {
+                  instructionLine = (
+                    <span style={{
+                      display: "block",
+                      marginTop: 6,
+                      fontSize: 11,
+                      color: "#f45028",
+                      whiteSpace: "nowrap",
+                    }}>
+                      Click to change this episode's rating.
+                    </span>
+                  );
+                }
+
                 const tooltipText = (
                   <span>
                     <span style={{ display: "block", whiteSpace: "nowrap" }}>
@@ -411,6 +495,7 @@ export default function V2RoomMap({
                     </span>
                     {entryLine}
                     {ratedLine}
+                    {instructionLine}
                   </span>
                 );
 
@@ -426,14 +511,14 @@ export default function V2RoomMap({
                     {!renderEmpty && (() => {
                       const cellInner = (
                         <div
-                          onClick={() => {
-                            if (entry) onEntryClick(entry.threadId);
-                          }}
+                          onClick={clickAction ?? undefined}
                           data-rating={rating ?? undefined}
                           style={{
                             width: CELL,
                             height: CELL,
-                            cursor: entry ? "pointer" : "default",
+                            cursor: clickAction ? "pointer" : "default",
+                            transition: "transform 150ms ease-out",
+                            transform: isBouncing ? "scale(1.12)" : "scale(1)",
                             ...cellShapeStyle(isReached, !!entry, isSelf),
                           }}
                         >

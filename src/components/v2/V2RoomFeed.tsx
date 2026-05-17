@@ -78,6 +78,11 @@ export type V2RoomFeedProps = {
   /** Forwarded from V2InlineThread — parent decides how to update the feed. */
   onThreadEdited?: (updated: Thread) => void;
   onThreadDeleted?: (threadId: string) => void;
+  /** Fires whenever the set of entries currently intersecting the viewport
+      changes. Drives V2RoomMap's click-to-adjust-ratings flow — a self-cell
+      whose entry IS visible rotates rating on click; one whose entry is OFF-
+      screen scrolls to it instead. */
+  onVisibleEntriesChange?: (visibleIds: Set<string>) => void;
 };
 
 const HIGHLIGHT_MS = 1500;
@@ -92,6 +97,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     onAuthRequired,
     onThreadEdited,
     onThreadDeleted,
+    onVisibleEntriesChange,
   },
   ref,
 ) {
@@ -182,6 +188,50 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   useEffect(() => () => {
     if (highlightTimer.current) window.clearTimeout(highlightTimer.current);
   }, []);
+
+  // Viewport-visibility observer. Tracks which entry tickets are currently
+  // intersecting the viewport and emits the set whenever it changes. Drives
+  // V2RoomMap's click-to-adjust-ratings flow: a self-cell whose entry is
+  // visible rotates rating on click; one whose entry is off-screen scrolls
+  // to it instead. Re-created when the set of mounted tickets changes
+  // (entries-list reshuffle / item add or remove).
+  const entryIdsKey = useMemo(
+    () => sorted.map((e) => e.threadId).join(","),
+    [sorted],
+  );
+  const onVisibleEntriesChangeRef = useRef(onVisibleEntriesChange);
+  useEffect(() => {
+    onVisibleEntriesChangeRef.current = onVisibleEntriesChange;
+  }, [onVisibleEntriesChange]);
+  useEffect(() => {
+    if (!onVisibleEntriesChangeRef.current) return;
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (records) => {
+        let changed = false;
+        for (const rec of records) {
+          const id = (rec.target as HTMLElement).dataset.threadId;
+          if (!id) continue;
+          if (rec.isIntersecting) {
+            if (!visible.has(id)) {
+              visible.add(id);
+              changed = true;
+            }
+          } else if (visible.has(id)) {
+            visible.delete(id);
+            changed = true;
+          }
+        }
+        if (changed) onVisibleEntriesChangeRef.current?.(new Set(visible));
+      },
+      { threshold: 0 },
+    );
+    for (const id of Object.keys(ticketRefs.current)) {
+      const el = ticketRefs.current[id];
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, [entryIdsKey]);
 
   const scrollToEntry = useCallback((threadId: string) => {
     const el = ticketRefs.current[threadId];

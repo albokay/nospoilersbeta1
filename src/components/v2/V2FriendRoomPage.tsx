@@ -62,6 +62,28 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // See sidebar_spec_rating_capture.md.
   const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
 
+  // Click-to-adjust ratings on the map: which entries are currently
+  // intersecting the viewport (driven by V2RoomFeed's IntersectionObserver).
+  // V2RoomMap consumes this — self-column state-2 cells whose entry is
+  // visible rotate rating on click; cells whose entry is off-screen scroll
+  // to it instead. See sidebar_spec_click_to_adjust_ratings.md.
+  const [visibleEntryIds, setVisibleEntryIds] = useState<Set<string>>(new Set());
+
+  // Debounce timers per (season, episode) — each click optimistically
+  // updates local state and schedules a 500ms-deferred UPSERT. A repeat
+  // click for the same cell cancels its prior timer and reschedules with
+  // the new value, so only the LATEST rating gets written. Trade-off:
+  // navigating away within 500ms of clicking loses the pending write
+  // (rare; user can re-click on next visit).
+  const ratingTimersRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    return () => {
+      for (const t of Object.values(ratingTimersRef.current)) {
+        window.clearTimeout(t);
+      }
+    };
+  }, []);
+
   const feedRef = useRef<V2RoomFeedHandle>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Default to descending — newest episode tag at the top of the feed.
@@ -317,6 +339,51 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     setPendingRating(null);
   }, []);
 
+  // Click-to-adjust rating on a self-column map cell. Optimistic local
+  // state update + debounced UPSERT (500ms). Caller (V2RoomMap) is
+  // responsible for computing the new rating (rotation 1..6, wrap, or
+  // initial 1 for state-3 first click).
+  const handleRateOwnCell = useCallback(
+    (season: number, episode: number, newRating: number) => {
+      if (!user?.id || !show) return;
+      const cellKey = `${season}-${episode}`;
+
+      // Optimistic state update — splice the new rating into the self
+      // member's ratings array. Add if absent (state 3 → state 1 transition),
+      // overwrite if present (state 1 / state 2 rotation).
+      setMapMembers((prev) =>
+        prev.map((m) => {
+          if (m.userId !== user.id) return m;
+          const idx = m.ratings.findIndex((r) => r.s === season && r.e === episode);
+          const newRatings =
+            idx >= 0
+              ? m.ratings.map((r, i) => (i === idx ? { ...r, rating: newRating } : r))
+              : [...m.ratings, { s: season, e: episode, rating: newRating }];
+          return { ...m, ratings: newRatings };
+        }),
+      );
+
+      // Debounced UPSERT — clear any pending timer for this cell, schedule
+      // a fresh one with the LATEST value. Rapid clicks coalesce to one
+      // write at the end of the burst.
+      const existing = ratingTimersRef.current[cellKey];
+      if (existing) window.clearTimeout(existing);
+      ratingTimersRef.current[cellKey] = window.setTimeout(() => {
+        upsertEpisodeRating({
+          userId: user.id,
+          showId: show.id,
+          season,
+          episode,
+          rating: newRating,
+        }).catch((err) =>
+          console.warn(`upsertEpisodeRating (click-to-adjust) failed s${season}e${episode}:`, err),
+        );
+        delete ratingTimersRef.current[cellKey];
+      }, 500);
+    },
+    [user?.id, show],
+  );
+
   // Geometry constants — keep banner column aligned with the feed pane's
   // left edge so the visual rhythm reads as one column.
   const FEED_MAX_W = 672;
@@ -510,6 +577,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 userId={user?.id ?? ""}
                 onThreadEdited={handleThreadEdited}
                 onThreadDeleted={handleThreadDeleted}
+                onVisibleEntriesChange={setVisibleEntryIds}
               />
             )}
           </div>
@@ -529,7 +597,9 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               seasons={show.seasons}
               viewerProgress={progressForShow}
               viewerUserId={user?.id}
+              visibleEntryIds={visibleEntryIds}
               onEntryClick={handleCellClick}
+              onRateOwnCell={handleRateOwnCell}
             />
           </div>
         </div>
