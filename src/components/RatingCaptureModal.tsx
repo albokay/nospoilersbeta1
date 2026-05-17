@@ -79,7 +79,7 @@ export default function RatingCaptureModal({
     // goes through the explicit Cancel button below.
     <Modal onClose={() => {}} width="min(360px, 92vw)">
       <div style={{ marginBottom: 16 }}>
-        <h3 className="title" style={{ fontSize: 20, margin: 0 }}>
+        <h3 className="title" style={{ fontSize: 17, margin: 0 }}>
           How was episode {episode}, (season {season})?
         </h3>
       </div>
@@ -132,10 +132,15 @@ export default function RatingCaptureModal({
 
 function pillStyle(_emptied: boolean): React.CSSProperties {
   return {
-    display: "block",
+    // flex + alignItems:center vertically centers the icon+label span
+    // inside the button. The SVG dice icon's bounding box doesn't align
+    // to the text baseline the way an inline glyph would, so display:block
+    // + symmetric padding leaves the text/icon visually off-center.
+    display: "flex",
+    alignItems: "center",
     width: "85%",
     margin: "0 auto",
-    padding: "10px 22px",
+    padding: "6px 18px",
     borderRadius: 9999,
     background: "#fff",
     color: PILL_INK,
