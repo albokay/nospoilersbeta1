@@ -290,8 +290,17 @@ export default function V2RoomMap({
                       a new season — combined with the previous row's regular
                       GAP_BELOW, the total inter-season gap is 48px. Spine
                       continues through the break for members reached on
-                      both sides. */}
+                      both sides.
+
+                      Grid alignment: this Fragment emits one child per
+                      grid column (7 total: season placeholder, episode
+                      placeholder, then N member spines). Without the
+                      episode placeholder, every member spine would
+                      auto-place one column LEFT — self's spine would
+                      land in the episode-label column and the last
+                      member's spine would be dropped entirely. */}
                   <div style={{ height: GAP_BELOW * 2 }} />
+                  <div /> {/* episode-label column placeholder */}
                   {members.map((m, mIdx) => {
                     const mMap = memberMaps[mIdx];
                     const prevReached = rowIdx - 1 <= mMap.lastReachedIdx;
@@ -318,7 +327,6 @@ export default function V2RoomMap({
                       </div>
                     );
                   })}
-                  <div style={{ height: GAP_BELOW * 2 }} />
                 </>
               )}
 
