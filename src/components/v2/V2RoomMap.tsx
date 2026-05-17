@@ -288,6 +288,7 @@ export default function V2RoomMap({
                     const prevReached = rowIdx - 1 <= mMap.lastReachedIdx;
                     const thisReached = rowIdx <= mMap.lastReachedIdx;
                     const drawSpine = prevReached && thisReached;
+                    const isSelfCol = !!viewerUserId && m.userId === viewerUserId;
                     return (
                       <div
                         key={m.userId}
@@ -301,7 +302,12 @@ export default function V2RoomMap({
                               top: 0,
                               width: 2,
                               height: GAP_BELOW * 2,
-                              background: "var(--dos-border)",
+                              // Self-column spine takes the canon-dark-blue
+                              // cell color so the spine visually continues
+                              // out of the dark cells. Otherwise the spine
+                              // (faint navy) reads as "broken" against the
+                              // solid dark-blue cell borders.
+                              background: isSelfCol ? "#355eb8" : "var(--dos-border)",
                               opacity: 0.55,
                             }}
                           />
@@ -575,7 +581,10 @@ export default function V2RoomMap({
                     })()}
 
                     {/* Spine segment below the cell — only when both this
-                        and the next row's cell are reached. */}
+                        and the next row's cell are reached. Self-column
+                        spine takes the canon-dark-blue cell color so the
+                        line visually continues out of the dark cells
+                        (matches the season-break spine treatment above). */}
                     {showSpineBelow && (
                       <div
                         style={{
@@ -584,7 +593,7 @@ export default function V2RoomMap({
                           top: CELL,
                           width: 2,
                           height: GAP_BELOW,
-                          background: "var(--dos-border)",
+                          background: isSelf ? "#355eb8" : "var(--dos-border)",
                           opacity: 0.55,
                         }}
                       />
