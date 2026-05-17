@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, type LucideIcon } from "lucide-react";
 import Modal from "./Modal";
 
 // Rating capture modal — replaces the OneSelectProgress confirm modal on
@@ -30,6 +31,22 @@ export const RATING_LABELS: Record<number, string> = {
   5: "Things are cooking.",
   6: "Woah!",
 };
+
+// Lucide dice icons matched to rating value. Same integer→pip-count
+// semantics as the map cell's DiceFace (more dots = better).
+const DICE_ICONS: Record<number, LucideIcon> = {
+  1: Dice1,
+  2: Dice2,
+  3: Dice3,
+  4: Dice4,
+  5: Dice5,
+  6: Dice6,
+};
+
+// Canon friend-space text color (memory: canon_friend_space_text). Used
+// for both the dice icon stroke and the pill text so they read as one
+// unified unit.
+const PILL_INK = "#1a3a4a";
 
 const COMMIT_DELAY_MS = 150;
 
@@ -74,6 +91,7 @@ export default function RatingCaptureModal({
             (Woah! at top, Nope. at bottom). */}
         {[6, 5, 4, 3, 2, 1].map((r) => {
           const showLabel = !locked || selected === r;
+          const DiceIcon = DICE_ICONS[r];
           return (
             <button
               key={r}
@@ -81,9 +99,19 @@ export default function RatingCaptureModal({
               disabled={locked}
               style={pillStyle(locked && selected !== r)}
             >
-              {/* Keep label slot rendered (transparent) so the pill height
-                  doesn't change when labels collapse. */}
-              <span style={{ visibility: showLabel ? "visible" : "hidden" }}>
+              {/* Keep label slot rendered (visibility:hidden) so the pill
+                  height doesn't change when labels collapse. The icon
+                  hides with the label so the pill reads as truly empty
+                  during the commit window. */}
+              <span
+                style={{
+                  visibility: showLabel ? "visible" : "hidden",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <DiceIcon size={20} color={PILL_INK} strokeWidth={2} />
                 {RATING_LABELS[r]}
               </span>
             </button>
@@ -91,10 +119,9 @@ export default function RatingCaptureModal({
         })}
 
         <button
-          className="btn"
           onClick={onCancel}
           disabled={locked}
-          style={{ marginTop: 8 }}
+          style={cancelStyle()}
         >
           cancel
         </button>
@@ -106,16 +133,32 @@ export default function RatingCaptureModal({
 function pillStyle(_emptied: boolean): React.CSSProperties {
   return {
     display: "block",
-    width: "100%",
-    padding: "10px 14px",
+    width: "85%",
+    margin: "0 auto",
+    padding: "10px 22px",
     borderRadius: 9999,
     background: "#fff",
-    color: "#1a3a4a",
+    color: PILL_INK,
     border: "none",
     fontSize: 14,
     fontWeight: 500,
-    textAlign: "center",
+    textAlign: "left",
     cursor: "pointer",
     lineHeight: 1.3,
+  };
+}
+
+function cancelStyle(): React.CSSProperties {
+  return {
+    alignSelf: "flex-end",
+    marginTop: 12,
+    padding: "7px 22px",
+    borderRadius: 9999,
+    background: "transparent",
+    color: PILL_INK,
+    border: `1.5px solid ${PILL_INK}`,
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: "pointer",
   };
 }

@@ -82,8 +82,9 @@ export type V2RoomMapProps = {
   /** Fires when the viewer clicks one of their own cells in a way that
       changes the rating. Caller persists + updates state. State 3 first
       click sends rating=1; state 1 and state 2 (when entry visible) send
-      the next rotation value (current+1, wrapping 6→1). */
-  onRateOwnCell?: (season: number, episode: number, newRating: number) => void;
+      the next cycle value (current+1, OR null to clear when current=6,
+      OR 1 after a clear). null means delete the row from episode_ratings. */
+  onRateOwnCell?: (season: number, episode: number, newRating: number | null) => void;
 };
 
 type RowKey = { season: number; episode: number; isFirstOfSeason: boolean };
@@ -147,8 +148,15 @@ export default function V2RoomMap({
     }, 200);
   };
 
-  // Next rating in the 1..6 rotation with wrap.
-  const nextRating = (cur: number): number => (cur >= 6 ? 1 : cur + 1);
+  // Click-cycle target for a self-column cell. The cycle includes a
+  // "no rating" position between 6 and 1, so a click on a 6-rated cell
+  // clears the rating (cell reverts to state 3). Subsequent click sets
+  // to 1 again. Sequence: undefined → 1 → 2 → 3 → 4 → 5 → 6 → undefined → 1 …
+  const nextRatingTarget = (cur: number | undefined): number | null => {
+    if (cur === undefined) return 1;   // no rating → 1
+    if (cur >= 6) return null;          // 6 → clear
+    return cur + 1;                     // 1..5 → +1
+  };
   // Filter seasons to those any member has reached AT LEAST episode 1 in.
   // A member at S2E0 ("haven't started season 2") hasn't reached any S2
   // episode, so S2 stays hidden until someone actually watches S2E1+.
@@ -441,7 +449,7 @@ export default function V2RoomMap({
                     if (entry && !entryVisible) {
                       clickAction = () => onEntryClick(entry.threadId);
                     } else if (onRateOwnCell) {
-                      const target = rating ? nextRating(rating) : 1;
+                      const target = nextRatingTarget(rating);
                       clickAction = () => {
                         onRateOwnCell(row.season, row.episode, target);
                         triggerBounce(cellKey);

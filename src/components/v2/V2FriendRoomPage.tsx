@@ -10,6 +10,7 @@ import {
   fetchShows,
   persistProgressUpdate,
   upsertEpisodeRating,
+  deleteEpisodeRating,
   type RoomMapMember,
   type Show,
 } from "../../lib/db";
@@ -340,20 +341,25 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   }, []);
 
   // Click-to-adjust rating on a self-column map cell. Optimistic local
-  // state update + debounced UPSERT (500ms). Caller (V2RoomMap) is
-  // responsible for computing the new rating (rotation 1..6, wrap, or
-  // initial 1 for state-3 first click).
+  // state update + debounced write (500ms). Caller (V2RoomMap) is
+  // responsible for computing the new value: a number 1..6 to set, OR
+  // null to clear the rating entirely (cycle position between 6 and 1).
   const handleRateOwnCell = useCallback(
-    (season: number, episode: number, newRating: number) => {
+    (season: number, episode: number, newRating: number | null) => {
       if (!user?.id || !show) return;
       const cellKey = `${season}-${episode}`;
 
-      // Optimistic state update — splice the new rating into the self
-      // member's ratings array. Add if absent (state 3 → state 1 transition),
-      // overwrite if present (state 1 / state 2 rotation).
+      // Optimistic state update. null = remove the entry from ratings.
+      // Otherwise splice in (overwrite if present, add if absent).
       setMapMembers((prev) =>
         prev.map((m) => {
           if (m.userId !== user.id) return m;
+          if (newRating === null) {
+            return {
+              ...m,
+              ratings: m.ratings.filter((r) => !(r.s === season && r.e === episode)),
+            };
+          }
           const idx = m.ratings.findIndex((r) => r.s === season && r.e === episode);
           const newRatings =
             idx >= 0
@@ -363,20 +369,17 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
         }),
       );
 
-      // Debounced UPSERT — clear any pending timer for this cell, schedule
-      // a fresh one with the LATEST value. Rapid clicks coalesce to one
-      // write at the end of the burst.
+      // Debounced DB write — UPSERT or DELETE depending on newRating.
+      // Rapid clicks coalesce to one write at the end of the burst.
       const existing = ratingTimersRef.current[cellKey];
       if (existing) window.clearTimeout(existing);
       ratingTimersRef.current[cellKey] = window.setTimeout(() => {
-        upsertEpisodeRating({
-          userId: user.id,
-          showId: show.id,
-          season,
-          episode,
-          rating: newRating,
-        }).catch((err) =>
-          console.warn(`upsertEpisodeRating (click-to-adjust) failed s${season}e${episode}:`, err),
+        const op =
+          newRating === null
+            ? deleteEpisodeRating({ userId: user.id, showId: show.id, season, episode })
+            : upsertEpisodeRating({ userId: user.id, showId: show.id, season, episode, rating: newRating });
+        op.catch((err) =>
+          console.warn(`Rating write (click-to-adjust) failed s${season}e${episode}:`, err),
         );
         delete ratingTimersRef.current[cellKey];
       }, 500);

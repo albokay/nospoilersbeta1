@@ -3842,3 +3842,22 @@ export async function upsertEpisodeRating(args: {
     );
   if (error) throw error;
 }
+
+// Clear a rating. Used by the V2 friend room map's click-cycle, which
+// includes "no rating" as a position between 6 and 1 (clicking a 6-rated
+// cell removes the rating; the cell reverts to state 3 watched-unrated).
+export async function deleteEpisodeRating(args: {
+  userId: string;
+  showId: string;
+  season: number;
+  episode: number;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("episode_ratings")
+    .delete()
+    .eq("user_id", args.userId)
+    .eq("show_id", args.showId)
+    .eq("season_number", args.season)
+    .eq("episode_number", args.episode);
+  if (error) throw error;
+}
