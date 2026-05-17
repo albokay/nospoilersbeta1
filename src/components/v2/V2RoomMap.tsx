@@ -120,22 +120,22 @@ export default function V2RoomMap({
   onEntryClick,
   onRateOwnCell,
 }: V2RoomMapProps) {
-  // Bounce animation — only one cell bounces at a time. Set on click,
-  // cleared after the transition. The CSS scales the cell to 1.12 and
-  // back. Per spec, the dots snap to the new face (no animation); the
-  // bounce carries the personality.
-  const [bouncingCellKey, setBouncingCellKey] = useState<string | null>(null);
-  const bounceTimerRef = useRef<number | null>(null);
-  useEffect(() => () => {
-    if (bounceTimerRef.current) window.clearTimeout(bounceTimerRef.current);
-  }, []);
+  // Bounce animation — two-phase. Phase 'up' = INSTANT pop to scale(1.12)
+  // with no transition; phase 'down' = animate back to scale(1) over 150ms
+  // ease-out. Two requestAnimationFrames between phases guarantee the 'up'
+  // state actually renders (otherwise React would batch the state updates
+  // and the user would only ever see the down-animation). Per spec, the
+  // dots snap to the new face; the bounce carries the personality.
+  const [bouncingState, setBouncingState] = useState<{ cellKey: string; phase: "up" | "down" } | null>(null);
   const triggerBounce = (cellKey: string) => {
-    setBouncingCellKey(cellKey);
-    if (bounceTimerRef.current) window.clearTimeout(bounceTimerRef.current);
-    bounceTimerRef.current = window.setTimeout(() => {
-      setBouncingCellKey(null);
-      bounceTimerRef.current = null;
-    }, 180);
+    setBouncingState({ cellKey, phase: "up" });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setBouncingState((prev) =>
+          prev && prev.cellKey === cellKey ? { cellKey, phase: "down" } : prev,
+        );
+      });
+    });
   };
 
   // Next rating in the 1..6 rotation with wrap.
@@ -192,6 +192,12 @@ export default function V2RoomMap({
         overflowY: "auto",
         maxHeight: `calc(100vh - var(--site-header-h) - 100px)`,
         position: "relative",
+        // 6px right padding so the rightmost cell's click bounce
+        // (scale 1.12 = ~2px overflow each side) doesn't get clipped
+        // against the container edge. overflowY:auto implicitly enables
+        // overflowX clipping per CSS spec, so adding padding is the
+        // cleanest fix that doesn't restructure the scroll container.
+        paddingRight: 6,
         WebkitMaskImage:
           "linear-gradient(to bottom, #000 calc(100% - 136px), transparent 100%)",
         maskImage:
@@ -405,7 +411,11 @@ export default function V2RoomMap({
                 // the existing scroll-to-entry behavior; no instruction line.
                 const cellKey = `${row.season}-${row.episode}`;
                 const entryVisible = !!entry && !!visibleEntryIds?.has(entry.threadId);
-                const isBouncing = bouncingCellKey === cellKey;
+                // Bounce is self-only — gating prevents the row-wide
+                // resize bug where every cell in the same (season, episode)
+                // row matched the bouncing key and animated together.
+                const isBouncingHere = isSelf && bouncingState?.cellKey === cellKey;
+                const bouncePhase: "up" | "down" | null = isBouncingHere ? bouncingState!.phase : null;
 
                 let clickAction: (() => void) | null = null;
                 let showInstruction = false;
@@ -517,8 +527,11 @@ export default function V2RoomMap({
                             width: CELL,
                             height: CELL,
                             cursor: clickAction ? "pointer" : "default",
-                            transition: "transform 150ms ease-out",
-                            transform: isBouncing ? "scale(1.12)" : "scale(1)",
+                            // Phase 'up' = instant pop (no transition).
+                            // Phase 'down' = animate back over 150ms.
+                            // Default = no transition, scale(1).
+                            transform: bouncePhase === "up" ? "scale(1.12)" : "scale(1)",
+                            transition: bouncePhase === "down" ? "transform 150ms ease-out" : "none",
                             ...cellShapeStyle(isReached, !!entry, isSelf),
                           }}
                         >
