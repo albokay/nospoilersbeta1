@@ -71,6 +71,8 @@ export type V2RoomMapProps = {
   seasons: number[];
   /** Viewer's progress — drives initial scroll + above-progress title masking. */
   viewerProgress: ProgressEntry | null;
+  /** Viewer's user id — drives the canon-dark-blue self-column treatment. */
+  viewerUserId?: string;
   /** Fires when a cell with an entry is clicked. */
   onEntryClick: (threadId: string) => void;
 };
@@ -104,6 +106,7 @@ export default function V2RoomMap({
   members,
   seasons,
   viewerProgress,
+  viewerUserId,
   onEntryClick,
 }: V2RoomMapProps) {
   // Filter seasons to those any member has reached AT LEAST episode 1 in.
@@ -167,7 +170,7 @@ export default function V2RoomMap({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `${SEASON_LABEL_W}px repeat(${members.length}, ${CELL}px) ${EPISODE_LABEL_W}px`,
+          gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
           columnGap: COL_GAP,
           alignItems: "start",
         }}
@@ -177,7 +180,7 @@ export default function V2RoomMap({
           style={{
             gridColumn: "1 / -1",
             display: "grid",
-            gridTemplateColumns: `${SEASON_LABEL_W}px repeat(${members.length}, ${CELL}px) ${EPISODE_LABEL_W}px`,
+            gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
             columnGap: COL_GAP,
             position: "sticky",
             top: 0,
@@ -187,6 +190,7 @@ export default function V2RoomMap({
           }}
         >
           <div />
+          <div /> {/* episode-label column placeholder */}
           {members.map((m) => (
             <div
               key={m.userId}
@@ -297,6 +301,25 @@ export default function V2RoomMap({
                 )}
               </div>
 
+              {/* Episode label — sits between the season label and the
+                  first cell column. Right-aligned within its column so
+                  it visually hugs the cell. */}
+              <div
+                style={{
+                  height: ROW_HEIGHT,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  paddingRight: 4,
+                  fontSize: 12,
+                  opacity: 0.6,
+                  fontStyle: "italic",
+                  color: "#fff",
+                }}
+              >
+                e{row.episode}
+              </div>
+
               {/* One cell per member */}
               {members.map((m, mIdx) => {
                 const mMap = memberMaps[mIdx];
@@ -304,6 +327,7 @@ export default function V2RoomMap({
                 const isLastReached = rowIdx === mMap.lastReachedIdx;
                 const entry = mMap.entryByKey.get(rowKey);
                 const rating = mMap.ratingByKey.get(rowKey);
+                const isSelf = !!viewerUserId && m.userId === viewerUserId;
 
                 // Departed-and-beyond-reach: render nothing (cell disappears).
                 const renderEmpty = m.isDeparted && !isReached;
@@ -356,7 +380,7 @@ export default function V2RoomMap({
                     </span>
                   );
                   entryLine = (
-                    <span style={{ display: "block", marginTop: 4, whiteSpace: "nowrap" }}>
+                    <span style={{ display: "block", marginTop: 2, whiteSpace: "nowrap" }}>
                       wrote: {titlePart}
                     </span>
                   );
@@ -365,7 +389,7 @@ export default function V2RoomMap({
                 let ratedLine: React.ReactNode = null;
                 if (ratingPhrase) {
                   ratedLine = (
-                    <span style={{ display: "block", marginTop: 4, whiteSpace: "nowrap" }}>
+                    <span style={{ display: "block", marginTop: 2, whiteSpace: "nowrap" }}>
                       rated:{" "}
                       <span className="editorial" style={{ fontStyle: "italic" }}>
                         {ratingPhrase}
@@ -383,7 +407,7 @@ export default function V2RoomMap({
                         </span>
                       )}
                       S{String(row.season).padStart(2, "0")} E
-                      {String(row.episode).padStart(2, "0")} · @{m.username}
+                      {String(row.episode).padStart(2, "0")} / @{m.username}
                     </span>
                     {entryLine}
                     {ratedLine}
@@ -410,7 +434,7 @@ export default function V2RoomMap({
                             width: CELL,
                             height: CELL,
                             cursor: entry ? "pointer" : "default",
-                            ...cellShapeStyle(isReached, !!entry),
+                            ...cellShapeStyle(isReached, !!entry, isSelf),
                           }}
                         >
                           {isReached && rating && (
@@ -444,6 +468,7 @@ export default function V2RoomMap({
                             background: "#fff",
                             color: "#1a3a4a",
                             textAlign: "left",
+                            lineHeight: 1.25,
                           }}
                         >
                           {cellInner}
@@ -493,22 +518,6 @@ export default function V2RoomMap({
                 );
               })}
 
-              {/* Episode label on the right */}
-              <div
-                style={{
-                  height: ROW_HEIGHT,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-start",
-                  paddingLeft: 4,
-                  fontSize: 12,
-                  opacity: 0.6,
-                  fontStyle: "italic",
-                  color: "#fff",
-                }}
-              >
-                e{row.episode}
-              </div>
             </React.Fragment>
           );
         })}
@@ -518,21 +527,25 @@ export default function V2RoomMap({
 }
 
 // Cell shape per state:
-//   - reached + entry → filled green rounded square (canon green #7abd8e)
+//   - reached + entry → filled rounded square (canon green for others;
+//     canon dark-blue for the viewer's own column)
 //   - reached + no entry → 2px outlined rounded square, transparent
-//   - not reached → 2px dashed circular outline
-function cellShapeStyle(isReached: boolean, hasEntry: boolean): React.CSSProperties {
+//     (canon-dark-blue outline for the viewer; --dos-border for others)
+//   - not reached → 2px dashed circular outline (unchanged regardless of self)
+function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean): React.CSSProperties {
+  const filledBg = isSelf ? "#355eb8" : "#7abd8e";
+  const outlineColor = isSelf ? "#355eb8" : "var(--dos-border)";
   if (isReached && hasEntry) {
     return {
-      background: "#7abd8e",
-      border: "2px solid #7abd8e",
+      background: filledBg,
+      border: `2px solid ${filledBg}`,
       borderRadius: CELL_RADIUS,
     };
   }
   if (isReached) {
     return {
       background: "transparent",
-      border: "2px solid var(--dos-border)",
+      border: `2px solid ${outlineColor}`,
       borderRadius: CELL_RADIUS,
       opacity: 0.7,
     };

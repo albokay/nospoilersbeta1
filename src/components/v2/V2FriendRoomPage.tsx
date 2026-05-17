@@ -528,6 +528,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               members={mapMembers}
               seasons={show.seasons}
               viewerProgress={progressForShow}
+              viewerUserId={user?.id}
               onEntryClick={handleCellClick}
             />
           </div>
