@@ -444,10 +444,12 @@ export default function V2InlineThread({
       )}
 
       {/* First collapse button — above the replies. Only rendered when
-          there are replies to skip past; with replyCount === 0 the second
-          collapse button at the end of the thread is sufficient. */}
-      {replyCount > 0 && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+          there are ≥3 replies to skip past; with fewer the bottom-row
+          collapse is sufficient (scrolling past 1-2 replies isn't enough
+          friction to need a second collapse trigger up top). Left-aligned
+          to match the bottom-row collapse position. */}
+      {replyCount >= 3 && (
+        <div style={{ display: "flex", justifyContent: "flex-start", marginTop: 8 }}>
           {collapseButton}
         </div>
       )}
