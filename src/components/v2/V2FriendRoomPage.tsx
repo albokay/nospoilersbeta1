@@ -610,8 +610,10 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               viewerProgress={progressForShow}
               viewerUserId={user?.id}
               visibleEntryIds={visibleEntryIds}
+              groupId={groupId}
               onEntryClick={handleCellClick}
               onRateOwnCell={handleRateOwnCell}
+              onPollOpened={() => setPollRefreshKey((k) => k + 1)}
             />
           </div>
         </div>

@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { DoorClosed, DoorOpen } from "lucide-react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
 import DiceFace from "./DiceFace";
+import NudgePopover, { type NudgeDirection } from "../NudgePopover";
+import AskTheRoomPicker from "../AskTheRoomPicker";
+import PollComposer from "../PollComposer";
+import SIKWComposer from "../SIKWComposer";
 
 // V2 friend room — right-pane "season map".
 //
@@ -24,6 +29,8 @@ import DiceFace from "./DiceFace";
 const CELL = 32;          // 32px cell — 8px grid
 const CELL_RADIUS = 8;
 const GAP_BELOW = 16;     // spine + dot live in this strip
+const HELPER_W = 140;     // helper-text column ("click a name to nudge a friend")
+const DOOR_W = 48;        // door-icon column (ask the room launcher)
 const ROW_HEIGHT = CELL + GAP_BELOW; // 48px
 const COL_GAP = 16;
 const SEASON_LABEL_W = 80;
@@ -77,6 +84,11 @@ export type V2RoomMapProps = {
       Drives click-to-adjust on self-column state-2 cells: when the cell's
       entry is visible, click rotates rating; when off-screen, click scrolls. */
   visibleEntryIds?: Set<string>;
+  /** Friend room id. Required for the pings/polls/SIKW launcher mode —
+      header click opens NudgePopover for that recipient; door icon opens
+      AskTheRoomPicker → PollComposer / SIKWComposer. Without groupId,
+      launcher mode is suppressed (names render as plain non-clickable). */
+  groupId?: string;
   /** Fires when a cell with an entry is clicked. */
   onEntryClick: (threadId: string) => void;
   /** Fires when the viewer clicks one of their own cells in a way that
@@ -85,7 +97,51 @@ export type V2RoomMapProps = {
       the next cycle value (current+1, OR null to clear when current=6,
       OR 1 after a clear). null means delete the row from episode_ratings. */
   onRateOwnCell?: (season: number, episode: number, newRating: number | null) => void;
+  /** Fires after the asker successfully opens a poll. Parent bumps
+      PollSticky's refreshKey so the asker sees their poll immediately. */
+  onPollOpened?: () => void;
 };
+
+// Direction + count of a member's progress relative to the viewer. Ported
+// from V1 FriendProgressPostIt's episodeIndex/direction logic. Used for
+// the NudgePopover preset selection (different copy per direction).
+function episodeIndex(seasons: number[], s: number, e: number): number | null {
+  if (s < 1 || e < 1) return 0;        // hasn't started → idx 0
+  if (!seasons.length) return null;
+  if (s > seasons.length) return null;
+  let idx = 0;
+  for (let i = 0; i < s - 1; i++) idx += seasons[i] ?? 0;
+  idx += e;
+  return idx;
+}
+
+function nudgeStatusFor(
+  memberProgress: ProgressEntry | null,
+  viewerProgress: ProgressEntry | null,
+  seasons: number[],
+): { direction: NudgeDirection; count: number | null } {
+  const m = effectiveProgress(memberProgress);
+  const v = effectiveProgress(viewerProgress);
+  // Not-started = member has no progress row OR is at (0,0)
+  if (!m || (m.s < 1 || m.e < 1)) {
+    return { direction: "not-started", count: null };
+  }
+  if (!v) {
+    // Viewer has no progress — every member counts as "ahead" of viewer
+    return { direction: "ahead", count: null };
+  }
+  if (m.s === v.s && m.e === v.e) {
+    return { direction: "same", count: null };
+  }
+  const memberIdx = episodeIndex(seasons, m.s, m.e);
+  const viewerIdx = episodeIndex(seasons, v.s, v.e);
+  if (m.s > v.s || (m.s === v.s && m.e > v.e)) {
+    const count = memberIdx != null && viewerIdx != null ? memberIdx - viewerIdx : null;
+    return { direction: "ahead", count };
+  }
+  const count = memberIdx != null && viewerIdx != null ? viewerIdx - memberIdx : null;
+  return { direction: "behind", count };
+}
 
 type RowKey = { season: number; episode: number; isFirstOfSeason: boolean };
 
@@ -118,9 +174,26 @@ export default function V2RoomMap({
   viewerProgress,
   viewerUserId,
   visibleEntryIds,
+  groupId,
   onEntryClick,
   onRateOwnCell,
+  onPollOpened,
 }: V2RoomMapProps) {
+  // ── Launcher state (pings / polls / SIKW). Only meaningful when
+  // groupId is provided — V2FriendRoomPage always supplies it; other
+  // hypothetical callers without a room context get plain headers.
+  const launcherMode = !!groupId;
+  const [nudgeOpenFor, setNudgeOpenFor] = useState<{
+    recipientId: string;
+    recipientUsername: string;
+    direction: NudgeDirection;
+    count: number | null;
+    anchorRect: DOMRect;
+  } | null>(null);
+  const [askPickerRect, setAskPickerRect] = useState<DOMRect | null>(null);
+  const [pollComposerOpen, setPollComposerOpen] = useState(false);
+  const [sikwComposerOpen, setSikwComposerOpen] = useState(false);
+  const [doorHover, setDoorHover] = useState(false);
   // Bounce animation — two-phase. Phase 'up' = INSTANT pop to scale(1.12)
   // with no transition; phase 'down' = animate back to scale(1) over 150ms
   // ease-out. Two requestAnimationFrames between phases guarantee the 'up'
@@ -224,7 +297,7 @@ export default function V2RoomMap({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
+          gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px) ${HELPER_W}px ${DOOR_W}px`,
           columnGap: COL_GAP,
           alignItems: "start",
         }}
@@ -234,7 +307,7 @@ export default function V2RoomMap({
           style={{
             gridColumn: "1 / -1",
             display: "grid",
-            gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
+            gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px) ${HELPER_W}px ${DOOR_W}px`,
             columnGap: COL_GAP,
             position: "sticky",
             top: 0,
@@ -245,45 +318,148 @@ export default function V2RoomMap({
         >
           <div />
           <div /> {/* episode-label column placeholder */}
-          {members.map((m) => (
-            <div
-              key={m.userId}
-              style={{
-                width: CELL,
-                height: HEADER_HEIGHT,
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
+          {members.map((m) => {
+            const isSelfCol = !!viewerUserId && m.userId === viewerUserId;
+            const isClickable = launcherMode && !isSelfCol && !m.isDeparted;
+            return (
               <div
-                title={`@${m.username}`}
+                key={m.userId}
                 style={{
-                  // transformOrigin: left bottom — the pivot sits at the
-                  // element's pre-rotation bottom-left, which after CCW
-                  // rotation becomes the rotated bottom. Anchoring the "@"
-                  // there keeps the beginning of the username visible at
-                  // the column's bottom; long usernames truncate with
-                  // ellipsis at the rotated TOP (the pre-rotation right
-                  // edge clipped by maxWidth).
-                  position: "absolute",
-                  left: CELL / 2 + 8,
-                  bottom: 8,
-                  transform: "rotate(-90deg)",
-                  transformOrigin: "left bottom",
-                  whiteSpace: "nowrap",
-                  maxWidth: HEADER_HEIGHT - 16,
+                  width: CELL,
+                  height: HEADER_HEIGHT,
+                  position: "relative",
                   overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  fontSize: 13,
-                  fontWeight: 400,
-                  color: "#fff",
                 }}
               >
-                @{m.username}
+                <div
+                  title={`@${m.username}`}
+                  role={isClickable ? "button" : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
+                  onClick={
+                    isClickable
+                      ? (e) => {
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          const status = nudgeStatusFor(m.progress, viewerProgress, seasons);
+                          setNudgeOpenFor({
+                            recipientId: m.userId,
+                            recipientUsername: m.username,
+                            direction: status.direction,
+                            count: status.count,
+                            anchorRect: rect,
+                          });
+                        }
+                      : undefined
+                  }
+                  onKeyDown={
+                    isClickable
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const status = nudgeStatusFor(m.progress, viewerProgress, seasons);
+                            setNudgeOpenFor({
+                              recipientId: m.userId,
+                              recipientUsername: m.username,
+                              direction: status.direction,
+                              count: status.count,
+                              anchorRect: rect,
+                            });
+                          }
+                        }
+                      : undefined
+                  }
+                  style={{
+                    // transformOrigin: left bottom — the pivot sits at the
+                    // element's pre-rotation bottom-left, which after CCW
+                    // rotation becomes the rotated bottom. Anchoring the "@"
+                    // there keeps the beginning of the username visible at
+                    // the column's bottom; long usernames truncate with
+                    // ellipsis at the rotated TOP (the pre-rotation right
+                    // edge clipped by maxWidth).
+                    position: "absolute",
+                    left: CELL / 2 + 8,
+                    bottom: 8,
+                    transform: "rotate(-90deg)",
+                    transformOrigin: "left bottom",
+                    whiteSpace: "nowrap",
+                    maxWidth: HEADER_HEIGHT - 16,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    fontSize: 13,
+                    fontWeight: 400,
+                    color: "#fff",
+                    // Clickable headers get the v1 nudge-launcher styling:
+                    // italic + dotted underline + pointer. Self + departed
+                    // stay plain.
+                    fontStyle: isClickable ? "italic" : undefined,
+                    borderBottom: isClickable ? "1px dotted #fff" : undefined,
+                    cursor: isClickable ? "pointer" : undefined,
+                  }}
+                >
+                  @{m.username}
+                </div>
               </div>
-            </div>
-          ))}
-          <div />
+            );
+          })}
+          {/* Helper text — only in the sticky header. Two trailing grid
+              columns (helper text + door icon) per spec. */}
+          <div
+            style={{
+              height: HEADER_HEIGHT,
+              display: "flex",
+              alignItems: "flex-end",
+              paddingBottom: 8,
+              paddingLeft: 8,
+            }}
+          >
+            {launcherMode && (
+              <div
+                style={{
+                  fontFamily: "Lora, Georgia, serif",
+                  fontStyle: "italic",
+                  fontSize: 13,
+                  color: "var(--dos-border)",
+                  lineHeight: 1.25,
+                }}
+              >
+                click a name to<br />nudge a friend
+              </div>
+            )}
+          </div>
+          {/* Door-icon launcher — DoorClosed → DoorOpen on hover. Click
+              opens AskTheRoomPicker (poll vs SIKW). */}
+          <div
+            style={{
+              height: HEADER_HEIGHT,
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "flex-end",
+              paddingBottom: 4,
+            }}
+          >
+            {launcherMode && (
+              <button
+                aria-label="Ask the room"
+                onMouseEnter={() => setDoorHover(true)}
+                onMouseLeave={() => setDoorHover(false)}
+                onClick={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setAskPickerRect(rect);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  color: "var(--dos-border)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+              >
+                {doorHover ? <DoorOpen size={36} /> : <DoorClosed size={36} />}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Body rows ────────────────────────────────────────────────── */}
@@ -335,6 +511,11 @@ export default function V2RoomMap({
                       </div>
                     );
                   })}
+                  {/* Trailing placeholders for the helper-text + door-icon
+                      grid columns (only the sticky header has content
+                      there). */}
+                  <div />
+                  <div />
                 </>
               )}
 
@@ -646,11 +827,60 @@ export default function V2RoomMap({
                   </div>
                 );
               })}
-
+              {/* Trailing placeholders for the helper-text + door-icon
+                  grid columns (rendered only in the sticky header row).
+                  Body rows leave them empty. */}
+              <div />
+              <div />
             </React.Fragment>
           );
         })}
       </div>
+
+      {launcherMode && nudgeOpenFor && groupId && viewerUserId && (
+        <NudgePopover
+          recipientUsername={nudgeOpenFor.recipientUsername}
+          recipientId={nudgeOpenFor.recipientId}
+          groupId={groupId}
+          currentUserId={viewerUserId}
+          direction={nudgeOpenFor.direction}
+          count={nudgeOpenFor.count}
+          anchorRect={nudgeOpenFor.anchorRect}
+          onClose={() => setNudgeOpenFor(null)}
+        />
+      )}
+
+      {launcherMode && askPickerRect && groupId && (
+        <AskTheRoomPicker
+          anchorRect={askPickerRect}
+          onClose={() => setAskPickerRect(null)}
+          onSelectPoll={() => {
+            setAskPickerRect(null);
+            setPollComposerOpen(true);
+          }}
+          onSelectSikw={() => {
+            setAskPickerRect(null);
+            setSikwComposerOpen(true);
+          }}
+        />
+      )}
+
+      {launcherMode && pollComposerOpen && groupId && (
+        <PollComposer
+          groupId={groupId}
+          onClose={() => setPollComposerOpen(false)}
+          onOpened={() => onPollOpened?.()}
+        />
+      )}
+
+      {launcherMode && sikwComposerOpen && groupId && (
+        <SIKWComposer
+          groupId={groupId}
+          progressSeason={viewerProgress?.s ?? 0}
+          progressEpisode={viewerProgress?.e ?? 0}
+          onClose={() => setSikwComposerOpen(false)}
+        />
+      )}
     </div>
   );
 }
