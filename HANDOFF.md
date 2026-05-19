@@ -1,10 +1,14 @@
-# Sidebar — Technical State (2026-05-16)
+# Sidebar — Technical State (2026-05-19)
 
-> **2026-05-16 — Latest landed: rating display + click-to-adjust on the V2 friend room map.** Two spec arcs shipped sequentially this afternoon, both on the V2 friend room map (`/v2/room/:groupId`). Dice-display: each rated cell now visibly renders the rating as a dice face (1..6 white dots) inside the cell — green-filled for state 2 (rated + entry), outlined for state 1 (rated only); the viewer's own column gets canon-dark-blue treatment. State 4 (not reached) no longer has a hover tooltip. Tooltip restructured to per-state line shape (`SE / @user` + `wrote: "Title"` + `rated: <phrase>`), title truncated to 45 chars, content-driven width via new `width="auto"` mode on Tooltip. Integer scale inverted to ASCEND with goodness (1=Nope. → 6=Woah!) to align with the dice semantics. Click-to-adjust: clicking your own column rotates the rating 1→2→…→6→1 (or seeds to 1 on a previously-unrated cell), with a "pop and settle" bounce animation and a canon-red instruction line in the tooltip. Viewport-aware — if the entry is off-screen in the feed, click scrolls to it instead (via IntersectionObserver in V2RoomFeed). 9 commits total. See §7 arc.
+> **2026-05-19 — Latest landed: V2 friend room pings / polls / SIKW port.** Both the receive-side stickies and the send-side launchers now live in `/v2/room/:groupId`. Receive-side: `IncomingPingSticky`, `PollSticky`, `SIKWSticky` mounted as fixed-position siblings in V2FriendRoomPage — pings render on top of the map ("charming marginalia" per spec), polls + SIKW asks surface in their existing left-edge stickies, all drop-in (zero changes to the sticky components). Send-side: V2RoomMap absorbs v1 FriendProgressPostIt's launcher functions into the map's existing header band — each non-self, non-departed `@username` becomes a clickable italic + dotted-underline that opens `NudgePopover` anchored just below the click; a lucide `DoorClosed`→`DoorOpen`-on-hover icon at the far left opens `AskTheRoomPicker` → `PollComposer` / `SIKWComposer`. New shared-component opt-in: `anchorMode: "from-page-bottom" | "from-anchor"` on `NudgePopover` + `AskTheRoomPicker` (default preserves v1 behavior, V2 uses "from-anchor"). FriendProgressPostIt stays mounted in v1 ShowSection unchanged. See §7 arc.
 >
-> **Prior arc landed earlier today (2026-05-16):** Rating capture modal — a new modal replaces the existing red/white "you've watched: SE" confirm on every forward progress pick at the 3 V2/V3 picker callsites (V2FriendRoomPage, V3 show-tab header, V2ComposePage). Six rating pills + cancel, tap-to-commit with 150ms label-collapse. Picks on A+B carry the user into `/v2/compose` with rating-flow markers (intro copy variant + returnTo-aware discard); picks on D capture rating + advance progress without leaving the draft. V2 compose post-publish nav is now destination-driven for ALL publishers. V1 callsites intentionally untouched.
+> **Prior arc landed earlier in the week (2026-05-18):** V2 inline thread spacing polish — bottom-row "Write a response" + collapse combined into a single `space-between` row with tighter `marginTop:12` (was two right-aligned divs with `marginTop:40 + 16`); pointer cursor + card-level `onClick` scoped to collapsed cards only (expanded cards had pointer but inner content stopped propagation — misleading); first collapse button gated on `replyCount >= 3` (was `> 0`) and left-aligned to match the bottom-row collapse.
 >
-> **Prior arc landed earlier today (2026-05-16):** V2 inline thread polish pass — quote button ported from v1 verbatim (selection-based, `Quote…` label, hint modal), composer made click-to-open with cancel/submit closing it, star moved up to the title row so it doesn't jump between collapsed/expanded states, the per-reply `Respond` buttons + bottom "Respond to the thread" CTA suppressed via a new opt-in prop on `RepliesList`, single large "Write a response" CTA below replies, two collapse buttons styled as plain white text, the bottom-right "expand" affordance reduced to a single white chevron icon, scroll-to-top anchored 72px below viewport via `scroll-margin-top`, map filtered to only "touched" seasons, tombstones faded to 0.35 opacity, and map's on-mount scroll-to-progress effect removed.
+> **Prior arc landed earlier in the week (2026-05-16):** Rating display + click-to-adjust on the V2 friend room map. Each rated cell renders the rating as a 1..6-dot dice face inside; viewer's own column gets canon-dark-blue treatment; state-4 cells lost their tooltip; tooltip restructured to per-state line shape with 45-char title truncation + content-driven width via new `Tooltip width="auto"` mode. Integer scale inverted to ASCEND with goodness. Click-to-adjust: viewer's own column rotates 1→2→…→6→null (cleared)→1, viewport-aware (off-screen entry scrolls instead of rotating), bounce animation, canon-red instruction line in tooltip.
+>
+> **Prior arc landed earlier in the week (2026-05-16):** Rating capture modal — replaces the existing red/white "you've watched: SE" confirm on every forward progress pick at the 3 V2/V3 picker callsites (V2FriendRoomPage, V3 show-tab header, V2ComposePage). V2 compose post-publish nav now destination-driven for all publishers. V1 callsites intentionally untouched.
+>
+> **Prior arc landed earlier in the week (2026-05-16):** V2 inline thread polish pass — quote button ported v1-faithfully, composer click-to-open, star lifted to title row, single "Write a response" CTA, white-text collapse buttons, white-chevron expand, 72px scroll offset, touched-seasons-only map, faded tombstones, map's on-mount scroll-to-progress removed.
 >
 > **Prior arcs landed this week (2026-05-13 / 14 / 15):** V2 inline thread base build (V2InlineThread + ResponseComposer reuse + draft-guard), V2 friend room (`/v2/room/:groupId` two-pane feed + season map), treated art system (atmospheric cutout-plus-tint imagery on V2/V3 surfaces), SidebarAvatar (boring-avatars) across bylines + identity headers, and V2UserAggregatePage redesign.
 
@@ -1328,6 +1332,69 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-19 — V2 friend room: pings / polls / SIKW port
+
+Ports v1's social-engagement chrome (pings, polls, SIKW asks) into `/v2/room/:groupId`. Both halves of the round-trip ship: receive-side stickies + send-side launchers. V1 ShowSection's `FriendProgressPostIt` stays intact; the V2 launcher work absorbs its functions but is a separate component (the map's existing header band).
+
+**Two checkpoints across the day:**
+
+- **Checkpoint 1: receive-side stickies in V2FriendRoomPage.** Mounted `IncomingPingSticky`, `PollSticky`, `SIKWSticky` as fixed-position siblings — same prop shapes as v1 ShowSection, zero changes to the sticky components themselves. Added `pollRefreshKey` state for the asker-side refresh callback (bumped by the send-side launcher in checkpoint 2). Per spec, pings render ON TOP of the map ("charming marginalia," X-dismissable).
+- **Checkpoint 2: send-side launchers in V2RoomMap.** Each non-self, non-departed `@username` header becomes a clickable italic + dotted white underline; click opens `NudgePopover` anchored to the rotated text's bounding rect. Lucide `DoorClosed`→`DoorOpen`-on-hover icon (24px opaque white) opens `AskTheRoomPicker` → `PollComposer` / `SIKWComposer`. Helper text "click a name to / nudge a friend" — Inter italic, `var(--dos-border)` color, rotated -90deg to match the @username orientation.
+
+**Shared-component change (affects v1 too, opt-in default preserves v1):**
+
+`NudgePopover` and `AskTheRoomPicker` got a new `anchorMode: "from-page-bottom" | "from-anchor"` prop. Default `"from-page-bottom"` (v1 FriendProgressPostIt) pins the popover 96px from the viewport bottom — preserved verbatim. V2 passes `"from-anchor"` — popover renders just below the click anchor (`top: anchorRect.bottom + 14`) with its right edge aligned to the anchor's right edge (extends leftward where there's more page space). The two render sites inside each popover share a single `positionStyle` object built from the mode.
+
+`PollComposer` + `SIKWComposer` were untouched — they use the centered `<Modal>` overlay which is already correctly placed in both contexts.
+
+**Architecture decisions worth pinning:**
+
+- **`createPortal` on the launchers is mandatory in V2.** V2RoomMap is mounted inside V2FriendRoomPage's `transform: translateX(-144px)` wrapper. CSS rule: any ancestor with `transform` becomes the containing block for descendant `position: fixed` — so without portaling, the launcher popovers' fixed-position math (computed against viewport coords) gets applied relative to the transformed ancestor and lands off-screen. All four launchers (`NudgePopover`, `AskTheRoomPicker`, `PollComposer`, `SIKWComposer`) wrap in `createPortal(..., document.body)` from V2RoomMap. Same rule applies to ANY new fixed-position UI mounted inside V2RoomMap.
+- **`nudgeStatusFor(memberProgress, viewerProgress, seasons)`** in V2RoomMap ports v1 FriendProgressPostIt's `episodeIndex` + direction logic. Returns `{ direction: NudgeDirection, count: number | null }` for each member relative to the viewer. Uses `effectiveProgress` on both sides so rewatchers compare via their highest reached position, not their rewatch position. The function is local to V2RoomMap (could be lifted to a shared util later if a third site needs it).
+- **Self + departed columns intentionally non-clickable.** Self headers + departed headers render as plain white text (no underline, no pointer, no click handler). The `isClickable = launcherMode && !isSelfCol && !m.isDeparted` predicate gates everything. Can't nudge yourself; can't nudge someone who's left the room.
+- **Layout-shift trap with two-pane flex layouts.** Adding columns to V2RoomMap's grid widens the right pane (`flex: 0 0 auto, intrinsic`), which consumes the left pane's `marginLeft: auto` space and shifts the feed visually. First-pass implementation hit this when the launcher overlay added 220px of grid width — feed shifted ~220px left. Fix: render launchers inside the EXISTING grid columns rather than adding new ones. The final layout puts door icon in the season-label slot (col 1, 80px wide) and helper text in the episode-label slot (col 2, 24px wide, with `overflow: visible` because the rotated text is ~32px wide). Body rows continue to render "Season N" / e# in those same columns — no conflict because they're different grid rows. Net grid width unchanged.
+
+**Behavioral consequences worth pinning:**
+
+- **The header band's leftmost two columns mean different things in different rows.** Sticky header: door icon (col 1) + rotated helper text (col 2). Body rows: "Season N" label on first-of-season rows (col 1) + e# marker on every row (col 2). Future header-band edits need to keep both interpretations working.
+- **V1 popover behavior unchanged.** The `anchorMode` default is `"from-page-bottom"`. v1 FriendProgressPostIt callers don't pass the prop → identical positioning as before this arc.
+- **Asker's PollSticky refresh works via callback chain.** V2RoomMap opens `PollComposer` → on success calls `onPollOpened` → V2FriendRoomPage bumps `pollRefreshKey` → PollSticky re-fetches and shows the just-opened poll. Same pattern as v1 ShowSection's `setPollRefreshKey`.
+
+**Commits across the arc** (in chronological order, hash-only since the per-commit detail lives in git log):
+
+| Range | Scope |
+|---|---|
+| `c7a4500` | C1: receive-side stickies mounted in V2FriendRoomPage |
+| `d135837` | C2 initial: send-side launchers wired in V2RoomMap (initially right of profile columns; popovers initially NOT portaled) |
+| `9f033a0` | Layout-shift fix: lift launcher overlay out of grid (right-side absolute overlay) so the feed stops shifting |
+| `b86a2e9` | Portaled launchers + `anchorMode` opt-in + helper text re-styled to Inter italic |
+| `09e39ad` | Helper text spacing nudge per mockup |
+| `0128112` | Reverse launcher order — door + helper move LEFT of profile columns (final position) |
+
+**Two-step deploys this arc required:** none (no migrations, no edge function changes).
+
+**Conventions established or reinforced this arc:**
+
+- **For any new fixed-position UI mounted under a transformed ancestor: portal it.** Identified twice this week — once for the rating-modal arc's bouncing cells (transform creates compositing layer / stacking context surprises) and now for the launcher popovers. Whenever you `position: fixed` inside a tree that has any `transform` on an ancestor, portal to `document.body` so the fixed-position math actually uses viewport coordinates.
+- **Add opt-in props to shared components rather than forking or duplicating.** `anchorMode` here, `hideRespondButtons` on RepliesList earlier in the week, `onForwardPick` on OneSelectProgress in the rating-capture arc. Default value preserves v1 behavior; V2 opts in. Tiny touch, zero v1 regression risk, no duplication.
+- **`overflow: visible` on a grid cell is the cheap way to let rotated content extend beyond its column.** The helper text (rotated, ~32px wide) sits inside a 24px-wide episode-label column slot; `overflow: visible` lets it spill into the 16px gap to the right without truncation, and without widening the grid.
+
+**Resolved by this arc:**
+
+- The V2 friend room had no way to send pings / open polls / open SIKW asks before this — users in V2 couldn't initiate any social engagement. Now they can.
+- V2 users couldn't see incoming pings or vote in polls if the asker was in v1 — receive-side stickies fix that. V1 ↔ V2 round-trips work in both directions.
+
+### 2026-05-18 — V2 inline thread spacing polish + pointer cursor scoping
+
+Three small fixes on the V2 friend-room inline thread layout.
+
+| Commit | Scope |
+|---|---|
+| `64a369b` | Bottom row: combined the standalone "Write a response" wrapper and the standalone bottom collapse wrapper into a single `justifyContent: space-between` row with `marginTop: 12` (was `marginTop: 40` + `marginTop: 16` for two right-aligned divs with empty space between). Collapse on LEFT, Write on RIGHT. Composer (when open) renders above the row; the Write button hides. ALSO: V2RoomFeed card's `cursor: "pointer"` + card-level `onClick={toggleExpand}` now scoped to `!isExpanded`. Expanded cards had pointer cursor but inner content stops propagation to keep buttons/composer working — misleading affordance. Expanded cards now use default cursor; users close via the explicit collapse buttons inside V2InlineThread. Clicking another (still-collapsed) card to switch threads still works. |
+| `d80cdb7` | First collapse button (above replies) now gated on `replyCount >= 3` (was `> 0`) and left-aligned to match the bottom-row collapse position. With fewer replies, scrolling past them isn't enough friction to warrant a second collapse trigger up top. |
+
+No behavioral conventions added; the changes are local UX polish.
 
 ### 2026-05-16 — Rating display: dice on map cells + click-to-adjust on self column
 
