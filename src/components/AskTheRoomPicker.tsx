@@ -16,18 +16,40 @@ interface Props {
   onClose: () => void;
   onSelectPoll: () => void;
   onSelectSikw: () => void;
+  /** "from-page-bottom" (default, v1 FriendProgressPostIt) bottom-anchors
+   *  at 96px from viewport bottom. "from-anchor" (V2 friend room map)
+   *  places below the anchor, right-edge-aligned to the anchor. */
+  anchorMode?: "from-page-bottom" | "from-anchor";
 }
 
 const POPOVER_WIDTH = 280;
 const GAP_FROM_ANCHOR = 14;
 const POPOVER_BOTTOM_PX = 96; // matches FriendProgressPostIt bottom — anchors popup bottom to the sticky
 
-export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, onSelectSikw }: Props) {
+export default function AskTheRoomPicker({
+  anchorRect,
+  onClose,
+  onSelectPoll,
+  onSelectSikw,
+  anchorMode = "from-page-bottom",
+}: Props) {
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
-  // Sit to the LEFT of the anchor row, bottom-anchored to align with the
-  // FriendProgressPostIt sticky (so the popup bottom always sits in frame).
-  const popoverLeft = Math.max(14, anchorRect.left - POPOVER_WIDTH - GAP_FROM_ANCHOR);
+  // See NudgePopover for the two positioning modes.
+  const positionStyle: React.CSSProperties =
+    anchorMode === "from-anchor"
+      ? {
+          position: "fixed",
+          top: anchorRect.bottom + GAP_FROM_ANCHOR,
+          right: Math.max(14, window.innerWidth - anchorRect.right),
+          width: POPOVER_WIDTH,
+        }
+      : {
+          position: "fixed",
+          bottom: POPOVER_BOTTOM_PX,
+          left: Math.max(14, anchorRect.left - POPOVER_WIDTH - GAP_FROM_ANCHOR),
+          width: POPOVER_WIDTH,
+        };
 
   // Click-outside dismissal
   useEffect(() => {
@@ -57,10 +79,7 @@ export default function AskTheRoomPicker({ anchorRect, onClose, onSelectPoll, on
       ref={popoverRef}
       role="dialog"
       style={{
-        position: "fixed",
-        bottom: POPOVER_BOTTOM_PX,
-        left: popoverLeft,
-        width: POPOVER_WIDTH,
+        ...positionStyle,
         background: CREAM,
         borderRadius: 24,
         padding: "16px 18px 14px",

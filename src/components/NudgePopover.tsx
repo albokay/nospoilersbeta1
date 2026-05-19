@@ -34,6 +34,11 @@ interface Props {
   count: number | null;
   /** Bounding rect of the row that was clicked, used to anchor the popover. */
   anchorRect: DOMRect;
+  /** "from-page-bottom" (default, v1 FriendProgressPostIt) pins the popover
+   *  bottom at POPOVER_BOTTOM_PX from the viewport bottom.
+   *  "from-anchor" (V2 friend room map header) places the popover directly
+   *  BELOW the anchor element, right-aligned to the anchor's right edge. */
+  anchorMode?: "from-page-bottom" | "from-anchor";
   onClose: () => void;
 }
 
@@ -92,6 +97,7 @@ export default function NudgePopover({
   direction,
   count,
   anchorRect,
+  anchorMode = "from-page-bottom",
   onClose,
 }: Props) {
   const popoverRef = useRef<HTMLDivElement | null>(null);
@@ -130,13 +136,25 @@ export default function NudgePopover({
     };
   }, [currentUserId, recipientId, groupId]);
 
-  // Position: sit to the LEFT of the anchor row, bottom-anchored to align
-  // with the FriendProgressPostIt sticky (so the popover bottom always
-  // sits within frame regardless of anchor row height/position).
-  const popoverLeft = Math.max(
-    14,
-    anchorRect.left - POPOVER_WIDTH - GAP_FROM_ANCHOR,
-  );
+  // Position. "from-page-bottom" (v1 FriendProgressPostIt): bottom-anchored
+  // popover sits to the LEFT of the anchor at 96px from the viewport
+  // bottom. "from-anchor" (V2 friend room map): popover sits BELOW the
+  // anchor with its right edge aligned to the anchor's right edge
+  // (extends leftward — there's more page space on that side).
+  const positionStyle: React.CSSProperties =
+    anchorMode === "from-anchor"
+      ? {
+          position: "fixed",
+          top: anchorRect.bottom + GAP_FROM_ANCHOR,
+          right: Math.max(14, window.innerWidth - anchorRect.right),
+          width: POPOVER_WIDTH,
+        }
+      : {
+          position: "fixed",
+          bottom: POPOVER_BOTTOM_PX,
+          left: Math.max(14, anchorRect.left - POPOVER_WIDTH - GAP_FROM_ANCHOR),
+          width: POPOVER_WIDTH,
+        };
 
   // Click-outside dismissal
   useEffect(() => {
@@ -245,10 +263,7 @@ export default function NudgePopover({
       <div
         role="dialog"
         style={{
-          position: "fixed",
-          bottom: POPOVER_BOTTOM_PX,
-          left: popoverLeft,
-          width: POPOVER_WIDTH,
+          ...positionStyle,
           height: sentBoxHeight ?? "auto",
           background: CREAM,
           borderRadius: 24,
@@ -281,10 +296,7 @@ export default function NudgePopover({
       ref={popoverRef}
       role="dialog"
       style={{
-        position: "fixed",
-        bottom: POPOVER_BOTTOM_PX,
-        left: popoverLeft,
-        width: POPOVER_WIDTH,
+        ...positionStyle,
         background: CREAM,
         borderRadius: 24,
         padding: "16px 18px 14px",

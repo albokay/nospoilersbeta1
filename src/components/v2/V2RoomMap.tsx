@@ -792,7 +792,11 @@ export default function V2RoomMap({
           display: "flex",
           alignItems: "flex-end",
           gap: 8,
-          paddingLeft: 12,
+          // Distance from the last profile column to the helper text — at
+          // least one COL_GAP (16) past the scroll container's right
+          // padding (6). Using a larger gap (28) so the helper text reads
+          // as a comfortably separate region from the profile list.
+          paddingLeft: 28,
           paddingBottom: 4,
           pointerEvents: "auto",
         }}
@@ -811,7 +815,7 @@ export default function V2RoomMap({
               bottom: 8,
               transform: "rotate(-90deg)",
               transformOrigin: "left bottom",
-              fontFamily: "Lora, Georgia, serif",
+              fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
               fontStyle: "italic",
               fontSize: 13,
               color: "var(--dos-border)",
@@ -862,6 +866,7 @@ export default function V2RoomMap({
             direction={nudgeOpenFor.direction}
             count={nudgeOpenFor.count}
             anchorRect={nudgeOpenFor.anchorRect}
+            anchorMode="from-anchor"
             onClose={() => setNudgeOpenFor(null)}
           />,
           document.body,
@@ -871,6 +876,7 @@ export default function V2RoomMap({
         createPortal(
           <AskTheRoomPicker
             anchorRect={askPickerRect}
+            anchorMode="from-anchor"
             onClose={() => setAskPickerRect(null)}
             onSelectPoll={() => {
               setAskPickerRect(null);
