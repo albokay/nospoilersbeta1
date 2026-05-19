@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { DoorClosed, DoorOpen } from "lucide-react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
@@ -276,6 +277,13 @@ export default function V2RoomMap({
   const viewerEff = effectiveProgress(viewerProgress);
 
   return (
+    // Positioned outer wrapper so the launcher overlay (helper text +
+    // door icon) can be absolutely placed RIGHT of the scroll container
+    // without participating in the grid layout. Putting the overlay
+    // inside the scroll container's grid would widen the right pane and
+    // squeeze the feed to the left (which is what happened in the first
+    // pass of this feature).
+    <div style={{ position: "relative", display: "inline-block" }}>
     <div
       ref={scrollRef}
       style={{
@@ -297,7 +305,7 @@ export default function V2RoomMap({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px) ${HELPER_W}px ${DOOR_W}px`,
+          gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
           columnGap: COL_GAP,
           alignItems: "start",
         }}
@@ -307,7 +315,7 @@ export default function V2RoomMap({
           style={{
             gridColumn: "1 / -1",
             display: "grid",
-            gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px) ${HELPER_W}px ${DOOR_W}px`,
+            gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
             columnGap: COL_GAP,
             position: "sticky",
             top: 0,
@@ -401,65 +409,6 @@ export default function V2RoomMap({
               </div>
             );
           })}
-          {/* Helper text — only in the sticky header. Two trailing grid
-              columns (helper text + door icon) per spec. */}
-          <div
-            style={{
-              height: HEADER_HEIGHT,
-              display: "flex",
-              alignItems: "flex-end",
-              paddingBottom: 8,
-              paddingLeft: 8,
-            }}
-          >
-            {launcherMode && (
-              <div
-                style={{
-                  fontFamily: "Lora, Georgia, serif",
-                  fontStyle: "italic",
-                  fontSize: 13,
-                  color: "var(--dos-border)",
-                  lineHeight: 1.25,
-                }}
-              >
-                click a name to<br />nudge a friend
-              </div>
-            )}
-          </div>
-          {/* Door-icon launcher — DoorClosed → DoorOpen on hover. Click
-              opens AskTheRoomPicker (poll vs SIKW). */}
-          <div
-            style={{
-              height: HEADER_HEIGHT,
-              display: "flex",
-              alignItems: "flex-end",
-              justifyContent: "flex-end",
-              paddingBottom: 4,
-            }}
-          >
-            {launcherMode && (
-              <button
-                aria-label="Ask the room"
-                onMouseEnter={() => setDoorHover(true)}
-                onMouseLeave={() => setDoorHover(false)}
-                onClick={(e) => {
-                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                  setAskPickerRect(rect);
-                }}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  color: "var(--dos-border)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                }}
-              >
-                {doorHover ? <DoorOpen size={36} /> : <DoorClosed size={36} />}
-              </button>
-            )}
-          </div>
         </div>
 
         {/* ── Body rows ────────────────────────────────────────────────── */}
@@ -511,11 +460,6 @@ export default function V2RoomMap({
                       </div>
                     );
                   })}
-                  {/* Trailing placeholders for the helper-text + door-icon
-                      grid columns (only the sticky header has content
-                      there). */}
-                  <div />
-                  <div />
                 </>
               )}
 
@@ -827,60 +771,139 @@ export default function V2RoomMap({
                   </div>
                 );
               })}
-              {/* Trailing placeholders for the helper-text + door-icon
-                  grid columns (rendered only in the sticky header row).
-                  Body rows leave them empty. */}
-              <div />
-              <div />
             </React.Fragment>
           );
         })}
       </div>
+    </div>
 
-      {launcherMode && nudgeOpenFor && groupId && viewerUserId && (
-        <NudgePopover
-          recipientUsername={nudgeOpenFor.recipientUsername}
-          recipientId={nudgeOpenFor.recipientId}
-          groupId={groupId}
-          currentUserId={viewerUserId}
-          direction={nudgeOpenFor.direction}
-          count={nudgeOpenFor.count}
-          anchorRect={nudgeOpenFor.anchorRect}
-          onClose={() => setNudgeOpenFor(null)}
-        />
-      )}
-
-      {launcherMode && askPickerRect && groupId && (
-        <AskTheRoomPicker
-          anchorRect={askPickerRect}
-          onClose={() => setAskPickerRect(null)}
-          onSelectPoll={() => {
-            setAskPickerRect(null);
-            setPollComposerOpen(true);
+    {/* Launcher overlay — rendered as an absolute child of the outer
+        positioned wrapper (NOT the scroll container). Sits at the
+        wrapper's top-right + offset right, so it overflows into empty
+        page space without expanding the grid's intrinsic width. Sticky
+        positioning keeps it pinned at the top as the map scrolls. */}
+    {launcherMode && (
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: "100%",
+          height: HEADER_HEIGHT,
+          display: "flex",
+          alignItems: "flex-end",
+          gap: 8,
+          paddingLeft: 12,
+          paddingBottom: 4,
+          pointerEvents: "auto",
+        }}
+      >
+        <div
+          style={{
+            position: "relative",
+            width: 40,
+            height: HEADER_HEIGHT,
           }}
-          onSelectSikw={() => {
-            setAskPickerRect(null);
-            setSikwComposerOpen(true);
+        >
+          <div
+            style={{
+              position: "absolute",
+              left: 4,
+              bottom: 8,
+              transform: "rotate(-90deg)",
+              transformOrigin: "left bottom",
+              fontFamily: "Lora, Georgia, serif",
+              fontStyle: "italic",
+              fontSize: 13,
+              color: "var(--dos-border)",
+              lineHeight: 1.25,
+              whiteSpace: "nowrap",
+            }}
+          >
+            click a name to<br />nudge a friend
+          </div>
+        </div>
+        <button
+          aria-label="Ask the room"
+          onMouseEnter={() => setDoorHover(true)}
+          onMouseLeave={() => setDoorHover(false)}
+          onClick={(e) => {
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            setAskPickerRect(rect);
           }}
-        />
-      )}
+          style={{
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            color: "#fff",
+            display: "inline-flex",
+            alignItems: "center",
+          }}
+        >
+          {doorHover ? <DoorOpen size={24} /> : <DoorClosed size={24} />}
+        </button>
+      </div>
+    )}
 
-      {launcherMode && pollComposerOpen && groupId && (
-        <PollComposer
-          groupId={groupId}
-          onClose={() => setPollComposerOpen(false)}
-          onOpened={() => onPollOpened?.()}
-        />
-      )}
+      {/* All four launchers are portaled to document.body because V2RoomMap
+          is mounted inside V2FriendRoomPage's transform: translateX(-144px)
+          wrapper. CSS rule: any ancestor with a transform becomes the
+          containing block for position:fixed descendants — so without
+          portaling, the popovers' fixed-position math (which assumes
+          viewport coordinates) gets applied relative to the transformed
+          wrapper and lands off-screen. */}
+      {launcherMode && nudgeOpenFor && groupId && viewerUserId &&
+        createPortal(
+          <NudgePopover
+            recipientUsername={nudgeOpenFor.recipientUsername}
+            recipientId={nudgeOpenFor.recipientId}
+            groupId={groupId}
+            currentUserId={viewerUserId}
+            direction={nudgeOpenFor.direction}
+            count={nudgeOpenFor.count}
+            anchorRect={nudgeOpenFor.anchorRect}
+            onClose={() => setNudgeOpenFor(null)}
+          />,
+          document.body,
+        )}
 
-      {launcherMode && sikwComposerOpen && groupId && (
-        <SIKWComposer
-          groupId={groupId}
-          progressSeason={viewerProgress?.s ?? 0}
-          progressEpisode={viewerProgress?.e ?? 0}
-          onClose={() => setSikwComposerOpen(false)}
-        />
-      )}
+      {launcherMode && askPickerRect && groupId &&
+        createPortal(
+          <AskTheRoomPicker
+            anchorRect={askPickerRect}
+            onClose={() => setAskPickerRect(null)}
+            onSelectPoll={() => {
+              setAskPickerRect(null);
+              setPollComposerOpen(true);
+            }}
+            onSelectSikw={() => {
+              setAskPickerRect(null);
+              setSikwComposerOpen(true);
+            }}
+          />,
+          document.body,
+        )}
+
+      {launcherMode && pollComposerOpen && groupId &&
+        createPortal(
+          <PollComposer
+            groupId={groupId}
+            onClose={() => setPollComposerOpen(false)}
+            onOpened={() => onPollOpened?.()}
+          />,
+          document.body,
+        )}
+
+      {launcherMode && sikwComposerOpen && groupId &&
+        createPortal(
+          <SIKWComposer
+            groupId={groupId}
+            progressSeason={viewerProgress?.s ?? 0}
+            progressEpisode={viewerProgress?.e ?? 0}
+            onClose={() => setSikwComposerOpen(false)}
+          />,
+          document.body,
+        )}
     </div>
   );
 }
