@@ -277,13 +277,6 @@ export default function V2RoomMap({
   const viewerEff = effectiveProgress(viewerProgress);
 
   return (
-    // Positioned outer wrapper so the launcher overlay (helper text +
-    // door icon) can be absolutely placed RIGHT of the scroll container
-    // without participating in the grid layout. Putting the overlay
-    // inside the scroll container's grid would widen the right pane and
-    // squeeze the feed to the left (which is what happened in the first
-    // pass of this feature).
-    <div style={{ position: "relative", display: "inline-block" }}>
     <div
       ref={scrollRef}
       style={{
@@ -324,8 +317,77 @@ export default function V2RoomMap({
             paddingBottom: 8,
           }}
         >
-          <div />
-          <div /> {/* episode-label column placeholder */}
+          {/* Season-label column slot (col 1, 80px wide). Hosts the
+              "ask the room" door icon in the sticky header; body rows
+              put the Season N label in this same column. */}
+          <div
+            style={{
+              width: SEASON_LABEL_W,
+              height: HEADER_HEIGHT,
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "flex-start",
+              paddingBottom: 8,
+              paddingLeft: 8,
+            }}
+          >
+            {launcherMode && (
+              <button
+                aria-label="Ask the room"
+                onMouseEnter={() => setDoorHover(true)}
+                onMouseLeave={() => setDoorHover(false)}
+                onClick={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setAskPickerRect(rect);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  color: "#fff",
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+              >
+                {doorHover ? <DoorOpen size={24} /> : <DoorClosed size={24} />}
+              </button>
+            )}
+          </div>
+          {/* Episode-label column slot (col 2, 24px wide). Hosts the
+              rotated helper text "click a name to / nudge a friend" in
+              the sticky header; body rows put the e# marker here. The
+              rotated text is ~32px wide visually, so it overflows ~8px
+              into the column-gap area to the right (overflow visible
+              to allow this). */}
+          <div
+            style={{
+              width: EPISODE_LABEL_W,
+              height: HEADER_HEIGHT,
+              position: "relative",
+              overflow: "visible",
+            }}
+          >
+            {launcherMode && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  bottom: 8,
+                  transform: "rotate(-90deg)",
+                  transformOrigin: "left bottom",
+                  fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+                  fontStyle: "italic",
+                  fontSize: 13,
+                  color: "var(--dos-border)",
+                  lineHeight: 1.25,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                click a name to<br />nudge a friend
+              </div>
+            )}
+          </div>
           {members.map((m) => {
             const isSelfCol = !!viewerUserId && m.userId === viewerUserId;
             const isClickable = launcherMode && !isSelfCol && !m.isDeparted;
@@ -775,79 +837,6 @@ export default function V2RoomMap({
           );
         })}
       </div>
-    </div>
-
-    {/* Launcher overlay — rendered as an absolute child of the outer
-        positioned wrapper (NOT the scroll container). Sits at the
-        wrapper's top-right + offset right, so it overflows into empty
-        page space without expanding the grid's intrinsic width. Sticky
-        positioning keeps it pinned at the top as the map scrolls. */}
-    {launcherMode && (
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: "100%",
-          height: HEADER_HEIGHT,
-          display: "flex",
-          alignItems: "flex-end",
-          gap: 8,
-          // Distance from the last profile column to the helper text.
-          // Multiple COL_GAPs (16) past the scroll container's right
-          // padding so the helper text reads as a clearly separate
-          // region from the profile list, per mockup.
-          paddingLeft: 56,
-          paddingBottom: 4,
-          pointerEvents: "auto",
-        }}
-      >
-        <div
-          style={{
-            position: "relative",
-            width: 40,
-            height: HEADER_HEIGHT,
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              left: 4,
-              bottom: 8,
-              transform: "rotate(-90deg)",
-              transformOrigin: "left bottom",
-              fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-              fontStyle: "italic",
-              fontSize: 13,
-              color: "var(--dos-border)",
-              lineHeight: 1.25,
-              whiteSpace: "nowrap",
-            }}
-          >
-            click a name to<br />nudge a friend
-          </div>
-        </div>
-        <button
-          aria-label="Ask the room"
-          onMouseEnter={() => setDoorHover(true)}
-          onMouseLeave={() => setDoorHover(false)}
-          onClick={(e) => {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            setAskPickerRect(rect);
-          }}
-          style={{
-            background: "transparent",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            color: "#fff",
-            display: "inline-flex",
-            alignItems: "center",
-          }}
-        >
-          {doorHover ? <DoorOpen size={24} /> : <DoorClosed size={24} />}
-        </button>
-      </div>
-    )}
 
       {/* All four launchers are portaled to document.body because V2RoomMap
           is mounted inside V2FriendRoomPage's transform: translateX(-144px)
