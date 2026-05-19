@@ -346,13 +346,19 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               className="card threadCard"
               style={{
                 margin: 0,
-                cursor: "pointer",
+                // Pointer cursor + click-to-toggle are scoped to COLLAPSED
+                // cards only. When expanded, clicks on the card body did
+                // nothing (most inner content stops propagation) so the
+                // pointer affordance was misleading. Users close expanded
+                // threads via the explicit collapse buttons inside
+                // V2InlineThread.
+                cursor: isExpanded ? "default" : "pointer",
                 position: "relative",
                 paddingTop: 12,
                 paddingBottom: 36,
                 border: isHighlighted ? "4px solid #355eb8" : "4px solid var(--dos-border)",
               }}
-              onClick={(e) => toggleExpand(entry.threadId, e)}
+              onClick={isExpanded ? undefined : (e) => toggleExpand(entry.threadId, e)}
             >
               <div
                 style={{

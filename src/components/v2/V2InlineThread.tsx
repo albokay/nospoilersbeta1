@@ -481,26 +481,10 @@ export default function V2InlineThread({
         />
       </div>
 
-      {/* "Write a response" trigger — bottom of the replies area. Clicking
-          opens the composer, which replaces this button in place. Hidden
-          on tombstones (you can't reply to a deleted entry, though existing
-          replies remain readable). Sized large (fontSize 17, padding
-          10/22) to match v1's "Respond to the thread" CTA style; this is
-          the single entry-point for responding to the thread now. */}
-      {!isTombstone && !composerOpen && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 40 }}>
-          <button
-            className="btn"
-            onClick={openComposer}
-            style={{ fontSize: 17, padding: "10px 22px" }}
-          >
-            Write a response
-          </button>
-        </div>
-      )}
-
       {/* Reply composer — hidden by default. Opens on "Write a response"
-          or when a Quote pending-reference is staged. */}
+          or when a Quote pending-reference is staged. Renders ABOVE the
+          shared bottom row so when the composer is open the row shows
+          just the collapse on the left (Write button is gone). */}
       {!isTombstone && composerOpen && (
         <div
           ref={composerWrapperRef}
@@ -549,9 +533,22 @@ export default function V2InlineThread({
         </div>
       )}
 
-      {/* Second collapse button — at the end of the thread per spec. */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+      {/* Shared bottom row — collapse on the LEFT, "Write a response" on
+          the RIGHT. The CTA is hidden on tombstones (no replies allowed)
+          and when the composer is open (replaced by the composer above).
+          Tightened from the prior layout where collapse + write were two
+          separate right-aligned divs with marginTop 40 + 16. */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
         {collapseButton}
+        {!isTombstone && !composerOpen && (
+          <button
+            className="btn"
+            onClick={openComposer}
+            style={{ fontSize: 17, padding: "10px 22px" }}
+          >
+            Write a response
+          </button>
+        )}
       </div>
 
       {/* Quote hint modal — v1's copy ported verbatim. Shown when the user
