@@ -27,6 +27,9 @@ import V2GroupSettingsModal from "./V2GroupSettingsModal";
 import LoadingDots from "../LoadingDots";
 import OneSelectProgress from "../OneSelectProgress";
 import RatingCaptureModal from "../RatingCaptureModal";
+import IncomingPingSticky from "../IncomingPingSticky";
+import PollSticky from "../PollSticky";
+import SIKWSticky from "../SIKWSticky";
 import { navigateToShow } from "./v2nav";
 
 // V2 friend room page at /v2/room/:groupId. Two-pane layout: feed of entry
@@ -69,6 +72,12 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // visible rotate rating on click; cells whose entry is off-screen scroll
   // to it instead. See sidebar_spec_click_to_adjust_ratings.md.
   const [visibleEntryIds, setVisibleEntryIds] = useState<Set<string>>(new Set());
+
+  // Bumped when the asker opens a poll via the map's door-icon launcher
+  // (PollComposer's onOpened callback). PollSticky watches this key and
+  // refreshes so the asker sees their just-opened poll without waiting
+  // for the realtime subscription. Same pattern as V1 ShowSection.
+  const [pollRefreshKey, setPollRefreshKey] = useState(0);
 
   // Debounce timers per (season, episode) — each click optimistically
   // updates local state and schedules a 500ms-deferred UPSERT. A repeat
@@ -629,6 +638,30 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
           onCommit={handleRatingCommit}
           onCancel={handleRatingCancel}
         />
+      )}
+
+      {/* Receive-side stickies — port of v1 ShowSection's friend-room
+          chrome. All three self-render as fixed-position elements (no
+          layout participation here); they manage their own visibility
+          gates (e.g. PollSticky hides when there's no active poll).
+          IncomingPingSticky surfaces pings sent TO the viewer; pings
+          render on top of the map per spec ("charming marginalia"). */}
+      {user && (
+        <>
+          <IncomingPingSticky groupId={groupId} currentUserId={user.id} />
+          <PollSticky
+            groupId={groupId}
+            currentUserId={user.id}
+            refreshKey={pollRefreshKey}
+          />
+          {show && (
+            <SIKWSticky
+              groupId={groupId}
+              currentUserId={user.id}
+              seasons={show.seasons}
+            />
+          )}
+        </>
       )}
     </V2Layout>
   );
