@@ -792,11 +792,11 @@ export default function V2RoomMap({
           display: "flex",
           alignItems: "flex-end",
           gap: 8,
-          // Distance from the last profile column to the helper text — at
-          // least one COL_GAP (16) past the scroll container's right
-          // padding (6). Using a larger gap (28) so the helper text reads
-          // as a comfortably separate region from the profile list.
-          paddingLeft: 28,
+          // Distance from the last profile column to the helper text.
+          // Multiple COL_GAPs (16) past the scroll container's right
+          // padding so the helper text reads as a clearly separate
+          // region from the profile list, per mockup.
+          paddingLeft: 56,
           paddingBottom: 4,
           pointerEvents: "auto",
         }}
