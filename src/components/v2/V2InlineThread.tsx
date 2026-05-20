@@ -52,6 +52,9 @@ export type V2InlineThreadProps = {
   /** Fires after fetchV2ThreadDetail resolves so the parent's title-row
    *  LikeBadge can reflect the caller's like state. */
   onThreadLikeStateChange?: (likedByMe: boolean) => void;
+  /** Click handler for username bylines inside RepliesList. Forwarded
+   *  through unchanged. Routes to /v2/u/<username>. */
+  onClickProfile?: (username: string) => void;
 };
 
 export default function V2InlineThread({
@@ -66,6 +69,7 @@ export default function V2InlineThread({
   onThreadDeleted,
   onDraftChange,
   onThreadLikeStateChange,
+  onClickProfile,
 }: V2InlineThreadProps) {
   const { profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
@@ -526,6 +530,7 @@ export default function V2InlineThread({
           onScrollToComposer={openComposer}
           refreshKey={repliesKey}
           hideRespondButtons
+          onClickProfile={onClickProfile}
         />
       </div>
 

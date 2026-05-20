@@ -10,7 +10,7 @@ import React, {
 import { ChevronDown, Users } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
-import SidebarAvatar from "../SidebarAvatar";
+import Username from "../Username";
 import { timeAgo } from "../../lib/utils";
 import { parsePromptTokens } from "../../lib/promptTokens";
 import V2InlineThread from "./V2InlineThread";
@@ -84,6 +84,10 @@ export type V2RoomFeedProps = {
       whose entry IS visible rotates rating on click; one whose entry is OFF-
       screen scrolls to it instead. */
   onVisibleEntriesChange?: (visibleIds: Set<string>) => void;
+  /** Click handler for username bylines (entry author + reply authors).
+      Forwarded to V2InlineThread → RepliesList. Used by V2RoomFeed itself
+      for the entry byline. Routes to /v2/u/<username>. */
+  onClickProfile?: (username: string) => void;
 };
 
 const HIGHLIGHT_MS = 1500;
@@ -99,6 +103,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     onThreadEdited,
     onThreadDeleted,
     onVisibleEntriesChange,
+    onClickProfile,
   },
   ref,
 ) {
@@ -438,10 +443,12 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 }}
               >
                 Started by{" "}
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle", fontWeight: 700 }}>
-                  <SidebarAvatar userId={entry.authorId} username={entry.authorUsername} size={16} />
-                  {entry.authorUsername}
-                </span>
+                <Username
+                  name={entry.authorUsername}
+                  userId={entry.authorId}
+                  onClickProfile={onClickProfile ?? (() => {})}
+                  bold
+                />
                 {entry.isDeparted && (
                   <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6 }}>has left the room</span>
                 )}
@@ -461,6 +468,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       viewerProgress={viewerProgress}
                       userId={userId}
                       replyCount={entry.replyCount}
+                      onClickProfile={onClickProfile}
                       onCollapseTop={() => handleCollapseTop(entry.threadId)}
                       onAuthRequired={onAuthRequired}
                       onThreadEdited={onThreadEdited}

@@ -403,6 +403,17 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
 
   const eff = useMemo(() => effectiveProgress(progressForShow), [progressForShow]);
 
+  // Click handler for username bylines (entry author + reply authors). Routes
+  // to the V2 public profile route at /v2/u/<username>. Used by V2RoomFeed
+  // for the entry byline and forwarded to V2InlineThread → RepliesList for
+  // reply bylines.
+  const handleClickProfile = useCallback(
+    (username: string) => {
+      navigate(`/v2/u/${encodeURIComponent(username)}`);
+    },
+    [navigate],
+  );
+
   if (loadError) {
     return (
       <V2Layout palette="room">
@@ -590,6 +601,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 onThreadEdited={handleThreadEdited}
                 onThreadDeleted={handleThreadDeleted}
                 onVisibleEntriesChange={setVisibleEntryIds}
+                onClickProfile={handleClickProfile}
               />
             )}
           </div>
