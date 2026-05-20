@@ -20,31 +20,7 @@ import Tooltip from "./Tooltip";
 import { annotateTextWithSups, UnmatchedSups } from "../lib/citationUtils";
 import { linkifyNodes } from "../lib/linkify";
 import type { SupEntry } from "../lib/citationUtils";
-
-// Matches [PROMPT: any text including newlines]
-const PROMPT_TOKEN_RE_INLINE = /\[PROMPT:([\s\S]*?)\]/g;
-
-function parsePromptTokensInline(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  let last = 0;
-  let match: RegExpExecArray | null;
-  const re = new RegExp(PROMPT_TOKEN_RE_INLINE.source, "g");
-  let keyIdx = 0;
-  while ((match = re.exec(text)) !== null) {
-    if (match.index > last) {
-      parts.push(text.slice(last, match.index).trimEnd());
-    }
-    const promptText = match[1].trim();
-    parts.push(
-      <blockquote key={`prompt-${keyIdx++}`} className="prompt-ref">
-        {promptText}
-      </blockquote>
-    );
-    last = match.index + match[0].length;
-  }
-  if (last < text.length) parts.push(text.slice(last).trimStart());
-  return parts;
-}
+import { parsePromptTokens } from "../lib/promptTokens";
 
 export default function InlineThreadView({
   thread, show, onBack, progressForShow, onMountAlignTop,
@@ -678,7 +654,7 @@ export default function InlineThreadView({
             ) : (
               <div style={{ marginTop: 12 }} className="thread-entry-body">
                 {(() => {
-                  const promptParts = parsePromptTokensInline(thread.body);
+                  const promptParts = parsePromptTokens(thread.body);
                   const renderedParts: React.ReactNode[] = [];
                   let remainingSups: SupEntry[] = [];
                   let pkIdx = 0;

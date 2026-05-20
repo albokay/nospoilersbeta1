@@ -12,6 +12,7 @@ import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import SidebarAvatar from "../SidebarAvatar";
 import { timeAgo } from "../../lib/utils";
+import { parsePromptTokens } from "../../lib/promptTokens";
 import V2InlineThread from "./V2InlineThread";
 import Modal from "../Modal";
 import {
@@ -484,7 +485,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     @{entry.authorUsername} deleted their entry.
                   </div>
                 ) : (
-                  <div className="clamp3">{entry.preview}</div>
+                  <div className="clamp3">
+                    {parsePromptTokens(entry.preview).map((part, i) => (
+                      <React.Fragment key={`prev-${i}`}>{part}</React.Fragment>
+                    ))}
+                  </div>
                 )}
               </div>
 

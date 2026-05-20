@@ -14,6 +14,7 @@ import {
   type CitationEntry,
 } from "../../lib/db";
 import { effectiveProgress } from "../../lib/utils";
+import { parsePromptTokens } from "../../lib/promptTokens";
 import type { ProgressEntry, Thread } from "../../types";
 
 // V2 friend-room inline thread view.
@@ -422,7 +423,9 @@ export default function V2InlineThread({
         </div>
       ) : (
         <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 8 }}>
-          {thread.body}
+          {parsePromptTokens(thread.body).map((part, i) => (
+            <React.Fragment key={`body-${i}`}>{part}</React.Fragment>
+          ))}
         </div>
       )}
 
