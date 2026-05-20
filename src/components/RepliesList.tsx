@@ -374,6 +374,11 @@ export default function RepliesList({
   const [editReplyBody, setEditReplyBody] = useState("");
   const [editReplySubmitting, setEditReplySubmitting] = useState(false);
   const [editReplyError, setEditReplyError] = useState<string | null>(null);
+  // Per-reply body refs so handleStartEditReply can snapshot the rendered
+  // body height and apply it as the textarea's initial `height`. Floor at
+  // 80px (≈ rows=3 default) so very short replies still get a usable box.
+  const replyBodyRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [editStartHeight, setEditStartHeight] = useState<number>(80);
   // Retag warning state: replyId that is pending confirmation
   const [retagWarningReplyId, setRetagWarningReplyId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -527,6 +532,8 @@ export default function RepliesList({
   };
 
   const handleStartEditReply = (r: Reply) => {
+    const measured = replyBodyRefs.current[r.id]?.offsetHeight ?? 0;
+    setEditStartHeight(Math.max(80, measured));
     setEditingReplyId(r.id);
     setEditReplyBody(localEditedBody[r.id] ?? r.body);
     setEditReplyError(null);
@@ -862,13 +869,13 @@ export default function RepliesList({
                   <textarea
                     value={editReplyBody}
                     onChange={e => setEditReplyBody(e.target.value)}
-                    rows={3}
                     style={{
                       width: "100%", boxSizing: "border-box",
                       background: "#fff", color: "#000",
                       border: "none", borderRadius: 8,
                       padding: "8px 10px", fontSize: 14, resize: "vertical",
                       fontFamily: "inherit",
+                      height: editStartHeight,
                     }}
                     autoFocus
                   />
@@ -924,20 +931,22 @@ export default function RepliesList({
                   )}
                 </div>
               ) : (
-                <ReplyBody
-                  body={r.body}
-                  quotedText={r.quotedText}
-                  authorName={referencedReply?.author ?? (r.referencedThreadId ? thread.author : null)}
-                  currentUsername={profile?.username ?? null}
-                  referenceType={r.referenceType}
-                  onScrollToRef={
-                    r.referencedReplyId
-                      ? () => scrollHighlight(`reply-${r.referencedReplyId}`)
-                      : r.referencedThreadId
-                        ? () => scrollHighlight("thread-entry")
-                        : undefined
-                  }
-                />
+                <div ref={el => { replyBodyRefs.current[r.id] = el; }}>
+                  <ReplyBody
+                    body={r.body}
+                    quotedText={r.quotedText}
+                    authorName={referencedReply?.author ?? (r.referencedThreadId ? thread.author : null)}
+                    currentUsername={profile?.username ?? null}
+                    referenceType={r.referenceType}
+                    onScrollToRef={
+                      r.referencedReplyId
+                        ? () => scrollHighlight(`reply-${r.referencedReplyId}`)
+                        : r.referencedThreadId
+                          ? () => scrollHighlight("thread-entry")
+                          : undefined
+                    }
+                  />
+                </div>
               )}
 
               {!isCurrentlyEditing && (

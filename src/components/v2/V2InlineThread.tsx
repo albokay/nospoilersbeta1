@@ -87,6 +87,12 @@ export default function V2InlineThread({
   const [editTitle, setEditTitle] = useState(thread.titleBase);
   const [editBody, setEditBody] = useState(thread.body);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  // Snapshot of the body's rendered height at the moment the user clicked
+  // Edit. Applied as the textarea's initial `height` so the user sees the
+  // full text on edit-start. Floor at 220px so empty / very short posts
+  // still get a usable textarea. User can drag-resize via `resize: vertical`.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [editStartHeight, setEditStartHeight] = useState<number>(220);
   const [editError, setEditError] = useState<string | null>(null);
   const [showRetagWarning, setShowRetagWarning] = useState(false);
 
@@ -204,6 +210,8 @@ export default function V2InlineThread({
       (editEff.s === thread.season && editEff.e > thread.episode));
 
   const openEdit = () => {
+    const measured = bodyRef.current?.offsetHeight ?? 0;
+    setEditStartHeight(Math.max(220, measured));
     setEditTitle(thread.titleBase);
     setEditBody(thread.body);
     setEditError(null);
@@ -384,7 +392,7 @@ export default function V2InlineThread({
             value={editBody}
             onChange={(e) => setEditBody(e.target.value)}
             placeholder="Body"
-            style={{ width: "100%", height: 220, resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
+            style={{ width: "100%", height: editStartHeight, resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
           />
           {editError && (
             <div style={{ fontSize: 13, color: "var(--danger)" }}>{editError}</div>
@@ -426,7 +434,7 @@ export default function V2InlineThread({
           )}
         </div>
       ) : (
-        <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 8 }}>
+        <div ref={bodyRef} style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 8 }}>
           {parsePromptTokens(thread.body).map((part, i) => (
             <React.Fragment key={`body-${i}`}>{part}</React.Fragment>
           ))}
