@@ -3,6 +3,7 @@ import { ChevronUp, MessageSquare } from "lucide-react";
 import Modal from "../Modal";
 import RepliesList from "../RepliesList";
 import ResponseComposer, { type PendingReference } from "../ResponseComposer";
+import Tooltip from "../Tooltip";
 import { useAuth } from "../../lib/auth";
 import {
   deleteThread as dbDeleteThread,
@@ -371,37 +372,53 @@ export default function V2InlineThread({
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
             placeholder="Title"
-            style={{ fontSize: 16, fontWeight: 600 }}
+            style={{ width: "100%", height: 40, fontWeight: 700, border: "none" }}
           />
           <textarea
-            className="badge"
+            className="card"
             value={editBody}
             onChange={(e) => setEditBody(e.target.value)}
             placeholder="Body"
-            rows={6}
-            style={{ fontSize: 14, lineHeight: 1.5, resize: "vertical" }}
+            style={{ width: "100%", height: 220, resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
           />
-          {showRetagWarning && (
-            <div style={{ fontSize: 13, padding: 12, background: "rgba(0,0,0,0.06)", borderRadius: 8, color: "#1a3a4a" }}>
-              Your progress has advanced since you wrote this. Saving will re-tag it to S{String(editTagS).padStart(2, "0")} E{String(editTagE).padStart(2, "0")}.
-            </div>
-          )}
           {editError && (
             <div style={{ fontSize: 13, color: "var(--danger)" }}>{editError}</div>
           )}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <button className="btn" onClick={cancelEdit} disabled={editSubmitting}>
-              Cancel
-            </button>
-            <button
-              className="btn"
-              onClick={handleSaveEdit}
-              disabled={editSubmitting || !editTitle.trim() || !editBody.trim()}
-              style={{ background: "var(--green)", border: "none", color: "#fff" }}
-            >
-              {editSubmitting ? "Saving…" : showRetagWarning ? "Confirm and save" : "Save"}
-            </button>
-          </div>
+          {showRetagWarning ? (
+            <div className="retag-warning" style={{ background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 6, padding: "12px 14px", marginTop: 10, fontSize: 13 }}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>Heads up — this post will be retagged</div>
+              <div style={{ opacity: 0.85, marginBottom: 10 }}>
+                Your progress has moved to{" "}
+                <strong>S{String(editTagS).padStart(2, "0")} E{String(editTagE).padStart(2, "0")}</strong>.
+                {" "}Saving will retag this post to your current progress — readers below that point who could see it before will no longer see it.
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button className="btn" onClick={() => setShowRetagWarning(false)} disabled={editSubmitting}>Go back</button>
+                <button
+                  className="btn"
+                  onClick={handleSaveEdit}
+                  disabled={editSubmitting}
+                  style={{ background: "#7abd8e", color: "#fff", border: "2px solid #7abd8e" }}
+                >
+                  {editSubmitting ? "Saving…" : "Save & retag"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button className="btn" onClick={cancelEdit} disabled={editSubmitting}>
+                Cancel
+              </button>
+              <button
+                className="btn"
+                onClick={handleSaveEdit}
+                disabled={editSubmitting || !editTitle.trim() || !editBody.trim()}
+                style={{ background: "#7abd8e", color: "#fff", border: "2px solid #7abd8e" }}
+              >
+                {editSubmitting ? "Saving…" : "Save"}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 8 }}>
@@ -417,13 +434,39 @@ export default function V2InlineThread({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, padding: "8px 0", marginTop: 4, flexWrap: "wrap" }}>
           {isOwn && (
             <>
-              <button
-                className="btn"
-                onClick={openEdit}
-                style={{ fontSize: 13, padding: "3px 12px" }}
-              >
-                Edit
-              </button>
+              {replyCount > 0 ? (
+                <Tooltip
+                  text="This entry can't be edited because others have responded to it."
+                  direction="above"
+                  align="right"
+                  useAbsolute={true}
+                  width={220}
+                >
+                  <button
+                    className="btn"
+                    style={{ fontSize: 13, padding: "3px 12px", opacity: 0.45, pointerEvents: "none" }}
+                    disabled
+                  >
+                    Edit
+                  </button>
+                </Tooltip>
+              ) : (
+                <Tooltip
+                  text="Just a heads up: if you've watched more episodes since you first wrote this, editing will mean the entry's progress tag will be updated to your current progress."
+                  direction="above"
+                  align="right"
+                  useAbsolute={true}
+                  width={260}
+                >
+                  <button
+                    className="btn"
+                    onClick={openEdit}
+                    style={{ fontSize: 13, padding: "3px 12px" }}
+                  >
+                    Edit
+                  </button>
+                </Tooltip>
+              )}
               <button
                 className="btn btn-danger"
                 onClick={openDelete}
