@@ -111,6 +111,13 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   const [engagedSet, setEngagedSet] = useState<Set<string>>(new Set());
   const [greenDismissedSet, setGreenDismissedSet] = useState<Set<string>>(new Set());
   const [redDismissedAt, setRedDismissedAt] = useState<Record<string, number>>({});
+  // firstHighlightedSet: per spec #2 — a self-column map cell with a
+  // notification (red OR green) has TWO click states. First click highlights
+  // the entry ticket (scroll + blue flash) without changing rating. Once a
+  // threadId is in this set, subsequent self-cell clicks fall through to the
+  // existing rate-change behavior (regardless of whether the notification
+  // has cleared). Sticky for the session; cleared on page reload.
+  const [firstHighlightedSet, setFirstHighlightedSet] = useState<Set<string>>(new Set());
 
   // Capture the last-room-visited snapshot ONCE per mount and write the
   // fresh stamp afterward. Skipping the rewrite would cause the snapshot
@@ -276,8 +283,16 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   }, [groupId, user?.id]);
 
   // Map cell click → scroll the feed to the ticket and flash highlight.
+  // Also adds the threadId to firstHighlightedSet (per spec #2). For cells
+  // with no notification, the set membership has no behavioral effect.
   const handleCellClick = useCallback((threadId: string) => {
     feedRef.current?.scrollToEntry(threadId);
+    setFirstHighlightedSet(prev => {
+      if (prev.has(threadId)) return prev;
+      const next = new Set(prev);
+      next.add(threadId);
+      return next;
+    });
   }, []);
 
   const handleWrite = useCallback(() => {
@@ -483,20 +498,28 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   );
 
   // Notification-signal handlers — see state-bucket comments above.
+  // Per spec #3: greenDismissedSet should ONLY be updated when green was
+  // actually the active signal at the moment of expand. If the user expands
+  // a red-notification entry (or a no-notification entry), the dismiss-set
+  // is unchanged so red survives the expand. Compute wasGreen BEFORE the
+  // lastOpenedAt update.
   const handleEntryExpanded = useCallback((threadId: string) => {
     const now = Date.now();
+    const wasGreen = (perThreadLatestReply[threadId] ?? 0) > (lastOpenedAt[threadId] ?? 0);
     setLastOpenedAt(prev => {
       const next = { ...prev, [threadId]: now };
       try { localStorage.setItem("ns_last_opened", JSON.stringify(next)); } catch { /* ignore quota errors */ }
       return next;
     });
-    setGreenDismissedSet(prev => {
-      if (prev.has(threadId)) return prev;
-      const next = new Set(prev);
-      next.add(threadId);
-      return next;
-    });
-  }, []);
+    if (wasGreen) {
+      setGreenDismissedSet(prev => {
+        if (prev.has(threadId)) return prev;
+        const next = new Set(prev);
+        next.add(threadId);
+        return next;
+      });
+    }
+  }, [perThreadLatestReply, lastOpenedAt]);
 
   const handleEntryCollapsed = useCallback((threadId: string) => {
     setEngagedSet(prev => {
@@ -779,6 +802,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               cellSignals={cellSignals}
               onDismissRedDot={handleDismissRedDot}
               isNewMap={isNewMap}
+              firstHighlightedSet={firstHighlightedSet}
             />
           </div>
         </div>
