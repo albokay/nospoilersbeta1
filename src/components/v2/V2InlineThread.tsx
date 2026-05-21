@@ -538,6 +538,7 @@ export default function V2InlineThread({
           onScrollToComposer={openComposer}
           refreshKey={repliesKey}
           hideRespondButtons
+          compactBorders
           onClickProfile={onClickProfile}
         />
       </div>

@@ -292,7 +292,7 @@ function ReplyBody({
 export default function RepliesList({
   thread, progressForShow, riskyMode = false,
   likeReply, unlikeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
-  threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile,
+  threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile, compactBorders,
   onSetPendingReference, pendingReference, citations, threadCitations, composerRef, onScrollToComposer,
   externalReplies, onRepliesLoaded, refreshKey, groupId, departedUsernames,
   orderMode = "episode",
@@ -332,6 +332,10 @@ export default function RepliesList({
   // own single "Write a response" button. V1 leaves this false to keep
   // existing behavior.
   hideRespondButtons?: boolean;
+  // V2 uses 2px borders on response cards instead of the V1 default 4px.
+  // Applies to both the default state and the green "progressReveal"
+  // outline. V2InlineThread opts in; V1 leaves undefined → 4px.
+  compactBorders?: boolean;
 }) {
   const { user, profile } = useAuth();
   const { scrollTo: scrollHighlight } = useScrollHighlight();
@@ -806,7 +810,12 @@ export default function RepliesList({
               id={`reply-${r.id}`}
               className="card reply-card"
               style={{
-                border: progressReveal[r.id] ? "4px solid #4b8f6c" : "4px solid var(--dos-border)",
+                border: (() => {
+                  const w = compactBorders ? 2 : 4;
+                  return progressReveal[r.id]
+                    ? `${w}px solid #4b8f6c`
+                    : `${w}px solid var(--dos-border)`;
+                })(),
                 marginLeft: 8,
                 position: "relative",
                 color: "var(--dos-bg)",
