@@ -2288,6 +2288,14 @@ export async function fetchGroupThreads(
    * the map (caller defaults to 0).
    */
   latestVisibleReplyAt: Record<string, number>;
+  /**
+   * Per-thread count of HIDDEN replies (above the viewer's progress) on
+   * threads the viewer authored. Used by the V2 friend-room map's red
+   * notification dot on the viewer's own cells — "you have N responses in
+   * this entry that you can't see yet." Populated ONLY for threads where
+   * `author_id === viewerId`; absent otherwise. Excludes deleted replies.
+   */
+  hiddenCounts: Record<string, number>;
 }> {
   // Fetch threads linked to this group, with reply count scoped to this group_id
   // (shared seed threads have per-room reply copies — without the group_id filter,
@@ -2304,6 +2312,7 @@ export async function fetchGroupThreads(
   const threads: Thread[] = [];
   const replyCounts: Record<string, number> = {};
   const latestVisibleReplyAt: Record<string, number> = {};
+  const hiddenCounts: Record<string, number> = {};
   for (const row of data ?? []) {
     const t = (row as any).threads;
     if (!t) continue;
@@ -2345,8 +2354,24 @@ export async function fetchGroupThreads(
       if (ts > maxAt) maxAt = ts;
     }
     if (maxAt > 0) latestVisibleReplyAt[thread.id] = maxAt;
+
+    // Hidden-count: only populated for threads the viewer authored. Counts
+    // group-scoped, not-deleted replies that the viewer can't see yet
+    // (themselves above progress OR an ancestor above progress — i.e. NOT
+    // chain-visible). Excludes the viewer's own replies (you wouldn't nudge
+    // yourself about replies you wrote that are above your own progress).
+    if (viewerId && t.author_id === viewerId) {
+      let hidden = 0;
+      for (const r of allReplies) {
+        if (r.group_id !== groupId) continue;
+        if (r.is_deleted) continue;
+        if (r.author_id === viewerId) continue;
+        if (!chainVisible(r)) hidden++;
+      }
+      if (hidden > 0) hiddenCounts[thread.id] = hidden;
+    }
   }
-  return { threads, replyCounts, latestVisibleReplyAt };
+  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts };
 }
 
 /** Rename a friend group. */

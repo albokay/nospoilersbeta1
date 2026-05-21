@@ -88,6 +88,15 @@ export type V2RoomFeedProps = {
       Forwarded to V2InlineThread → RepliesList. Used by V2RoomFeed itself
       for the entry byline. Routes to /v2/u/<username>. */
   onClickProfile?: (username: string) => void;
+  /** Fires when an entry transitions from collapsed → expanded. Used by
+      V2FriendRoomPage to update lastOpenedAt + dismiss the green signal
+      for this thread in the current session. */
+  onEntryExpanded?: (threadId: string) => void;
+  /** Fires when an entry transitions from expanded → collapsed (either via
+      the inline collapse button or by expanding a different entry). Used
+      by V2FriendRoomPage to mark the entry as engaged-this-session, which
+      dismisses the A1 white outline. */
+  onEntryCollapsed?: (threadId: string) => void;
 };
 
 const HIGHLIGHT_MS = 1500;
@@ -104,6 +113,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     onThreadDeleted,
     onVisibleEntriesChange,
     onClickProfile,
+    onEntryExpanded,
+    onEntryCollapsed,
   },
   ref,
 ) {
@@ -124,6 +135,22 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   // the page layout reflows naturally; the user's viewport scroll position
   // stays where it was).
   const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
+  // Detect expand/collapse transitions and forward to parent callbacks so
+  // V2FriendRoomPage can update its notification-signal state (lastOpenedAt,
+  // greenDismissedSet, engagedSet). prevExpandedRef tracks the previous
+  // expandedThreadId; on each change, fire onEntryCollapsed for the previous
+  // (if it existed) and onEntryExpanded for the new (if it exists).
+  const prevExpandedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevExpandedRef.current;
+    if (prev && prev !== expandedThreadId) {
+      onEntryCollapsed?.(prev);
+    }
+    if (expandedThreadId && expandedThreadId !== prev) {
+      onEntryExpanded?.(expandedThreadId);
+    }
+    prevExpandedRef.current = expandedThreadId;
+  }, [expandedThreadId, onEntryExpanded, onEntryCollapsed]);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const ticketRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const highlightTimer = useRef<number | null>(null);

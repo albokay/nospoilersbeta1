@@ -50,7 +50,7 @@ import { navigateToShow } from "./v2nav";
 export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const [room, setRoom] = useState<FriendGroup | null>(null);
   const [show, setShow] = useState<Show | null>(null);
@@ -72,6 +72,58 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // visible rotate rating on click; cells whose entry is off-screen scroll
   // to it instead. See sidebar_spec_click_to_adjust_ratings.md.
   const [visibleEntryIds, setVisibleEntryIds] = useState<Set<string>>(new Set());
+
+  // ── Notification-signal state (A1 white outline, A2 green chevron,
+  //    A3 red map dot, A3b green map dot, A4 visited fade) ───────────
+  //
+  // lastRoomVisitedSnapshot: ms timestamp captured ONCE at mount from
+  //   localStorage `ns_room_visited_<userId>_<groupId>`. Used to decide
+  //   "this entry is new since you last visited this room." Fresh value
+  //   is written to localStorage AFTER the snapshot is captured, so the
+  //   user re-entering the room in a different session sees the latest
+  //   stamp on their NEXT visit.
+  //
+  // lastOpenedAt: map of threadId → ms timestamp of last expand. Mirrors
+  //   V1's `ns_last_opened` localStorage key (same shape, same semantics).
+  //   Used to compute "has new visible reply since you opened this thread."
+  //
+  // perThreadLatestReply / perThreadHiddenCount: per-thread freshness data
+  //   from fetchGroupThreads. Hidden count is populated only for threads
+  //   the viewer authored.
+  //
+  // engagedSet: in-memory set of threadIds that have been expanded AND
+  //   collapsed at least once this session. A1 white outline shows ONLY
+  //   when the threadId is NOT in this set. Clears on page reload.
+  //
+  // greenDismissedSet: in-memory set of threadIds whose green signal
+  //   (A2 + A3b) was dismissed this session (via expand). Used to suppress
+  //   the red dot from appearing in the same session when green clears —
+  //   per spec, red only re-appears on next page load.
+  //
+  // redDismissedAt: per-thread ms timestamp of manual X-click dismissal.
+  //   Mirrors V1's `ns_tdot_dismiss_<threadId>` localStorage key.
+  const lastRoomVisitedSnapshotRef = useRef<number>(0);
+  const [lastOpenedAt, setLastOpenedAt] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("ns_last_opened") || "{}"); } catch { return {}; }
+  });
+  const [perThreadLatestReply, setPerThreadLatestReply] = useState<Record<string, number>>({});
+  const [perThreadHiddenCount, setPerThreadHiddenCount] = useState<Record<string, number>>({});
+  const [engagedSet, setEngagedSet] = useState<Set<string>>(new Set());
+  const [greenDismissedSet, setGreenDismissedSet] = useState<Set<string>>(new Set());
+  const [redDismissedAt, setRedDismissedAt] = useState<Record<string, number>>({});
+
+  // Capture the last-room-visited snapshot ONCE per mount and write the
+  // fresh stamp afterward. Skipping the rewrite would cause the snapshot
+  // to drift further into the past on every render; capturing AFTER
+  // setting would defeat the "what's new since last visit" purpose.
+  useEffect(() => {
+    if (!user?.id || !groupId) return;
+    const key = `ns_room_visited_${user.id}_${groupId}`;
+    const stored = localStorage.getItem(key);
+    lastRoomVisitedSnapshotRef.current = stored ? parseInt(stored, 10) : 0;
+    localStorage.setItem(key, String(Date.now()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, groupId]);
 
   // Bumped when the asker opens a poll via the map's door-icon launcher
   // (PollComposer's onOpened callback). PollSticky watches this key and
@@ -138,7 +190,12 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
         // 3) Feed — spoiler-filtered against viewer's effective progress.
         const groupResult = eff
           ? await fetchGroupThreads(groupId, eff.s, eff.e, user.id)
-          : { threads: [] as Thread[], replyCounts: {} as Record<string, number>, latestVisibleReplyAt: {} };
+          : {
+              threads: [] as Thread[],
+              replyCounts: {} as Record<string, number>,
+              latestVisibleReplyAt: {} as Record<string, number>,
+              hiddenCounts: {} as Record<string, number>,
+            };
 
         const departedUsernames = new Set(
           roomMapData.filter((m) => m.isDeparted).map((m) => m.username ?? "").filter(Boolean),
@@ -191,6 +248,17 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
         setProgressForShow(progress);
         setFeedEntries(entries);
         setMapMembers(mapMembersOut);
+        setPerThreadLatestReply(groupResult.latestVisibleReplyAt);
+        setPerThreadHiddenCount(groupResult.hiddenCounts ?? {});
+        // Seed manual-dismiss timestamps for any visible thread that has a
+        // stored localStorage flag — read once at load so render-time
+        // predicates can stay synchronous.
+        const dismisses: Record<string, number> = {};
+        for (const t of groupResult.threads) {
+          const v = localStorage.getItem(`ns_tdot_dismiss_${t.id}`);
+          if (v) dismisses[t.id] = parseInt(v, 10);
+        }
+        setRedDismissedAt(dismisses);
         setLoading(false);
       } catch (err: unknown) {
         if (cancelled) return;
@@ -414,6 +482,83 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     [navigate],
   );
 
+  // Notification-signal handlers — see state-bucket comments above.
+  const handleEntryExpanded = useCallback((threadId: string) => {
+    const now = Date.now();
+    setLastOpenedAt(prev => {
+      const next = { ...prev, [threadId]: now };
+      try { localStorage.setItem("ns_last_opened", JSON.stringify(next)); } catch { /* ignore quota errors */ }
+      return next;
+    });
+    setGreenDismissedSet(prev => {
+      if (prev.has(threadId)) return prev;
+      const next = new Set(prev);
+      next.add(threadId);
+      return next;
+    });
+  }, []);
+
+  const handleEntryCollapsed = useCallback((threadId: string) => {
+    setEngagedSet(prev => {
+      if (prev.has(threadId)) return prev;
+      const next = new Set(prev);
+      next.add(threadId);
+      return next;
+    });
+  }, []);
+
+  const handleDismissRedDot = useCallback((threadId: string) => {
+    const now = Date.now();
+    try { localStorage.setItem(`ns_tdot_dismiss_${threadId}`, String(now)); } catch { /* ignore */ }
+    setRedDismissedAt(prev => ({ ...prev, [threadId]: now }));
+  }, []);
+
+  // Per-thread notification signals for the map. Precedence: GREEN beats RED.
+  // When green is dismissed in-session, red doesn't fill in until next load
+  // (greenDismissedSet check). Manual X-dismissal of red persists via
+  // localStorage. A1 (entry-card / map-cell white outline) tracked separately
+  // via isNewMap below.
+  const cellSignals = useMemo(() => {
+    const out: Record<string, { kind: "green" | "red"; redCount?: number } > = {};
+    for (const entry of feedEntries) {
+      if (entry.isDeleted) continue;
+      const tid = entry.threadId;
+      const latest = perThreadLatestReply[tid] ?? 0;
+      const opened = lastOpenedAt[tid] ?? 0;
+      const hasVisibleNew = latest > opened;
+      if (hasVisibleNew) {
+        out[tid] = { kind: "green" };
+        continue;
+      }
+      const isOwn = !!profile?.username && entry.authorUsername === profile.username;
+      const hiddenCount = perThreadHiddenCount[tid] ?? 0;
+      const greenDismissedThisSession = greenDismissedSet.has(tid);
+      const manuallyDismissed = (redDismissedAt[tid] ?? 0) > 0;
+      if (isOwn && hiddenCount > 0 && !greenDismissedThisSession && !manuallyDismissed) {
+        out[tid] = { kind: "red", redCount: hiddenCount };
+      }
+    }
+    return out;
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, greenDismissedSet, redDismissedAt, profile?.username]);
+
+  // A1 isNew lookup — per-thread "new since last room visit, by someone else,
+  // not yet engaged this session." Used by V2RoomFeed for the white card
+  // outline and by V2RoomMap for the white cell outline.
+  const isNewMap = useMemo(() => {
+    const out: Record<string, boolean> = {};
+    const snapshot = lastRoomVisitedSnapshotRef.current;
+    if (!profile?.username) return out;
+    for (const entry of feedEntries) {
+      if (entry.isDeleted) continue;
+      if (entry.authorUsername === profile.username) continue;
+      const createdAt = entry.thread.createdAt ?? 0;
+      if (createdAt > snapshot && !engagedSet.has(entry.threadId)) {
+        out[entry.threadId] = true;
+      }
+    }
+    return out;
+  }, [feedEntries, engagedSet, profile?.username]);
+
   if (loadError) {
     return (
       <V2Layout palette="room">
@@ -602,6 +747,8 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 onThreadDeleted={handleThreadDeleted}
                 onVisibleEntriesChange={setVisibleEntryIds}
                 onClickProfile={handleClickProfile}
+                onEntryExpanded={handleEntryExpanded}
+                onEntryCollapsed={handleEntryCollapsed}
               />
             )}
           </div>
@@ -626,6 +773,9 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               onEntryClick={handleCellClick}
               onRateOwnCell={handleRateOwnCell}
               onPollOpened={() => setPollRefreshKey((k) => k + 1)}
+              cellSignals={cellSignals}
+              onDismissRedDot={handleDismissRedDot}
+              isNewMap={isNewMap}
             />
           </div>
         </div>

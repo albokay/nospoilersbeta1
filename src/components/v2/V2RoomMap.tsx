@@ -101,6 +101,17 @@ export type V2RoomMapProps = {
   /** Fires after the asker successfully opens a poll. Parent bumps
       PollSticky's refreshKey so the asker sees their poll immediately. */
   onPollOpened?: () => void;
+  /** Per-thread notification dot lookup. Green = new visible response(s);
+      Red = own entry with hidden responses (number shown). Green beats red;
+      only one dot per cell. Dot sits half-overlapping the LEFT edge of the
+      cell, vertically centered, 16px diameter, NO drop shadow. */
+  cellSignals?: Record<string, { kind: "green" | "red"; redCount?: number }>;
+  /** Manual X-click dismissal of the red dot on a cell. */
+  onDismissRedDot?: (threadId: string) => void;
+  /** Per-thread "this entry is new since your last room visit" flag. Drives
+      the white outline on the cell. Same flag drives the entry-card's
+      white outline (handled in V2RoomFeed). */
+  isNewMap?: Record<string, boolean>;
 };
 
 // Direction + count of a member's progress relative to the viewer. Ported
@@ -179,6 +190,9 @@ export default function V2RoomMap({
   onEntryClick,
   onRateOwnCell,
   onPollOpened,
+  cellSignals,
+  onDismissRedDot,
+  isNewMap,
 }: V2RoomMapProps) {
   // ── Launcher state (pings / polls / SIKW). Only meaningful when
   // groupId is provided — V2FriendRoomPage always supplies it; other
@@ -704,6 +718,30 @@ export default function V2RoomMap({
                   );
                 }
 
+                // Notification signal for THIS cell's entry (green-over-red,
+                // computed by V2FriendRoomPage). Drives the dot + a canon-
+                // red tooltip line. Only one signal per cell at a time.
+                const signal = entry ? cellSignals?.[entry.threadId] ?? null : null;
+                const cellIsNew = entry ? !!isNewMap?.[entry.threadId] : false;
+                let signalLine: React.ReactNode = null;
+                if (signal) {
+                  const text =
+                    signal.kind === "green"
+                      ? "There is new writing for you."
+                      : "There is new writing in here for you… for when you catch up.";
+                  signalLine = (
+                    <span style={{
+                      display: "block",
+                      marginTop: 6,
+                      fontSize: 11,
+                      color: "#f45028",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {text}
+                    </span>
+                  );
+                }
+
                 const tooltipText = (
                   <span>
                     <span style={{ display: "block", whiteSpace: "nowrap" }}>
@@ -717,6 +755,7 @@ export default function V2RoomMap({
                     </span>
                     {entryLine}
                     {ratedLine}
+                    {signalLine}
                     {instructionLine}
                   </span>
                 );
@@ -731,6 +770,14 @@ export default function V2RoomMap({
                     }}
                   >
                     {!renderEmpty && (() => {
+                      // A1 white outline for cells whose entry is new since
+                      // the viewer's last room visit. Overrides the default
+                      // cell border color; thickness stays 2px to match the
+                      // existing cell shape.
+                      const cellShape = cellShapeStyle(isReached, !!entry, isSelf);
+                      const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry
+                        ? { border: "2px solid #fff" }
+                        : {};
                       const cellInner = (
                         <div
                           onClick={clickAction ?? undefined}
@@ -750,7 +797,8 @@ export default function V2RoomMap({
                               : bouncePhase === "down"
                               ? { transform: "scale(1)", transition: "transform 150ms ease-out" }
                               : {}),
-                            ...cellShapeStyle(isReached, !!entry, isSelf),
+                            ...cellShape,
+                            ...newOutlineOverride,
                           }}
                         >
                           {isReached && rating && (
@@ -791,6 +839,22 @@ export default function V2RoomMap({
                         </Tooltip>
                       );
                     })()}
+
+                    {/* Notification dot for this cell's entry, if any.
+                        Sits half-overlapping the LEFT edge of the cell,
+                        vertically centered. Green-over-red precedence is
+                        handled upstream — only one signal per cell. */}
+                    {signal && entry && (
+                      <MapCellDot
+                        kind={signal.kind}
+                        redCount={signal.redCount}
+                        onDismiss={
+                          signal.kind === "red" && onDismissRedDot
+                            ? () => onDismissRedDot(entry.threadId)
+                            : undefined
+                        }
+                      />
+                    )}
 
                     {/* Spine segment below the cell — only when both this
                         and the next row's cell are reached. */}
@@ -899,6 +963,57 @@ export default function V2RoomMap({
           />,
           document.body,
         )}
+    </div>
+  );
+}
+
+// MapCellDot — 16px circular notification dot that sits half-overlapping
+// the left edge of a map cell. Green = visible-new responses (no count,
+// pointerEvents: none); Red = own-entry hidden responses (numeric count,
+// hover transforms count → X, click dismisses). No drop shadow per spec.
+function MapCellDot({
+  kind,
+  redCount,
+  onDismiss,
+}: {
+  kind: "green" | "red";
+  redCount?: number;
+  onDismiss?: () => void;
+}) {
+  const [hovered, setHovered] = React.useState(false);
+  const isRed = kind === "red";
+  const bg = isRed ? "var(--danger)" : "var(--green)";
+  const cursor = isRed ? (hovered ? "pointer" : "default") : "default";
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: -8,
+        top: CELL / 2 - 8,
+        width: 16,
+        height: 16,
+        borderRadius: "50%",
+        background: bg,
+        color: "#fff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: hovered ? 10 : 10,
+        fontWeight: 800,
+        lineHeight: 1,
+        cursor,
+        zIndex: 3,
+        pointerEvents: isRed ? "auto" : "none",
+      }}
+      onMouseEnter={() => isRed && setHovered(true)}
+      onMouseLeave={() => isRed && setHovered(false)}
+      onClick={(e) => {
+        if (!isRed || !onDismiss) return;
+        e.stopPropagation();
+        onDismiss();
+      }}
+    >
+      {isRed ? (hovered ? "✕" : redCount) : null}
     </div>
   );
 }
