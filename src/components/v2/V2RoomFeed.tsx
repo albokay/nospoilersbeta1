@@ -625,6 +625,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                           direction="above"
                           align="right"
                           width={180}
+                          portal
                         >
                           {chevronButton}
                         </Tooltip>
