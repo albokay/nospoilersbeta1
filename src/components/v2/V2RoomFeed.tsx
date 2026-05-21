@@ -11,6 +11,7 @@ import { ChevronDown, Users } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import Username from "../Username";
+import Tooltip from "../Tooltip";
 import { timeAgo } from "../../lib/utils";
 import { parsePromptTokens } from "../../lib/promptTokens";
 import V2InlineThread from "./V2InlineThread";
@@ -97,6 +98,18 @@ export type V2RoomFeedProps = {
       by V2FriendRoomPage to mark the entry as engaged-this-session, which
       dismisses the A1 white outline. */
   onEntryCollapsed?: (threadId: string) => void;
+  /** Per-thread "new since last room visit" flag. Drives the A1 white
+      outline on the entry card (4px). Same lookup the map uses for the
+      cell's white outline. */
+  isNewMap?: Record<string, boolean>;
+  /** Per-thread notification signal (green = visible-new responses;
+      red = own-entry hidden responses). Only "green" matters for the
+      entry card — drives the A2 green-filled circle behind the expand
+      chevron on collapsed cards. Red is map-only. */
+  cellSignals?: Record<string, { kind: "green" | "red"; redCount?: number }>;
+  /** Set of threadIds the user has expanded-and-collapsed at least once
+      this session. Drives A4 (entry card dim to opacity 0.5). */
+  engagedThreadIds?: Set<string>;
 };
 
 const HIGHLIGHT_MS = 1500;
@@ -115,6 +128,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     onClickProfile,
     onEntryExpanded,
     onEntryCollapsed,
+    isNewMap,
+    cellSignals,
+    engagedThreadIds,
   },
   ref,
 ) {
@@ -360,6 +376,14 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
       {sorted.map((entry) => {
         const isExpanded = expandedThreadId === entry.threadId;
         const isHighlighted = highlightedId === entry.threadId;
+        // Notification-signal lookups (computed in V2FriendRoomPage).
+        // isNew → A1 white card outline.
+        // signal.kind === "green" → A2 canon-green circle behind chevron.
+        // engagedThreadIds.has(...) → A4 dim to 50% opacity.
+        const isNew = !!isNewMap?.[entry.threadId];
+        const signal = cellSignals?.[entry.threadId] ?? null;
+        const showGreenChevron = signal?.kind === "green";
+        const isEngaged = !!engagedThreadIds?.has(entry.threadId);
         return (
           <div
             key={entry.threadId}
@@ -389,7 +413,18 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 position: "relative",
                 paddingTop: 12,
                 paddingBottom: 36,
-                border: isHighlighted ? "4px solid #355eb8" : "4px solid var(--dos-border)",
+                // Border precedence: blue flash (map-cell click) wins
+                // briefly, then falls back to white-when-new, then default.
+                border: isHighlighted
+                  ? "4px solid #355eb8"
+                  : isNew
+                  ? "4px solid #fff"
+                  : "4px solid var(--dos-border)",
+                // A4 dim: 50% opacity once the user has expanded-and-
+                // collapsed this entry at least once this session.
+                // Suppressed on the currently-expanded card so the open
+                // content reads at full intensity.
+                opacity: isEngaged && !isExpanded ? 0.5 : 1,
               }}
               onClick={isExpanded ? undefined : (e) => toggleExpand(entry.threadId, e)}
             >
@@ -544,22 +579,59 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     gap: 10,
                   }}
                 >
-                  <button
-                    onClick={(e) => toggleExpand(entry.threadId, e)}
-                    aria-label="Expand"
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "#fff",
-                      cursor: "pointer",
-                      padding: 4,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    <ChevronDown size={20} color="#fff" />
-                  </button>
+                  {(() => {
+                    // A2 — when there are new visible responses, the
+                    // chevron sits inside a 32px canon-green perfect
+                    // circle. Tooltip on hover with V1 copy.
+                    const chevronButton = (
+                      <button
+                        onClick={(e) => toggleExpand(entry.threadId, e)}
+                        aria-label="Expand"
+                        style={
+                          showGreenChevron
+                            ? {
+                                background: "#7abd8e",
+                                border: "none",
+                                color: "#fff",
+                                cursor: "pointer",
+                                width: 32,
+                                height: 32,
+                                borderRadius: "50%",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontFamily: "inherit",
+                                padding: 0,
+                              }
+                            : {
+                                background: "transparent",
+                                border: "none",
+                                color: "#fff",
+                                cursor: "pointer",
+                                padding: 4,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                fontFamily: "inherit",
+                              }
+                        }
+                      >
+                        <ChevronDown size={20} color="#fff" />
+                      </button>
+                    );
+                    if (showGreenChevron) {
+                      return (
+                        <Tooltip
+                          text="There is new writing in here for you."
+                          direction="above"
+                          align="right"
+                          width={180}
+                        >
+                          {chevronButton}
+                        </Tooltip>
+                      );
+                    }
+                    return chevronButton;
+                  })()}
                 </div>
               )}
             </div>

@@ -749,6 +749,9 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 onClickProfile={handleClickProfile}
                 onEntryExpanded={handleEntryExpanded}
                 onEntryCollapsed={handleEntryCollapsed}
+                isNewMap={isNewMap}
+                cellSignals={cellSignals}
+                engagedThreadIds={engagedSet}
               />
             )}
           </div>
