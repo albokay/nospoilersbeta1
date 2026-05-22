@@ -277,6 +277,32 @@ export default function V2RoomMap({
 
   const rows = useMemo(() => flattenSeasons(touchedSeasons), [touchedSeasons]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Per-season ref map (key = season number) populated as season-label rows
+  // render. Used by the on-mount scroll-to-viewer-season effect below.
+  const seasonStartRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  // Guard so the initial scroll fires once per V2RoomMap mount — subsequent
+  // re-renders from data refreshes / state changes shouldn't yank the
+  // user's scroll position back to where they started.
+  const initialScrollDoneRef = useRef(false);
+  useEffect(() => {
+    if (initialScrollDoneRef.current) return;
+    const container = scrollRef.current;
+    if (!container || !viewerProgress) return;
+    // Skip the scroll when viewer hasn't started (0,0) — top of map is fine.
+    if (viewerProgress.s < 1 || viewerProgress.e < 1) return;
+    // Use the viewer's RAW progress (.s) for the scroll target — that's the
+    // viewer's CURRENT watching position (= rewatch position for rewatchers),
+    // which matches their mental model of "where I am right now." Reading
+    // ceiling is highestS/E; that's not what we want for this scroll.
+    const targetSeason = viewerProgress.s;
+    const targetEl = seasonStartRefs.current[targetSeason];
+    if (!targetEl) return;
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = targetEl.getBoundingClientRect();
+    const offset = targetRect.top - containerRect.top + container.scrollTop;
+    container.scrollTop = Math.max(0, offset - 8); // 8px breathing room
+    initialScrollDoneRef.current = true;
+  }, [viewerProgress, rows]);
 
   // Pre-compute per-member: last reached row index (-1 if none), and a map
   // from `${s}-${e}` → entry / rating, for O(1) cell lookups.
@@ -555,6 +581,9 @@ export default function V2RoomMap({
 
               {/* Season label — only on the first row of each season */}
               <div
+                ref={(el) => {
+                  if (row.isFirstOfSeason) seasonStartRefs.current[row.season] = el;
+                }}
                 style={{
                   height: ROW_HEIGHT,
                   display: "flex",

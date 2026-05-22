@@ -285,7 +285,16 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   const scrollToEntry = useCallback((threadId: string) => {
     const el = ticketRefs.current[threadId];
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Use window.scrollTo (not el.scrollIntoView) so we ONLY scroll the
+    // window/document — never any other scrollable container. The map
+    // wrapper is a sticky sibling with its own internal overflow:auto;
+    // scrollIntoView's "scroll all ancestors to make target visible"
+    // semantics was causing the map's scroll position to shift, knocking
+    // the clicked cell out from under the user's cursor. Explicit
+    // window.scrollTo keeps the map pinned.
+    // 72px offset matches the existing scroll-margin-top:72 on tickets.
+    const targetY = el.getBoundingClientRect().top + window.scrollY - 72;
+    window.scrollTo({ top: targetY, behavior: "smooth" });
     setHighlightedId(threadId);
     if (highlightTimer.current) window.clearTimeout(highlightTimer.current);
     highlightTimer.current = window.setTimeout(() => {

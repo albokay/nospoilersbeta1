@@ -115,7 +115,17 @@ export default function V2InlineThread({
   const setPendingReference = useCallback(
     (ref: PendingReference | null) => {
       setPendingReferenceRaw(ref);
-      if (ref) setComposerOpen(true);
+      if (ref) {
+        setComposerOpen(true);
+        // Scroll to the composer so the user sees the staged quote + the
+        // writing box — matches the scroll behavior of openComposer (called
+        // by the "Write a response" CTA). Defer so the composer's mount
+        // completes first. Covers BOTH the entry-level Quote button and
+        // per-reply Quote affordance (both route through this helper).
+        setTimeout(() => {
+          composerInnerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 0);
+      }
     },
     [],
   );
