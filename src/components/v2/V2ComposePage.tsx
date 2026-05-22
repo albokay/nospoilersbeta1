@@ -723,7 +723,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           style={{
             display: "flex",
             alignItems: "center",
-            marginTop: 16,
+            marginTop: 24,
             gap: 16,
           }}
         >
