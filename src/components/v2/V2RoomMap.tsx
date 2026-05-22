@@ -347,12 +347,11 @@ export default function V2RoomMap({
         overflowY: "auto",
         maxHeight: `calc(100vh - var(--site-header-h) - 100px)`,
         position: "relative",
-        // 6px right padding so the rightmost cell's click bounce
-        // (scale 1.12 = ~2px overflow each side) doesn't get clipped
-        // against the container edge. overflowY:auto implicitly enables
-        // overflowX clipping per CSS spec, so adding padding is the
-        // cleanest fix that doesn't restructure the scroll container.
-        paddingRight: 6,
+        // Right padding on the scrollable container — keeps the browser's
+        // vertical scrollbar from overlapping the rightmost member column.
+        // Was 6px (just enough for the click-bounce overflow); bumped to
+        // 24px so the scrollbar sits clear of the @<rightmost> cells.
+        paddingRight: 24,
         WebkitMaskImage:
           "linear-gradient(to bottom, #000 calc(100% - 136px), transparent 100%)",
         maskImage:
@@ -365,6 +364,12 @@ export default function V2RoomMap({
           gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
           columnGap: COL_GAP,
           alignItems: "start",
+          // 24px of trailing padding on the grid so the sticky-header
+          // divider can extend that far past the column tracks. Body rows
+          // continue to sit within the column tracks; this padding is
+          // dead space on the right of every body row, picked up only by
+          // the sticky header (via width: calc(100% + 24px) below).
+          paddingRight: 24,
         }}
       >
         {/* ── Sticky username header row ───────────────────────────────── */}
@@ -384,6 +389,12 @@ export default function V2RoomMap({
             // scrollable grid begins. Sits at the bottom of the sticky
             // header's box (after the 8px paddingBottom).
             borderBottom: "2px solid #fff",
+            // Extend the box 24px past the grid column tracks so the
+            // divider line reaches further right than the rightmost cell
+            // column. The outer grid's paddingRight: 24 above provides
+            // the room for this overflow (without it, overflowX clipping
+            // would hide the extension).
+            width: "calc(100% + 24px)",
           }}
         >
           {/* Season-label column slot (col 1, 80px wide). Hosts the
