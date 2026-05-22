@@ -48,7 +48,7 @@ const RULE_GRADIENT = `repeating-linear-gradient(
   transparent ${LH}px
 )`;
 
-const BODY_MIN_LINES = 6; // initial render = 6 lines = 168px
+const BODY_MIN_LINES = 4; // initial render = 4 lines = 112px (compressed vertically per spec; auto-grows with content)
 
 function progressShort(p: ProgressEntry): string {
   if (p.s === 0 && p.e === 0) return "haven't started";
@@ -410,6 +410,10 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
 
   const tag = tagPosition(progress);
   const tagShort = `S${String(tag.s).padStart(2, "0")} E${String(tag.e).padStart(2, "0")}`;
+  // Long-form tag used only in the bottom destination explainer paragraph.
+  // Natural-number season/episode (no zero-padding); the rewatcher note at
+  // the top of the page still uses tagShort.
+  const tagLong = `Season ${tag.s} / Episode ${tag.e}`;
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", animation: "v2-compose-fade-in 350ms linear" }}>
@@ -431,13 +435,13 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           background-repeat: repeat !important;
           color: ${INK} !important;
         }
-        .v2-compose-paper-input::placeholder { color: ${INK_FAINT}; font-style: italic; }
+        .v2-compose-paper-input::placeholder { color: ${INK_FAINT}; font-style: italic; font-family: 'Lora', Georgia, serif; }
         .v2-compose-title-input {
           background-color: transparent !important;
           background-image: none !important;
           color: ${INK} !important;
         }
-        .v2-compose-title-input::placeholder { color: ${INK_FAINT}; font-weight: 500; font-style: italic; }
+        .v2-compose-title-input::placeholder { color: ${INK_FAINT}; font-weight: 500; font-style: italic; font-family: 'Lora', Georgia, serif; }
       `}</style>
 
       {/* TOP-RIGHT: × not now (duplicate of action-row cancel) */}
@@ -460,9 +464,9 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
         </button>
       </div>
 
-      <main style={{ maxWidth: 720, margin: "0 auto", padding: "120px 48px 200px" }}>
+      <main style={{ maxWidth: 720, margin: "0 auto", padding: "64px 48px 80px" }}>
         {/* === CONTEXT === */}
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div
             style={{
               fontFamily: "Lora, Georgia, serif",
@@ -536,8 +540,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
         {fromRating && (
           <div
             style={{
-              fontFamily: "Lora, Georgia, serif",
-              fontStyle: "italic",
+              fontFamily: "Inter, sans-serif",
               fontSize: 13,
               color: INK_FAINT,
               maxWidth: 480,
@@ -561,8 +564,8 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
             background: "#fff",
             border: `2px solid ${RULE}`,
             borderRadius: 0,
-            padding: "36px 40px",
-            marginBottom: 24,
+            padding: "20px 40px",
+            marginBottom: 16,
             display: "flex",
             flexDirection: "column",
           }}
@@ -582,7 +585,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
               border: "none",
               background: "transparent",
               width: "100%",
-              marginBottom: 24,
+              marginBottom: 14,
               outline: "none",
               letterSpacing: "-0.015em",
               lineHeight: 1.2,
@@ -661,8 +664,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           <div
             style={{
               textAlign: "center",
-              fontFamily: "Lora, Georgia, serif",
-              fontStyle: "italic",
+              fontFamily: "Inter, sans-serif",
               fontSize: 16,
               color: INK_SOFT,
               marginBottom: 14,
@@ -702,7 +704,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
               selected={destination === "public"}
               bg="#dea838"
               fg="#fff"
-              title="the public"
+              title="everyone"
               onClick={() => setDestination("public")}
             />
           </div>
@@ -714,12 +716,11 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           {destination !== null && (
             <p
               style={{
-                fontFamily: "Lora, Georgia, serif",
-                fontStyle: "italic",
+                fontFamily: "Inter, sans-serif",
                 fontSize: 14,
                 color: INK_SOFT,
                 lineHeight: 1.5,
-                marginTop: 18,
+                marginTop: 12,
                 marginBottom: 0,
                 textAlign: "center",
                 maxWidth: 580,
@@ -728,10 +729,10 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
               }}
             >
               {destination === "public"
-                ? <>Anyone who's watched <strong>{tagShort}</strong> can read your writing.</>
+                ? <>Anyone who's watched <strong>{tagLong}</strong> can read your writing.</>
                 : destination === "private"
                 ? <>No one else will see. Some of your best thinking happens when you write for yourself…</>
-                : <>Your friends will see your entry once they've watched <strong>{tagShort}</strong>.</>}
+                : <>Your friends will see your entry once they've watched <strong>{tagLong}</strong>.</>}
             </p>
           )}
         </div>
@@ -742,7 +743,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
             display: "flex",
             justifyContent: "flex-end",
             alignItems: "center",
-            marginTop: 28,
+            marginTop: 16,
             gap: 10,
             flexWrap: "wrap",
           }}
