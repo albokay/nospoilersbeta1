@@ -48,7 +48,7 @@ const RULE_GRADIENT = `repeating-linear-gradient(
   transparent ${LH}px
 )`;
 
-const BODY_MIN_LINES = 4; // initial render = 4 lines = 112px (compressed vertically per spec; auto-grows with content)
+const BODY_MIN_LINES = 7; // initial render = 7 lines = 196px (auto-grows with content)
 
 function progressShort(p: ProgressEntry): string {
   if (p.s === 0 && p.e === 0) return "haven't started";
@@ -441,7 +441,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           background-image: none !important;
           color: ${INK} !important;
         }
-        .v2-compose-title-input::placeholder { color: ${INK_FAINT}; font-weight: 500; font-style: italic; font-family: 'Lora', Georgia, serif; }
+        .v2-compose-title-input::placeholder { color: ${INK_FAINT}; font-weight: 500; font-style: italic; }
       `}</style>
 
       {/* TOP-RIGHT: × not now (duplicate of action-row cancel) */}
@@ -709,10 +709,24 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
             />
           </div>
 
-          {/* Dynamic explainer — renders only after the user picks a
-              destination. Sits between the pills and the not-now /
-              post-entry action row, replacing the multi-select summary
-              we removed earlier with a single-line context paragraph. */}
+        </div>
+
+        {/* === ACTION ROW (with optional explainer on left) ===
+            Explainer (when a destination is chosen) sits to the LEFT of the
+            buttons. Buttons are pushed right via marginLeft: auto on their
+            wrapper so they stay anchored at the row's right edge regardless
+            of whether the explainer is present. The action row's marginTop
+            is fixed, so the buttons' vertical position doesn't shift when
+            the explainer appears/disappears — only the row's HEIGHT grows
+            to accommodate two wrapped lines of explainer text. */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            marginTop: 16,
+            gap: 16,
+          }}
+        >
           {destination !== null && (
             <p
               style={{
@@ -720,12 +734,14 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
                 fontSize: 14,
                 color: INK_SOFT,
                 lineHeight: 1.5,
-                marginTop: 12,
-                marginBottom: 0,
-                textAlign: "center",
-                maxWidth: 580,
-                marginLeft: "auto",
-                marginRight: "auto",
+                margin: 0,
+                textAlign: "left",
+                maxWidth: 320,
+                // `text-wrap: balance` lets the browser distribute
+                // characters across the two wrapped lines so they end up
+                // similar lengths (modern browsers; falls back to default
+                // greedy wrapping otherwise).
+                textWrap: "balance",
               }}
             >
               {destination === "public"
@@ -735,19 +751,14 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
                 : <>Your friends will see your entry once they've watched <strong>{tagLong}</strong>.</>}
             </p>
           )}
-        </div>
-
-        {/* === ACTION ROW === */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            marginTop: 16,
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginLeft: "auto",
+            }}
+          >
           <button
             onClick={attemptDiscard}
             disabled={submitting}
@@ -790,6 +801,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
                 ? <>posting<LoadingDots /></>
                 : <>post entry<ArrowRight size={14} /></>}
           </button>
+          </div>
         </div>
         {submitError && (
           <div style={{ textAlign: "right", marginTop: 8, color: "var(--danger)", fontSize: 13 }}>
