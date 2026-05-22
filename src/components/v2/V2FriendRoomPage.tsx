@@ -608,7 +608,14 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
       <div
         style={{
           minHeight: "100vh",
-          padding: "calc(var(--site-header-h) + 12px) 24px 120px",
+          // Padding-bottom moved INSIDE the left pane (see below) so the
+          // two-pane container extends to the page bottom — the right pane
+          // (alignSelf: stretch) inherits that height, keeping the inner
+          // sticky map pinned through the entire scroll. Without the move,
+          // the last ~120px of page-bottom padding was OUTSIDE the right
+          // pane's containing block, so sticky released as the page bottom
+          // approached the sticky-top.
+          padding: "calc(var(--site-header-h) + 12px) 24px 0",
         }}
       >
         {/* ── Two-pane wrapper ─────────────────────────────────────────── */}
@@ -621,8 +628,12 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
             margin: "0 auto",
           }}
         >
-          {/* ── LEFT/CENTER pane: banner + feed ────────────────────────── */}
-          <div style={{ flex: `0 1 ${FEED_MAX_W}px`, minWidth: 0, marginLeft: "auto", transform: "translateX(-176px)" }}>
+          {/* ── LEFT/CENTER pane: banner + feed ──────────────────────────
+              paddingBottom: 120 — visual breathing space below the last
+              entry. Lives on THIS pane (not the outer wrapper) so the
+              two-pane container extends through it, letting the sticky
+              map stay pinned all the way to the page bottom. */}
+          <div style={{ flex: `0 1 ${FEED_MAX_W}px`, minWidth: 0, marginLeft: "auto", transform: "translateX(-176px)", paddingBottom: 120 }}>
             {/* Banner row 1 — eyebrow + room name + settings gear + "to public" */}
             <div
               style={{
