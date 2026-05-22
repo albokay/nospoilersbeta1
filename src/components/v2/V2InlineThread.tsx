@@ -549,6 +549,7 @@ export default function V2InlineThread({
           refreshKey={repliesKey}
           hideRespondButtons
           compactBorders
+          showAheadStubs
           onClickProfile={onClickProfile}
         />
       </div>

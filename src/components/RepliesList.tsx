@@ -293,6 +293,7 @@ export default function RepliesList({
   thread, progressForShow, riskyMode = false,
   likeReply, unlikeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
   threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile, compactBorders,
+  showAheadStubs = false,
   onSetPendingReference, pendingReference, citations, threadCitations, composerRef, onScrollToComposer,
   externalReplies, onRepliesLoaded, refreshKey, groupId, departedUsernames,
   orderMode = "episode",
@@ -336,6 +337,11 @@ export default function RepliesList({
   // Applies to both the default state and the green "progressReveal"
   // outline. V2InlineThread opts in; V1 leaves undefined → 4px.
   compactBorders?: boolean;
+  // V2 friend rooms render replies above the viewer's progress as
+  // non-interactive stubs ("@user responded from episode S## E##.")
+  // instead of hiding them. Always-on in V2 (no risky toggle). V1 leaves
+  // this undefined → existing hide-or-toggle behavior unchanged.
+  showAheadStubs?: boolean;
 }) {
   const { user, profile } = useAuth();
   const { scrollTo: scrollHighlight } = useScrollHighlight();
@@ -750,6 +756,37 @@ export default function RepliesList({
           }
 
           const vis = isVisible(r);
+
+          // V2 "ahead-of-progress" stub: when showAheadStubs is on AND
+          // the reply itself is above the viewer's progress (NOT just
+          // ancestor-redacted), render a non-interactive stub rather than
+          // hiding the reply. Orphans (visible reply, hidden parent)
+          // continue to be hidden via the regular vis.show check — the
+          // monotonic progress-tagging rule means orphans don't exist in
+          // practice anyway.
+          if (showAheadStubs && !riskyMode && !vis.show && !canSeeSelf(r)) {
+            const tag = `S${r.season} E${r.episode}`;
+            return (
+              <div
+                key={r.id}
+                id={`reply-${r.id}`}
+                className="card redacted"
+                style={{
+                  marginLeft: 8,
+                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  minHeight: 32,
+                  padding: "4px 14px",
+                  cursor: "default",
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>
+                  {r.author} responded from episode {tag}.
+                </div>
+              </div>
+            );
+          }
 
           if (!riskyMode && !vis.show) return null;
 

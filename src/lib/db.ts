@@ -2296,6 +2296,15 @@ export async function fetchGroupThreads(
    * `author_id === viewerId`; absent otherwise. Excludes deleted replies.
    */
   hiddenCounts: Record<string, number>;
+  /**
+   * Per-thread count of replies above the viewer's progress, on ALL
+   * threads (not just the viewer's own). Used by V2 friend rooms to
+   * render "ahead-of-progress" stubs in RepliesList and to include those
+   * stubs in the entry-card reply count display. Excludes deleted
+   * replies. The corresponding stubs appear in RepliesList when its
+   * `showAheadStubs` opt-in prop is set.
+   */
+  aheadCounts: Record<string, number>;
 }> {
   // Fetch threads linked to this group, with reply count scoped to this group_id
   // (shared seed threads have per-room reply copies — without the group_id filter,
@@ -2313,6 +2322,7 @@ export async function fetchGroupThreads(
   const replyCounts: Record<string, number> = {};
   const latestVisibleReplyAt: Record<string, number> = {};
   const hiddenCounts: Record<string, number> = {};
+  const aheadCounts: Record<string, number> = {};
   for (const row of data ?? []) {
     const t = (row as any).threads;
     if (!t) continue;
@@ -2370,8 +2380,24 @@ export async function fetchGroupThreads(
       }
       if (hidden > 0) hiddenCounts[thread.id] = hidden;
     }
+
+    // Ahead-count: per-thread count of replies above viewer progress on
+    // ALL threads. Drives V2 friend room's "ahead stubs" + the entry-card
+    // reply count's inclusion of those stubs. Excludes deleted replies.
+    // Counts a reply when ITSELF is above progress (orphans of ahead
+    // replies are filtered out by chain-visibility upstream and don't
+    // exist in practice — a responder's progress tag is monotonic, so
+    // they couldn't have responded to an ahead reply at a lower tag).
+    let ahead = 0;
+    for (const r of allReplies) {
+      if (r.group_id !== groupId) continue;
+      if (r.is_deleted) continue;
+      if (!(r.season > maxS || (r.season === maxS && r.episode > maxE))) continue;
+      ahead++;
+    }
+    if (ahead > 0) aheadCounts[thread.id] = ahead;
   }
-  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts };
+  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, aheadCounts };
 }
 
 /** Rename a friend group. */

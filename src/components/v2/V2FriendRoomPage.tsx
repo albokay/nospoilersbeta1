@@ -202,6 +202,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               replyCounts: {} as Record<string, number>,
               latestVisibleReplyAt: {} as Record<string, number>,
               hiddenCounts: {} as Record<string, number>,
+              aheadCounts: {} as Record<string, number>,
             };
 
         const departedUsernames = new Set(
@@ -229,7 +230,10 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
           isDeparted: departedUsernames.has(t.author),
           isDeleted: t.isDeleted ?? false,
           updatedAt: t.updatedAt,
-          replyCount: groupResult.replyCounts[t.id] ?? 0,
+          // V2 reply count = visible chain-visible replies + ahead-of-progress
+          // stubs (RepliesList renders these via showAheadStubs). Matches the
+          // user-facing "responses" total the entry card displays.
+          replyCount: (groupResult.replyCounts[t.id] ?? 0) + (groupResult.aheadCounts?.[t.id] ?? 0),
           // Full thread object — V2InlineThread mounts on expand and
           // expects the Thread shape (not the lean entry projection).
           thread: t,
