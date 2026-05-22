@@ -779,16 +779,34 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
             )}
           </div>
 
-          {/* ── RIGHT pane: map ──────────────────────────────────────── */}
+          {/* ── RIGHT pane: map ──────────────────────────────────────────
+              Two-level wrapping so the map STAYS pinned to the viewport
+              throughout a feed-driven page scroll:
+                • Outer wrapper: alignSelf:"stretch" forces it to the full
+                  two-pane-container height (= feed height). This is the
+                  sticky element's CONTAINING BLOCK — needs to be tall, or
+                  sticky releases as soon as the parent's bottom reaches
+                  sticky-top in viewport coords. The previous single-level
+                  wrapper used alignSelf:"flex-start", sizing it to just
+                  the map's height, which made sticky release almost
+                  immediately on scroll (~symptom users saw: map "pushed
+                  up" by page scroll).
+                • Inner sticky: top: calc(--site-header-h + 60px). Pinned
+                  to viewport throughout. Transform sits on the inner
+                  too so it doesn't bias containing-block resolution. */}
           <div
             style={{
               flex: "0 0 auto",
-              position: "sticky",
-              top: "calc(var(--site-header-h) + 60px)",
-              alignSelf: "flex-start",
-              transform: "translateX(-144px)",
+              alignSelf: "stretch",
             }}
           >
+            <div
+              style={{
+                position: "sticky",
+                top: "calc(var(--site-header-h) + 60px)",
+                transform: "translateX(-144px)",
+              }}
+            >
             <V2RoomMap
               members={mapMembers}
               seasons={show.seasons}
@@ -804,6 +822,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               isNewMap={isNewMap}
               firstHighlightedSet={firstHighlightedSet}
             />
+            </div>
           </div>
         </div>
       </div>
