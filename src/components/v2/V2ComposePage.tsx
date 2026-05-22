@@ -745,7 +745,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
               }}
             >
               {destination === "public"
-                ? <>Anyone who's watched <strong style={{ whiteSpace: "nowrap" }}>{tagLong}</strong> can read your writing.</>
+                ? <>Anyone can read your writing if they've at least watched <strong style={{ whiteSpace: "nowrap" }}>{tagLong}</strong>.</>
                 : destination === "private"
                 ? <>No one else will see. Some of your best thinking happens when you write for yourself…</>
                 : <>Your friends will see your entry once they've watched <strong style={{ whiteSpace: "nowrap" }}>{tagLong}</strong>.</>}
