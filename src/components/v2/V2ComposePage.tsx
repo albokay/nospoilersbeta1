@@ -441,7 +441,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           background-image: none !important;
           color: ${INK} !important;
         }
-        .v2-compose-title-input::placeholder { color: ${INK_FAINT}; font-weight: 500; font-style: italic; }
+        .v2-compose-title-input::placeholder { color: ${INK_FAINT}; font-weight: 500; }
       `}</style>
 
       {/* TOP-RIGHT: × not now (duplicate of action-row cancel) */}
@@ -469,8 +469,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div
             style={{
-              fontFamily: "Lora, Georgia, serif",
-              fontStyle: "italic",
+              fontFamily: "Inter, sans-serif",
               fontSize: 15,
               color: INK_FAINT,
               marginBottom: 4,
