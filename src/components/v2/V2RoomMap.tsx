@@ -553,26 +553,15 @@ export default function V2RoomMap({
           })}
         </div>
 
-        {/* ── 16px breathing band below the sticky-header divider ────────
-            Sticky element pinned right at the bottom of the sticky header
-            so it sits in the same place regardless of scroll position.
-            Background matches the page bg (var(--dos-bg) = canon-light-
-            blue in friend-room context), so body content scrolling behind
-            it reads as "empty breathing room" between the line and the
-            first visible cell. Width: calc(100% + 24px) matches the
-            divider line's right extension so the band aligns with it. */}
-        <div
-          aria-hidden
-          style={{
-            gridColumn: "1 / -1",
-            position: "sticky",
-            top: HEADER_HEIGHT,
-            zIndex: 1,
-            height: 16,
-            background: "var(--dos-bg)",
-            width: "calc(100% + 24px)",
-          }}
-        />
+        {/* ── 16px breathing spacer between sticky header and body rows.
+            Non-sticky — sits in the grid's flow at content position
+            HEADER_HEIGHT to HEADER_HEIGHT+16, then scrolls with the rest
+            of the body. Effect on initial load: target row's first cell
+            sits 16px lower than it would without this spacer. Above the
+            target cell, body content scrolls naturally (showing the
+            previous row's cell + spine when target is deeper than row
+            0). No sticky overlay obscuring scrolling content. */}
+        <div aria-hidden style={{ gridColumn: "1 / -1", height: 16 }} />
 
         {/* ── Body rows ────────────────────────────────────────────────── */}
         {rows.map((row, rowIdx) => {
