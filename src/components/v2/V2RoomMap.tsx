@@ -379,6 +379,11 @@ export default function V2RoomMap({
             zIndex: 2,
             background: "var(--dos-bg)",
             paddingBottom: 8,
+            // 2px white divider at the top edge of the scrollable cell
+            // area — visual cue that the sticky header ends here and the
+            // scrollable grid begins. Sits at the bottom of the sticky
+            // header's box (after the 8px paddingBottom).
+            borderBottom: "2px solid #fff",
           }}
         >
           {/* Season-label column slot (col 1, 80px wide). Hosts the
