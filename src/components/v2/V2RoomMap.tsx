@@ -995,6 +995,25 @@ export default function V2RoomMap({
         })}
       </div>
 
+      {/* Bottom spacer — extends the scrollable content past the last
+          rendered season so the latest-watched season's first episode can
+          actually scroll up to the top of the map window. Without this,
+          when the latest-watched season is the LAST rendered season, there
+          isn't enough content below for the auto-scroll's target offset
+          to be achievable: the map's scrollHeight maxes out short of the
+          required scrollTop, and the season lands wherever it can fit
+          (often mid-map) rather than at the top. Height = visible map
+          area minus one row, which always covers the worst case (single-
+          episode latest-watched season). Sits below the existing
+          mask-image bottom fade, so the empty area is naturally hidden. */}
+      <div
+        style={{
+          height: `calc(100vh - var(--site-header-h) - 100px - ${ROW_HEIGHT}px)`,
+          minHeight: 0,
+        }}
+        aria-hidden
+      />
+
       {/* All four launchers are portaled to document.body because V2RoomMap
           is mounted inside V2FriendRoomPage's transform: translateX(-144px)
           wrapper. CSS rule: any ancestor with a transform becomes the
