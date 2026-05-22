@@ -295,12 +295,22 @@ export default function V2RoomMap({
     // which matches their mental model of "where I am right now." Reading
     // ceiling is highestS/E; that's not what we want for this scroll.
     const targetSeason = viewerProgress.s;
-    const targetEl = seasonStartRefs.current[targetSeason];
-    if (!targetEl) return;
-    const containerRect = container.getBoundingClientRect();
-    const targetRect = targetEl.getBoundingClientRect();
-    const offset = targetRect.top - containerRect.top + container.scrollTop;
-    container.scrollTop = Math.max(0, offset - 8); // 8px breathing room
+    // Row-aligned scrollTop with 16px breathing room above the target's
+    // cell so the spine segment connecting the target to the previous row
+    // is visible just below the sticky header — a visual cue that there's
+    // more content to scroll up to. ROW_HEIGHT = CELL (32) + GAP_BELOW
+    // (16). Subtracting GAP_BELOW from the row-aligned position reveals
+    // exactly the spine area while keeping every visible row below the
+    // header row-aligned.
+    let targetRowIdx = -1;
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].season === targetSeason && rows[i].episode === 1) {
+        targetRowIdx = i;
+        break;
+      }
+    }
+    if (targetRowIdx < 0) return;
+    container.scrollTop = Math.max(0, targetRowIdx * ROW_HEIGHT - GAP_BELOW);
     initialScrollDoneRef.current = true;
   }, [viewerProgress, rows]);
 
