@@ -553,6 +553,27 @@ export default function V2RoomMap({
           })}
         </div>
 
+        {/* ── 16px breathing band below the sticky-header divider ────────
+            Sticky element pinned right at the bottom of the sticky header
+            so it sits in the same place regardless of scroll position.
+            Background matches the page bg (var(--dos-bg) = canon-light-
+            blue in friend-room context), so body content scrolling behind
+            it reads as "empty breathing room" between the line and the
+            first visible cell. Width: calc(100% + 24px) matches the
+            divider line's right extension so the band aligns with it. */}
+        <div
+          aria-hidden
+          style={{
+            gridColumn: "1 / -1",
+            position: "sticky",
+            top: HEADER_HEIGHT,
+            zIndex: 1,
+            height: 16,
+            background: "var(--dos-bg)",
+            width: "calc(100% + 24px)",
+          }}
+        />
+
         {/* ── Body rows ────────────────────────────────────────────────── */}
         {rows.map((row, rowIdx) => {
           const rowKey = `${row.season}-${row.episode}`;
