@@ -1400,7 +1400,20 @@ export default function V3JournalPage({
                         margin: "10px 0 10px 20px", cursor: "pointer", position: "relative",
                         ...((isGroup || isPub) ? { background: cardBg, color: cardFg, borderColor: "transparent" } : {}),
                       }}
-                      onClick={() => { dismissGreenIndicator(t.id); openThreadWithFocus(t.showId, t.id, undefined, groupId); }}>
+                      onClick={() => {
+                        dismissGreenIndicator(t.id);
+                        if (groupId) {
+                          // Friend-room entry — navigate to V2 friend room
+                          // page and signal which entry to auto-expand on
+                          // mount. V2FriendRoomPage reads the state and
+                          // passes it to V2RoomFeed.
+                          navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id } });
+                        } else {
+                          // Private journal entry OR public-aggregate entry:
+                          // keep existing V1 thread-URL behavior.
+                          openThreadWithFocus(t.showId, t.id, undefined, groupId);
+                        }
+                      }}>
                       {getThreadIndicator(t.id) === "green" && (
                         <Tooltip
                           text="People have written to you."

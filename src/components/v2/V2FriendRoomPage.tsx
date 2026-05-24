@@ -52,6 +52,14 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   const location = useLocation();
   const { user, profile } = useAuth();
 
+  // V3 journal's friend-room entry-card click navigates here with
+  // `state.expandThreadId` — V2RoomFeed reads this on mount and auto-
+  // expands that entry. Captured once at mount via useState initializer so
+  // we don't re-trigger on subsequent location changes within the room.
+  const [initialExpandThreadId] = useState<string | null>(
+    () => (location.state as { expandThreadId?: string } | null)?.expandThreadId ?? null,
+  );
+
   const [room, setRoom] = useState<FriendGroup | null>(null);
   const [show, setShow] = useState<Show | null>(null);
   const [progressForShow, setProgressForShow] = useState<ProgressEntry | null>(null);
@@ -790,6 +798,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 isNewMap={isNewMap}
                 cellSignals={cellSignals}
                 engagedThreadIds={engagedSet}
+                initialExpandedThreadId={initialExpandThreadId ?? undefined}
               />
             )}
           </div>

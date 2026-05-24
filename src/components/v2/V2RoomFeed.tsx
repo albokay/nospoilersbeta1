@@ -110,6 +110,13 @@ export type V2RoomFeedProps = {
   /** Set of threadIds the user has expanded-and-collapsed at least once
       this session. Drives A4 (entry card dim to opacity 0.5). */
   engagedThreadIds?: Set<string>;
+  /** Thread to auto-expand on mount. Used by the V3 journal → V2 friend
+      room nav path: clicking a friend-room entry in V3 journal lands here
+      with this prop set, and the room mounts with the entry already
+      expanded + scrolled into view. Read once via useState initializer;
+      subsequent prop changes are ignored (so the user can collapse and
+      stay collapsed without the auto-expand re-firing on re-render). */
+  initialExpandedThreadId?: string;
 };
 
 const HIGHLIGHT_MS = 1500;
@@ -131,6 +138,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     isNewMap,
     cellSignals,
     engagedThreadIds,
+    initialExpandedThreadId,
   },
   ref,
 ) {
@@ -150,7 +158,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   // another quietly collapses the previously-open one (no scroll-jump —
   // the page layout reflows naturally; the user's viewport scroll position
   // stays where it was).
-  const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
+  const [expandedThreadId, setExpandedThreadId] = useState<string | null>(
+    () => initialExpandedThreadId ?? null,
+  );
   // Detect expand/collapse transitions and forward to parent callbacks so
   // V2FriendRoomPage can update its notification-signal state (lastOpenedAt,
   // greenDismissedSet, engagedSet). prevExpandedRef tracks the previous
@@ -170,6 +180,24 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const ticketRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const highlightTimer = useRef<number | null>(null);
+
+  // When mounting with an auto-expanded entry (from the V3 journal → V2
+  // friend room nav path), scroll that entry's ticket into view after
+  // refs populate. Fires once per mount.
+  const initialScrollDoneRef = useRef(false);
+  useEffect(() => {
+    if (initialScrollDoneRef.current) return;
+    if (!initialExpandedThreadId) return;
+    // Defer to let ticketRefs populate after the first render of entries.
+    const t = setTimeout(() => {
+      const el = ticketRefs.current[initialExpandedThreadId];
+      if (!el) return;
+      el.scrollIntoView({ behavior: "auto", block: "start" });
+      initialScrollDoneRef.current = true;
+    }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries]);
 
   // Draft-guard: the currently-expanded thread's composer reports its draft
   // state via onDraftChange. If it has unsaved text, intercept the next
