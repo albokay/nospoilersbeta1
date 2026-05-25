@@ -408,7 +408,10 @@ export default function V2RoomMap({
       ref={scrollRef}
       style={{
         overflowY: "auto",
-        maxHeight: `calc(100vh - var(--site-header-h) - 100px)`,
+        // Extend to the bottom edge of the viewport: viewport height minus
+        // the sticky-top offset (--site-header-h + 60px from V2FriendRoom-
+        // Page's inner sticky). Was -100px (40px shy of the bottom).
+        maxHeight: `calc(100vh - var(--site-header-h) - 60px)`,
         position: "relative",
         // Right padding on the scrollable container — keeps the browser's
         // vertical scrollbar from overlapping the rightmost member column.
