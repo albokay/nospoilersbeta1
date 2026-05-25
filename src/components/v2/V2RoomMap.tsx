@@ -646,7 +646,35 @@ export default function V2RoomMap({
                   </>
                 )}
                 {(() => {
-                  const usernameNode = (
+                  // Positioning styles: applied to the OUTER element
+                  // (Tooltip wrapper when a tooltip is present, otherwise
+                  // the username div itself). The Tooltip wrapper sets
+                  // position:relative + display:inline-block by default;
+                  // we override with the absolute rotation so the click
+                  // target sits where the username text rendered before
+                  // the tooltip was added.
+                  const positioningStyle: React.CSSProperties = {
+                    // transformOrigin: left bottom — pre-rotation pivot
+                    // at the element's bottom-left, which becomes the
+                    // rotated bottom anchor; "@" sits at the column
+                    // bottom; long usernames truncate at the rotated top.
+                    position: "absolute",
+                    left: CELL / 2 + 8,
+                    bottom: 8,
+                    transform: "rotate(-90deg)",
+                    transformOrigin: "left bottom",
+                    whiteSpace: "nowrap",
+                    maxWidth: HEADER_HEIGHT - 16,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    fontSize: 13,
+                    fontWeight: 400,
+                    color: "#fff",
+                    fontStyle: isClickable ? "italic" : undefined,
+                    borderBottom: isClickable ? "1px dotted #fff" : undefined,
+                    cursor: (isClickable || isSelfCol) ? "pointer" : undefined,
+                  };
+                  const usernameDiv = (
                     <div
                       role={isClickable || isSelfCol ? "button" : undefined}
                       tabIndex={isClickable || isSelfCol ? 0 : undefined}
@@ -695,39 +723,16 @@ export default function V2RoomMap({
                             }
                           : undefined
                       }
-                      style={{
-                        // transformOrigin: left bottom — the pivot sits at the
-                        // element's pre-rotation bottom-left, which after CCW
-                        // rotation becomes the rotated bottom. Anchoring the "@"
-                        // there keeps the beginning of the username visible at
-                        // the column's bottom; long usernames truncate with
-                        // ellipsis at the rotated TOP (the pre-rotation right
-                        // edge clipped by maxWidth).
-                        position: "absolute",
-                        left: CELL / 2 + 8,
-                        bottom: 8,
-                        transform: "rotate(-90deg)",
-                        transformOrigin: "left bottom",
-                        whiteSpace: "nowrap",
-                        maxWidth: HEADER_HEIGHT - 16,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        fontSize: 13,
-                        fontWeight: 400,
-                        color: "#fff",
-                        // Other-clickable headers get the v1 nudge-launcher
-                        // styling (italic + dotted underline). Self is
-                        // clickable for the rating-edit toggle but has NO
-                        // underline (per spec). Departed stay plain.
-                        fontStyle: isClickable ? "italic" : undefined,
-                        borderBottom: isClickable ? "1px dotted #fff" : undefined,
-                        cursor: (isClickable || isSelfCol) ? "pointer" : undefined,
-                      }}
                     >
                       @{m.username}
                     </div>
                   );
-                  if (usernameTooltipText == null) return usernameNode;
+                  if (usernameTooltipText == null) {
+                    // No tooltip: positioning style on the div itself.
+                    return React.cloneElement(usernameDiv, { style: positioningStyle });
+                  }
+                  // Tooltip wrapper takes the positioning; the inner div
+                  // sits at default position within the rotated wrapper.
                   return (
                     <Tooltip
                       text={usernameTooltipText}
@@ -735,8 +740,9 @@ export default function V2RoomMap({
                       width="auto"
                       portal
                       tooltipStyle={{ textAlign: "left" }}
+                      style={positioningStyle}
                     >
-                      {usernameNode}
+                      {usernameDiv}
                     </Tooltip>
                   );
                 })()}
