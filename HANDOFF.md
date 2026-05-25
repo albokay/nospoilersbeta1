@@ -1,6 +1,8 @@
 # Sidebar — Technical State (2026-05-24)
 
-> **2026-05-24 — Latest landed: TreatedArt temporarily disabled (Supabase egress investigation).** Free plan egress hit 9.25 GB this billing period (4.25 GB overage on 5 GB included), with daily spikes of 2–2.6 GB on May 20–22 — well above expected solo-test volume. TreatedArt PNG fetches identified as likely primary culprit: per-mount random-color roll across 5 colors + key-driven remount on 3 of 4 mount sites means a fresh PNG fetch on every tab/show switch; source PNGs are 400 KB – 2.5 MB. Killed via `const DISABLED = true` early-return at the top of `TreatedArt.tsx` (component returns null, all four mount sites left in place — trivially reversible by flipping to `false`). Watch egress for 24–48h to confirm cause. See §"Treated-art follow-ups" for the re-enable decision tree.
+> **2026-05-24 — Latest landed: V3 journal 4-section ticket clicks → V2 friend room.** Extends this morning's friend-room-ticket → V2 nav pattern to all four bottom sections of `/v3/journal` (`responses to you` / `your responses` / `your starred entries` / `your starred responses`). Friend-room rows now navigate to `/v2/room/<groupId>` with `state.expandThreadId` (and `state.focusReplyId` for the 3 reply sections — RepliesList scrolls + flashes the specific reply once it lands in the DOM). Public-aggregate + private-journal rows keep the V1 `openThreadWithFocus` path. Three commits: (C1) data layer — `fetchUserReplies` / `fetchLikedReplies` / `fetchLikedThreads` widened to surface `groupId?: string`; reply fetches read `replies.group_id`, thread fetch resolves via `group_threads ∩ friend_group_members`. (C2) V2 plumbing — `V2FriendRoomPage` reads `state.focusReplyId`, forwards to `V2RoomFeed`'s new `initialFocusReplyId` prop; `V2RoomFeed` seeds a `pendingFocusReplyId` state cleared on collapse/nav-away (so collapse + re-expand doesn't re-fire scroll); `V2InlineThread` accepts `focusReplyId` and forwards to RepliesList's existing 3-second DOM-poll scroll behavior. (C3) V3 click handlers — branch on `groupId` per section. V1 surfaces untouched.
+>
+> **Prior arc landed 2026-05-24:** TreatedArt temporarily disabled (Supabase egress investigation). Free plan egress hit 9.25 GB this billing period (4.25 GB overage on 5 GB included), with daily spikes of 2–2.6 GB on May 20–22 — well above expected solo-test volume. TreatedArt PNG fetches identified as likely primary culprit: per-mount random-color roll across 5 colors + key-driven remount on 3 of 4 mount sites means a fresh PNG fetch on every tab/show switch; source PNGs are 400 KB – 2.5 MB. Killed via `const DISABLED = true` early-return at the top of `TreatedArt.tsx` (component returns null, all four mount sites left in place — trivially reversible by flipping to `false`). Watch egress for 24–48h to confirm cause. See §"Treated-art follow-ups" for the re-enable decision tree.
 >
 > **Prior arc landed 2026-05-24:** V2 room-map rating-edit mode + header polish. Rating UX shifted from "click any self cell to rate" (debounced auto-save) to a dedicated edit-mode session gated behind an icon. Self-column header now shows a canon-red `square-pen` icon (hover: "Adjust episode ratings."); clicking it (OR the username) enters edit mode — icon becomes a canon-red `circle-check`, self cells turn canon-red fill, every reached cell tooltip gains a canon-red "Click to change this episode's rating." line. In edit mode, clicking self cells rotates rating into a local `pendingRatings` map (no DB write). Clicking the circle-check confirms: batches all pending changes via `Promise.all([upsert/delete])`. Nav-away or commit failure discards the pending changes entirely (failure also surfaces "Couldn't save ratings. Try again." inline below the icon for 4s). Outside edit mode, cells only navigate — no rating side effects, the old `firstHighlightedSet` first-click-highlights gate is moot. Plus header polish: door icon got "Question for the room?" tooltip; other-user usernames got "Give @user / *a nudge.*" two-line tooltip (last line italicized); self-username became a click target for edit-mode toggle (no underline) with "Adjust your / episode ratings." tooltip; all top-nav tooltips centered; username `maxWidth` bumped 104px→120px so the last letter of longer usernames isn't cut. Map's `maxHeight` extended to viewport bottom (was 40px short), and the bottom mask-gradient fade removed (map now fully visible all the way down).
 >
@@ -1342,6 +1344,64 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-24 — V3 journal 4-section ticket clicks → V2 friend room
+
+Same-day follow-on extending the morning's V3-journal-entry-ticket → V2 nav. The friend-room-entry ticket was already routed correctly. This arc covers the remaining four bottom sections (`responses to you` / `your responses` / `your starred entries` / `your starred responses`). Goal: friend-room rows land on `/v2/room/<groupId>` with the relevant entry expanded; reply-section rows additionally scroll + flash the specific reply inside the expanded thread. Public-aggregate + private-journal rows keep V1 behavior.
+
+**C1 — data layer.** Three `db.ts` fetches widened to surface `groupId?: string` per row:
+
+| Fetch | New return | groupId source |
+|---|---|---|
+| `fetchUserReplies` | `{ reply, thread, groupId? }[]` | `replies.group_id` (nullable) |
+| `fetchLikedReplies` | `{ reply, thread, groupId? }[]` | embedded `replies.group_id` |
+| `fetchLikedThreads` | `(Thread & { groupId? })[]` | two-step: viewer's `friend_group_members.group_id`s → `group_threads.thread_id IN (...)` filtered to those groups |
+
+Additive shape changes — V1 consumers (ProfilePage, App.tsx, V2JournalPage) ignore the new optional field. Each user is in at most one room per thread in practice (per HANDOFF §3 + verified across live UI flows: compose picks one destination, "Duplicate to friend room" creates a new thread row, multi-room "upgrade" only existed in deprecated V2JournalPage). So `first-match` resolution is deterministic for the realistic case.
+
+**C2 — V2 reply-focus plumbing.** RepliesList already exposed `focusReplyId` (scrolls + flashes the matching reply, polling up to ~3s for the DOM element). Plumbed it from `location.state.focusReplyId` through:
+
+- `V2FriendRoomPage`: reads `state.focusReplyId` alongside the existing `state.expandThreadId` via `useState` initializer.
+- `V2RoomFeed`: new `initialFocusReplyId` prop; seeds a `pendingFocusReplyId` state. Passes `focusReplyId` to `V2InlineThread` ONLY for the entry matching `initialExpandedThreadId`. Clears `pendingFocusReplyId` the moment the user collapses or nav-aways from the initially-expanded thread — so collapse + re-expand doesn't re-fire the scroll. (A timer-based clear was tried first; it races with RepliesList's up-to-3s DOM poll when replies are still loading. The collapse-driven clear is the correct boundary.)
+- `V2InlineThread`: new `focusReplyId` prop; forwards to RepliesList unchanged.
+
+**C3 — V3 click handlers.** Each of the 4 sections branches on `groupId`:
+
+```ts
+onClick={() => {
+  if (groupId) {
+    navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id, focusReplyId: r.id } });
+  } else {
+    openThreadWithFocus(t.showId, t.id, r.id);  // V1 path unchanged
+  }
+}}
+```
+
+Reply sections include `focusReplyId`; the "your starred entries" section omits it (click is on an entry, not a reply). Local `TabData` type in V3JournalPage widened to preserve `groupId` through the per-tab cache round-trip.
+
+**Commits:**
+
+| Hash | Scope |
+|---|---|
+| `eb68c8f` | C1 — db.ts: surface groupId on the three fetches. |
+| `05e5cc6` | C2 — V2 plumbing: V2FriendRoomPage → V2RoomFeed → V2InlineThread → RepliesList focus chain. |
+| (pending) | C3 — V3JournalPage 4-section click handlers + TabData type widening + HANDOFF notes. |
+
+**Conventions reinforced this arc:**
+
+- **Additive return-shape widening for fetch fns** is the right pattern when only some consumers need new data. `fetch` returns optional fields; existing consumers destructure existing fields and stay unchanged. Pair the change with a comment in the fetch fn explaining what the new field means.
+- **`useState` initializer captures route state ONCE** (matches the morning's `expandThreadId` pattern). For `focusReplyId`: `useState(() => (location.state as ...)?.focusReplyId ?? null)`. Don't re-read on subsequent renders.
+- **Clear "use-once" props on user-driven transitions, not timers.** When a sentinel prop should fire its effect once-per-mount-session (like a scroll-to-target), clear it when the user does the next meaningful interaction (collapse, navigate). Timers race with async DOM-load polling and produce flaky behavior.
+- **Conditional prop pass for per-entry targeting.** When a list renders many instances of a child component but only one should receive a prop, pass the prop conditionally inside the `.map()`: `prop={entry.id === target ? value : undefined}`. Cleaner than a global state lookup inside the child.
+
+**Two-step deploys this arc required:** none (no migrations, no edge function changes).
+
+**Resolved by this arc:**
+
+- V3 journal 4-section ticket clicks landing on V1 thread URLs even when the row was a friend-room entry/reply.
+- Reply-section clicks losing the specific-reply context — now scroll + flash the exact reply inside the V2 expanded entry.
+
+**Outstanding (none directly from this arc.)** Pre-existing follow-ups in §"v2 / v3 cleanup follow-ups" still stand (canonicalizing `/v3/journal` as `/profile`, deleting `V2JournalPage.tsx`, etc.).
 
 ### 2026-05-24 — TreatedArt temporarily disabled (Supabase egress investigation)
 

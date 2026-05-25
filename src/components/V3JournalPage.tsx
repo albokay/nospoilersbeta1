@@ -75,10 +75,16 @@ export default function V3JournalPage({
   // ── Lazy-load: lightweight activity query for tab ordering, per-tab data cache ──
   type TabData = {
     myThreads: { thread: Thread; groupId?: string; groupName?: string }[];
-    myReplies: { reply: Reply; thread: Thread }[];
+    // groupId here = replies.group_id (the room the reply was written in;
+    // null for public). Surfaced by fetchUserReplies / fetchLikedReplies so
+    // section clicks can route friend-room rows to /v2/room/<groupId>.
+    myReplies: { reply: Reply; thread: Thread; groupId?: string }[];
     repliesToMe: { reply: Reply; thread: Thread; groupId?: string; groupName?: string }[];
-    likedThreads: Thread[];
-    likedReplies: { reply: Reply; thread: Thread }[];
+    // groupId here = the viewer's friend-room link for the thread (resolved
+    // via group_threads ∩ friend_group_members in fetchLikedThreads). Undefined
+    // when the thread isn't in any room the viewer is a member of.
+    likedThreads: (Thread & { groupId?: string })[];
+    likedReplies: { reply: Reply; thread: Thread; groupId?: string }[];
   };
   const [activityOrder, setActivityOrder] = useState<{ showId: string; latestAt: number }[]>([]);
   const [tabDataCache, setTabDataCache] = useState<Record<string, TabData>>({});
@@ -1539,7 +1545,17 @@ export default function V3JournalPage({
                     const isExpanded = expandedIds.has(r.id);
                     return (
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", position: "relative", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id, r.id, groupId)}>
+                      onClick={() => {
+                        if (groupId) {
+                          // Friend-room reply — navigate to V2 friend room,
+                          // auto-expand the parent entry, and scroll/flash
+                          // the specific reply via RepliesList.focusReplyId.
+                          navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id, focusReplyId: r.id } });
+                        } else {
+                          // Public-aggregate reply: keep existing V1 path.
+                          openThreadWithFocus(t.showId, t.id, r.id, groupId);
+                        }
+                      }}>
                       {newVisibleReplyIds[r.id] && (
                         <div style={{ position: "absolute", left: -10, top: -2, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
                       )}
@@ -1582,12 +1598,19 @@ export default function V3JournalPage({
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabMyReplies.length === 0 && <div className="muted">No responses yet.</div>}
-                  {tabMyReplies.map(({ reply: r, thread: t }) => {
+                  {tabMyReplies.map(({ reply: r, thread: t, groupId }) => {
                     const showExpand = r.body.length > 140 || r.body.includes("\n");
                     const isExpanded = expandedIds.has(r.id);
                     return (
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
+                      onClick={() => {
+                        if (groupId) {
+                          // Friend-room reply — V2 nav (see "responses to you").
+                          navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id, focusReplyId: r.id } });
+                        } else {
+                          openThreadWithFocus(t.showId, t.id, r.id);
+                        }
+                      }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="muted" style={{ fontSize: 14 }}>
@@ -1628,10 +1651,20 @@ export default function V3JournalPage({
                   {tabLikedThreads.map(t => {
                     const showExpand = t.body !== t.preview;
                     const isExpanded = expandedIds.has(t.id);
+                    const groupId = (t as Thread & { groupId?: string }).groupId;
                     return (
                     <div key={t.id} className="card threadCard"
                       style={{ margin: "10px 0", cursor: "pointer", position: "relative" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id)}>
+                      onClick={() => {
+                        if (groupId) {
+                          // Friend-room thread — V2 nav. No focusReplyId
+                          // (the click is on the entry, not a reply).
+                          navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id } });
+                        } else {
+                          // Private journal or public-aggregate thread.
+                          openThreadWithFocus(t.showId, t.id);
+                        }
+                      }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="title" style={{ fontSize: 18 }}>
@@ -1667,12 +1700,19 @@ export default function V3JournalPage({
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>your starred responses</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabLikedReplies.length === 0 && <div className="muted">No starred responses yet.</div>}
-                  {tabLikedReplies.map(({ reply: r, thread: t }) => {
+                  {tabLikedReplies.map(({ reply: r, thread: t, groupId }) => {
                     const showExpand = r.body.length > 140 || r.body.includes("\n");
                     const isExpanded = expandedIds.has(r.id);
                     return (
                     <div key={r.id} className="card reply-card" style={{ margin: "10px 0", cursor: "pointer", color: "var(--dos-bg)", ["--dos-accent" as any]: "var(--dos-bg)", ["--dos-cyan" as any]: "var(--dos-bg)", ["--dos-gray" as any]: "rgba(222,168,56,0.65)" }}
-                      onClick={() => openThreadWithFocus(t.showId, t.id, r.id)}>
+                      onClick={() => {
+                        if (groupId) {
+                          // Friend-room reply — V2 nav (see "responses to you").
+                          navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id, focusReplyId: r.id } });
+                        } else {
+                          openThreadWithFocus(t.showId, t.id, r.id);
+                        }
+                      }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="muted" style={{ fontSize: 14 }}>
