@@ -74,6 +74,12 @@ function buildUrl(showId: string, color: TreatedColor): string {
   return `${base}/storage/v1/object/public/treated-art/${showId}-${color}.png`;
 }
 
+// 2026-05-24: temporarily disabled while investigating Supabase egress
+// overage. Per-mount random-color roll + key-driven remount on 3 of 4
+// mount sites was pulling 400KB-2.5MB PNGs on every tab/show switch.
+// Flip back to `false` to restore. See HANDOFF "Treated-art follow-ups."
+const DISABLED = true;
+
 export default function TreatedArt({
   showId,
   anchor,
@@ -81,6 +87,7 @@ export default function TreatedArt({
   showId: string | null | undefined;
   anchor: "fixed" | "scroll";
 }) {
+  if (DISABLED) return null;
   const [color] = useState<TreatedColor>(() => pickRandom(CANON_TREATED_COLORS));
   const [side] = useState<Side>(() => (Math.random() < 0.5 ? "left" : "right"));
   const [loaded, setLoaded] = useState(false);
