@@ -415,10 +415,6 @@ export default function V2RoomMap({
         // Was 6px (just enough for the click-bounce overflow); bumped to
         // 24px so the scrollbar sits clear of the @<rightmost> cells.
         paddingRight: 24,
-        WebkitMaskImage:
-          "linear-gradient(to bottom, #000 calc(100% - 136px), transparent 100%)",
-        maskImage:
-          "linear-gradient(to bottom, #000 calc(100% - 136px), transparent 100%)",
       }}
     >
       <div
@@ -557,7 +553,7 @@ export default function V2RoomMap({
               ? (
                   <>
                     <span style={{ display: "block" }}>Give @{m.username}</span>
-                    <span style={{ display: "block" }}>a nudge.</span>
+                    <span style={{ display: "block", fontStyle: "italic" }}>a nudge.</span>
                   </>
                 )
               : null;
@@ -584,7 +580,7 @@ export default function V2RoomMap({
                     <Tooltip
                       text={
                         editMode
-                          ? "Click the episode boxes in the map to adjust episode ratings. Click here again to confirm your choices."
+                          ? "Click the episode boxes in the map to adjust episode ratings. Click here again to confirm your choices."
                           : "Adjust episode ratings."
                       }
                       direction="above"
