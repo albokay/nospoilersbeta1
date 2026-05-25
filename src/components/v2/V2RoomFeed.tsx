@@ -117,6 +117,13 @@ export type V2RoomFeedProps = {
       subsequent prop changes are ignored (so the user can collapse and
       stay collapsed without the auto-expand re-firing on re-render). */
   initialExpandedThreadId?: string;
+  /** Reply id to focus inside the auto-expanded thread. Used when the V3
+      journal click was on a reply row (responses to you / your responses /
+      your starred responses) rather than the entry itself. Forwarded to
+      V2InlineThread → RepliesList's existing focusReplyId (which scrolls
+      + flashes the matching reply). Only meaningful when
+      initialExpandedThreadId is also set. */
+  initialFocusReplyId?: string;
 };
 
 const HIGHLIGHT_MS = 1500;
@@ -139,6 +146,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     cellSignals,
     engagedThreadIds,
     initialExpandedThreadId,
+    initialFocusReplyId,
   },
   ref,
 ) {
@@ -180,6 +188,24 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const ticketRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const highlightTimer = useRef<number | null>(null);
+
+  // Reply-focus pending state. Seeded from initialFocusReplyId so the
+  // initially-expanded thread's RepliesList runs its scroll-to-reply
+  // effect on first render. Cleared the moment the user collapses (or
+  // navigates away from) the initially-expanded thread — collapse +
+  // re-expand should NOT re-fire the scroll. A timer-based clear was
+  // tried first but races with RepliesList's up-to-3s DOM poll for the
+  // reply element when replies are still loading.
+  const [pendingFocusReplyId, setPendingFocusReplyId] = useState<string | undefined>(
+    () => initialFocusReplyId,
+  );
+  useEffect(() => {
+    if (!pendingFocusReplyId) return;
+    // Clear once the initially-expanded thread is no longer expanded.
+    if (expandedThreadId !== initialExpandedThreadId) {
+      setPendingFocusReplyId(undefined);
+    }
+  }, [expandedThreadId, initialExpandedThreadId, pendingFocusReplyId]);
 
   // When mounting with an auto-expanded entry (from the V3 journal → V2
   // friend room nav path), scroll that entry's ticket into view after
@@ -584,6 +610,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                         setExpandedLikeState((prev) =>
                           prev ? { ...prev, likedByMe } : prev,
                         )
+                      }
+                      focusReplyId={
+                        entry.threadId === initialExpandedThreadId
+                          ? pendingFocusReplyId
+                          : undefined
                       }
                     />
                   </div>

@@ -55,6 +55,11 @@ export type V2InlineThreadProps = {
   /** Click handler for username bylines inside RepliesList. Forwarded
    *  through unchanged. Routes to /v2/u/<username>. */
   onClickProfile?: (username: string) => void;
+  /** Reply id to scroll to + flash after replies load. Used by the V3
+   *  journal → V2 friend room nav path when the click was on a specific
+   *  reply (responses to you / your responses / your starred responses).
+   *  Forwarded to RepliesList's existing focusReplyId. */
+  focusReplyId?: string;
 };
 
 export default function V2InlineThread({
@@ -70,6 +75,7 @@ export default function V2InlineThread({
   onDraftChange,
   onThreadLikeStateChange,
   onClickProfile,
+  focusReplyId,
 }: V2InlineThreadProps) {
   const { profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
@@ -551,6 +557,7 @@ export default function V2InlineThread({
           compactBorders
           showAheadStubs
           onClickProfile={onClickProfile}
+          focusReplyId={focusReplyId ?? null}
         />
       </div>
 

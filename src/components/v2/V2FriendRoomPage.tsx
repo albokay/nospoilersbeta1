@@ -56,8 +56,16 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // `state.expandThreadId` — V2RoomFeed reads this on mount and auto-
   // expands that entry. Captured once at mount via useState initializer so
   // we don't re-trigger on subsequent location changes within the room.
+  // `state.focusReplyId` (optional) names a specific reply inside the
+  // expanded thread to scroll to + flash — used when the V3 click was on
+  // a reply (responses to you / your responses / your starred responses)
+  // rather than the entry itself. Plumbed through V2RoomFeed →
+  // V2InlineThread → RepliesList's existing focusReplyId support.
   const [initialExpandThreadId] = useState<string | null>(
     () => (location.state as { expandThreadId?: string } | null)?.expandThreadId ?? null,
+  );
+  const [initialFocusReplyId] = useState<string | null>(
+    () => (location.state as { focusReplyId?: string } | null)?.focusReplyId ?? null,
   );
 
   const [room, setRoom] = useState<FriendGroup | null>(null);
@@ -848,6 +856,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 cellSignals={cellSignals}
                 engagedThreadIds={engagedSet}
                 initialExpandedThreadId={initialExpandThreadId ?? undefined}
+                initialFocusReplyId={initialFocusReplyId ?? undefined}
               />
             )}
           </div>
