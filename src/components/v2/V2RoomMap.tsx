@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, DoorClosed, DoorOpen, SquarePen } from "lucide-react";
+import { CircleCheck, DoorClosed, DoorOpen, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
@@ -556,8 +556,7 @@ export default function V2RoomMap({
               : isClickable
               ? (
                   <>
-                    <span style={{ display: "block" }}>Give</span>
-                    <span style={{ display: "block" }}>@{m.username}</span>
+                    <span style={{ display: "block" }}>Give @{m.username}</span>
                     <span style={{ display: "block" }}>a nudge.</span>
                   </>
                 )
@@ -621,7 +620,7 @@ export default function V2RoomMap({
                           zIndex: 3,
                         }}
                       >
-                        {editMode ? <Check size={16} /> : <SquarePen size={16} />}
+                        {editMode ? <CircleCheck size={16} /> : <SquarePen size={16} />}
                       </div>
                     </Tooltip>
                     {saveError && (
@@ -664,7 +663,11 @@ export default function V2RoomMap({
                     transform: "rotate(-90deg)",
                     transformOrigin: "left bottom",
                     whiteSpace: "nowrap",
-                    maxWidth: HEADER_HEIGHT - 16,
+                    // Use the full column height (pre-rotation width =
+                    // post-rotation height) so 1-2 extra characters fit
+                    // before truncation. Previous -16 padding was cutting
+                    // off the last letter of longer usernames.
+                    maxWidth: HEADER_HEIGHT,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     fontSize: 13,
@@ -739,7 +742,7 @@ export default function V2RoomMap({
                       direction="left"
                       width="auto"
                       portal
-                      tooltipStyle={{ textAlign: "left" }}
+                      tooltipStyle={{ textAlign: "center" }}
                       style={positioningStyle}
                     >
                       {usernameDiv}
