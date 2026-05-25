@@ -491,6 +491,55 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     [user?.id, show],
   );
 
+  // Batch-commit handler for V2RoomMap's rating-edit mode. Called when
+  // the user clicks the list-check icon to confirm a session of pending
+  // changes. Persists each change in parallel via UPSERT or DELETE; on
+  // any failure returns { ok: false } so the map can revert + surface
+  // an inline error message. On success, mirrors the changes into local
+  // mapMembers state so subsequent renders reflect the committed values.
+  const handleCommitRatings = useCallback(
+    async (changes: { s: number; e: number; rating: number | null }[]): Promise<{ ok: boolean }> => {
+      if (!user?.id || !show) return { ok: false };
+      if (changes.length === 0) return { ok: true };
+      try {
+        await Promise.all(
+          changes.map((c) =>
+            c.rating === null
+              ? deleteEpisodeRating({ userId: user.id, showId: show.id, season: c.s, episode: c.e })
+              : upsertEpisodeRating({ userId: user.id, showId: show.id, season: c.s, episode: c.e, rating: c.rating }),
+          ),
+        );
+        // Mirror committed values into local state.
+        setMapMembers((prev) =>
+          prev.map((m) => {
+            if (m.userId !== user.id) return m;
+            let newRatings = m.ratings;
+            for (const c of changes) {
+              if (c.rating === null) {
+                newRatings = newRatings.filter((r) => !(r.s === c.s && r.e === c.e));
+              } else {
+                const idx = newRatings.findIndex((r) => r.s === c.s && r.e === c.e);
+                if (idx >= 0) {
+                  newRatings = newRatings.map((r, i) =>
+                    i === idx ? { ...r, rating: c.rating as number } : r,
+                  );
+                } else {
+                  newRatings = [...newRatings, { s: c.s, e: c.e, rating: c.rating as number }];
+                }
+              }
+            }
+            return { ...m, ratings: newRatings };
+          }),
+        );
+        return { ok: true };
+      } catch (err) {
+        console.warn("Batch rating commit failed:", err);
+        return { ok: false };
+      }
+    },
+    [user?.id, show],
+  );
+
   // Geometry constants — keep banner column aligned with the feed pane's
   // left edge so the visual rhythm reads as one column.
   const FEED_MAX_W = 672;
@@ -845,6 +894,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               onDismissRedDot={handleDismissRedDot}
               isNewMap={isNewMap}
               firstHighlightedSet={firstHighlightedSet}
+              onCommitRatings={handleCommitRatings}
             />
             </div>
           </div>

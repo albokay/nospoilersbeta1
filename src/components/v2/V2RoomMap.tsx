@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { DoorClosed, DoorOpen } from "lucide-react";
+import { DoorClosed, DoorOpen, ListChecks, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
@@ -118,6 +118,14 @@ export type V2RoomMapProps = {
       Once a threadId is in this set, subsequent self-cell clicks fall
       through to the existing rate-change path. */
   firstHighlightedSet?: Set<string>;
+  /** Batch-commit handler for the rating edit mode. Called when the user
+      clicks the list-check icon to confirm pending changes. Each change
+      is `{ s, e, rating }` where rating=null means delete. Returns
+      `{ ok: false }` on any failure so the map can revert + surface an
+      error message. */
+  onCommitRatings?: (
+    changes: { s: number; e: number; rating: number | null }[],
+  ) => Promise<{ ok: boolean }>;
 };
 
 // Direction + count of a member's progress relative to the viewer. Ported
@@ -200,6 +208,7 @@ export default function V2RoomMap({
   onDismissRedDot,
   isNewMap,
   firstHighlightedSet,
+  onCommitRatings,
 }: V2RoomMapProps) {
   // ── Launcher state (pings / polls / SIKW). Only meaningful when
   // groupId is provided — V2FriendRoomPage always supplies it; other
@@ -234,6 +243,21 @@ export default function V2RoomMap({
   // Driven by mouseEnter/Leave on the cell wrapper + the dot.
   const [hoveredCellKey, setHoveredCellKey] = useState<string | null>(null);
   const [hoveredDotKey, setHoveredDotKey] = useState<string | null>(null);
+
+  // ── Rating-edit mode ──────────────────────────────────────────────────
+  // editMode: when true, the viewer's own column-header shows a list-check
+  // icon, cells in the viewer's column turn canon-red fill, and clicks on
+  // self cells rotate rating (held in pendingRatings, NOT persisted).
+  // When false, cell clicks ONLY navigate (scroll-to-entry / highlight).
+  // pendingRatings: per-cell-key (`${s}-${e}`) → number (1..6) | null (clear).
+  // Cleared on confirm (after successful commit) OR on entering edit mode.
+  // saveError: brief text shown below the icon when commit fails; auto-
+  // clears after 4s. Pending changes are discarded on failure.
+  const [editMode, setEditMode] = useState(false);
+  const [pendingRatings, setPendingRatings] = useState<Record<string, number | null>>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [committing, setCommitting] = useState(false);
+  const saveErrorTimerRef = useRef<number | null>(null);
   const triggerBounce = (cellKey: string) => {
     setBouncingState({ cellKey, phase: "up" });
     requestAnimationFrame(() => {
@@ -248,6 +272,45 @@ export default function V2RoomMap({
         prev && prev.cellKey === cellKey && prev.phase === "down" ? null : prev,
       );
     }, 200);
+  };
+
+  // Toggle edit mode. Entering: clear any stale pending state. Confirming
+  // (exiting via the icon click): if there are pending changes, batch-
+  // commit them via onCommitRatings. On any commit failure, revert (clear
+  // pendingRatings → server state wins on next render) and surface the
+  // brief inline error message for 4s.
+  const handleToggleEditMode = async () => {
+    if (committing) return;
+    if (editMode) {
+      // Confirm path: batch commit pending changes, then exit.
+      const changes = Object.entries(pendingRatings).map(([key, rating]) => {
+        const [s, e] = key.split("-").map(Number);
+        return { s, e, rating };
+      });
+      if (changes.length === 0 || !onCommitRatings) {
+        setEditMode(false);
+        setPendingRatings({});
+        return;
+      }
+      setCommitting(true);
+      const result = await onCommitRatings(changes);
+      setCommitting(false);
+      setPendingRatings({});
+      setEditMode(false);
+      if (!result.ok) {
+        setSaveError("Couldn't save ratings. Try again.");
+        if (saveErrorTimerRef.current) window.clearTimeout(saveErrorTimerRef.current);
+        saveErrorTimerRef.current = window.setTimeout(() => {
+          setSaveError(null);
+          saveErrorTimerRef.current = null;
+        }, 4000);
+      }
+    } else {
+      // Entering edit mode — start with a clean slate.
+      setPendingRatings({});
+      setSaveError(null);
+      setEditMode(true);
+    }
   };
 
   // Click-cycle target for a self-column cell. The cycle includes a
@@ -478,9 +541,82 @@ export default function V2RoomMap({
                   width: CELL,
                   height: HEADER_HEIGHT,
                   position: "relative",
-                  overflow: "hidden",
+                  // Self column needs overflow visible so the edit-mode
+                  // icon + error message (which extend past the 32px
+                  // column width) aren't clipped. Other columns stay
+                  // clipped so their rotated usernames don't bleed.
+                  overflow: isSelfCol ? "visible" : "hidden",
                 }}
               >
+                {/* ── Rating-edit icon (self column only) ───────────────
+                    Square-pen toggles to list-check while editing. White
+                    when idle, canon-red while editing. Click toggles
+                    edit mode + commits on exit. */}
+                {isSelfCol && (
+                  <>
+                    <Tooltip
+                      text={
+                        editMode
+                          ? "Click the episode boxes in the map to adjust episode ratings. Click here again to confirm your choices."
+                          : "Adjust episode ratings."
+                      }
+                      direction="above"
+                      align="center"
+                      width={editMode ? 240 : 160}
+                      portal
+                    >
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={editMode ? "Confirm rating changes" : "Adjust episode ratings"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleToggleEditMode();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            void handleToggleEditMode();
+                          }
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: 4,
+                          left: CELL / 2 - 12,
+                          width: 24,
+                          height: 24,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: committing ? "wait" : "pointer",
+                          color: editMode ? "#f45028" : "#fff",
+                          zIndex: 3,
+                        }}
+                      >
+                        {editMode ? <ListChecks size={16} /> : <SquarePen size={16} />}
+                      </div>
+                    </Tooltip>
+                    {saveError && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 32,
+                          left: CELL / 2 - 120,
+                          width: 240,
+                          fontFamily: "Inter, sans-serif",
+                          fontSize: 11,
+                          color: "#f45028",
+                          textAlign: "center",
+                          lineHeight: 1.3,
+                          zIndex: 3,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        {saveError}
+                      </div>
+                    )}
+                  </>
+                )}
                 <div
                   title={`@${m.username}`}
                   role={isClickable ? "button" : undefined}
@@ -668,8 +804,18 @@ export default function V2RoomMap({
                 const isReached = rowIdx <= mMap.lastReachedIdx;
                 const isLastReached = rowIdx === mMap.lastReachedIdx;
                 const entry = mMap.entryByKey.get(rowKey);
-                const rating = mMap.ratingByKey.get(rowKey);
+                const persistedRating = mMap.ratingByKey.get(rowKey);
                 const isSelf = !!viewerUserId && m.userId === viewerUserId;
+                // In edit mode, the viewer's own cells reflect pending
+                // rating changes overlaid on top of the server state. For
+                // other members' cells (and outside edit mode), always
+                // use the server state.
+                const pendingHas = isSelf && rowKey in pendingRatings;
+                const pendingValue = pendingHas ? pendingRatings[rowKey] : undefined;
+                const rating: number | undefined =
+                  pendingHas
+                    ? (pendingValue ?? undefined)
+                    : persistedRating;
 
                 // Departed-and-beyond-reach: render nothing (cell disappears).
                 const renderEmpty = m.isDeparted && !isReached;
@@ -732,31 +878,44 @@ export default function V2RoomMap({
                 const alreadyHighlighted = entry ? !!firstHighlightedSet?.has(entry.threadId) : false;
                 const inHighlightGate = hasSignal && !alreadyHighlighted;
 
+                // Cell click behavior:
+                //   - Edit mode + self + reached → rotate rating into
+                //     pendingRatings. Bounce. No navigation.
+                //   - Edit mode + other cells → navigate as usual (other
+                //     members' cells aren't editable).
+                //   - Outside edit mode → navigation ONLY. Self cells
+                //     route through firstHighlightedSet gate (highlight
+                //     first, then continue to highlight on subsequent
+                //     clicks). NO rating side effects.
+                //
+                // The "Click to change this episode's rating." instruction
+                // tooltip line shows on every reached cell while edit mode
+                // is on (per spec — added in addition to standard tooltip
+                // text). Outside edit mode it never shows.
                 let clickAction: (() => void) | null = null;
-                let showInstruction = false;
                 if (isReached) {
-                  if (isSelf) {
-                    if (entry && inHighlightGate) {
-                      // First click on a self cell with a notification —
-                      // always highlights the entry ticket (whether the
-                      // entry is on- or off-screen). No rate change.
-                      clickAction = () => onEntryClick(entry.threadId);
-                    } else if (entry && !entryVisible) {
-                      clickAction = () => onEntryClick(entry.threadId);
-                    } else if (onRateOwnCell) {
-                      const target = nextRatingTarget(rating);
-                      clickAction = () => {
-                        onRateOwnCell(row.season, row.episode, target);
-                        triggerBounce(cellKey);
-                      };
-                      showInstruction = true;
-                    } else if (entry) {
+                  if (editMode && isSelf) {
+                    const target = nextRatingTarget(rating);
+                    clickAction = () => {
+                      setPendingRatings((prev) => ({ ...prev, [cellKey]: target }));
+                      triggerBounce(cellKey);
+                    };
+                  } else if (isSelf) {
+                    // Outside edit mode: self-column click = navigation
+                    // only. The first-click-highlights gate applies if
+                    // the cell has an entry + notification; otherwise
+                    // just navigate to the entry if present. No rating.
+                    if (entry) {
                       clickAction = () => onEntryClick(entry.threadId);
                     }
                   } else if (entry) {
                     clickAction = () => onEntryClick(entry.threadId);
                   }
                 }
+                // Suppress unused-var warnings for vars only relevant to
+                // the old rate-on-click path (still imported for future
+                // wiring).
+                void inHighlightGate; void entryVisible; void onRateOwnCell;
 
                 // Title truncation: 45 chars + ellipsis. Guarantees the
                 // "wrote:" line stays on one visual line regardless of
@@ -797,8 +956,16 @@ export default function V2RoomMap({
                   );
                 }
 
+                // "Click to change this episode's rating." instruction
+                // line — shows on EVERY reached cell while edit mode is
+                // on (not just self-column). For non-self cells in edit
+                // mode the line still appears even though the cell click
+                // navigates rather than rates — the user is in rating-
+                // edit mode contextually, and the line is a reminder of
+                // what edit mode does. Outside edit mode this line
+                // never shows.
                 let instructionLine: React.ReactNode = null;
-                if (showInstruction) {
+                if (editMode && isReached) {
                   instructionLine = (
                     <span style={{
                       display: "block",
@@ -873,7 +1040,7 @@ export default function V2RoomMap({
                       // the viewer's last room visit. Overrides the default
                       // cell border color; thickness stays 2px to match the
                       // existing cell shape.
-                      const cellShape = cellShapeStyle(isReached, !!entry, isSelf);
+                      const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode);
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry
                         ? { border: "2px solid #fff" }
                         : {};
@@ -1162,7 +1329,19 @@ function MapCellDot({
 //   - reached + no entry → 2px outlined rounded square, transparent
 //     (canon-dark-blue outline for the viewer; --dos-border for others)
 //   - not reached → 2px dashed circular outline (unchanged regardless of self)
-function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean): React.CSSProperties {
+//
+// Edit-mode override: when `editMode && isSelf && isReached`, the cell
+// goes canon-red fill (regardless of entry/rating state). White dice
+// dots on top still render normally for rated cells. Not-reached self
+// cells stay dashed-circle (can't rate them).
+function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, editMode: boolean): React.CSSProperties {
+  if (editMode && isSelf && isReached) {
+    return {
+      background: "#f45028",
+      border: "2px solid #f45028",
+      borderRadius: CELL_RADIUS,
+    };
+  }
   const filledBg = isSelf ? "#355eb8" : "#7abd8e";
   const outlineColor = isSelf ? "#355eb8" : "var(--dos-border)";
   if (isReached && hasEntry) {
