@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { DoorClosed, DoorOpen, ListChecks, SquarePen } from "lucide-react";
+import { Check, DoorClosed, DoorOpen, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
@@ -475,26 +475,34 @@ export default function V2RoomMap({
             }}
           >
             {launcherMode && (
-              <button
-                aria-label="Ask the room"
-                onMouseEnter={() => setDoorHover(true)}
-                onMouseLeave={() => setDoorHover(false)}
-                onClick={(e) => {
-                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                  setAskPickerRect(rect);
-                }}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  color: "#fff",
-                  display: "inline-flex",
-                  alignItems: "center",
-                }}
+              <Tooltip
+                text="Question for the room?"
+                direction="above"
+                align="left"
+                width={180}
+                portal
               >
-                {doorHover ? <DoorOpen size={24} /> : <DoorClosed size={24} />}
-              </button>
+                <button
+                  aria-label="Ask the room"
+                  onMouseEnter={() => setDoorHover(true)}
+                  onMouseLeave={() => setDoorHover(false)}
+                  onClick={(e) => {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setAskPickerRect(rect);
+                  }}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    color: "#fff",
+                    display: "inline-flex",
+                    alignItems: "center",
+                  }}
+                >
+                  {doorHover ? <DoorOpen size={24} /> : <DoorClosed size={24} />}
+                </button>
+              </Tooltip>
             )}
           </div>
           {/* Episode-label column slot (col 2, 24px wide). Hosts the
@@ -534,6 +542,26 @@ export default function V2RoomMap({
           {members.map((m) => {
             const isSelfCol = !!viewerUserId && m.userId === viewerUserId;
             const isClickable = launcherMode && !isSelfCol && !m.isDeparted;
+            // Self-column username + the rating-edit icon BOTH toggle
+            // edit mode (per spec). Tooltip + cursor + click handlers
+            // are applied to both elements so either one is a working
+            // affordance.
+            const usernameTooltipText: React.ReactNode | null = isSelfCol
+              ? (
+                  <>
+                    <span style={{ display: "block" }}>Adjust your</span>
+                    <span style={{ display: "block" }}>episode ratings.</span>
+                  </>
+                )
+              : isClickable
+              ? (
+                  <>
+                    <span style={{ display: "block" }}>Give</span>
+                    <span style={{ display: "block" }}>@{m.username}</span>
+                    <span style={{ display: "block" }}>a nudge.</span>
+                  </>
+                )
+              : null;
             return (
               <div
                 key={m.userId}
@@ -589,11 +617,11 @@ export default function V2RoomMap({
                           alignItems: "center",
                           justifyContent: "center",
                           cursor: committing ? "wait" : "pointer",
-                          color: editMode ? "#f45028" : "#fff",
+                          color: "#f45028",
                           zIndex: 3,
                         }}
                       >
-                        {editMode ? <ListChecks size={16} /> : <SquarePen size={16} />}
+                        {editMode ? <Check size={16} /> : <SquarePen size={16} />}
                       </div>
                     </Tooltip>
                     {saveError && (
@@ -617,73 +645,101 @@ export default function V2RoomMap({
                     )}
                   </>
                 )}
-                <div
-                  title={`@${m.username}`}
-                  role={isClickable ? "button" : undefined}
-                  tabIndex={isClickable ? 0 : undefined}
-                  onClick={
-                    isClickable
-                      ? (e) => {
-                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                          const status = nudgeStatusFor(m.progress, viewerProgress, seasons);
-                          setNudgeOpenFor({
-                            recipientId: m.userId,
-                            recipientUsername: m.username,
-                            direction: status.direction,
-                            count: status.count,
-                            anchorRect: rect,
-                          });
-                        }
-                      : undefined
-                  }
-                  onKeyDown={
-                    isClickable
-                      ? (e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                            const status = nudgeStatusFor(m.progress, viewerProgress, seasons);
-                            setNudgeOpenFor({
-                              recipientId: m.userId,
-                              recipientUsername: m.username,
-                              direction: status.direction,
-                              count: status.count,
-                              anchorRect: rect,
-                            });
-                          }
-                        }
-                      : undefined
-                  }
-                  style={{
-                    // transformOrigin: left bottom — the pivot sits at the
-                    // element's pre-rotation bottom-left, which after CCW
-                    // rotation becomes the rotated bottom. Anchoring the "@"
-                    // there keeps the beginning of the username visible at
-                    // the column's bottom; long usernames truncate with
-                    // ellipsis at the rotated TOP (the pre-rotation right
-                    // edge clipped by maxWidth).
-                    position: "absolute",
-                    left: CELL / 2 + 8,
-                    bottom: 8,
-                    transform: "rotate(-90deg)",
-                    transformOrigin: "left bottom",
-                    whiteSpace: "nowrap",
-                    maxWidth: HEADER_HEIGHT - 16,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    fontSize: 13,
-                    fontWeight: 400,
-                    color: "#fff",
-                    // Clickable headers get the v1 nudge-launcher styling:
-                    // italic + dotted underline + pointer. Self + departed
-                    // stay plain.
-                    fontStyle: isClickable ? "italic" : undefined,
-                    borderBottom: isClickable ? "1px dotted #fff" : undefined,
-                    cursor: isClickable ? "pointer" : undefined,
-                  }}
-                >
-                  @{m.username}
-                </div>
+                {(() => {
+                  const usernameNode = (
+                    <div
+                      role={isClickable || isSelfCol ? "button" : undefined}
+                      tabIndex={isClickable || isSelfCol ? 0 : undefined}
+                      onClick={
+                        isSelfCol
+                          ? (e) => {
+                              e.stopPropagation();
+                              void handleToggleEditMode();
+                            }
+                          : isClickable
+                          ? (e) => {
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              const status = nudgeStatusFor(m.progress, viewerProgress, seasons);
+                              setNudgeOpenFor({
+                                recipientId: m.userId,
+                                recipientUsername: m.username,
+                                direction: status.direction,
+                                count: status.count,
+                                anchorRect: rect,
+                              });
+                            }
+                          : undefined
+                      }
+                      onKeyDown={
+                        isSelfCol
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                void handleToggleEditMode();
+                              }
+                            }
+                          : isClickable
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                const status = nudgeStatusFor(m.progress, viewerProgress, seasons);
+                                setNudgeOpenFor({
+                                  recipientId: m.userId,
+                                  recipientUsername: m.username,
+                                  direction: status.direction,
+                                  count: status.count,
+                                  anchorRect: rect,
+                                });
+                              }
+                            }
+                          : undefined
+                      }
+                      style={{
+                        // transformOrigin: left bottom — the pivot sits at the
+                        // element's pre-rotation bottom-left, which after CCW
+                        // rotation becomes the rotated bottom. Anchoring the "@"
+                        // there keeps the beginning of the username visible at
+                        // the column's bottom; long usernames truncate with
+                        // ellipsis at the rotated TOP (the pre-rotation right
+                        // edge clipped by maxWidth).
+                        position: "absolute",
+                        left: CELL / 2 + 8,
+                        bottom: 8,
+                        transform: "rotate(-90deg)",
+                        transformOrigin: "left bottom",
+                        whiteSpace: "nowrap",
+                        maxWidth: HEADER_HEIGHT - 16,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        fontSize: 13,
+                        fontWeight: 400,
+                        color: "#fff",
+                        // Other-clickable headers get the v1 nudge-launcher
+                        // styling (italic + dotted underline). Self is
+                        // clickable for the rating-edit toggle but has NO
+                        // underline (per spec). Departed stay plain.
+                        fontStyle: isClickable ? "italic" : undefined,
+                        borderBottom: isClickable ? "1px dotted #fff" : undefined,
+                        cursor: (isClickable || isSelfCol) ? "pointer" : undefined,
+                      }}
+                    >
+                      @{m.username}
+                    </div>
+                  );
+                  if (usernameTooltipText == null) return usernameNode;
+                  return (
+                    <Tooltip
+                      text={usernameTooltipText}
+                      direction="left"
+                      width="auto"
+                      portal
+                      tooltipStyle={{ textAlign: "left" }}
+                    >
+                      {usernameNode}
+                    </Tooltip>
+                  );
+                })()}
               </div>
             );
           })}
