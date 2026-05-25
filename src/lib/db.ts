@@ -767,7 +767,7 @@ export async function fetchRepliesToUserThreads(
 }
 
 /** Replies written BY the user, with their parent thread for context. */
-export async function fetchUserReplies(userId: string, showId?: string): Promise<{ reply: Reply; thread: Thread }[]> {
+export async function fetchUserReplies(userId: string, showId?: string): Promise<{ reply: Reply; thread: Thread; groupId?: string }[]> {
   let query = supabase
     .from("replies")
     .select("*")
@@ -778,24 +778,31 @@ export async function fetchUserReplies(userId: string, showId?: string): Promise
   if (showId) query = query.eq("show_id", showId);
   const { data, error } = await query;
   if (error) throw error;
-  const replies = (data ?? []).map(rowToReply);
-  const threadIds = [...new Set(replies.map(r => r.threadId))];
+  // Surface group_id per row alongside rowToReply. groupId is the room
+  // context the reply was written in (replies.group_id, nullable for
+  // public replies). V3 journal uses this to route friend-room reply
+  // clicks to /v2/room/<groupId>; null/undefined → V1 path.
+  const repliesWithGroup = (data ?? []).map((row: any) => ({
+    reply: rowToReply(row),
+    groupId: (row.group_id as string | null) ?? undefined,
+  }));
+  const threadIds = [...new Set(repliesWithGroup.map(x => x.reply.threadId))];
   if (!threadIds.length) return [];
   const { data: tData, error: tErr } = await supabase
     .from("threads").select("*").in("id", threadIds);
   if (tErr) throw tErr;
   const threadById: Record<string, Thread> = {};
   for (const t of (tData ?? []).map(rowToThread)) threadById[t.id] = t;
-  return replies
-    .map(r => {
-      const t = threadById[r.threadId];
+  return repliesWithGroup
+    .map(({ reply, groupId }) => {
+      const t = threadById[reply.threadId];
       if (!t || t.isDeleted) return null;
-      return { reply: r, thread: t };
+      return { reply, thread: t, groupId };
     })
-    .filter(Boolean) as { reply: Reply; thread: Thread }[];
+    .filter(Boolean) as { reply: Reply; thread: Thread; groupId?: string }[];
 }
 
-export async function fetchLikedThreads(userId: string, showId?: string): Promise<Thread[]> {
+export async function fetchLikedThreads(userId: string, showId?: string): Promise<(Thread & { groupId?: string })[]> {
   let query = supabase
     .from("likes_threads")
     .select("threads(*)")
@@ -803,14 +810,42 @@ export async function fetchLikedThreads(userId: string, showId?: string): Promis
   if (showId) query = query.eq("threads.show_id", showId);
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? [])
+  const threads = (data ?? [])
     .map((row: any) => row.threads)
     .filter((t: any) => t && !t.is_deleted)
     .map(rowToThread)
     .sort((a: Thread, b: Thread) => b.updatedAt - a.updatedAt);
+  if (!threads.length) return threads;
+  // Resolve per-thread group context for the viewer: look up which
+  // friend rooms (the viewer is a member of) host each thread via
+  // group_threads. Two-step query mirrors fetchUserShowActivity's
+  // pattern. Threads not hosted in any viewer-member room get
+  // groupId=undefined (public/private only → V1 path on click).
+  const threadIds = threads.map(t => t.id);
+  const { data: memberRows } = await supabase
+    .from("friend_group_members")
+    .select("group_id")
+    .eq("user_id", userId);
+  const userGroupIds = (memberRows ?? []).map((r: any) => r.group_id);
+  const groupByThreadId: Record<string, string> = {};
+  if (userGroupIds.length > 0) {
+    const { data: gtRows } = await supabase
+      .from("group_threads")
+      .select("thread_id, group_id")
+      .in("thread_id", threadIds)
+      .in("group_id", userGroupIds);
+    for (const row of gtRows ?? []) {
+      // First-write wins (each user is in at most one room per thread
+      // in practice; see HANDOFF §3 + the V3 journal nav arc).
+      if (!groupByThreadId[(row as any).thread_id]) {
+        groupByThreadId[(row as any).thread_id] = (row as any).group_id;
+      }
+    }
+  }
+  return threads.map(t => ({ ...t, groupId: groupByThreadId[t.id] }));
 }
 
-export async function fetchLikedReplies(userId: string, showId?: string): Promise<{ reply: Reply; thread: Thread }[]> {
+export async function fetchLikedReplies(userId: string, showId?: string): Promise<{ reply: Reply; thread: Thread; groupId?: string }[]> {
   let query = supabase
     .from("likes_replies")
     .select("replies(*)")
@@ -818,25 +853,31 @@ export async function fetchLikedReplies(userId: string, showId?: string): Promis
   if (showId) query = query.eq("replies.show_id", showId);
   const { data, error } = await query;
   if (error) throw error;
-  const replies = (data ?? [])
+  // Surface group_id per row alongside rowToReply (see fetchUserReplies
+  // for rationale). The embedded `replies(*)` already returns group_id
+  // among the reply columns.
+  const repliesWithGroup = (data ?? [])
     .map((row: any) => row.replies)
     .filter((r: any) => r && !r.is_deleted)
-    .map(rowToReply);
-  const threadIds = [...new Set(replies.map((r: Reply) => r.threadId))];
+    .map((r: any) => ({
+      reply: rowToReply(r),
+      groupId: (r.group_id as string | null) ?? undefined,
+    }));
+  const threadIds = [...new Set(repliesWithGroup.map(x => x.reply.threadId))];
   if (!threadIds.length) return [];
   const { data: tData, error: tErr } = await supabase
     .from("threads").select("*").in("id", threadIds);
   if (tErr) throw tErr;
   const threadById: Record<string, Thread> = {};
   for (const t of (tData ?? []).map(rowToThread)) threadById[t.id] = t;
-  return replies
-    .map((r: Reply) => {
-      const t = threadById[r.threadId];
+  return repliesWithGroup
+    .map(({ reply, groupId }) => {
+      const t = threadById[reply.threadId];
       if (!t || t.isDeleted) return null;
-      return { reply: r, thread: t };
+      return { reply, thread: t, groupId };
     })
     .filter(Boolean)
-    .sort((a: any, b: any) => b.reply.updatedAt - a.reply.updatedAt) as { reply: Reply; thread: Thread }[];
+    .sort((a: any, b: any) => b.reply.updatedAt - a.reply.updatedAt) as { reply: Reply; thread: Thread; groupId?: string }[];
 }
 
 // ── Create show ──────────────────────────────────────────────────────────────
