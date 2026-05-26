@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { X, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { hasRecentPing, sendMessage } from "../lib/db";
+import { sendMessage } from "../lib/db";
 import LoadingDots from "./LoadingDots";
 import SidebarAvatar from "./SidebarAvatar";
 import CanonRadio from "./CanonRadio";
@@ -108,33 +108,16 @@ export default function NudgePopover({
   const [customSelected, setCustomSelected] = useState<boolean>(false);
   const [customText, setCustomText] = useState<string>("");
   const customInputRef = useRef<HTMLInputElement | null>(null);
-  const [rateLimited, setRateLimited] = useState<boolean>(false);
-  const [rateChecked, setRateChecked] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sentFlash, setSentFlash] = useState<boolean>(false);
   const [sentBoxHeight, setSentBoxHeight] = useState<number | null>(null);
 
-  // Pre-check rate limit so the Send button can render disabled from the
-  // start instead of accepting input that will be rejected.
-  useEffect(() => {
-    let cancelled = false;
-    hasRecentPing({ senderId: currentUserId, recipientId, groupId })
-      .then((recent) => {
-        if (cancelled) return;
-        setRateLimited(recent);
-        setRateChecked(true);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        // Network/RLS issue. Don't block — the edge function will catch
-        // an actual rate-limit violation on submit.
-        setRateChecked(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUserId, recipientId, groupId]);
+  // 2026-05-24: per-ping rate limit removed. Friends can nudge as many
+  // times as they want; the only throttle that remains is at the email
+  // layer (1 email per (sender, recipient, room) per 24h, server-side
+  // in send-message). Previous pre-check via hasRecentPing was deleted
+  // along with the kill switch.
 
   // Position. "from-page-bottom" (v1 FriendProgressPostIt): bottom-anchored
   // popover sits to the LEFT of the anchor at 96px from the viewport
@@ -211,8 +194,6 @@ export default function NudgePopover({
   const canSubmit =
     !!messageToSend &&
     !submitting &&
-    !rateLimited &&
-    rateChecked &&
     trimmedCustom.length <= MESSAGE_MAX_LENGTH;
 
   async function handleSend() {
@@ -227,12 +208,7 @@ export default function NudgePopover({
         message: messageToSend,
       });
       if (!result.ok) {
-        if (result.error === "rate_limit") {
-          setRateLimited(true);
-          setErrorMsg(`You already nudged @${recipientUsername} in this room today.`);
-        } else {
-          setErrorMsg(result.message || "Couldn't send. Try again?");
-        }
+        setErrorMsg(result.message || "Couldn't send. Try again?");
         setSubmitting(false);
         return;
       }
@@ -445,13 +421,9 @@ export default function NudgePopover({
         </div>
       </div>
 
-      {/* Inline rate-limit / error message */}
-      {rateLimited && (
-        <div style={{ fontSize: 11, color: CANON_RED, marginBottom: 8, fontStyle: "italic", textAlign: "center", textWrap: "balance" }}>
-          You already nudged @{recipientUsername} in this room today.
-        </div>
-      )}
-      {!rateLimited && errorMsg && (
+      {/* Inline error message (rare — covers network / server failures
+          only; per-ping rate limit was removed 2026-05-24). */}
+      {errorMsg && (
         <div style={{ fontSize: 11, color: CANON_RED, marginBottom: 8, textAlign: "center", textWrap: "balance" }}>
           {errorMsg}
         </div>

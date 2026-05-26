@@ -51,10 +51,13 @@ function corsHeaders(origin: string | null): Record<string, string> {
 
 // ── Constants ────────────────────────────────────────────────────────────
 
-// One ping per (sender, recipient, room) per 24 hours.
-// Must stay in sync with PING_RATE_LIMIT_ENABLED in src/lib/db.ts.
-const PING_RATE_LIMIT_ENABLED            = true;
-const PING_RATE_LIMIT_WINDOW_HOURS       = 24;
+// (2026-05-24) Per-ping rate limit removed: friends can nudge as many
+// times as they want and the ping row + in-room sticky always lands.
+// What remains is an EMAIL rate limit: at most one nudge_ahead email
+// per (sender, recipient, room) per 24 hours, so three nudges in a
+// 24h window only generate one email (the first). Detection uses the
+// existing pings_rate_limit_idx (sender, recipient, group, sent_at).
+const EMAIL_RATE_LIMIT_WINDOW_HOURS      = 24;
 const MESSAGE_MAX_LENGTH                 = 80;
 const FROM_ADDRESS                       = "Sidebar <invites@sidebar.watch>";
 const POLL_VOTE_NOTIFICATION_BATCH_MIN   = 5;
@@ -182,26 +185,33 @@ async function handlePing(
   if (grpErr || !grp) return jsonError("group_not_found", 404);
   if (grp.deleted_at) return jsonError("group_not_found", 404);
 
-  // Rate limit (kill switch).
-  if (PING_RATE_LIMIT_ENABLED) {
-    const since = new Date(Date.now() - PING_RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
-    const { data: recent } = await admin
+  // Email rate-limit lookup (nudge_ahead only). The ping row itself is
+  // ALWAYS allowed below — friends can nudge as many times as they
+  // want. But for the EMAIL channel, only the first nudge_ahead in a
+  // 24h window per (sender, recipient, group) actually triggers an
+  // email. Subsequent nudge_aheads in the window land the in-room
+  // sticky but skip the email. Done BEFORE the insert so the just-
+  // inserted ping isn't counted as a "prior" one.
+  let shouldSendEmail = template_type === "nudge_ahead";
+  if (shouldSendEmail) {
+    const since = new Date(Date.now() - EMAIL_RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+    const { data: recentAheadNudge } = await admin
       .from("pings")
       .select("id")
       .eq("sender_id", user.id)
       .eq("recipient_id", recipient_id)
       .eq("group_id", group_id)
+      .eq("ping_type", "nudge_ahead")
       .gt("sent_at", since)
       .limit(1)
       .maybeSingle();
-    if (recent) {
-      return jsonError("rate_limit", 429, "You've already pinged this friend in this room today.");
-    }
+    if (recentAheadNudge) shouldSendEmail = false;
   }
 
   // Insert ping row. Persist the message for every ping_type so the
   // recipient sees an in-room sticky regardless of channel — nudge_ahead
-  // also still triggers the email below.
+  // may also trigger the email below (subject to the email rate limit
+  // computed above).
   const persistedMessage = trimmedMessage;
 
   const { data: insertedPing, error: insErr } = await admin
@@ -220,9 +230,17 @@ async function handlePing(
     return jsonError("internal", 500, insErr?.message ?? "insert failed");
   }
 
-  // Email send (nudge_ahead only).
-  if (template_type !== "nudge_ahead") {
-    return jsonOk({ ping_id: insertedPing.id, channel: "sticky" });
+  // Email send: nudge_ahead only AND only when the 24h email gate
+  // computed above permits it. Other ping_types stop here at the
+  // sticky channel; subsequent nudge_aheads inside the window also
+  // stop here (sticky-only because the recipient already got the
+  // email earlier in the window).
+  if (!shouldSendEmail) {
+    return jsonOk({
+      ping_id: insertedPing.id,
+      channel: "sticky",
+      ...(template_type === "nudge_ahead" ? { email_skipped: "rate_limit" } : {}),
+    });
   }
 
   const { data: rcptUser, error: rcptErr } = await admin.auth.admin.getUserById(recipient_id);

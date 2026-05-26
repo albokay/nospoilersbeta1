@@ -2728,11 +2728,13 @@ function rowToPing(row: PingRow, senderUsername?: string): Ping {
   };
 }
 
-// One ping per (sender, recipient, room) per 24 hours.
-// Must stay in sync with PING_RATE_LIMIT_ENABLED in
-// supabase/functions/send-message/index.ts.
-const PING_RATE_LIMIT_ENABLED      = true;
-const PING_RATE_LIMIT_WINDOW_HOURS = 24;
+// (2026-05-24) Per-ping 24h rate limit removed. Friends can nudge as
+// many times as they want; the only rate limit that remains is at the
+// EMAIL layer — at most one nudge_ahead email per (sender, recipient,
+// room) per 24h. See supabase/functions/send-message/index.ts for the
+// email gate. The kill-switch machinery + hasRecentPing helper have
+// been deleted; if a per-ping cap is ever wanted again, the index
+// `pings_rate_limit_idx` is still in place (see 20260506 migration).
 
 // ── Polls ─────────────────────────────────────────────────────────────────
 
@@ -3503,38 +3505,6 @@ export async function sendPollEmail(args: {
     return { ok: false, error: "edge_function_error", message: error.message };
   }
   return result as SendPollEmailResult;
-}
-
-/**
- * Pre-check used by the nudge popover: has the caller already pinged
- * this recipient in this room within the rate-limit window? Lets the
- * UI render the Send button as disabled with an explanatory line
- * BEFORE the user fills out the form, rather than rejecting on submit.
- *
- * Returns false unconditionally when rate limiting is disabled.
- *
- * Sender-only RLS read; relies on the caller actually being the sender.
- */
-export async function hasRecentPing(args: {
-  senderId: string;
-  recipientId: string;
-  groupId: string;
-}): Promise<boolean> {
-  if (!PING_RATE_LIMIT_ENABLED) return false;
-  const since = new Date(
-    Date.now() - PING_RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000,
-  ).toISOString();
-  const { data, error } = await supabase
-    .from("pings")
-    .select("id")
-    .eq("sender_id", args.senderId)
-    .eq("recipient_id", args.recipientId)
-    .eq("group_id", args.groupId)
-    .gt("sent_at", since)
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return !!data;
 }
 
 /**

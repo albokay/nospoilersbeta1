@@ -1,6 +1,8 @@
 # Sidebar — Technical State (2026-05-24)
 
-> **2026-05-24 — Latest landed: V3 journal 4-section ticket clicks → V2 friend room.** Extends this morning's friend-room-ticket → V2 nav pattern to all four bottom sections of `/v3/journal` (`responses to you` / `your responses` / `your starred entries` / `your starred responses`). Friend-room rows now navigate to `/v2/room/<groupId>` with `state.expandThreadId` (and `state.focusReplyId` for the 3 reply sections — RepliesList scrolls + flashes the specific reply once it lands in the DOM). Public-aggregate + private-journal rows keep the V1 `openThreadWithFocus` path. Three commits: (C1) data layer — `fetchUserReplies` / `fetchLikedReplies` / `fetchLikedThreads` widened to surface `groupId?: string`; reply fetches read `replies.group_id`, thread fetch resolves via `group_threads ∩ friend_group_members`. (C2) V2 plumbing — `V2FriendRoomPage` reads `state.focusReplyId`, forwards to `V2RoomFeed`'s new `initialFocusReplyId` prop; `V2RoomFeed` seeds a `pendingFocusReplyId` state cleared on collapse/nav-away (so collapse + re-expand doesn't re-fire scroll); `V2InlineThread` accepts `focusReplyId` and forwards to RepliesList's existing 3-second DOM-poll scroll behavior. (C3) V3 click handlers — branch on `groupId` per section. V1 surfaces untouched.
+> **2026-05-24 — Latest landed: V2 friend-room odds-and-ends + ping rate-limit decouple.** Seven items across four checkpoints. **C1 small polish:** V2 compose `<post entry>` now disabled until BOTH title + body are non-empty (in addition to destination + submitting); above-progress map-cell tooltip "(title revealed once you catch up)" restyled canon-red + italic; map self-column header height now grows dynamically (via canvas text measurement) so the rating-edit icon always sits above the rotated username regardless of length. **C2 entry-card chrome:** byline drops "Started by" — replaced by `(Sx Ex)` natural-number tag via new `EpisodeTag naturalNumbers` opt-in; the old SE tag next to the title is removed. Collapsed entry cards get a white `Mail` icon + reply count to the right of the chevron (coexists with the existing green-circle "new since last visit" signal). **C3 user filter:** sort dropdown extended with a "Filter by member" optgroup. Picking a member restricts the feed to their entries and dims all OTHER members' map columns (opacity 0.35 + `pointer-events: none` = no tooltips / no clicks / no rating-edit access). Sort forces to descending while filter is active. **C4 ping rate-limit decouple (TWO-STEP DEPLOY):** per-ping 24h rate limit removed — friends can nudge as many times as they want, and every ping inserts + lands a sticky. Email-channel rate limit stays at 24h per (sender, recipient, group) for `nudge_ahead` only: three nudges in a window generate one email (the first). `hasRecentPing` helper + `PING_RATE_LIMIT_*` kill switch deleted from `db.ts`; NudgePopover's pre-check + disabled state stripped. Requires `supabase functions deploy send-message` after merge.
+>
+> **Prior arc landed 2026-05-24:** V3 journal 4-section ticket clicks → V2 friend room. Extends this morning's friend-room-ticket → V2 nav pattern to all four bottom sections of `/v3/journal` (`responses to you` / `your responses` / `your starred entries` / `your starred responses`). Friend-room rows now navigate to `/v2/room/<groupId>` with `state.expandThreadId` (and `state.focusReplyId` for the 3 reply sections — RepliesList scrolls + flashes the specific reply once it lands in the DOM). Public-aggregate + private-journal rows keep the V1 `openThreadWithFocus` path. Three commits: (C1) data layer — `fetchUserReplies` / `fetchLikedReplies` / `fetchLikedThreads` widened to surface `groupId?: string`; reply fetches read `replies.group_id`, thread fetch resolves via `group_threads ∩ friend_group_members`. (C2) V2 plumbing — `V2FriendRoomPage` reads `state.focusReplyId`, forwards to `V2RoomFeed`'s new `initialFocusReplyId` prop; `V2RoomFeed` seeds a `pendingFocusReplyId` state cleared on collapse/nav-away (so collapse + re-expand doesn't re-fire scroll); `V2InlineThread` accepts `focusReplyId` and forwards to RepliesList's existing 3-second DOM-poll scroll behavior. (C3) V3 click handlers — branch on `groupId` per section. V1 surfaces untouched.
 >
 > **Prior arc landed 2026-05-24:** TreatedArt temporarily disabled (Supabase egress investigation). Free plan egress hit 9.25 GB this billing period (4.25 GB overage on 5 GB included), with daily spikes of 2–2.6 GB on May 20–22 — well above expected solo-test volume. TreatedArt PNG fetches identified as likely primary culprit: per-mount random-color roll across 5 colors + key-driven remount on 3 of 4 mount sites means a fresh PNG fetch on every tab/show switch; source PNGs are 400 KB – 2.5 MB. Killed via `const DISABLED = true` early-return at the top of `TreatedArt.tsx` (component returns null, all four mount sites left in place — trivially reversible by flipping to `false`). Watch egress for 24–48h to confirm cause. See §"Treated-art follow-ups" for the re-enable decision tree.
 >
@@ -1344,6 +1346,67 @@ Performance: pre-aggregated `tsp_groups` + `tsp_thread_ids` CTEs avoid per-threa
 - **Client-side filtering for admin-convenience exclusions.** When the goal is "hide rows from this view" (rather than "block access to rows"), filtering in the client mapper is acceptable because the admin already has full data access. Reserve SQL-level filters for actual access control. Edit-list-in-code beats migration-cycles when the rule isn't security-load-bearing.
 - **Admin section collapse state in localStorage with a typed defaults loader.** `loadCollapseState()` returns a fully-shaped record even when localStorage is empty or corrupted (per-key fallback to `false`). Generalizes to any "remember per-section UI preferences" pattern — a typed loader function is cheaper than scattering try/catch + fallback at every read site.
 - **Sortable-column tables: default direction depends on column type.** Text columns default-sort `asc` on switch (alphabetical reads naturally A-Z first); numeric/date columns default-sort `desc` (newest/biggest first). Captured in `handleActivitySort` — generalizable for any future sortable admin table.
+
+### 2026-05-24 — V2 friend room odds-and-ends batch (7 items, 4 checkpoints)
+
+User-driven polish + behavior fixes across V2 friend room and V2 compose. Shipped across four commits to keep boundaries clean.
+
+**C1 (`c3dc866`) — small polish (items 7, 4, 6).**
+
+- **Item 7 — V2 compose requires title.** Publish button now disabled until ALL of (title, body, destination) are filled in addition to (`!submitting`). The dimmed empty-pill visual treatment extends from the destination-only gate to cover the new gates. `submitPost()` inner guard mirrors the existing destination belt-and-suspenders.
+- **Item 4 — above-progress map cell tooltip.** "(title revealed once you catch up)" restyled `color: #f45028` (canon red) + italic. Scoped to that line only; other tooltip lines untouched.
+- **Item 6 — rating-edit icon never overlaps username.** New `measureUsernameWidth()` canvas-based helper in V2RoomMap. `dynamicHeaderHeight = max(120, ceil(selfUsernameWidth) + 44)` where 44 = `4 (icon top) + 24 (icon height) + 8 (gap) + 8 (username bottom)`. The whole map header row grows uniformly to fit the self username + icon clearance; non-self columns inherit the same height but have no icon (just extra empty space at top). `maxWidth` per-column: self uses `dynamicHeaderHeight - 36` (icon-clearance budget); non-self uses `dynamicHeaderHeight - 8`.
+
+**C2 (`30a7c6c`) — V2 entry-card chrome (items 2, 3).**
+
+- **Item 2 — byline format.** `EpisodeTag` gains additive `naturalNumbers?: boolean` prop (default false preserves the `S01 E04` zero-pad used everywhere else). V2RoomFeed byline opens with the natural-number SE tag (replacing "Started by"); the old SE tag next to the title removed. `(edited)` marker stays on the title row. Tombstone entries skip the tag (no `entry.s/e` to show).
+- **Item 3 — mail icon + reply count.** New `Mail` icon import. After the chevron block in the collapsed-card bottom-right cluster: when `entry.replyCount > 0`, renders a white `<Mail size={16}>` followed by the count number. Layout order: `[chevron][mail][count]`. Coexists with the chevron's green-circle "new since last visit" treatment — count is all-time, circle is lifecycle.
+
+**C3 (`1f304d5`) — V2 user filter (item 1).**
+
+- **State.** New `userFilter: string | null` in V2FriendRoomPage alongside `sortOrder`.
+- **Dropdown.** Single `<select>` with namespaced values: `"sort:asc"` / `"sort:desc"` / `"user:<userId>"` / `"user:all"`. Two `<optgroup>` sections — "Sort" + "Filter by member." Departed members appear with `(left)` suffix. Picking a sort clears any active filter; picking "all members" clears filter while keeping sort; picking a member sets filter.
+- **Feed render.** Wrapped in IIFE so filtered length drives the empty-state branch. While filter is active, sort forces to "desc" (newest episode first) per spec. Empty-state copy when filtering: `"Nothing from @<username> at your progress yet."`
+- **Map dim.** New `filteredUserId?: string | null` prop on V2RoomMap. `isDimmed(userId)` predicate. Applied at the column-wrapper level (header) + per-cell (body) with `opacity: 0.35; pointer-events: none; transition: opacity 180ms ease-out`. Pointer-events: none on the wrapper kills all interactivity — tooltips, clicks, notification-dot hover detection, edit-mode rating clicks — in one go.
+
+**C4 (pending) — Ping rate-limit decouple (item 5).**
+
+Per-ping 24h rate limit removed. Friends can nudge as many times as they want. EMAIL rate limit retained at 24h per (sender, recipient, group) for `nudge_ahead` only — three nudges in 24h generate one email.
+
+- **`db.ts`:** removed `PING_RATE_LIMIT_ENABLED` / `PING_RATE_LIMIT_WINDOW_HOURS` constants AND the `hasRecentPing()` helper. Pings now always insert + always sticky.
+- **`NudgePopover.tsx`:** stripped `rateLimited` / `rateChecked` state + the pre-check `useEffect`. `canSubmit` no longer gates on rate-check completion. Removed `rate_limit` error branch in `handleSend` (edge function no longer emits it for pings). Removed inline "already nudged today" message. `currentUserId` prop retained for API compatibility even though no longer used internally.
+- **`send-message/index.ts`:** dropped `PING_RATE_LIMIT_ENABLED` kill switch. New `EMAIL_RATE_LIMIT_WINDOW_HOURS = 24`. Before the ping insert, looks up prior `nudge_ahead` from same (sender, recipient, group) within 24h → if found, sets `shouldSendEmail = false`. Insert ping unconditionally. Email-send branch now gated on `shouldSendEmail`. Response includes `email_skipped: "rate_limit"` annotation when a `nudge_ahead` ping was inserted but the email was suppressed (debugging aid; client doesn't use it).
+
+**Commits:**
+
+| Hash | Scope |
+|---|---|
+| `c3dc866` | C1 small polish (items 7, 4, 6). |
+| `30a7c6c` | C2 entry-card chrome (items 2, 3). |
+| `1f304d5` | C3 user filter (item 1). |
+| (pending) | C4 rate-limit decouple (item 5) + HANDOFF arc entry. |
+
+**Conventions established or reinforced this arc:**
+
+- **Dynamic header sizing via canvas text measurement.** Module-scoped canvas (`getMeasureCtx()`) for one-shot text width calls; font-string matches the rendered element's CSS. Used for V2RoomMap's `dynamicHeaderHeight` — same pattern would apply for any other "size to longest content" scenario where DOM measurement post-mount feels heavy.
+- **Additive `naturalNumbers` opt-in on `EpisodeTag`.** When a shared component needs a stylistic variant for one surface, prefer an additive prop with default-preserves-old-behavior over branching at the callsite or duplicating the component. Same shape as the recent `compactBorders` / `hideRespondButtons` / `showAheadStubs` opt-ins on `RepliesList`.
+- **Single `<select>` with namespaced values + `<optgroup>` for related controls.** Encoding `"sort:<value>"` / `"user:<id>"` in a single `<select>` value keeps the chrome compact when two related but mutually-exclusive controls would otherwise need two pills. Optgroups give the visual divider for free.
+- **Page-level filter + child-level dim.** When filtering both a feed AND a sibling display surface (the map), filter the feed at the page level (so the empty-state branch sees the filtered length) and pass the filter sentinel to the child surface as a "dim everything except X" predicate. Cleaner than each surface filtering independently.
+- **Email gate distinct from action gate.** When a rate limit's intent is "don't spam the user's inbox" rather than "don't spam the system," gate the EMAIL send, not the action that triggers it. Friends can nudge freely; only the email channel is throttled. The pings table itself doubles as the rate-limit lookup (no schema change needed — same `pings_rate_limit_idx` covers both shapes).
+
+**Two-step deploys this arc required:**
+
+- C4 requires `supabase functions deploy send-message` after merge. No CLI flags needed — `supabase/config.toml` pins `verify_jwt = false` for this function. Verify post-deploy by sending a `nudge_ahead` from the live UI and confirming the recipient gets exactly one email even if you send 2-3 in quick succession.
+
+**Resolved by this arc:**
+
+- V2 compose users could publish empty entries (button enabled on destination select alone).
+- "(title revealed once you catch up)" rendered in white at 0.85 opacity — read as muted body text, not as the spoiler-protected affordance it actually is.
+- Rating-edit icon overlapping the rotated self-username for usernames > ~8 characters.
+- V2 entry-card byline starting "Started by" — verbose; the SE tag context was further down the card next to the headline.
+- No persistent reply-count signal on collapsed entry cards (green circle only indicated NEW responses, not the all-time count).
+- No way to drill into one member's contributions in the friend room — you had to scan the whole feed.
+- 24h-per-ping cap meant friends couldn't nudge each other freely during back-and-forth conversations even though each individual nudge is welcomed; emails were the actual concern.
 
 ### 2026-05-24 — V3 journal 4-section ticket clicks → V2 friend room
 
