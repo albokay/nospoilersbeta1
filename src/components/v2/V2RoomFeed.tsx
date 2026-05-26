@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { ChevronDown, Users } from "lucide-react";
+import { ChevronDown, Mail, Users } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import Username from "../Username";
@@ -507,21 +507,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     <Users size={14} color="var(--icon-color)" />
                   </span>
                   {entry.isDeleted ? "(deleted entry)" : entry.title}
-                  {!entry.isDeleted && (
-                    <>
-                      <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
-                        <EpisodeTag
-                          season={entry.s}
-                          episode={entry.e}
-                          isRewatch={entry.isRewatch}
-                          rewatchS={entry.rewatchS}
-                          rewatchE={entry.rewatchE}
-                        />
-                      </span>
-                      {entry.isEdited && (
-                        <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
-                      )}
-                    </>
+                  {!entry.isDeleted && entry.isEdited && (
+                    <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
                   )}
                 </h2>
                 {/* Star: in the title row across both states. Read-only when
@@ -567,7 +554,18 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   opacity: entry.isDeleted ? 0.35 : undefined,
                 }}
               >
-                Started by{" "}
+                {!entry.isDeleted && (
+                  <>
+                    <EpisodeTag
+                      season={entry.s}
+                      episode={entry.e}
+                      isRewatch={entry.isRewatch}
+                      rewatchS={entry.rewatchS}
+                      rewatchE={entry.rewatchE}
+                      naturalNumbers
+                    />{" "}
+                  </>
+                )}
                 <Username
                   name={entry.authorUsername}
                   userId={entry.authorId}
@@ -701,6 +699,30 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     }
                     return chevronButton;
                   })()}
+                  {/* Mail icon + reply count to the right of the chevron.
+                      Renders only when the entry has at least one visible
+                      reply (count includes ahead-of-progress stubs per
+                      fetchGroupThreads.aheadCounts plumbing — same number
+                      V2InlineThread sees). Coexists with the chevron's
+                      green-circle "new since last visit" signal; the green
+                      circle is lifecycle-scoped, this count is all-time. */}
+                  {entry.replyCount > 0 && (
+                    <span
+                      aria-label={`${entry.replyCount} response${entry.replyCount === 1 ? "" : "s"}`}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        color: "#fff",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        userSelect: "none",
+                      }}
+                    >
+                      <Mail size={16} color="#fff" />
+                      {entry.replyCount}
+                    </span>
+                  )}
                 </div>
               )}
             </div>

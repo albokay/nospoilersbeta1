@@ -23,6 +23,7 @@ export default function EpisodeTag({
   rewatchE,
   parens = true,
   useSpacing = true,
+  naturalNumbers = false,
 }: {
   season: number;
   episode: number;
@@ -31,9 +32,14 @@ export default function EpisodeTag({
   rewatchE?: number;
   parens?: boolean;
   useSpacing?: boolean; // if true, "S01 E04"; if false, "S01E04"
+  // If true, render natural numbers ("S1 E4") instead of zero-padded
+  // ("S01 E04"). Used on V2 entry bylines per the 2026-05-24 odds-and-
+  // ends spec. Default preserves the zero-pad behavior used elsewhere.
+  naturalNumbers?: boolean;
 }) {
+  const fmt = naturalNumbers ? (n: number) => String(n) : pad;
   const sep = useSpacing ? " " : "";
-  const mainLabel = `S${pad(season)}${sep}E${pad(episode)}`;
+  const mainLabel = `S${fmt(season)}${sep}E${fmt(episode)}`;
   const regular = parens ? `(${mainLabel})` : mainLabel;
 
   // Non-rewatch: just render the tag text.
@@ -43,7 +49,7 @@ export default function EpisodeTag({
 
   // Rewatch: (rewatchEp [icon] highestEp). Icon replaces the "/" separator;
   // both labels render at the same size/weight.
-  const rewatchLabel = `S${pad(rewatchS)}${sep}E${pad(rewatchE)}`;
+  const rewatchLabel = `S${fmt(rewatchS)}${sep}E${fmt(rewatchE)}`;
   const tooltipText =
     "A rewatch post. The lower episode number is where they are on their rewatch. The higher episode number is how far they got the first time they watched the show.";
 
