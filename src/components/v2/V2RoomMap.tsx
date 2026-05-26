@@ -317,6 +317,18 @@ export default function V2RoomMap({
   // to its own compositing layer, which causes sub-pixel rendering
   // differences that mis-align the spine below the cell ("broken line").
   const [bouncingState, setBouncingState] = useState<{ cellKey: string; phase: "up" | "down" } | null>(null);
+  // Receding-layer click cycle state for multi-entry cells. Keyed by
+  // `${m.userId}-${s}-${e}` (= fullCellKey). Each entry stores the
+  // current cycle index + the threadId we most recently highlighted on
+  // this cell. On a click: if the last-highlighted thread is still in
+  // the viewport (via visibleEntryIds), advance to (idx + 1) % N; else
+  // reset to idx 0. Per Q3 = Option B, ANY cell click resets every
+  // OTHER cell's cycle (we replace the whole map on each click), so
+  // only one cell's cycle is in flight at a time.
+  const [cycleStateByCellKey, setCycleStateByCellKey] = useState<
+    Record<string, { idx: number; lastHighlightedThreadId: string }>
+  >({});
+
   // Hover tracking for notification dots (spec #4).
   // hoveredCellKey = full per-cell key currently hovered (cellInner or dot).
   // hoveredDotKey  = full per-cell key whose dot specifically is hovered.
@@ -476,8 +488,18 @@ export default function V2RoomMap({
       }
       const ratingByKey = new Map<string, number>();
       for (const r of m.ratings) ratingByKey.set(`${r.s}-${r.e}`, r.rating);
-      const entryByKey = new Map<string, V2RoomMapEntry>();
-      for (const e of m.entries) entryByKey.set(`${e.s}-${e.e}`, e);
+      // entryByKey holds a LIST of entries per cell — multiple entries on
+      // the same (s, e) render as a receding layer stack and the click
+      // cycles through them (see receding-layers spec). RPC orders ASC by
+      // created_at, so we .unshift() to keep the list newest-first
+      // (entries[0] = most recent, [last] = oldest).
+      const entryByKey = new Map<string, V2RoomMapEntry[]>();
+      for (const e of m.entries) {
+        const k = `${e.s}-${e.e}`;
+        const list = entryByKey.get(k);
+        if (list) list.unshift(e);
+        else entryByKey.set(k, [e]);
+      }
       return { lastReachedIdx, ratingByKey, entryByKey };
     });
   }, [members, rows]);
@@ -966,7 +988,13 @@ export default function V2RoomMap({
                 const mMap = memberMaps[mIdx];
                 const isReached = rowIdx <= mMap.lastReachedIdx;
                 const isLastReached = rowIdx === mMap.lastReachedIdx;
-                const entry = mMap.entryByKey.get(rowKey);
+                // entries[0] is the newest; [last] is the oldest. `entry`
+                // (top-most / front-most layer) drives notification anchor,
+                // dice, and the single-entry tooltip — receding layers are
+                // pure visual decoration behind it.
+                const cellEntries = mMap.entryByKey.get(rowKey) ?? [];
+                const entry = cellEntries[0];
+                const isMultiEntry = cellEntries.length > 1;
                 const persistedRating = mMap.ratingByKey.get(rowKey);
                 const isSelf = !!viewerUserId && m.userId === viewerUserId;
                 // In edit mode, the viewer's own cells reflect pending
@@ -1058,21 +1086,45 @@ export default function V2RoomMap({
                 let clickAction: (() => void) | null = null;
                 if (isReached) {
                   if (editMode && isSelf) {
+                    // Rating edits are per-episode and don't move the
+                    // viewer's attention to a specific entry, so they do
+                    // NOT participate in (or reset) the receding-layers
+                    // cycle. Click cycles on other cells survive.
                     const target = nextRatingTarget(rating);
                     clickAction = () => {
                       setPendingRatings((prev) => ({ ...prev, [cellKey]: target }));
                       triggerBounce(cellKey);
                     };
-                  } else if (isSelf) {
-                    // Outside edit mode: self-column click = navigation
-                    // only. The first-click-highlights gate applies if
-                    // the cell has an entry + notification; otherwise
-                    // just navigate to the entry if present. No rating.
-                    if (entry) {
-                      clickAction = () => onEntryClick(entry.threadId);
-                    }
+                  } else if (isMultiEntry) {
+                    // Multi-entry cell: receding-layer cycle. On click,
+                    // if the last-highlighted thread is still in the
+                    // feed viewport (visibleEntryIds), advance the
+                    // cycle by one; else reset to the newest (idx 0).
+                    // Per Q3 = Option B, this cell's click resets every
+                    // OTHER cell's cycle (we replace the whole map on
+                    // each click).
+                    clickAction = () => {
+                      const prev = cycleStateByCellKey[fullCellKey];
+                      const stillVisible =
+                        !!prev &&
+                        !!visibleEntryIds?.has(prev.lastHighlightedThreadId);
+                      const nextIdx = stillVisible
+                        ? (prev.idx + 1) % cellEntries.length
+                        : 0;
+                      const targetThreadId = cellEntries[nextIdx].threadId;
+                      setCycleStateByCellKey({
+                        [fullCellKey]: { idx: nextIdx, lastHighlightedThreadId: targetThreadId },
+                      });
+                      onEntryClick(targetThreadId);
+                    };
                   } else if (entry) {
-                    clickAction = () => onEntryClick(entry.threadId);
+                    // Single-entry cell (self or other column): navigate
+                    // to the entry. Resets every multi-entry cycle on
+                    // the map (Option B) since attention has shifted.
+                    clickAction = () => {
+                      setCycleStateByCellKey({});
+                      onEntryClick(entry.threadId);
+                    };
                   }
                 }
                 // Suppress unused-var warnings for vars only relevant to
@@ -1171,7 +1223,25 @@ export default function V2RoomMap({
                   );
                 }
 
-                const tooltipText = (
+                const tooltipText = isMultiEntry ? (
+                  // Multi-entry receding-layers tooltip (Q1 = option C).
+                  // Replaces the standard episode + entry-title lines with
+                  // a count + cycle hint. Auxiliary lines (rated, signal,
+                  // edit-mode instruction) stay below so notification
+                  // context still surfaces.
+                  <span>
+                    <span style={{ display: "block", whiteSpace: "nowrap" }}>
+                      @{m.username} wrote {cellEntries.length} entries on
+                      {" "}S{row.season} E{row.episode}.
+                    </span>
+                    <span style={{ display: "block", marginTop: 2, fontStyle: "italic", whiteSpace: "nowrap" }}>
+                      Click to cycle through them.
+                    </span>
+                    {ratedLine}
+                    {signalLine}
+                    {instructionLine}
+                  </span>
+                ) : (
                   <span>
                     <span style={{ display: "block", whiteSpace: "nowrap" }}>
                       {isStateThree && (
@@ -1215,6 +1285,40 @@ export default function V2RoomMap({
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry
                         ? { border: "2px solid #fff" }
                         : {};
+
+                      // Receding back layers (multi-entry cells only). Each
+                      // non-top entry gets a translated, 30%-opacity copy of
+                      // the cell shape behind the top layer. Rendered BEFORE
+                      // cellInner in DOM order so it stacks underneath
+                      // (same z-index, later sibling wins). pointer-events:
+                      // none so only the top layer is clickable (Q5).
+                      const backLayers = isMultiEntry
+                        ? Array.from({ length: cellEntries.length - 1 }).map((_, j) => {
+                            // Render from furthest-back (largest offset) to
+                            // closest-behind-front, so the deepest layer
+                            // paints first.
+                            const layerIdx = cellEntries.length - 1 - j;
+                            const offset = layerIdx * 4;
+                            return (
+                              <div
+                                key={`back-${layerIdx}`}
+                                aria-hidden
+                                style={{
+                                  ...cellShape,
+                                  ...newOutlineOverride,
+                                  width: CELL,
+                                  height: CELL,
+                                  position: "absolute",
+                                  left: 0,
+                                  top: 0,
+                                  transform: `translate(${offset}px, ${offset}px)`,
+                                  opacity: 0.3,
+                                  pointerEvents: "none",
+                                }}
+                              />
+                            );
+                          })
+                        : null;
                       const cellInner = (
                         <div
                           onClick={clickAction ?? undefined}
@@ -1257,11 +1361,14 @@ export default function V2RoomMap({
                       // State 4 (not reached, non-departed) renders the cell
                       // shape but skips the tooltip wrap entirely — there's
                       // nothing meaningful to show for an episode the friend
-                      // hasn't reached.
+                      // hasn't reached. (Multi-entry implies the author has
+                      // reached the episode they wrote on, so isMultiEntry
+                      // and !isReached are mutually exclusive — backLayers
+                      // are null here.)
                       if (!isReached) {
                         return cellInner;
                       }
-                      return (
+                      const front = (
                         <Tooltip
                           text={tooltipText}
                           direction="left"
@@ -1276,6 +1383,12 @@ export default function V2RoomMap({
                         >
                           {cellInner}
                         </Tooltip>
+                      );
+                      return (
+                        <>
+                          {backLayers}
+                          {front}
+                        </>
                       );
                     })()}
 
