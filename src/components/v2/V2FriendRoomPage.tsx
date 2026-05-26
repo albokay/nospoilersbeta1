@@ -689,42 +689,6 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     return out;
   }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, greenDismissedSet, redDismissedAt, profile?.username]);
 
-  // ── Notification-signal diagnostic (temporary) ──────────────────────────
-  // Prints a per-thread breakdown of every input to cellSignals so we can
-  // tell whether a missing map dot is due to (a) the upstream data being
-  // empty (latest=0 / hiddenCount=0), (b) a stale lastOpenedAt suppressing
-  // green, (c) the greenDismissed / manuallyDismissed gates blocking red,
-  // or (d) the signal being set but the render path failing. Remove once
-  // the missing-dot bug is diagnosed.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const detail = feedEntries
-      .filter((e) => !e.isDeleted)
-      .map((entry) => {
-        const tid = entry.threadId;
-        const latest = perThreadLatestReply[tid] ?? 0;
-        const opened = lastOpenedAt[tid] ?? 0;
-        const isOwn = !!profile?.username && entry.authorUsername === profile.username;
-        return {
-          title: entry.title.slice(0, 30),
-          tid,
-          isOwn,
-          latest,
-          opened,
-          hasVisibleNew: latest > opened,
-          hiddenCount: perThreadHiddenCount[tid] ?? 0,
-          greenDismissed: greenDismissedSet.has(tid),
-          manuallyDismissed: (redDismissedAt[tid] ?? 0) > 0,
-          signal: cellSignals[tid] ?? null,
-        };
-      });
-    // eslint-disable-next-line no-console
-    console.log("[V2 cellSignals diagnostic]", {
-      cellSignalCount: Object.keys(cellSignals).length,
-      detail,
-    });
-  }, [cellSignals, feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, greenDismissedSet, redDismissedAt, profile?.username]);
-
   // A1 isNew lookup — per-thread "new to me since my last room visit AND
   // not yet engaged this session." Used by V2RoomFeed for the white card
   // outline and by V2RoomMap for the white cell outline.
