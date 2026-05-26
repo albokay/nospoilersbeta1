@@ -303,13 +303,13 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   async function submitPost() {
     if (!user || !profile || !show || !progress) return;
     // Belt-and-suspenders: the post-entry button is rendered disabled when
-    // destination is null, but guard here too so a stray keyboard / form
-    // submit can't sneak through.
+    // any of destination / title / body is missing, but guard here too so a
+    // stray keyboard / form submit can't sneak through.
     if (destination === null) return;
     const title = postTitle.trim();
     const body = postBody.trim();
-    if (!title && !body) {
-      setSubmitError("Add a title or body before posting.");
+    if (!title || !body) {
+      setSubmitError("Add a title and some text to publish.");
       return;
     }
     setSubmitting(true);
@@ -775,31 +775,40 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
           >
             × not now
           </button>
-          <button
-            onClick={submitPost}
-            disabled={submitting || destination === null}
-            className="btn post h40"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 2,
-              // When no destination is chosen, render the button as a
-              // dimmed empty pill (no text/icon) — visually communicates
-              // "this exists but isn't actionable yet" without removing
-              // the affordance entirely. minWidth keeps the pill shape
-              // visible at h40 even with empty content.
-              opacity: destination === null ? 0.4 : 1,
-              cursor: (submitting || destination === null) ? "not-allowed" : "pointer",
-              minWidth: 130,
-            }}
-          >
-            {destination === null
-              ? null
-              : submitting
-                ? <>posting<LoadingDots /></>
-                : <>post entry<ArrowRight size={14} /></>}
-          </button>
+          {(() => {
+            // Submit is gated on all three: a chosen destination, a
+            // non-empty title, and a non-empty body. While any is missing
+            // the button renders as a dimmed empty pill — "this exists but
+            // isn't actionable yet" — same visual language used for the
+            // destination-only gate before titles/body were required.
+            const hasContent =
+              postTitle.trim() !== "" &&
+              postBody.trim() !== "" &&
+              destination !== null;
+            const canSubmit = hasContent && !submitting;
+            return (
+              <button
+                onClick={submitPost}
+                disabled={!canSubmit}
+                className="btn post h40"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 2,
+                  opacity: hasContent ? 1 : 0.4,
+                  cursor: canSubmit ? "pointer" : "not-allowed",
+                  minWidth: 130,
+                }}
+              >
+                {!hasContent
+                  ? null
+                  : submitting
+                    ? <>posting<LoadingDots /></>
+                    : <>post entry<ArrowRight size={14} /></>}
+              </button>
+            );
+          })()}
           </div>
         </div>
         {submitError && (

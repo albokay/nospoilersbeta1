@@ -38,6 +38,29 @@ const SEASON_LABEL_W = 80;
 const EPISODE_LABEL_W = 24;
 const HEADER_HEIGHT = 120;
 
+// Module-scoped canvas for one-shot text measurement. Used by the
+// dynamic header-height calculation so the rating-edit icon at the top
+// of the self column always sits clear of the rotated username
+// regardless of its length.
+let _measureCtx: CanvasRenderingContext2D | null = null;
+function getMeasureCtx(): CanvasRenderingContext2D | null {
+  if (typeof document === "undefined") return null;
+  if (_measureCtx) return _measureCtx;
+  const canvas = document.createElement("canvas");
+  _measureCtx = canvas.getContext("2d");
+  return _measureCtx;
+}
+function measureUsernameWidth(displayed: string): number {
+  const ctx = getMeasureCtx();
+  if (!ctx) return 0;
+  // Match the rendered username style: fontSize 13, fontWeight 400,
+  // family inherits site default (Inter). Self column is never italic
+  // (italic only applies to clickable non-self columns), so non-italic
+  // measurement is correct for sizing the icon clearance.
+  ctx.font = "400 13px Inter, sans-serif";
+  return ctx.measureText(displayed).width;
+}
+
 // Rating phrase copy — per spec §"The rating system" and the dice-display
 // spec (sidebar_spec_rating_dice_display.md). Integer scale ASCENDS with
 // goodness: 1 = worst (Nope. / 1 dot), 6 = best (Woah! / 6 dots). Inverted
@@ -210,6 +233,29 @@ export default function V2RoomMap({
   firstHighlightedSet,
   onCommitRatings,
 }: V2RoomMapProps) {
+  // Dynamic header height: grow the column-header zone so the rating-
+  // edit icon at the top of the self column always sits ABOVE the rotated
+  // username, even for long names. The icon is at `top: 4` with height 24,
+  // and we want ~8px of breathing room below it before the rotated
+  // username starts — so column_height needs to be at least:
+  //   4 (icon top) + 24 (icon height) + 8 (gap) + username_width + 8
+  //     (username bottom padding) = 44 + username_width.
+  // Other columns inherit the same height (uniform grid); they have no
+  // icon, so the extra room above their usernames is just empty space.
+  const ICON_CLEARANCE = 44;
+  const selfMember = useMemo(
+    () => (viewerUserId ? members.find((m) => m.userId === viewerUserId) : undefined),
+    [members, viewerUserId],
+  );
+  const selfUsernameWidth = useMemo(
+    () => (selfMember ? measureUsernameWidth(`@${selfMember.username}`) : 0),
+    [selfMember?.username],
+  );
+  const dynamicHeaderHeight = Math.max(
+    HEADER_HEIGHT,
+    Math.ceil(selfUsernameWidth) + ICON_CLEARANCE,
+  );
+
   // ── Launcher state (pings / polls / SIKW). Only meaningful when
   // groupId is provided — V2FriendRoomPage always supplies it; other
   // hypothetical callers without a room context get plain headers.
@@ -465,7 +511,7 @@ export default function V2RoomMap({
           <div
             style={{
               width: SEASON_LABEL_W,
-              height: HEADER_HEIGHT,
+              height: dynamicHeaderHeight,
               display: "flex",
               alignItems: "flex-end",
               justifyContent: "flex-start",
@@ -513,7 +559,7 @@ export default function V2RoomMap({
           <div
             style={{
               width: EPISODE_LABEL_W,
-              height: HEADER_HEIGHT,
+              height: dynamicHeaderHeight,
               position: "relative",
               overflow: "visible",
             }}
@@ -565,7 +611,7 @@ export default function V2RoomMap({
                 key={m.userId}
                 style={{
                   width: CELL,
-                  height: HEADER_HEIGHT,
+                  height: dynamicHeaderHeight,
                   position: "relative",
                   // Self column needs overflow visible so the edit-mode
                   // icon + error message (which extend past the 32px
@@ -662,11 +708,16 @@ export default function V2RoomMap({
                     transform: "rotate(-90deg)",
                     transformOrigin: "left bottom",
                     whiteSpace: "nowrap",
-                    // Use the full column height (pre-rotation width =
-                    // post-rotation height) so 1-2 extra characters fit
-                    // before truncation. Previous -16 padding was cutting
-                    // off the last letter of longer usernames.
-                    maxWidth: HEADER_HEIGHT,
+                    // Per-column rotated-text length cap. Self column
+                    // leaves room for the rating-edit icon (4 top + 24
+                    // height + 8 gap = 36, plus 8 bottom padding); non-
+                    // self columns have no icon and can use almost the
+                    // full column height. dynamicHeaderHeight grows to
+                    // fit the self username when it's longer than the
+                    // default HEADER_HEIGHT - 36, so for the self column
+                    // this cap should match the actual text width with a
+                    // small visual gap (8 px).
+                    maxWidth: isSelfCol ? dynamicHeaderHeight - 36 : dynamicHeaderHeight - 8,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     fontSize: 13,
@@ -993,7 +1044,7 @@ export default function V2RoomMap({
                 let entryLine: React.ReactNode = null;
                 if (entry) {
                   const titlePart = aboveViewer ? (
-                    <span style={{ fontStyle: "italic", opacity: 0.85 }}>
+                    <span style={{ fontStyle: "italic", color: "#f45028" }}>
                       (title revealed once you catch up)
                     </span>
                   ) : (
