@@ -119,6 +119,11 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // redDismissedAt: per-thread ms timestamp of manual X-click dismissal.
   //   Mirrors V1's `ns_tdot_dismiss_<threadId>` localStorage key.
   const lastRoomVisitedSnapshotRef = useRef<number>(0);
+  // Snapshot of thread IDs that were visible to the viewer at the START
+  // of their last room visit. Drives the A1 "new" outline so newly-
+  // visible entries (post-progress-advance, NOT just newly-created
+  // entries) get flagged the next time the viewer enters the room.
+  const prevVisibleThreadIdsRef = useRef<Set<string>>(new Set());
   const [lastOpenedAt, setLastOpenedAt] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem("ns_last_opened") || "{}"); } catch { return {}; }
   });
@@ -139,12 +144,22 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // fresh stamp afterward. Skipping the rewrite would cause the snapshot
   // to drift further into the past on every render; capturing AFTER
   // setting would defeat the "what's new since last visit" purpose.
+  // ALSO captures the previous visit's visible-thread-IDs set; the new
+  // set is written by a separate effect once feedEntries loads (so the
+  // ref still holds the OLD set when isNewMap recomputes).
   useEffect(() => {
     if (!user?.id || !groupId) return;
-    const key = `ns_room_visited_${user.id}_${groupId}`;
-    const stored = localStorage.getItem(key);
+    const tKey = `ns_room_visited_${user.id}_${groupId}`;
+    const stored = localStorage.getItem(tKey);
     lastRoomVisitedSnapshotRef.current = stored ? parseInt(stored, 10) : 0;
-    localStorage.setItem(key, String(Date.now()));
+    localStorage.setItem(tKey, String(Date.now()));
+    const vKey = `ns_room_visible_threads_${user.id}_${groupId}`;
+    try {
+      const v = localStorage.getItem(vKey);
+      prevVisibleThreadIdsRef.current = v ? new Set(JSON.parse(v)) : new Set();
+    } catch {
+      prevVisibleThreadIdsRef.current = new Set();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, groupId]);
 
@@ -580,17 +595,44 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     [navigate],
   );
 
+  // Persist the current visible-thread-IDs snapshot once the bootstrap
+  // fetch lands feedEntries. Subsequent feed mutations (sort changes,
+  // expansions) re-stamp; the ref read at mount above already captured
+  // the OLD snapshot, so isNewMap below still compares against the
+  // previous visit's set.
+  useEffect(() => {
+    if (!user?.id || !groupId) return;
+    if (feedEntries.length === 0) return;
+    const vKey = `ns_room_visible_threads_${user.id}_${groupId}`;
+    const ids = feedEntries.filter((e) => !e.isDeleted).map((e) => e.threadId);
+    try {
+      localStorage.setItem(vKey, JSON.stringify(ids));
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [user?.id, groupId, feedEntries]);
+
   // Notification-signal handlers — see state-bucket comments above.
   // Per spec #3: greenDismissedSet should ONLY be updated when green was
   // actually the active signal at the moment of expand. If the user expands
   // a red-notification entry (or a no-notification entry), the dismiss-set
   // is unchanged so red survives the expand. Compute wasGreen BEFORE the
   // lastOpenedAt update.
+  //
+  // 2026-05-26: lastOpenedAt[tid] now stores the LATEST VISIBLE REPLY
+  // TIMESTAMP at expand time, NOT Date.now(). Reason: a previously-
+  // ahead-of-progress reply that becomes visible AFTER the viewer
+  // advances progress has a created_at in the past — using Date.now()
+  // would set the comparison ceiling above every possible past reply,
+  // permanently suppressing the green signal for catch-up replies.
+  // Capturing the visibility frontier at expand time means future
+  // newly-visible replies (with their original past created_at) still
+  // satisfy `latest > opened` and fire green correctly.
   const handleEntryExpanded = useCallback((threadId: string) => {
-    const now = Date.now();
-    const wasGreen = (perThreadLatestReply[threadId] ?? 0) > (lastOpenedAt[threadId] ?? 0);
+    const latestSeenAt = perThreadLatestReply[threadId] ?? 0;
+    const wasGreen = latestSeenAt > (lastOpenedAt[threadId] ?? 0);
     setLastOpenedAt(prev => {
-      const next = { ...prev, [threadId]: now };
+      const next = { ...prev, [threadId]: latestSeenAt };
       try { localStorage.setItem("ns_last_opened", JSON.stringify(next)); } catch { /* ignore quota errors */ }
       return next;
     });
@@ -647,18 +689,29 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     return out;
   }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, greenDismissedSet, redDismissedAt, profile?.username]);
 
-  // A1 isNew lookup — per-thread "new since last room visit, by someone else,
+  // A1 isNew lookup — per-thread "new to me since my last room visit AND
   // not yet engaged this session." Used by V2RoomFeed for the white card
   // outline and by V2RoomMap for the white cell outline.
+  //
+  // 2026-05-26: switched the freshness test from
+  //   createdAt > lastRoomVisitedSnapshot
+  // to
+  //   !prevVisibleThreadIds.has(threadId)
+  // because the time-based test missed "newly-visible-to-me" entries —
+  // entries that existed before my last visit but were ahead of my
+  // progress then, and are visible to me now after I advanced. The
+  // set-based test catches both "brand-new since last visit" and
+  // "newly-revealed by progress advance" under one rule. On a first
+  // ever visit, the set is empty so all visible entries flag as new
+  // (same noise level as the old createdAt > 0 behavior).
   const isNewMap = useMemo(() => {
     const out: Record<string, boolean> = {};
-    const snapshot = lastRoomVisitedSnapshotRef.current;
     if (!profile?.username) return out;
+    const prevSet = prevVisibleThreadIdsRef.current;
     for (const entry of feedEntries) {
       if (entry.isDeleted) continue;
       if (entry.authorUsername === profile.username) continue;
-      const createdAt = entry.thread.createdAt ?? 0;
-      if (createdAt > snapshot && !engagedSet.has(entry.threadId)) {
+      if (!prevSet.has(entry.threadId) && !engagedSet.has(entry.threadId)) {
         out[entry.threadId] = true;
       }
     }
