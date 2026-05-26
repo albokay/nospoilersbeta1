@@ -149,6 +149,12 @@ export type V2RoomMapProps = {
   onCommitRatings?: (
     changes: { s: number; e: number; rating: number | null }[],
   ) => Promise<{ ok: boolean }>;
+  /** When set, all member columns EXCEPT this user's get dimmed
+      (opacity 0.35) and non-interactive (no tooltip, no click, no
+      notification dots). Drives the V2 friend-room user-filter mode —
+      the feed is also filtered to this user's entries by the page-
+      level component. Null/undefined = no filter. */
+  filteredUserId?: string | null;
 };
 
 // Direction + count of a member's progress relative to the viewer. Ported
@@ -232,7 +238,14 @@ export default function V2RoomMap({
   isNewMap,
   firstHighlightedSet,
   onCommitRatings,
+  filteredUserId,
 }: V2RoomMapProps) {
+  // Predicate for the user-filter dim treatment. When a filter is
+  // active, columns belonging to other members render at opacity 0.35
+  // with pointer-events: none — no tooltips, no clicks, no dot hover.
+  // The filtered user's column stays full-color and fully interactive.
+  const isDimmed = (userId: string): boolean =>
+    !!filteredUserId && filteredUserId !== userId;
   // Dynamic header height: grow the column-header zone so the rating-
   // edit icon at the top of the self column always sits ABOVE the rotated
   // username, even for long names. The icon is at `top: 4` with height 24,
@@ -586,7 +599,12 @@ export default function V2RoomMap({
           </div>
           {members.map((m) => {
             const isSelfCol = !!viewerUserId && m.userId === viewerUserId;
-            const isClickable = launcherMode && !isSelfCol && !m.isDeparted;
+            const dimmed = isDimmed(m.userId);
+            // Filter mode disables nudges + edit-mode toggles for other
+            // members. The filtered user's own column (and the self
+            // column, when self isn't the filtered one but isn't dimmed
+            // either) keep their normal interactivity.
+            const isClickable = launcherMode && !isSelfCol && !m.isDeparted && !dimmed;
             // Self-column username + the rating-edit icon BOTH toggle
             // edit mode (per spec). Tooltip + cursor + click handlers
             // are applied to both elements so either one is a working
@@ -618,6 +636,14 @@ export default function V2RoomMap({
                   // column width) aren't clipped. Other columns stay
                   // clipped so their rotated usernames don't bleed.
                   overflow: isSelfCol ? "visible" : "hidden",
+                  // User-filter dim: non-filtered columns fade out and
+                  // disable all child interaction (tooltips / clicks /
+                  // dot hover). Pointer-events: none on the column
+                  // wrapper is enough — every interactive descendant
+                  // becomes non-receptive in one go.
+                  opacity: dimmed ? 0.35 : undefined,
+                  pointerEvents: dimmed ? "none" : undefined,
+                  transition: "opacity 180ms ease-out",
                 }}
               >
                 {/* ── Rating-edit icon (self column only) ───────────────
@@ -1141,6 +1167,7 @@ export default function V2RoomMap({
                   </span>
                 );
 
+                const cellDimmed = isDimmed(m.userId);
                 return (
                   <div
                     key={m.userId}
@@ -1148,6 +1175,13 @@ export default function V2RoomMap({
                       width: CELL,
                       height: ROW_HEIGHT,
                       position: "relative",
+                      // User-filter dim: cells in non-filtered columns
+                      // fade out and disable interaction. Matches the
+                      // header column treatment so the whole column reads
+                      // as one inactive surface.
+                      opacity: cellDimmed ? 0.35 : undefined,
+                      pointerEvents: cellDimmed ? "none" : undefined,
+                      transition: "opacity 180ms ease-out",
                     }}
                   >
                     {!renderEmpty && (() => {

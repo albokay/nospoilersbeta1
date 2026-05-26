@@ -173,6 +173,11 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Default to descending — newest episode tag at the top of the feed.
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  // User filter — null = show everyone. When non-null, restricts the feed
+  // to entries authored by that userId AND dims other members' columns in
+  // the map (non-interactive). Sort is forced to "desc" (newest episode
+  // first) while the filter is active per spec.
+  const [userFilter, setUserFilter] = useState<string | null>(null);
 
   // Bootstrap — fetch room, show, progress, group threads (feed), and the
   // RPC-backed map data (members + ratings + entries) in one effect.
@@ -792,10 +797,27 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                  {/* Single dropdown encodes both sort + user-filter state.
+                      Values are namespaced: "sort:<asc|desc>" or
+                      "user:<userId|all>". Picking a sort option clears any
+                      active user filter; picking "all members" clears the
+                      filter while keeping the current sort; picking a
+                      specific member sets the filter (sort forces to desc
+                      in render, per spec). */}
                   <select
                     className="badge h40"
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+                    value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v.startsWith("sort:")) {
+                        setSortOrder(v.slice(5) as "asc" | "desc");
+                        setUserFilter(null);
+                      } else if (v === "user:all") {
+                        setUserFilter(null);
+                      } else if (v.startsWith("user:")) {
+                        setUserFilter(v.slice(5));
+                      }
+                    }}
                     style={{
                       fontSize: 12,
                       fontWeight: 700,
@@ -806,8 +828,20 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                       color: "var(--dos-border)",
                     }}
                   >
-                    <option value="desc">newest first</option>
-                    <option value="asc">oldest first</option>
+                    <optgroup label="Sort">
+                      <option value="sort:desc">newest first</option>
+                      <option value="sort:asc">oldest first</option>
+                    </optgroup>
+                    {mapMembers.length > 0 && (
+                      <optgroup label="Filter by member">
+                        <option value="user:all">all members</option>
+                        {mapMembers.map((m) => (
+                          <option key={m.userId} value={`user:${m.userId}`}>
+                            only @{m.username}{m.isDeparted ? " (left)" : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                   <ChevronDown
                     size={14}
@@ -834,15 +868,32 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
             </div>
 
             {/* ── Feed ─────────────────────────────────────────────── */}
-            {feedEntries.length === 0 ? (
-              <div className="muted" style={{ fontSize: 14, padding: "48px 0", textAlign: "center" }}>
-                Nothing visible at your progress yet.
-              </div>
-            ) : (
+            {(() => {
+              // Apply user filter at the page level so the empty-state
+              // check reflects the filtered view, not the underlying feed.
+              // When a user filter is active, force descending sort
+              // (newest episode first) per the odds-and-ends spec.
+              const visibleEntries = userFilter
+                ? feedEntries.filter((e) => e.authorId === userFilter)
+                : feedEntries;
+              const effectiveSortOrder = userFilter ? "desc" : sortOrder;
+              if (visibleEntries.length === 0) {
+                const filteredUsername = userFilter
+                  ? mapMembers.find((m) => m.userId === userFilter)?.username
+                  : null;
+                return (
+                  <div className="muted" style={{ fontSize: 14, padding: "48px 0", textAlign: "center" }}>
+                    {filteredUsername
+                      ? `Nothing from @${filteredUsername} at your progress yet.`
+                      : "Nothing visible at your progress yet."}
+                  </div>
+                );
+              }
+              return (
               <V2RoomFeed
                 ref={feedRef}
-                entries={feedEntries}
-                sortOrder={sortOrder}
+                entries={visibleEntries}
+                sortOrder={effectiveSortOrder}
                 groupId={groupId}
                 viewerProgress={progressForShow}
                 userId={user?.id ?? ""}
@@ -858,7 +909,8 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 initialExpandedThreadId={initialExpandThreadId ?? undefined}
                 initialFocusReplyId={initialFocusReplyId ?? undefined}
               />
-            )}
+              );
+            })()}
           </div>
 
           {/* ── RIGHT pane: map ──────────────────────────────────────────
@@ -904,6 +956,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               isNewMap={isNewMap}
               firstHighlightedSet={firstHighlightedSet}
               onCommitRatings={handleCommitRatings}
+              filteredUserId={userFilter}
             />
             </div>
           </div>
