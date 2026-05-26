@@ -253,16 +253,38 @@ export default function V2RoomMap({
   // username starts — so column_height needs to be at least:
   //   4 (icon top) + 24 (icon height) + 8 (gap) + username_width + 8
   //     (username bottom padding) = 44 + username_width.
+  // Plus an 8px safety margin in case the canvas measurement drifts from
+  // the actual rendered width (subpixel layout, font metrics edge cases).
   // Other columns inherit the same height (uniform grid); they have no
   // icon, so the extra room above their usernames is just empty space.
-  const ICON_CLEARANCE = 44;
+  const ICON_CLEARANCE = 52;
+  // Re-measure username width once Inter has loaded. Without this, the
+  // first measurement on a cold cache uses whatever fallback font the
+  // browser substitutes (typically narrower than Inter), undersizing
+  // dynamicHeaderHeight by ~10-15% and causing the rating-edit icon to
+  // overlap the rotated username. Triggered via fontsReady → useMemo
+  // dep so the recompute happens automatically.
+  const [fontsReady, setFontsReady] = useState<boolean>(() => {
+    if (typeof document === "undefined") return true;
+    return (document as Document & { fonts?: FontFaceSet }).fonts?.status === "loaded";
+  });
+  useEffect(() => {
+    if (fontsReady) return;
+    if (typeof document === "undefined") return;
+    const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
+    if (!fonts) { setFontsReady(true); return; }
+    let cancelled = false;
+    fonts.ready.then(() => { if (!cancelled) setFontsReady(true); });
+    return () => { cancelled = true; };
+  }, [fontsReady]);
   const selfMember = useMemo(
     () => (viewerUserId ? members.find((m) => m.userId === viewerUserId) : undefined),
     [members, viewerUserId],
   );
   const selfUsernameWidth = useMemo(
     () => (selfMember ? measureUsernameWidth(`@${selfMember.username}`) : 0),
-    [selfMember?.username],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selfMember?.username, fontsReady],
   );
   const dynamicHeaderHeight = Math.max(
     HEADER_HEIGHT,

@@ -233,6 +233,17 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
         // fetchGroupThreads already drops no-reply tombstones — anything
         // soft-deleted that arrives here had visible replies and should
         // render as a tombstone (gravestone copy in the feed).
+        //
+        // Thread doesn't carry author_id through rowToThread, so we
+        // resolve authorId via a username→userId map built from
+        // roomMapData (which DOES carry both). Used by the user-filter
+        // feature so feed clicks match the dropdown's userId-keyed
+        // selection. Departed members are still in roomMapData, so
+        // their entries also resolve correctly.
+        const usernameToUserId: Record<string, string> = {};
+        for (const m of roomMapData) {
+          if (m.username) usernameToUserId[m.username] = m.userId;
+        }
         const entries: V2RoomFeedEntry[] = groupResult.threads.map((t) => ({
           threadId: t.id,
           s: t.season,
@@ -240,9 +251,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
           title: t.titleBase,
           body: t.body,
           preview: t.preview,
-          // Thread doesn't expose author_id today; SidebarAvatar seeds by
-          // username so the empty string is harmless.
-          authorId: "",
+          authorId: usernameToUserId[t.author] ?? "",
           authorUsername: t.author,
           isRewatch: t.isRewatch,
           rewatchS: t.rewatchS,
@@ -799,11 +808,10 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                   {/* Single dropdown encodes both sort + user-filter state.
                       Values are namespaced: "sort:<asc|desc>" or
-                      "user:<userId|all>". Picking a sort option clears any
-                      active user filter; picking "all members" clears the
-                      filter while keeping the current sort; picking a
-                      specific member sets the filter (sort forces to desc
-                      in render, per spec). */}
+                      "user:<userId>". Picking either sort option clears
+                      any active user filter (= all members); picking a
+                      specific member sets the filter and the feed forces
+                      to desc sort in render, per spec. */}
                   <select
                     className="badge h40"
                     value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
@@ -811,8 +819,6 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                       const v = e.target.value;
                       if (v.startsWith("sort:")) {
                         setSortOrder(v.slice(5) as "asc" | "desc");
-                        setUserFilter(null);
-                      } else if (v === "user:all") {
                         setUserFilter(null);
                       } else if (v.startsWith("user:")) {
                         setUserFilter(v.slice(5));
@@ -834,7 +840,9 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                     </optgroup>
                     {mapMembers.length > 0 && (
                       <optgroup label="Filter by member">
-                        <option value="user:all">all members</option>
+                        {/* No "all members" option — picking either Sort
+                            entry exits filter mode (ordering by newest /
+                            oldest IS the all-members view). */}
                         {mapMembers.map((m) => (
                           <option key={m.userId} value={`user:${m.userId}`}>
                             only @{m.username}{m.isDeparted ? " (left)" : ""}
