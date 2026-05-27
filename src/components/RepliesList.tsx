@@ -1141,19 +1141,42 @@ export default function RepliesList({
                         {" "}Saving will retag this reply to your current progress — readers below that point who could see it before will no longer see it.
                       </div>
                       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        {/* No .btn className — the `.reply-card .btn:not(.btn-danger)`
+                            override in theme.ts forces transparent/dos-bg colors via
+                            !important, making these buttons invisible against the
+                            warning card's light-blue. Inline the layout properties
+                            .btn would have provided. */}
                         <button
-                          className="btn"
                           onClick={() => setRetagWarningReplyId(null)}
                           disabled={editReplySubmitting}
-                          style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
+                          style={{
+                            background: "transparent",
+                            border: "2px solid #fff",
+                            color: "#fff",
+                            borderRadius: 9999,
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                            fontWeight: 500,
+                            fontFamily: "inherit",
+                            fontSize: 13,
+                          }}
                         >
                           Go back
                         </button>
                         <button
-                          className="btn"
                           onClick={() => handleSaveEditReply(r.id, true)}
                           disabled={editReplySubmitting}
-                          style={{ background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff" }}
+                          style={{
+                            background: "transparent",
+                            border: "2px solid var(--danger)",
+                            color: "var(--danger)",
+                            borderRadius: 9999,
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                            fontWeight: 500,
+                            fontFamily: "inherit",
+                            fontSize: 13,
+                          }}
                         >
                           {editReplySubmitting ? "Saving…" : "Save & retag"}
                         </button>
