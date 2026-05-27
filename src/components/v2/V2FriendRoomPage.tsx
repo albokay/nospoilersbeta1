@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowRight, ChevronDown, Settings, SquarePen, Users } from "lucide-react";
+import { ArrowRight, ChevronDown, Globe, Settings, SquarePen, Users } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -18,6 +18,7 @@ import {
 import type { FriendGroup, Thread } from "../../types";
 import type { ProgressEntry } from "../../types";
 import { effectiveProgress } from "../../lib/utils";
+import Tooltip from "../Tooltip";
 import V2Layout from "./V2Layout";
 import V2RoomFeed, {
   type V2RoomFeedEntry,
@@ -979,21 +980,30 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                   </span>
                 </div>
               </div>
-              <button
-                className="btn"
-                onClick={handleToPublic}
-                style={{
-                  whiteSpace: "nowrap",
-                  fontSize: 13,
-                  flexShrink: 0,
-                  padding: "3px 12px",
-                  background: "transparent",
-                  border: "2px solid #fff",
-                  color: "#fff",
-                }}
+              <Tooltip
+                text="go to public conversation"
+                direction="below"
+                tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
               >
-                to public conversation <ArrowRight size={14} color="#fff" style={{ verticalAlign: "middle" }} />
-              </button>
+                <button
+                  className="btn"
+                  onClick={handleToPublic}
+                  aria-label="go to public conversation"
+                  style={{
+                    flexShrink: 0,
+                    padding: "5px 10px",
+                    background: "transparent",
+                    border: "2px solid #fff",
+                    color: "#fff",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Globe size={16} color="#fff" style={{ flexShrink: 0 }} />
+                  <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                </button>
+              </Tooltip>
             </div>
 
             {/* Banner row 2 — write button + watch-progress pill */}

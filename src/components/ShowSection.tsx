@@ -1932,40 +1932,44 @@ export default function ShowSection({
                    Shown in the public space (forum view only — hidden inside
                    any thread; thread-level back-nav is handled by the thread
                    toolbar's "Back to show" button). Three behaviors:
-                     - breadcrumb set → "back to [room name]" direct return
-                     - one room only → "to [room name]" direct enter
-                     - multiple rooms → "to friend rooms" toggles a dropdown */}
+                     - breadcrumb set → direct return to [breadcrumb room]
+                     - one room only → direct enter that room
+                     - multiple rooms → opens a dropdown listing rooms
+                   Visual: icon-only pill [Users][ArrowRight] with tooltip
+                   "go to your friend room"; the dynamic label moved into
+                   the dropdown rows for the multi-room case. */}
                 {!thread && userGroups.length > 0 && (() => {
                   const breadcrumbRoom = cameFromGroupId
                     ? userGroups.find(g => g.id === cameFromGroupId)
                     : null;
                   const targetRoom = breadcrumbRoom
                     || (userGroups.length === 1 ? userGroups[0] : null);
-                  const label = breadcrumbRoom
-                    ? `back to ${breadcrumbRoom.name}`
-                    : targetRoom
-                      ? `to ${targetRoom.name}`
-                      : "to friend rooms";
                   return (
                     <div ref={friendRoomsDropdownRef} style={{ position: "relative", flexShrink: 0 }}>
-                      <button
-                        className="btn"
-                        onClick={() => {
-                          if (targetRoom) enterGroup(targetRoom.id);
-                          else setFriendRoomsDropdownOpen(o => !o);
-                        }}
-                        style={{
-                          whiteSpace: "nowrap", fontSize: 13,
-                          padding: "3px 12px",
-                          background: "transparent",
-                          border: "2px solid #fff",
-                          color: "#fff",
-                          display: "inline-flex", alignItems: "center", gap: 6,
-                        }}
+                      <Tooltip
+                        text="go to your friend room"
+                        direction="below"
+                        tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
                       >
-                        <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} />
-                        {label}
-                      </button>
+                        <button
+                          className="btn"
+                          aria-label="go to your friend room"
+                          onClick={() => {
+                            if (targetRoom) enterGroup(targetRoom.id);
+                            else setFriendRoomsDropdownOpen(o => !o);
+                          }}
+                          style={{
+                            padding: "5px 10px",
+                            background: "transparent",
+                            border: "2px solid #fff",
+                            color: "#fff",
+                            display: "inline-flex", alignItems: "center", gap: 6,
+                          }}
+                        >
+                          <Users size={16} color="#fff" style={{ flexShrink: 0 }} />
+                          <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                        </button>
+                      </Tooltip>
                       {friendRoomsDropdownOpen && !targetRoom && (
                         <div style={{
                           position: "absolute", top: "calc(100% + 6px)", right: 0,
