@@ -175,7 +175,7 @@ function HighlightSpan({
           onMouseLeave={leave}
           style={{
             position: "fixed",
-            top:  anchor.y - 12,
+            top:  anchor.y - 16,
             left: anchor.x,
             // Center horizontally on cursor, lift fully above cursor, then
             // tilt 6° clockwise. transformOrigin pins the rotation to the
