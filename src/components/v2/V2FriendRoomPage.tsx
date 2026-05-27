@@ -20,6 +20,7 @@ import type { ProgressEntry } from "../../types";
 import { effectiveProgress } from "../../lib/utils";
 import Tooltip from "../Tooltip";
 import V2Layout from "./V2Layout";
+import { useComposeModal } from "./ComposeModal";
 import V2RoomFeed, {
   type V2RoomFeedEntry,
   type V2RoomFeedHandle,
@@ -52,6 +53,7 @@ import { navigateToShow } from "./v2nav";
 export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const composeModal = useComposeModal();
   const { user, profile } = useAuth();
 
   // V3 journal's friend-room entry-card click navigates here with
@@ -465,13 +467,12 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
 
   const handleWrite = useCallback(() => {
     if (!show) return;
-    // Pass returnTo so V2ComposePage's discard target is the friend room,
-    // not the /v3/journal default. Without this, a "× not now" from a
-    // user who entered compose via the friend-room Write button ejects
-    // them to journal instead of returning them to the room they came
-    // from. Same returnTo channel the rating-capture flow uses.
-    navigate(`/v2/compose/${show.id}`, { state: { returnTo: location.pathname } });
-  }, [navigate, show, location.pathname]);
+    // Open compose as an overlay modal on top of this friend room. returnTo
+    // is the friend-room pathname so a discard from the modal lands back
+    // here (which is where the user already is — modal just closes; no
+    // extra navigation fires when the target matches the current path).
+    composeModal.open({ showId: show.id, returnTo: location.pathname });
+  }, [composeModal, show, location.pathname]);
 
   const handleToPublic = useCallback(() => {
     if (!show) return;
@@ -589,11 +590,16 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
         // compose page reads stale progress; user re-picks if needed.
       }
       setPendingRating(null);
-      navigate(`/v2/compose/${show.id}`, {
-        state: { fromRating: true, returnTo: location.pathname },
+      // Rating-flow → open compose modal (was navigate to /v2/compose).
+      // fromRating drives the intro-copy variant inside the form;
+      // returnTo lets a discard land back on the friend room.
+      composeModal.open({
+        showId: show.id,
+        fromRating: true,
+        returnTo: location.pathname,
       });
     },
-    [pendingRating, user?.id, show, progressForShow, navigate, location.pathname],
+    [pendingRating, user?.id, show, progressForShow, composeModal, location.pathname],
   );
 
   const handleRatingCancel = useCallback(() => {

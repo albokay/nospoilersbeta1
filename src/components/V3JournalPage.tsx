@@ -8,6 +8,7 @@ import { fetchUserThreads, fetchUserReplies, fetchRepliesToUserThreads, fetchLik
 import type { RoomVisibility } from "../lib/db";
 import type { PromptRow } from "../lib/db";
 import { prefetchComposeData } from "../lib/composeDataCache";
+import { useComposeModal } from "./v2/ComposeModal";
 import { getCachedActivity, setCachedActivity, invalidateJournalCache } from "../lib/journalCache";
 import { useAuth } from "../lib/auth";
 import SidebarAvatar from "./SidebarAvatar";
@@ -69,6 +70,7 @@ export default function V3JournalPage({
   const { user, profile } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const composeModal = useComposeModal();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const showName = (showId: string) => showId === "bb" ? "Breaking Bad (DEMO)" : allShows.find(s => s.id === showId)?.name || showId;
 
@@ -433,8 +435,13 @@ export default function V3JournalPage({
     // in practice (same column values).
     updateProgressFor?.(showId, { s, e });
     setPendingRating(null);
-    navigate(`/v2/compose/${showId}`, {
-      state: { fromRating: true, returnTo: location.pathname },
+    // Rating-flow → open compose as a modal overlay (was navigate to
+    // /v2/compose). fromRating drives the intro-copy variant in the
+    // form; returnTo lands a discard back on the journal tab.
+    composeModal.open({
+      showId,
+      fromRating: true,
+      returnTo: location.pathname,
     });
   };
   const handleRatingCancel = () => setPendingRating(null);
@@ -1127,7 +1134,7 @@ export default function V3JournalPage({
                             if (user?.id && activeTab) prefetchComposeData(user.id, activeTab);
                             import("./v2/V2App");
                           }}
-                          onClick={() => navigate(`/v2/compose/${activeTab}`)}
+                          onClick={() => composeModal.open({ showId: activeTab, returnTo: location.pathname })}
                           style={{ lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5, background: tabBg }}
                         >
                           <SquarePen size={15} /> write

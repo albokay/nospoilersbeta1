@@ -20,6 +20,7 @@ import {
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
 import type { Thread, Reply, ProgressEntry, FriendGroup } from "../../types";
+import { useComposeModal } from "./ComposeModal";
 import SearchShows from "../SearchShows";
 import SidebarLogo from "../SidebarLogo";
 import SidebarAvatar from "../SidebarAvatar";
@@ -83,6 +84,7 @@ function formatSinceDate(ts?: number): string {
 
 export default function V2JournalPage() {
   const navigate = useNavigate();
+  const composeModal = useComposeModal();
   const location = useLocation();
   const { user, profile, loading: authLoading } = useAuth();
 
@@ -531,7 +533,7 @@ export default function V2JournalPage() {
                 {/* action row */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                   <button
-                    onClick={() => navigate(`/v2/compose/${activeShow.id}`)}
+                    onClick={() => composeModal.open({ showId: activeShow.id, returnTo: location.pathname })}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
