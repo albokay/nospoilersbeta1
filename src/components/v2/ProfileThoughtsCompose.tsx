@@ -378,7 +378,7 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
         value={body}
         onChange={(e) => setBody(e.target.value)}
         maxLength={10000}
-        placeholder="Take a moment. Think about something specific: a show, an episode, a way you watch. Write as little or as much as feels good. If you decide to share it, these thoughts become the first bit of writing other people see on your profile."
+        placeholder="Take a moment. Think about something specific: a show, an actor, a way you watch. Write as little or as much as feels good. Think big-picture, spoiler-free. If you decide to share it, these thoughts become the first bit of writing other people see on your profile."
         style={{
           fontFamily: "Inter, sans-serif",
           fontSize: 16,
