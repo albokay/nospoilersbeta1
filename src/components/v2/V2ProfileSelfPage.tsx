@@ -29,7 +29,8 @@ import SidebarAvatar from "../SidebarAvatar";
 import TreatedArt from "../TreatedArt";
 import { pickProfileThoughtPrompt } from "../../lib/profileThoughtPrompts";
 import { preventLastWordOrphan } from "../../lib/utils";
-import { Plus, Pin, Trash2, SquarePen, GripVertical, ChevronDown, RefreshCw, ArrowRight } from "lucide-react";
+import { Plus, Pin, Trash2, SquarePen, GripVertical, ChevronDown, RefreshCw, ArrowRight, Pencil } from "lucide-react";
+import Tooltip from "../Tooltip";
 import {
   DndContext,
   closestCenter,
@@ -164,6 +165,55 @@ function formatJoinedSince(createdAt?: string): string {
 // the auth-side fallback in a later pass if/when we're sure nothing reads
 // the column anymore.
 
+// Show-name link with dashed underline + canon-green tooltip. Each shelf
+// section's title-row show name routes through this so the click target,
+// the underline affordance, and the tooltip stay consistent across all
+// four shelves. Tooltip uses text-wrap: balance for even line distribution
+// regardless of show-name length.
+function ShowNameLink({
+  showName,
+  showId,
+  style,
+  as = "span",
+  navigate,
+}: {
+  showName: string;
+  showId: string;
+  style?: React.CSSProperties;
+  /** "div" for shelves where the show name occupies its own block (Finished
+   *  Watching uses a div for layout reasons); "span" everywhere else. */
+  as?: "span" | "div";
+  navigate: (path: string, opts?: { state?: unknown }) => void;
+}) {
+  const Tag = as;
+  return (
+    <Tooltip
+      text={
+        <>
+          Go to your journal page for{" "}
+          <span style={{ fontStyle: "italic" }}>{showName}</span>.
+        </>
+      }
+      direction="above"
+      align="left"
+      portal
+      tooltipStyle={{ background: "#7abd8e", color: "#fff", textWrap: "balance" as React.CSSProperties["textWrap"] }}
+    >
+      <Tag
+        onClick={() => navigate(`/v3/journal`, { state: { activeTab: showId } })}
+        style={{
+          ...style,
+          cursor: "pointer",
+          textDecoration: "underline dashed",
+          textUnderlineOffset: 4,
+        }}
+      >
+        {showName}
+      </Tag>
+    </Tooltip>
+  );
+}
+
 // Inline editable blurb. Click pencil → text field; Enter / blur saves;
 // Esc cancels. Whitespace-only saves as null per setShelfBlurb's contract.
 function BlurbField({
@@ -266,6 +316,13 @@ function BlurbField({
       }}
     >
       {value || placeholder}
+      {/* Trailing pencil icon — signals the blurb is editable. Inline so
+          it sits at the end of whatever line the text wraps to. Click
+          on icon enters edit mode via the parent div's onClick. */}
+      <Pencil
+        size={12}
+        style={{ marginLeft: 6, opacity: 0.6, verticalAlign: "middle" }}
+      />
     </div>
   );
 }
@@ -741,10 +798,12 @@ export default function V2ProfileSelfPage() {
                       <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                         <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-                          <span
-                            onClick={() => navigate(`/v2/journal/${sid}`)}
-                            style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2, cursor: "pointer" }}
-                          >{show.name}</span>
+                          <ShowNameLink
+                            showName={show.name}
+                            showId={sid}
+                            style={{ fontSize: 22, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}
+                            navigate={navigate}
+                          />
                           <ProgressBadge progress={p} />
                         </div>
                         {p.isRewatching && <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>rewatch</span>}
@@ -808,10 +867,12 @@ export default function V2ProfileSelfPage() {
                   >
                     <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                     <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 14 }}>
-                      <span
-                        onClick={() => navigate(`/v2/journal/${sid}`)}
-                        style={{ fontSize: 17, fontWeight: 600, color: "var(--dos-fg)", cursor: "pointer" }}
-                      >{show.name}</span>
+                      <ShowNameLink
+                        showName={show.name}
+                        showId={sid}
+                        style={{ fontSize: 17, fontWeight: 600, color: "var(--dos-fg)" }}
+                        navigate={navigate}
+                      />
                       <span style={{ flex: 1, minWidth: 200 }}>
                         <BlurbField
                           kind="want_reason"
@@ -887,7 +948,7 @@ export default function V2ProfileSelfPage() {
                       console.warn("clear-stopped failed:", err);
                     }
                   }
-                  navigate(`/v2/journal/${showId}`);
+                  navigate(`/v3/journal`, { state: { activeTab: showId } });
                 }}
                 onAuthRequired={() => navigate("/")}
                 placeholder="find a show"
@@ -978,12 +1039,13 @@ export default function V2ProfileSelfPage() {
                   >
                     {pinned ? "canon" : <Pin size={14} color="currentColor" />}
                   </button>
-                      <div
-                        onClick={() => navigate(`/v2/journal/${sid}`)}
-                        style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2, paddingRight: 64, marginBottom: 10, cursor: "pointer" }}
-                      >
-                        {show.name}
-                      </div>
+                      <ShowNameLink
+                        showName={show.name}
+                        showId={sid}
+                        as="div"
+                        style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2, paddingRight: 64, marginBottom: 10 }}
+                        navigate={navigate}
+                      />
                       <BlurbField
                         kind="canon_take"
                         value={p.canonTake}
@@ -1052,10 +1114,12 @@ export default function V2ProfileSelfPage() {
                     >
                       <DeleteShowButton onClick={() => { setRemoveShowId(sid); setRemoveError(null); }} />
                       <div style={{ display: "inline-flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-                        <span
-                          onClick={() => navigate(`/v2/journal/${sid}`)}
-                          style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2, cursor: "pointer" }}
-                        >{show.name}</span>
+                        <ShowNameLink
+                          showName={show.name}
+                          showId={sid}
+                          style={{ fontSize: 18, fontWeight: 600, color: "var(--dos-fg)", lineHeight: 1.2 }}
+                          navigate={navigate}
+                        />
                         <span style={{ fontSize: 12, color: "var(--dos-gray)", fontStyle: "italic" }}>stopped at {progressShort(p)}</span>
                       </div>
                       <BlurbField
@@ -1359,7 +1423,7 @@ function EditCornerOverlay({
               top: "calc(100% + 6px)",
               right: 0,
               minWidth: 220,
-              background: "#dea838",
+              background: "#355eb8",
               border: "none",
               borderRadius: 23,
               boxShadow: "0 8px 23px rgba(0,0,0,0.15)",
