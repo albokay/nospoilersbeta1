@@ -796,7 +796,7 @@ export default function V2RoomMap({
                     textOverflow: "ellipsis",
                     fontSize: 13,
                     fontWeight: 400,
-                    color: isSelfCol ? "#1a3a4a" : "#fff",
+                    color: isSelfCol ? "#355eb8" : "#fff",
                     fontStyle: isClickable ? "italic" : undefined,
                     borderBottom: isClickable ? "1px dotted #fff" : undefined,
                     cursor: (isClickable || isSelfCol) ? "pointer" : undefined,
