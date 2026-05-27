@@ -1952,7 +1952,7 @@ export default function ShowSection({
                         tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
                       >
                         <button
-                          className="btn"
+                          className="btn dim-hover"
                           aria-label="go to your friend room"
                           onClick={() => {
                             if (targetRoom) enterGroup(targetRoom.id);

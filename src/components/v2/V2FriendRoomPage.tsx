@@ -996,7 +996,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
               >
                 <button
-                  className="btn"
+                  className="btn dim-hover"
                   onClick={handleToPublic}
                   aria-label="go to public conversation"
                   style={{

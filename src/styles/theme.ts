@@ -248,6 +248,12 @@ hr{ display:none; }
 .auto-link{ color: inherit; text-decoration: underline; text-underline-offset: 2px; word-break: break-word; }
 .auto-link:hover{ opacity: 0.8; }
 
+/* Dim by default, brighten on hover. Used by the cross-space nav icon
+   pills ("go to public conversation" / "go to your friend room") to keep
+   them present-but-quiet at rest. */
+.dim-hover{ opacity: 0.5; transition: opacity 0.15s ease; }
+.dim-hover:hover{ opacity: 1; }
+
 /* controls */
 .badge{
   background:transparent; color:var(--dos-fg); border:2px solid var(--dos-border);
