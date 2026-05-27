@@ -27,7 +27,7 @@ import SidebarLogo from "./components/SidebarLogo";
 // V3JournalPage + ProfilePage + ShowSection stay eager — they're the
 // primary destinations for every signed-in user.
 const AdminPage = lazy(() => import("./components/AdminPage"));
-import { Tv, EyeClosed, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Blend, ShieldCheck, LogOut } from "lucide-react";
+import { Tv, EyeClosed, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowRight, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Blend, ShieldCheck, LogOut, UserPen } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -881,11 +881,34 @@ function AppShell() {
             )}
           </div>
         );
+        // On non-profile-family pages (showProfile || showV3Journal is
+        // false), render a second "go to your profile" pill directly to
+        // the right of the journal pill. Same dimensions, white outline +
+        // transparent fill + white text, icons mirrored to the right of
+        // the label. Matches V2Layout's equivalent treatment.
+        const showProfilePill = !(showProfile || showV3Journal) && user && profile;
         return (
-          <span className="topHeaderPillFixed">
+          <span className="topHeaderPillFixed" style={{ display: "inline-flex", gap: 8 }}>
             {pillTooltipText
               ? <Tooltip text={pillTooltipText} direction="below" align="left" tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
               : pillContent}
+            {showProfilePill && (
+              <button
+                className="profileChip"
+                onClick={() => {
+                  navigate("/v2/profile");
+                  requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+                }}
+                style={{
+                  background: "transparent",
+                  border: "2px solid #fff",
+                }}
+              >
+                <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your profile</span>
+                <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                <UserPen size={16} color="#fff" style={{ flexShrink: 0 }} />
+              </button>
+            )}
           </span>
         );
       })()}

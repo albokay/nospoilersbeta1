@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
-import { LogOut, BookOpen, BookMarked, ArrowLeft, ArrowRight } from "lucide-react";
+import { LogOut, BookOpen, BookMarked, ArrowLeft, ArrowRight, UserPen } from "lucide-react";
 import FeedbackWidget from "../FeedbackWidget";
 import SidebarLogo from "../SidebarLogo";
 import SidebarAvatar from "../SidebarAvatar";
@@ -130,9 +130,13 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
             so its right edge aligns with the journal/profile content column
             (math is in theme.ts). Same .profileChip styling and behavior
             as AppShell. cursor:default on profile-family because we ARE on
-            the user's home base — pill is identity, not navigation. */}
+            the user's home base — pill is identity, not navigation.
+            On non-profile-family pages (palette === "room"), a SECOND pill
+            ("go to your profile") renders directly after the journal pill —
+            same dimensions, white outline + transparent fill + white text,
+            with icons mirrored to the right of the label. */}
         {user && profile && (
-          <span className="topHeaderPillFixed">
+          <span className="topHeaderPillFixed" style={{ display: "inline-flex", gap: 8 }}>
             <button
               className="profileChip"
               onClick={onProfileFamily ? undefined : () => {
@@ -154,6 +158,27 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
                 </>
               )}
             </button>
+            {!onProfileFamily && (
+              <button
+                className="profileChip"
+                onClick={() => {
+                  navigate("/v2/profile");
+                  requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+                }}
+                // Override .profileChip's filled canon-blue background with
+                // outlined/transparent. box-sizing:border-box (inherited from
+                // .profileChip) keeps the 34px height including the new
+                // 2px border, so visual sizing matches the journal pill.
+                style={{
+                  background: "transparent",
+                  border: "2px solid #fff",
+                }}
+              >
+                <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your profile</span>
+                <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                <UserPen size={16} color="#fff" style={{ flexShrink: 0 }} />
+              </button>
+            )}
           </span>
         )}
       </div>
