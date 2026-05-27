@@ -130,6 +130,11 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   });
   const [perThreadLatestReply, setPerThreadLatestReply] = useState<Record<string, number>>({});
   const [perThreadHiddenCount, setPerThreadHiddenCount] = useState<Record<string, number>>({});
+  // Latest hidden-reply createdAt per thread — paired with redDismissedAt so
+  // a NEW hidden reply landing after a user X'd the red dot will re-fire
+  // the dot (matches green's "new since last seen" semantic). Without this,
+  // X'd dots stayed dismissed forever, even for fresh hidden replies.
+  const [perThreadLatestHidden, setPerThreadLatestHidden] = useState<Record<string, number>>({});
   const [engagedSet, setEngagedSet] = useState<Set<string>>(new Set());
   const [greenDismissedSet, setGreenDismissedSet] = useState<Set<string>>(new Set());
   const [redDismissedAt, setRedDismissedAt] = useState<Record<string, number>>({});
@@ -253,6 +258,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               replyCounts: {} as Record<string, number>,
               latestVisibleReplyAt: {} as Record<string, number>,
               hiddenCounts: {} as Record<string, number>,
+              latestHiddenReplyAt: {} as Record<string, number>,
               aheadCounts: {} as Record<string, number>,
             };
 
@@ -321,6 +327,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
         setMapMembers(mapMembersOut);
         setPerThreadLatestReply(groupResult.latestVisibleReplyAt);
         setPerThreadHiddenCount(groupResult.hiddenCounts ?? {});
+        setPerThreadLatestHidden(groupResult.latestHiddenReplyAt ?? {});
         // Seed manual-dismiss timestamps for any visible thread that has a
         // stored localStorage flag — read once at load so render-time
         // predicates can stay synchronous.
@@ -824,13 +831,20 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
       const isOwn = !!profile?.username && entry.authorUsername === profile.username;
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
       const greenDismissedThisSession = greenDismissedSet.has(tid);
-      const manuallyDismissed = (redDismissedAt[tid] ?? 0) > 0;
+      // Manual X-dismissal is a snooze through the moment of click, not a
+      // forever-suppress. If a NEW hidden reply lands after the dismissal,
+      // the dismissal is stale and red re-fires. Comparing the dismissal
+      // timestamp against perThreadLatestHidden[tid] (max createdAt of
+      // hidden replies, populated by fetchGroupThreads) gives that.
+      const dismissedAt    = redDismissedAt[tid] ?? 0;
+      const latestHiddenAt = perThreadLatestHidden[tid] ?? 0;
+      const manuallyDismissed = dismissedAt > 0 && dismissedAt >= latestHiddenAt;
       if (isOwn && hiddenCount > 0 && !greenDismissedThisSession && !manuallyDismissed) {
         out[tid] = { kind: "red", redCount: hiddenCount };
       }
     }
     return out;
-  }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, greenDismissedSet, redDismissedAt, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, perThreadLatestHidden, greenDismissedSet, redDismissedAt, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
 
   // A1 isNew lookup — per-thread "new to me since my last room visit AND
   // not yet engaged this session." Used by V2RoomFeed for the white card

@@ -2347,6 +2347,17 @@ export async function fetchGroupThreads(
    */
   hiddenCounts: Record<string, number>;
   /**
+   * Per-thread MAX created_at of HIDDEN replies on threads the viewer
+   * authored. Used by the V2 friend-room map to decide whether a prior
+   * red-dot manual dismissal is still valid: if a new hidden reply lands
+   * with `created_at > redDismissedAt[tid]`, the dismissal is stale and
+   * red re-fires (so each new hidden reply gets a fresh chance to notify,
+   * matching the green-dot's "new since last visit" semantic). Populated
+   * only for threads where `author_id === viewerId` and at least one
+   * hidden reply exists; absent otherwise.
+   */
+  latestHiddenReplyAt: Record<string, number>;
+  /**
    * Per-thread count of replies above the viewer's progress, on ALL
    * threads (not just the viewer's own). Used by V2 friend rooms to
    * render "ahead-of-progress" stubs in RepliesList and to include those
@@ -2372,6 +2383,7 @@ export async function fetchGroupThreads(
   const replyCounts: Record<string, number> = {};
   const latestVisibleReplyAt: Record<string, number> = {};
   const hiddenCounts: Record<string, number> = {};
+  const latestHiddenReplyAt: Record<string, number> = {};
   const aheadCounts: Record<string, number> = {};
   for (const row of data ?? []) {
     const t = (row as any).threads;
@@ -2422,13 +2434,19 @@ export async function fetchGroupThreads(
     // yourself about replies you wrote that are above your own progress).
     if (viewerId && t.author_id === viewerId) {
       let hidden = 0;
+      let maxHiddenAt = 0;
       for (const r of allReplies) {
         if (r.group_id !== groupId) continue;
         if (r.is_deleted) continue;
         if (r.author_id === viewerId) continue;
-        if (!chainVisible(r)) hidden++;
+        if (!chainVisible(r)) {
+          hidden++;
+          const ts = r.created_at ? new Date(r.created_at).getTime() : 0;
+          if (ts > maxHiddenAt) maxHiddenAt = ts;
+        }
       }
       if (hidden > 0) hiddenCounts[thread.id] = hidden;
+      if (maxHiddenAt > 0) latestHiddenReplyAt[thread.id] = maxHiddenAt;
     }
 
     // Ahead-count: per-thread count of replies above viewer progress on
@@ -2447,7 +2465,7 @@ export async function fetchGroupThreads(
     }
     if (ahead > 0) aheadCounts[thread.id] = ahead;
   }
-  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, aheadCounts };
+  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, latestHiddenReplyAt, aheadCounts };
 }
 
 /** Rename a friend group. */
