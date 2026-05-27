@@ -3960,8 +3960,14 @@ function rowToHighlight(row: any): Highlight {
 
 /**
  * Fetch highlights for a batch of targets. Used on entry / reply render to
- * pull every annotation for everything currently visible in one round-trip.
- * Returns an empty array for an empty input (no query fired).
+ * pull every annotation for everything currently visible.
+ *
+ * Two-step query: first the highlights themselves, then a batched username
+ * lookup. We can't use PostgREST's embedded `profiles(username)` join
+ * because `highlights.author_id` references `auth.users(id)` directly
+ * (not `profiles(id)`) — without a direct FK to profiles, the embed errors
+ * out and the call returns []. The `friend_group_members → profiles` join
+ * works only because that table has a direct FK to profiles.
  *
  * RLS gates SELECT on room membership; non-members get an empty result for
  * targets in rooms they're not in (not an error).
@@ -3973,7 +3979,7 @@ export async function fetchHighlights(args: {
   if (!args.targetIds.length) return [];
   const { data, error } = await supabase
     .from("highlights")
-    .select("*, profiles(username)")
+    .select("*")
     .eq("target_type", args.targetType)
     .in("target_id", args.targetIds)
     .order("start_offset", { ascending: true });
@@ -3981,7 +3987,27 @@ export async function fetchHighlights(args: {
     console.warn("fetchHighlights failed:", error);
     return [];
   }
-  return (data ?? []).map(rowToHighlight);
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  // Batch-fetch usernames for all distinct authors in one round-trip.
+  const authorIds = Array.from(new Set(rows.map((r: any) => r.author_id)));
+  const usernameById: Record<string, string> = {};
+  const { data: profs, error: profErr } = await supabase
+    .from("profiles")
+    .select("id, username")
+    .in("id", authorIds);
+  if (profErr) {
+    console.warn("fetchHighlights: profile lookup failed:", profErr);
+    // Fall through with empty map; rowToHighlight defaults username to "unknown".
+  }
+  for (const p of profs ?? []) {
+    usernameById[p.id] = p.username;
+  }
+
+  return rows.map((r: any) =>
+    rowToHighlight({ ...r, profiles: { username: usernameById[r.author_id] ?? "unknown" } }),
+  );
 }
 
 /**

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import CanonRadio from "./CanonRadio";
 
@@ -102,7 +103,11 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm }: Prop
     }
   }
 
-  return (
+  // Portal to document.body so `position: fixed` is relative to the viewport,
+  // not whichever ancestor in V2FriendRoomPage / V2RoomFeed creates a
+  // stacking context (transform / filter / will-change). Without the portal
+  // the picker lands in the wrong spot (observed during C5 testing).
+  return createPortal(
     <div
       ref={popoverRef}
       role="dialog"
@@ -237,6 +242,7 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm }: Prop
           Cancel
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
