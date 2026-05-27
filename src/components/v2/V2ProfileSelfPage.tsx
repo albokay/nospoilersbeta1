@@ -29,7 +29,7 @@ import SidebarAvatar from "../SidebarAvatar";
 import TreatedArt from "../TreatedArt";
 import { pickProfileThoughtPrompt } from "../../lib/profileThoughtPrompts";
 import { preventLastWordOrphan } from "../../lib/utils";
-import { Plus, Pin, Trash2, SquarePen, GripVertical, ChevronDown, RefreshCw, ArrowRight, Pencil } from "lucide-react";
+import { Plus, Pin, Trash2, SquarePen, GripVertical, ChevronDown, ChevronUp, RefreshCw, ArrowRight, Pencil } from "lucide-react";
 import Tooltip from "../Tooltip";
 import {
   DndContext,
@@ -214,6 +214,82 @@ function ShowNameLink({
   );
 }
 
+// Section divider rendered between the four V2 self-profile shelves.
+// 52×52 canon-block (same shape as SidebarLogo's BLOCKS, borderRadius 15)
+// in one of the 5 canon palette colors. Hover reveals a canon-yellow up
+// chevron; click triggers the same two-phase bounce used by V2RoomMap
+// rating cells (instant scale 1.12 → 150ms ease-out back to 1) and
+// smooth-scrolls the page to the top. Color is picked per-mount by the
+// parent so all dividers on the page can be guaranteed distinct.
+const HOME_DIVIDER_COLORS = ["#f45028", "#adc8d7", "#355eb8", "#7abd8e", "#fffaf0"] as const;
+function pickDistinctDividerColors(n: number): string[] {
+  // Fisher-Yates shuffle of the palette, take first n. Safe for n ≤ 5
+  // (we currently use 4 — one divider per shelf).
+  const pool = [...HOME_DIVIDER_COLORS];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, n);
+}
+
+function HomeDivider({ color }: { color: string }) {
+  const [phase, setPhase] = useState<"up" | "down" | null>(null);
+  const [hovered, setHovered] = useState(false);
+  function handleClick() {
+    // Two-phase bounce: instant pop to scale(1.12), then animate back to
+    // scale(1) over 150ms. Cleared to null after ~200ms so no lingering
+    // transform property remains on the element (matches V2RoomMap's
+    // cell-bounce shape). Two rAFs guarantee the 'up' state renders
+    // before React batches it with the 'down' state.
+    setPhase("up");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setPhase("down");
+        window.setTimeout(() => setPhase(null), 200);
+      });
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label="Scroll to top"
+      onClick={handleClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+      style={{
+        width: 52,
+        height: 52,
+        background: color,
+        borderRadius: 15,
+        margin: "32px auto",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        // Bounce — same two-phase shape as V2RoomMap cell click. Idle has
+        // no transform property so the element doesn't sit in its own
+        // compositing layer.
+        ...(phase === "up"
+          ? { transform: "scale(1.12)", transition: "none" }
+          : phase === "down"
+          ? { transform: "scale(1)", transition: "transform 150ms ease-out" }
+          : {}),
+      }}
+    >
+      {hovered && <ChevronUp size={24} color="#dea838" strokeWidth={2.5} />}
+    </div>
+  );
+}
+
 // Inline editable blurb. Click pencil → text field; Enter / blur saves;
 // Esc cancels. Whitespace-only saves as null per setShelfBlurb's contract.
 function BlurbField({
@@ -330,6 +406,12 @@ function BlurbField({
 export default function V2ProfileSelfPage() {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
+
+  // Four distinct canon-block colors for the section dividers (one each
+  // before Watching Now / Want / Finished / Stopped). Picked once at
+  // mount via useState initializer — stable as the user scrolls, re-
+  // rolls on next page visit.
+  const [dividerColors] = useState<string[]>(() => pickDistinctDividerColors(4));
 
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
@@ -760,6 +842,7 @@ export default function V2ProfileSelfPage() {
       {/* === WATCHING NOW === */}
       {buckets.watching.length > 0 && (
         <section style={{ marginBottom: 56 }}>
+          <HomeDivider color={dividerColors[0]} />
           <ShelfHead
             eyebrow="what you're in the middle of:"
             title="Watching Now"
@@ -830,6 +913,7 @@ export default function V2ProfileSelfPage() {
 
       {/* === WANT TO WATCH (always renders for the + add tile) === */}
       <section style={{ marginBottom: 56 }}>
+        <HomeDivider color={dividerColors[1]} />
         <ShelfHead
           eyebrow="on your watch list:"
           title="Want to Watch"
@@ -965,6 +1049,7 @@ export default function V2ProfileSelfPage() {
       {/* === FINISHED WATCHING === */}
       {finishedDisplay.length > 0 && (
         <section style={{ marginBottom: 56 }}>
+          <HomeDivider color={dividerColors[2]} />
           <ShelfHead
             eyebrow="shows you've completed:"
             title="Finished Watching"
@@ -1077,6 +1162,7 @@ export default function V2ProfileSelfPage() {
           the Watching Now title row, then the blurb below. */}
       {buckets.stopped.length > 0 && (
         <section style={{ marginBottom: 56 }}>
+          <HomeDivider color={dividerColors[3]} />
           <ShelfHead
             eyebrow="shows you've stopped, for now:"
             title="Stopped Watching"
