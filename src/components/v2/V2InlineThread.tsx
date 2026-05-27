@@ -354,6 +354,13 @@ export default function V2InlineThread({
         episode: editTagE,
         isEdited: true,
       });
+      // Refetch highlights so the re-anchored offsets land in local state.
+      // editThread runs reanchor_highlights_for_target server-side, but our
+      // `highlights` state still has the pre-edit offsets — they'd render
+      // at wrong positions (or get filtered out by segment-bounds check)
+      // until the next mount.
+      dbFetchHighlights({ targetType: "thread", targetIds: [thread.id] })
+        .then(setHighlights);
       setEditing(false);
     } catch (e) {
       const msg =

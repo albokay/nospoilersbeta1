@@ -725,6 +725,18 @@ export default function RepliesList({
       await dbEditReply(rid, body, tagS, tagE);
       setLocalEditedBody(prev => ({ ...prev, [rid]: body }));
       setReplies(prev => prev.map(r => r.id === rid ? { ...r, body, season: tagS, episode: tagE, isEdited: true } : r));
+      // Refetch highlights for this reply — editReply runs the
+      // reanchor_highlights_for_target RPC server-side, but our
+      // highlightsByReply state still has the pre-edit offsets and would
+      // render at wrong positions (or be filtered out by the segment-bounds
+      // check) until next mount. Only when highlights are enabled for this
+      // RepliesList instance (V2 friend rooms).
+      if (highlightsEnabled) {
+        dbFetchHighlights({ targetType: "reply", targetIds: [rid] })
+          .then((fresh) => {
+            setHighlightsByReply(prev => ({ ...prev, [rid]: fresh }));
+          });
+      }
       setEditingReplyId(null);
     } catch (e: any) {
       setEditReplyError(e?.message ?? "Failed to save. Please try again.");
