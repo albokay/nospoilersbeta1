@@ -928,11 +928,15 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               two-pane container extends through it, letting the sticky
               map stay pinned all the way to the page bottom. */}
           <div style={{ flex: `0 1 ${FEED_MAX_W}px`, minWidth: 0, marginLeft: "auto", transform: "translateX(-176px)", paddingBottom: 120 }}>
-            {/* Banner row 1 — eyebrow + room name + settings gear + "to public" */}
+            {/* Banner row 1 — eyebrow + room name + settings gear.
+                The "to public conversation" globe button moved DOWN to
+                banner row 2 alongside the sort + watch-progress controls
+                (matches V1 public space's grouping — the cross-space nav
+                button lives with the sort + progress cluster, not the
+                title block). */}
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
                 alignItems: "flex-start",
                 gap: 16,
                 padding: "8px 0",
@@ -980,33 +984,9 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                   </span>
                 </div>
               </div>
-              <Tooltip
-                text="go to public conversation"
-                direction="below"
-                tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
-              >
-                <button
-                  className="btn"
-                  onClick={handleToPublic}
-                  aria-label="go to public conversation"
-                  style={{
-                    flexShrink: 0,
-                    padding: "5px 10px",
-                    background: "transparent",
-                    border: "2px solid #fff",
-                    color: "#fff",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <Globe size={16} color="#fff" style={{ flexShrink: 0 }} />
-                  <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
-                </button>
-              </Tooltip>
             </div>
 
-            {/* Banner row 2 — write button + watch-progress pill */}
+            {/* Banner row 2 — write button + (right) "to public" + sort + watch-progress */}
             <div
               style={{
                 display: "flex",
@@ -1025,6 +1005,30 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 <SquarePen size={15} /> write
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Tooltip
+                  text="go to public conversation"
+                  direction="below"
+                  tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
+                >
+                  <button
+                    className="btn"
+                    onClick={handleToPublic}
+                    aria-label="go to public conversation"
+                    style={{
+                      flexShrink: 0,
+                      padding: "5px 10px",
+                      background: "transparent",
+                      border: "2px solid #fff",
+                      color: "#fff",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Globe size={16} color="#fff" style={{ flexShrink: 0 }} />
+                    <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                  </button>
+                </Tooltip>
                 <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                   {/* Single dropdown encodes both sort + user-filter state.
                       Values are namespaced: "sort:<asc|desc>" or
