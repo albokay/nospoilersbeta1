@@ -186,6 +186,10 @@ export async function editThread(threadId: string, title: string, body: string, 
     .update({ title, body, preview, season, episode, is_edited: true, updated_at: new Date().toISOString() })
     .eq("id", threadId);
   if (error) throw error;
+  // Re-anchor any highlights on this thread to the new body. Best-effort;
+  // failures are logged but don't fail the edit. No-op when the thread
+  // has no highlights (the RPC iterates an empty set).
+  await reanchorHighlightsForTarget({ targetType: "thread", targetId: threadId });
 }
 
 export async function deleteThread(threadId: string): Promise<void> {
@@ -474,6 +478,10 @@ export async function editReply(replyId: string, body: string, season: number, e
     .update({ body, season, episode, is_edited: true, updated_at: new Date().toISOString() })
     .eq("id", replyId);
   if (error) throw error;
+  // Re-anchor any highlights on this reply to the new body. Best-effort;
+  // failures are logged but don't fail the edit. No-op when the reply
+  // has no highlights (the RPC iterates an empty set).
+  await reanchorHighlightsForTarget({ targetType: "reply", targetId: replyId });
 }
 
 export async function deleteReply(replyId: string): Promise<void> {
@@ -4100,4 +4108,33 @@ export async function deleteHighlight(id: string): Promise<void> {
     .delete()
     .eq("id", id);
   if (error) throw error;
+}
+
+/**
+ * Best-effort re-anchor of all highlights on a target after the body has
+ * been edited. Calls the reanchor_highlights_for_target SECURITY DEFINER
+ * RPC, which reads the (already-updated) body and walks every highlight:
+ * updates offsets to the closest substring match, or deletes the highlight
+ * if its quoted_text no longer appears.
+ *
+ * Errors are warned but NOT thrown — the body edit already succeeded, so
+ * we don't want a re-anchor failure to surface as a failed edit. Worst
+ * case the highlights stay stuck at their old offsets until next edit;
+ * they may render at the wrong position or get filtered out by the
+ * segment-bounds check. Better than failing the user's edit.
+ *
+ * Used by editThread / editReply automatically — callers don't need to
+ * invoke this directly.
+ */
+export async function reanchorHighlightsForTarget(args: {
+  targetType: "thread" | "reply";
+  targetId: string;
+}): Promise<void> {
+  const { error } = await supabase.rpc("reanchor_highlights_for_target", {
+    p_target_type: args.targetType,
+    p_target_id:   args.targetId,
+  });
+  if (error) {
+    console.warn("reanchorHighlightsForTarget failed:", error);
+  }
 }
