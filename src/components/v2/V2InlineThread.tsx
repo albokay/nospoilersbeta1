@@ -216,7 +216,10 @@ export default function V2InlineThread({
       onAuthRequired?.();
       return;
     }
-    const sel = selectionToBodyOffsets();
+    // Scope the selection to THIS entry's body — prevents picking up a
+    // selection from inside a reply card when the entry's Highlight button
+    // is clicked.
+    const sel = selectionToBodyOffsets(bodyRef.current);
     if (!sel) {
       setHighlightHint(true);
       return;

@@ -554,7 +554,9 @@ export default function RepliesList({
       onAuthRequired();
       return;
     }
-    const sel = selectionToBodyOffsets();
+    // Scope the selection to THIS reply's body — without this, a selection
+    // inside another reply would get captured and attached to this reply.
+    const sel = selectionToBodyOffsets(replyBodyRefs.current[replyId]);
     if (!sel) {
       setHighlightHint(replyId);
       return;
@@ -1189,15 +1191,18 @@ export default function RepliesList({
                   {highlightsEnabled && (
                     <button
                       ref={el => { highlightBtnRefs.current[r.id] = el; }}
-                      className="btn"
+                      onClick={() => handleHighlightClickReply(r.id)}
                       style={{
                         fontSize: 13,
                         padding: "3px 12px",
                         background: "#dea838",
                         color: "#fff",
                         border: "2px solid #dea838",
+                        borderRadius: 9999,
+                        cursor: "pointer",
+                        fontWeight: 500,
+                        fontFamily: "inherit",
                       }}
-                      onClick={() => handleHighlightClickReply(r.id)}
                     >
                       Highlight…
                     </button>

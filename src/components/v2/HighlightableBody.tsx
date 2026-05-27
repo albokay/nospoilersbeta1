@@ -308,11 +308,16 @@ export default function HighlightableBody({
  *   - selection crosses out of a `[data-body-start]` segment (e.g. into a
  *     prompt-ref or quote blockquote)
  *   - selection spans multiple segments
+ *   - (when `scopeEl` is provided) selection endpoints aren't inside scopeEl
+ *
+ * The `scopeEl` argument is critical for the per-reply Highlight button case:
+ * without it, a selection inside reply X plus a click on reply Y's Highlight
+ * button would attach Y's highlight to X's text offsets (the bug class).
  *
  * Must be called synchronously from the same event tick as the user's click
  * — once focus shifts into the picker, the selection is gone.
  */
-export function selectionToBodyOffsets():
+export function selectionToBodyOffsets(scopeEl?: HTMLElement | null):
   | { start: number; end: number; text: string }
   | null
 {
@@ -320,6 +325,15 @@ export function selectionToBodyOffsets():
   if (!sel || sel.rangeCount === 0) return null;
   const range = sel.getRangeAt(0);
   if (range.collapsed) return null;
+
+  // Scope check: if the caller supplied a DOM element, both endpoints of
+  // the selection must be inside it. Without this, a Highlight button on
+  // one card can pick up a selection from a different card.
+  if (scopeEl) {
+    if (!scopeEl.contains(range.startContainer) || !scopeEl.contains(range.endContainer)) {
+      return null;
+    }
+  }
 
   const findSeg = (node: Node | null): HTMLElement | null => {
     let cur: Node | null = node;
