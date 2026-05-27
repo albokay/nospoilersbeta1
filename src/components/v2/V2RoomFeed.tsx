@@ -155,15 +155,16 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   },
   ref,
 ) {
-  // Episode sort. Within an episode, chronological by updatedAt always
-  // (oldest first). Across episodes, asc/desc controlled by sortOrder
-  // (desc puts the newest episode tag at the top).
+  // Episode sort. Within an episode, reverse-chronological by updatedAt
+  // always (newest first — most recent activity floats to the top within
+  // its episode bucket). Across episodes, asc/desc controlled by
+  // sortOrder (desc puts the newest episode tag at the top).
   const sorted = useMemo(() => {
     const dir = sortOrder === "desc" ? -1 : 1;
     return [...entries].sort((a, b) => {
       if (a.s !== b.s) return dir * (a.s - b.s);
       if (a.e !== b.e) return dir * (a.e - b.e);
-      return a.updatedAt - b.updatedAt;
+      return b.updatedAt - a.updatedAt;
     });
   }, [entries, sortOrder]);
 
