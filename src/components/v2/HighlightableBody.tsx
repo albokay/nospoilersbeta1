@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, ThumbsUp } from "lucide-react";
 import type { Highlight } from "../../lib/db";
 
@@ -128,13 +129,24 @@ function HighlightSpan({
   onDelete?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  // Cursor position captured on mouseenter — the tooltip anchors here so
+  // it always lands near the cursor, regardless of where the highlighted
+  // span's bounding-box center happens to be (relevant when a highlight
+  // wraps across multiple lines).
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Small grace period so the cursor can travel from the highlighted span
-  // into the floating tooltip without it closing en route.
-  const enter = () => {
+  // Grace period so the cursor can travel from the highlighted span into
+  // the (portaled) tooltip without it closing en route.
+  const enterSpan = (e: React.MouseEvent) => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
+    setAnchor({ x: e.clientX, y: e.clientY });
     setHovered(true);
+  };
+  const enterTooltip = () => {
+    // Don't reposition when the cursor enters the tooltip itself — just
+    // cancel the pending close so the bubble stays open.
+    if (closeTimer.current) clearTimeout(closeTimer.current);
   };
   const leave = () => {
     closeTimer.current = setTimeout(() => setHovered(false), 120);
@@ -152,20 +164,24 @@ function HighlightSpan({
 
   return (
     <span
-      onMouseEnter={enter}
+      onMouseEnter={enterSpan}
       onMouseLeave={leave}
-      style={{ background: CANON_YELLOW, position: "relative" }}
+      style={{ background: CANON_YELLOW }}
     >
       {text}
-      {hovered && (
+      {hovered && anchor && createPortal(
         <span
-          onMouseEnter={enter}
+          onMouseEnter={enterTooltip}
           onMouseLeave={leave}
           style={{
-            position: "absolute",
-            bottom: "calc(100% + 6px)",
-            left: "50%",
-            transform: "translateX(-50%)",
+            position: "fixed",
+            top:  anchor.y - 12,
+            left: anchor.x,
+            // Center horizontally on cursor, lift fully above cursor, then
+            // tilt 6° clockwise. transformOrigin pins the rotation to the
+            // bottom-center so the bubble appears to lean, not pivot.
+            transform: "translate(-50%, -100%) rotate(6deg)",
+            transformOrigin: "bottom center",
             background: CREAM,
             color: CANON_NAVY,
             borderRadius: 12,
@@ -174,7 +190,7 @@ function HighlightSpan({
             fontWeight: 500,
             whiteSpace: "nowrap",
             boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
-            zIndex: 50,
+            zIndex: 9999,
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
@@ -206,7 +222,8 @@ function HighlightSpan({
               <X size={12} />
             </button>
           )}
-        </span>
+        </span>,
+        document.body,
       )}
     </span>
   );
