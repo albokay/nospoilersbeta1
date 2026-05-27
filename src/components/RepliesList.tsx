@@ -1133,7 +1133,7 @@ export default function RepliesList({
                     <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{editReplyError}</div>
                   )}
                   {retagWarningReplyId === r.id ? (
-                    <div className="retag-warning" style={{ background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 6, padding: "12px 14px", marginTop: 8, fontSize: 13 }}>
+                    <div className="retag-warning" style={{ background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 24, padding: "12px 14px", marginTop: 8, fontSize: 13 }}>
                       <div style={{ fontWeight: 700, marginBottom: 6 }}>Heads up — this reply will be retagged</div>
                       <div style={{ opacity: 0.85, marginBottom: 10 }}>
                         Your progress has moved to{" "}
