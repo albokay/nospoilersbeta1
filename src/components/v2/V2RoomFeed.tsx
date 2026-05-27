@@ -517,12 +517,13 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   </span>
                   {entry.isDeleted ? "(deleted entry)" : entry.title}
                   {!entry.isDeleted && (
-                    // SE tag rendered inline AFTER the title with a " / "
-                    // separator. Same size / weight / family as the title
+                    // SE tag rendered inline AFTER the title with a " • "
+                    // separator (matches the bullet glyph used in bylines
+                    // elsewhere). Same size / weight / family as the title
                     // (inherits from the h2 .title class) but white — the
                     // tag reads as title-level chrome, not body text.
                     <span style={{ color: "#fff", whiteSpace: "nowrap", marginLeft: 8 }}>
-                      {" / "}
+                      {" • "}
                       <EpisodeTag
                         season={entry.s}
                         episode={entry.e}
