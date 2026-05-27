@@ -1,0 +1,354 @@
+import React, { useState, useRef, useEffect } from "react";
+import { X, ThumbsUp } from "lucide-react";
+import type { Highlight } from "../../lib/db";
+
+// Same regex as src/lib/promptTokens.ts — keep in sync if that ever changes.
+const PROMPT_TOKEN_RE = /\[PROMPT:([\s\S]*?)\]/g;
+
+// Canon palette.
+const CANON_YELLOW = "#dea838";
+const CANON_NAVY   = "#1a3a4a";
+const CREAM        = "#fef8ea";
+
+// Internal tokenization shape. `text` segments carry the rendered text plus
+// the raw-body offset where that rendered text starts (after any whitespace
+// trim). `prompt` tokens render as non-highlightable blockquotes and don't
+// participate in offset tracking — Q7 guarantees highlights never span them.
+type BodyToken =
+  | { kind: "text"; text: string; bodyStart: number }
+  | { kind: "prompt"; text: string };
+
+/**
+ * Tokenize a raw body string into ordered render-ready pieces. Mirrors the
+ * trim behavior of `parsePromptTokens` (trailing whitespace stripped before
+ * each prompt; leading whitespace stripped on the final segment) so the
+ * rendered output matches the legacy renderer pixel-for-pixel — while
+ * preserving each segment's raw-body offset for highlight mapping.
+ *
+ * Returns segments with `text === ""` skipped (an all-whitespace segment
+ * between two prompts contributes nothing visible).
+ */
+function tokenizeBody(body: string): BodyToken[] {
+  const out: BodyToken[] = [];
+  const re = new RegExp(PROMPT_TOKEN_RE.source, "g");
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body)) !== null) {
+    if (m.index > cursor) {
+      const raw = body.slice(cursor, m.index);
+      const trimmed = raw.replace(/\s+$/, "");
+      if (trimmed.length > 0) {
+        out.push({ kind: "text", text: trimmed, bodyStart: cursor });
+      }
+    }
+    out.push({ kind: "prompt", text: m[1].trim() });
+    cursor = m.index + m[0].length;
+  }
+  if (cursor < body.length) {
+    const raw = body.slice(cursor);
+    const leading = raw.match(/^\s+/);
+    const leadingLen = leading ? leading[0].length : 0;
+    const trimmed = raw.slice(leadingLen);
+    if (trimmed.length > 0) {
+      out.push({ kind: "text", text: trimmed, bodyStart: cursor + leadingLen });
+    }
+  }
+  return out;
+}
+
+/**
+ * Render a single plain-text segment with any highlight overlays. The outer
+ * span carries `data-body-start` so the selection-to-offset mapping
+ * (selectionToBodyOffsets, below) can read it.
+ *
+ * Per Q7, a highlight is always fully contained in one segment, so a simple
+ * "filter to segment range, sort, walk" produces the correct overlay shape.
+ */
+function HighlightableSegment({
+  text,
+  bodyStart,
+  highlights,
+  currentUserId,
+  onDeleteHighlight,
+}: {
+  text: string;
+  bodyStart: number;
+  highlights: Highlight[];
+  currentUserId: string | null;
+  onDeleteHighlight?: (id: string) => void;
+}) {
+  const bodyEnd = bodyStart + text.length;
+  const inSegment = highlights
+    .filter(h => h.startOffset >= bodyStart && h.endOffset <= bodyEnd)
+    .sort((a, b) => a.startOffset - b.startOffset);
+
+  if (inSegment.length === 0) {
+    return <span data-body-start={bodyStart}>{text}</span>;
+  }
+
+  const nodes: React.ReactNode[] = [];
+  let cursor = bodyStart;
+  for (const h of inSegment) {
+    if (h.startOffset > cursor) {
+      nodes.push(text.slice(cursor - bodyStart, h.startOffset - bodyStart));
+    }
+    const segText = text.slice(h.startOffset - bodyStart, h.endOffset - bodyStart);
+    nodes.push(
+      <HighlightSpan
+        key={h.id}
+        highlight={h}
+        text={segText}
+        isOwn={!!currentUserId && h.authorId === currentUserId}
+        onDelete={onDeleteHighlight ? () => onDeleteHighlight(h.id) : undefined}
+      />
+    );
+    cursor = h.endOffset;
+  }
+  if (cursor < bodyEnd) {
+    nodes.push(text.slice(cursor - bodyStart));
+  }
+  return <span data-body-start={bodyStart}>{nodes}</span>;
+}
+
+/**
+ * A single highlighted span with hover tooltip. Custom tooltip (not the
+ * shared `Tooltip` component) because the bubble needs `pointer-events:
+ * auto` for the owner's × delete button — the shared Tooltip pins
+ * pointer-events: none.
+ */
+function HighlightSpan({
+  highlight,
+  text,
+  isOwn,
+  onDelete,
+}: {
+  highlight: Highlight;
+  text: string;
+  isOwn: boolean;
+  onDelete?: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Small grace period so the cursor can travel from the highlighted span
+  // into the floating tooltip without it closing en route.
+  const enter = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setHovered(true);
+  };
+  const leave = () => {
+    closeTimer.current = setTimeout(() => setHovered(false), 120);
+  };
+
+  useEffect(() => () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+  }, []);
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setHovered(false);
+    onDelete?.();
+  };
+
+  return (
+    <span
+      onMouseEnter={enter}
+      onMouseLeave={leave}
+      style={{ background: CANON_YELLOW, position: "relative" }}
+    >
+      {text}
+      {hovered && (
+        <span
+          onMouseEnter={enter}
+          onMouseLeave={leave}
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 6px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: CREAM,
+            color: CANON_NAVY,
+            borderRadius: 12,
+            padding: "6px 10px",
+            fontSize: 12,
+            fontWeight: 500,
+            whiteSpace: "nowrap",
+            boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+            zIndex: 50,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            pointerEvents: "auto",
+          }}
+        >
+          <span>@{highlight.authorUsername}:</span>
+          {highlight.kind === "yup" ? (
+            <ThumbsUp size={12} color={CANON_NAVY} strokeWidth={2} />
+          ) : (
+            <span>{highlight.note}</span>
+          )}
+          {isOwn && onDelete && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              aria-label="Remove highlight"
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                marginLeft: 4,
+                color: CANON_NAVY,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+              }}
+            >
+              <X size={12} />
+            </button>
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Top-level renderer for an entry body. Handles PROMPT tokens (rendered as
+ * non-highlightable `prompt-ref` blockquotes) and plain-text segments
+ * (highlightable, with overlays per-highlight).
+ *
+ * Drop-in replacement for `parsePromptTokens(body).map(...)` in V2InlineThread
+ * (entry body). Reply bodies have a separate token type ([QUOTE: ...]); they
+ * use a different renderer wired in C6.
+ */
+export default function HighlightableBody({
+  body,
+  highlights,
+  currentUserId,
+  onDeleteHighlight,
+}: {
+  body: string;
+  highlights: Highlight[];
+  currentUserId: string | null;
+  onDeleteHighlight?: (id: string) => void;
+}) {
+  const tokens = tokenizeBody(body);
+  return (
+    <>
+      {tokens.map((tok, i) => {
+        if (tok.kind === "prompt") {
+          return (
+            <blockquote key={`prompt-${i}`} className="prompt-ref">
+              {tok.text}
+            </blockquote>
+          );
+        }
+        return (
+          <HighlightableSegment
+            key={`seg-${tok.bodyStart}`}
+            text={tok.text}
+            bodyStart={tok.bodyStart}
+            highlights={highlights}
+            currentUserId={currentUserId}
+            onDeleteHighlight={onDeleteHighlight}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * Read window.getSelection() and translate it into a {start, end, text} tuple
+ * in the raw-body coordinate system. Returns null when the selection is not
+ * usable for highlighting:
+ *   - no active selection / selection collapsed
+ *   - selection crosses out of a `[data-body-start]` segment (e.g. into a
+ *     prompt-ref or quote blockquote)
+ *   - selection spans multiple segments
+ *
+ * Must be called synchronously from the same event tick as the user's click
+ * — once focus shifts into the picker, the selection is gone.
+ */
+export function selectionToBodyOffsets():
+  | { start: number; end: number; text: string }
+  | null
+{
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0);
+  if (range.collapsed) return null;
+
+  const findSeg = (node: Node | null): HTMLElement | null => {
+    let cur: Node | null = node;
+    while (cur && cur !== document.body) {
+      if (cur.nodeType === 1 && (cur as HTMLElement).hasAttribute("data-body-start")) {
+        return cur as HTMLElement;
+      }
+      cur = cur.parentNode;
+    }
+    return null;
+  };
+
+  const startSeg = findSeg(range.startContainer);
+  const endSeg = findSeg(range.endContainer);
+  if (!startSeg || !endSeg) return null;
+  if (startSeg !== endSeg) return null;
+
+  const segStart = parseInt(startSeg.getAttribute("data-body-start") ?? "", 10);
+  if (Number.isNaN(segStart)) return null;
+
+  // Compute the local offset (within the segment's textContent) of a given
+  // range endpoint. Walks the segment subtree in document order, summing
+  // textContent lengths until we reach the endpoint's container, then adds
+  // the in-node offset.
+  const localOffsetOf = (container: Node, offsetInContainer: number): number => {
+    if (container === startSeg) {
+      let total = 0;
+      for (let i = 0; i < offsetInContainer; i++) {
+        total += startSeg.childNodes[i]?.textContent?.length ?? 0;
+      }
+      return total;
+    }
+    let total = 0;
+    let done = false;
+    const walk = (node: Node) => {
+      if (done) return;
+      if (node === container) {
+        if (node.nodeType === 3) {
+          total += offsetInContainer;
+        } else {
+          for (let i = 0; i < offsetInContainer; i++) {
+            total += (node as Element).childNodes[i]?.textContent?.length ?? 0;
+          }
+        }
+        done = true;
+        return;
+      }
+      if (node.nodeType === 3) {
+        total += node.textContent?.length ?? 0;
+        return;
+      }
+      const el = node as Element;
+      for (let i = 0; i < el.childNodes.length; i++) {
+        walk(el.childNodes[i]);
+        if (done) return;
+      }
+    };
+    walk(startSeg);
+    return total;
+  };
+
+  const startLocal = localOffsetOf(range.startContainer, range.startOffset);
+  const endLocal = localOffsetOf(range.endContainer, range.endOffset);
+  if (endLocal <= startLocal) return null;
+
+  const text = sel.toString();
+  if (!text.length) return null;
+
+  return {
+    start: segStart + startLocal,
+    end:   segStart + endLocal,
+    text,
+  };
+}
