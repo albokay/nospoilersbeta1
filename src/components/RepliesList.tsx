@@ -322,6 +322,7 @@ function ReplyBody({
         onDeleteHighlight={onDeleteHighlight}
         bodyStart={0}
         linkify
+        color="#adc8d7"
       />
     </div>
   );
