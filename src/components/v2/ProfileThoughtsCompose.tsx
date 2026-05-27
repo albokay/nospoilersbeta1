@@ -62,9 +62,17 @@ type Props = {
    *  + closes on success; rejects → modal stays open with error displayed. */
   onSubmit: (payload: ProfileThoughtsSubmitPayload) => Promise<void>;
   onClose: () => void;
+  /** Inline mode: render the white-paper title+body in page flow instead
+   *  of a fixed-position modal overlay. Used by V2 self profile's empty
+   *  state — no thoughts yet → inline form instead of a "write a thought"
+   *  CTA that opens the modal. In inline mode the footer is two destination
+   *  buttons (post privately / post to your profile) instead of the modal's
+   *  destination pills + cancel + single submit; no discard-confirm; no
+   *  body-scroll lock; no overlay backdrop. mode is always "create". */
+  inline?: boolean;
 };
 
-export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit, onClose }: Props) {
+export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit, onClose, inline = false }: Props) {
   // Title: in create mode, pre-populate with a random prompt suggestion. In
   // edit modes, mirror the existing piece's completion. The user can edit
   // freely, or cycle to a different prompt via the ↻ affordance — cycling
@@ -137,19 +145,25 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
     // textarea's bottom edge — the action row was just below it and stayed
     // clipped.) Scrolling the modal-card ref directly avoids the page
     // viewport ever scrolling.
-    const card = modalCardRef.current;
-    if (card) card.scrollTop = card.scrollHeight;
+    // Inline mode: the page handles scroll naturally — no modal card to
+    // pin, so skip this step.
+    if (!inline) {
+      const card = modalCardRef.current;
+      if (card) card.scrollTop = card.scrollHeight;
+    }
   }
   useEffect(() => { autosize(); }, [body]);
 
   // Lock body scroll while the modal is open — prevents the profile
   // underneath from scrolling when the modal's content is shorter than
-  // the viewport and the user wheels over the backdrop.
+  // the viewport and the user wheels over the backdrop. Inline mode
+  // lives in page flow, so don't lock.
   useEffect(() => {
+    if (inline) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
-  }, []);
+  }, [inline]);
 
   function isDirty(): boolean {
     return titleCompletion.trim() !== initialTitleRef.current.trim()
@@ -165,7 +179,11 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
     setTitleCompletion(preventLastWordOrphan(pickProfileThoughtPrompt(titleCompletion)));
   }
 
-  async function handleSubmit() {
+  // Optional destination override — used by inline mode where each of
+  // the two footer buttons implicitly picks a destination and submits in
+  // one click (no destination-pill step). Modal mode passes nothing and
+  // uses the `destination` state set by the pill UI.
+  async function handleSubmit(overrideDestination?: "private" | "featured") {
     const t = titleCompletion.trim();
     const b = body.trim();
     if (!t) {
@@ -176,16 +194,19 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
       setSubmitError("add a body to your thought.");
       return;
     }
+    const dest = overrideDestination ?? destination;
     setSubmitting(true);
     setSubmitError(null);
     try {
       await onSubmit({
         titleCompletion: t,
         body: b,
-        isPublic: destination === "featured",
+        isPublic: dest === "featured",
       });
       // Parent's onSubmit resolves → close. On rejection we keep the modal
-      // open so the user can adjust + retry.
+      // open so the user can adjust + retry. Inline mode: parent removes
+      // the inline form from the tree (because thoughts.length > 0 now)
+      // so onClose is effectively a no-op there.
       onClose();
     } catch (err: any) {
       setSubmitError(err?.message || "save failed. try again.");
@@ -206,6 +227,236 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
   const titleLen = titleCompletion.length;
   const showCounter = titleLen > 80;
   const counterColor = titleLen >= TITLE_SOFT_CAP ? "var(--danger)" : INK_FAINT;
+
+  // Style block — used by both modal and inline modes. Scoped via class
+  // names; safe to render twice if both modes ever mount (only one does
+  // in practice).
+  const styleBlock = (
+    <style>{`
+      .v2-thoughts-paper-body {
+        background-color: #fff !important;
+        background-image: ${RULE_GRADIENT} !important;
+        background-position: 0 0 !important;
+        background-size: 100% ${LH}px !important;
+        background-repeat: repeat !important;
+        color: ${INK} !important;
+      }
+      .v2-thoughts-paper-body::placeholder {
+        color: ${INK_FAINT};
+        font-style: italic;
+        font-weight: 400;
+      }
+      .v2-thoughts-title-editable {
+        outline: none;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+      }
+      .v2-thoughts-title-editable:empty::before {
+        content: "…";
+        color: ${INK_FAINT};
+        font-style: italic;
+        pointer-events: none;
+      }
+      body.public-context .btn.post.v2-thoughts-publish-button,
+      .btn.post.v2-thoughts-publish-button {
+        border-color: transparent !important;
+        outline: none !important;
+        box-shadow: none !important;
+      }
+      body.public-context .btn.post.v2-thoughts-publish-button:focus,
+      body.public-context .btn.post.v2-thoughts-publish-button:focus-visible,
+      .btn.post.v2-thoughts-publish-button:focus,
+      .btn.post.v2-thoughts-publish-button:focus-visible {
+        outline: none !important;
+        box-shadow: none !important;
+      }
+      body.public-context .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured,
+      .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured {
+        background: #dea838 !important;
+      }
+      body.public-context .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured:hover,
+      .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured:hover {
+        background: #c9962f !important;
+      }
+    `}</style>
+  );
+
+  // White paper container with title block + counter + body textarea.
+  // Used by both modal and inline modes verbatim. Only the bottom row
+  // and the outer chrome differ.
+  const whitePaper = (
+    <div
+      style={{
+        background: "#fff",
+        border: `2px solid ${RULE}`,
+        borderRadius: 0,
+        padding: "32px 32px 24px",
+        marginBottom: 24,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 26,
+          lineHeight: `${TITLE_LH}px`,
+          color: INK,
+          height: `${TITLE_LH * 2}px`,
+          overflow: "hidden",
+          marginBottom: 16,
+        }}
+      >
+        <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontWeight: 500, color: INK }}>
+          Thoughts on{" "}
+        </span>
+        <span
+          ref={titleEditableRef}
+          className="v2-thoughts-title-editable"
+          contentEditable={!submitting}
+          suppressContentEditableWarning
+          onInput={(e) => {
+            const t = (e.currentTarget as HTMLSpanElement).textContent || "";
+            setTitleCompletion(t.length > TITLE_HARD_CAP ? t.slice(0, TITLE_HARD_CAP) : t);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (e.metaKey || e.ctrlKey) handleSubmit();
+            }
+          }}
+          style={{
+            fontFamily: "Inter, sans-serif",
+            fontWeight: 600,
+            color: INK,
+            display: "inline",
+          }}
+        />
+        <button
+          onClick={cyclePrompt}
+          disabled={submitting}
+          title="cycle through prompt suggestions"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            marginLeft: 10,
+            verticalAlign: "middle",
+            background: "#7abd8e",
+            color: "#fff",
+            border: "none",
+            borderRadius: 9999,
+            padding: "4px 12px",
+            fontFamily: "Inter, sans-serif",
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: submitting ? "not-allowed" : "pointer",
+            lineHeight: 1,
+          }}
+        >
+          <RefreshCw size={12} color="currentColor" /> another prompt
+        </button>
+      </div>
+
+      {showCounter && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: counterColor }}>
+            {titleLen}/{TITLE_SOFT_CAP}
+          </span>
+        </div>
+      )}
+
+      <textarea
+        ref={bodyRef}
+        className="v2-thoughts-paper-body"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        maxLength={10000}
+        placeholder="Take a moment. Think about something specific: a show, an episode, a way you watch. Write as little or as much as feels good. If you decide to share it, these thoughts become the first bit of writing other people see on your profile."
+        style={{
+          fontFamily: "Inter, sans-serif",
+          fontSize: 16,
+          lineHeight: `${LH}px`,
+          color: INK,
+          border: "none",
+          width: "100%",
+          minWidth: "100%",
+          maxWidth: "100%",
+          height: `${BODY_MIN_LINES * LH}px`,
+          minHeight: `${BODY_MIN_LINES * LH}px`,
+          resize: "vertical",
+          overflow: "hidden",
+          outline: "none",
+          fontWeight: 400,
+          padding: 0,
+          margin: 0,
+          display: "block",
+          boxSizing: "border-box",
+        }}
+      />
+    </div>
+  );
+
+  // Inline-mode early return: page-flow form. Two destination-implicit
+  // buttons in the footer; no destination pills, no Cancel, no discard
+  // confirm. Used by V2 self profile's empty state ("no thoughts yet").
+  if (inline) {
+    return (
+      <div style={{ width: "100%" }}>
+        {styleBlock}
+        {whitePaper}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+            marginTop: 16,
+          }}
+        >
+          <button
+            onClick={() => handleSubmit("private")}
+            disabled={submitting}
+            style={{
+              background: "transparent",
+              border: "2px solid #fff",
+              color: "#fff",
+              borderRadius: 9999,
+              padding: "10px 22px",
+              fontFamily: "Inter, sans-serif",
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: submitting ? "not-allowed" : "pointer",
+              minWidth: 140,
+            }}
+          >
+            post privately
+          </button>
+          <button
+            onClick={() => handleSubmit("featured")}
+            disabled={submitting}
+            style={{
+              background: "#355eb8",
+              color: "#fff",
+              border: "none",
+              borderRadius: 9999,
+              padding: "10px 22px",
+              fontFamily: "Inter, sans-serif",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: submitting ? "not-allowed" : "pointer",
+              minWidth: 160,
+            }}
+          >
+            post to your profile
+          </button>
+        </div>
+        {submitError && (
+          <div style={{ textAlign: "right", marginTop: 8, color: "var(--danger)", fontSize: 13 }}>
+            {submitError}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -243,190 +494,8 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
             boxShadow: "0 16px 60px rgba(0,0,0,0.25)",
           }}
         >
-          {/* Scoped CSS overrides to claw back from theme.ts:296's global
-              "textarea { background: #fff !important }" rule which would
-              otherwise wipe the ruled-paper gradient. Mirrors the pattern
-              from V2ComposePage at [V2ComposePage.tsx:352](src/components/v2/V2ComposePage.tsx:352). */}
-          <style>{`
-            .v2-thoughts-paper-body {
-              background-color: #fff !important;
-              background-image: ${RULE_GRADIENT} !important;
-              background-position: 0 0 !important;
-              background-size: 100% ${LH}px !important;
-              background-repeat: repeat !important;
-              color: ${INK} !important;
-            }
-            .v2-thoughts-paper-body::placeholder {
-              color: ${INK_FAINT};
-              font-style: italic;
-              font-weight: 400;
-            }
-            /* Title content-editable region. Empty-state placeholder via ::before. */
-            .v2-thoughts-title-editable {
-              outline: none;
-              white-space: pre-wrap;
-              overflow-wrap: break-word;
-            }
-            .v2-thoughts-title-editable:empty::before {
-              content: "…";
-              color: ${INK_FAINT};
-              font-style: italic;
-              pointer-events: none;
-            }
-            /* Publish button. theme.ts:101 forces .btn.post canon-green
-               !important under body.public-context, so any inline style
-               loses. We add an always-on class to take control of border
-               (always transparent → no outline in either state) and the
-               featured-only class to flip the fill to canon yellow.
-               outline:none also kills browser focus rings which can read
-               as a faint outline on click. */
-            body.public-context .btn.post.v2-thoughts-publish-button,
-            .btn.post.v2-thoughts-publish-button {
-              border-color: transparent !important;
-              outline: none !important;
-              box-shadow: none !important;
-            }
-            body.public-context .btn.post.v2-thoughts-publish-button:focus,
-            body.public-context .btn.post.v2-thoughts-publish-button:focus-visible,
-            .btn.post.v2-thoughts-publish-button:focus,
-            .btn.post.v2-thoughts-publish-button:focus-visible {
-              outline: none !important;
-              box-shadow: none !important;
-            }
-            body.public-context .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured,
-            .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured {
-              background: #dea838 !important;
-            }
-            body.public-context .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured:hover,
-            .btn.post.v2-thoughts-publish-button.v2-thoughts-publish-featured:hover {
-              background: #c9962f !important;
-            }
-          `}</style>
-
-          {/* White paper container. Title + body share the same writing
-              surface; the title sits on white at the top, ruled lines start
-              with the body textarea below. Sharp corners per spec. */}
-          <div
-            style={{
-              background: "#fff",
-              border: `2px solid ${RULE}`,
-              borderRadius: 0,
-              padding: "32px 32px 24px",
-              marginBottom: 24,
-            }}
-          >
-            {/* Title block. The locked "Thoughts on" prefix, the editable
-                completion, and the inline "another prompt" button all flow
-                as one inline-block stream so wrap aligns the second line
-                with the prefix's left edge. Fixed 2-line height so a
-                1-line title doesn't shrink the modal. */}
-            <div
-              style={{
-                fontSize: 26,
-                lineHeight: `${TITLE_LH}px`,
-                color: INK,
-                height: `${TITLE_LH * 2}px`,
-                overflow: "hidden",
-                marginBottom: 16,
-              }}
-            >
-              <span style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontWeight: 500, color: INK }}>
-                Thoughts on{" "}
-              </span>
-              <span
-                ref={titleEditableRef}
-                className="v2-thoughts-title-editable"
-                contentEditable={!submitting}
-                suppressContentEditableWarning
-                onInput={(e) => {
-                  const t = (e.currentTarget as HTMLSpanElement).textContent || "";
-                  // Truncate at hard cap. Done in state only; DOM keeps user's
-                  // current input — slicing the DOM would move the cursor.
-                  setTitleCompletion(t.length > TITLE_HARD_CAP ? t.slice(0, TITLE_HARD_CAP) : t);
-                }}
-                onKeyDown={(e) => {
-                  // Block raw Enter — title is single-flow text, no newlines.
-                  // Submit on Cmd/Ctrl+Enter for parity with the body modal.
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    if (e.metaKey || e.ctrlKey) handleSubmit();
-                  }
-                }}
-                style={{
-                  fontFamily: "Inter, sans-serif",
-                  fontWeight: 600,
-                  color: INK,
-                  display: "inline",
-                }}
-              />
-              {/* Inline cycle-prompt pill. Sits at the end of the title
-                  content stream — moves with title length (#5). Canon-green
-                  fill, white text+icon, standard pill radius (#6). */}
-              <button
-                onClick={cyclePrompt}
-                disabled={submitting}
-                title="cycle through prompt suggestions"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  marginLeft: 10,
-                  verticalAlign: "middle",
-                  background: "#7abd8e",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 9999,
-                  padding: "4px 12px",
-                  fontFamily: "Inter, sans-serif",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: submitting ? "not-allowed" : "pointer",
-                  lineHeight: 1,
-                }}
-              >
-                <RefreshCw size={12} color="currentColor" /> another prompt
-              </button>
-            </div>
-
-            {/* Soft-cap counter row */}
-            {showCounter && (
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-                <span style={{ fontFamily: "Inter, sans-serif", fontSize: 12, color: counterColor }}>
-                  {titleLen}/{TITLE_SOFT_CAP}
-                </span>
-              </div>
-            )}
-
-            {/* Body — ruled-paper textarea inside the same white paper. */}
-            <textarea
-              ref={bodyRef}
-              className="v2-thoughts-paper-body"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              maxLength={10000}
-              placeholder="Take a moment. Think about something specific: a show, an episode, a way you watch. Write as little or as much as feels good. If you decide to share it, these thoughts become the first bit of writing other people see on your profile."
-              style={{
-                fontFamily: "Inter, sans-serif",
-                fontSize: 16,
-                lineHeight: `${LH}px`,
-                color: INK,
-                border: "none",
-                width: "100%",
-                minWidth: "100%",
-                maxWidth: "100%",
-                height: `${BODY_MIN_LINES * LH}px`,
-                minHeight: `${BODY_MIN_LINES * LH}px`,
-                resize: "vertical",
-                overflow: "hidden",
-                outline: "none",
-                fontWeight: 400,
-                padding: 0,
-                margin: 0,
-                display: "block",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
+          {styleBlock}
+          {whitePaper}
 
           {/* Bottom row — destination pills stacked bottom-LEFT, action
               buttons (× not now + save) bottom-RIGHT. align-items: flex-end
@@ -484,7 +553,7 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
                 × not now
               </button>
               <button
-                onClick={handleSubmit}
+                onClick={() => handleSubmit()}
                 disabled={submitting}
                 // v2-thoughts-publish-button is always on — gives us a
                 // specificity hook to force transparent border (no outline)

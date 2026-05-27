@@ -457,6 +457,22 @@ export default function V2ProfileSelfPage() {
     setThoughts((prev) => prev.filter((x) => x.id !== t.id));
   }
 
+  // Inline-compose submit handler — used by the empty-state inline form.
+  // Always create (no edit path); always create new thought. After a
+  // successful insert, thoughts.length > 0 → the empty-state branch
+  // unmounts and the carousel takes over (existing behavior). The modal
+  // path uses handleComposeSubmit (which routes editingId too).
+  async function handleInlineThoughtSubmit(payload: ProfileThoughtsSubmitPayload) {
+    if (!user) return;
+    const inserted = await insertProfileThought({
+      authorId: user.id,
+      titleCompletion: payload.titleCompletion,
+      body: payload.body,
+      isPublic: payload.isPublic,
+    });
+    setThoughts((prev) => [inserted, ...prev]);
+  }
+
   function cyclePromptSuggestion() {
     setCyclingPrompt((cur) => pickProfileThoughtPrompt(cur));
   }
@@ -613,41 +629,20 @@ export default function V2ProfileSelfPage() {
       {thoughtsLoaded && user && (
         <section style={{ marginBottom: 40, textAlign: "center" }}>
           {thoughts.length === 0 ? (
-            <div style={{ textAlign: "center", maxWidth: 540, margin: "0 auto" }}>
-              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 22, color: "var(--dos-fg)", marginBottom: 22, lineHeight: 1.3 }}>
-                {preventLastWordOrphan(`Thoughts on ${cyclingPrompt}…`)}
-              </div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-                <button
-                  onClick={cyclePromptSuggestion}
-                  aria-label="cycle to a different prompt"
-                  title="cycle to a different prompt"
-                  className="h40"
-                  style={{
-                    background: "transparent",
-                    border: "2px solid #fff",
-                    color: "#fff",
-                    borderRadius: 9999,
-                    padding: "0 18px",
-                    fontFamily: "Lora, Georgia, serif",
-                    fontStyle: "italic",
-                    fontSize: 14,
-                    cursor: "pointer",
-                  }}
-                >
-                  different prompt?
-                </button>
-                <button
-                  onClick={handleWriteNew}
-                  className="btn post h40"
-                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-                >
-                  write a thought <ArrowRight size={14} />
-                </button>
-              </div>
-              <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: "var(--dos-fg)", opacity: 0.7 }}>
-                (leave something here that lasts.)
-              </div>
+            // Empty state: inline version of the Thoughts-on compose modal.
+            // Two destination-implicit buttons ("post privately" / "post to
+            // your profile") submit directly in one click. As soon as the
+            // first thought is inserted, thoughts.length > 0 → the carousel
+            // branch below takes over. The modal continues to handle
+            // subsequent "write a new one" flows from the populated state.
+            <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "left" }}>
+              <ProfileThoughtsCompose
+                inline
+                mode="create"
+                initialContent={null}
+                onSubmit={handleInlineThoughtSubmit}
+                onClose={() => {}}
+              />
             </div>
           ) : (
             <>
