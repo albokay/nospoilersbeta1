@@ -125,10 +125,14 @@ export type V2RoomMapProps = {
       PollSticky's refreshKey so the asker sees their poll immediately. */
   onPollOpened?: () => void;
   /** Per-thread notification dot lookup. Green = new visible response(s);
-      Red = own entry with hidden responses (number shown). Green beats red;
-      only one dot per cell. Dot sits half-overlapping the LEFT edge of the
-      cell, vertically centered, 16px diameter, NO drop shadow. */
-  cellSignals?: Record<string, { kind: "green" | "red"; redCount?: number }>;
+      Yellow = unseen highlight on viewer's writing in this entry;
+      Red = own entry with hidden responses (number shown). Precedence:
+      green > yellow > red; only one dot per cell. Dot sits half-overlapping
+      the LEFT edge of the cell, vertically centered, 16px diameter, NO
+      drop shadow. Yellow can appear on any user's column (viewer might
+      have a reply in someone else's entry) — unlike red/green which only
+      appear on the viewer's own column. */
+  cellSignals?: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }>;
   /** Manual X-click dismissal of the red dot on a cell. */
   onDismissRedDot?: (threadId: string) => void;
   /** Per-thread "this entry is new since your last room visit" flag. Drives
@@ -1212,7 +1216,9 @@ export default function V2RoomMap({
                   const text =
                     signal.kind === "green"
                       ? "There is new writing for you."
-                      : "There is new writing in here for you… for when you catch up.";
+                      : signal.kind === "yellow"
+                        ? "Someone reacted to your writing."
+                        : "There is new writing in here for you… for when you catch up.";
                   signalLine = (
                     <span style={{
                       display: "block",
@@ -1567,7 +1573,7 @@ function MapCellDot({
   onDotMouseEnter,
   onDotMouseLeave,
 }: {
-  kind: "green" | "red";
+  kind: "green" | "yellow" | "red";
   redCount?: number;
   onDismiss?: () => void;
   showX?: boolean;
@@ -1575,7 +1581,10 @@ function MapCellDot({
   onDotMouseLeave?: () => void;
 }) {
   const isRed = kind === "red";
-  const bg = isRed ? "var(--danger)" : "var(--green)";
+  // Yellow inherits green's "non-interactive, no count, no dismiss" shape —
+  // it's an attention signal that clears on entry expand, not on a manual
+  // X-click. Color is canon-yellow.
+  const bg = isRed ? "var(--danger)" : kind === "yellow" ? "#dea838" : "var(--green)";
   return (
     <div
       style={{

@@ -103,10 +103,11 @@ export type V2RoomFeedProps = {
       cell's white outline. */
   isNewMap?: Record<string, boolean>;
   /** Per-thread notification signal (green = visible-new responses;
+      yellow = unseen highlight on viewer's writing in this entry;
       red = own-entry hidden responses). Only "green" matters for the
       entry card — drives the A2 green-filled circle behind the expand
-      chevron on collapsed cards. Red is map-only. */
-  cellSignals?: Record<string, { kind: "green" | "red"; redCount?: number }>;
+      chevron on collapsed cards. Yellow + red are map-only. */
+  cellSignals?: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }>;
   /** Set of threadIds the user has expanded-and-collapsed at least once
       this session. Drives A4 (entry card dim to opacity 0.5). */
   engagedThreadIds?: Set<string>;

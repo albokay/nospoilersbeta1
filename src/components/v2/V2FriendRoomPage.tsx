@@ -11,6 +11,7 @@ import {
   persistProgressUpdate,
   upsertEpisodeRating,
   deleteEpisodeRating,
+  fetchHighlights as dbFetchHighlights,
   type RoomMapMember,
   type Show,
 } from "../../lib/db";
@@ -139,6 +140,20 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // existing rate-change behavior (regardless of whether the notification
   // has cleared). Sticky for the session; cleared on page reload.
   const [firstHighlightedSet, setFirstHighlightedSet] = useState<Set<string>>(new Set());
+
+  // ── Yellow highlight notification dot tracking (C10) ──────────────────
+  // Per-thread MAX created_at of any highlight on viewer's writing in that
+  // thread (by a non-self author). Computed from the bulk highlight fetch.
+  // 0 = no relevant highlight.
+  const [latestHighlightOnViewerWriting, setLatestHighlightOnViewerWriting] =
+    useState<Record<string, number>>({});
+  // Per-thread last time the VIEWER expanded that entry — compared against
+  // latestHighlightOnViewerWriting to decide if the yellow dot shows.
+  // localStorage-persisted under `ns_highlight_seen` (single global JSON
+  // object keyed by threadId — small, doesn't grow per-room).
+  const [lastHighlightSeenAt, setLastHighlightSeenAt] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("ns_highlight_seen") || "{}"); } catch { return {}; }
+  });
 
   // Capture the last-room-visited snapshot ONCE per mount and write the
   // fresh stamp afterward. Skipping the rewrite would cause the snapshot
@@ -330,6 +345,102 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
       cancelled = true;
     };
   }, [groupId, user?.id]);
+
+  // ── Yellow highlight notification dot data (C10) ─────────────────────
+  // After feedEntries arrives, fetch:
+  //   - highlights on each entry (target_type='thread')
+  //   - viewer's reply IDs in this room (one supabase query)
+  //   - highlights on those reply IDs (target_type='reply')
+  // Then compute per-thread `latestHighlightOnViewerWriting`: the max
+  // created_at of any highlight on a piece of writing the viewer authored
+  // (entry or reply) where the highlight's author is NOT the viewer.
+  // fetchHighlights applies the C9 spoiler filter (viewerProgress) so we
+  // never see ahead-of-progress highlights through this signal either.
+  useEffect(() => {
+    if (!user?.id || !groupId || feedEntries.length === 0) {
+      setLatestHighlightOnViewerWriting({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const entryIds = feedEntries.map((e) => e.threadId);
+
+        // 1) Viewer's reply IDs in this room. Direct query — replies RLS
+        //    is `USING (true)` for authenticated, so this returns
+        //    everything matching the WHERE clause.
+        const { data: viewerReplyRows } = await supabase
+          .from("replies")
+          .select("id, thread_id")
+          .eq("group_id", groupId)
+          .eq("author_id", user.id);
+        const viewerReplyByThread: Record<string, string[]> = {};
+        const allViewerReplyIds: string[] = [];
+        for (const r of viewerReplyRows ?? []) {
+          (viewerReplyByThread[r.thread_id] ??= []).push(r.id);
+          allViewerReplyIds.push(r.id);
+        }
+
+        // 2) Highlights on entries (any author) + highlights on viewer's
+        //    replies (any author). Spoiler filter via viewerProgress so
+        //    rows authored past viewer progress are dropped server-side.
+        const [entryHL, replyHL] = await Promise.all([
+          dbFetchHighlights({
+            targetType: "thread",
+            targetIds: entryIds,
+            viewerProgress: progressForShow ?? undefined,
+          }),
+          allViewerReplyIds.length > 0
+            ? dbFetchHighlights({
+                targetType: "reply",
+                targetIds: allViewerReplyIds,
+                viewerProgress: progressForShow ?? undefined,
+              })
+            : Promise.resolve([]),
+        ]);
+
+        // 3) Compute per-thread latest relevant highlight timestamp.
+        //    Relevant = on viewer's writing AND author != viewer.
+        const latest: Record<string, number> = {};
+        const viewerUsername = profile?.username ?? null;
+
+        // For entry highlights: relevant only if viewer is the entry author.
+        // We look up via feedEntries (which has authorUsername).
+        const isViewerEntry: Record<string, boolean> = {};
+        for (const e of feedEntries) {
+          isViewerEntry[e.threadId] = !!viewerUsername && e.authorUsername === viewerUsername;
+        }
+        for (const h of entryHL) {
+          if (!isViewerEntry[h.targetId]) continue;
+          if (h.authorId === user.id) continue; // skip self
+          if (h.createdAt > (latest[h.targetId] ?? 0)) {
+            latest[h.targetId] = h.createdAt;
+          }
+        }
+
+        // For reply highlights: each reply maps back to one thread. The
+        // highlight counts toward THAT thread's signal.
+        const replyToThread: Record<string, string> = {};
+        for (const r of viewerReplyRows ?? []) {
+          replyToThread[r.id] = r.thread_id;
+        }
+        for (const h of replyHL) {
+          if (h.authorId === user.id) continue;
+          const tid = replyToThread[h.targetId];
+          if (!tid) continue;
+          if (h.createdAt > (latest[tid] ?? 0)) {
+            latest[tid] = h.createdAt;
+          }
+        }
+
+        if (cancelled) return;
+        setLatestHighlightOnViewerWriting(latest);
+      } catch (err) {
+        console.warn("highlight-signal fetch failed:", err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, groupId, feedEntries, progressForShow, profile?.username]);
 
   // Map cell click → scroll the feed to the ticket and flash highlight.
   // Also adds the threadId to firstHighlightedSet (per spec #2). For cells
@@ -636,6 +747,17 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
       try { localStorage.setItem("ns_last_opened", JSON.stringify(next)); } catch { /* ignore quota errors */ }
       return next;
     });
+    // C10 yellow-dot: mark "I've now seen all highlights up to this moment
+    // on this entry." Date.now() is the right value here because the
+    // comparison is against highlight.createdAt (also a Date.now()-shaped
+    // wall-clock timestamp). Persisted to localStorage so the dot stays
+    // dismissed across refresh / navigation / sign-out-in.
+    const nowMs = Date.now();
+    setLastHighlightSeenAt(prev => {
+      const next = { ...prev, [threadId]: nowMs };
+      try { localStorage.setItem("ns_highlight_seen", JSON.stringify(next)); } catch { /* ignore quota errors */ }
+      return next;
+    });
     if (wasGreen) {
       setGreenDismissedSet(prev => {
         if (prev.has(threadId)) return prev;
@@ -670,13 +792,19 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     setRedDismissedAt(prev => ({ ...prev, [threadId]: now }));
   }, []);
 
-  // Per-thread notification signals for the map. Precedence: GREEN beats RED.
-  // When green is dismissed in-session, red doesn't fill in until next load
-  // (greenDismissedSet check). Manual X-dismissal of red persists via
-  // localStorage. A1 (entry-card / map-cell white outline) tracked separately
-  // via isNewMap below.
+  // Per-thread notification signals for the map. Precedence (per Q4):
+  // GREEN > YELLOW > RED. One signal per cell at a time.
+  //   - green: visible-new responses on this entry (cleared on expand)
+  //   - yellow (C10): viewer has writing in this entry (own entry, or
+  //     authored a visible reply inside) AND there's a highlight on that
+  //     writing by another user that the viewer hasn't seen yet
+  //   - red: own-entry hidden responses (numbered, X-dismissable, persists
+  //     via localStorage)
+  // When green is dismissed in-session, red doesn't fill in until next
+  // load (greenDismissedSet check). Yellow doesn't have a parallel
+  // dismissal — it clears via expand → lastHighlightSeenAt bump.
   const cellSignals = useMemo(() => {
-    const out: Record<string, { kind: "green" | "red"; redCount?: number } > = {};
+    const out: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number } > = {};
     for (const entry of feedEntries) {
       if (entry.isDeleted) continue;
       const tid = entry.threadId;
@@ -685,6 +813,12 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
       const hasVisibleNew = latest > opened;
       if (hasVisibleNew) {
         out[tid] = { kind: "green" };
+        continue;
+      }
+      const latestHL = latestHighlightOnViewerWriting[tid] ?? 0;
+      const seenHL   = lastHighlightSeenAt[tid] ?? 0;
+      if (latestHL > seenHL) {
+        out[tid] = { kind: "yellow" };
         continue;
       }
       const isOwn = !!profile?.username && entry.authorUsername === profile.username;
@@ -696,7 +830,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
       }
     }
     return out;
-  }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, greenDismissedSet, redDismissedAt, profile?.username]);
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, greenDismissedSet, redDismissedAt, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
 
   // A1 isNew lookup — per-thread "new to me since my last room visit AND
   // not yet engaged this session." Used by V2RoomFeed for the white card
