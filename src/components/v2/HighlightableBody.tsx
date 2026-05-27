@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, ThumbsUp } from "lucide-react";
+import { linkifyText } from "../../lib/linkify";
 import type { Highlight } from "../../lib/db";
 
 // Same regex as src/lib/promptTokens.ts — keep in sync if that ever changes.
@@ -29,7 +30,7 @@ type BodyToken =
  * Returns segments with `text === ""` skipped (an all-whitespace segment
  * between two prompts contributes nothing visible).
  */
-function tokenizeBody(body: string): BodyToken[] {
+function tokenizeBody(body: string, bodyStartOffset: number = 0): BodyToken[] {
   const out: BodyToken[] = [];
   const re = new RegExp(PROMPT_TOKEN_RE.source, "g");
   let cursor = 0;
@@ -39,7 +40,7 @@ function tokenizeBody(body: string): BodyToken[] {
       const raw = body.slice(cursor, m.index);
       const trimmed = raw.replace(/\s+$/, "");
       if (trimmed.length > 0) {
-        out.push({ kind: "text", text: trimmed, bodyStart: cursor });
+        out.push({ kind: "text", text: trimmed, bodyStart: cursor + bodyStartOffset });
       }
     }
     out.push({ kind: "prompt", text: m[1].trim() });
@@ -51,7 +52,7 @@ function tokenizeBody(body: string): BodyToken[] {
     const leadingLen = leading ? leading[0].length : 0;
     const trimmed = raw.slice(leadingLen);
     if (trimmed.length > 0) {
-      out.push({ kind: "text", text: trimmed, bodyStart: cursor + leadingLen });
+      out.push({ kind: "text", text: trimmed, bodyStart: cursor + leadingLen + bodyStartOffset });
     }
   }
   return out;
@@ -71,42 +72,54 @@ function HighlightableSegment({
   highlights,
   currentUserId,
   onDeleteHighlight,
+  linkify = false,
 }: {
   text: string;
   bodyStart: number;
   highlights: Highlight[];
   currentUserId: string | null;
   onDeleteHighlight?: (id: string) => void;
+  /** When true, plain-text slices are run through linkifyText so URL-shaped
+   *  substrings render as <a> auto-links. Used by reply-body rendering;
+   *  entry bodies (V2InlineThread) pass linkify={false} matching the
+   *  pre-highlight behavior. */
+  linkify?: boolean;
 }) {
+  const renderText = (s: string): React.ReactNode => (linkify ? linkifyText(s) : s);
+
   const bodyEnd = bodyStart + text.length;
   const inSegment = highlights
     .filter(h => h.startOffset >= bodyStart && h.endOffset <= bodyEnd)
     .sort((a, b) => a.startOffset - b.startOffset);
 
   if (inSegment.length === 0) {
-    return <span data-body-start={bodyStart}>{text}</span>;
+    return <span data-body-start={bodyStart}>{renderText(text)}</span>;
   }
 
   const nodes: React.ReactNode[] = [];
   let cursor = bodyStart;
+  let runKey = 0;
   for (const h of inSegment) {
     if (h.startOffset > cursor) {
-      nodes.push(text.slice(cursor - bodyStart, h.startOffset - bodyStart));
+      const slice = text.slice(cursor - bodyStart, h.startOffset - bodyStart);
+      nodes.push(<React.Fragment key={`r-${runKey++}`}>{renderText(slice)}</React.Fragment>);
     }
     const segText = text.slice(h.startOffset - bodyStart, h.endOffset - bodyStart);
     nodes.push(
       <HighlightSpan
         key={h.id}
         highlight={h}
-        text={segText}
         isOwn={!!currentUserId && h.authorId === currentUserId}
         onDelete={onDeleteHighlight ? () => onDeleteHighlight(h.id) : undefined}
-      />
+      >
+        {renderText(segText)}
+      </HighlightSpan>
     );
     cursor = h.endOffset;
   }
   if (cursor < bodyEnd) {
-    nodes.push(text.slice(cursor - bodyStart));
+    const slice = text.slice(cursor - bodyStart);
+    nodes.push(<React.Fragment key={`r-${runKey++}`}>{renderText(slice)}</React.Fragment>);
   }
   return <span data-body-start={bodyStart}>{nodes}</span>;
 }
@@ -119,12 +132,12 @@ function HighlightableSegment({
  */
 function HighlightSpan({
   highlight,
-  text,
+  children,
   isOwn,
   onDelete,
 }: {
   highlight: Highlight;
-  text: string;
+  children: React.ReactNode;
   isOwn: boolean;
   onDelete?: () => void;
 }) {
@@ -168,7 +181,7 @@ function HighlightSpan({
       onMouseLeave={leave}
       style={{ background: CANON_YELLOW }}
     >
-      {text}
+      {children}
       {hovered && anchor && createPortal(
         <span
           onMouseEnter={enterTooltip}
@@ -243,13 +256,24 @@ export default function HighlightableBody({
   highlights,
   currentUserId,
   onDeleteHighlight,
+  bodyStart = 0,
+  linkify = false,
 }: {
   body: string;
   highlights: Highlight[];
   currentUserId: string | null;
   onDeleteHighlight?: (id: string) => void;
+  /** Raw-body offset where THIS slice starts in the source body string.
+   *  Default 0 — set when this renders only a sub-slice (e.g. the "before"
+   *  or "after" segment of a reply body that's been split around a QUOTE
+   *  token). */
+  bodyStart?: number;
+  /** Forwarded to HighlightableSegment. When true, plain-text slices are
+   *  auto-linked via linkifyText. Used by reply bodies (which previously
+   *  ran linkify via annotateTextWithSups + linkifyNodes). */
+  linkify?: boolean;
 }) {
-  const tokens = tokenizeBody(body);
+  const tokens = tokenizeBody(body, bodyStart);
   return (
     <>
       {tokens.map((tok, i) => {
@@ -268,6 +292,7 @@ export default function HighlightableBody({
             highlights={highlights}
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
+            linkify={linkify}
           />
         );
       })}

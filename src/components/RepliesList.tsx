@@ -29,8 +29,17 @@ function flashEl(el: HTMLElement) {
 }
 
 import type { Thread, Reply } from "../types";
-import type { CitationEntry } from "../lib/db";
-import { fetchRepliesForThread, likeReply as dbLikeReply, unlikeReply as dbUnlikeReply, editReply as dbEditReply, deleteReply as dbDeleteReply } from "../lib/db";
+import type { CitationEntry, Highlight } from "../lib/db";
+import {
+  fetchRepliesForThread,
+  likeReply as dbLikeReply,
+  unlikeReply as dbUnlikeReply,
+  editReply as dbEditReply,
+  deleteReply as dbDeleteReply,
+  fetchHighlights as dbFetchHighlights,
+  createHighlight as dbCreateHighlight,
+  deleteHighlight as dbDeleteHighlight,
+} from "../lib/db";
 import { useAuth } from "../lib/auth";
 import { canView, timeAgo, effectiveProgress, type ViewerProgress } from "../lib/utils";
 import EpisodeTag from "./EpisodeTag";
@@ -39,6 +48,8 @@ import LikeBadge from "./LikeBadge";
 import LoadingDots from "./LoadingDots";
 import Username from "./Username";
 import Tooltip from "./Tooltip";
+import HighlightPicker from "./HighlightPicker";
+import HighlightableBody, { selectionToBodyOffsets } from "./v2/HighlightableBody";
 import type { PendingReference } from "./ResponseComposer";
 import { useScrollHighlight } from "../hooks/useScrollHighlight";
 import { linkifyNodes } from "../lib/linkify";
@@ -190,6 +201,9 @@ function ReplyBody({
   referenceType,
   onScrollToRef,
   quoteSups = [],
+  highlights = [],
+  currentUserId = null,
+  onDeleteHighlight,
 }: {
   body: string;
   quotedText?: string | null;
@@ -197,8 +211,20 @@ function ReplyBody({
   currentUsername?: string | null;
   referenceType?: string | null;
   onScrollToRef?: () => void;
+  /** Kept for API compatibility; not currently passed by the live caller
+   *  in RepliesList (sup rendering is dormant). Reintroduced support would
+   *  need to interleave with the highlight overlay layer. */
   quoteSups?: SupEntry[];
+  /** Highlights on THIS reply (target_type='reply', target_id=r.id). Empty
+   *  on non-friend-room replies — the create_highlight RPC requires a
+   *  group_id, so non-friend-room replies can never have any. */
+  highlights?: Highlight[];
+  currentUserId?: string | null;
+  onDeleteHighlight?: (id: string) => void;
 }) {
+  // Suppress the unused-quoteSups warning while the API surface is preserved.
+  void quoteSups;
+
   if (referenceType === "quote") {
     // Determine display name: "I" for self-quotes, else author name or "Unknown"
     const displayAuthor = authorName && currentUsername && authorName === currentUsername
@@ -209,18 +235,19 @@ function ReplyBody({
     const match = QUOTE_TOKEN_RE.exec(body);
     if (match) {
       const inlineText = stripSupChars(match[1].trim());
-      const parts = body.split(QUOTE_TOKEN_RE);
-      const before = parts[0] ?? "";
-      const after = parts.slice(2).join("") ?? "";
-      const { nodes: beforeNodes, matchedIndices: bm } = annotateTextWithSups(before, quoteSups);
-      const afterBefore = quoteSups.filter(s => !bm.has(s.index));
-      const { nodes: quoteNodes, matchedIndices: qm } = annotateTextWithSups(inlineText, afterBefore);
-      const afterQuote = afterBefore.filter(s => !qm.has(s.index));
-      const { nodes: afterNodes, matchedIndices: am } = annotateTextWithSups(after, afterQuote);
-      const unmatched = afterQuote.filter(s => !am.has(s.index));
+      const before = body.slice(0, match.index);
+      const afterStart = match.index + match[0].length;
+      const after = body.slice(afterStart);
       return (
         <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
-          {beforeNodes}
+          <HighlightableBody
+            body={before}
+            highlights={highlights}
+            currentUserId={currentUserId}
+            onDeleteHighlight={onDeleteHighlight}
+            bodyStart={0}
+            linkify
+          />
           <blockquote
             className="blockquote-ref"
             onClick={onScrollToRef}
@@ -228,28 +255,36 @@ function ReplyBody({
             title={onScrollToRef ? "Click to jump to cited response" : undefined}
           >
             <div className="blockquote-author">{displayAuthor} wrote:</div>
-            <div className="blockquote-text">"{quoteNodes}"</div>
+            <div className="blockquote-text">"{inlineText}"</div>
           </blockquote>
-          {afterNodes}
-          <UnmatchedSups sups={unmatched} />
+          <HighlightableBody
+            body={after}
+            highlights={highlights}
+            currentUserId={currentUserId}
+            onDeleteHighlight={onDeleteHighlight}
+            bodyStart={afterStart}
+            linkify
+          />
         </div>
       );
     }
     // Legacy format: [QUOTE] token with separate quotedText field
     if (quotedText && body.includes("[QUOTE]")) {
       const strippedQuote = stripSupChars(quotedText ?? "");
-      const parts = body.split("[QUOTE]");
-      const before = parts[0] ?? "";
-      const after = parts.slice(1).join("[QUOTE]");
-      const { nodes: beforeNodes, matchedIndices: bm } = annotateTextWithSups(before, quoteSups);
-      const afterBefore = quoteSups.filter(s => !bm.has(s.index));
-      const { nodes: quoteNodes, matchedIndices: qm } = annotateTextWithSups(strippedQuote, afterBefore);
-      const afterQuote = afterBefore.filter(s => !qm.has(s.index));
-      const { nodes: afterNodes, matchedIndices: am } = annotateTextWithSups(after, afterQuote);
-      const unmatched = afterQuote.filter(s => !am.has(s.index));
+      const idx = body.indexOf("[QUOTE]");
+      const before = body.slice(0, idx);
+      const afterStart = idx + "[QUOTE]".length;
+      const after = body.slice(afterStart);
       return (
         <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
-          {beforeNodes}
+          <HighlightableBody
+            body={before}
+            highlights={highlights}
+            currentUserId={currentUserId}
+            onDeleteHighlight={onDeleteHighlight}
+            bodyStart={0}
+            linkify
+          />
           <blockquote
             className="blockquote-ref"
             onClick={onScrollToRef}
@@ -257,34 +292,33 @@ function ReplyBody({
             title={onScrollToRef ? "Click to jump to cited response" : undefined}
           >
             <div className="blockquote-author">{displayAuthor} wrote:</div>
-            <div className="blockquote-text">"{quoteNodes}"</div>
+            <div className="blockquote-text">"{strippedQuote}"</div>
           </blockquote>
-          {afterNodes}
-          <UnmatchedSups sups={unmatched} />
+          <HighlightableBody
+            body={after}
+            highlights={highlights}
+            currentUserId={currentUserId}
+            onDeleteHighlight={onDeleteHighlight}
+            bodyStart={afterStart}
+            linkify
+          />
         </div>
       );
     }
   }
-  // Plain text — first split on PROMPT tokens, then annotate remaining text with sups
-  const promptParts = parsePromptTokens(body);
-  const renderedParts: React.ReactNode[] = [];
-  let unmatchedSups: SupEntry[] = [...quoteSups];
-  let partKeyIdx = 0;
-  for (const part of promptParts) {
-    if (typeof part === "string") {
-      const { nodes, matchedIndices } = annotateTextWithSups(part, unmatchedSups);
-      unmatchedSups = unmatchedSups.filter(s => !matchedIndices.has(s.index));
-      renderedParts.push(...nodes.map((n, i) => <React.Fragment key={`pp-${partKeyIdx}-${i}`}>{n}</React.Fragment>));
-    } else {
-      renderedParts.push(<React.Fragment key={`pf-${partKeyIdx}`}>{part}</React.Fragment>);
-    }
-    partKeyIdx++;
-  }
-  const unmatched = unmatchedSups;
+  // Plain text (no quote reference) — HighlightableBody handles PROMPT tokens
+  // and highlight overlays. linkify forwards through to plain-text segments
+  // for URL auto-linking, matching the pre-refactor behavior.
   return (
     <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
-      {renderedParts}
-      <UnmatchedSups sups={unmatched} />
+      <HighlightableBody
+        body={body}
+        highlights={highlights}
+        currentUserId={currentUserId}
+        onDeleteHighlight={onDeleteHighlight}
+        bodyStart={0}
+        linkify
+      />
     </div>
   );
 }
@@ -298,6 +332,7 @@ export default function RepliesList({
   externalReplies, onRepliesLoaded, refreshKey, groupId, departedUsernames,
   orderMode = "episode",
   hideRespondButtons = false,
+  enableHighlights = false,
 }: {
   thread: Thread;
   progressForShow?: ViewerProgress;
@@ -342,6 +377,12 @@ export default function RepliesList({
   // instead of hiding them. Always-on in V2 (no risky toggle). V1 leaves
   // this undefined → existing hide-or-toggle behavior unchanged.
   showAheadStubs?: boolean;
+  // Friend-room reply highlights (the C5/C6 feature). V2 callers opt in by
+  // passing true; combined with `groupId` (which signals friend-room
+  // context), this gates the per-reply Highlight button + body overlay +
+  // picker. V1 callers leave undefined → no Highlight button anywhere,
+  // matching the V1 entry surface that also doesn't expose highlights.
+  enableHighlights?: boolean;
 }) {
   const { user, profile } = useAuth();
   const { scrollTo: scrollHighlight } = useScrollHighlight();
@@ -393,6 +434,23 @@ export default function RepliesList({
   const [retagWarningReplyId, setRetagWarningReplyId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // ── Highlights state (friend-room only — gated on groupId being set) ───
+  // highlightsByReply: keyed on reply id. Locally mutated on optimistic
+  // create/delete; bulk-fetched once per visible-reply-set change.
+  const [highlightsByReply, setHighlightsByReply] = useState<Record<string, Highlight[]>>({});
+  // When non-null, the picker is open for this reply with the captured
+  // selection range ready to submit.
+  const [highlightPicker, setHighlightPicker] = useState<
+    | { replyId: string; anchorRect: DOMRect; start: number; end: number; text: string }
+    | null
+  >(null);
+  // Per-reply inline error (overlap / network) — auto-clears on next action.
+  const [highlightError, setHighlightError] = useState<Record<string, string | null>>({});
+  // replyId currently showing the empty-selection hint modal, or null.
+  const [highlightHint, setHighlightHint] = useState<string | null>(null);
+  // Per-reply Highlight-button refs so we can capture anchorRect at click time.
+  const highlightBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const byId = useMemo(() => {
     const map: Record<string, Reply> = {};
@@ -460,6 +518,94 @@ export default function RepliesList({
     }
     prevProgRef.current = cur;
   }, [progressForShow, replies]);
+
+  // ── Highlights bulk-fetch ─────────────────────────────────────────────
+  // Only fetches when highlights are enabled (V2 caller) AND in friend-room
+  // context (groupId set). The Highlight button appears under the same
+  // condition, so V1 callers + non-friend-room contexts have a clean no-op.
+  const highlightsEnabled = !!enableHighlights && !!groupId;
+  const replyIdsKey = useMemo(() => replies.map(r => r.id).sort().join(","), [replies]);
+  useEffect(() => {
+    if (!highlightsEnabled) {
+      setHighlightsByReply({});
+      return;
+    }
+    const ids = replies.map(r => r.id);
+    if (ids.length === 0) {
+      setHighlightsByReply({});
+      return;
+    }
+    let cancelled = false;
+    dbFetchHighlights({ targetType: "reply", targetIds: ids })
+      .then((rows) => {
+        if (cancelled) return;
+        const byReply: Record<string, Highlight[]> = {};
+        for (const h of rows) {
+          (byReply[h.targetId] ??= []).push(h);
+        }
+        setHighlightsByReply(byReply);
+      });
+    return () => { cancelled = true; };
+  }, [highlightsEnabled, replyIdsKey]);
+
+  // ── Highlight handlers (reply-scoped) ─────────────────────────────────
+  const handleHighlightClickReply = (replyId: string) => {
+    if (!user) {
+      onAuthRequired();
+      return;
+    }
+    const sel = selectionToBodyOffsets();
+    if (!sel) {
+      setHighlightHint(replyId);
+      return;
+    }
+    const rect = highlightBtnRefs.current[replyId]?.getBoundingClientRect();
+    if (!rect) return;
+    setHighlightError((prev) => ({ ...prev, [replyId]: null }));
+    setHighlightPicker({ replyId, anchorRect: rect, start: sel.start, end: sel.end, text: sel.text });
+  };
+
+  const handleHighlightConfirmReply = async (
+    payload: { kind: "yup" } | { kind: "note"; note: string },
+  ) => {
+    if (!highlightPicker || !groupId) return;
+    const { replyId, start, end, text } = highlightPicker;
+    try {
+      const inserted = await dbCreateHighlight({
+        targetType:  "reply",
+        targetId:    replyId,
+        groupId,
+        startOffset: start,
+        endOffset:   end,
+        quotedText:  text,
+        kind:        payload.kind,
+        note:        payload.kind === "note" ? payload.note : null,
+      });
+      setHighlightsByReply((prev) => ({
+        ...prev,
+        [replyId]: [...(prev[replyId] ?? []), inserted],
+      }));
+      setHighlightPicker(null);
+      setHighlightError((prev) => ({ ...prev, [replyId]: null }));
+    } catch (e) {
+      const msg = (e as { message?: string })?.message ?? "Couldn't save highlight.";
+      setHighlightError((prev) => ({ ...prev, [replyId]: msg }));
+      setHighlightPicker(null);
+    }
+  };
+
+  const handleDeleteHighlightReply = (replyId: string, highlightId: string) => {
+    const snapshot = highlightsByReply[replyId] ?? [];
+    setHighlightsByReply((prev) => ({
+      ...prev,
+      [replyId]: (prev[replyId] ?? []).filter(h => h.id !== highlightId),
+    }));
+    dbDeleteHighlight(highlightId).catch((e) => {
+      console.warn("deleteHighlight (reply) failed:", e);
+      setHighlightsByReply((prev) => ({ ...prev, [replyId]: snapshot }));
+      setHighlightError((prev) => ({ ...prev, [replyId]: "Couldn't remove highlight." }));
+    });
+  };
 
   const canSeeSelf = (r: Reply) => canView({ season: r.season, episode: r.episode }, progressForShow);
 
@@ -652,6 +798,27 @@ export default function RepliesList({
 
   return (
     <>
+      {highlightPicker && (
+        <HighlightPicker
+          anchorRect={highlightPicker.anchorRect}
+          onClose={() => setHighlightPicker(null)}
+          onConfirm={handleHighlightConfirmReply}
+        />
+      )}
+
+      {highlightHint && (
+        <Modal onClose={() => setHighlightHint(null)} width="min(520px,92vw)" cardClassName="explanation-card">
+          <div style={{ padding: "16px 12px 12px" }}>
+            <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+              Want to react to something quickly? Highlight a portion of text then click the "Highlight..." button.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={() => setHighlightHint(null)}>Got it</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {quoteHintId && (
         <Modal onClose={() => setQuoteHintId(null)} width="min(520px,92vw)" cardClassName="explanation-card">
           <div style={{ padding: "16px 12px 12px" }}>
@@ -992,7 +1159,15 @@ export default function RepliesList({
                           ? () => scrollHighlight("thread-entry")
                           : undefined
                     }
+                    highlights={highlightsEnabled ? (highlightsByReply[r.id] ?? []) : []}
+                    currentUserId={user?.id ?? null}
+                    onDeleteHighlight={highlightsEnabled ? (hid) => handleDeleteHighlightReply(r.id, hid) : undefined}
                   />
+                  {highlightsEnabled && highlightError[r.id] && (
+                    <div style={{ fontSize: 12, color: "#f45028", marginTop: 6, fontStyle: "italic" }}>
+                      {highlightError[r.id]}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1010,6 +1185,22 @@ export default function RepliesList({
                       <button className="btn" style={{ fontSize: 13 }} onClick={() => handleStartEditReply(r)}>Edit</button>
                       <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={() => setDeleteConfirmId(r.id)}>Delete</button>
                     </>
+                  )}
+                  {highlightsEnabled && (
+                    <button
+                      ref={el => { highlightBtnRefs.current[r.id] = el; }}
+                      className="btn"
+                      style={{
+                        fontSize: 13,
+                        padding: "3px 12px",
+                        background: "#dea838",
+                        color: "#fff",
+                        border: "2px solid #dea838",
+                      }}
+                      onClick={() => handleHighlightClickReply(r.id)}
+                    >
+                      Highlight…
+                    </button>
                   )}
                   <div style={{ position: "relative", display: "inline-block" }}>
                     <button

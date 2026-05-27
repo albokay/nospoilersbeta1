@@ -670,6 +670,7 @@ export default function V2InlineThread({
           hideRespondButtons
           compactBorders
           showAheadStubs
+          enableHighlights
           onClickProfile={onClickProfile}
           focusReplyId={focusReplyId ?? null}
         />
