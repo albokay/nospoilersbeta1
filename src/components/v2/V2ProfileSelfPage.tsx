@@ -234,21 +234,8 @@ function pickDistinctDividerColors(n: number): string[] {
 }
 
 function HomeDivider({ color }: { color: string }) {
-  const [phase, setPhase] = useState<"up" | "down" | null>(null);
   const [hovered, setHovered] = useState(false);
   function handleClick() {
-    // Two-phase bounce: instant pop to scale(1.12), then animate back to
-    // scale(1) over 150ms. Cleared to null after ~200ms so no lingering
-    // transform property remains on the element (matches V2RoomMap's
-    // cell-bounce shape). Two rAFs guarantee the 'up' state renders
-    // before React batches it with the 'down' state.
-    setPhase("up");
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setPhase("down");
-        window.setTimeout(() => setPhase(null), 200);
-      });
-    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   return (
@@ -275,14 +262,6 @@ function HomeDivider({ color }: { color: string }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        // Bounce — same two-phase shape as V2RoomMap cell click. Idle has
-        // no transform property so the element doesn't sit in its own
-        // compositing layer.
-        ...(phase === "up"
-          ? { transform: "scale(1.12)", transition: "none" }
-          : phase === "down"
-          ? { transform: "scale(1)", transition: "transform 150ms ease-out" }
-          : {}),
       }}
     >
       {hovered && <ChevronUp size={24} color="#dea838" strokeWidth={2.5} />}

@@ -1091,6 +1091,13 @@ export default function V2RoomMap({
                       setPendingRatings((prev) => ({ ...prev, [cellKey]: target }));
                       triggerBounce(cellKey);
                     };
+                  } else if (entry && aboveViewer) {
+                    // Hidden entry — the member wrote at (s, e) but the
+                    // viewer hasn't reached it yet. Cell renders grey
+                    // (cellShapeStyle handles the fill) and click is a
+                    // no-op so the cursor doesn't suggest navigation.
+                    // Notification dot still renders over the grey fill.
+                    clickAction = null;
                   } else if (isMultiEntry) {
                     // Multi-entry cell: receding-layer cycle. On click,
                     // if the last-highlighted thread is still in the
@@ -1277,7 +1284,7 @@ export default function V2RoomMap({
                       // the viewer's last room visit. Overrides the default
                       // cell border color; thickness stays 2px to match the
                       // existing cell shape.
-                      const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode);
+                      const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer);
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry
                         ? { border: "2px solid #fff" }
                         : {};
@@ -1614,7 +1621,7 @@ function MapCellDot({
 // goes canon-red fill (regardless of entry/rating state). White dice
 // dots on top still render normally for rated cells. Not-reached self
 // cells stay dashed-circle (can't rate them).
-function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, editMode: boolean): React.CSSProperties {
+function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, editMode: boolean, aboveViewer: boolean = false): React.CSSProperties {
   if (editMode && isSelf && isReached) {
     return {
       background: "#f45028",
@@ -1624,6 +1631,19 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   }
   const filledBg = isSelf ? "#355eb8" : "#7abd8e";
   const outlineColor = isSelf ? "#355eb8" : "var(--dos-border)";
+  // Hidden-entry cell: the member authored at (s, e) but the viewer
+  // hasn't reached it yet — the entry is invisible to them. Use the
+  // same grey as the empty-cell outline / spine so the cell reads as
+  // "exists but not clickable." Notification dots still render on
+  // top (per-cell signal isn't gated on viewer visibility here; the
+  // dot is anchored at the wrapper's left edge regardless of fill).
+  if (isReached && hasEntry && aboveViewer) {
+    return {
+      background: "var(--dos-border)",
+      border: "2px solid var(--dos-border)",
+      borderRadius: CELL_RADIUS,
+    };
+  }
   if (isReached && hasEntry) {
     return {
       background: filledBg,
