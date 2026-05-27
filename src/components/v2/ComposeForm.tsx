@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../lib/auth";
 import {
   fetchShows,
@@ -89,13 +89,21 @@ type ComposeFormProps = {
   hideTopRightClose?: boolean;
 };
 
-export default function ComposeForm({
-  showId,
-  fromRating = false,
-  onCancel,
-  onSubmitted,
-  hideTopRightClose = false,
-}: ComposeFormProps) {
+/** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
+ *  can trigger the form's discard-with-dirty-check flow when its own close
+ *  button fires. Without this, the modal would need to duplicate the
+ *  dirty-check logic OR bypass it entirely (silently dropping the user's
+ *  draft). */
+export type ComposeFormHandle = {
+  /** Equivalent to the user clicking "× not now" — checks if the draft is
+   *  dirty, shows the confirm modal if so, else immediately calls onCancel. */
+  attemptDiscard: () => void;
+};
+
+const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
+  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false },
+  ref,
+) {
   const { user, profile, loading: authLoading } = useAuth();
 
   // Bootstrap.
@@ -256,7 +264,8 @@ export default function ComposeForm({
 
   // === DISCARD ===
   // Confirmation only when title or body has content. Same modal regardless
-  // of which "× not now" was clicked (top-right or action row).
+  // of which "× not now" was clicked (top-right or action row, OR the
+  // modal-wrapper's own × in modal mode — see ComposeModal).
   function attemptDiscard() {
     const dirty = postTitle.trim().length > 0 || postBody.trim().length > 0;
     if (dirty) {
@@ -265,6 +274,10 @@ export default function ComposeForm({
       doDiscard();
     }
   }
+
+  // Expose attemptDiscard via ref so ComposeModal's own × button can
+  // trigger the same dirty-check + confirm flow as the in-form × buttons.
+  useImperativeHandle(ref, () => ({ attemptDiscard }));
   function doDiscard() {
     // Discard navigation is the caller's responsibility — standalone
     // V2ComposePage wrapper navigates to returnTo (or /v3/journal as
@@ -900,7 +913,9 @@ export default function ComposeForm({
       )}
     </div>
   );
-}
+});
+
+export default ComposeForm;
 
 // === DESTINATION PILL =========================================================
 //

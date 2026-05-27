@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./lib/auth";
 import App from "./App";
 import BetaGate from "./components/BetaGate";
+import { ComposeModalProvider } from "./components/v2/ComposeModal";
 import { startHeaderClickAudit } from "./lib/devHeaderAudit";
 
 startHeaderClickAudit();
@@ -20,7 +21,9 @@ window.__reactRoot.render(
   <BetaGate>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <ComposeModalProvider>
+          <App />
+        </ComposeModalProvider>
       </AuthProvider>
     </BrowserRouter>
   </BetaGate>
