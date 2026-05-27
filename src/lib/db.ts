@@ -3923,3 +3923,155 @@ export async function deleteEpisodeRating(args: {
     .eq("episode_number", args.episode);
   if (error) throw error;
 }
+
+// ── Highlights (friend-room text annotations) ────────────────────────────
+
+export type Highlight = {
+  id: string;
+  targetType: "thread" | "reply";
+  targetId: string;
+  groupId: string;
+  authorId: string;
+  authorUsername: string;
+  startOffset: number;
+  endOffset: number;
+  quotedText: string;
+  kind: "yup" | "note";
+  note: string | null;
+  createdAt: number;
+};
+
+function rowToHighlight(row: any): Highlight {
+  return {
+    id:             row.id,
+    targetType:     row.target_type,
+    targetId:       row.target_id,
+    groupId:        row.group_id,
+    authorId:       row.author_id,
+    authorUsername: row.profiles?.username ?? "unknown",
+    startOffset:    row.start_offset,
+    endOffset:      row.end_offset,
+    quotedText:     row.quoted_text,
+    kind:           row.kind,
+    note:           row.note ?? null,
+    createdAt:      new Date(row.created_at).getTime(),
+  };
+}
+
+/**
+ * Fetch highlights for a batch of targets. Used on entry / reply render to
+ * pull every annotation for everything currently visible in one round-trip.
+ * Returns an empty array for an empty input (no query fired).
+ *
+ * RLS gates SELECT on room membership; non-members get an empty result for
+ * targets in rooms they're not in (not an error).
+ */
+export async function fetchHighlights(args: {
+  targetType: "thread" | "reply";
+  targetIds: string[];
+}): Promise<Highlight[]> {
+  if (!args.targetIds.length) return [];
+  const { data, error } = await supabase
+    .from("highlights")
+    .select("*, profiles(username)")
+    .eq("target_type", args.targetType)
+    .in("target_id", args.targetIds)
+    .order("start_offset", { ascending: true });
+  if (error) {
+    console.warn("fetchHighlights failed:", error);
+    return [];
+  }
+  return (data ?? []).map(rowToHighlight);
+}
+
+/**
+ * Create a highlight via the create_highlight RPC. The RPC runs the
+ * membership, target-in-group, and overlap checks atomically.
+ *
+ * Server-side error codes are translated into user-facing messages:
+ *   - "overlap"             → "Someone already highlighted part of this text."
+ *   - "not_a_member"        → "You're not a member of this room."
+ *   - "target_not_in_group" → "Couldn't attach the highlight — please refresh."
+ *   - other                 → the raw error message
+ *
+ * Length validations mirror the DB CHECK constraints (1..2000 quoted_text,
+ * 1..50 note when kind='note') so a malformed call fails fast on the client.
+ */
+export async function createHighlight(args: {
+  targetType: "thread" | "reply";
+  targetId: string;
+  groupId: string;
+  startOffset: number;
+  endOffset: number;
+  quotedText: string;
+  kind: "yup" | "note";
+  note?: string | null;
+}): Promise<Highlight> {
+  await checkRateLimit("create_highlight", 30, 60);
+  validateLength("Highlighted text", args.quotedText, 1, 2000);
+  if (args.kind === "note") {
+    validateLength("Note", args.note ?? "", 1, 50);
+  }
+  if (args.endOffset <= args.startOffset) {
+    throw new Error("Invalid highlight range.");
+  }
+
+  const { data, error } = await supabase.rpc("create_highlight", {
+    p_target_type:  args.targetType,
+    p_target_id:    args.targetId,
+    p_group_id:     args.groupId,
+    p_start_offset: args.startOffset,
+    p_end_offset:   args.endOffset,
+    p_quoted_text:  args.quotedText,
+    p_kind:         args.kind,
+    p_note:         args.kind === "note" ? (args.note ?? "").trim() : null,
+  });
+  if (error) {
+    const msg = (error.message || "").toLowerCase();
+    if (msg.includes("overlap")) {
+      throw new Error("Someone already highlighted part of this text.");
+    }
+    if (msg.includes("not_a_member")) {
+      throw new Error("You're not a member of this room.");
+    }
+    if (msg.includes("target_not_in_group")) {
+      throw new Error("Couldn't attach the highlight — please refresh.");
+    }
+    if (msg.includes("not_authenticated")) {
+      throw new Error("Please sign in to highlight.");
+    }
+    throw error;
+  }
+
+  // The RPC returns the inserted row as a single object (RETURNS public.highlights).
+  // PostgREST surfaces it without the embedded profiles join — fill in the
+  // username locally via a quick lookup so the caller gets a fully-populated
+  // Highlight (same shape as fetchHighlights). Best-effort: tooltip will show
+  // "unknown" if the lookup fails, which is harmless.
+  const inserted = data as any;
+  let username = "unknown";
+  try {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", inserted.author_id)
+      .single();
+    if (prof?.username) username = prof.username;
+  } catch (e) {
+    console.warn("createHighlight: username lookup failed:", e);
+  }
+  return rowToHighlight({ ...inserted, profiles: { username } });
+}
+
+/**
+ * Delete the caller's own highlight. RLS policy "highlights: author can delete"
+ * gates this to author_id = auth.uid(); attempts to delete another user's
+ * highlight silently no-op (zero rows affected, no error).
+ */
+export async function deleteHighlight(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("highlights")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+}
