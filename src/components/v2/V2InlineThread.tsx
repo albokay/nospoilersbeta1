@@ -4,6 +4,8 @@ import Modal from "../Modal";
 import RepliesList from "../RepliesList";
 import ResponseComposer, { type PendingReference } from "../ResponseComposer";
 import Tooltip from "../Tooltip";
+import HighlightPicker from "../HighlightPicker";
+import HighlightableBody, { selectionToBodyOffsets } from "./HighlightableBody";
 import { useAuth } from "../../lib/auth";
 import {
   deleteThread as dbDeleteThread,
@@ -11,10 +13,13 @@ import {
   fetchV2ThreadDetail,
   likeReply as dbLikeReply,
   unlikeReply as dbUnlikeReply,
+  fetchHighlights as dbFetchHighlights,
+  createHighlight as dbCreateHighlight,
+  deleteHighlight as dbDeleteHighlight,
   type CitationEntry,
+  type Highlight,
 } from "../../lib/db";
 import { effectiveProgress } from "../../lib/utils";
-import { parsePromptTokens } from "../../lib/promptTokens";
 import type { ProgressEntry, Thread } from "../../types";
 
 // V2 friend-room inline thread view.
@@ -115,6 +120,25 @@ export default function V2InlineThread({
   const [repliesKey, setRepliesKey] = useState(0);
   const [threadQuoteHint, setThreadQuoteHint] = useState(false);
 
+  // ── Highlights state ────────────────────────────────────────────────────
+  // Fetched once on mount; locally mutated on optimistic create/delete so
+  // the renderer reflects changes without a refetch round-trip.
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  // When non-null, the HighlightPicker is open, anchored to anchorRect,
+  // with the captured selection range ready to submit.
+  const [highlightPicker, setHighlightPicker] = useState<
+    | { anchorRect: DOMRect; start: number; end: number; text: string }
+    | null
+  >(null);
+  // Inline error message shown below the body (overlap / network / etc).
+  // Auto-clears on next successful action.
+  const [highlightError, setHighlightError] = useState<string | null>(null);
+  // Empty-selection hint modal — mirrors threadQuoteHint pattern.
+  const [highlightHint, setHighlightHint] = useState(false);
+  // Ref on the Highlight button so we can capture its bounding rect at
+  // click time and pass it to the picker for anchored positioning.
+  const highlightBtnRef = useRef<HTMLButtonElement>(null);
+
   // Setting a pending reference (from the entry's Quote button OR from
   // RepliesList's per-reply quote affordance) auto-opens the composer so
   // the user immediately sees the staged quote.
@@ -173,6 +197,71 @@ export default function V2InlineThread({
       cancelled = true;
     };
   }, [thread.id, groupId, userId, onThreadLikeStateChange]);
+
+  // Fetch highlights for the entry body. Reply highlights are fetched
+  // by RepliesList in C6. Best-effort: returns [] on failure (see db.ts).
+  useEffect(() => {
+    let cancelled = false;
+    dbFetchHighlights({ targetType: "thread", targetIds: [thread.id] })
+      .then((rows) => {
+        if (cancelled) return;
+        setHighlights(rows);
+      });
+    return () => { cancelled = true; };
+  }, [thread.id]);
+
+  // ── Highlight handlers ──────────────────────────────────────────────────
+  const handleHighlightClick = () => {
+    if (!userId) {
+      onAuthRequired?.();
+      return;
+    }
+    const sel = selectionToBodyOffsets();
+    if (!sel) {
+      setHighlightHint(true);
+      return;
+    }
+    const rect = highlightBtnRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setHighlightError(null);
+    setHighlightPicker({ anchorRect: rect, start: sel.start, end: sel.end, text: sel.text });
+  };
+
+  const handleHighlightConfirm = async (
+    payload: { kind: "yup" } | { kind: "note"; note: string },
+  ) => {
+    if (!highlightPicker) return;
+    try {
+      const inserted = await dbCreateHighlight({
+        targetType:  "thread",
+        targetId:    thread.id,
+        groupId,
+        startOffset: highlightPicker.start,
+        endOffset:   highlightPicker.end,
+        quotedText:  highlightPicker.text,
+        kind:        payload.kind,
+        note:        payload.kind === "note" ? payload.note : null,
+      });
+      setHighlights((prev) => [...prev, inserted]);
+      setHighlightPicker(null);
+      setHighlightError(null);
+    } catch (e) {
+      const msg = (e as { message?: string })?.message ?? "Couldn't save highlight.";
+      setHighlightError(msg);
+      setHighlightPicker(null);
+    }
+  };
+
+  const handleDeleteHighlight = (id: string) => {
+    // Optimistic remove; restore on failure.
+    const snapshot = highlights;
+    setHighlights((prev) => prev.filter((h) => h.id !== id));
+    dbDeleteHighlight(id).catch((e) => {
+      console.warn("deleteHighlight failed:", e);
+      setHighlights(snapshot);
+      setHighlightError("Couldn't remove highlight.");
+    });
+  };
 
   // ── Reply-level like / unlike ───────────────────────────────────────────
   const handleLikeReply = useCallback(
@@ -451,9 +540,20 @@ export default function V2InlineThread({
         </div>
       ) : (
         <div ref={bodyRef} style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 8 }}>
-          {parsePromptTokens(thread.body).map((part, i) => (
-            <React.Fragment key={`body-${i}`}>{part}</React.Fragment>
-          ))}
+          <HighlightableBody
+            body={thread.body}
+            highlights={highlights}
+            currentUserId={userId}
+            onDeleteHighlight={handleDeleteHighlight}
+          />
+        </div>
+      )}
+
+      {/* Inline error for highlight create / delete failures (overlap /
+          rate limit / network). Self-clears on next successful action. */}
+      {highlightError && !isTombstone && !editing && (
+        <div style={{ fontSize: 12, color: "#f45028", marginTop: 6, fontStyle: "italic" }}>
+          {highlightError}
         </div>
       )}
 
@@ -507,6 +607,20 @@ export default function V2InlineThread({
               </button>
             </>
           )}
+          <button
+            ref={highlightBtnRef}
+            className="btn"
+            onClick={handleHighlightClick}
+            style={{
+              fontSize: 13,
+              padding: "3px 12px",
+              background: "#dea838",
+              color: "#fff",
+              border: "2px solid #dea838",
+            }}
+          >
+            Highlight…
+          </button>
           <button
             className="btn"
             onClick={handleQuoteThread}
@@ -631,6 +745,31 @@ export default function V2InlineThread({
           </button>
         )}
       </div>
+
+      {/* Highlight picker — anchored below the Highlight button. Opens when
+          the user has a non-empty selection and clicks Highlight. */}
+      {highlightPicker && (
+        <HighlightPicker
+          anchorRect={highlightPicker.anchorRect}
+          onClose={() => setHighlightPicker(null)}
+          onConfirm={handleHighlightConfirm}
+        />
+      )}
+
+      {/* Empty-selection hint modal — same shape as the Quote hint below;
+          shown when the user clicks Highlight without first selecting text. */}
+      {highlightHint && (
+        <Modal onClose={() => setHighlightHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
+          <div style={{ padding: "16px 12px 12px" }}>
+            <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+              Want to react to something quickly? Highlight a portion of text then click the "Highlight..." button.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={() => setHighlightHint(false)}>Got it</button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Quote hint modal — v1's copy ported verbatim. Shown when the user
           clicks Quote with no text highlighted. */}
