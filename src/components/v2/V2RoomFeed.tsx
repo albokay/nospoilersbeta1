@@ -512,8 +512,17 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 }}
               >
                 <h2 style={{ margin: 0, fontSize: 22 }} className="title">
+                  <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}>
+                    <Users size={14} color="var(--icon-color)" />
+                  </span>
+                  {entry.isDeleted ? "(deleted entry)" : entry.title}
                   {!entry.isDeleted && (
-                    <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginRight: 8, whiteSpace: "nowrap" }}>
+                    // SE tag rendered inline AFTER the title with a " / "
+                    // separator. Same size / weight / family as the title
+                    // (inherits from the h2 .title class) but white — the
+                    // tag reads as title-level chrome, not body text.
+                    <span style={{ color: "#fff", whiteSpace: "nowrap", marginLeft: 8 }}>
+                      {" / "}
                       <EpisodeTag
                         season={entry.s}
                         episode={entry.e}
@@ -521,13 +530,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                         rewatchS={entry.rewatchS}
                         rewatchE={entry.rewatchE}
                         naturalNumbers
+                        parens={false}
                       />
                     </span>
                   )}
-                  <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}>
-                    <Users size={14} color="var(--icon-color)" />
-                  </span>
-                  {entry.isDeleted ? "(deleted entry)" : entry.title}
                   {!entry.isDeleted && entry.isEdited && (
                     <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
                   )}

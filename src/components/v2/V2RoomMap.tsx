@@ -952,9 +952,7 @@ export default function V2RoomMap({
                 {row.isFirstOfSeason && (
                   <span
                     style={{
-                      fontStyle: "italic",
                       fontSize: 14,
-                      opacity: 0.7,
                       whiteSpace: "nowrap",
                       color: "#fff",
                     }}
@@ -975,8 +973,6 @@ export default function V2RoomMap({
                   justifyContent: "flex-end",
                   paddingRight: 4,
                   fontSize: 12,
-                  opacity: 0.6,
-                  fontStyle: "italic",
                   color: "#fff",
                 }}
               >
