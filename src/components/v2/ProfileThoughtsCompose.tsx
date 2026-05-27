@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { X, RefreshCw, ArrowRight } from "lucide-react";
+import { X, RefreshCw } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import { pickProfileThoughtPrompt } from "../../lib/profileThoughtPrompts";
 import { preventLastWordOrphan } from "../../lib/utils";
@@ -223,15 +223,9 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
     }
   }
 
-  // Action button copy. Mirrors the spec's three-state rule:
-  //  - edit-public → "save" (no state transition possible)
-  //  - destination = featured → "publish to profile"
-  //  - destination = private  → "save privately"
-  const actionLabel = destinationLocked
-    ? "save"
-    : destination === "featured"
-      ? "publish to profile"
-      : "save privately";
+  // (actionLabel removed — replaced by the two-button footer that picks
+  // destination implicitly; edit-public's "save" label is inlined into
+  // the destination-locked branch of the primary button.)
 
   const titleLen = titleCompletion.length;
   const showCounter = titleLen > 80;
@@ -506,81 +500,85 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
           {styleBlock}
           {whitePaper}
 
-          {/* Bottom row — destination pills stacked bottom-LEFT, action
-              buttons (× not now + save) bottom-RIGHT. align-items: flex-end
-              so the bottom pill aligns vertically with the action buttons. */}
+          {/* Bottom row — single right-aligned cluster:
+              [× not now] [post privately] [post to your profile]
+              (create + edit-private), or [× not now] [save] when the
+              destination is locked (edit-public — published thoughts
+              can't downgrade to private). Destination pills are gone:
+              each action button picks its destination implicitly, same
+              shape as the inline empty-state form. */}
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              gap: 16,
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: 10,
               flexWrap: "wrap",
             }}
           >
-            {/* Left: stacked destination pills. Renders only when not locked
-                (i.e. not in edit-public mode). Placeholder div keeps the
-                flex layout balanced in the locked case. */}
-            {!destinationLocked ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <DestinationPill
-                  selected={destination === "private"}
-                  bg="#7abd8e"
-                  fg="#fff"
-                  label="private — only you'll see this"
-                  onClick={() => setDestination("private")}
-                />
-                <DestinationPill
-                  selected={destination === "featured"}
-                  bg="#dea838"
-                  fg="#fff"
-                  label="featured on your profile"
-                  onClick={() => setDestination("featured")}
-                />
-              </div>
-            ) : (
-              <div />
-            )}
-
-            {/* Right: action buttons */}
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={attemptClose}
+              disabled={submitting}
+              style={{
+                background: "transparent",
+                border: `2px solid ${RULE}`,
+                color: INK_SOFT,
+                borderRadius: 9999,
+                padding: "10px 20px",
+                fontFamily: "Inter, sans-serif",
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: submitting ? "not-allowed" : "pointer",
+              }}
+            >
+              × not now
+            </button>
+            {!destinationLocked && (
               <button
-                onClick={attemptClose}
+                onClick={() => handleSubmit("private")}
                 disabled={submitting}
                 style={{
                   background: "transparent",
-                  border: `2px solid ${RULE}`,
-                  color: INK_SOFT,
+                  border: `2px solid ${INK}`,
+                  color: INK,
                   borderRadius: 9999,
-                  padding: "10px 20px",
+                  padding: "10px 22px",
                   fontFamily: "Inter, sans-serif",
                   fontSize: 13,
                   fontWeight: 500,
                   cursor: submitting ? "not-allowed" : "pointer",
+                  minWidth: 140,
                 }}
               >
-                × not now
+                post privately
               </button>
-              <button
-                onClick={() => handleSubmit()}
-                disabled={submitting}
-                // v2-thoughts-publish-button is always on — gives us a
-                // specificity hook to force transparent border (no outline)
-                // regardless of context. v2-thoughts-publish-featured adds
-                // when destination=featured to flip fill to canon yellow.
-                className={`btn post h40 v2-thoughts-publish-button${destination === "featured" ? " v2-thoughts-publish-featured" : ""}`}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 0,
-                  cursor: submitting ? "not-allowed" : "pointer",
-                  minWidth: 160,
-                }}
-              >
-                {submitting ? <>saving<LoadingDots /></> : <>{actionLabel}<ArrowRight size={14} /></>}
-              </button>
-            </div>
+            )}
+            <button
+              onClick={() => handleSubmit("featured")}
+              disabled={submitting}
+              style={{
+                background: "#355eb8",
+                color: "#fff",
+                border: "none",
+                borderRadius: 9999,
+                padding: "10px 22px",
+                fontFamily: "Inter, sans-serif",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: submitting ? "not-allowed" : "pointer",
+                minWidth: 160,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
+            >
+              {submitting
+                ? <>saving<LoadingDots /></>
+                : destinationLocked
+                  ? <>save</>
+                  : <>post to your profile</>}
+            </button>
           </div>
 
           {submitError && (
@@ -668,60 +666,5 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
   );
 }
 
-// Single-select destination pill — same shape as V2ComposePage's
-// DestinationPill so the visual language carries over.
-function DestinationPill({
-  selected,
-  bg,
-  fg,
-  label,
-  onClick,
-}: {
-  selected: boolean;
-  bg: string;
-  fg: string;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={selected}
-      style={{
-        background: bg,
-        color: fg,
-        border: "none",
-        borderRadius: 9999,
-        height: 40,
-        padding: "0 22px",
-        width: "100%",
-        cursor: "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 12,
-        fontFamily: "inherit",
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          width: 16,
-          height: 16,
-          borderRadius: "50%",
-          background: CREAM_BG,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        {selected && (
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: bg }} />
-        )}
-      </span>
-      <span style={{ fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 500, color: fg, lineHeight: 1.2, whiteSpace: "nowrap" }}>
-        {label}
-      </span>
-    </button>
-  );
-}
+// DestinationPill helper removed — the new two-button footer replaces
+// the radio-style pill UI. Each button picks its destination implicitly.
