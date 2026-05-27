@@ -204,9 +204,9 @@ function HighlightSpan({
             top:  anchor.y - 16,
             left: anchor.x,
             // Center horizontally on cursor, lift fully above cursor, then
-            // tilt 6° counter-clockwise. transformOrigin pins the rotation
-            // to the bottom-center so the bubble appears to lean, not pivot.
-            transform: "translate(-50%, -100%) rotate(-6deg)",
+            // tilt 6° clockwise. transformOrigin pins the rotation to the
+            // bottom-center so the bubble appears to lean, not pivot.
+            transform: "translate(-50%, -100%) rotate(6deg)",
             transformOrigin: "bottom center",
             background: CREAM,
             color: CANON_NAVY,
