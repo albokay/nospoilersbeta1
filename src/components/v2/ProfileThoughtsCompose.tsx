@@ -27,6 +27,11 @@ const RULE_GRADIENT = `repeating-linear-gradient(
   transparent ${LH}px
 )`;
 const BODY_MIN_LINES = 11;
+// Inline mode (V2 self profile empty state) starts shorter — the form
+// sits in page flow with a tighter visual footprint at idle. Auto-grow
+// behavior + max-grow are unchanged; only the starting min-height
+// differs.
+const BODY_MIN_LINES_INLINE = 5;
 
 // Title soft cap (visual counter turns red); hard cap blocks further input.
 const TITLE_SOFT_CAP = 100;
@@ -127,6 +132,10 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
     }
   }, [titleCompletion]);
 
+  // Idle (min) line count differs between modal and inline modes — see
+  // BODY_MIN_LINES_INLINE comment. Auto-grow / snap behavior is identical.
+  const minLines = inline ? BODY_MIN_LINES_INLINE : BODY_MIN_LINES;
+
   // Auto-grow textarea — snaps to 28px multiples. Same shape as
   // [V2ComposePage.tsx:172](src/components/v2/V2ComposePage.tsx:172).
   function autosize() {
@@ -136,7 +145,7 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
     // Drop the previous "max(target, current)" pattern — that path only
     // grew, which left the textarea oversized after the user deleted lines.
     ta.style.height = "auto";
-    const target = Math.max(BODY_MIN_LINES * LH, Math.ceil(ta.scrollHeight / LH) * LH);
+    const target = Math.max(minLines * LH, Math.ceil(ta.scrollHeight / LH) * LH);
     ta.style.height = `${target}px`;
     ta.style.minHeight = `${target}px`;
     // Once the body grows past the modal's visible area, scroll the modal
@@ -379,8 +388,8 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
           width: "100%",
           minWidth: "100%",
           maxWidth: "100%",
-          height: `${BODY_MIN_LINES * LH}px`,
-          minHeight: `${BODY_MIN_LINES * LH}px`,
+          height: `${minLines * LH}px`,
+          minHeight: `${minLines * LH}px`,
           resize: "vertical",
           overflow: "hidden",
           outline: "none",
