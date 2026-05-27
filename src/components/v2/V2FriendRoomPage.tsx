@@ -209,6 +209,25 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
 
   const feedRef = useRef<V2RoomFeedHandle>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // ── Same-room publish refetch + expand signal ───────────────────────
+  // When the user publishes from the compose modal to the room they're
+  // already in, the modal navigates to /v2/room/<groupId> with
+  // state.publishedThreadId set. The page doesn't unmount (same URL), so
+  // the existing bootstrap effect's [groupId, user.id] deps don't fire
+  // and the new entry never lands in feedEntries until the user manually
+  // refreshes. To handle this, we use a refetch counter as a third
+  // bootstrap dep, and a ref to carry the thread id from publish→fetch→
+  // expand without re-triggering on every render. Cleared once consumed.
+  const [refetchCounter, setRefetchCounter] = useState(0);
+  const pendingExpandAfterRefetchRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = (location.state as { publishedThreadId?: string } | null)?.publishedThreadId;
+    if (id && pendingExpandAfterRefetchRef.current !== id) {
+      pendingExpandAfterRefetchRef.current = id;
+      setRefetchCounter((c) => c + 1);
+    }
+  }, [location.state]);
   // Default to descending — newest episode tag at the top of the feed.
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   // User filter — null = show everyone. When non-null, restricts the feed
@@ -331,6 +350,18 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
         setPerThreadLatestReply(groupResult.latestVisibleReplyAt);
         setPerThreadHiddenCount(groupResult.hiddenCounts ?? {});
         setPerThreadLatestHidden(groupResult.latestHiddenReplyAt ?? {});
+        // Same-room publish flow: if the modal navigated here with a
+        // publishedThreadId, expand that entry now that feedEntries is
+        // populated. Defer one tick so V2RoomFeed has the new entries +
+        // its refs in the DOM. Ref-cleared so subsequent renders don't
+        // re-expand.
+        if (pendingExpandAfterRefetchRef.current) {
+          const targetId = pendingExpandAfterRefetchRef.current;
+          if (entries.some((e) => e.threadId === targetId)) {
+            setTimeout(() => feedRef.current?.expandEntry(targetId), 0);
+          }
+          pendingExpandAfterRefetchRef.current = null;
+        }
         // Seed manual-dismiss timestamps for any visible thread that has a
         // stored localStorage flag — read once at load so render-time
         // predicates can stay synchronous.
@@ -354,7 +385,10 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [groupId, user?.id]);
+    // refetchCounter is bumped by the publishedThreadId watcher above so a
+    // same-room compose modal publish forces a fresh fetch (the new entry
+    // wouldn't otherwise land in feedEntries until next manual refresh).
+  }, [groupId, user?.id, refetchCounter]);
 
   // ── Yellow highlight notification dot data (C10) ─────────────────────
   // After feedEntries arrives, fetch:

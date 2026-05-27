@@ -111,9 +111,14 @@ export function ComposeModalProvider({ children }: { children: React.ReactNode }
   // standalone V2ComposePage post-publish landing logic exactly:
   //   private → /v3/journal with activeTab seeded + private-lane filter
   //   public  → /show/<id> (V1 public conversation surface)
-  //   group   → /v2/room/<groupId>
+  //   group   → /v2/room/<groupId> + state.publishedThreadId
+  //     The latter is read by V2FriendRoomPage as a "refetch + expand"
+  //     signal — without it, a same-room publish (user wrote from the
+  //     friend room they're going back to) doesn't trigger a remount,
+  //     so the new entry is missing from the page's already-loaded
+  //     feedEntries until the user manually refreshes.
   const handleSubmitted = useCallback(
-    (destination: "private" | "public" | string, _threadId: string) => {
+    (destination: "private" | "public" | string, threadId: string) => {
       const showId = args?.showId;
       close();
       if (destination === "private") {
@@ -122,7 +127,7 @@ export function ComposeModalProvider({ children }: { children: React.ReactNode }
         if (showId) navigate(`/show/${showId}`);
         else navigate("/v3/journal");
       } else {
-        navigate(`/v2/room/${destination}`);
+        navigate(`/v2/room/${destination}`, { state: { publishedThreadId: threadId } });
       }
     },
     [args, close, navigate],

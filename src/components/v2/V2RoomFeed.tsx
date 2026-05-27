@@ -65,6 +65,10 @@ export type V2RoomFeedEntry = {
 
 export type V2RoomFeedHandle = {
   scrollToEntry: (threadId: string) => void;
+  /** Programmatically expand an entry (no scroll, no flash). Used by
+   *  V2FriendRoomPage after a same-room publish so the freshly-written
+   *  entry lands expanded without the user having to find it + click. */
+  expandEntry: (threadId: string) => void;
 };
 
 export type V2RoomFeedProps = {
@@ -358,7 +362,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     }, HIGHLIGHT_MS);
   }, []);
 
-  useImperativeHandle(ref, () => ({ scrollToEntry }), [scrollToEntry]);
+  const expandEntry = useCallback((threadId: string) => {
+    setExpandedThreadId(threadId);
+  }, []);
+
+  useImperativeHandle(ref, () => ({ scrollToEntry, expandEntry }), [scrollToEntry, expandEntry]);
 
   // Scroll the ticket's top into view INSTANTLY. Used by both collapse
   // paths (bottom button and the inline collapse buttons in V2InlineThread)
