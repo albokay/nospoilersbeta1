@@ -30,9 +30,13 @@ interface Props {
   anchorRect: DOMRect;
   onClose: () => void;
   onConfirm: (payload: { kind: "yup" } | { kind: "note"; note: string }) => void | Promise<void>;
+  /** Color for the radio dot AND the `ok` button — defaults to canon-yellow
+   *  (entry-body context). Reply-body context passes canon-light-blue to
+   *  visually associate the picker with the reply's light-blue highlight. */
+  color?: string;
 }
 
-export default function HighlightPicker({ anchorRect, onClose, onConfirm }: Props) {
+export default function HighlightPicker({ anchorRect, onClose, onConfirm, color = CANON_YELLOW }: Props) {
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const noteInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -161,7 +165,7 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm }: Prop
             cursor: "pointer",
           }}
         >
-          <CanonRadio checked={selected === "yup"} color={CANON_YELLOW} />
+          <CanonRadio checked={selected === "yup"} color={color} />
           <span>Yup.</span>
         </label>
 
@@ -213,9 +217,9 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm }: Prop
           onClick={handleOk}
           disabled={!canSubmit}
           style={{
-            background: canSubmit ? CANON_YELLOW : "rgba(222,168,56,0.45)",
+            background: canSubmit ? color : "rgba(150,150,150,0.35)",
             color: "#fff",
-            border: canSubmit ? `2px solid ${CANON_YELLOW}` : "none",
+            border: canSubmit ? `2px solid ${color}` : "none",
             padding: "6px 16px",
             borderRadius: 9999,
             fontSize: 12,

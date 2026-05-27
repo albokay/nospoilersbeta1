@@ -247,6 +247,7 @@ function ReplyBody({
             onDeleteHighlight={onDeleteHighlight}
             bodyStart={0}
             linkify
+            color="#adc8d7"
           />
           <blockquote
             className="blockquote-ref"
@@ -264,6 +265,7 @@ function ReplyBody({
             onDeleteHighlight={onDeleteHighlight}
             bodyStart={afterStart}
             linkify
+            color="#adc8d7"
           />
         </div>
       );
@@ -284,6 +286,7 @@ function ReplyBody({
             onDeleteHighlight={onDeleteHighlight}
             bodyStart={0}
             linkify
+            color="#adc8d7"
           />
           <blockquote
             className="blockquote-ref"
@@ -301,6 +304,7 @@ function ReplyBody({
             onDeleteHighlight={onDeleteHighlight}
             bodyStart={afterStart}
             linkify
+            color="#adc8d7"
           />
         </div>
       );
@@ -817,6 +821,7 @@ export default function RepliesList({
           anchorRect={highlightPicker.anchorRect}
           onClose={() => setHighlightPicker(null)}
           onConfirm={handleHighlightConfirmReply}
+          color="#adc8d7"
         />
       )}
 
@@ -1207,9 +1212,9 @@ export default function RepliesList({
                       style={{
                         fontSize: 13,
                         padding: "3px 12px",
-                        background: "#dea838",
+                        background: "#adc8d7",
                         color: "#fff",
-                        border: "2px solid #dea838",
+                        border: "2px solid #adc8d7",
                         borderRadius: 9999,
                         cursor: "pointer",
                         fontWeight: 500,

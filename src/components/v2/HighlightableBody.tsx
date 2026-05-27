@@ -12,6 +12,10 @@ const CANON_YELLOW = "#dea838";
 const CANON_NAVY   = "#1a3a4a";
 const CREAM        = "#fef8ea";
 
+// Default highlight fill — used for entry bodies. Reply bodies pass a
+// light-blue override via the `color` prop (canon-light-blue per spec).
+const DEFAULT_HIGHLIGHT_COLOR = CANON_YELLOW;
+
 // Internal tokenization shape. `text` segments carry the rendered text plus
 // the raw-body offset where that rendered text starts (after any whitespace
 // trim). `prompt` tokens render as non-highlightable blockquotes and don't
@@ -73,6 +77,7 @@ function HighlightableSegment({
   currentUserId,
   onDeleteHighlight,
   linkify = false,
+  color = DEFAULT_HIGHLIGHT_COLOR,
 }: {
   text: string;
   bodyStart: number;
@@ -84,6 +89,9 @@ function HighlightableSegment({
    *  entry bodies (V2InlineThread) pass linkify={false} matching the
    *  pre-highlight behavior. */
   linkify?: boolean;
+  /** Highlight span fill color. Default canon-yellow for entry bodies;
+   *  reply bodies pass canon-light-blue. */
+  color?: string;
 }) {
   const renderText = (s: string): React.ReactNode => (linkify ? linkifyText(s) : s);
 
@@ -111,6 +119,7 @@ function HighlightableSegment({
         highlight={h}
         isOwn={!!currentUserId && h.authorId === currentUserId}
         onDelete={onDeleteHighlight ? () => onDeleteHighlight(h.id) : undefined}
+        color={color}
       >
         {renderText(segText)}
       </HighlightSpan>
@@ -135,11 +144,13 @@ function HighlightSpan({
   children,
   isOwn,
   onDelete,
+  color = DEFAULT_HIGHLIGHT_COLOR,
 }: {
   highlight: Highlight;
   children: React.ReactNode;
   isOwn: boolean;
   onDelete?: () => void;
+  color?: string;
 }) {
   const [hovered, setHovered] = useState(false);
   // Cursor position captured on mouseenter — the tooltip anchors here so
@@ -150,7 +161,9 @@ function HighlightSpan({
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Grace period so the cursor can travel from the highlighted span into
-  // the (portaled) tooltip without it closing en route.
+  // the (portaled) tooltip without it closing en route. 500ms is generous
+  // enough that the cursor can land on the × delete button without the
+  // tooltip vanishing mid-trip.
   const enterSpan = (e: React.MouseEvent) => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
     setAnchor({ x: e.clientX, y: e.clientY });
@@ -162,7 +175,7 @@ function HighlightSpan({
     if (closeTimer.current) clearTimeout(closeTimer.current);
   };
   const leave = () => {
-    closeTimer.current = setTimeout(() => setHovered(false), 120);
+    closeTimer.current = setTimeout(() => setHovered(false), 500);
   };
 
   useEffect(() => () => {
@@ -179,7 +192,7 @@ function HighlightSpan({
     <span
       onMouseEnter={enterSpan}
       onMouseLeave={leave}
-      style={{ background: CANON_YELLOW }}
+      style={{ background: color, padding: "2px 2px" }}
     >
       {children}
       {hovered && anchor && createPortal(
@@ -258,6 +271,7 @@ export default function HighlightableBody({
   onDeleteHighlight,
   bodyStart = 0,
   linkify = false,
+  color = DEFAULT_HIGHLIGHT_COLOR,
 }: {
   body: string;
   highlights: Highlight[];
@@ -272,6 +286,9 @@ export default function HighlightableBody({
    *  auto-linked via linkifyText. Used by reply bodies (which previously
    *  ran linkify via annotateTextWithSups + linkifyNodes). */
   linkify?: boolean;
+  /** Highlight fill color. Default canon-yellow (entries). Reply bodies
+   *  pass canon-light-blue (`#adc8d7`) to distinguish reaction context. */
+  color?: string;
 }) {
   const tokens = tokenizeBody(body, bodyStart);
   return (
@@ -293,6 +310,7 @@ export default function HighlightableBody({
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
             linkify={linkify}
+            color={color}
           />
         );
       })}
