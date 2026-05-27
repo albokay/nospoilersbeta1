@@ -6,6 +6,7 @@ import { supabase } from "./supabaseClient";
 import type { Thread, Reply, FriendGroup, FriendGroupMember, Invitation } from "../types";
 import type { PromptEntry } from "./promptData";
 import { repliesByThread } from "./mockData";
+import { canView, type ViewerProgress } from "./utils";
 
 // ── Rate-limit helpers ──────────────────────────────────────────────────────
 
@@ -3947,6 +3948,11 @@ export type Highlight = {
   kind: "yup" | "note";
   note: string | null;
   createdAt: number;
+  /** Author's effective progress at the moment they CREATED the highlight.
+   *  Spoiler tag: viewers must be at-or-past this to see the highlight.
+   *  Snapshot semantics match threads.season/episode + replies.season/episode. */
+  authorSeason: number;
+  authorEpisode: number;
 };
 
 function rowToHighlight(row: any): Highlight {
@@ -3963,6 +3969,8 @@ function rowToHighlight(row: any): Highlight {
     kind:           row.kind,
     note:           row.note ?? null,
     createdAt:      new Date(row.created_at).getTime(),
+    authorSeason:   row.author_season ?? 0,
+    authorEpisode:  row.author_episode ?? 0,
   };
 }
 
@@ -3979,10 +3987,17 @@ function rowToHighlight(row: any): Highlight {
  *
  * RLS gates SELECT on room membership; non-members get an empty result for
  * targets in rooms they're not in (not an error).
+ *
+ * When `viewerProgress` is provided, applies the spoiler filter: highlights
+ * whose author snapshot (author_season / author_episode) is past the
+ * viewer's effective progress are dropped. Mirrors the threads/replies
+ * canView pattern. Pass undefined (or omit) to skip the filter — used by
+ * the C10 notification-dot pipeline which has its own visibility logic.
  */
 export async function fetchHighlights(args: {
   targetType: "thread" | "reply";
   targetIds: string[];
+  viewerProgress?: ViewerProgress;
 }): Promise<Highlight[]> {
   if (!args.targetIds.length) return [];
   const { data, error } = await supabase
@@ -3998,8 +4013,21 @@ export async function fetchHighlights(args: {
   const rows = data ?? [];
   if (rows.length === 0) return [];
 
+  // Spoiler filter: drop rows where author snapshot is past viewer progress.
+  // Done BEFORE the username lookup so we don't waste a round-trip on rows
+  // we're going to discard anyway.
+  const visibleRows = args.viewerProgress
+    ? rows.filter((r: any) =>
+        canView(
+          { season: r.author_season ?? 0, episode: r.author_episode ?? 0 },
+          args.viewerProgress,
+        ),
+      )
+    : rows;
+  if (visibleRows.length === 0) return [];
+
   // Batch-fetch usernames for all distinct authors in one round-trip.
-  const authorIds = Array.from(new Set(rows.map((r: any) => r.author_id)));
+  const authorIds = Array.from(new Set(visibleRows.map((r: any) => r.author_id)));
   const usernameById: Record<string, string> = {};
   const { data: profs, error: profErr } = await supabase
     .from("profiles")
@@ -4013,7 +4041,7 @@ export async function fetchHighlights(args: {
     usernameById[p.id] = p.username;
   }
 
-  return rows.map((r: any) =>
+  return visibleRows.map((r: any) =>
     rowToHighlight({ ...r, profiles: { username: usernameById[r.author_id] ?? "unknown" } }),
   );
 }
@@ -4040,6 +4068,12 @@ export async function createHighlight(args: {
   quotedText: string;
   kind: "yup" | "note";
   note?: string | null;
+  /** Author's effective progress at create time — snapshotted onto the
+   *  highlight row as the spoiler tag. Caller computes via
+   *  effectiveProgress(viewerProgress). Falls back to 0/0 if undefined,
+   *  which keeps the highlight visible to anyone who's started watching. */
+  authorSeason: number;
+  authorEpisode: number;
 }): Promise<Highlight> {
   await checkRateLimit("create_highlight", 30, 60);
   validateLength("Highlighted text", args.quotedText, 1, 2000);
@@ -4051,14 +4085,16 @@ export async function createHighlight(args: {
   }
 
   const { data, error } = await supabase.rpc("create_highlight", {
-    p_target_type:  args.targetType,
-    p_target_id:    args.targetId,
-    p_group_id:     args.groupId,
-    p_start_offset: args.startOffset,
-    p_end_offset:   args.endOffset,
-    p_quoted_text:  args.quotedText,
-    p_kind:         args.kind,
-    p_note:         args.kind === "note" ? (args.note ?? "").trim() : null,
+    p_target_type:    args.targetType,
+    p_target_id:      args.targetId,
+    p_group_id:       args.groupId,
+    p_start_offset:   args.startOffset,
+    p_end_offset:     args.endOffset,
+    p_quoted_text:    args.quotedText,
+    p_kind:           args.kind,
+    p_note:           args.kind === "note" ? (args.note ?? "").trim() : null,
+    p_author_season:  args.authorSeason,
+    p_author_episode: args.authorEpisode,
   });
   if (error) {
     const msg = (error.message || "").toLowerCase();

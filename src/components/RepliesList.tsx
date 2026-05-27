@@ -540,7 +540,11 @@ export default function RepliesList({
       return;
     }
     let cancelled = false;
-    dbFetchHighlights({ targetType: "reply", targetIds: ids })
+    dbFetchHighlights({
+      targetType: "reply",
+      targetIds: ids,
+      viewerProgress: progressForShow,
+    })
       .then((rows) => {
         if (cancelled) return;
         const byReply: Record<string, Highlight[]> = {};
@@ -550,7 +554,7 @@ export default function RepliesList({
         setHighlightsByReply(byReply);
       });
     return () => { cancelled = true; };
-  }, [highlightsEnabled, replyIdsKey]);
+  }, [highlightsEnabled, replyIdsKey, progressForShow]);
 
   // ── Highlight handlers (reply-scoped) ─────────────────────────────────
   const handleHighlightClickReply = (replyId: string) => {
@@ -576,16 +580,25 @@ export default function RepliesList({
   ) => {
     if (!highlightPicker || !groupId) return;
     const { replyId, start, end, text } = highlightPicker;
+    // Snapshot the viewer's effective progress as the highlight's spoiler tag.
+    // Fall back to the reply's own season/episode (the lowest valid floor:
+    // the viewer must be at-or-past that to see the reply at all).
+    const eff = effectiveProgress(progressForShow);
+    const replyRow = byId[replyId];
+    const authorSeason  = eff?.s ?? replyRow?.season ?? 0;
+    const authorEpisode = eff?.e ?? replyRow?.episode ?? 0;
     try {
       const inserted = await dbCreateHighlight({
-        targetType:  "reply",
-        targetId:    replyId,
+        targetType:    "reply",
+        targetId:      replyId,
         groupId,
-        startOffset: start,
-        endOffset:   end,
-        quotedText:  text,
-        kind:        payload.kind,
-        note:        payload.kind === "note" ? payload.note : null,
+        startOffset:   start,
+        endOffset:     end,
+        quotedText:    text,
+        kind:          payload.kind,
+        note:          payload.kind === "note" ? payload.note : null,
+        authorSeason,
+        authorEpisode,
       });
       setHighlightsByReply((prev) => ({
         ...prev,
@@ -736,10 +749,13 @@ export default function RepliesList({
       // check) until next mount. Only when highlights are enabled for this
       // RepliesList instance (V2 friend rooms).
       if (highlightsEnabled) {
-        dbFetchHighlights({ targetType: "reply", targetIds: [rid] })
-          .then((fresh) => {
-            setHighlightsByReply(prev => ({ ...prev, [rid]: fresh }));
-          });
+        dbFetchHighlights({
+          targetType: "reply",
+          targetIds: [rid],
+          viewerProgress: progressForShow,
+        }).then((fresh) => {
+          setHighlightsByReply(prev => ({ ...prev, [rid]: fresh }));
+        });
       }
       setEditingReplyId(null);
     } catch (e: any) {

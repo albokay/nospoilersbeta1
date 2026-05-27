@@ -200,15 +200,21 @@ export default function V2InlineThread({
 
   // Fetch highlights for the entry body. Reply highlights are fetched
   // by RepliesList in C6. Best-effort: returns [] on failure (see db.ts).
+  // Passes viewerProgress so the spoiler filter (Q1 / C9) drops any
+  // highlight whose author was past the viewer at create time.
   useEffect(() => {
     let cancelled = false;
-    dbFetchHighlights({ targetType: "thread", targetIds: [thread.id] })
+    dbFetchHighlights({
+      targetType: "thread",
+      targetIds: [thread.id],
+      viewerProgress: viewerProgress ?? undefined,
+    })
       .then((rows) => {
         if (cancelled) return;
         setHighlights(rows);
       });
     return () => { cancelled = true; };
-  }, [thread.id]);
+  }, [thread.id, viewerProgress]);
 
   // ── Highlight handlers ──────────────────────────────────────────────────
   const handleHighlightClick = () => {
@@ -234,16 +240,25 @@ export default function V2InlineThread({
     payload: { kind: "yup" } | { kind: "note"; note: string },
   ) => {
     if (!highlightPicker) return;
+    // Snapshot the viewer's effective progress as the highlight's spoiler tag
+    // — viewers behind this won't see the highlight. Falls back to the
+    // entry's own season/episode if progress isn't computable (defensive;
+    // shouldn't happen for a signed-in friend-room member).
+    const eff = effectiveProgress(viewerProgress);
+    const authorSeason  = eff?.s ?? thread.season;
+    const authorEpisode = eff?.e ?? thread.episode;
     try {
       const inserted = await dbCreateHighlight({
-        targetType:  "thread",
-        targetId:    thread.id,
+        targetType:    "thread",
+        targetId:      thread.id,
         groupId,
-        startOffset: highlightPicker.start,
-        endOffset:   highlightPicker.end,
-        quotedText:  highlightPicker.text,
-        kind:        payload.kind,
-        note:        payload.kind === "note" ? payload.note : null,
+        startOffset:   highlightPicker.start,
+        endOffset:     highlightPicker.end,
+        quotedText:    highlightPicker.text,
+        kind:          payload.kind,
+        note:          payload.kind === "note" ? payload.note : null,
+        authorSeason,
+        authorEpisode,
       });
       setHighlights((prev) => [...prev, inserted]);
       setHighlightPicker(null);
@@ -359,8 +374,11 @@ export default function V2InlineThread({
       // `highlights` state still has the pre-edit offsets — they'd render
       // at wrong positions (or get filtered out by segment-bounds check)
       // until the next mount.
-      dbFetchHighlights({ targetType: "thread", targetIds: [thread.id] })
-        .then(setHighlights);
+      dbFetchHighlights({
+        targetType: "thread",
+        targetIds: [thread.id],
+        viewerProgress: viewerProgress ?? undefined,
+      }).then(setHighlights);
       setEditing(false);
     } catch (e) {
       const msg =
