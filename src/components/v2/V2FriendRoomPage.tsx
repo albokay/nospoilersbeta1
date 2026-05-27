@@ -928,16 +928,16 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               two-pane container extends through it, letting the sticky
               map stay pinned all the way to the page bottom. */}
           <div style={{ flex: `0 1 ${FEED_MAX_W}px`, minWidth: 0, marginLeft: "auto", transform: "translateX(-176px)", paddingBottom: 120 }}>
-            {/* Banner row 1 — eyebrow + room name + settings gear.
-                The "to public conversation" globe button moved DOWN to
-                banner row 2 alongside the sort + watch-progress controls
-                (matches V1 public space's grouping — the cross-space nav
-                button lives with the sort + progress cluster, not the
-                title block). */}
+            {/* Banner row 1 — eyebrow + room name + settings gear (left)
+                + "to public conversation" globe button (right). Matches V1
+                public-space's `.bannerRow1` layout: flex / align-items:
+                flex-end / justify-content: space-between, so the icon
+                button baseline-aligns with the title row. */}
             <div
               style={{
                 display: "flex",
-                alignItems: "flex-start",
+                alignItems: "flex-end",
+                justifyContent: "space-between",
                 gap: 16,
                 padding: "8px 0",
                 flexWrap: "wrap",
@@ -984,9 +984,39 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                   </span>
                 </div>
               </div>
+              {/* Tooltip portal={true} — without it the bubble is captured
+                  by an ancestor stacking context (the V2 two-pane layout
+                  with transforms) and renders pinned to the viewport's
+                  right edge instead of below the button. Same fix shape as
+                  the highlight picker portal. */}
+              <Tooltip
+                text="go to public conversation"
+                direction="below"
+                portal
+                tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
+              >
+                <button
+                  className="btn"
+                  onClick={handleToPublic}
+                  aria-label="go to public conversation"
+                  style={{
+                    flexShrink: 0,
+                    padding: "5px 10px",
+                    background: "transparent",
+                    border: "2px solid #fff",
+                    color: "#fff",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Globe size={16} color="#fff" style={{ flexShrink: 0 }} />
+                  <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                </button>
+              </Tooltip>
             </div>
 
-            {/* Banner row 2 — write button + (right) "to public" + sort + watch-progress */}
+            {/* Banner row 2 — write button + sort + watch-progress */}
             <div
               style={{
                 display: "flex",
@@ -1005,30 +1035,6 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 <SquarePen size={15} /> write
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Tooltip
-                  text="go to public conversation"
-                  direction="below"
-                  tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
-                >
-                  <button
-                    className="btn"
-                    onClick={handleToPublic}
-                    aria-label="go to public conversation"
-                    style={{
-                      flexShrink: 0,
-                      padding: "5px 10px",
-                      background: "transparent",
-                      border: "2px solid #fff",
-                      color: "#fff",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <Globe size={16} color="#fff" style={{ flexShrink: 0 }} />
-                    <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
-                  </button>
-                </Tooltip>
                 <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                   {/* Single dropdown encodes both sort + user-filter state.
                       Values are namespaced: "sort:<asc|desc>" or
