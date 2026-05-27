@@ -478,11 +478,20 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 paddingBottom: 36,
                 // Border precedence: blue flash (map-cell click) wins
                 // briefly, then falls back to white-when-new, then default.
+                // The blue border animates color through `flash-border-blue`
+                // (theme.ts) so the outline oscillates instead of holding a
+                // static blue. Inline border-color sets the initial value;
+                // the keyframes override during the animation. After the
+                // 1.2s animation completes, isHighlighted clears (via
+                // HIGHLIGHT_MS = 1500) and the border falls back.
                 border: isHighlighted
                   ? "4px solid #355eb8"
                   : isNew
                   ? "4px solid #fff"
                   : "4px solid var(--dos-border)",
+                animation: isHighlighted
+                  ? "flash-border-blue 1.2s ease forwards"
+                  : undefined,
                 // A4 dim: 50% opacity once the user has expanded-and-
                 // collapsed this entry at least once this session.
                 // Suppressed on the currently-expanded card so the open
@@ -503,6 +512,18 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 }}
               >
                 <h2 style={{ margin: 0, fontSize: 22 }} className="title">
+                  {!entry.isDeleted && (
+                    <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginRight: 8, whiteSpace: "nowrap" }}>
+                      <EpisodeTag
+                        season={entry.s}
+                        episode={entry.e}
+                        isRewatch={entry.isRewatch}
+                        rewatchS={entry.rewatchS}
+                        rewatchE={entry.rewatchE}
+                        naturalNumbers
+                      />
+                    </span>
+                  )}
                   <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}>
                     <Users size={14} color="var(--icon-color)" />
                   </span>
@@ -554,18 +575,6 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   opacity: entry.isDeleted ? 0.35 : undefined,
                 }}
               >
-                {!entry.isDeleted && (
-                  <>
-                    <EpisodeTag
-                      season={entry.s}
-                      episode={entry.e}
-                      isRewatch={entry.isRewatch}
-                      rewatchS={entry.rewatchS}
-                      rewatchE={entry.rewatchE}
-                      naturalNumbers
-                    />{" "}
-                  </>
-                )}
                 <Username
                   name={entry.authorUsername}
                   userId={entry.authorId}

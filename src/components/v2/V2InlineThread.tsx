@@ -613,12 +613,13 @@ export default function V2InlineThread({
         </div>
       )}
 
-      {/* Shared bottom row — collapse on the LEFT, "Write a response" on
-          the RIGHT. The CTA is hidden on tombstones (no replies allowed)
-          and when the composer is open (replaced by the composer above).
-          Tightened from the prior layout where collapse + write were two
-          separate right-aligned divs with marginTop 40 + 16. */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+      {/* Shared bottom row — collapse + "Write a response" RIGHT-aligned
+          and adjacent (collapse immediately left of write). The CTA is
+          hidden on tombstones (no replies allowed) and when the composer
+          is open (replaced by the composer above). When the composer is
+          open and only the collapse is left, it still sits on the right
+          edge (consistent placement across states). */}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginTop: 12 }}>
         {collapseButton}
         {!isTombstone && !composerOpen && (
           <button

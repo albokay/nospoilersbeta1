@@ -644,6 +644,15 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
         return next;
       });
     }
+    // The A1 white "new" outline clears on FIRST EXPAND (not on collapse
+    // as it did originally). Add to engagedSet here too — isNewMap reads
+    // this set to gate the outline.
+    setEngagedSet(prev => {
+      if (prev.has(threadId)) return prev;
+      const next = new Set(prev);
+      next.add(threadId);
+      return next;
+    });
   }, [perThreadLatestReply, lastOpenedAt]);
 
   const handleEntryCollapsed = useCallback((threadId: string) => {

@@ -419,6 +419,20 @@ header.site{
 }
 .flash-cover{ position:absolute; inset:0; background:rgba(122,189,142,0.55); pointer-events:none; border-radius:inherit; animation:flash-blink 1.2s ease forwards; }
 
+/* Entry-ticket blue border flash on map-cell click (V2 friend room).
+   Drives the highlight when the user clicks a map cell — same timing
+   family as flash-blink, but applied to the border-color of the card
+   so the OUTLINE oscillates instead of an overlay fill. Ends faded to
+   transparent so the card's default border bleeds back through. */
+@keyframes flash-border-blue{
+  0%   { border-color:#355eb8; }
+  20%  { border-color:rgba(53,94,184,0.15); }
+  40%  { border-color:#355eb8; }
+  60%  { border-color:rgba(53,94,184,0.15); }
+  80%  { border-color:#355eb8; }
+  100% { border-color:rgba(53,94,184,0); }
+}
+
 /* Animated ellipsis dots (e.g. "sending invite" indicator in the group
    settings modal). Three dots fade in sequence, then all fade, loop. */
 @keyframes invite-dot-fade{

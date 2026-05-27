@@ -880,6 +880,7 @@ export default function RepliesList({
                         rewatchS={r.rewatchS}
                         rewatchE={r.rewatchE}
                         parens={false}
+                        naturalNumbers
                       />
                     </span>
                   )}
