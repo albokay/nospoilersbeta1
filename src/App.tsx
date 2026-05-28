@@ -668,7 +668,7 @@ function AppShell() {
     if (name === username) {
       navigate("/profile");
     } else {
-      navigate(`/user/${encodeURIComponent(name)}`);
+      navigate(`/u/${encodeURIComponent(name)}`);
     }
     requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
   };
@@ -958,7 +958,7 @@ function AppShell() {
               <button
                 className="profileChip"
                 onClick={() => {
-                  navigate("/v2/profile");
+                  navigate("/profile");
                   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
                 }}
                 style={{

@@ -233,8 +233,8 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           the line is plain text. */}
       <div style={{ fontSize: 13, fontWeight: 400, lineHeight: 1.2, color: "var(--dos-light)", marginBottom: 4 }}>
         <a
-          href={`/v2/u/${username}`}
-          onClick={(e) => { e.preventDefault(); navigate(`/v2/u/${username}`); }}
+          href={`/u/${username}`}
+          onClick={(e) => { e.preventDefault(); navigate(`/u/${username}`); }}
           style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dashed var(--dos-gray)" }}
         >
           @{username}

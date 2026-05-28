@@ -116,7 +116,12 @@ export default function InviteAcceptPage({ token }: { token: string }) {
       sessionStorage.setItem(`ns_invite_welcome_${showId}`, "1");
     }
     setTimeout(() => {
-      window.location.assign("/profile");
+      // Land in the journal (V3JournalPage handles the invitedMode
+      // welcome surface, reading ns_invite_welcome_<showId> from
+      // sessionStorage). The promoted /profile is V2ProfileSelfPage —
+      // shelves + thoughts, no journal content — so this redirect
+      // moved from /profile → /journal during the URL promotion arc.
+      window.location.assign("/journal");
     }, 1800);
   }
 

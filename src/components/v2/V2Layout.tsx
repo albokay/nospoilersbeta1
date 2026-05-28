@@ -87,13 +87,13 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
               role="button"
               aria-label="Go to your journal"
               onClick={() => {
-                navigate("/v3/journal");
+                navigate("/journal");
                 requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  navigate("/v3/journal");
+                  navigate("/journal");
                 }
               }}
             >
@@ -140,7 +140,7 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
             <button
               className="profileChip"
               onClick={onProfileFamily ? undefined : () => {
-                navigate("/v3/journal");
+                navigate("/journal");
                 requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
               }}
               style={onProfileFamily ? { cursor: "default" } : undefined}
@@ -162,7 +162,7 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
               <button
                 className="profileChip"
                 onClick={() => {
-                  navigate("/v2/profile");
+                  navigate("/profile");
                   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
                 }}
                 // Override .profileChip's filled canon-blue background with

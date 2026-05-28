@@ -413,7 +413,7 @@ export default function InlineThreadView({
     // "delete sends you home" UX request). Each branch fires this only on
     // success so a failed delete leaves the user in place to retry.
     const redirectToJournal = () => {
-      navigate("/v3/journal", { state: { activeTab: thread.showId } });
+      navigate("/journal", { state: { activeTab: thread.showId } });
     };
     if (groupIdProp) {
       if (!window.confirm("Remove this post from this room? It will stay in your journal.")) return;

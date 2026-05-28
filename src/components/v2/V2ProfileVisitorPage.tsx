@@ -98,7 +98,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
   // shape for our own profile.
   useEffect(() => {
     if (profile?.username && profile.username === username) {
-      navigate("/v2/profile", { replace: true });
+      navigate("/profile", { replace: true });
     }
   }, [profile?.username, username, navigate]);
 
@@ -607,7 +607,7 @@ function ContextualCTAs({
       return (
         <button
           className="btn h40"
-          onClick={() => navigate(`/v2/room/${sharedRoom.groupId}`)}
+          onClick={() => navigate(`/room/${sharedRoom.groupId}`)}
           style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
         >
           <ArrowRight size={13} /> go to your friend room
@@ -631,7 +631,7 @@ function ContextualCTAs({
   const publicCTA = ownerHasPublic ? (
     <button
       className="btn h40"
-      onClick={() => navigate(`/v2/u/${ownerUsername}/show/${showId}/posts`)}
+      onClick={() => navigate(`/u/${ownerUsername}/show/${showId}/posts`)}
       style={{ fontSize: 12 }}
     >
       see @{ownerUsername}'s public posts on {showName}

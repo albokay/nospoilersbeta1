@@ -467,7 +467,7 @@ export default function V3JournalPage({
     // ShowSection per the V2 scope boundary.
     setTabDropdownOpen(null);
     if (groupId) {
-      navigate(`/v2/room/${groupId}`);
+      navigate(`/room/${groupId}`);
       requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
       return;
     }
@@ -986,8 +986,8 @@ export default function V3JournalPage({
                   // opacity. Pill radius matches the site's .btn convention
                   // (9999px). Arrow lives inside the pill.
                   <a
-                    href="/v2/profile"
-                    onClick={(e) => { e.preventDefault(); navigate("/v2/profile"); }}
+                    href="/profile"
+                    onClick={(e) => { e.preventDefault(); navigate("/profile"); }}
                     style={{
                       fontFamily: "Lora, Georgia, serif",
                       fontStyle: "italic",
@@ -1414,7 +1414,7 @@ export default function V3JournalPage({
                           // page and signal which entry to auto-expand on
                           // mount. V2FriendRoomPage reads the state and
                           // passes it to V2RoomFeed.
-                          navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id } });
+                          navigate(`/room/${groupId}`, { state: { expandThreadId: t.id } });
                         } else {
                           // Private journal entry OR public-aggregate entry:
                           // keep existing V1 thread-URL behavior.
@@ -1561,7 +1561,7 @@ export default function V3JournalPage({
                           // Friend-room reply — navigate to V2 friend room,
                           // auto-expand the parent entry, and scroll/flash
                           // the specific reply via RepliesList.focusReplyId.
-                          navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id, focusReplyId: r.id } });
+                          navigate(`/room/${groupId}`, { state: { expandThreadId: t.id, focusReplyId: r.id } });
                         } else {
                           // Public-aggregate reply: keep existing V1 path.
                           openThreadWithFocus(t.showId, t.id, r.id, groupId);
@@ -1617,7 +1617,7 @@ export default function V3JournalPage({
                       onClick={() => {
                         if (groupId) {
                           // Friend-room reply — V2 nav (see "responses to you").
-                          navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id, focusReplyId: r.id } });
+                          navigate(`/room/${groupId}`, { state: { expandThreadId: t.id, focusReplyId: r.id } });
                         } else {
                           openThreadWithFocus(t.showId, t.id, r.id);
                         }
@@ -1670,7 +1670,7 @@ export default function V3JournalPage({
                         if (groupId) {
                           // Friend-room thread — V2 nav. No focusReplyId
                           // (the click is on the entry, not a reply).
-                          navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id } });
+                          navigate(`/room/${groupId}`, { state: { expandThreadId: t.id } });
                         } else {
                           // Private journal or public-aggregate thread.
                           openThreadWithFocus(t.showId, t.id);
@@ -1719,7 +1719,7 @@ export default function V3JournalPage({
                       onClick={() => {
                         if (groupId) {
                           // Friend-room reply — V2 nav (see "responses to you").
-                          navigate(`/v2/room/${groupId}`, { state: { expandThreadId: t.id, focusReplyId: r.id } });
+                          navigate(`/room/${groupId}`, { state: { expandThreadId: t.id, focusReplyId: r.id } });
                         } else {
                           openThreadWithFocus(t.showId, t.id, r.id);
                         }

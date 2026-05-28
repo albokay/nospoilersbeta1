@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ComposeForm from "./ComposeForm";
 
-// Standalone full-page route wrapper at `/v2/compose/:showId`. Owns:
+// Standalone full-page route wrapper at `/compose/:showId`. Owns:
 //   - the cream-palette body classes (compose's writing-paper visual is
 //     painted via body.v2-compose-context; that only makes sense on a
 //     full-page surface, NOT in a modal where the page beneath stays
@@ -22,7 +22,7 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
 
   // Rating-flow entry markers (preserved for any direct callers that
   // still navigate here with state). fromRating drives intro-copy variant
-  // inside ComposeForm; returnTo overrides the default /v3/journal
+  // inside ComposeForm; returnTo overrides the default /journal
   // discard target.
   const fromRating = Boolean((location.state as { fromRating?: boolean } | null)?.fromRating);
   const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
@@ -39,27 +39,27 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   }, []);
 
   // Discard navigation — preserves the original V2ComposePage logic
-  // (returnTo if set, else /v3/journal with activeTab seeded).
+  // (returnTo if set, else /journal with activeTab seeded).
   function handleCancel() {
     if (returnTo) {
       navigate(returnTo);
       return;
     }
-    if (showId) navigate("/v3/journal", { state: { activeTab: showId } });
-    else navigate("/v3/journal");
+    if (showId) navigate("/journal", { state: { activeTab: showId } });
+    else navigate("/journal");
   }
 
   // Post-publish navigation — preserves the original destination-based
-  // landing logic: private → V3 journal with private-lane filter,
+  // landing logic: private → journal with private-lane filter,
   // public → V1 show page, friend-room → V2 room.
   function handleSubmitted(destination: "private" | "public" | string) {
     if (destination === "private") {
-      navigate("/v3/journal", { state: { activeTab: showId, activeFilter: "private" } });
+      navigate("/journal", { state: { activeTab: showId, activeFilter: "private" } });
     } else if (destination === "public") {
       if (showId) navigate(`/show/${showId}`);
-      else navigate("/v3/journal");
+      else navigate("/journal");
     } else {
-      navigate(`/v2/room/${destination}`);
+      navigate(`/room/${destination}`);
     }
   }
 

@@ -201,7 +201,7 @@ function ShowNameLink({
       tooltipStyle={{ background: "#355eb8", color: "#fff", textWrap: "balance" as React.CSSProperties["textWrap"] }}
     >
       <Tag
-        onClick={() => navigate(`/v3/journal`, { state: { activeTab: showId } })}
+        onClick={() => navigate(`/journal`, { state: { activeTab: showId } })}
         style={{
           ...style,
           cursor: "pointer",
@@ -654,7 +654,7 @@ export default function V2ProfileSelfPage() {
       pairedHeader={{
         left: "this is your public profile",
         rightLabel: "go to your journal",
-        rightTo: "/v3/journal",
+        rightTo: "/journal",
       }}
     >
       {/* === PROFILE IDENTITY ===
@@ -1014,7 +1014,7 @@ export default function V2ProfileSelfPage() {
                       console.warn("clear-stopped failed:", err);
                     }
                   }
-                  navigate(`/v3/journal`, { state: { activeTab: showId } });
+                  navigate(`/journal`, { state: { activeTab: showId } });
                 }}
                 onAuthRequired={() => navigate("/")}
                 placeholder="find a show"

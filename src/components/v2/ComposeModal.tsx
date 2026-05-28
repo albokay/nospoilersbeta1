@@ -122,12 +122,12 @@ export function ComposeModalProvider({ children }: { children: React.ReactNode }
       const showId = args?.showId;
       close();
       if (destination === "private") {
-        navigate("/v3/journal", { state: { activeTab: showId, activeFilter: "private" } });
+        navigate("/journal", { state: { activeTab: showId, activeFilter: "private" } });
       } else if (destination === "public") {
         if (showId) navigate(`/show/${showId}`);
-        else navigate("/v3/journal");
+        else navigate("/journal");
       } else {
-        navigate(`/v2/room/${destination}`, { state: { publishedThreadId: threadId } });
+        navigate(`/room/${destination}`, { state: { publishedThreadId: threadId } });
       }
     },
     [args, close, navigate],

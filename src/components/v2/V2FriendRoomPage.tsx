@@ -749,7 +749,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // reply bylines.
   const handleClickProfile = useCallback(
     (username: string) => {
-      navigate(`/v2/u/${encodeURIComponent(username)}`);
+      navigate(`/u/${encodeURIComponent(username)}`);
     },
     [navigate],
   );
@@ -1247,7 +1247,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
           onClose={() => setSettingsOpen(false)}
           onLeft={() => {
             setSettingsOpen(false);
-            navigate("/v3/journal");
+            navigate("/journal");
           }}
           onRenamed={(newName) => {
             setRoom((prev) => (prev ? { ...prev, name: newName } : prev));
