@@ -22,6 +22,7 @@ import Modal from "./Modal";
 import OneSelectProgress from "./OneSelectProgress";
 import RatingCaptureModal from "./RatingCaptureModal";
 import LoadingDots from "./LoadingDots";
+import ZigzagDivider from "./v2/ZigzagDivider";
 import PromptCard from "./PromptCard";
 import type { PromptEntry } from "../lib/promptData";
 import { getFragment, getPromptSuggestion } from "../lib/prompts";
@@ -1542,8 +1543,15 @@ export default function V3JournalPage({
                 </div>{/* /diaryOuter */}
               </section>
 
+              {/* Zigzag divider — separates the entries diary above from
+                  the "responses to you" section below. Same line element
+                  used on the V2 friend room map and V2 profile pages. */}
+              <div style={{ marginTop: 64, marginBottom: 64 }}>
+                <ZigzagDivider />
+              </div>
+
               {/* Responses to you — moved above "your responses" */}
-              <section className="profile-responses-section" style={{ marginTop: 144 }}>
+              <section className="profile-responses-section" style={{ marginTop: 0 }}>
                 <div className="title" style={{ fontSize: 18, marginBottom: 8 }}>responses to you</div>
                 <div className="card" style={{ maxHeight: 400, overflowY: "auto" }}>
                   {tabRepliesToMe.length === 0 && <div className="muted">No responses yet.</div>}

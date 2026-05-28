@@ -25,6 +25,7 @@ import SearchShows from "../SearchShows";
 import Modal from "../Modal";
 import ProfileThoughtsCompose, { type ProfileThoughtsComposeMode, type ProfileThoughtsSubmitPayload } from "./ProfileThoughtsCompose";
 import ProfileThoughtsCarousel from "./ProfileThoughtsCarousel";
+import ZigzagDivider from "./ZigzagDivider";
 import SidebarAvatar from "../SidebarAvatar";
 import TreatedArt from "../TreatedArt";
 import { pickProfileThoughtPrompt } from "../../lib/profileThoughtPrompts";
@@ -386,11 +387,12 @@ export default function V2ProfileSelfPage() {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
 
-  // Five distinct canon-block colors for the section dividers (one between
-  // thoughts and meta prose, plus one before each of Watching Now / Want /
-  // Finished / Stopped). Picked once at mount via useState initializer —
-  // stable as the user scrolls, re-rolls on next page visit.
-  const [dividerColors] = useState<string[]>(() => pickDistinctDividerColors(5));
+  // Four distinct canon-block colors for the shelf section dividers (one
+  // each before Watching Now / Want / Finished / Stopped). Picked once at
+  // mount via useState initializer — stable as the user scrolls, re-rolls
+  // on next page visit. The thoughts↔meta-prose divider is the zigzag
+  // line (ZigzagDivider), not a canon block.
+  const [dividerColors] = useState<string[]>(() => pickDistinctDividerColors(4));
 
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
@@ -792,7 +794,7 @@ export default function V2ProfileSelfPage() {
         </section>
       )}
 
-      {thoughtsLoaded && user && <HomeDivider color={dividerColors[4]} />}
+      {thoughtsLoaded && user && <ZigzagDivider />}
 
       {/* === META PROSE === */}
       <p

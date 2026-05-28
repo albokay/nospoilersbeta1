@@ -9,6 +9,7 @@ import NudgePopover, { type NudgeDirection } from "../NudgePopover";
 import AskTheRoomPicker from "../AskTheRoomPicker";
 import PollComposer from "../PollComposer";
 import SIKWComposer from "../SIKWComposer";
+import ZigzagDivider from "./ZigzagDivider";
 
 // V2 friend room — right-pane "season map".
 //
@@ -74,50 +75,9 @@ const RATING_PHRASES: Record<number, string> = {
   6: "Woah!",
 };
 
-// Sticky-header zigzag geometry. Drawn as a SINGLE continuous polyline +
-// fill polygon spanning a wide canvas (clipped by the SVG box to whatever
-// the actual container width is). This is intentional — using <pattern>
-// tiles caused every tile boundary (which always lands at a valley) to be
-// a polyline endpoint, which renders with `stroke-linecap` (butt by default),
-// creating a perpendicular squared-off mark at every valley. A single
-// continuous polyline makes every peak AND every valley an interior
-// linejoin (sharp miter), with linecaps only at the very far edges off-
-// screen.
-//
-// Geometry: tooth period 18px, amplitude 7px (peak y=6, valley y=13 in a
-// 20px strip). Slope ~37.9° from horizontal — matches the previous 30×12
-// slope, just denser teeth. Top buffer 6px, bottom buffer 7px gives the
-// 4px stroke's miter overshoot (~5.1px at this internal angle) room to
-// render without the SVG clipping the corners.
-const ZZ_TOOTH_W = 18;
-const ZZ_PEAK_Y = 6;
-const ZZ_VALLEY_Y = 13;
-const ZZ_STRIP_H = 20;
-const ZZ_CANVAS_W = 4000; // Wide enough for any plausible viewport
-const ZZ_HALF = ZZ_TOOTH_W / 2;
-const ZZ_SEGMENTS = Math.ceil(ZZ_CANVAS_W / ZZ_HALF);
-const ZZ_TOTAL_W = ZZ_SEGMENTS * ZZ_HALF;
-
-const ZZ_LINE_POINTS = ((): string => {
-  const pts: string[] = [];
-  for (let i = 0; i <= ZZ_SEGMENTS; i++) {
-    const x = i * ZZ_HALF;
-    const y = i % 2 === 0 ? ZZ_VALLEY_Y : ZZ_PEAK_Y;
-    pts.push(`${x},${y}`);
-  }
-  return pts.join(" ");
-})();
-
-const ZZ_FILL_POINTS = ((): string => {
-  // Top-left → top-right → trace zigzag right-to-left → close.
-  const pts: string[] = [`0,0`, `${ZZ_TOTAL_W},0`];
-  for (let i = ZZ_SEGMENTS; i >= 0; i--) {
-    const x = i * ZZ_HALF;
-    const y = i % 2 === 0 ? ZZ_VALLEY_Y : ZZ_PEAK_Y;
-    pts.push(`${x},${y}`);
-  }
-  return pts.join(" ");
-})();
+// Sticky-header zigzag now lives in `./ZigzagDivider.tsx` — pass
+// fill="var(--dos-bg)" when using it in the sticky chrome (so the
+// polygon above the zigzag obscures scrolling cells passing underneath).
 
 export type V2RoomMapEntry = {
   threadId: string;
@@ -932,33 +892,11 @@ export default function V2RoomMap({
           </div>
 
           {/* Sticky-header bottom zigzag — in-flow below the username row.
-              A SINGLE continuous polyline draws the visible white sawtooth
-              and a SINGLE polygon draws the obscuring var(--dos-bg) fill
-              above it. The continuous polyline spans a wide canvas (clipped
-              by the SVG box to actual container width) so that every peak
-              AND every valley is an interior miter linejoin — sharp on
-              both sides. Stroke-linecap (butt) only happens at the off-
-              screen far ends of the polyline, never at visible corners.
-              The V-notches between teeth stay transparent, so cells
-              scrolling up appear through the notches and visually
-              disappear along the zigzag contour. Geometry constants are
-              module-level (ZZ_*) so they're computed once. */}
-          <svg
-            aria-hidden
-            width="100%"
-            height={ZZ_STRIP_H}
-            preserveAspectRatio="xMinYMin slice"
-            style={{ display: "block", pointerEvents: "none" }}
-          >
-            <polygon points={ZZ_FILL_POINTS} fill="var(--dos-bg)" />
-            <polyline
-              points={ZZ_LINE_POINTS}
-              fill="none"
-              stroke="#fff"
-              strokeWidth={3}
-              strokeLinejoin="miter"
-            />
-          </svg>
+              fill="var(--dos-bg)" so the polygon above the zigzag line
+              obscures scrolling cells passing under the sticky chrome.
+              V-notches between teeth are transparent — cells visually
+              disappear along the zigzag contour. */}
+          <ZigzagDivider fill="var(--dos-bg)" />
         </div>
 
         {/* ── 12px breathing spacer between sticky header and body rows.
@@ -1369,9 +1307,14 @@ export default function V2RoomMap({
                       // A1 white outline for cells whose entry is new since
                       // the viewer's last room visit. Overrides the default
                       // cell border color; thickness stays 2px to match the
-                      // existing cell shape.
+                      // existing cell shape. Gated on !aboveViewer — hidden
+                      // entries (above the viewer's progress) never get the
+                      // white "new" outline; the viewer can't read those
+                      // entries, so the new-indicator doesn't belong there
+                      // and would visually contaminate the grey hidden-cell
+                      // fill with a contrasting outline color.
                       const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer);
-                      const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry
+                      const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
                         ? { border: "2px solid #fff" }
                         : {};
 
@@ -1569,6 +1512,11 @@ export default function V2RoomMap({
             </React.Fragment>
           );
         })}
+
+        {/* ── 16px trailing spacer below the last body row so the bottom-
+            most cells can scroll up an extra 16px past the viewport edge.
+            Non-sticky; part of the grid's content height. */}
+        <div aria-hidden style={{ gridColumn: "1 / -1", height: 16 }} />
       </div>
 
       {/* All four launchers are portaled to document.body because V2RoomMap
@@ -1721,15 +1669,17 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   const filledBg = isSelf ? "#355eb8" : "#7abd8e";
   const outlineColor = isSelf ? "#355eb8" : "var(--dos-border)";
   // Hidden-entry cell: the member authored at (s, e) but the viewer
-  // hasn't reached it yet — the entry is invisible to them. Use the
-  // same grey as the empty-cell outline / spine so the cell reads as
-  // "exists but not clickable." Notification dots still render on
-  // top (per-cell signal isn't gated on viewer visibility here; the
-  // dot is anchored at the wrapper's left edge regardless of fill).
+  // hasn't reached it yet — the entry is invisible to them. Solid fill
+  // in the same grey as the spine. NO border: var(--dos-border) is an
+  // rgba color (alpha 0.3 in friend-room context), so a border declared
+  // in the same value would stack alpha on top of the fill and render
+  // the 2px ring visibly darker than the cell center. Notification dots
+  // still render on top (per-cell signal isn't gated on viewer
+  // visibility here; the dot is anchored at the wrapper's left edge
+  // regardless of fill).
   if (isReached && hasEntry && aboveViewer) {
     return {
       background: "var(--dos-border)",
-      border: "2px solid var(--dos-border)",
       borderRadius: CELL_RADIUS,
     };
   }
