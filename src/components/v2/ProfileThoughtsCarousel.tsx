@@ -117,13 +117,17 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
   const canPublish = ownerMode && !!ownerHandlers && !current.isPublic;
 
   // Visual treatment per spec:
-  //   - public:  canon-light-blue fill, 2px dashed white outline.
-  //   - private: canon-green fill,      2px dashed white outline.
-  // Title + chrome render white; body copy renders friend-space dark navy
-  // (#1a3a4a) — set explicitly on the body div, overriding the article's
-  // white `currentColor` cascade.
+  //   - public:  cream fill (#fef8ea, matches the thoughts compose modal),
+  //              2px dashed white outline, friend-space dark-navy chrome
+  //              (title + icons + expand label).
+  //   - private: canon-green fill (#7abd8e), 2px dashed white outline,
+  //              white chrome (title + icons + lock eyebrow + expand label).
+  // Body copy is friend-space dark navy (#1a3a4a) on BOTH — set explicitly
+  // on the body div so private's white `currentColor` cascade doesn't
+  // override it.
   const outlineStyle = "2px dashed #fff";
-  const ticketBg = current.isPublic ? "#adc8d7" : "#7abd8e";
+  const ticketBg = current.isPublic ? "#fef8ea" : "#7abd8e";
+  const chromeColor = current.isPublic ? "#1a3a4a" : "#fff";
 
   // Show expand toggle when the body is long enough that 2-line clamp would
   // hide content. Heuristic: > 120 chars or contains a newline. Always show
@@ -163,10 +167,10 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
           borderRadius: 0,
           padding: "20px 24px",
           textAlign: "left",
-          // Always white. Public bg = canon yellow page color (white reads);
-          // private bg = canon green (white reads). currentColor carries
-          // through to nested icons + text using inherited color.
-          color: "#fff",
+          // Chrome (title, icons, eyebrow, expand label) inherits this via
+          // currentColor. Public → dark navy on cream; private → white on
+          // canon green. Body copy overrides explicitly below.
+          color: chromeColor,
           animation:
             slideDir === "right" ? "pt-slide-from-right 480ms ease-out" :
             slideDir === "left"  ? "pt-slide-from-left 480ms ease-out"  : "none",

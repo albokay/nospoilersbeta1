@@ -15,6 +15,7 @@ import type { Show, SharedRoomRow } from "../../lib/db";
 import type { ProgressEntry, Thread, ProfileThought } from "../../types";
 import V2Layout from "./V2Layout";
 import ProfileThoughtsCarousel from "./ProfileThoughtsCarousel";
+import { HomeDivider, pickDistinctDividerColors } from "./V2ProfileSelfPage";
 import SidebarAvatar from "../SidebarAvatar";
 import TreatedArt from "../TreatedArt";
 
@@ -125,6 +126,11 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
   // RLS filters to is_public=true at the DB layer; the explicit filter in
   // fetchPublicProfileThoughtsByUserId is defense-in-depth.
   const [ownerThoughts, setOwnerThoughts] = useState<ProfileThought[]>([]);
+
+  // One canon-block color for the divider between thoughts and meta prose.
+  // Picked once at mount; re-rolls on next visit. Mirrors the per-shelf
+  // dividers on the self page (same component, same padding).
+  const [dividerColor] = useState<string>(() => pickDistinctDividerColors(1)[0]);
 
   // Bootstrap owner data — works for logged-out visitors too.
   useEffect(() => {
@@ -249,7 +255,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
   return (
     <V2Layout palette="profile">
       {/* === PROFILE IDENTITY === */}
-      <header style={{ textAlign: "center", paddingTop: 24, marginBottom: 32 }}>
+      <header style={{ textAlign: "center", paddingTop: 24, marginBottom: 56 }}>
         <div style={{ display: "inline-block", marginBottom: 18 }}>
           <SidebarAvatar userId={ownerId} username={username} size={88} />
         </div>
@@ -301,6 +307,8 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
           />
         </section>
       )}
+
+      {ownerThoughts.length > 0 && <HomeDivider color={dividerColor} />}
 
       {/* === META PROSE === */}
       <p

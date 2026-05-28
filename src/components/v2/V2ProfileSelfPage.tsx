@@ -222,7 +222,7 @@ function ShowNameLink({
 // smooth-scrolls the page to the top. Color is picked per-mount by the
 // parent so all dividers on the page can be guaranteed distinct.
 const HOME_DIVIDER_COLORS = ["#f45028", "#adc8d7", "#355eb8", "#7abd8e", "#fffaf0"] as const;
-function pickDistinctDividerColors(n: number): string[] {
+export function pickDistinctDividerColors(n: number): string[] {
   // Fisher-Yates shuffle of the palette, take first n. Safe for n ≤ 5
   // (we currently use 4 — one divider per shelf).
   const pool = [...HOME_DIVIDER_COLORS];
@@ -233,7 +233,7 @@ function pickDistinctDividerColors(n: number): string[] {
   return pool.slice(0, n);
 }
 
-function HomeDivider({ color }: { color: string }) {
+export function HomeDivider({ color }: { color: string }) {
   const [hovered, setHovered] = useState(false);
   function handleClick() {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -386,11 +386,11 @@ export default function V2ProfileSelfPage() {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
 
-  // Four distinct canon-block colors for the section dividers (one each
-  // before Watching Now / Want / Finished / Stopped). Picked once at
-  // mount via useState initializer — stable as the user scrolls, re-
-  // rolls on next page visit.
-  const [dividerColors] = useState<string[]>(() => pickDistinctDividerColors(4));
+  // Five distinct canon-block colors for the section dividers (one between
+  // thoughts and meta prose, plus one before each of Watching Now / Want /
+  // Finished / Stopped). Picked once at mount via useState initializer —
+  // stable as the user scrolls, re-rolls on next page visit.
+  const [dividerColors] = useState<string[]>(() => pickDistinctDividerColors(5));
 
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
@@ -660,7 +660,7 @@ export default function V2ProfileSelfPage() {
           (V2ProfileVisitorPage). The pairedHeader ("this is your public
           profile" / "go to your journal") in V2Layout stays where it is;
           this header sits below it spanning the column. */}
-      <header style={{ textAlign: "center", paddingTop: 24, marginBottom: 32 }}>
+      <header style={{ textAlign: "center", paddingTop: 24, marginBottom: 56 }}>
         <div style={{ display: "inline-block", marginBottom: 18 }}>
           <SidebarAvatar userId={user?.id} username={profile?.username ?? undefined} size={88} />
         </div>
@@ -791,6 +791,8 @@ export default function V2ProfileSelfPage() {
           )}
         </section>
       )}
+
+      {thoughtsLoaded && user && <HomeDivider color={dividerColors[4]} />}
 
       {/* === META PROSE === */}
       <p
