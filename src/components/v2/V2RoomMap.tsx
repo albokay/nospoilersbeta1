@@ -955,18 +955,18 @@ export default function V2RoomMap({
               points={ZZ_LINE_POINTS}
               fill="none"
               stroke="#fff"
-              strokeWidth={4}
+              strokeWidth={3}
               strokeLinejoin="miter"
             />
           </svg>
         </div>
 
-        {/* ── 20px breathing spacer between sticky header and body rows.
+        {/* ── 12px breathing spacer between sticky header and body rows.
             Non-sticky — sits in the grid's flow at content position
-            HEADER_HEIGHT to HEADER_HEIGHT+20, then scrolls with the rest
+            HEADER_HEIGHT to HEADER_HEIGHT+12, then scrolls with the rest
             of the body. Paired with the 20px zigzag strip above for a
-            total ~40px offset from username row to first cell. */}
-        <div aria-hidden style={{ gridColumn: "1 / -1", height: 20 }} />
+            total 32px offset from username row to first cell. */}
+        <div aria-hidden style={{ gridColumn: "1 / -1", height: 12 }} />
 
         {/* ── Body rows ────────────────────────────────────────────────── */}
         {rows.map((row, rowIdx) => {
