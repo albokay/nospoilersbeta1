@@ -305,16 +305,18 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
       )}
 
       {ownerThoughts.length > 0 && (
-        <div style={{ maxWidth: 252, margin: "96px auto" }}>
+        <div style={{ maxWidth: 252, margin: "96px auto 32px" }}>
           <ZigzagDivider />
         </div>
       )}
 
-      {/* === META PROSE === */}
+      {/* === META PROSE — watch-status counts row. Tightened margins so
+          zigzag → watch status → canon block → shelf heading read as one
+          visual unit (matches V2ProfileSelfPage). */}
       <p
         style={{
           textAlign: "center",
-          margin: "24px 0 56px",
+          margin: "0 0 32px",
           fontFamily: "Lora, Georgia, serif",
           fontStyle: "italic",
           fontSize: 16,

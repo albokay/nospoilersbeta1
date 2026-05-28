@@ -795,16 +795,19 @@ export default function V2ProfileSelfPage() {
       )}
 
       {thoughtsLoaded && user && (
-        <div style={{ maxWidth: 252, margin: "96px auto" }}>
+        <div style={{ maxWidth: 252, margin: "96px auto 32px" }}>
           <ZigzagDivider />
         </div>
       )}
 
-      {/* === META PROSE === */}
+      {/* === META PROSE — watch-status counts row. Tightened margins so
+          this line, the zigzag above, the canon-block divider below, and
+          the "WATCHING NOW" heading after it all read as one visual unit
+          (per mockup). 32px gaps between each step in the cluster. */}
       <p
         style={{
           textAlign: "center",
-          margin: "24px 0 56px",
+          margin: "0 0 32px",
           fontFamily: "Lora, Georgia, serif",
           fontStyle: "italic",
           fontSize: 16,
