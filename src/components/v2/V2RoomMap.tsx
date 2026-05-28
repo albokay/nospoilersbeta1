@@ -84,14 +84,15 @@ const RATING_PHRASES: Record<number, string> = {
 // linejoin (sharp miter), with linecaps only at the very far edges off-
 // screen.
 //
-// Geometry: tooth period 30px, amplitude 12px (peak y=5, valley y=17 in a
-// 22px strip). Slope ~38.7° from horizontal. The 5px buffer at the strip
-// top/bottom gives the 4px stroke's miter overshoot (~5.1px at this
-// internal angle) room to render without the SVG clipping the corners.
-const ZZ_TOOTH_W = 30;
-const ZZ_PEAK_Y = 5;
-const ZZ_VALLEY_Y = 17;
-const ZZ_STRIP_H = 22;
+// Geometry: tooth period 18px, amplitude 7px (peak y=6, valley y=13 in a
+// 20px strip). Slope ~37.9° from horizontal — matches the previous 30×12
+// slope, just denser teeth. Top buffer 6px, bottom buffer 7px gives the
+// 4px stroke's miter overshoot (~5.1px at this internal angle) room to
+// render without the SVG clipping the corners.
+const ZZ_TOOTH_W = 18;
+const ZZ_PEAK_Y = 6;
+const ZZ_VALLEY_Y = 13;
+const ZZ_STRIP_H = 20;
 const ZZ_CANVAS_W = 4000; // Wide enough for any plausible viewport
 const ZZ_HALF = ZZ_TOOTH_W / 2;
 const ZZ_SEGMENTS = Math.ceil(ZZ_CANVAS_W / ZZ_HALF);
@@ -960,13 +961,12 @@ export default function V2RoomMap({
           </svg>
         </div>
 
-        {/* ── 18px breathing spacer between sticky header and body rows.
+        {/* ── 20px breathing spacer between sticky header and body rows.
             Non-sticky — sits in the grid's flow at content position
-            HEADER_HEIGHT to HEADER_HEIGHT+18, then scrolls with the rest
-            of the body. Paired with the 22px zigzag strip above for a
-            total ~40px offset from username row to first cell, matching
-            the prior layout. */}
-        <div aria-hidden style={{ gridColumn: "1 / -1", height: 18 }} />
+            HEADER_HEIGHT to HEADER_HEIGHT+20, then scrolls with the rest
+            of the body. Paired with the 20px zigzag strip above for a
+            total ~40px offset from username row to first cell. */}
+        <div aria-hidden style={{ gridColumn: "1 / -1", height: 20 }} />
 
         {/* ── Body rows ────────────────────────────────────────────────── */}
         {rows.map((row, rowIdx) => {
