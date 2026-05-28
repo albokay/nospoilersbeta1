@@ -272,7 +272,7 @@ async function handlePing(
   }
 
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
-  const roomUrl = `${baseUrl}/show/${encodeURIComponent(grp.show_id)}`;
+  const roomUrl = `${baseUrl}/room/${encodeURIComponent(group_id)}`;
   const subject = `@${senderHandle} sent you a nudge about ${showName}`;
 
   const html = `
@@ -423,7 +423,7 @@ async function handlePollInvite(
   }
 
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
-  const roomUrl = `${baseUrl}/show/${encodeURIComponent(grp.show_id)}`;
+  const roomUrl = `${baseUrl}/room/${encodeURIComponent(poll.group_id)}`;
   const subject = `@${askerHandle} asked the room something about ${showName}`;
 
   let sentCount = 0;
@@ -535,20 +535,8 @@ async function handlePollClose(
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) return jsonOk({ channel: "email", warning: "email_not_configured" });
 
-  const { data: showLookup } = await admin
-    .from("polls")
-    .select("group_id")
-    .eq("id", poll.id)
-    .single();
-  // grp.show_id was looked up in handlePoll already; re-pull for the URL.
-  const { data: grp } = await admin
-    .from("friend_groups")
-    .select("show_id")
-    .eq("id", poll.group_id)
-    .single();
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
-  const roomUrl = `${baseUrl}/show/${encodeURIComponent(grp?.show_id ?? "")}`;
-  void showLookup;
+  const roomUrl = `${baseUrl}/room/${encodeURIComponent(poll.group_id)}`;
 
   const subject = `Your ${showName} poll closed`;
   const respN = responseCount ?? 0;
@@ -655,7 +643,7 @@ async function handlePollVoteNotification(
   if (!resendKey) return jsonOk({ channel: "email", warning: "email_not_configured" });
 
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
-  const roomUrl = `${baseUrl}/show/${encodeURIComponent(grp.show_id)}`;
+  const roomUrl = `${baseUrl}/room/${encodeURIComponent(poll.group_id)}`;
   const subject = `@${voterHandle} voted on your ${showName} poll`;
 
   const html = `
@@ -788,7 +776,7 @@ async function handleSikwAskInvite(
   }
 
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
-  const roomUrl = `${baseUrl}/show/${encodeURIComponent(grp.show_id)}`;
+  const roomUrl = `${baseUrl}/room/${encodeURIComponent(ask.group_id)}`;
   const subject = `@${askerHandle} is wondering whether to stick with ${showName}`;
   const progressLabel = formatSE(ask.asker_progress_season, ask.asker_progress_episode);
 
@@ -887,7 +875,7 @@ async function handleSikwReply(
   if (!resendKey) return jsonOk({ channel: "email", warning: "email_not_configured" });
 
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
-  const roomUrl = `${baseUrl}/show/${encodeURIComponent(grp.show_id)}`;
+  const roomUrl = `${baseUrl}/room/${encodeURIComponent(ask.group_id)}`;
   const subject = `@${replierHandle} weighed in on ${showName}`;
 
   const html = sikwReplyHtml(replierHandle, showName, roomName, roomUrl);
