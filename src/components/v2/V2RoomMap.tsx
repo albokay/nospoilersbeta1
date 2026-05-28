@@ -9,7 +9,6 @@ import NudgePopover, { type NudgeDirection } from "../NudgePopover";
 import AskTheRoomPicker from "../AskTheRoomPicker";
 import PollComposer from "../PollComposer";
 import SIKWComposer from "../SIKWComposer";
-import ZigzagDivider from "./ZigzagDivider";
 
 // V2 friend room — right-pane "season map".
 //
@@ -75,9 +74,11 @@ const RATING_PHRASES: Record<number, string> = {
   6: "Woah!",
 };
 
-// Sticky-header zigzag now lives in `./ZigzagDivider.tsx` — pass
-// fill="var(--dos-bg)" when using it in the sticky chrome (so the
-// polygon above the zigzag obscures scrolling cells passing underneath).
+// Sticky-header bottom divider is a straight 2px white line (rendered
+// in-flow below the username row). The username row's bg fill is what
+// actually obscures scrolling cells; the line is the visible boundary.
+// (Previously a zigzag — `./ZigzagDivider.tsx` is still used on profile
+// + journal pages.)
 
 export type V2RoomMapEntry = {
   threadId: string;
@@ -891,12 +892,11 @@ export default function V2RoomMap({
           })}
           </div>
 
-          {/* Sticky-header bottom zigzag — in-flow below the username row.
-              fill="var(--dos-bg)" so the polygon above the zigzag line
-              obscures scrolling cells passing under the sticky chrome.
-              V-notches between teeth are transparent — cells visually
-              disappear along the zigzag contour. */}
-          <ZigzagDivider fill="var(--dos-bg)" />
+          {/* Sticky-header bottom divider — straight 2px white line. Cells
+              scrolling up disappear behind the username row's bg (which
+              has solid var(--dos-bg) above this line); the line itself is
+              the visible chrome boundary. */}
+          <div aria-hidden style={{ height: 2, background: "#fff" }} />
         </div>
 
         {/* ── 12px breathing spacer between sticky header and body rows.
