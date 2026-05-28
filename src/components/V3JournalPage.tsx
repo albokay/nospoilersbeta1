@@ -1124,16 +1124,9 @@ export default function V3JournalPage({
                           className="btn post h40"
                           onMouseEnter={() => {
                             if (user?.id && activeTab) prefetchComposeData(user.id, activeTab);
-                            // Warm the lazy v2 chunk so the navigate-to-
-                            // /v2/compose route doesn't pay the chunk
-                            // download cost on click. Same dynamic import
-                            // path App.tsx uses for lazy(); both resolve
-                            // to the same Vite chunk.
-                            import("./v2/V2App");
                           }}
                           onFocus={() => {
                             if (user?.id && activeTab) prefetchComposeData(user.id, activeTab);
-                            import("./v2/V2App");
                           }}
                           onClick={() => composeModal.open({ showId: activeTab, returnTo: location.pathname })}
                           style={{ lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5, background: tabBg }}

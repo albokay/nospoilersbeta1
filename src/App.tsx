@@ -41,7 +41,13 @@ const HowItWorksV2 = lazy(() => import("./components/HowItWorksV2"));
 import HomepageNarrative from "./components/HomepageNarrative";
 const InviteAcceptPage = lazy(() => import("./components/InviteAcceptPage"));
 const MobileApp = lazy(() => import("./mobile/MobileApp"));
-const V2App = lazy(() => import("./components/v2/V2App"));
+// Promoted V2 surfaces (formerly /v2/...). Each chunked individually so the
+// main bundle stays lean for users who only visit one or two of these.
+const V2FriendRoomPage = lazy(() => import("./components/v2/V2FriendRoomPage"));
+const V2ProfileSelfPage = lazy(() => import("./components/v2/V2ProfileSelfPage"));
+const V2ProfileVisitorPage = lazy(() => import("./components/v2/V2ProfileVisitorPage"));
+const V2UserAggregatePage = lazy(() => import("./components/v2/V2UserAggregatePage"));
+const V2ComposePage = lazy(() => import("./components/v2/V2ComposePage"));
 const ResetPasswordPage = lazy(() => import("./components/ResetPasswordPage"));
 
 // Full-screen fallback for lazy chunks. Matches the canon palette so the
@@ -122,7 +128,34 @@ export default function App() {
     return <Suspense fallback={<RouteFallback />}><InviteAcceptPage token={pathParts[1]} /></Suspense>;
   }
   if (pathParts[0] === "m") return <Suspense fallback={<RouteFallback />}><MobileApp /></Suspense>;
-  if (pathParts[0] === "v2") return <Suspense fallback={<RouteFallback />}><V2App /></Suspense>;
+  // ── Backward-compat redirects for the URL promotion (2026-05-27) ───
+  // /v2/* and /v3/journal were promoted to clean URLs. Old paths redirect
+  // so bookmarks, in-flight links, and any cached navigation calls keep
+  // working. /user/:username also redirects to /u/:username (the V2 visitor
+  // profile is now the official one). V1 ShowSection at /show/:showId is
+  // NOT promoted — it stays as-is.
+  if (pathParts[0] === "v2") {
+    const seg = pathParts[1];
+    if (seg === "profile") return <Navigate to="/profile" replace />;
+    if (seg === "journal") return <Navigate to="/journal" replace />;
+    if (seg === "room" && pathParts[2]) return <Navigate to={`/room/${pathParts[2]}`} replace />;
+    if (seg === "compose" && pathParts[2]) return <Navigate to={`/compose/${pathParts[2]}`} replace />;
+    if (seg === "u" && pathParts[2]) {
+      const username = pathParts[2];
+      if (pathParts[3] === "show" && pathParts[4] && pathParts[5] === "posts") {
+        return <Navigate to={`/u/${username}/show/${pathParts[4]}/posts`} replace />;
+      }
+      return <Navigate to={`/u/${username}`} replace />;
+    }
+    // Fallback for any other /v2/* path — land on the journal.
+    return <Navigate to="/journal" replace />;
+  }
+  if (pathParts[0] === "v3" && pathParts[1] === "journal") {
+    return <Navigate to="/journal" replace />;
+  }
+  if (pathParts[0] === "user" && pathParts[1]) {
+    return <Navigate to={`/u/${pathParts[1]}`} replace />;
+  }
   // /reset-password is a top-level utility route. It MUST sit above
   // AppShell so the recovery token (parsed from the URL hash by
   // supabase-js on page load) isn't disturbed by AppShell's auth
@@ -214,23 +247,49 @@ function AppShell() {
 
   // Derive all nav state from the URL so the browser's back/forward buttons
   // work automatically — no manual pushState needed.
-  //   /                         → homepage
-  //   /show/:showId             → show forum
-  //   /show/:showId/thread/:id  → thread view
-  //   /profile                  → own profile
-  //   /user/:username           → public profile
+  //   /                                       → homepage
+  //   /show/:showId                           → V1 ShowSection (public-aggregate)
+  //   /show/:showId/thread/:id                → V1 thread view
+  //   /profile                                → V2 self profile (promoted)
+  //   /journal                                → V3 journal (promoted)
+  //   /room/:groupId                          → V2 friend room (promoted)
+  //   /compose/:showId                        → V2 compose (promoted)
+  //   /u/:username                            → V2 visitor profile (promoted)
+  //   /u/:username/show/:showId/posts         → V2 user aggregate (promoted)
+  //   /legacy/profile                         → V1 ProfilePage (archived)
+  //   /legacy/user/:username                  → V1 PublicProfilePage (archived)
   const pathParts = location.pathname.split("/").filter(Boolean);
-  // Special routes (/lab, /how-it-works*, /invite/:token) are handled by the
-  // top-level <App /> router above and never reach this component.
+  // Special routes (/lab, /how-it-works*, /invite/:token, /v2/*, /v3/*,
+  // /user/*) are handled by the top-level <App /> router above and never
+  // reach this component.
   const expandedShowId   = pathParts[0] === "show" ? (pathParts[1] ?? null) : null;
   const activeThreadId   = pathParts[0] === "show" && pathParts[2] === "thread" ? (pathParts[3] ?? null) : null;
+  // /profile — promoted V2 self profile (was V1 ProfilePage before the URL
+  // promotion arc).
   const showProfile      = location.pathname === "/profile";
-  // /v3/journal — wholesale duplicate of /profile mounted via V3JournalPage.
-  // Lives inside AppShell so it inherits the same prop graph + chrome as
-  // ProfilePage. Tracked separately so we can swap the rendered component
-  // while reusing the same data fetches, redirects, and header.
-  const showV3Journal    = pathParts[0] === "v3" && pathParts[1] === "journal";
-  const publicProfileUsername = pathParts[0] === "user" ? decodeURIComponent(pathParts[1] ?? "") || null : null;
+  // /journal — promoted V3 journal (was /v3/journal). Tracked separately
+  // so post-fetch effects, seen-at logic, and reply-fetch deps still fire
+  // on journal navigation specifically.
+  const showJournal      = pathParts[0] === "journal" && !pathParts[1];
+  // /room/:groupId — V2 friend room
+  const roomGroupId      = pathParts[0] === "room" ? (pathParts[1] ?? null) : null;
+  // /compose/:showId — V2 compose page
+  const composeShowId    = pathParts[0] === "compose" ? (pathParts[1] ?? null) : null;
+  // /u/:username — V2 visitor profile (when no further path segments)
+  const visitorUsername  = pathParts[0] === "u" && pathParts[1] && !pathParts[2]
+    ? decodeURIComponent(pathParts[1])
+    : null;
+  // /u/:username/show/:showId/posts — V2 user aggregate
+  const userAggregate    = pathParts[0] === "u" && pathParts[1] && pathParts[2] === "show" && pathParts[3] && pathParts[4] === "posts"
+    ? { username: decodeURIComponent(pathParts[1]), showId: pathParts[3] }
+    : null;
+  // /legacy/profile — V1 ProfilePage archived (fallback for the journal
+  // surface; the V1 component is unchanged, just relocated)
+  const showLegacyProfile = location.pathname === "/legacy/profile";
+  // /legacy/user/:username — V1 PublicProfilePage archived
+  const legacyPublicProfileUsername = pathParts[0] === "legacy" && pathParts[1] === "user" && pathParts[2]
+    ? decodeURIComponent(pathParts[2])
+    : null;
 
   // focusReplyId is still ephemeral state — it is set programmatically when
   // navigating from a notification, and cleared by RepliesList after scrolling.
@@ -306,13 +365,14 @@ function AppShell() {
   // Replies-to-user for profile pill badge
   const [repliesToUser, setRepliesToUser] = useState<{ reply: Reply; thread: Thread; groupId?: string }[]>([]);
 
-  // Fetch on login + whenever the user navigates to a show or the profile
-  // (live or v3). Without showV3Journal in deps, /v3/journal visits skip
-  // this refresh and the dot logic reads stale repliesToUser data.
+  // Fetch on login + whenever the user navigates to a show, profile,
+  // journal, or the V1 archived journal. The dep set includes every
+  // surface that consumes repliesToUser, so stale data never lingers
+  // when the user jumps between them.
   useEffect(() => {
     if (!user) { setRepliesToUser([]); return; }
     fetchRepliesToUserThreads(user.id).then(setRepliesToUser).catch(() => {});
-  }, [user?.id, expandedShowId, showProfile, showV3Journal]);
+  }, [user?.id, expandedShowId, showProfile, showJournal, showLegacyProfile]);
 
   // Live: refetch whenever any reply is inserted/updated/deleted in the DB
   useEffect(() => {
@@ -340,7 +400,7 @@ function AppShell() {
   useEffect(() => {
     if (!user) { setPingCountsByShow({}); return; }
     fetchUndismissedPingCountsByShow(user.id).then(setPingCountsByShow).catch(() => {});
-  }, [user?.id, expandedShowId, showProfile, showV3Journal]);
+  }, [user?.id, expandedShowId, showProfile, showJournal, showLegacyProfile]);
 
   // Track when user last visited their profile (clears green badge)
   const [visibleSeenAt, setVisibleSeenAt] = useState<number>(() => {
@@ -407,13 +467,12 @@ function AppShell() {
   hasVisibleRef.current = hasVisibleNewReplies;
   const [openedAtSeenAt, setOpenedAtSeenAt] = useState(0);
   useEffect(() => {
-    // Fire on either journal route — /profile (live) or /v3/journal
-    // (duplicate). Without this, /v3/journal leaves openedAtSeenAt at 0
-    // so reply.updatedAt > 0 is always true and every visible reply
-    // lights green (over-fire). The visible/invisible stamp clears must
-    // also run on /v3/journal so navigating between the two routes
-    // doesn't leave inconsistent seen-stamp state.
-    if (showProfile || showV3Journal) {
+    // Fire on journal-family routes only — /journal (promoted V3 journal)
+    // and /legacy/profile (V1 ProfilePage archived). The promoted /profile
+    // is V2ProfileSelfPage which does NOT show journal content, so firing
+    // the seen-at reset there would silently mark items as "not new" the
+    // next time the user actually opens the journal.
+    if (showJournal || showLegacyProfile) {
       setOpenedAtSeenAt(visibleSeenAt); // capture BEFORE clearing
       const now = Date.now();
       setVisibleSeenAt(now);
@@ -423,7 +482,7 @@ function AppShell() {
       setInvisibleFirstSeenAt(0);
       localStorage.removeItem("ns_invisible_first_seen_at");
     }
-  }, [showProfile, showV3Journal]);
+  }, [showJournal, showLegacyProfile]);
 
   const [pickShowId, setPickShowId] = useState<string | null>(null);
   // Stores a just-created show so the modal can render before `shows` state updates settle
@@ -633,7 +692,7 @@ function AppShell() {
     openShow(id);
   };
 
-  const isHomepage = !expandedShowId && !showProfile && !publicProfileUsername && !showV3Journal;
+  const isHomepage = !expandedShowId && !showProfile && !showJournal && !roomGroupId && !composeShowId && !visitorUsername && !userAggregate && !showLegacyProfile && !legacyPublicProfileUsername;
   useEffect(() => {
     document.body.classList.toggle("has-header", !isHomepage);
     document.body.classList.toggle("homepage", isHomepage);
@@ -657,7 +716,7 @@ function AppShell() {
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, [isHomepage]);
-  const isProfilePage = showProfile || !!publicProfileUsername || showV3Journal;
+  const isProfilePage = showProfile || showJournal || !!visitorUsername || !!userAggregate || showLegacyProfile || !!legacyPublicProfileUsername;
   const showAdmin = location.search.includes("admin");
   const isAdmin = !!profile?.is_admin;
 
@@ -684,7 +743,10 @@ function AppShell() {
   useEffect(() => {
     if (authLoading) return;
     const p = location.pathname;
-    if (!user && (p === "/profile" || p.startsWith("/v3/journal"))) {
+    // Signed-out users get bounced off any auth-gated profile/journal
+    // surface — /profile (V2 self profile, promoted), /journal (V3
+    // journal, promoted), and /legacy/profile (V1 archived journal).
+    if (!user && (p === "/profile" || p === "/journal" || p === "/legacy/profile")) {
       navigate("/", { replace: true });
       return;
     }
@@ -862,13 +924,13 @@ function AppShell() {
           <div style={{ position: "relative", display: "inline-block" }}>
             <button
               className="profileChip"
-              onClick={!(showProfile || showV3Journal) ? () => {
+              onClick={!(showProfile || showJournal || showLegacyProfile) ? () => {
                 navigate("/profile", expandedShowId ? { state: { activeTab: expandedShowId } } : undefined);
                 requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
               } : undefined}
-              style={(showProfile || showV3Journal) ? { cursor: "default" } : undefined}
+              style={(showProfile || showJournal || showLegacyProfile) ? { cursor: "default" } : undefined}
             >
-              {(showProfile || showV3Journal)
+              {(showProfile || showJournal || showLegacyProfile)
                 ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}>you are <SidebarAvatar userId={user?.id} username={username ?? undefined} size={18} />{username}</span></>
                 : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
               }
@@ -881,12 +943,12 @@ function AppShell() {
             )}
           </div>
         );
-        // On non-profile-family pages (showProfile || showV3Journal is
+        // On non-profile-family pages (showProfile || showJournal is
         // false), render a second "go to your profile" pill directly to
         // the right of the journal pill. Same dimensions, white outline +
         // transparent fill + white text, icons mirrored to the right of
         // the label. Matches V2Layout's equivalent treatment.
-        const showProfilePill = !(showProfile || showV3Journal) && user && profile;
+        const showProfilePill = !(showProfile || showJournal || showLegacyProfile) && user && profile;
         return (
           <span className="topHeaderPillFixed" style={{ display: "inline-flex", gap: 8 }}>
             {pillTooltipText
@@ -1031,7 +1093,7 @@ function AppShell() {
           </div>
         </div>
       )}
-      {!showProfile && !publicProfileUsername && !showV3Journal && (
+      {!showProfile && !showJournal && !roomGroupId && !composeShowId && !visitorUsername && !userAggregate && !showLegacyProfile && !legacyPublicProfileUsername && (
         <>
           {/* ── Homepage ── */}
           {isHomepage && (
@@ -1261,36 +1323,18 @@ function AppShell() {
         </>
       )}
 
+      {/* /profile — promoted V2 self profile. V2ProfileSelfPage fetches
+          its own data (shows, progress, thoughts) so no prop graph from
+          AppShell is threaded in. */}
       {showProfile && username && (
-        <ProfilePage
-          shows={shows}
-          username={username}
-          progress={progress}
-          likesThreads={likesThreads}
-          likesReplies={likesReplies}
-          likedByUserThreads={likedByUserThreads}
-          likedByUserReplies={likedByUserReplies}
-          openThreadWithFocus={openThreadWithFocus}
-          openShow={openShow}
-          onClose={goHomepage}
-          repliesToUser={repliesToUser}
-          pingCountsByShow={pingCountsByShow}
-          openedAtSeenAt={openedAtSeenAt}
-          onTabsChange={setProfileTabData}
-          updateProgressFor={updateProgressFor}
-          onShowUpdated={(updated: Show) => setShows(prev => prev.map(s => s.id === updated.id ? updated : s))}
-          onGroupCreated={(g: FriendGroup) => {
-            // Mirror the ShowSection handler: optimistic add to top-nav pills.
-            setAllFriendGroups(prev =>
-              prev.find(x => x.id === g.id) ? prev : [{ ...g, lastActivityAt: Date.now() }, ...prev]
-            );
-          }}
-        />
+        <Suspense fallback={<RouteFallback />}>
+          <V2ProfileSelfPage />
+        </Suspense>
       )}
 
-      {/* v3 journal — wholesale duplicate of ProfilePage, same prop graph.
-          Tweaks live in V3JournalPage.tsx; live /profile is unaffected. */}
-      {showV3Journal && username && (
+      {/* /journal — promoted V3 journal (was /v3/journal). Same prop graph
+          as V1 ProfilePage; only the URL changed. */}
+      {showJournal && username && (
         <V3JournalPage
           shows={shows}
           username={username}
@@ -1316,9 +1360,66 @@ function AppShell() {
         />
       )}
 
-      {publicProfileUsername && (
+      {/* /room/:groupId — promoted V2 friend room. */}
+      {roomGroupId && (
+        <Suspense fallback={<RouteFallback />}>
+          <V2FriendRoomPage groupId={roomGroupId} />
+        </Suspense>
+      )}
+
+      {/* /compose/:showId — promoted V2 compose deep-link target. */}
+      {composeShowId && (
+        <Suspense fallback={<RouteFallback />}>
+          <V2ComposePage showId={composeShowId} />
+        </Suspense>
+      )}
+
+      {/* /u/:username — promoted V2 visitor profile. */}
+      {visitorUsername && (
+        <Suspense fallback={<RouteFallback />}>
+          <V2ProfileVisitorPage username={visitorUsername} />
+        </Suspense>
+      )}
+
+      {/* /u/:username/show/:showId/posts — promoted V2 user aggregate. */}
+      {userAggregate && (
+        <Suspense fallback={<RouteFallback />}>
+          <V2UserAggregatePage username={userAggregate.username} showId={userAggregate.showId} />
+        </Suspense>
+      )}
+
+      {/* /legacy/profile — V1 ProfilePage archived as a fallback. Same
+          props the live /profile used to receive. */}
+      {showLegacyProfile && username && (
+        <ProfilePage
+          shows={shows}
+          username={username}
+          progress={progress}
+          likesThreads={likesThreads}
+          likesReplies={likesReplies}
+          likedByUserThreads={likedByUserThreads}
+          likedByUserReplies={likedByUserReplies}
+          openThreadWithFocus={openThreadWithFocus}
+          openShow={openShow}
+          onClose={goHomepage}
+          repliesToUser={repliesToUser}
+          pingCountsByShow={pingCountsByShow}
+          openedAtSeenAt={openedAtSeenAt}
+          onTabsChange={setProfileTabData}
+          updateProgressFor={updateProgressFor}
+          onShowUpdated={(updated: Show) => setShows(prev => prev.map(s => s.id === updated.id ? updated : s))}
+          onGroupCreated={(g: FriendGroup) => {
+            setAllFriendGroups(prev =>
+              prev.find(x => x.id === g.id) ? prev : [{ ...g, lastActivityAt: Date.now() }, ...prev]
+            );
+          }}
+        />
+      )}
+
+      {/* /legacy/user/:username — V1 PublicProfilePage archived. */}
+      {legacyPublicProfileUsername && (
         <PublicProfilePage
-          username={publicProfileUsername}
+          username={legacyPublicProfileUsername}
           shows={shows}
           viewerProgress={progress}
           openThreadWithFocus={openThreadWithFocus}
