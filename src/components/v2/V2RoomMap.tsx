@@ -890,20 +890,25 @@ export default function V2RoomMap({
           </div>
 
           {/* Sticky-header bottom zigzag — in-flow below the username row.
-              The <pattern> tiles a 24×12 sawtooth across the full sticky-
+              The <pattern> tiles a 36×20 sawtooth across the full sticky-
               header width (calc(100% + 24px), matching the prior straight
               divider's right extension past the rightmost column). The
               filled polygon (var(--dos-bg) above the zigzag line) is the
               ONLY obscuring mass in this strip — the V-notches between
               teeth are transparent, so cells scrolling up appear through
               the notches and visually disappear along the zigzag contour
-              (not a straight edge). The 2px white polyline draws the
-              visible sawtooth line itself; strokeLinejoin="miter" keeps
-              the peaks and valleys as sharp points. */}
+              (not a straight edge).
+
+              Geometry: peaks at y=5, valleys at y=15 (amplitude 10), tooth
+              width 36 — gives a slope of ~29° from horizontal, shallower
+              than the original 45°. Peaks/valleys inset 5px from the strip
+              edges so the 4px stroke's miter overshoot (~4.6px at this
+              internal angle) fits inside the strip without being clipped,
+              keeping the corners as true sharp points. */}
           <svg
             aria-hidden
             width="100%"
-            height={12}
+            height={20}
             preserveAspectRatio="none"
             style={{ display: "block", pointerEvents: "none" }}
           >
@@ -912,34 +917,35 @@ export default function V2RoomMap({
                 id={zigzagPatternId}
                 x={0}
                 y={0}
-                width={24}
-                height={12}
+                width={36}
+                height={20}
                 patternUnits="userSpaceOnUse"
               >
                 <path
-                  d="M 0,0 L 24,0 L 24,12 L 12,0 L 0,12 Z"
+                  d="M 0,0 L 36,0 L 36,15 L 18,5 L 0,15 Z"
                   fill="var(--dos-bg)"
                 />
                 <polyline
-                  points="0,12 12,0 24,12"
+                  points="0,15 18,5 36,15"
                   fill="none"
                   stroke="#fff"
-                  strokeWidth={2}
+                  strokeWidth={4}
                   strokeLinejoin="miter"
                 />
               </pattern>
             </defs>
-            <rect width="100%" height={12} fill={`url(#${zigzagPatternId})`} />
+            <rect width="100%" height={20} fill={`url(#${zigzagPatternId})`} />
           </svg>
         </div>
 
-        {/* ── 28px breathing spacer between sticky header and body rows.
+        {/* ── 20px breathing spacer between sticky header and body rows.
             Non-sticky — sits in the grid's flow at content position
-            HEADER_HEIGHT to HEADER_HEIGHT+28, then scrolls with the rest
-            of the body. Bumped 16 → 28 alongside the sticky-header zigzag
-            so the visible gap from the zigzag's valleys to the first cell
-            stays consistent with the prior 2px-divider layout. */}
-        <div aria-hidden style={{ gridColumn: "1 / -1", height: 28 }} />
+            HEADER_HEIGHT to HEADER_HEIGHT+20, then scrolls with the rest
+            of the body. Paired with the 20px zigzag strip above for a
+            total ~40px offset from username row to first cell, matching
+            the visual layout that the prior (12px strip + 28px spacer)
+            arrangement gave. */}
+        <div aria-hidden style={{ gridColumn: "1 / -1", height: 20 }} />
 
         {/* ── Body rows ────────────────────────────────────────────────── */}
         {rows.map((row, rowIdx) => {
