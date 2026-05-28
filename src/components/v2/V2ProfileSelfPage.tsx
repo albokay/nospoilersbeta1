@@ -1006,6 +1006,11 @@ export default function V2ProfileSelfPage() {
                   const next = await fetchProgress(user.id);
                   setProgress(next);
                   setAddOpen(false);
+                  // Land in the journal with the new show's tab active —
+                  // matches the AppShell's onShowCreated solo behavior.
+                  // V3JournalPage reads state.activeTab to seed the tab
+                  // and auto-unhide it.
+                  navigate("/journal", { state: { activeTab: s.id } });
                 }}
                 onReopenJournal={async (showId) => {
                   // Resurrection from the profile + add tile: clear the
