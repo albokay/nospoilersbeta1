@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CircleCheck, DoorClosed, DoorOpen, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
@@ -244,6 +244,9 @@ export default function V2RoomMap({
   onCommitRatings,
   filteredUserId,
 }: V2RoomMapProps) {
+  // Unique id for the sticky-header zigzag <pattern> so multiple V2RoomMap
+  // instances on a page (unlikely but harmless) don't collide on `url(#…)`.
+  const zigzagPatternId = useId();
   // Predicate for the user-filter dim treatment. When a filter is
   // active, columns belonging to other members render at opacity 0.35
   // with pointer-events: none — no tooltips, no clicks, no dot hover.
@@ -552,14 +555,15 @@ export default function V2RoomMap({
             top: 0,
             zIndex: 2,
             background: "var(--dos-bg)",
-            paddingBottom: 8,
-            // 2px white divider at the top edge of the scrollable cell
-            // area — visual cue that the sticky header ends here and the
-            // scrollable grid begins. Sits at the bottom of the sticky
-            // header's box (after the 8px paddingBottom).
-            borderBottom: "2px solid #fff",
+            // Bottom zone holds 8px of breathing room beneath the username
+            // content + 12px of sawtooth zigzag (rendered as an absolutely
+            // positioned SVG child below). Total 20px; the zigzag's filled
+            // teeth (var(--dos-bg) above the line) obscure scrolling cells
+            // so the bottom contour of the zigzag becomes the visible top
+            // edge of the scroll area.
+            paddingBottom: 20,
             // Extend the box 24px past the grid column tracks so the
-            // divider line reaches further right than the rightmost cell
+            // zigzag reaches further right than the rightmost cell
             // column. The outer grid's paddingRight: 24 above provides
             // the room for this overflow (without it, overflowX clipping
             // would hide the extension).
@@ -876,17 +880,65 @@ export default function V2RoomMap({
               </div>
             );
           })}
+
+          {/* Sticky-header bottom zigzag — replaces the prior 2px straight
+              white divider. Absolutely positioned in the sticky header's
+              bottom 12px (paddingBottom: 20 reserves 8px breathing + 12px
+              for this strip). The <pattern> tiles a 24×12 sawtooth across
+              the full sticky-header width (which is calc(100% + 24px), so
+              the zigzag matches the old divider's right extension past
+              the rightmost column). Filled polygon `var(--dos-bg)` above
+              the zigzag line obscures scrolling cells as they pass under
+              the sticky chrome — the zigzag's bottom contour becomes the
+              visible top edge of the scroll area. 2px white polyline draws
+              the visible sawtooth line itself. */}
+          <svg
+            aria-hidden
+            width="100%"
+            height={12}
+            preserveAspectRatio="none"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: "block",
+              pointerEvents: "none",
+            }}
+          >
+            <defs>
+              <pattern
+                id={zigzagPatternId}
+                x={0}
+                y={0}
+                width={24}
+                height={12}
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M 0,0 L 24,0 L 24,12 L 12,0 L 0,12 Z"
+                  fill="var(--dos-bg)"
+                />
+                <polyline
+                  points="0,12 12,0 24,12"
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth={2}
+                  strokeLinejoin="round"
+                />
+              </pattern>
+            </defs>
+            <rect width="100%" height={12} fill={`url(#${zigzagPatternId})`} />
+          </svg>
         </div>
 
-        {/* ── 16px breathing spacer between sticky header and body rows.
+        {/* ── 28px breathing spacer between sticky header and body rows.
             Non-sticky — sits in the grid's flow at content position
-            HEADER_HEIGHT to HEADER_HEIGHT+16, then scrolls with the rest
-            of the body. Effect on initial load: target row's first cell
-            sits 16px lower than it would without this spacer. Above the
-            target cell, body content scrolls naturally (showing the
-            previous row's cell + spine when target is deeper than row
-            0). No sticky overlay obscuring scrolling content. */}
-        <div aria-hidden style={{ gridColumn: "1 / -1", height: 16 }} />
+            HEADER_HEIGHT to HEADER_HEIGHT+28, then scrolls with the rest
+            of the body. Bumped 16 → 28 alongside the sticky-header zigzag
+            so the visible gap from the zigzag's valleys to the first cell
+            stays consistent with the prior 2px-divider layout. */}
+        <div aria-hidden style={{ gridColumn: "1 / -1", height: 28 }} />
 
         {/* ── Body rows ────────────────────────────────────────────────── */}
         {rows.map((row, rowIdx) => {
