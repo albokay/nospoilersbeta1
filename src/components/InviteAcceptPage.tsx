@@ -185,10 +185,10 @@ export default function InviteAcceptPage({ token }: { token: string }) {
   }
 
   // Target for "Go home" buttons. Branch on auth state so signed-in
-  // users land on /profile directly (avoiding the / → /profile redirect
+  // users land on /journal directly (avoiding the / → /journal redirect
   // round-trip, which was rendering blank-green in practice — same
   // class of SPA-nav-out-of-InviteAcceptPage issue as a9bbc81).
-  const goHomeTarget = user ? "/profile" : "/";
+  const goHomeTarget = user ? "/journal" : "/";
 
   if (status === "invalid") {
     return (

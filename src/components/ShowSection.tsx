@@ -681,8 +681,9 @@ export default function ShowSection({
       if (activeGroupId === settingsGroupId) setActiveGroupId(null);
       setShowGroupSettings(false);
       setShowLeaveModal(null);
-      // Navigate to profile page
-      navigate("/profile");
+      // Navigate to journal — user just left a room, take them back to
+      // their content hub.
+      navigate("/journal");
       if (typeof onGroupLeft === "function") onGroupLeft();
     } catch {
       alert("Failed to leave room. Please try again.");
@@ -701,7 +702,7 @@ export default function ShowSection({
       if (activeGroupId === settingsGroupId) setActiveGroupId(null);
       setShowGroupSettings(false);
       setShowLeaveModal(null);
-      navigate("/profile");
+      navigate("/journal");
       if (typeof onGroupLeft === "function") onGroupLeft();
     } catch {
       alert("Failed to leave room. Please try again.");
@@ -2707,7 +2708,7 @@ export default function ShowSection({
             }
             setActiveThreadId(null);
             if (wasPrivateJournalPost) {
-              navigate("/profile", { state: { activeTab: showId } });
+              navigate("/journal", { state: { activeTab: showId } });
             } else {
               setTimeout(() => scrollToShowTop(), 0);
             }

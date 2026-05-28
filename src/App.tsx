@@ -383,7 +383,7 @@ function AppShell() {
       return;
     }
     if (prevUserRef.current === null && user !== null) {
-      navigate("/profile");
+      navigate("/journal");
       requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
     }
     prevUserRef.current = user;
@@ -784,7 +784,7 @@ function AppShell() {
     // off /. Otherwise admin sign-in briefly sees profile=null → isAdmin=false
     // and bounces them off / before the profile load settles.
     if (user && profile && !isAdmin && p === "/") {
-      navigate("/profile", { replace: true });
+      navigate("/journal", { replace: true });
     }
   }, [authLoading, user, profile, isAdmin, location.pathname, navigate]);
 
@@ -807,8 +807,9 @@ function AppShell() {
         navigate(`/show/${newShow.id}`, { state: { activeGroupId: friendGroup.id } });
       } else {
         // Solo path: no friend room — land the user on their journal tab
-        // for the new show (auto-unhides via ProfilePage's activeTab state).
-        navigate("/profile", { state: { activeTab: newShow.id } });
+        // for the new show (V3JournalPage reads state.activeTab to seed
+        // the active tab and auto-unhide it).
+        navigate("/journal", { state: { activeTab: newShow.id } });
       }
       requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
     },
@@ -820,10 +821,11 @@ function AppShell() {
       requestAnimationFrame(() => window.scrollTo({ top: GLOBAL_HEADER_H, behavior: "auto" }));
     },
     // User searched a show they've already onboarded onto. Take them back
-    // to their existing journal tab — ProfilePage auto-unhides hidden tabs
-    // when activeTab state is supplied, so this also reopens closed tabs.
+    // to their existing journal tab — V3JournalPage auto-unhides hidden
+    // tabs when state.activeTab is supplied, so this also reopens closed
+    // tabs.
     onReopenJournal: (showId: string) => {
-      navigate("/profile", { state: { activeTab: showId } });
+      navigate("/journal", { state: { activeTab: showId } });
       requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
     },
     onAuthRequired: () => { setAuthHint("Sign in or create an account to start a journal or friend room."); setShowAuthModal(true); },
@@ -848,8 +850,8 @@ function AppShell() {
               style={{ margin: 0 }}
               tabIndex={0}
               aria-label={user ? "Go to journal" : "Go to homepage"}
-              onClick={user ? () => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } : goHomepage}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? navigate("/profile") : goHomepage(); } }}
+              onClick={user ? () => { navigate("/journal"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } : goHomepage}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); user ? navigate("/journal") : goHomepage(); } }}
             >
               <img src="/sidebar-logo.png" alt="sidebar" className="brandLogoImg" style={{ height: 38, width: "auto", display: "block" }} />
             </h1>
@@ -866,14 +868,14 @@ function AppShell() {
               aria-label="Go to journal"
               onClick={() => {
                 setHeaderLogoResetKey(k => k + 1);
-                navigate("/profile");
+                navigate("/journal");
                 requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   setHeaderLogoResetKey(k => k + 1);
-                  navigate("/profile");
+                  navigate("/journal");
                 }
               }}
             >
@@ -955,7 +957,7 @@ function AppShell() {
             <button
               className="profileChip"
               onClick={!(showProfile || showJournal || showLegacyProfile) ? () => {
-                navigate("/profile", expandedShowId ? { state: { activeTab: expandedShowId } } : undefined);
+                navigate("/journal", expandedShowId ? { state: { activeTab: expandedShowId } } : undefined);
                 requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
               } : undefined}
               style={(showProfile || showJournal || showLegacyProfile) ? { cursor: "default" } : undefined}
@@ -1011,7 +1013,7 @@ function AppShell() {
       {!authLoading && isAdmin && (
         <button
           className="btn"
-          onClick={() => { navigate("/profile"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); }}
+          onClick={() => { navigate("/journal"); requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); }}
           title="Go to your journal"
           style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
         >
