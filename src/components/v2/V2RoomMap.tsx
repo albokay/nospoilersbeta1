@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CircleCheck, DoorClosed, DoorOpen, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
@@ -73,6 +73,50 @@ const RATING_PHRASES: Record<number, string> = {
   5: "Things are cooking.",
   6: "Woah!",
 };
+
+// Sticky-header zigzag geometry. Drawn as a SINGLE continuous polyline +
+// fill polygon spanning a wide canvas (clipped by the SVG box to whatever
+// the actual container width is). This is intentional — using <pattern>
+// tiles caused every tile boundary (which always lands at a valley) to be
+// a polyline endpoint, which renders with `stroke-linecap` (butt by default),
+// creating a perpendicular squared-off mark at every valley. A single
+// continuous polyline makes every peak AND every valley an interior
+// linejoin (sharp miter), with linecaps only at the very far edges off-
+// screen.
+//
+// Geometry: tooth period 30px, amplitude 12px (peak y=5, valley y=17 in a
+// 22px strip). Slope ~38.7° from horizontal. The 5px buffer at the strip
+// top/bottom gives the 4px stroke's miter overshoot (~5.1px at this
+// internal angle) room to render without the SVG clipping the corners.
+const ZZ_TOOTH_W = 30;
+const ZZ_PEAK_Y = 5;
+const ZZ_VALLEY_Y = 17;
+const ZZ_STRIP_H = 22;
+const ZZ_CANVAS_W = 4000; // Wide enough for any plausible viewport
+const ZZ_HALF = ZZ_TOOTH_W / 2;
+const ZZ_SEGMENTS = Math.ceil(ZZ_CANVAS_W / ZZ_HALF);
+const ZZ_TOTAL_W = ZZ_SEGMENTS * ZZ_HALF;
+
+const ZZ_LINE_POINTS = ((): string => {
+  const pts: string[] = [];
+  for (let i = 0; i <= ZZ_SEGMENTS; i++) {
+    const x = i * ZZ_HALF;
+    const y = i % 2 === 0 ? ZZ_VALLEY_Y : ZZ_PEAK_Y;
+    pts.push(`${x},${y}`);
+  }
+  return pts.join(" ");
+})();
+
+const ZZ_FILL_POINTS = ((): string => {
+  // Top-left → top-right → trace zigzag right-to-left → close.
+  const pts: string[] = [`0,0`, `${ZZ_TOTAL_W},0`];
+  for (let i = ZZ_SEGMENTS; i >= 0; i--) {
+    const x = i * ZZ_HALF;
+    const y = i % 2 === 0 ? ZZ_VALLEY_Y : ZZ_PEAK_Y;
+    pts.push(`${x},${y}`);
+  }
+  return pts.join(" ");
+})();
 
 export type V2RoomMapEntry = {
   threadId: string;
@@ -244,9 +288,6 @@ export default function V2RoomMap({
   onCommitRatings,
   filteredUserId,
 }: V2RoomMapProps) {
-  // Unique id for the sticky-header zigzag <pattern> so multiple V2RoomMap
-  // instances on a page (unlikely but harmless) don't collide on `url(#…)`.
-  const zigzagPatternId = useId();
   // Predicate for the user-filter dim treatment. When a filter is
   // active, columns belonging to other members render at opacity 0.35
   // with pointer-events: none — no tooltips, no clicks, no dot hover.
@@ -890,62 +931,42 @@ export default function V2RoomMap({
           </div>
 
           {/* Sticky-header bottom zigzag — in-flow below the username row.
-              The <pattern> tiles a 36×20 sawtooth across the full sticky-
-              header width (calc(100% + 24px), matching the prior straight
-              divider's right extension past the rightmost column). The
-              filled polygon (var(--dos-bg) above the zigzag line) is the
-              ONLY obscuring mass in this strip — the V-notches between
-              teeth are transparent, so cells scrolling up appear through
-              the notches and visually disappear along the zigzag contour
-              (not a straight edge).
-
-              Geometry: peaks at y=5, valleys at y=15 (amplitude 10), tooth
-              width 36 — gives a slope of ~29° from horizontal, shallower
-              than the original 45°. Peaks/valleys inset 5px from the strip
-              edges so the 4px stroke's miter overshoot (~4.6px at this
-              internal angle) fits inside the strip without being clipped,
-              keeping the corners as true sharp points. */}
+              A SINGLE continuous polyline draws the visible white sawtooth
+              and a SINGLE polygon draws the obscuring var(--dos-bg) fill
+              above it. The continuous polyline spans a wide canvas (clipped
+              by the SVG box to actual container width) so that every peak
+              AND every valley is an interior miter linejoin — sharp on
+              both sides. Stroke-linecap (butt) only happens at the off-
+              screen far ends of the polyline, never at visible corners.
+              The V-notches between teeth stay transparent, so cells
+              scrolling up appear through the notches and visually
+              disappear along the zigzag contour. Geometry constants are
+              module-level (ZZ_*) so they're computed once. */}
           <svg
             aria-hidden
             width="100%"
-            height={20}
-            preserveAspectRatio="none"
+            height={ZZ_STRIP_H}
+            preserveAspectRatio="xMinYMin slice"
             style={{ display: "block", pointerEvents: "none" }}
           >
-            <defs>
-              <pattern
-                id={zigzagPatternId}
-                x={0}
-                y={0}
-                width={36}
-                height={20}
-                patternUnits="userSpaceOnUse"
-              >
-                <path
-                  d="M 0,0 L 36,0 L 36,15 L 18,5 L 0,15 Z"
-                  fill="var(--dos-bg)"
-                />
-                <polyline
-                  points="0,15 18,5 36,15"
-                  fill="none"
-                  stroke="#fff"
-                  strokeWidth={4}
-                  strokeLinejoin="miter"
-                />
-              </pattern>
-            </defs>
-            <rect width="100%" height={20} fill={`url(#${zigzagPatternId})`} />
+            <polygon points={ZZ_FILL_POINTS} fill="var(--dos-bg)" />
+            <polyline
+              points={ZZ_LINE_POINTS}
+              fill="none"
+              stroke="#fff"
+              strokeWidth={4}
+              strokeLinejoin="miter"
+            />
           </svg>
         </div>
 
-        {/* ── 20px breathing spacer between sticky header and body rows.
+        {/* ── 18px breathing spacer between sticky header and body rows.
             Non-sticky — sits in the grid's flow at content position
-            HEADER_HEIGHT to HEADER_HEIGHT+20, then scrolls with the rest
-            of the body. Paired with the 20px zigzag strip above for a
+            HEADER_HEIGHT to HEADER_HEIGHT+18, then scrolls with the rest
+            of the body. Paired with the 22px zigzag strip above for a
             total ~40px offset from username row to first cell, matching
-            the visual layout that the prior (12px strip + 28px spacer)
-            arrangement gave. */}
-        <div aria-hidden style={{ gridColumn: "1 / -1", height: 20 }} />
+            the prior layout. */}
+        <div aria-hidden style={{ gridColumn: "1 / -1", height: 18 }} />
 
         {/* ── Body rows ────────────────────────────────────────────────── */}
         {rows.map((row, rowIdx) => {
