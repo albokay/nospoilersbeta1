@@ -161,6 +161,33 @@ export default function App() {
   // supabase-js on page load) isn't disturbed by AppShell's auth
   // redirects, mobile lockout, or v2/v3 chrome. BetaGate also exempts
   // this path. See docs/sidebar_spec_password_reset.md.
+  // ── Promoted V2 surfaces — top-level short-circuits ────────────────
+  // V2 surfaces ship their own full-width chrome via V2Layout. Mounting
+  // them INSIDE AppShell would double the chrome (two logos, two sign-
+  // out buttons) AND squish the content column to AppShell's
+  // .container { width: min(672px, 92vw) } max-width. The original
+  // pre-promotion architecture mounted /v2/* outside AppShell for
+  // exactly this reason — these short-circuits preserve that.
+  //
+  // Auth-gate is intentionally NOT enforced here for /profile / /room /
+  // /compose — the V2 components handle no-user state internally
+  // (matches their pre-promotion behavior at /v2/*).
+  if (pathParts[0] === "profile" && !pathParts[1]) {
+    return <Suspense fallback={<RouteFallback />}><V2ProfileSelfPage /></Suspense>;
+  }
+  if (pathParts[0] === "room" && pathParts[1]) {
+    return <Suspense fallback={<RouteFallback />}><V2FriendRoomPage groupId={pathParts[1]} /></Suspense>;
+  }
+  if (pathParts[0] === "compose" && pathParts[1]) {
+    return <Suspense fallback={<RouteFallback />}><V2ComposePage showId={pathParts[1]} /></Suspense>;
+  }
+  if (pathParts[0] === "u" && pathParts[1]) {
+    const username = decodeURIComponent(pathParts[1]);
+    if (pathParts[2] === "show" && pathParts[3] && pathParts[4] === "posts") {
+      return <Suspense fallback={<RouteFallback />}><V2UserAggregatePage username={username} showId={pathParts[3]} /></Suspense>;
+    }
+    return <Suspense fallback={<RouteFallback />}><V2ProfileVisitorPage username={username} /></Suspense>;
+  }
   if (pathParts[0] === "reset-password") return <Suspense fallback={<RouteFallback />}><ResetPasswordPage /></Suspense>;
   return <AppShell />;
 }
@@ -743,10 +770,13 @@ function AppShell() {
   useEffect(() => {
     if (authLoading) return;
     const p = location.pathname;
-    // Signed-out users get bounced off any auth-gated profile/journal
-    // surface — /profile (V2 self profile, promoted), /journal (V3
-    // journal, promoted), and /legacy/profile (V1 archived journal).
-    if (!user && (p === "/profile" || p === "/journal" || p === "/legacy/profile")) {
+    // Signed-out users get bounced off auth-gated AppShell-mounted
+    // surfaces — /journal (V3 journal, promoted) and /legacy/profile
+    // (V1 archived journal). /profile (V2ProfileSelfPage) and the
+    // other V2 surfaces (/room, /compose, /u) short-circuit at App()
+    // top-level above and never reach AppShell; they handle no-user
+    // state inside the component (matches pre-promotion behavior).
+    if (!user && (p === "/journal" || p === "/legacy/profile")) {
       navigate("/", { replace: true });
       return;
     }
@@ -1323,17 +1353,15 @@ function AppShell() {
         </>
       )}
 
-      {/* /profile — promoted V2 self profile. V2ProfileSelfPage fetches
-          its own data (shows, progress, thoughts) so no prop graph from
-          AppShell is threaded in. */}
-      {showProfile && username && (
-        <Suspense fallback={<RouteFallback />}>
-          <V2ProfileSelfPage />
-        </Suspense>
-      )}
+      {/* V2 surfaces (/profile, /room/:groupId, /compose/:showId, /u/:username,
+          /u/:username/show/:showId/posts) are short-circuited at App() top-
+          level — they ship full-width V2Layout chrome that would double-up
+          with AppShell's .topHeaderWrap and get squished by AppShell's
+          .container max-width if mounted here. */}
 
-      {/* /journal — promoted V3 journal (was /v3/journal). Same prop graph
-          as V1 ProfilePage; only the URL changed. */}
+      {/* /journal — promoted V3 journal (was /v3/journal). Stays in AppShell
+          because V3JournalPage uses AppShell's chrome (same as the live
+          /v3/journal did pre-promotion). */}
       {showJournal && username && (
         <V3JournalPage
           shows={shows}
@@ -1358,34 +1386,6 @@ function AppShell() {
             );
           }}
         />
-      )}
-
-      {/* /room/:groupId — promoted V2 friend room. */}
-      {roomGroupId && (
-        <Suspense fallback={<RouteFallback />}>
-          <V2FriendRoomPage groupId={roomGroupId} />
-        </Suspense>
-      )}
-
-      {/* /compose/:showId — promoted V2 compose deep-link target. */}
-      {composeShowId && (
-        <Suspense fallback={<RouteFallback />}>
-          <V2ComposePage showId={composeShowId} />
-        </Suspense>
-      )}
-
-      {/* /u/:username — promoted V2 visitor profile. */}
-      {visitorUsername && (
-        <Suspense fallback={<RouteFallback />}>
-          <V2ProfileVisitorPage username={visitorUsername} />
-        </Suspense>
-      )}
-
-      {/* /u/:username/show/:showId/posts — promoted V2 user aggregate. */}
-      {userAggregate && (
-        <Suspense fallback={<RouteFallback />}>
-          <V2UserAggregatePage username={userAggregate.username} showId={userAggregate.showId} />
-        </Suspense>
       )}
 
       {/* /legacy/profile — V1 ProfilePage archived as a fallback. Same
