@@ -74,7 +74,7 @@ export default function ZigzagDivider({ fill = "transparent" }: Props) {
         points={ZZ_LINE_POINTS}
         fill="none"
         stroke="#fff"
-        strokeWidth={3}
+        strokeWidth={2}
         strokeLinejoin="miter"
       />
     </svg>

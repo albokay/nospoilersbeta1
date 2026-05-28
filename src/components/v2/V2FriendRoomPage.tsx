@@ -739,7 +739,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // Geometry constants — keep banner column aligned with the feed pane's
   // left edge so the visual rhythm reads as one column.
   const FEED_MAX_W = 672;
-  const GAP = 32;
+  const GAP = 48;
 
   const eff = useMemo(() => effectiveProgress(progressForShow), [progressForShow]);
 
