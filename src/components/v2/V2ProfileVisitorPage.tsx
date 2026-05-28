@@ -304,7 +304,11 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
         </section>
       )}
 
-      {ownerThoughts.length > 0 && <ZigzagDivider />}
+      {ownerThoughts.length > 0 && (
+        <div style={{ maxWidth: 400, margin: "64px auto" }}>
+          <ZigzagDivider />
+        </div>
+      )}
 
       {/* === META PROSE === */}
       <p

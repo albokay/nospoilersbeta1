@@ -794,7 +794,11 @@ export default function V2ProfileSelfPage() {
         </section>
       )}
 
-      {thoughtsLoaded && user && <ZigzagDivider />}
+      {thoughtsLoaded && user && (
+        <div style={{ maxWidth: 400, margin: "64px auto" }}>
+          <ZigzagDivider />
+        </div>
+      )}
 
       {/* === META PROSE === */}
       <p

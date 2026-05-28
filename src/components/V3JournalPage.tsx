@@ -1545,8 +1545,9 @@ export default function V3JournalPage({
 
               {/* Zigzag divider — separates the entries diary above from
                   the "responses to you" section below. Same line element
-                  used on the V2 friend room map and V2 profile pages. */}
-              <div style={{ marginTop: 64, marginBottom: 64 }}>
+                  used on the V2 friend room map and V2 profile pages.
+                  Centered + narrower (maxWidth 400) per mockup. */}
+              <div style={{ maxWidth: 400, margin: "64px auto" }}>
                 <ZigzagDivider />
               </div>
 
