@@ -17,6 +17,13 @@ type V2LayoutProps = {
   // geometry — e.g. V2ComposePage (manages its own root + animation),
   // V2FriendRoomPage (manages its own two-pane layout).
   bareMain?: boolean;
+  // When false, the chrome treats the viewer as NOT being on their own
+  // home surface even on profile/journal/compose palettes — i.e. renders
+  // the "go to your journal" + "go to your profile" navigation pills
+  // instead of the "you are @username" identity pill. Used by
+  // V2ProfileVisitorPage when someone is viewing SOMEONE ELSE's profile.
+  // Default true (preserves existing behavior on all other V2 surfaces).
+  viewerIsHome?: boolean;
   children: React.ReactNode;
 };
 
@@ -36,7 +43,7 @@ type V2LayoutProps = {
 //   the user perceives one continuous frame as they navigate. Without this
 //   reuse the chrome jumped between pages because AppShell and v2 each had
 //   their own positioning code.
-export default function V2Layout({ palette, pairedHeader, bareMain, children }: V2LayoutProps) {
+export default function V2Layout({ palette, pairedHeader, bareMain, viewerIsHome = true, children }: V2LayoutProps) {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
 
@@ -63,7 +70,12 @@ export default function V2Layout({ palette, pairedHeader, bareMain, children }: 
   // home base, so the pill flips to "go to your journal" with a click
   // handler. This matches the AppShell convention applied to /v3/journal vs
   // /show/<id> in the live site.
-  const onProfileFamily = palette !== "room";
+  // onProfileFamily flips the chrome between "home" (identity pill,
+  // cursor:default) and "away" (navigation pills). Normally the palette
+  // alone decides this — room palettes are away, everything else is home.
+  // viewerIsHome=false forces "away" regardless of palette, used when the
+  // viewer is on someone ELSE's profile (V2ProfileVisitorPage).
+  const onProfileFamily = palette !== "room" && viewerIsHome;
 
   return (
     <div style={{ minHeight: "100vh", position: "relative" }}>

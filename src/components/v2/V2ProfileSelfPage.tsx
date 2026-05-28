@@ -15,11 +15,12 @@ import {
   insertProfileThought,
   updateProfileThought,
   deleteProfileThought,
+  fetchAllFriendGroupsWithActivity,
   type V2BlurbKind,
   type ShelfName,
 } from "../../lib/db";
 import type { Show } from "../../lib/db";
-import type { ProgressEntry, ProfileThought } from "../../types";
+import type { ProgressEntry, ProfileThought, FriendGroup } from "../../types";
 import V2Layout from "./V2Layout";
 import SearchShows from "../SearchShows";
 import Modal from "../Modal";
@@ -272,6 +273,114 @@ export function HomeDivider({ color }: { color: string }) {
 
 // Inline editable blurb. Click pencil → text field; Enter / blur saves;
 // Esc cancels. Whitespace-only saves as null per setShelfBlurb's contract.
+// Friend-room CTA rendered below show cards on each shelf. Mirrors the
+// visitor-profile "go to your friend room" button styling (canon
+// light-blue fill + outline, white text). When the user has multiple
+// rooms for a show, the button toggles a dropdown picker; click-outside
+// closes it. When there are zero rooms for the show, renders null.
+function FriendRoomCTA({
+  rooms,
+  navigate,
+}: {
+  rooms: FriendGroup[];
+  navigate: ReturnType<typeof useNavigate>;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  if (!rooms || rooms.length === 0) return null;
+
+  const buttonStyle: React.CSSProperties = {
+    fontSize: 12,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    background: "#adc8d7",
+    border: "2px solid #adc8d7",
+    color: "#fff",
+  };
+
+  if (rooms.length === 1) {
+    const room = rooms[0];
+    return (
+      <button
+        className="btn h40"
+        onClick={() => navigate(`/room/${room.id}`)}
+        style={buttonStyle}
+      >
+        <ArrowRight size={13} /> go to your friend room
+      </button>
+    );
+  }
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative", display: "inline-block" }}>
+      <button
+        className="btn h40"
+        onClick={() => setOpen((o) => !o)}
+        style={buttonStyle}
+      >
+        <ArrowRight size={13} /> go to your friend room
+        <ChevronDown size={13} />
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            background: "var(--dos-bg)",
+            borderRadius: 10,
+            padding: 8,
+            zIndex: 30,
+            boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+            minWidth: 240,
+          }}
+        >
+          {rooms.map((g) => (
+            <button
+              key={g.id}
+              className="btn"
+              onClick={() => {
+                setOpen(false);
+                navigate(`/room/${g.id}`);
+              }}
+              style={{
+                fontSize: 13,
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                width: "100%",
+                background: "#adc8d7",
+                color: "#fff",
+                border: "none",
+              }}
+            >
+              <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: "center", margin: "0 8px", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {g.name}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BlurbField({
   kind,
   value,
@@ -367,8 +476,11 @@ function BlurbField({
         fontStyle: italic ? "italic" : undefined,
         fontSize: 15,
         lineHeight: 1.5,
+        // Placeholders read as "placeholder" via the gray COLOR alone;
+        // dropping the 0.7 opacity matches the user's "full opacity for
+        // all blurb text" direction.
         color: isPlaceholder ? "var(--dos-gray)" : "var(--dos-fg)",
-        opacity: isPlaceholder ? 0.7 : 1,
+        opacity: 1,
       }}
     >
       {value || placeholder}
@@ -432,6 +544,12 @@ export default function V2ProfileSelfPage() {
   } | null>(null);
   const [cyclingPrompt, setCyclingPrompt] = useState<string>(() => pickProfileThoughtPrompt(null));
 
+  // All friend rooms the user belongs to, fetched once on mount and
+  // grouped per-show. Powers the "go to your friend room" buttons on
+  // shelf cards. One query at page load (cheap) avoids per-card lazy
+  // fetches and keeps the render synchronous.
+  const [allUserRooms, setAllUserRooms] = useState<FriendGroup[]>([]);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -439,12 +557,14 @@ export default function V2ProfileSelfPage() {
       fetchShows(),
       fetchProgress(user.id),
       fetchProfileThoughtsForOwner(user.id),
+      fetchAllFriendGroupsWithActivity(user.id),
     ])
-      .then(([s, p, t]) => {
+      .then(([s, p, t, rooms]) => {
         if (cancelled) return;
         setShows(s);
         setProgress(p);
         setThoughts(t);
+        setAllUserRooms(rooms);
         setThoughtsLoaded(true);
       })
       .catch((err) => {
@@ -457,6 +577,19 @@ export default function V2ProfileSelfPage() {
       });
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  // Per-show friend-rooms lookup. Built from allUserRooms once, used by
+  // shelf cards to render the friend-room CTA per show (single → button,
+  // multiple → dropdown).
+  const roomsByShow = useMemo(() => {
+    const m = new Map<string, FriendGroup[]>();
+    for (const room of allUserRooms) {
+      const arr = m.get(room.showId) ?? [];
+      arr.push(room);
+      m.set(room.showId, arr);
+    }
+    return m;
+  }, [allUserRooms]);
 
   // === Thoughts on... handlers ============================================
 
@@ -560,10 +693,14 @@ export default function V2ProfileSelfPage() {
     return out;
   }, [progress, shows]);
 
-  // Finished display: when no row has been drag-positioned, fall back to the
-  // legacy pinned-first-then-unpinned ordering. sortShelf already does this,
-  // but the see-all CTA still uses the total count separately below.
-  const finishedDisplay = buckets.finished;
+  // Finished shelf paging: when there are more than 6 finished shows,
+  // collapse to the first 6 by default with a "see all N shows" button.
+  // Click expands to show all; "show fewer" collapses back.
+  const FINISHED_COLLAPSED_LIMIT = 6;
+  const [showAllFinished, setShowAllFinished] = useState(false);
+  const finishedDisplay = buckets.finished.length > FINISHED_COLLAPSED_LIMIT && !showAllFinished
+    ? buckets.finished.slice(0, FINISHED_COLLAPSED_LIMIT)
+    : buckets.finished;
 
   if (!authLoading && !user) {
     return <V2Layout palette="profile"><div /></V2Layout>;
@@ -892,6 +1029,15 @@ export default function V2ProfileSelfPage() {
                           onSaved={(v) => updateLocalProgress(sid, { watchingQuote: v })}
                         />
                       </div>
+                      {(() => {
+                        const r = roomsByShow.get(sid);
+                        if (!r || r.length === 0) return null;
+                        return (
+                          <div style={{ marginTop: 14 }}>
+                            <FriendRoomCTA rooms={r} navigate={navigate} />
+                          </div>
+                        );
+                      })()}
                     </SortableCard>
                   );
                 })}
@@ -954,6 +1100,15 @@ export default function V2ProfileSelfPage() {
                         />
                       </span>
                     </div>
+                    {(() => {
+                      const r = roomsByShow.get(sid);
+                      if (!r || r.length === 0) return null;
+                      return (
+                        <div style={{ marginTop: 14 }}>
+                          <FriendRoomCTA rooms={r} navigate={navigate} />
+                        </div>
+                      );
+                    })()}
                   </SortableCard>
                 );
               })}
@@ -1130,23 +1285,37 @@ export default function V2ProfileSelfPage() {
                         showId={sid}
                         onSaved={(v) => updateLocalProgress(sid, { canonTake: v })}
                       />
+                      {(() => {
+                        const r = roomsByShow.get(sid);
+                        if (!r || r.length === 0) return null;
+                        return (
+                          <div style={{ marginTop: 14 }}>
+                            <FriendRoomCTA rooms={r} navigate={navigate} />
+                          </div>
+                        );
+                      })()}
                     </SortableCard>
                   );
                 })}
               </div>
             </SortableContext>
           </DndContext>
-          {/* see-all CTA — wired in a later checkpoint when the expanded view is designed. */}
-          <div style={{ textAlign: "center", marginTop: 18 }}>
-            <button
-              className="btn h40"
-              disabled
-              title="expanded view tabled per spec"
-              style={{ opacity: 0.6, cursor: "not-allowed" }}
-            >
-              see all {buckets.finished.length} {buckets.finished.length === 1 ? "show" : "shows"}
-            </button>
-          </div>
+          {/* See-all expand/collapse — only render when there are more
+              than 6 shows; expanded view shows all, collapsed shows the
+              first 6. The button toggles. (Both rendered states live
+              here so finishedDisplay above is sliced accordingly.) */}
+          {buckets.finished.length > 6 && (
+            <div style={{ textAlign: "center", marginTop: 18 }}>
+              <button
+                className="btn h40"
+                onClick={() => setShowAllFinished((v) => !v)}
+              >
+                {showAllFinished
+                  ? `show fewer`
+                  : `see all ${buckets.finished.length} ${buckets.finished.length === 1 ? "show" : "shows"}`}
+              </button>
+            </div>
+          )}
         </section>
       )}
 
@@ -1207,6 +1376,15 @@ export default function V2ProfileSelfPage() {
                         showId={sid}
                         onSaved={(v) => updateLocalProgress(sid, { stoppedReason: v })}
                       />
+                      {(() => {
+                        const r = roomsByShow.get(sid);
+                        if (!r || r.length === 0) return null;
+                        return (
+                          <div style={{ marginTop: 14 }}>
+                            <FriendRoomCTA rooms={r} navigate={navigate} />
+                          </div>
+                        );
+                      })()}
                     </SortableCard>
                   );
                 })}

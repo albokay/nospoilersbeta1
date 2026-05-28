@@ -227,7 +227,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
 
   if (notFound) {
     return (
-      <V2Layout palette="profile">
+      <V2Layout palette="profile" viewerIsHome={false}>
         <div style={{ textAlign: "center", marginTop: 60 }}>
           <h1 style={{ fontFamily: "Lora, Georgia, serif", fontSize: 32, color: "var(--dos-fg)" }}>profile not found</h1>
           <p style={{ marginTop: 16, color: "var(--dos-gray)", fontStyle: "italic", fontFamily: "Lora, Georgia, serif" }}>
@@ -240,7 +240,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
 
   if (!ownerId) {
     return (
-      <V2Layout palette="profile">
+      <V2Layout palette="profile" viewerIsHome={false}>
         <div style={{ textAlign: "center", marginTop: 60, color: "var(--dos-gray)", fontStyle: "italic" }}>
           loading…
         </div>
@@ -249,7 +249,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
   }
 
   return (
-    <V2Layout palette="profile">
+    <V2Layout palette="profile" viewerIsHome={false}>
       {/* === PROFILE IDENTITY === */}
       <header style={{ textAlign: "center", paddingTop: 24, marginBottom: 56 }}>
         <div style={{ display: "inline-block", marginBottom: 18 }}>
@@ -424,7 +424,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
                           fontStyle: "italic",
                           fontSize: 15,
                           lineHeight: 1.45,
-                          color: "var(--dos-gray)",
+                          color: "var(--dos-fg)",
                         }}
                       >
                         — {p.wantReason}
@@ -496,7 +496,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
                         fontStyle: "italic",
                         fontSize: 15,
                         lineHeight: 1.5,
-                        color: "var(--dos-gray)",
+                        color: "var(--dos-fg)",
                       }}
                     >
                       "{p.canonTake}"
@@ -550,7 +550,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
                         fontStyle: "italic",
                         fontSize: 15,
                         lineHeight: 1.5,
-                        color: "var(--dos-gray)",
+                        color: "var(--dos-fg)",
                       }}
                     >
                       — {p.stoppedReason}
@@ -610,7 +610,15 @@ function ContextualCTAs({
         <button
           className="btn h40"
           onClick={() => navigate(`/room/${sharedRoom.groupId}`)}
-          style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
+          style={{
+            fontSize: 12,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            background: "#adc8d7",
+            border: "2px solid #adc8d7",
+            color: "#fff",
+          }}
         >
           <ArrowRight size={13} /> go to your friend room
         </button>
