@@ -544,24 +544,19 @@ export default function V2RoomMap({
           paddingRight: 24,
         }}
       >
-        {/* ── Sticky username header row ───────────────────────────────── */}
+        {/* ── Sticky header — wraps the username row + the zigzag SVG.
+            Outer wrapper has NO background so the SVG's V-notches stay
+            transparent (the username row's bg covers only itself; the
+            zigzag's filled teeth are the only obscuring mass below it).
+            Cells scrolling up appear THROUGH the V-notches and disappear
+            behind the teeth, so the visible top edge of the scroll area
+            follows the zigzag contour rather than a straight line. */}
         <div
           style={{
             gridColumn: "1 / -1",
-            display: "grid",
-            gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
-            columnGap: COL_GAP,
             position: "sticky",
             top: 0,
             zIndex: 2,
-            background: "var(--dos-bg)",
-            // Bottom zone holds 8px of breathing room beneath the username
-            // content + 12px of sawtooth zigzag (rendered as an absolutely
-            // positioned SVG child below). Total 20px; the zigzag's filled
-            // teeth (var(--dos-bg) above the line) obscure scrolling cells
-            // so the bottom contour of the zigzag becomes the visible top
-            // edge of the scroll area.
-            paddingBottom: 20,
             // Extend the box 24px past the grid column tracks so the
             // zigzag reaches further right than the rightmost cell
             // column. The outer grid's paddingRight: 24 above provides
@@ -570,6 +565,18 @@ export default function V2RoomMap({
             width: "calc(100% + 24px)",
           }}
         >
+          {/* Username row — canon-bg fill ends at this div's bottom edge
+              (8px below the username content). Below this row, the zigzag
+              SVG handles its own per-tooth fill. */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
+              columnGap: COL_GAP,
+              background: "var(--dos-bg)",
+              paddingBottom: 8,
+            }}
+          >
           {/* Season-label column slot (col 1, 80px wide). Hosts the
               "ask the room" door icon in the sticky header; body rows
               put the Season N label in this same column. */}
@@ -880,31 +887,25 @@ export default function V2RoomMap({
               </div>
             );
           })}
+          </div>
 
-          {/* Sticky-header bottom zigzag — replaces the prior 2px straight
-              white divider. Absolutely positioned in the sticky header's
-              bottom 12px (paddingBottom: 20 reserves 8px breathing + 12px
-              for this strip). The <pattern> tiles a 24×12 sawtooth across
-              the full sticky-header width (which is calc(100% + 24px), so
-              the zigzag matches the old divider's right extension past
-              the rightmost column). Filled polygon `var(--dos-bg)` above
-              the zigzag line obscures scrolling cells as they pass under
-              the sticky chrome — the zigzag's bottom contour becomes the
-              visible top edge of the scroll area. 2px white polyline draws
-              the visible sawtooth line itself. */}
+          {/* Sticky-header bottom zigzag — in-flow below the username row.
+              The <pattern> tiles a 24×12 sawtooth across the full sticky-
+              header width (calc(100% + 24px), matching the prior straight
+              divider's right extension past the rightmost column). The
+              filled polygon (var(--dos-bg) above the zigzag line) is the
+              ONLY obscuring mass in this strip — the V-notches between
+              teeth are transparent, so cells scrolling up appear through
+              the notches and visually disappear along the zigzag contour
+              (not a straight edge). The 2px white polyline draws the
+              visible sawtooth line itself; strokeLinejoin="miter" keeps
+              the peaks and valleys as sharp points. */}
           <svg
             aria-hidden
             width="100%"
             height={12}
             preserveAspectRatio="none"
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: "block",
-              pointerEvents: "none",
-            }}
+            style={{ display: "block", pointerEvents: "none" }}
           >
             <defs>
               <pattern
@@ -924,7 +925,7 @@ export default function V2RoomMap({
                   fill="none"
                   stroke="#fff"
                   strokeWidth={2}
-                  strokeLinejoin="round"
+                  strokeLinejoin="miter"
                 />
               </pattern>
             </defs>
