@@ -117,14 +117,13 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
   const canPublish = ownerMode && !!ownerHandlers && !current.isPublic;
 
   // Visual treatment per spec:
-  //   - public:  no fill (transparent), 2px dotted white outline, white text.
-  //   - private: canon-green fill, 2px dashed white outline, white text.
-  // Either way text + icons render white (the article's `color` cascade
-  // covers any child using currentColor or inherited color).
-  const outlineStyle = current.isPublic
-    ? "2px dotted rgba(255,255,255,0.85)"
-    : "2px dashed #fff";
-  const ticketBg = current.isPublic ? "transparent" : "#7abd8e";
+  //   - public:  canon-light-blue fill, 2px dashed white outline.
+  //   - private: canon-green fill,      2px dashed white outline.
+  // Title + chrome render white; body copy renders friend-space dark navy
+  // (#1a3a4a) — set explicitly on the body div, overriding the article's
+  // white `currentColor` cascade.
+  const outlineStyle = "2px dashed #fff";
+  const ticketBg = current.isPublic ? "#adc8d7" : "#7abd8e";
 
   // Show expand toggle when the body is long enough that 2-line clamp would
   // hide content. Heuristic: > 120 chars or contains a newline. Always show
@@ -161,7 +160,7 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
           width: "100%",
           background: ticketBg,
           border: outlineStyle,
-          borderRadius: 24,
+          borderRadius: 0,
           padding: "20px 24px",
           textAlign: "left",
           // Always white. Public bg = canon yellow page color (white reads);
@@ -244,7 +243,7 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
               fontFamily: "Inter, sans-serif",
               fontSize: 15,
               lineHeight: 1.6,
-              color: "currentColor",
+              color: "#1a3a4a",
               whiteSpace: "pre-wrap",
               ...(isCurrentExpanded
                 ? {}
