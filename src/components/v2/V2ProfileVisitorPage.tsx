@@ -305,7 +305,7 @@ export default function V2ProfileVisitorPage({ username }: { username: string })
       )}
 
       {ownerThoughts.length > 0 && (
-        <div style={{ maxWidth: 400, margin: "64px auto" }}>
+        <div style={{ maxWidth: 252, margin: "96px auto" }}>
           <ZigzagDivider />
         </div>
       )}

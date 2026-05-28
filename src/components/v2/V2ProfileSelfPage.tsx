@@ -795,7 +795,7 @@ export default function V2ProfileSelfPage() {
       )}
 
       {thoughtsLoaded && user && (
-        <div style={{ maxWidth: 400, margin: "64px auto" }}>
+        <div style={{ maxWidth: 252, margin: "96px auto" }}>
           <ZigzagDivider />
         </div>
       )}

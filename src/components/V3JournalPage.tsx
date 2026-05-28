@@ -1546,8 +1546,10 @@ export default function V3JournalPage({
               {/* Zigzag divider — separates the entries diary above from
                   the "responses to you" section below. Same line element
                   used on the V2 friend room map and V2 profile pages.
-                  Centered + narrower (maxWidth 400) per mockup. */}
-              <div style={{ maxWidth: 400, margin: "64px auto" }}>
+                  Padding (not margin) for the 80px above/below — margin
+                  was collapsing weirdly here and giving ~16px visible
+                  above; padding sets a guaranteed inner gap. */}
+              <div style={{ maxWidth: 252, margin: "0 auto", padding: "80px 0" }}>
                 <ZigzagDivider />
               </div>
 
