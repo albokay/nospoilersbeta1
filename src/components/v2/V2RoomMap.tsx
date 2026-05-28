@@ -1519,13 +1519,14 @@ export default function V2RoomMap({
         <div aria-hidden style={{ gridColumn: "1 / -1", height: 16 }} />
       </div>
 
-      {/* All four launchers are portaled to document.body because V2RoomMap
-          is mounted inside V2FriendRoomPage's transform: translateX(-144px)
-          wrapper. CSS rule: any ancestor with a transform becomes the
-          containing block for position:fixed descendants — so without
-          portaling, the popovers' fixed-position math (which assumes
-          viewport coordinates) gets applied relative to the transformed
-          wrapper and lands off-screen. */}
+      {/* All four launchers are portaled to document.body — defensive
+          against any ancestor stacking-context / containing-block surprise
+          (originally added because V2FriendRoomPage's map pane had a
+          translateX transform that broke position:fixed math; the
+          transform was removed when the two-pane composition was
+          re-centered, but portaling stays as a guard against future
+          ancestor styling changes — sticky containers, transforms added
+          for animations, etc.). */}
       {launcherMode && nudgeOpenFor && groupId && viewerUserId &&
         createPortal(
           <NudgePopover

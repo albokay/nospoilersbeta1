@@ -958,6 +958,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
             display: "flex",
             gap: GAP,
             alignItems: "flex-start",
+            justifyContent: "center",
             maxWidth: 1400,
             margin: "0 auto",
           }}
@@ -967,7 +968,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               entry. Lives on THIS pane (not the outer wrapper) so the
               two-pane container extends through it, letting the sticky
               map stay pinned all the way to the page bottom. */}
-          <div style={{ flex: `0 1 ${FEED_MAX_W}px`, minWidth: 0, marginLeft: "auto", transform: "translateX(-176px)", paddingBottom: 120 }}>
+          <div style={{ flex: `0 1 ${FEED_MAX_W}px`, minWidth: 0, paddingBottom: 120 }}>
             {/* Banner row 1 — eyebrow + room name + settings gear (left)
                 + "to public conversation" globe button (right). Matches V1
                 public-space's `.bannerRow1` layout: flex / align-items:
@@ -1025,8 +1026,8 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 </div>
               </div>
               {/* Tooltip portal={true} — without it the bubble is captured
-                  by an ancestor stacking context (the V2 two-pane layout
-                  with transforms) and renders pinned to the viewport's
+                  by an ancestor stacking context (position: sticky on the
+                  map pane creates one) and renders pinned to the viewport's
                   right edge instead of below the button. Same fix shape as
                   the highlight picker portal. */}
               <Tooltip
@@ -1216,7 +1217,6 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               style={{
                 position: "sticky",
                 top: "calc(var(--site-header-h) + 60px)",
-                transform: "translateX(-144px)",
               }}
             >
             <V2RoomMap
