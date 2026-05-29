@@ -11,6 +11,7 @@ import {
   deleteThread as dbDeleteThread,
   editThread as dbEditThread,
   fetchV2ThreadDetail,
+  fetchV2PublicThreadDetail,
   likeReply as dbLikeReply,
   unlikeReply as dbUnlikeReply,
   fetchHighlights as dbFetchHighlights,
@@ -37,9 +38,16 @@ import type { ProgressEntry, Thread } from "../../types";
 
 export type V2InlineThreadProps = {
   thread: Thread;
-  groupId: string;
+  /** Friend-room group id. When undefined, this is a public-conversation
+   *  thread: replies are fetched from group_id IS NULL, the Highlight
+   *  affordance is suppressed, and the composer posts to the public channel. */
+  groupId?: string;
   viewerProgress: ProgressEntry | null;
-  userId: string;
+  /** Caller's user id. May be null for logged-out visitors viewing a
+   *  public thread; in that case every interactive control (write
+   *  response, like, quote, edit/delete on someone else's posts —
+   *  which wouldn't render anyway) routes through onAuthRequired. */
+  userId: string | null;
   /** Visible reply count from the parent's fetchGroupThreads result. */
   replyCount: number;
   /** Caller scrolls the ticket top into view and clears expansion. */
@@ -169,7 +177,12 @@ export default function V2InlineThread({
   useEffect(() => {
     let cancelled = false;
     setLoadError(null);
-    fetchV2ThreadDetail(thread.id, groupId, userId)
+    // Branch on whether we're inside a friend room or on a public surface.
+    // Public path tolerates a missing userId (logged-out visitors).
+    const fetchPromise = groupId
+      ? fetchV2ThreadDetail(thread.id, groupId, userId ?? "")
+      : fetchV2PublicThreadDetail(thread.id, userId ?? null);
+    fetchPromise
       .then((detail) => {
         if (cancelled) return;
         if (!detail) {
@@ -202,7 +215,10 @@ export default function V2InlineThread({
   // by RepliesList in C6. Best-effort: returns [] on failure (see db.ts).
   // Passes viewerProgress so the spoiler filter (Q1 / C9) drops any
   // highlight whose author was past the viewer at create time.
+  // Friend-room only: highlights are a room feature and are not fetched
+  // or rendered on public surfaces.
   useEffect(() => {
+    if (!groupId) { setHighlights([]); return; }
     let cancelled = false;
     dbFetchHighlights({
       targetType: "thread",
@@ -214,10 +230,13 @@ export default function V2InlineThread({
         setHighlights(rows);
       });
     return () => { cancelled = true; };
-  }, [thread.id, viewerProgress]);
+  }, [thread.id, groupId, viewerProgress]);
 
   // ── Highlight handlers ──────────────────────────────────────────────────
+  // Public-surface defensive bail — the Highlight button isn't rendered
+  // without groupId, but this keeps the handler signature clean.
   const handleHighlightClick = () => {
+    if (!groupId) return;
     if (!userId) {
       onAuthRequired?.();
       return;
@@ -239,7 +258,7 @@ export default function V2InlineThread({
   const handleHighlightConfirm = async (
     payload: { kind: "yup" } | { kind: "note"; note: string },
   ) => {
-    if (!highlightPicker) return;
+    if (!highlightPicker || !groupId) return;
     // Snapshot the viewer's effective progress as the highlight's spoiler tag
     // — viewers behind this won't see the highlight. Falls back to the
     // entry's own season/episode if progress isn't computable (defensive;
@@ -433,6 +452,13 @@ export default function V2InlineThread({
 
   // ── Composer open / cancel / submit ─────────────────────────────────────
   const openComposer = () => {
+    // Logged-out viewers on public threads see the "Write a response"
+    // button but clicking it routes through the sign-in modal instead of
+    // opening the composer. Same shape as the like / quote handlers.
+    if (!userId) {
+      onAuthRequired?.();
+      return;
+    }
     setComposerOpen(true);
     // Defer the scroll so the composer's mount completes first.
     setTimeout(() => {
@@ -635,20 +661,22 @@ export default function V2InlineThread({
               </button>
             </>
           )}
-          <button
-            ref={highlightBtnRef}
-            className="btn"
-            onClick={handleHighlightClick}
-            style={{
-              fontSize: 13,
-              padding: "3px 12px",
-              background: "#dea838",
-              color: "#fff",
-              border: "2px solid #dea838",
-            }}
-          >
-            Highlight…
-          </button>
+          {groupId && (
+            <button
+              ref={highlightBtnRef}
+              className="btn"
+              onClick={handleHighlightClick}
+              style={{
+                fontSize: 13,
+                padding: "3px 12px",
+                background: "#dea838",
+                color: "#fff",
+                border: "2px solid #dea838",
+              }}
+            >
+              Highlight…
+            </button>
+          )}
           <button
             className="btn"
             onClick={handleQuoteThread}
@@ -749,8 +777,8 @@ export default function V2InlineThread({
             onAuthRequired={onAuthRequired ?? (() => {})}
             threadAuthor={thread.author}
             progress={viewerProgress ? { s: viewerProgress.s, e: viewerProgress.e } : undefined}
-            inGroupContext={true}
-            groupId={groupId}
+            inGroupContext={!!groupId}
+            groupId={groupId ?? null}
             threadIsPublic={!!thread.isPublic}
           />
         </div>

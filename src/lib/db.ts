@@ -472,6 +472,24 @@ export async function fetchRepliesForThread(threadId: string, groupId?: string |
   return (data ?? []).map(rowToReply);
 }
 
+/**
+ * Public-conversation reply fetcher. Mirrors fetchRepliesForThread but pins
+ * group_id IS NULL — the public-conversation channel where everyone reads
+ * the same reply stream. Friend-room replies (group_id IS NOT NULL) stay
+ * scoped to their room and are excluded here.
+ */
+export async function fetchPublicRepliesForThread(threadId: string): Promise<Reply[]> {
+  if (repliesByThread[threadId]) return repliesByThread[threadId];
+  const { data, error } = await supabase
+    .from("replies")
+    .select("*")
+    .eq("thread_id", threadId)
+    .is("group_id", null)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToReply);
+}
+
 export async function editReply(replyId: string, body: string, season: number, episode: number): Promise<void> {
   validateLength("Reply", body, 1, 5000);
   const { error } = await supabase
@@ -3896,6 +3914,47 @@ export async function fetchV2ThreadDetail(
   const [threadLikes, replyLikes, threadCitations, replyCitations] = await Promise.all([
     fetchUserThreadLikes(userId, [threadId]),
     fetchUserReplyLikes(userId, replyIds),
+    fetchCitationsForThread(threadId),
+    fetchCitationsForReplies(replyIds),
+  ]);
+
+  return {
+    thread,
+    replies,
+    threadLikedByMe: threadLikes.has(threadId),
+    replyLikedByMe: replyLikes,
+    threadCitations,
+    replyCitations,
+  };
+}
+
+/**
+ * Public-conversation counterpart to fetchV2ThreadDetail. Same bundle shape,
+ * but pulls replies from the public channel (group_id IS NULL) and tolerates
+ * a missing userId (logged-out visitors get empty like-state — they can read,
+ * not interact). Returns null when the thread doesn't exist or isn't public.
+ */
+export async function fetchV2PublicThreadDetail(
+  threadId: string,
+  userId: string | null,
+): Promise<{
+  thread: import("../types").Thread;
+  replies: import("../types").Reply[];
+  threadLikedByMe: boolean;
+  replyLikedByMe: Set<string>;
+  threadCitations: CitationEntry[];
+  replyCitations: Map<string, CitationEntry[]>;
+} | null> {
+  const [thread, replies] = await Promise.all([
+    fetchThreadById(threadId),
+    fetchPublicRepliesForThread(threadId),
+  ]);
+  if (!thread) return null;
+
+  const replyIds = replies.map((r) => r.id);
+  const [threadLikes, replyLikes, threadCitations, replyCitations] = await Promise.all([
+    userId ? fetchUserThreadLikes(userId, [threadId]) : Promise.resolve(new Set<string>()),
+    userId ? fetchUserReplyLikes(userId, replyIds) : Promise.resolve(new Set<string>()),
     fetchCitationsForThread(threadId),
     fetchCitationsForReplies(replyIds),
   ]);

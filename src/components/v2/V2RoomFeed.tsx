@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { ChevronDown, Mail, Users } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
@@ -75,12 +76,20 @@ export type V2RoomFeedProps = {
   entries: V2RoomFeedEntry[];
   /** Episode-tag sort direction. Default "asc". */
   sortOrder?: "asc" | "desc";
-  /** Room context — required so the inline thread mount can scope its
-      data fetch (replies + likes + citations) to the right group. */
-  groupId: string;
+  /** Friend-room group id. When undefined the feed is in public-conversation
+   *  mode: V2InlineThread fetches replies from the public channel,
+   *  highlights are suppressed, and the entry-row Users icon is replaced
+   *  with whatever `entryIcon` provides (default: no icon for public). */
+  groupId?: string;
   viewerProgress: ProgressEntry | null;
-  userId: string;
+  /** Caller's user id. May be null for logged-out visitors viewing
+   *  public threads; interactive controls route through onAuthRequired. */
+  userId: string | null;
   onAuthRequired?: () => void;
+  /** Optional icon rendered to the left of the entry title. Defaults to
+   *  the friend-room Users icon when groupId is present; null in public
+   *  mode (no icon). Callers can override with any ReactNode. */
+  entryIcon?: ReactNode | null;
   /** Forwarded from V2InlineThread — parent decides how to update the feed. */
   onThreadEdited?: (updated: Thread) => void;
   onThreadDeleted?: (threadId: string) => void;
@@ -152,9 +161,16 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     engagedThreadIds,
     initialExpandedThreadId,
     initialFocusReplyId,
+    entryIcon,
   },
   ref,
 ) {
+  // Default icon: Users in friend rooms (room identity), nothing on public
+  // surfaces. Callers can override with any node, or pass null to suppress.
+  const resolvedEntryIcon: ReactNode | null =
+    entryIcon === undefined
+      ? (groupId ? <Users size={14} color="var(--icon-color)" /> : null)
+      : entryIcon;
   // Episode sort. Within an episode, reverse-chronological by updatedAt
   // always (newest first — most recent activity floats to the top within
   // its episode bucket). Across episodes, asc/desc controlled by
@@ -522,9 +538,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 }}
               >
                 <h2 style={{ margin: 0, fontSize: 22 }} className="title">
-                  <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}>
-                    <Users size={14} color="var(--icon-color)" />
-                  </span>
+                  {resolvedEntryIcon && (
+                    <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}>
+                      {resolvedEntryIcon}
+                    </span>
+                  )}
                   {entry.isDeleted ? "(deleted entry)" : entry.title}
                   {!entry.isDeleted && (
                     // SE tag rendered inline AFTER the title with a " • "
