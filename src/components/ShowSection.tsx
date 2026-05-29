@@ -1471,6 +1471,18 @@ export default function ShowSection({
 
   const thread = activeThreadId ? allThreads.find(t => t.id === activeThreadId && t.showId === showId) : null;
 
+  // On the public show page the cards expand inline (via V2RoomFeed), so
+  // activeThreadId being set doesn't mean the surface flipped to a thread
+  // view — it just means one card is open. The banner + controls row
+  // should keep reading as "forum view" regardless of whether a card is
+  // expanded. `chromeThread` is the value used by every chrome ternary
+  // below: it stays null in inline-expand mode (public surface) so the
+  // chrome doesn't switch on expand, and equals `thread` in the other
+  // modes (friend room + private journal post) where the surface really
+  // does flip to a focused thread view.
+  const isInlineExpandMode = !activeGroupId && !(thread && !thread.isPublic);
+  const chromeThread = isInlineExpandMode ? null : thread;
+
   // Shared progress-confirm handler: updates progress, then navigates back to
   // the forum if the currently-open thread is no longer visible at the new progress.
   const handleProgressConfirm = (val: { s: number; e: number }) => {
@@ -1936,12 +1948,12 @@ export default function ShowSection({
                   })()}
                   <span
                     className="bannerTitle editorial"
-                    role={thread ? "button" : "heading"}
-                    title={thread ? "Back to forum" : "Show"}
-                    onClick={thread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
+                    role={chromeThread ? "button" : "heading"}
+                    title={chromeThread ? "Back to forum" : "Show"}
+                    onClick={chromeThread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
                     style={{
                       fontSize: 34, fontWeight: 600, letterSpacing: .5, lineHeight: 1.05,
-                      color: "var(--dos-light)", cursor: thread ? "pointer" : "default", userSelect: "none",
+                      color: "var(--dos-light)", cursor: chromeThread ? "pointer" : "default", userSelect: "none",
                       minWidth: 0, overflowWrap: "break-word",
                       display: "inline-flex", alignItems: "flex-start", gap: 6,
                       // Underline when the title is acting as a link back to
@@ -1949,8 +1961,10 @@ export default function ShowSection({
                       // "more entries" back button was removed in the same
                       // chunk so this is now the primary back affordance
                       // from inside a public thread; the underline makes
-                      // the link affordance explicit.
-                      textDecoration: thread ? "underline" : "none",
+                      // the link affordance explicit. Inline-expand mode
+                      // (public surface) suppresses the underline because
+                      // expansion stays on the same surface.
+                      textDecoration: chromeThread ? "underline" : "none",
                       textUnderlineOffset: 4,
                     }}
                   >
@@ -2040,7 +2054,7 @@ export default function ShowSection({
           <hr className="bleed-line" />
 
           {/* Row 2 */}
-          {thread && isMobile ? (
+          {chromeThread && isMobile ? (
             /* ── Thread · mobile: two rows so nothing bleeds off-screen ── */
             <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: `${ROW_PAD_Y}px 0` }}>
               {/* Row 1: back + mode toggle. Private threads skip the back
@@ -2069,11 +2083,11 @@ export default function ShowSection({
                     </button>
                   )}
                 </div>
-                {!(thread && !thread.isPublic && !activeGroupId) && (
+                {chromeThread && !(!chromeThread.isPublic && !activeGroupId) && (
                   <ModeToggle
                     value={mode}
                     onToggle={handleModeToggle}
-                    hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
+                    hiddenNewReplies={chromeThread.author === username ? getNewCounts(chromeThread.id).hiddenNew : 0}
                     compact={true}
                   />
                 )}
@@ -2105,7 +2119,7 @@ export default function ShowSection({
             <>
             {/* ── Row 1: journal / back button (left) + sort & progress (right) ── */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: `${ROW_PAD_Y}px 0` }}>
-              {!thread ? (
+              {!chromeThread ? (
                 /* Forum view: write + (public-only) "+ friend room" button.
                    Hide the friend-room CTA when the user is already inside a
                    friend room — they can't create one from within another. */
@@ -2165,7 +2179,7 @@ export default function ShowSection({
                 </div>
               )}
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                {!thread && (
+                {!chromeThread && (
                   <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                     <select
                       className="badge h40"
@@ -2180,12 +2194,12 @@ export default function ShowSection({
                     <ChevronDown size={14} color="var(--dos-border)" style={{ position: "absolute", right: 10, pointerEvents: "none" }} />
                   </div>
                 )}
-                {thread && !(!thread.isPublic && !activeGroupId) && (
+                {chromeThread && !(!chromeThread.isPublic && !activeGroupId) && (
                   <div style={{ transform: "translateX(-10px)" }}>
                     <ModeToggle
                       value={mode}
                       onToggle={handleModeToggle}
-                      hiddenNewReplies={thread.author === username ? getNewCounts(thread.id).hiddenNew : 0}
+                      hiddenNewReplies={chromeThread.author === username ? getNewCounts(chromeThread.id).hiddenNew : 0}
                     />
                   </div>
                 )}
@@ -2684,9 +2698,12 @@ export default function ShowSection({
       {/* CONTENT */}
       {/* Public mode uses the V2 inline-expand feed (cards expand in place;
           /show/:id/thread/:tid deep-links auto-expand that card on mount).
+          Private journal posts opened via /show/:id/thread/:tid still use
+          the V1 InlineThreadView (journal-style view) — they're not part
+          of the public feed and have no inline-expand surface.
           Friend-room mode (dead code per HANDOFF) preserves the legacy
           click-through-to-thread-page rendering as the else-branch below. */}
-      {!activeGroupId ? (
+      {isInlineExpandMode ? (
         <div style={{ marginTop: 8 }}>
           {activeLoading ? (
             <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading<LoadingDots /></div>
