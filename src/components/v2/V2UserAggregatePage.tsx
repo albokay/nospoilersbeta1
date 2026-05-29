@@ -13,15 +13,14 @@ import { supabase } from "../../lib/supabaseClient";
 import type { Show } from "../../lib/db";
 import type { ProgressEntry, Thread } from "../../types";
 import V2Layout from "./V2Layout";
-import SidebarAvatar from "../SidebarAvatar";
 import TreatedArt from "../TreatedArt";
 import { navigateToShow } from "./v2nav";
 import OneSelectProgress from "../OneSelectProgress";
-import { ArrowRight, Clock, Mail } from "lucide-react";
-import EpisodeTag from "../EpisodeTag";
+import { ArrowRight, Clock } from "lucide-react";
 import LoadingDots from "../LoadingDots";
-import LikeBadge from "../LikeBadge";
-import { canView, timeAgo } from "../../lib/utils";
+import AuthModal from "../AuthModal";
+import V2RoomFeed, { type V2RoomFeedEntry } from "./V2RoomFeed";
+import { canView } from "../../lib/utils";
 
 type ClaimSource = "user-progress" | "session" | null;
 
@@ -56,6 +55,11 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   // Owner's progress on THIS show. Shown in the heading as "They've watched
   // Season X Episode Y" so the visitor can calibrate against the owner.
   const [ownerProgress, setOwnerProgress] = useState<ProgressEntry | null>(null);
+  // Local sign-in / sign-up modal — opened when a logged-out visitor clicks
+  // any interact button (Write a response, Like, Quote) on an expanded
+  // thread card. V2 pages mount outside AppShell so they don't share the
+  // AppShell-level AuthModal.
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Bootstrap — works for logged-out visitors too.
   useEffect(() => {
@@ -167,6 +171,29 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   }, [allOwnerThreads, visitorProgress]);
 
   const lockedCount = allOwnerThreads.length - visibleThreads.length;
+
+  // V2 inline-expand entries for this per-user-per-show feed. All threads
+  // here are by `username`; authorId resolves to the page-level ownerId.
+  const feedEntries = useMemo<V2RoomFeedEntry[]>(() => {
+    return visibleThreads.map((t) => ({
+      threadId: t.id,
+      s: t.season,
+      e: t.episode,
+      title: t.titleBase,
+      body: t.body,
+      preview: t.preview,
+      authorId: ownerId ?? "",
+      authorUsername: username,
+      isRewatch: t.isRewatch,
+      rewatchS: t.rewatchS,
+      rewatchE: t.rewatchE,
+      isEdited: t.isEdited,
+      isDeleted: t.isDeleted ?? false,
+      updatedAt: t.updatedAt,
+      replyCount: replyCounts[t.id] ?? 0,
+      thread: t,
+    }));
+  }, [visibleThreads, ownerId, username, replyCounts]);
 
   async function handleConfirmProgress(v: { s: number; e: number }) {
     if (!show) return;
@@ -354,17 +381,15 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         </div>
       ) : claimed ? (
         <>
-          {visibleThreads.map((t) => (
-            <Entry
-              key={t.id}
-              thread={t}
-              username={username}
-              ownerId={ownerId}
-              showId={show.id}
-              replyCount={replyCounts[t.id] ?? 0}
-              onOpen={() => navigateToShow(navigate, show.id, { threadId: t.id })}
+          {feedEntries.length > 0 && (
+            <V2RoomFeed
+              entries={feedEntries}
+              viewerProgress={visitorProgress}
+              userId={user?.id ?? null}
+              onAuthRequired={() => setShowAuthModal(true)}
+              onClickProfile={(name) => navigate(`/u/${encodeURIComponent(name)}`)}
             />
-          ))}
+          )}
 
           {lockedCount > 0 && (
             <div
@@ -394,86 +419,14 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           being aggregated). No random pick; the show IS the page
           context. */}
       <TreatedArt showId={showId} anchor="fixed" />
+
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          hint="Sign in or create an account to write, reply, like, or quote."
+        />
+      )}
     </V2Layout>
   );
 }
 
-// === ENTRY ====================================================================
-//
-// Thread card matching the general public space's card (ShowSection.tsx:2808
-// area). Whole card is clickable — opens the thread in the general public
-// space via navigateToShow with the threadId; respond / star / etc happen
-// inside the opened thread, not on the card. Star here is read-only (visual
-// parity only); the actual star action lives inside the thread view.
-
-function Entry({
-  thread,
-  username,
-  ownerId,
-  replyCount,
-  onOpen,
-}: {
-  thread: Thread;
-  username: string;
-  ownerId: string | null;
-  showId: string;
-  replyCount: number;
-  onOpen: () => void;
-}) {
-  return (
-    <div style={{ position: "relative", margin: "0 0 12px 0" }}>
-      <div
-        className="card threadCard"
-        style={{
-          margin: 0,
-          cursor: "pointer",
-          position: "relative",
-          paddingTop: 12,
-          paddingBottom: 36,
-          border: "4px solid var(--dos-border)",
-        }}
-        onClick={onOpen}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ margin: 0, fontSize: 22 }} className="title">
-            {thread.titleBase}
-            <span style={{ fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 7, whiteSpace: "nowrap" }}>
-              <EpisodeTag
-                season={thread.season}
-                episode={thread.episode}
-                isRewatch={thread.isRewatch}
-                rewatchS={thread.rewatchS}
-                rewatchE={thread.rewatchE}
-              />
-            </span>
-            {thread.isEdited && (
-              <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
-            )}
-          </h2>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <LikeBadge count={0} readOnly title="open post to vote" />
-          </div>
-        </div>
-
-        <div className="muted" style={{ marginTop: 4, fontSize: 14, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          Started by{" "}
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, verticalAlign: "middle", fontWeight: 700 }}>
-            <SidebarAvatar userId={ownerId} username={username} size={16} />
-            {username}
-          </span>
-          {" "}• {timeAgo(thread.updatedAt)}
-        </div>
-
-        <div style={{ marginTop: 6 }}>
-          <div className="clamp3">{thread.preview}</div>
-        </div>
-
-        <div className="replyCount" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span>
-            <Mail size={14} color="var(--icon-color)" style={{ verticalAlign: "middle" }} /> {replyCount}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
