@@ -76,6 +76,11 @@ export type V2RoomFeedProps = {
   entries: V2RoomFeedEntry[];
   /** Episode-tag sort direction. Default "asc". */
   sortOrder?: "asc" | "desc";
+  /** When true, render entries in the order provided (no internal episode
+   *  sort). Used by callers that already apply their own sort upstream —
+   *  e.g. the public show page, which keeps its relevance/post/episode
+   *  sort controls. Default false (episode-asc, friend-room behavior). */
+  preserveOrder?: boolean;
   /** Friend-room group id. When undefined the feed is in public-conversation
    *  mode: V2InlineThread fetches replies from the public channel,
    *  highlights are suppressed, and the entry-row Users icon is replaced
@@ -162,6 +167,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     initialExpandedThreadId,
     initialFocusReplyId,
     entryIcon,
+    preserveOrder = false,
   },
   ref,
 ) {
@@ -176,13 +182,14 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   // its episode bucket). Across episodes, asc/desc controlled by
   // sortOrder (desc puts the newest episode tag at the top).
   const sorted = useMemo(() => {
+    if (preserveOrder) return entries;
     const dir = sortOrder === "desc" ? -1 : 1;
     return [...entries].sort((a, b) => {
       if (a.s !== b.s) return dir * (a.s - b.s);
       if (a.e !== b.e) return dir * (a.e - b.e);
       return b.updatedAt - a.updatedAt;
     });
-  }, [entries, sortOrder]);
+  }, [entries, sortOrder, preserveOrder]);
 
   // Single-expansion: at most one thread expanded at a time. Expanding
   // another quietly collapses the previously-open one (no scroll-jump —
@@ -191,6 +198,14 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   const [expandedThreadId, setExpandedThreadId] = useState<string | null>(
     () => initialExpandedThreadId ?? null,
   );
+  // Sync expansion state to the prop on later changes too. The friend-room
+  // caller passes initialExpandedThreadId once (from a useState-initialized
+  // location.state value) and never updates it, so this is a no-op there.
+  // The public show-page caller drives it from the URL so deep-links and
+  // browser back/forward keep the open card in sync with /show/:id/thread/:tid.
+  useEffect(() => {
+    setExpandedThreadId(initialExpandedThreadId ?? null);
+  }, [initialExpandedThreadId]);
   // Detect expand/collapse transitions and forward to parent callbacks so
   // V2FriendRoomPage can update its notification-signal state (lastOpenedAt,
   // greenDismissedSet, engagedSet). prevExpandedRef tracks the previous

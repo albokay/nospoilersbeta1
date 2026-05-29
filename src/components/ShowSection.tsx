@@ -78,6 +78,7 @@ import Tooltip from "./Tooltip";
 import ModeToggle from "./ModeToggle";
 import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
+import V2RoomFeed, { type V2RoomFeedEntry } from "./v2/V2RoomFeed";
 import FriendProgressPostIt from "./FriendProgressPostIt";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
@@ -1435,6 +1436,36 @@ export default function ShowSection({
 
   const activeLoading = activeGroupId ? groupThreadsLoading : threadsLoading;
 
+  // V2 inline-expand entries for the public mode. Built from the same
+  // sorted/filtered activeList used by the legacy click-through cards but
+  // shaped for V2RoomFeed. Tombstones (soft-deleted with replies) survive;
+  // soft-deleted with no replies drop out. Private journal entries already
+  // filtered out client-side via t.isPublic.
+  const publicEntries = useMemo<V2RoomFeedEntry[]>(() => {
+    if (activeGroupId) return [];
+    return activeList
+      .filter((t) => t.isPublic && !t.isMoved)
+      .filter((t) => !t.isDeleted || (replyMeta[t.id] ?? []).length > 0)
+      .map((t) => ({
+        threadId: t.id,
+        s: t.season,
+        e: t.episode,
+        title: t.titleBase,
+        body: t.body,
+        preview: t.preview,
+        authorId: "",
+        authorUsername: t.author,
+        isRewatch: t.isRewatch,
+        rewatchS: t.rewatchS,
+        rewatchE: t.rewatchE,
+        isEdited: t.isEdited,
+        isDeleted: t.isDeleted ?? false,
+        updatedAt: t.updatedAt,
+        replyCount: getNewCounts(t.id).totalVisible,
+        thread: t,
+      }));
+  }, [activeGroupId, activeList, replyMeta]);
+
   // Set of departed usernames for quick lookup in thread/reply rendering
   const departedUsernameSet = useMemo(() => new Set(departedMembers.map(d => d.username)), [departedMembers]);
 
@@ -2651,8 +2682,47 @@ export default function ShowSection({
       )}
 
       {/* CONTENT */}
-      {/* If a thread ID is in the URL but threads haven't loaded yet, wait — don't flash the room */}
-      {activeThreadId && !thread && threadsLoading ? (
+      {/* Public mode uses the V2 inline-expand feed (cards expand in place;
+          /show/:id/thread/:tid deep-links auto-expand that card on mount).
+          Friend-room mode (dead code per HANDOFF) preserves the legacy
+          click-through-to-thread-page rendering as the else-branch below. */}
+      {!activeGroupId ? (
+        <div style={{ marginTop: 8 }}>
+          {activeLoading ? (
+            <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading<LoadingDots /></div>
+          ) : publicEntries.length === 0 ? (
+            effectiveProgress?.s === 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 0 48px", gap: 12 }}>
+                <EyeOff size={24} color="var(--icon-color)" />
+                <div className="muted" style={{ fontSize: 14, textAlign: "center", maxWidth: 360, lineHeight: 1.5 }}>
+                  <p style={{ margin: 0 }}>You haven&rsquo;t watched anything so there&rsquo;s nothing to read yet! Come back and update your progress after you&rsquo;ve watched an episode.</p>
+                  <p style={{ margin: "12px 0 0" }}>(Or make a post about how excited you are to start watching?!)</p>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "120px 0 48px", gap: 12 }}>
+                <Clock size={24} color="var(--icon-color)" />
+                <div className="muted" style={{ fontSize: 14, textAlign: "center", maxWidth: 360, lineHeight: 1.5 }}>
+                  <p style={{ margin: 0 }}>Sidebar is brand new so there isn&rsquo;t much to see in public spaces yet. It&rsquo;s only a matter of time&hellip;</p>
+                  <p style={{ margin: "12px 0 0" }}>But this is your chance to be a pioneer. When you post publicly on your profile, your writing shows up here.</p>
+                </div>
+              </div>
+            )
+          ) : (
+            <V2RoomFeed
+              entries={publicEntries}
+              viewerProgress={effectiveProgress ?? null}
+              userId={user?.id ?? null}
+              onAuthRequired={onAuthRequired}
+              onClickProfile={onClickProfile}
+              onEntryExpanded={(tid) => setActiveThreadId(tid)}
+              onEntryCollapsed={() => setActiveThreadId(null)}
+              initialExpandedThreadId={activeThreadId ?? undefined}
+              preserveOrder
+            />
+          )}
+        </div>
+      ) : activeThreadId && !thread && threadsLoading ? (
         <div className="muted" style={{ fontSize: 14, padding: "24px 0" }}>Loading<LoadingDots /></div>
       ) : thread ? (
         <InlineThreadView
