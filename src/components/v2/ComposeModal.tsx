@@ -124,7 +124,13 @@ export function ComposeModalProvider({ children }: { children: React.ReactNode }
       if (destination === "private") {
         navigate("/journal", { state: { activeTab: showId, activeFilter: "private" } });
       } else if (destination === "public") {
-        if (showId) navigate(`/show/${showId}`);
+        // Same publishedThreadId signal as the group-destination case —
+        // ShowSection (the public show page) watches location.state for
+        // this and refetches + auto-expands the new entry in its V2
+        // inline-expand feed. Without it, writing a public post from
+        // /show/<id> leaves the new entry missing from the page's
+        // already-loaded thread list until manual refresh.
+        if (showId) navigate(`/show/${showId}`, { state: { publishedThreadId: threadId } });
         else navigate("/journal");
       } else {
         navigate(`/room/${destination}`, { state: { publishedThreadId: threadId } });

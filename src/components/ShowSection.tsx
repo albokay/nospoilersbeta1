@@ -78,7 +78,7 @@ import Tooltip from "./Tooltip";
 import ModeToggle from "./ModeToggle";
 import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
-import V2RoomFeed, { type V2RoomFeedEntry } from "./v2/V2RoomFeed";
+import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import { useComposeModal } from "./v2/ComposeModal";
 import FriendProgressPostIt from "./FriendProgressPostIt";
 import IncomingPingSticky from "./IncomingPingSticky";
@@ -1084,6 +1084,27 @@ export default function ShowSection({
     }).catch(() => {});
   }, [showId]);
 
+  // Imperative handle on V2RoomFeed so post-publish flows can auto-expand
+  // the freshly-written entry once the refetched threads land in state.
+  const feedRef = useRef<V2RoomFeedHandle>(null);
+
+  // Publish-refetch wiring for the public surface — mirrors V2FriendRoomPage.
+  // ComposeModal navigates back to /show/<id> with state.publishedThreadId
+  // set; we bump a counter so the threads-fetch effect re-runs, and stash
+  // the new threadId in a ref so expandEntry can fire after the data lands.
+  const [publishRefetchCounter, setPublishRefetchCounter] = useState(0);
+  const pendingExpandAfterPublishRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = (location.state as { publishedThreadId?: string } | null)?.publishedThreadId;
+    if (id && pendingExpandAfterPublishRef.current !== id) {
+      pendingExpandAfterPublishRef.current = id;
+      setPublishRefetchCounter((c) => c + 1);
+      // Clear the location state so a later re-render (or back-button
+      // arrival) doesn't fire the watcher again.
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate]);
+
   useEffect(() => {
     let cancelled = false;
     setThreadsLoading(true);
@@ -1134,9 +1155,18 @@ export default function ShowSection({
         return next;
       });
       setThreadsLoading(false);
+      // Post-publish auto-expand: if a state.publishedThreadId arrived via
+      // ComposeModal's navigate-back, the new entry should now be in
+      // `threads`. Defer one tick so publicEntries memo + V2RoomFeed re-
+      // render before expandEntry tries to find the ticket ref.
+      const targetId = pendingExpandAfterPublishRef.current;
+      if (targetId && threads.some((t) => t.id === targetId)) {
+        pendingExpandAfterPublishRef.current = null;
+        setTimeout(() => feedRef.current?.expandEntry(targetId), 0);
+      }
     }).catch(() => setThreadsLoading(false));
     return () => { cancelled = true; };
-  }, [showId, user?.id]);
+  }, [showId, user?.id, publishRefetchCounter]);
 
   // ── Live reply updates via Supabase real-time ─────────────
   useEffect(() => {
@@ -2746,6 +2776,7 @@ export default function ShowSection({
             )
           ) : (
             <V2RoomFeed
+              ref={feedRef}
               entries={publicEntries}
               viewerProgress={effectiveProgress ?? null}
               userId={user?.id ?? null}
