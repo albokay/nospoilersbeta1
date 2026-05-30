@@ -79,6 +79,7 @@ import ModeToggle from "./ModeToggle";
 import OneSelectProgress from "./OneSelectProgress";
 import InlineThreadView from "./InlineThreadView";
 import V2RoomFeed, { type V2RoomFeedEntry } from "./v2/V2RoomFeed";
+import { useComposeModal } from "./v2/ComposeModal";
 import FriendProgressPostIt from "./FriendProgressPostIt";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
@@ -104,6 +105,7 @@ export default function ShowSection({
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const composeModal = useComposeModal();
   const allShows: Show[] = showsProp?.length ? showsProp : seedShows as Show[];
   const show = allShows.find((s) => s.id === showId) || (() => {
     // Fallback: try browse metadata from sessionStorage (set by SearchShows onboarding modal)
@@ -2129,7 +2131,21 @@ export default function ShowSection({
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <button
                     className="btn post h40"
-                    onClick={() => user ? openCompose() : onAuthRequired()}
+                    onClick={() => {
+                      if (!user) { onAuthRequired(); return; }
+                      // Public surface (and dead-code friend-room forum) →
+                      // open the V2 compose modal. Inside a friend-room
+                      // forum view (activeGroupId set), fall back to the
+                      // legacy inline composer since that path was
+                      // intentionally out of scope for the modal-compose
+                      // arc. Public is the only live caller — activeGroupId
+                      // mode is unreachable per HANDOFF.
+                      if (activeGroupId) {
+                        openCompose();
+                      } else {
+                        composeModal.open({ showId, returnTo: location.pathname });
+                      }
+                    }}
                     title="Start a new post"
                     style={{ lineHeight: 1.2, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5 }}
                   >
