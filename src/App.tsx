@@ -401,16 +401,27 @@ function AppShell() {
     fetchRepliesToUserThreads(user.id).then(setRepliesToUser).catch(() => {});
   }, [user?.id, expandedShowId, showProfile, showJournal, showLegacyProfile]);
 
-  // Live: refetch whenever any reply is inserted/updated/deleted in the DB
+  // Refetch when the tab regains focus. Replaces an earlier unfiltered
+  // realtime subscription on the entire replies table — that pattern
+  // triggered a heavy refetch on every reply event from every user
+  // across the app, driving substantial egress (the user-replies query
+  // pulls up to 200 rows × thread + group context per fire). Tab-focus
+  // gives near-live freshness for the typical "look away, come back"
+  // pattern without per-event cascades. The navigation-driven refetch
+  // above still keeps things fresh as the user moves between surfaces.
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel(`user-replies-rt-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "replies" }, () => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
         fetchRepliesToUserThreads(user.id).then(setRepliesToUser).catch(() => {});
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", onVisibilityChange);
+    };
   }, [user?.id]);
 
   // All friend groups across all shows (for header scroll)
