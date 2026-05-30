@@ -2010,16 +2010,20 @@ export default function ShowSection({
                   </span>
                 </div>
                 {/* Mirror of the friend-room "to public conversations" button.
-                   Shown in the public space (forum view only — hidden inside
-                   any thread; thread-level back-nav is handled by the thread
-                   toolbar's "Back to show" button). Three behaviors:
+                   Shown in the public space — including while an inline-
+                   expand card is open, since expansion stays on-surface
+                   (gated on `chromeThread`, not raw `thread`, so the
+                   button stays present in public mode regardless of which
+                   card is open). Hidden inside true thread surfaces
+                   (private journal posts; legacy friend-room dead-code
+                   thread view). Three behaviors:
                      - breadcrumb set → direct return to [breadcrumb room]
                      - one room only → direct enter that room
                      - multiple rooms → opens a dropdown listing rooms
                    Visual: icon-only pill [Users][ArrowRight] with tooltip
                    "go to your friend room"; the dynamic label moved into
                    the dropdown rows for the multi-room case. */}
-                {!thread && userGroups.length > 0 && (() => {
+                {!chromeThread && userGroups.length > 0 && (() => {
                   const breadcrumbRoom = cameFromGroupId
                     ? userGroups.find(g => g.id === cameFromGroupId)
                     : null;
