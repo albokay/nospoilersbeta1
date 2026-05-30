@@ -495,11 +495,14 @@ export default function ShowSection({
     setActiveGroupId(null);
   };
   // Re-enter a friend room (used by the new public-side back button and
-  // its dropdown items). Enters the room; the effect above will clear the
-  // breadcrumb automatically.
+  // its dropdown items). Navigates to the V2 friend room at /room/:groupId
+  // — the canonical room surface. The legacy setActiveGroupId-on-
+  // ShowSection branch is dead code (per HANDOFF, V1 friend-room mode is
+  // unreachable), so previously this button silently no-op'd at the URL
+  // level even though it appeared to switch contexts.
   const enterGroup = (gid: string) => {
-    setActiveGroupId(gid);
     setFriendRoomsDropdownOpen(false);
+    navigate(`/room/${gid}`);
   };
 
   // Close the public-side friend-rooms dropdown on outside click.
@@ -2736,6 +2739,21 @@ export default function ShowSection({
               onEntryCollapsed={() => setActiveThreadId(null)}
               initialExpandedThreadId={activeThreadId ?? undefined}
               preserveOrder
+              onThreadEdited={(updated) => {
+                // Reflect inline edits in the public feed immediately
+                // (title / body / preview / SE retag). Without this the
+                // edited card keeps showing the pre-edit body until a
+                // refresh — same shape as the delete bug.
+                setDbThreads(prev => prev.map(t => t.id === updated.id ? updated : t));
+              }}
+              onThreadDeleted={(tid) => {
+                // Mark the soft-deleted thread locally so publicEntries
+                // re-derives: thread drops out if no replies, renders as
+                // a tombstone if any visible replies still exist. Without
+                // this the card lingers in the feed until the user does
+                // a hard refresh.
+                setDbThreads(prev => prev.map(t => t.id === tid ? { ...t, isDeleted: true } : t));
+              }}
             />
           )}
         </div>
