@@ -1121,7 +1121,24 @@ export default function V3JournalPage({
                 <div className="card" style={{ height: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1, background: tabBg }}>
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
-                    <div className="profileActionBar" style={{ background: tabBg }}>
+                    <div
+                      className="profileActionBar"
+                      style={{
+                        background: tabBg,
+                        // Override the default 54L/58R outer padding so
+                        // the write button hugs the diary's left white
+                        // border and the progress dropdown hugs the
+                        // right — freeing horizontal room in the middle
+                        // for the four-radio cluster (which got wider
+                        // when "all" was added). The previous values
+                        // anchored those buttons to the .container's
+                        // edges (page-chrome alignment); the trade-off
+                        // here is breaking that anchor in exchange for
+                        // the four radios fitting without compressing.
+                        paddingLeft: 24,
+                        paddingRight: 24,
+                      }}
+                    >
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                         {/* v3: write button navigates to /v2/compose/:showId
                            instead of opening the in-page modal. Destination
@@ -1340,7 +1357,17 @@ export default function V3JournalPage({
                       </div>
                     </div>
                   )}
-                  <div className="diaryScrollArea">
+                  <div
+                    className="diaryScrollArea"
+                    style={activeFilter === "all" ? {
+                      // Zero the scroll area's horizontal padding so the
+                      // per-entry colored bands extend all the way to
+                      // the diary card's white border. Vertical padding
+                      // preserved (12 top / 32 bottom).
+                      paddingLeft: 0,
+                      paddingRight: 0,
+                    } : undefined}
+                  >
                   {tabLoading && !currentTabData && (
                     <div className="muted" style={{ padding: "80px 20px", textAlign: "center" }}>Loading…</div>
                   )}
@@ -1426,12 +1453,20 @@ export default function V3JournalPage({
                     return (
                     <div key={t.id} className="card threadCard"
                       style={{
-                        // In "all" mode entries span the diary scroll
-                        // area's full interior width (margin-left dropped
-                        // so type-color bands break up the stream).
-                        // Single-filter modes keep the 20px inset for
-                        // the existing layout.
-                        margin: activeFilter === "all" ? "10px 0" : "10px 0 10px 20px",
+                        // In "all" mode each entry's colored band spans
+                        // the diary's full interior width (scroll area's
+                        // own horizontal padding is overridden to 0 below
+                        // so entries reach the white border) AND sits
+                        // flush against its neighbors with zero vertical
+                        // gap — adjacent same-type entries blend into one
+                        // continuous color block by design; type changes
+                        // are the only visual breaks. Internal padding
+                        // matches the other filters (default .card 12px)
+                        // — the bands extending to the border is what
+                        // changes the look, not the inner padding.
+                        // Single-filter modes keep the legacy 20px-left-
+                        // inset + 12px-padding + 10px-vertical-gap layout.
+                        margin: activeFilter === "all" ? 0 : "10px 0 10px 20px",
                         cursor: "pointer", position: "relative",
                         background: cardBg, color: cardFg, borderColor: "transparent",
                       }}
