@@ -1303,6 +1303,14 @@ export default function V3JournalPage({
                                   gap: 3,
                                   fontFamily: "inherit",
                                   lineHeight: 1,
+                                  // Fixed width per radio so labels of
+                                  // different lengths ("all" vs "friends"
+                                  // etc.) don't pull their centered
+                                  // circles closer to one neighbor than
+                                  // the other. With equal widths + equal
+                                  // gap, every adjacent circle pair is
+                                  // exactly the same distance apart.
+                                  width: 56,
                                 }}
                               >
                                 <div style={{
@@ -1460,13 +1468,17 @@ export default function V3JournalPage({
                         // flush against its neighbors with zero vertical
                         // gap — adjacent same-type entries blend into one
                         // continuous color block by design; type changes
-                        // are the only visual breaks. Internal padding
-                        // matches the other filters (default .card 12px)
-                        // — the bands extending to the border is what
-                        // changes the look, not the inner padding.
-                        // Single-filter modes keep the legacy 20px-left-
-                        // inset + 12px-padding + 10px-vertical-gap layout.
+                        // are the only visual breaks. Horizontal padding
+                        // (56L / 72R) mirrors the OTHER filters' total
+                        // text inset (scrollArea 24L + entry margin 20L
+                        // + entry padding 12L = 56; scrollArea 60R +
+                        // entry padding 12R = 72) so the text line width
+                        // and position match the other filters exactly,
+                        // while only the colored band changes (full-width
+                        // here, inset there). Single-filter modes keep
+                        // the legacy layout.
                         margin: activeFilter === "all" ? 0 : "10px 0 10px 20px",
+                        padding: activeFilter === "all" ? "12px 72px 12px 56px" : undefined,
                         cursor: "pointer", position: "relative",
                         background: cardBg, color: cardFg, borderColor: "transparent",
                       }}
