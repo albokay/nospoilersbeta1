@@ -1505,12 +1505,23 @@ export default function V3JournalPage({
                           openThreadWithFocus(t.showId, t.id, undefined, groupId);
                         }
                       }}>
+                      {/* Notification-dot offset: in single-filter modes the
+                         entry box has a 20px left margin and the dot sits
+                         at left:-10 (half-hanging off the band's left
+                         edge, ending right at the content's left
+                         indent). In "all" mode the band is full-width
+                         (no entry margin, no scroll-area padding), so
+                         the same -10 puts the dot in negative space
+                         beyond the diary's white border. Shift to left:34
+                         in "all" mode — same absolute offset from the
+                         diary's white border as single-filter, just
+                         expressed relative to the now-full-width band. */}
                       {getThreadIndicator(t.id) === "green" && (
                         <Tooltip
                           text="People have written to you."
                           direction="right"
                           gap={14}
-                          style={{ position: "absolute", left: -10, top: -2, zIndex: 2 }}
+                          style={{ position: "absolute", left: activeFilter === "all" ? 34 : -10, top: -2, zIndex: 2 }}
                           tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
                           width={200}
                         >
@@ -1527,7 +1538,7 @@ export default function V3JournalPage({
                           text={<>{invisibleCountByThreadId[t.id] ?? ""} people ahead of you have written you back! You can read these once you catch up.</>}
                           direction="right"
                           gap={14}
-                          style={{ position: "absolute", left: -10, top: -2, zIndex: 2 }}
+                          style={{ position: "absolute", left: activeFilter === "all" ? 34 : -10, top: -2, zIndex: 2 }}
                           tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
                           width={260}
                         >
@@ -1605,8 +1616,17 @@ export default function V3JournalPage({
                         className={expandedIds.has(t.id) ? undefined : "clamp3"}>
                         {expandedIds.has(t.id) ? linkifyText(t.body) : t.preview}
                       </div>
+                      {/* Reply count sits at the content's right edge —
+                         in single-filter modes that's right:12 from an
+                         entry whose right padding plus 0 margin lines up
+                         the content edge there. In "all" mode the band
+                         extends to the diary border so right:12 would
+                         pin the count to the white outline; right:72
+                         mirrors the single-filter visual (60 scrollArea
+                         padding + 12 entry padding = 72px in from the
+                         diary's right border). */}
                       {(isGroup || isPub) && visibleReplyCountByThreadId[t.id] > 0 && (
-                        <div style={{ position: "absolute", right: 12, bottom: 8, fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
+                        <div style={{ position: "absolute", right: activeFilter === "all" ? 72 : 12, bottom: 8, fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
                           <Mail size={14} color="#fff" /> {visibleReplyCountByThreadId[t.id]}
                         </div>
                       )}
