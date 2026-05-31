@@ -280,11 +280,12 @@ export default function V3JournalPage({
       // Apply filter directive alongside activeTab. Used by
       // V2ComposePage's private-publish nav so the user lands on the
       // private lane and sees their just-published post immediately,
-      // overriding the per-tab "friends" default. One-shot — gated on
-      // the same location.key as activeTab.
+      // overriding the default "all" landing. One-shot — gated on
+      // the same location.key as activeTab. Tab-switch + nav-away-
+      // and-back both clear the directive (filter resets to "all").
       const rawRequestedFilter = (location.state as any)?.activeFilter as string | undefined;
-      if (rawRequestedFilter === "private" || rawRequestedFilter === "friends" || rawRequestedFilter === "public") {
-        setFilterByShow(prev => ({ ...prev, [tab]: rawRequestedFilter as JournalFilter }));
+      if (rawRequestedFilter === "all" || rawRequestedFilter === "private" || rawRequestedFilter === "friends" || rawRequestedFilter === "public") {
+        setActiveFilter(rawRequestedFilter as JournalFilter);
       }
       consumedDirectiveKeyRef.current = location.key;
     } else if (!activeTab) {
@@ -298,6 +299,18 @@ export default function V3JournalPage({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   // clear expanded state when switching tabs
   useEffect(() => { setExpandedIds(new Set()); }, [activeTab]);
+  // Reset journal filter to "all" on every tab switch. The compose-modal
+  // post-publish nav can still land the user on a specific lane via
+  // location.state.activeFilter (one-shot, applied in the activeTab
+  // directive effect above) — this reset only fires when the user
+  // subsequently navigates between tabs.
+  const prevActiveTabRef = useRef<string>("");
+  useEffect(() => {
+    if (prevActiveTabRef.current && prevActiveTabRef.current !== activeTab) {
+      setActiveFilter("all");
+    }
+    prevActiveTabRef.current = activeTab;
+  }, [activeTab]);
 
   // Keep the active tab in view — matters when a user searches for a show
   // whose tab is off-screen in the horizontal tab scroller (including tabs
@@ -317,29 +330,27 @@ export default function V3JournalPage({
   // /profile or a full page refresh resets the whole map (ProfilePage
   // unmounts → useState re-initializes). Default for any untouched
   // show is "all".
-  // Three-segment journal filter — friend rooms are the default lens
-  // since the desktop refocus toward friend rooms (chunk 2 of refocus).
-  // The previous "all" segment was removed; per-mode empty-states now
-  // own the empty-tab welcome surface (with TSP / invitedMode /
-  // selfCreatedRoom precedence inside the friends branch — see
-  // EmptyProfileWelcome).
-  type JournalFilter = "friends" | "private" | "public";
-  const [filterByShow, setFilterByShow] = useState<Record<string, JournalFilter>>({});
-  const activeFilter: JournalFilter = filterByShow[activeTab] ?? "friends";
-  // Tab surface bg follows the active filter — extends the existing
-  // "private cards on green diary surface" pattern (where the cards
-  // already match the surface and visually disappear into it) to
-  // friends + public modes. Cards retain their per-mode bg, so on a
-  // matching-color surface they read as the same headline-typography
-  // treatment as private has had all along. Filter-as-destination
-  // also keys off this — see write-button onClick + compose modal
-  // dropdown gating below.
+  // Four-segment journal filter: all (default) / friends / private /
+  // public. "all" interleaves the three type streams into one feed
+  // sorted by updatedAt desc, with each entry carrying its own type-
+  // colored band so types stay visually distinct. Filter resets to
+  // "all" on every tab switch + on fresh mount — no per-show or per-
+  // session persistence — so the journal always opens broad.
+  // ComposeModal's post-publish nav can still pass state.activeFilter
+  // as a one-shot directive (lands the user on the lane matching what
+  // they just published), but that's transient: switching tabs or
+  // navigating away + back resets to "all".
+  type JournalFilter = "all" | "friends" | "private" | "public";
+  const [activeFilter, setActiveFilter] = useState<JournalFilter>("all");
+  // Tab surface bg follows the active filter:
+  //   all     → canon light-blue (same as friends — the per-entry
+  //              colored bands carry type identity in this mode)
   //   friends → canon light-blue (#adc8d7)
   //   private → canon green (#7abd8e, same as var(--dos-bg))
   //   public  → canon yellow (#dea838)
-  const tabBg = activeFilter === "friends" ? "#adc8d7"
+  const tabBg = activeFilter === "private" ? "#7abd8e"
               : activeFilter === "public"  ? "#dea838"
-              : "#7abd8e";
+              : "#adc8d7";
 
   // Friend-room filter for the journal
   const [tabGroups, setTabGroups] = useState<FriendGroup[]>([]);
@@ -1244,21 +1255,18 @@ export default function V3JournalPage({
                           </button>
                         </Tooltip>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 24, flexShrink: 0 }}>
-                        {/* Journal mode filter — radio buttons styled like
-                           the SearchShows onboarding "First time / Rewatching"
-                           radios (white circle, canon-green dot when active),
-                           with the label set BENEATH the button so the unit
-                           reads as a compact icon-with-caption. Per-show
-                           state (preserved across tab switches within
-                           ProfilePage, reset on navigation away or refresh).
-                           Order: friends / private / public. Default =
-                           friends per desktop refocus (chunk 2). All three
-                           carry tooltips. Sized to roughly match the prior
-                           segmented-pill footprint so the surrounding nav
-                           controls don't shift. */}
-                        <div style={{ display: "flex", gap: 12, flexShrink: 0, marginTop: 16 }}>
+                      {/* Middle group: journal mode filter radios.
+                         Lives as its own flex child of the action bar so
+                         the parent's space-between layout pushes write/
+                         friend-room/+ to the left edge and progress to
+                         the right edge, leaving the radios in the
+                         center. Order: all / friends / private / public.
+                         Default = all, resets on tab switch + on fresh
+                         mount (no persistence). White circle with type-
+                         color dot when active; label beneath. */}
+                      <div style={{ display: "flex", gap: 12, flexShrink: 0, marginTop: 16 }}>
                           {([
+                            { val: "all",     label: "all",     tooltip: "Everything you've written for this show." },
                             { val: "friends", label: "friends", tooltip: "What you've written for friends." },
                             { val: "private", label: "private", tooltip: "Your private thoughts." },
                             { val: "public",  label: "public",  tooltip: "What the public sees." },
@@ -1266,7 +1274,7 @@ export default function V3JournalPage({
                             const active = activeFilter === val;
                             const cell = (
                               <button
-                                onClick={() => setFilterByShow(prev => ({ ...prev, [activeTab]: val }))}
+                                onClick={() => setActiveFilter(val)}
                                 style={{
                                   background: "transparent",
                                   border: "none",
@@ -1310,7 +1318,11 @@ export default function V3JournalPage({
                               </Tooltip>
                             );
                           })}
-                        </div>
+                      </div>
+                      {/* Right group: progress dropdown, anchored to the
+                         right edge by the action bar's space-between
+                         layout. */}
+                      <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
                         {activeShow && (
                           <OneSelectProgress
                             show={activeShow}
@@ -1336,11 +1348,16 @@ export default function V3JournalPage({
                     const byDiary =
                       activeFilter === "public"  ? tabThreads.filter(({ thread: t }) => t.isPublic)
                       : activeFilter === "friends" ? tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !!groupId)
-                      : /* private */              tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !groupId);
+                      : activeFilter === "private" ? tabThreads.filter(({ thread: t, groupId }) => !t.isPublic && !groupId)
+                      : /* all — every type, re-sorted by updatedAt desc so the
+                           mixed stream reads chronologically across types
+                           (overrides tabThreads' episode-order sort). */
+                        [...tabThreads].sort((a, b) => b.thread.updatedAt - a.thread.updatedAt);
                     const filtered = journalGroupFilter ? byDiary.filter(({ groupId }) => groupId === journalGroupFilter) : byDiary;
                     if (filtered.length === 0) {
-                      // Empty-state precedence on the friends filter (the new
-                      // default after the desktop refocus). Order:
+                      // Empty-state precedence on the friends + all filters
+                      // (both serve as default landing surfaces for a tab
+                      // with no entries). Order:
                       //   1. TSP — canonical demo welcome
                       //   2. invitedMode — session flag set by
                       //      InviteAcceptPage.handleAccept (sessionStorage:
@@ -1349,12 +1366,10 @@ export default function V3JournalPage({
                       //   3. selfCreatedRoom — user has at least one friend
                       //      room they created for this show. Discriminator:
                       //      tabGroups.some(g => g.createdBy === user.id).
-                      //   4. Fallthrough → legacy "you haven't written for
-                      //      any friends yet" copy below (covers users with
-                      //      a journal tab but no friend room).
+                      //   4. Fallthrough → per-mode copy below.
                       // The private + public branches keep their existing
                       // per-mode copy unchanged.
-                      if (activeFilter === "friends") {
+                      if (activeFilter === "friends" || activeFilter === "all") {
                         if (activeTab === "tsp") {
                           return <EmptyProfileWelcome isTsp={true} />;
                         }
@@ -1366,7 +1381,7 @@ export default function V3JournalPage({
                         if (hasSelfCreatedRoom) {
                           return <EmptyProfileWelcome selfCreatedRoom={true} showName={activeTab ? showName(activeTab) : undefined} />;
                         }
-                        // else: fall through to per-mode "haven't written for friends yet" copy below.
+                        // else: fall through to per-mode copy below.
                       }
                       const sName = showName(activeTab);
                       const copy: React.ReactNode =
@@ -1374,7 +1389,9 @@ export default function V3JournalPage({
                           ? <>You haven't written publicly yet. When you do, your public entries about <em>{sName}</em> will become part of a durable archive of good TV writing, waiting to be found by anyone who reaches the episodes you've written about.</>
                           : activeFilter === "friends"
                             ? <>You haven't written for any friends yet. They're waiting to know your thoughts!</>
-                            : <>No private entries about <em>{sName}</em> yet. Sometimes the best thinking happens when you write just for yourself…</>;
+                            : activeFilter === "all"
+                              ? <>Nothing here yet for <em>{sName}</em>. Write something to your friends, for the public, or just for yourself.</>
+                              : <>No private entries about <em>{sName}</em> yet. Sometimes the best thinking happens when you write just for yourself…</>;
                       return (
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "150px 0 48px" }}>
                           <div style={{ width: "min(400px, 100%)" }}>
@@ -1393,8 +1410,13 @@ export default function V3JournalPage({
                     return filtered.map(({ thread: t, groupId, groupName }) => {
                     const isGroup = !!groupId;
                     const isPub = t.isPublic && !groupId;
-                    // card bg: blue for friend room, yellow for public, transparent for private
-                    const cardBg = isGroup ? "#adc8d7" : isPub ? "#dea838" : undefined;
+                    // Each entry carries its own type-color band. In "all"
+                    // mode this is what visually separates the three
+                    // streams; in single-filter modes the band color
+                    // matches the diary surface so the entry blends in
+                    // (same look as before, just colored explicitly
+                    // instead of via inherited tab bg).
+                    const cardBg = isGroup ? "#adc8d7" : isPub ? "#dea838" : "#7abd8e";
                     const cardFg = isGroup ? "#1a3a4a" : "#fff";
                     const cardMuted = isGroup ? "rgba(26,58,74,0.65)" : "rgba(255,255,255,0.65)";
                     const epColor = isGroup ? "#1a3a4a" : "var(--dos-cyan)";
@@ -1404,8 +1426,14 @@ export default function V3JournalPage({
                     return (
                     <div key={t.id} className="card threadCard"
                       style={{
-                        margin: "10px 0 10px 20px", cursor: "pointer", position: "relative",
-                        ...((isGroup || isPub) ? { background: cardBg, color: cardFg, borderColor: "transparent" } : {}),
+                        // In "all" mode entries span the diary scroll
+                        // area's full interior width (margin-left dropped
+                        // so type-color bands break up the stream).
+                        // Single-filter modes keep the 20px inset for
+                        // the existing layout.
+                        margin: activeFilter === "all" ? "10px 0" : "10px 0 10px 20px",
+                        cursor: "pointer", position: "relative",
+                        background: cardBg, color: cardFg, borderColor: "transparent",
                       }}
                       onClick={() => {
                         dismissGreenIndicator(t.id);
