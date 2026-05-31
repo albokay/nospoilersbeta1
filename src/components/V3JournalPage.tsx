@@ -1286,7 +1286,7 @@ export default function V3JournalPage({
                          Default = all, resets on tab switch + on fresh
                          mount (no persistence). White circle with type-
                          color dot when active; label beneath. */}
-                      <div style={{ display: "flex", gap: 12, flexShrink: 0, marginTop: 16 }}>
+                      <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 16 }}>
                           {([
                             { val: "all",     label: "all",     tooltip: "Everything you've written for this show." },
                             { val: "friends", label: "friends", tooltip: "What you've written for friends." },
