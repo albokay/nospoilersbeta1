@@ -1137,9 +1137,14 @@ export default function V3JournalPage({
                         // the four radios fitting without compressing.
                         paddingLeft: 24,
                         paddingRight: 24,
+                        // Never let the row wrap to a second line — all
+                        // three groups (write/friend/+, radios, progress)
+                        // stay inline forever. Combined with the per-
+                        // group nowrap settings below.
+                        flexWrap: "nowrap",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "nowrap" }}>
                         {/* v3: write button navigates to /v2/compose/:showId
                            instead of opening the in-page modal. Destination
                            selection moves to the compose page's chooser.
@@ -1310,7 +1315,11 @@ export default function V3JournalPage({
                                   // the other. With equal widths + equal
                                   // gap, every adjacent circle pair is
                                   // exactly the same distance apart.
-                                  width: 56,
+                                  // Width 44 (down from 56) trims the
+                                  // cluster footprint enough that the
+                                  // left group's + button always stays
+                                  // inline next to write/friend-room.
+                                  width: 44,
                                 }}
                               >
                                 <div style={{
