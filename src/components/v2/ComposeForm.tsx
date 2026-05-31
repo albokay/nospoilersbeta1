@@ -476,7 +476,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         </div>
       )}
 
-      <main style={{ maxWidth: 720, margin: "0 auto", padding: "64px 48px 80px" }}>
+      <main style={{ maxWidth: 720, margin: "0 auto", padding: "64px 48px 180px" }}>
         {/* === CONTEXT === */}
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div
@@ -722,20 +722,38 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
 
         </div>
 
-        {/* === ACTION ROW (with optional explainer on left) ===
-            Explainer (when a destination is chosen) sits to the LEFT of the
-            buttons. Buttons are pushed right via marginLeft: auto on their
-            wrapper so they stay anchored at the row's right edge regardless
-            of whether the explainer is present. The action row's marginTop
-            is fixed, so the buttons' vertical position doesn't shift when
-            the explainer appears/disappears — only the row's HEIGHT grows
-            to accommodate two wrapped lines of explainer text. */}
+      </main>
+
+      {/* === STICKY BOTTOM-RIGHT ACTION FOOTER ===
+          Buttons + helper text anchor to the bottom-right corner of the
+          surrounding scroll context — the modal card in modal mode, the
+          viewport in standalone mode. They track that corner as the
+          window resizes (sticky position + flex-end alignment). Helper
+          text stacks ABOVE the button row, both right-aligned. The outer
+          container has pointer-events: none over the empty stretch so it
+          doesn't intercept clicks landing on cream space to the left;
+          the inner column re-enables pointer events on the actual UI. */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          width: "100%",
+          padding: "0 24px 24px",
+          display: "flex",
+          justifyContent: "flex-end",
+          pointerEvents: "none",
+          zIndex: 5,
+        }}
+      >
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            marginTop: 24,
-            gap: 16,
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: 12,
+            pointerEvents: "auto",
           }}
         >
           {destination !== null && (
@@ -746,12 +764,12 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 color: INK_SOFT,
                 lineHeight: 1.5,
                 margin: 0,
-                textAlign: "left",
-                maxWidth: 320,
-                // `text-wrap: balance` lets the browser distribute
-                // characters across the two wrapped lines so they end up
-                // similar lengths (modern browsers; falls back to default
-                // greedy wrapping otherwise).
+                textAlign: "right",
+                // Narrower max width than the prior inline layout (320 →
+                // 240) so the typical destination explainer wraps to
+                // three balanced lines as designed. Shorter explainers
+                // still render naturally (1–2 lines) when the copy fits.
+                maxWidth: 240,
                 textWrap: "balance",
               }}
             >
@@ -767,68 +785,62 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               display: "flex",
               alignItems: "center",
               gap: 10,
-              marginLeft: "auto",
             }}
           >
-          <button
-            onClick={attemptDiscard}
-            disabled={submitting}
-            style={{
-              background: "transparent",
-              border: `2px solid ${RULE}`,
-              color: INK_SOFT,
-              borderRadius: 9999,
-              padding: "10px 20px",
-              fontFamily: "Inter, sans-serif",
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: submitting ? "not-allowed" : "pointer",
-            }}
-          >
-            × not now
-          </button>
-          {(() => {
-            // Submit is gated on all three: a chosen destination, a
-            // non-empty title, and a non-empty body. While any is missing
-            // the button renders as a dimmed empty pill — "this exists but
-            // isn't actionable yet" — same visual language used for the
-            // destination-only gate before titles/body were required.
-            const hasContent =
-              postTitle.trim() !== "" &&
-              postBody.trim() !== "" &&
-              destination !== null;
-            const canSubmit = hasContent && !submitting;
-            return (
-              <button
-                onClick={submitPost}
-                disabled={!canSubmit}
-                className="btn post h40"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 2,
-                  opacity: hasContent ? 1 : 0.4,
-                  cursor: canSubmit ? "pointer" : "not-allowed",
-                  minWidth: 130,
-                }}
-              >
-                {!hasContent
-                  ? null
-                  : submitting
-                    ? <>posting<LoadingDots /></>
-                    : <>post entry<ArrowRight size={14} /></>}
-              </button>
-            );
-          })()}
+            <button
+              onClick={attemptDiscard}
+              disabled={submitting}
+              style={{
+                background: "transparent",
+                border: `2px solid ${RULE}`,
+                color: INK_SOFT,
+                borderRadius: 9999,
+                padding: "10px 20px",
+                fontFamily: "Inter, sans-serif",
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: submitting ? "not-allowed" : "pointer",
+              }}
+            >
+              × not now
+            </button>
+            {(() => {
+              const hasContent =
+                postTitle.trim() !== "" &&
+                postBody.trim() !== "" &&
+                destination !== null;
+              const canSubmit = hasContent && !submitting;
+              return (
+                <button
+                  onClick={submitPost}
+                  disabled={!canSubmit}
+                  className="btn post h40"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 2,
+                    opacity: hasContent ? 1 : 0.4,
+                    cursor: canSubmit ? "pointer" : "not-allowed",
+                    minWidth: 130,
+                  }}
+                >
+                  {!hasContent
+                    ? null
+                    : submitting
+                      ? <>posting<LoadingDots /></>
+                      : <>post entry<ArrowRight size={14} /></>}
+                </button>
+              );
+            })()}
           </div>
+          {submitError && (
+            <div style={{ color: "var(--danger)", fontSize: 13, textAlign: "right" }}>
+              {submitError}
+            </div>
+          )}
         </div>
-        {submitError && (
-          <div style={{ textAlign: "right", marginTop: 8, color: "var(--danger)", fontSize: 13 }}>
-            {submitError}
-          </div>
-        )}
-      </main>
+      </div>
 
       {/* === DISCARD CONFIRM === */}
       {discardOpen && (

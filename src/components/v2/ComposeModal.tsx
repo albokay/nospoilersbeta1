@@ -210,16 +210,24 @@ function ComposeModalShell({
             background: "transparent",
             border: `2px solid ${RULE}`,
             color: INK_SOFT,
-            borderRadius: 9999,
-            padding: "8px 18px",
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: "pointer",
+            borderRadius: "50%",
+            // Equal width + height + no padding → perfect circle.
+            // Content is just "×" now; the "not now" label moved to the
+            // sticky bottom-right footer (still a labeled pill there).
+            width: 34,
             height: 34,
+            padding: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 16,
+            fontWeight: 500,
+            lineHeight: 1,
+            cursor: "pointer",
             zIndex: 10,
           }}
         >
-          × not now
+          ×
         </button>
         {children}
       </div>
