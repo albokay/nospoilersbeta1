@@ -547,7 +547,7 @@ header.site{
    full 60 since the threadCard has no right margin. */
 .diaryScrollArea{
   flex:1; overflow-y:auto;
-  padding:12px 60px 32px 24px;
+  padding:12px 60px 12px 24px;
 }
 
 /* profile chip */

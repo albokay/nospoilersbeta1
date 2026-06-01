@@ -1123,7 +1123,7 @@ export default function V3JournalPage({
                       <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
                     );
                   })}
-                <div className="card" style={{ height: 700, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1, background: tabBg }}>
+                <div className="card" style={{ height: 650, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1, background: tabBg }}>
                   {/* Action bar — lives ABOVE the scroll container so entries never bleed through */}
                   {activeTab && (
                     <div
@@ -1642,7 +1642,7 @@ export default function V3JournalPage({
                     </div>
                   );});
                   })()}
-                  <div style={{ height: 32, flexShrink: 0 }} aria-hidden />
+                  <div style={{ height: 0, flexShrink: 0 }} aria-hidden />
                   </div>{/* /diaryScrollArea */}
                 </div>
                 </div>{/* /diaryCardWrap */}
