@@ -660,6 +660,15 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
               cellSignals={cellSignals}
               entryRedDots={entryRedDots}
               onEntryExpanded={(tid) => setGreenDismissed((prev) => new Set([...prev, tid]))}
+              onThreadDeleted={(tid) =>
+                // Public posts have no tombstones (fetchPublicThreadsForUser
+                // filters is_deleted), so drop the entry entirely — matching
+                // what a refresh would show — instead of waiting for one.
+                setAllOwnerThreads((prev) => prev.filter((t) => t.id !== tid))
+              }
+              onThreadEdited={(updated) =>
+                setAllOwnerThreads((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+              }
             />
           )}
 
