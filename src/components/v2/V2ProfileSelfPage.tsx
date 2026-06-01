@@ -839,7 +839,6 @@ export default function V2ProfileSelfPage() {
   return (
     <V2Layout
       palette="profile"
-      viewerIsHome={false}
       pairedHeader={{
         left: "this is your public profile",
         rightLabel: "go to your journal",

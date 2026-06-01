@@ -368,7 +368,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   // === GUARDS ===
   if (notFound) {
     return (
-      <V2Layout palette="profile">
+      <V2Layout palette="profile" viewerIsHome={false}>
         <div style={{ textAlign: "center", marginTop: 60 }}>
           <h1 style={{ fontFamily: "Lora, Georgia, serif", fontSize: 32, color: "var(--dos-fg)" }}>profile not found</h1>
           <p style={{ marginTop: 16, color: "var(--dos-gray)", fontStyle: "italic", fontFamily: "Lora, Georgia, serif" }}>
@@ -380,7 +380,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   }
   if (!ownerId || !show) {
     return (
-      <V2Layout palette="profile">
+      <V2Layout palette="profile" viewerIsHome={false}>
         <div style={{ textAlign: "center", marginTop: 60, color: "var(--dos-gray)", fontStyle: "italic" }}>
           loading<LoadingDots />
         </div>
@@ -415,7 +415,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
       : undefined;
 
   return (
-    <V2Layout palette="profile">
+    <V2Layout palette="profile" viewerIsHome={false}>
       {/* === EYEBROW ===
           Inter (default), small, lowercase — matches the general public
           space's "public writing about:" eyebrow style (ShowSection.tsx:
