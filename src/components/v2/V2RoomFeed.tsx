@@ -862,36 +862,39 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
 function EntryRedDot({ count, onDismiss }: { count: number; onDismiss: () => void }) {
   const [hover, setHover] = useState(false);
   return (
-    <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-      title={hover
-        ? "Turn this notification off."
-        : `${count} response${count === 1 ? "" : "s"} here you'll see once you catch up.`}
-      style={{
-        position: "absolute",
-        top: -8,
-        right: -8,
-        zIndex: 3,
-        minWidth: 20,
-        height: 20,
-        padding: "0 5px",
-        borderRadius: 999,
-        background: "var(--danger)",
-        color: "#fff",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 11,
-        fontWeight: 800,
-        lineHeight: 1,
-        cursor: "pointer",
-        boxSizing: "border-box",
-      }}
+    <Tooltip
+      text={<>There is new writing in here<br />for when you catch up.</>}
+      direction="above"
+      align="right"
+      width="auto"
+      portal
+      tooltipStyle={{ whiteSpace: "nowrap", padding: "6px 10px" }}
+      style={{ position: "absolute", top: -8, right: -8, zIndex: 3 }}
     >
-      {hover ? "✕" : count}
-    </div>
+      <div
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+        style={{
+          minWidth: 20,
+          height: 20,
+          padding: "0 5px",
+          borderRadius: 999,
+          background: "var(--danger)",
+          color: "#fff",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 11,
+          fontWeight: 800,
+          lineHeight: 1,
+          cursor: "pointer",
+          boxSizing: "border-box",
+        }}
+      >
+        {hover ? "✕" : count}
+      </div>
+    </Tooltip>
   );
 }
 
