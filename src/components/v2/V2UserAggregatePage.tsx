@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import {
@@ -7,6 +7,7 @@ import {
   fetchPublicProfileByUsername,
   fetchPublicProgressForUser,
   fetchPublicThreadsForUser,
+  fetchAllFriendGroupsWithActivity,
   upsertProgress,
   canRespondToPublicRoom,
   insertPendingPublicResponse,
@@ -15,11 +16,12 @@ import {
 } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
 import type { Show } from "../../lib/db";
-import type { ProgressEntry, Thread } from "../../types";
+import type { ProgressEntry, Thread, FriendGroup } from "../../types";
 import V2Layout from "./V2Layout";
 import TreatedArt from "../TreatedArt";
 import OneSelectProgress from "../OneSelectProgress";
-import { Clock, SquarePen } from "lucide-react";
+import Tooltip from "../Tooltip";
+import { Clock, SquarePen, Users, ArrowRight } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import AuthModal from "../AuthModal";
 import V2RoomFeed, { type V2RoomFeedEntry, type PublicRoomResponseGate } from "./V2RoomFeed";
@@ -45,6 +47,84 @@ function writeBrowseProgress(showId: string, entry: ProgressEntry) {
   } catch {}
 }
 
+// Icon-only "go to your friend room" pill ([Users][→], white outline /
+// transparent fill) for the public posts page. Shows when the current viewer
+// has friend room(s) for this show: single room navigates straight there;
+// multiple rooms open a picker dropdown. Mirrors the V1 ShowSection button.
+function FriendRoomNavButton({
+  rooms,
+  navigate,
+}: {
+  rooms: FriendGroup[];
+  navigate: ReturnType<typeof useNavigate>;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+  if (!rooms.length) return null;
+  const single = rooms.length === 1 ? rooms[0] : null;
+  return (
+    <div ref={wrapRef} style={{ position: "relative", flexShrink: 0 }}>
+      <Tooltip
+        text="go to your friend room"
+        direction="below"
+        tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
+      >
+        <button
+          className="btn dim-hover"
+          aria-label="go to your friend room"
+          onClick={() => { if (single) navigate(`/room/${single.id}`); else setOpen((o) => !o); }}
+          style={{
+            padding: "5px 10px",
+            background: "transparent",
+            border: "2px solid #fff",
+            color: "#fff",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <Users size={16} color="#fff" style={{ flexShrink: 0 }} />
+          <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+        </button>
+      </Tooltip>
+      {open && !single && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", right: 0,
+          background: "#dea838", border: "none", borderRadius: 10,
+          padding: 8, minWidth: 220, zIndex: 200,
+          display: "flex", flexDirection: "column", gap: 6,
+          boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+        }}>
+          {rooms.map((g) => (
+            <button
+              key={g.id}
+              className="btn"
+              onClick={() => navigate(`/room/${g.id}`)}
+              style={{
+                fontSize: 13, whiteSpace: "nowrap",
+                display: "flex", alignItems: "center", width: "100%",
+                background: "transparent", border: "2px solid #fff", color: "#fff",
+              }}
+            >
+              <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>{g.name}</span>
+              <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function V2UserAggregatePage({ username, showId }: { username: string; showId: string }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,6 +143,19 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [show, setShow] = useState<Show | null>(null);
+
+  // The CURRENT viewer's friend rooms for this show — powers the icon-only
+  // "go to your friend room" pill. Independent of whose public posts these are.
+  const [myRoomsForShow, setMyRoomsForShow] = useState<FriendGroup[]>([]);
+  useEffect(() => {
+    if (!user) { setMyRoomsForShow([]); return; }
+    let cancelled = false;
+    fetchAllFriendGroupsWithActivity(user.id)
+      .then((rooms) => { if (!cancelled) setMyRoomsForShow(rooms.filter((r) => r.showId === showId)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user?.id, showId]);
+
   const [allOwnerThreads, setAllOwnerThreads] = useState<Thread[]>([]);
   // Per-reply metadata for the owner's public threads (group_id IS NULL).
   // Drives reply counts AND the new-response notification dots — green (new
@@ -441,14 +534,17 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
       </div>
 
       {/* === H1 ROW ===
-          SHOW NAME. The old "all public posts on SHOW →" button (which linked
-          to the show-wide public aggregate) was removed in the public-rooms
-          scope (2026). The owner's "write" button lives in the nav row below,
-          in the same position the write button takes elsewhere on the site. */}
+          SHOW NAME on the left; the viewer's "go to your friend room" icon
+          pill on the right (when they have rooms for this show). The owner's
+          "write" button lives in the nav row below. The old "all public posts"
+          aggregate button was removed in the public-rooms scope (2026). */}
       <div
         style={{
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "flex-end",
+          gap: 12,
+          flexWrap: "wrap",
           marginBottom: 14,
         }}
       >
@@ -469,6 +565,9 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         >
           {show.name}
         </h1>
+        {myRoomsForShow.length > 0 && (
+          <FriendRoomNavButton rooms={myRoomsForShow} navigate={navigate} />
+        )}
       </div>
 
       {/* === NAV ROW ===
