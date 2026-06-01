@@ -43,6 +43,23 @@ interface ResponseComposerProps {
   // inGroupContext this resolves the three contexts the submit button
   // styles against: friend room / public thread / private thread.
   threadIsPublic: boolean;
+  // Public-room permission gate (public-rooms scope, 2026). When requestMode
+  // is true the viewer isn't yet allowed to respond in this owner's public
+  // room, so the composer switches to "request to respond": it collects an
+  // optional note and HOLDS the response (via onSubmitRequest) for the owner
+  // to approve, instead of publishing it. Off everywhere these props are
+  // omitted (friend rooms, private, the general aggregate) — behavior there
+  // is unchanged.
+  requestMode?: boolean;
+  requestOwnerUsername?: string;
+  requestHasPending?: boolean;
+  onSubmitRequest?: (payload: {
+    body: string;
+    message: string;
+    season: number;
+    episode: number;
+    reference: PendingReference | null;
+  }) => Promise<void>;
 }
 
 export default function ResponseComposer({
@@ -68,6 +85,10 @@ export default function ResponseComposer({
   inGroupContext,
   groupId,
   threadIsPublic,
+  requestMode = false,
+  requestOwnerUsername,
+  requestHasPending = false,
+  onSubmitRequest,
 }: ResponseComposerProps) {
   // Re-watchers tag replies at their highest prior progress; others use viewerSeason/Episode
   const replyTagS = postTagSeason ?? viewerSeason;
@@ -78,6 +99,9 @@ export default function ResponseComposer({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quoteInserted, setQuoteInserted] = useState(false);
+  // Request-mode (public-room gate) local state.
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requestSent, setRequestSent] = useState(false);
 
   // ── Prompt state ─────────────────────────────────────────
   const [promptEntries, setPromptEntries] = useState<PromptEntry[]>([]);
@@ -174,6 +198,35 @@ export default function ResponseComposer({
     if (!user || !profile) { onAuthRequired(); return; }
     const trimmed = body.trim();
     if (!trimmed) return;
+
+    // Request-to-respond path: the viewer can't respond directly in this
+    // owner's public room, so HOLD the response for approval instead of
+    // publishing it. (Public-rooms scope, 2026.)
+    if (requestMode && onSubmitRequest) {
+      setSubmitting(true);
+      setError(null);
+      try {
+        await onSubmitRequest({
+          body: trimmed,
+          message: requestMessage.trim(),
+          season: replyTagS,
+          episode: replyTagE,
+          reference: pendingReference,
+        });
+        setBody("");
+        setRequestMessage("");
+        setQuoteInserted(false);
+        setActivePrompt(null);
+        onClearReference();
+        setRequestSent(true);
+      } catch (e: any) {
+        setError(e?.message ?? "Couldn't send your request. Please try again.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -219,7 +272,31 @@ export default function ResponseComposer({
       style={{ marginTop: 16, border: "2px solid var(--dos-border)", borderRadius: 24 }}
       id="response-composer"
     >
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--dos-border)" }}>Write a response</div>
+      {requestSent ? (
+        <div style={{ fontSize: 14, color: "var(--dos-border)", lineHeight: 1.5 }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Request sent.</div>
+          <div>
+            We let {requestOwnerUsername ? `@${requestOwnerUsername}` : "the author"} know
+            you'd like to respond. If they approve, your response is published here — and
+            you'll be able to respond to their public writing from then on.
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+            <button
+              className="btn"
+              onClick={onCancel}
+              style={{ background: "#fff", border: "2px solid #dea838", color: "#dea838" }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      ) : (
+       <>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--dos-border)" }}>
+        {requestMode
+          ? (requestOwnerUsername ? `Respond to @${requestOwnerUsername}` : "Respond")
+          : "Write a response"}
+      </div>
 
       {/* Pending reference row */}
       {pendingReference && pendingReference.type === "quote" && !quoteInserted && (
@@ -261,6 +338,59 @@ export default function ResponseComposer({
         }}
       />
 
+      {/* Permission-request section (public-room gate). The viewer writes
+          their response above; here they add an optional note. Submitting
+          sends both together and holds the response for the owner. */}
+      {requestMode && (
+        <div
+          style={{
+            marginTop: 10,
+            paddingTop: 12,
+            borderTop: "1px dashed var(--dos-border)",
+            fontSize: 13,
+            color: "var(--dos-border)",
+            lineHeight: 1.45,
+          }}
+        >
+          <div style={{ marginBottom: 8 }}>
+            You're not in a friend room with{" "}
+            {requestOwnerUsername ? `@${requestOwnerUsername}` : "this writer"} yet, so your
+            response is sent for approval. They'll see your note and your response.
+          </div>
+          {profile && (
+            <div style={{ marginBottom: 8 }}>
+              From: <strong style={{ fontWeight: 700 }}>@{profile.username}</strong>
+            </div>
+          )}
+          <textarea
+            value={requestMessage}
+            onChange={(e) => setRequestMessage(e.target.value)}
+            placeholder={`Tell ${requestOwnerUsername ? "@" + requestOwnerUsername : "them"} who you are and why you want to respond (optional)`}
+            rows={2}
+            maxLength={500}
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              background: "#fff",
+              color: "#000",
+              border: "none",
+              borderRadius: 8,
+              padding: "8px 10px",
+              fontSize: 13,
+              resize: "vertical",
+              fontFamily: "inherit",
+            }}
+          />
+          {requestHasPending && (
+            <div style={{ marginTop: 8, fontStyle: "italic" }}>
+              You already have a request pending with{" "}
+              {requestOwnerUsername ? `@${requestOwnerUsername}` : "this writer"}. Sending
+              again adds another response for them to approve.
+            </div>
+          )}
+        </div>
+      )}
+
       {error && (
         <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{error}</div>
       )}
@@ -274,7 +404,16 @@ export default function ResponseComposer({
         >
           Cancel
         </button>
-        {(() => {
+        {requestMode ? (
+          <button
+            className="btn"
+            onClick={() => handleSubmit(false)}
+            disabled={submitting || !body.trim()}
+            style={{ background: "#fff", border: "2px solid #dea838", color: "#dea838" }}
+          >
+            {submitting ? "Sending…" : "Send request"}
+          </button>
+        ) : (() => {
           // Three-way context resolves from (inGroupContext, threadIsPublic).
           // Each context gets a white-fill submit button with its canon
           // accent color as text + border, and a context-specific label.
@@ -302,6 +441,8 @@ export default function ResponseComposer({
           );
         })()}
       </div>
+       </>
+      )}
     </div>
   );
 }

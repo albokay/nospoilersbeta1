@@ -1794,6 +1794,64 @@ export async function insertReply(data: {
   return reply;
 }
 
+// ── Public-room response gate ───────────────────────────────────────────────
+
+/** True if `responderId` may respond directly in `ownerId`'s public rooms:
+ *  the owner themselves, a friend (shares any non-deleted friend room, any
+ *  show), or an approved responder. Mirrors the replies INSERT policy, so the
+ *  UI state and the database rule can't disagree. */
+export async function canRespondToPublicRoom(ownerId: string, responderId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("can_respond_to_public", {
+    p_owner: ownerId,
+    p_responder: responderId,
+  });
+  if (error) { console.warn("can_respond_to_public failed:", error.message); return false; }
+  return data === true;
+}
+
+/** Park a held response from a not-yet-approved requester. Invisible to readers
+ *  until the owner approves (CP3 publishes it into `replies`). `season`/
+ *  `episode` snapshot the requester's claimed progress so the published reply
+ *  is spoiler-tagged correctly whenever approval happens. */
+export async function insertPendingPublicResponse(data: {
+  threadId: string; showId: string; ownerId: string;
+  requesterId: string; requesterName: string;
+  body: string; message?: string | null;
+  season: number; episode: number;
+  referenceType?: 'quote' | 'link' | null;
+  referencedReplyId?: string | null;
+  referencedThreadId?: string | null;
+  quotedText?: string | null;
+}): Promise<void> {
+  await checkRateLimit('public_response_request', 10, 60);
+  validateLength("Response", data.body, 1, 5000);
+  if (data.message && data.message.trim()) validateLength("Message", data.message, 1, 500);
+  const { error } = await supabase.from("pending_public_responses").insert({
+    thread_id: data.threadId, show_id: data.showId,
+    owner_id: data.ownerId,
+    requester_id: data.requesterId, requester_name: data.requesterName,
+    body: data.body, message: data.message ?? null,
+    season: data.season, episode: data.episode,
+    reference_type: data.referenceType ?? null,
+    referenced_reply_id: data.referencedReplyId ?? null,
+    referenced_thread_id: data.referencedThreadId ?? null,
+    quoted_text: data.quotedText ?? null,
+  });
+  if (error) throw error;
+}
+
+/** Thread ids in `ownerId`'s public rooms that `requesterId` already has a
+ *  pending request on — lets the UI note "you already asked". */
+export async function fetchMyPendingResponseThreadIds(ownerId: string, requesterId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("pending_public_responses")
+    .select("thread_id")
+    .eq("owner_id", ownerId)
+    .eq("requester_id", requesterId);
+  if (error) { console.warn("fetch pending responses failed:", error.message); return new Set(); }
+  return new Set((data ?? []).map((r: any) => r.thread_id as string));
+}
+
 // ── Citations ─────────────────────────────────────────────────────────────────
 
 export type CitationEntry = { citingReplyId: string; index: number };

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import {
@@ -8,6 +8,9 @@ import {
   fetchPublicProgressForUser,
   fetchPublicThreadsForUser,
   upsertProgress,
+  canRespondToPublicRoom,
+  insertPendingPublicResponse,
+  fetchMyPendingResponseThreadIds,
 } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
 import type { Show } from "../../lib/db";
@@ -15,10 +18,11 @@ import type { ProgressEntry, Thread } from "../../types";
 import V2Layout from "./V2Layout";
 import TreatedArt from "../TreatedArt";
 import OneSelectProgress from "../OneSelectProgress";
-import { Clock } from "lucide-react";
+import { Clock, SquarePen } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import AuthModal from "../AuthModal";
-import V2RoomFeed, { type V2RoomFeedEntry } from "./V2RoomFeed";
+import V2RoomFeed, { type V2RoomFeedEntry, type PublicRoomResponseGate } from "./V2RoomFeed";
+import { useComposeModal } from "./ComposeModal";
 import { canView } from "../../lib/utils";
 
 type ClaimSource = "user-progress" | "session" | null;
@@ -43,7 +47,8 @@ function writeBrowseProgress(showId: string, entry: ProgressEntry) {
 export default function V2UserAggregatePage({ username, showId }: { username: string; showId: string }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
+  const composeModal = useComposeModal();
 
   // Captured once on mount. After publishing a public post the author lands
   // here (public-rooms scope, 2026); ComposeModal / V2ComposePage pass the
@@ -67,6 +72,54 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   // thread card. V2 pages mount outside AppShell so they don't share the
   // AppShell-level AuthModal.
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // ── Public-room response gate (public-rooms scope, 2026) ──────────────
+  // canRespondDirect: null while resolving; true = owner / friend / approved
+  // (normal composer); false = the viewer must request permission (the
+  // composer switches to request-to-respond and holds the response for the
+  // owner). Logged-out viewers never reach the composer — every interact
+  // button routes through the auth modal — so the gate is only built when
+  // signed in.
+  const [canRespondDirect, setCanRespondDirect] = useState<boolean | null>(null);
+  const [pendingThreadIds, setPendingThreadIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user || !ownerId) { setCanRespondDirect(null); setPendingThreadIds(new Set()); return; }
+    if (ownerId === user.id) { setCanRespondDirect(true); setPendingThreadIds(new Set()); return; }
+    let cancelled = false;
+    Promise.all([
+      canRespondToPublicRoom(ownerId, user.id),
+      fetchMyPendingResponseThreadIds(ownerId, user.id),
+    ]).then(([can, pend]) => {
+      if (cancelled) return;
+      setCanRespondDirect(can);
+      setPendingThreadIds(pend);
+    });
+    return () => { cancelled = true; };
+  }, [user, ownerId]);
+
+  const handleSubmitRequest = useCallback<PublicRoomResponseGate["onSubmitRequest"]>(
+    async (threadId, payload) => {
+      if (!user || !profile || !ownerId) return;
+      await insertPendingPublicResponse({
+        threadId,
+        showId,
+        ownerId,
+        requesterId: user.id,
+        requesterName: profile.username,
+        body: payload.body,
+        message: payload.message || null,
+        season: payload.season,
+        episode: payload.episode,
+        referenceType: payload.reference?.type ?? null,
+        referencedReplyId: payload.reference?.replyId ?? null,
+        referencedThreadId: payload.reference?.threadId ?? null,
+        quotedText: payload.reference?.type === "quote" ? payload.reference.quotedText ?? null : null,
+      });
+      setPendingThreadIds((prev) => new Set([...prev, threadId]));
+    },
+    [user, profile, ownerId, showId],
+  );
 
   // Bootstrap — works for logged-out visitors too.
   useEffect(() => {
@@ -258,6 +311,23 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   // rather than printing "Season 00 Episode 00".
   const hasOwnerProgress = !!ownerProgress && !(ownerProgress.s === 0 && ownerProgress.e === 0);
 
+  // Owner viewing their own public room. Drives the owner-aware chrome:
+  // "your public writing on:" eyebrow + a write button that opens the
+  // standard compose modal (the only way to add originals to a public room).
+  const isOwner = !!user && !!ownerId && ownerId === user.id;
+
+  // Built only when signed in and the gate has resolved. Passing it switches
+  // the response composer into request-to-respond mode for non-friends.
+  const publicRoomGate: PublicRoomResponseGate | undefined =
+    user && canRespondDirect !== null
+      ? {
+          ownerUsername: username,
+          canRespondDirect,
+          pendingThreadIds,
+          onSubmitRequest: handleSubmitRequest,
+        }
+      : undefined;
+
   return (
     <V2Layout palette="profile">
       {/* === EYEBROW ===
@@ -266,25 +336,35 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           1896). The @username link keeps a dashed underline; the rest of
           the line is plain text. */}
       <div style={{ fontSize: 13, fontWeight: 400, lineHeight: 1.2, color: "var(--dos-light)", marginBottom: 4 }}>
-        <a
-          href={`/u/${username}`}
-          onClick={(e) => { e.preventDefault(); navigate(`/u/${username}`); }}
-          style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dashed var(--dos-gray)" }}
-        >
-          @{username}
-        </a>
-        's public posts on:
+        {isOwner ? (
+          <>your public writing on:</>
+        ) : (
+          <>
+            <a
+              href={`/u/${username}`}
+              onClick={(e) => { e.preventDefault(); navigate(`/u/${username}`); }}
+              style={{ color: "var(--dos-fg)", textDecoration: "none", borderBottom: "1px dashed var(--dos-gray)" }}
+            >
+              @{username}
+            </a>
+            's public posts on:
+          </>
+        )}
       </div>
 
       {/* === H1 ROW ===
-          SHOW NAME. The old "all public posts on SHOW →" button (which
-          linked to the show-wide public aggregate) was removed in the
-          public-rooms scope (2026) — the aggregate is no longer a
-          navigable destination. */}
+          SHOW NAME on the left. The old "all public posts on SHOW →" button
+          (which linked to the show-wide public aggregate) was removed in the
+          public-rooms scope (2026). For the owner, a "write" button sits on
+          the right — the standard compose modal is the only way to add an
+          original entry to a public room. */}
       <div
         style={{
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "flex-end",
+          gap: 12,
+          flexWrap: "wrap",
           marginBottom: 14,
         }}
       >
@@ -305,6 +385,16 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         >
           {show.name}
         </h1>
+        {isOwner && (
+          <button
+            className="btn post"
+            onClick={() => composeModal.open({ showId, returnTo: location.pathname })}
+            style={{ flexShrink: 0, lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5 }}
+            title="Start a new public post"
+          >
+            <SquarePen size={15} /> write
+          </button>
+        )}
       </div>
 
       {/* === NAV ROW ===
@@ -378,6 +468,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
               onAuthRequired={() => setShowAuthModal(true)}
               onClickProfile={(name) => navigate(`/u/${encodeURIComponent(name)}`)}
               initialExpandedThreadId={publishedThreadId ?? undefined}
+              publicRoomGate={publicRoomGate}
             />
           )}
 

@@ -16,6 +16,7 @@ import Tooltip from "../Tooltip";
 import { timeAgo } from "../../lib/utils";
 import { parsePromptTokens } from "../../lib/promptTokens";
 import V2InlineThread from "./V2InlineThread";
+import type { PendingReference } from "../ResponseComposer";
 import Modal from "../Modal";
 import {
   likeThread as dbLikeThread,
@@ -143,7 +144,30 @@ export type V2RoomFeedProps = {
       + flashes the matching reply). Only meaningful when
       initialExpandedThreadId is also set. */
   initialFocusReplyId?: string;
+  /** Public-room response gate (public-rooms scope, 2026). Only passed by the
+      single-user public room (V2UserAggregatePage), where every entry is by
+      the same owner. When present and canRespondDirect is false, the response
+      composer switches to "request to respond" — the response is held for the
+      owner's approval rather than published. Omitted everywhere else, so the
+      friend room / general aggregate are unaffected. */
+  publicRoomGate?: PublicRoomResponseGate;
 };
+
+export interface PublicRoomResponseGate {
+  ownerUsername: string;
+  /** owner / friend / approved → respond directly. false → request mode. */
+  canRespondDirect: boolean;
+  /** thread ids the viewer already has a pending request on */
+  pendingThreadIds: Set<string>;
+  /** park a held response for the owner to approve (CP3 publishes it) */
+  onSubmitRequest: (threadId: string, payload: {
+    body: string;
+    message: string;
+    season: number;
+    episode: number;
+    reference: PendingReference | null;
+  }) => Promise<void>;
+}
 
 const HIGHLIGHT_MS = 1500;
 
@@ -168,6 +192,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     initialFocusReplyId,
     entryIcon,
     preserveOrder = false,
+    publicRoomGate,
   },
   ref,
 ) {
@@ -673,6 +698,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                           ? pendingFocusReplyId
                           : undefined
                       }
+                      publicRoomGate={publicRoomGate}
                     />
                   </div>
                 ) : entry.isDeleted ? (

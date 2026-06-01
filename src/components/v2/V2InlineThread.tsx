@@ -3,6 +3,7 @@ import { ChevronUp, MessageSquare } from "lucide-react";
 import Modal from "../Modal";
 import RepliesList from "../RepliesList";
 import ResponseComposer, { type PendingReference } from "../ResponseComposer";
+import type { PublicRoomResponseGate } from "./V2RoomFeed";
 import Tooltip from "../Tooltip";
 import HighlightPicker from "../HighlightPicker";
 import HighlightableBody, { selectionToBodyOffsets } from "./HighlightableBody";
@@ -73,6 +74,10 @@ export type V2InlineThreadProps = {
    *  reply (responses to you / your responses / your starred responses).
    *  Forwarded to RepliesList's existing focusReplyId. */
   focusReplyId?: string;
+  /** Public-room response gate. Forwarded from V2RoomFeed (public room only);
+   *  when present and canRespondDirect is false, the composer runs in
+   *  request-to-respond mode for this thread's owner. */
+  publicRoomGate?: PublicRoomResponseGate;
 };
 
 export default function V2InlineThread({
@@ -89,6 +94,7 @@ export default function V2InlineThread({
   onThreadLikeStateChange,
   onClickProfile,
   focusReplyId,
+  publicRoomGate,
 }: V2InlineThreadProps) {
   const { profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
@@ -780,6 +786,14 @@ export default function V2InlineThread({
             inGroupContext={!!groupId}
             groupId={groupId ?? null}
             threadIsPublic={!!thread.isPublic}
+            requestMode={!!publicRoomGate && !publicRoomGate.canRespondDirect}
+            requestOwnerUsername={publicRoomGate?.ownerUsername}
+            requestHasPending={publicRoomGate?.pendingThreadIds.has(thread.id) ?? false}
+            onSubmitRequest={
+              publicRoomGate
+                ? (payload) => publicRoomGate.onSubmitRequest(thread.id, payload)
+                : undefined
+            }
           />
         </div>
       )}
