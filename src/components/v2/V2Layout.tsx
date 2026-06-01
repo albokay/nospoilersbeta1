@@ -177,13 +177,14 @@ export default function V2Layout({ palette, pairedHeader, bareMain, viewerIsHome
                   navigate("/profile");
                   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
                 }}
-                // Canon-yellow fill + white outline — distinguishes the
-                // "go to your profile" pill from the canon-blue "go to your
-                // journal" pill. box-sizing:border-box (from .profileChip)
-                // keeps the 34px height including the 2px border.
+                // Canon-yellow fill. Outline is white on yellow surfaces
+                // (palette "profile" = public-context, where a yellow border
+                // would vanish into the bg) and canon-yellow elsewhere, so the
+                // pill always reads cleanly. box-sizing:border-box keeps the
+                // 34px height including the 2px border.
                 style={{
                   background: "#dea838",
-                  border: "2px solid #fff",
+                  border: `2px solid ${palette === "profile" ? "#fff" : "#dea838"}`,
                 }}
               >
                 <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your profile</span>

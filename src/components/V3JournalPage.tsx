@@ -1504,9 +1504,13 @@ export default function V3JournalPage({
                           // mount. V2FriendRoomPage reads the state and
                           // passes it to V2RoomFeed.
                           navigate(`/room/${groupId}`, { state: { expandThreadId: t.id } });
+                        } else if (t.isPublic) {
+                          // Public entry — open the user's OWN public room with
+                          // this entry auto-expanded (public-rooms scope, 2026;
+                          // the show-wide aggregate is no longer navigable).
+                          navigate(`/u/${username}/show/${t.showId}/posts`, { state: { expandThreadId: t.id } });
                         } else {
-                          // Private journal entry OR public-aggregate entry:
-                          // keep existing V1 thread-URL behavior.
+                          // Private journal entry — keep the V1 thread-URL view.
                           openThreadWithFocus(t.showId, t.id, undefined, groupId);
                         }
                       }}>

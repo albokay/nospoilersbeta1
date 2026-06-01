@@ -51,12 +51,14 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   const { user, profile, loading: authLoading } = useAuth();
   const composeModal = useComposeModal();
 
-  // Captured once on mount. After publishing a public post the author lands
-  // here (public-rooms scope, 2026); ComposeModal / V2ComposePage pass the
-  // new thread id via location.state so we can auto-expand it in the feed.
-  const [publishedThreadId] = useState<string | null>(
-    () => (location.state as { publishedThreadId?: string } | null)?.publishedThreadId ?? null,
-  );
+  // Captured once on mount. A thread to auto-expand on arrival, passed via
+  // location.state: `publishedThreadId` after publishing a public post here,
+  // or `expandThreadId` when arriving from a journal public-post click
+  // (public-rooms scope, 2026).
+  const [publishedThreadId] = useState<string | null>(() => {
+    const st = location.state as { publishedThreadId?: string; expandThreadId?: string } | null;
+    return st?.publishedThreadId ?? st?.expandThreadId ?? null;
+  });
 
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
