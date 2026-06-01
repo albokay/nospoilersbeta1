@@ -127,6 +127,11 @@ export type V2RoomFeedProps = {
       entry card — drives the A2 green-filled circle behind the expand
       chevron on collapsed cards. Yellow + red are map-only. */
   cellSignals?: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }>;
+  /** Per-thread red "hidden responses" dot on the entry card (public-rooms
+      scope, 2026). Used by the single-user public room, which has no map to
+      carry the friend-room red signal. count = responses hidden from the owner
+      by progress gating; onDismiss snoozes it (X-click). */
+  entryRedDots?: Record<string, { count: number; onDismiss: () => void }>;
   /** Set of threadIds the user has expanded-and-collapsed at least once
       this session. Drives A4 (entry card dim to opacity 0.5). */
   engagedThreadIds?: Set<string>;
@@ -187,6 +192,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     onEntryCollapsed,
     isNewMap,
     cellSignals,
+    entryRedDots,
     engagedThreadIds,
     initialExpandedThreadId,
     initialFocusReplyId,
@@ -512,6 +518,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         const isNew = !!isNewMap?.[entry.threadId];
         const signal = cellSignals?.[entry.threadId] ?? null;
         const showGreenChevron = signal?.kind === "green";
+        const redDot = entryRedDots?.[entry.threadId] ?? null;
         const isEngaged = !!engagedThreadIds?.has(entry.threadId);
         return (
           <div
@@ -566,6 +573,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               }}
               onClick={isExpanded ? undefined : (e) => toggleExpand(entry.threadId, e)}
             >
+              {redDot && <EntryRedDot count={redDot.count} onDismiss={redDot.onDismiss} />}
               <div
                 style={{
                   display: "flex",
@@ -847,5 +855,44 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     </div>
   );
 });
+
+// Red "hidden responses" dot for the public room entry card. Mirrors the
+// friend-room map dot (canon-red, count, X-to-dismiss on hover) but rides the
+// card corner since the public room has no map. Self-contained hover state.
+function EntryRedDot({ count, onDismiss }: { count: number; onDismiss: () => void }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+      title={hover
+        ? "Turn this notification off."
+        : `${count} response${count === 1 ? "" : "s"} here you'll see once you catch up.`}
+      style={{
+        position: "absolute",
+        top: -8,
+        right: -8,
+        zIndex: 3,
+        minWidth: 20,
+        height: 20,
+        padding: "0 5px",
+        borderRadius: 999,
+        background: "var(--danger)",
+        color: "#fff",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 11,
+        fontWeight: 800,
+        lineHeight: 1,
+        cursor: "pointer",
+        boxSizing: "border-box",
+      }}
+    >
+      {hover ? "✕" : count}
+    </div>
+  );
+}
 
 export default V2RoomFeed;

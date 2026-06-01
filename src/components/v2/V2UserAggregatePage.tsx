@@ -62,7 +62,13 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   const [notFound, setNotFound] = useState(false);
   const [show, setShow] = useState<Show | null>(null);
   const [allOwnerThreads, setAllOwnerThreads] = useState<Thread[]>([]);
-  const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
+  // Per-reply metadata for the owner's public threads (group_id IS NULL).
+  // Drives reply counts AND the new-response notification dots — green (new
+  // visible responses since last visit, any viewer) and red (new responses
+  // hidden from the owner by progress gating, owner only).
+  const [replyMeta, setReplyMeta] = useState<
+    { threadId: string; createdAt: number; season: number; episode: number; authorId: string }[]
+  >([]);
   const [visitorProgress, setVisitorProgress] = useState<ProgressEntry | null>(null);
   const [claimSource, setClaimSource] = useState<ClaimSource>(null);
   // Owner's progress on THIS show. Shown in the heading as "They've watched
@@ -146,27 +152,31 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           // Filter to this show only.
           const onShow = threads.filter((t) => t.showId === showId);
           setAllOwnerThreads(onShow);
-          // Fetch public-reply counts for these threads. group_id IS NULL
+          setReplyMeta([]);
+          // Fetch public replies (meta) for these threads. group_id IS NULL
           // restricts to public-conversation replies (friend-room replies
-          // share the threads table but live in a different space).
+          // share the threads table but live in a different space). We read
+          // created_at + season/episode + author so the client can compute
+          // counts AND the green/red notification dots.
           if (onShow.length) {
             const ids = onShow.map((t) => t.id);
             try {
               const { data } = await supabase
                 .from("replies")
-                .select("thread_id")
+                .select("thread_id, created_at, season, episode, author_id")
                 .in("thread_id", ids)
                 .eq("is_deleted", false)
                 .is("group_id", null);
               if (cancelled) return;
-              const counts: Record<string, number> = {};
-              for (const r of data ?? []) {
-                const tid = (r as any).thread_id as string;
-                counts[tid] = (counts[tid] ?? 0) + 1;
-              }
-              setReplyCounts(counts);
+              setReplyMeta((data ?? []).map((r: any) => ({
+                threadId: r.thread_id as string,
+                createdAt: new Date(r.created_at).getTime(),
+                season: r.season as number,
+                episode: r.episode as number,
+                authorId: r.author_id as string,
+              })));
             } catch {
-              // Counts are nice-to-have; degrade silently if RLS or
+              // Dots + counts are nice-to-have; degrade silently if RLS or
               // network blocks them.
             }
           }
@@ -234,6 +244,79 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   }, [allOwnerThreads, visitorProgress]);
 
   const lockedCount = allOwnerThreads.length - visibleThreads.length;
+
+  // ── New-response notification dots (public-rooms scope) ─────────────────
+  // All public replies feed the entry card's Mail count.
+  const replyCounts = useMemo<Record<string, number>>(() => {
+    const c: Record<string, number> = {};
+    for (const r of replyMeta) c[r.threadId] = (c[r.threadId] ?? 0) + 1;
+    return c;
+  }, [replyMeta]);
+
+  // Last-visit timestamp for THIS public room (per browser). Captured once
+  // when the owner id resolves; the same effect stamps "now" so the next
+  // visit compares against this one.
+  const [lastSeenAt, setLastSeenAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (!ownerId) { setLastSeenAt(null); return; }
+    const key = `ns_pubroom_seen_${ownerId}_${showId}`;
+    setLastSeenAt(Number(localStorage.getItem(key) ?? 0));
+    localStorage.setItem(key, String(Date.now()));
+  }, [ownerId, showId]);
+
+  // Green dismisses when the viewer opens the entry (within the session).
+  const [greenDismissed, setGreenDismissed] = useState<Set<string>>(new Set());
+  // Bumped on an X-dismiss so the red memo re-reads localStorage.
+  const [redDismissTick, setRedDismissTick] = useState(0);
+
+  // Green = new VISIBLE responses since last visit, for any signed-in viewer
+  // (measured against their own progress; never their own replies). Rendered
+  // as V2RoomFeed's canon-green circle behind the entry's expand chevron.
+  const cellSignals = useMemo<Record<string, { kind: "green" }>>(() => {
+    if (!user || !visitorProgress || lastSeenAt == null) return {};
+    const out: Record<string, { kind: "green" }> = {};
+    for (const r of replyMeta) {
+      if (r.authorId === user.id || greenDismissed.has(r.threadId)) continue;
+      if (r.createdAt > lastSeenAt && canView({ season: r.season, episode: r.episode }, visitorProgress)) {
+        out[r.threadId] = { kind: "green" };
+      }
+    }
+    return out;
+  }, [replyMeta, user, visitorProgress, lastSeenAt, greenDismissed]);
+
+  // Red = responses HIDDEN from the owner by progress gating (owner only).
+  // Carries a count + an X-dismiss that snoozes through the latest hidden
+  // reply, re-firing if a newer hidden response lands. There's no map here,
+  // so the dot rides the entry card.
+  const entryRedDots = useMemo<Record<string, { count: number; onDismiss: () => void }>>(() => {
+    void redDismissTick; // re-read localStorage after a dismiss
+    const ownerViewing = !!user && !!ownerId && ownerId === user.id;
+    if (!ownerViewing || !visitorProgress) return {};
+    const acc: Record<string, { count: number; latest: number }> = {};
+    for (const r of replyMeta) {
+      if (r.authorId === user!.id) continue;
+      if (!canView({ season: r.season, episode: r.episode }, visitorProgress)) {
+        const cur = acc[r.threadId] ?? { count: 0, latest: 0 };
+        cur.count += 1;
+        cur.latest = Math.max(cur.latest, r.createdAt);
+        acc[r.threadId] = cur;
+      }
+    }
+    const out: Record<string, { count: number; onDismiss: () => void }> = {};
+    for (const [tid, info] of Object.entries(acc)) {
+      const dismissedAt = Number(localStorage.getItem(`ns_pubroom_reddismiss_${tid}`) ?? 0);
+      if (info.latest > dismissedAt) {
+        out[tid] = {
+          count: info.count,
+          onDismiss: () => {
+            localStorage.setItem(`ns_pubroom_reddismiss_${tid}`, String(info.latest));
+            setRedDismissTick((n) => n + 1);
+          },
+        };
+      }
+    }
+    return out;
+  }, [replyMeta, user, ownerId, visitorProgress, redDismissTick]);
 
   // V2 inline-expand entries for this per-user-per-show feed. All threads
   // here are by `username`; authorId resolves to the page-level ownerId.
@@ -472,6 +555,9 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
               onClickProfile={(name) => navigate(`/u/${encodeURIComponent(name)}`)}
               initialExpandedThreadId={publishedThreadId ?? undefined}
               publicRoomGate={publicRoomGate}
+              cellSignals={cellSignals}
+              entryRedDots={entryRedDots}
+              onEntryExpanded={(tid) => setGreenDismissed((prev) => new Set([...prev, tid]))}
             />
           )}
 
