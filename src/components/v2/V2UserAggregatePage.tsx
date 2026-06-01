@@ -353,18 +353,14 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
       </div>
 
       {/* === H1 ROW ===
-          SHOW NAME on the left. The old "all public posts on SHOW →" button
-          (which linked to the show-wide public aggregate) was removed in the
-          public-rooms scope (2026). For the owner, a "write" button sits on
-          the right — the standard compose modal is the only way to add an
-          original entry to a public room. */}
+          SHOW NAME. The old "all public posts on SHOW →" button (which linked
+          to the show-wide public aggregate) was removed in the public-rooms
+          scope (2026). The owner's "write" button lives in the nav row below,
+          in the same position the write button takes elsewhere on the site. */}
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "flex-end",
-          gap: 12,
-          flexWrap: "wrap",
           marginBottom: 14,
         }}
       >
@@ -385,16 +381,6 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         >
           {show.name}
         </h1>
-        {isOwner && (
-          <button
-            className="btn post"
-            onClick={() => composeModal.open({ showId, returnTo: location.pathname })}
-            style={{ flexShrink: 0, lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5 }}
-            title="Start a new public post"
-          >
-            <SquarePen size={15} /> write
-          </button>
-        )}
       </div>
 
       {/* === NAV ROW ===
@@ -412,26 +398,40 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           marginBottom: 28,
         }}
       >
-        <p
-          style={{
-            margin: 0,
-            fontSize: 14,
-            color: "var(--dos-light)",
-            lineHeight: 1.5,
-            flex: "1 1 200px",
-            minWidth: 0,
-          }}
-        >
-          {totalCount > 0 ? (
-            <>
-              <strong style={{ fontWeight: 600 }}>@{username}</strong>
-              {hasOwnerProgress && (
-                <> has watched Season {String(ownerProgress!.s).padStart(2, "0")} Episode {String(ownerProgress!.e).padStart(2, "0")} and</>
-              )}
-              {" "}has written {totalCount} {totalCount === 1 ? "entry" : "entries"}. How far along are you?
-            </>
-          ) : null}
-        </p>
+        {isOwner ? (
+          // Owner: the "write" button takes the left of the nav row (the
+          // visitor calibration sentence is for visitors only — showing the
+          // owner "@you has watched… how far along are you?" reads wrong).
+          <button
+            className="btn post"
+            onClick={() => composeModal.open({ showId, returnTo: location.pathname })}
+            style={{ flexShrink: 0, lineHeight: 1.2, display: "inline-flex", alignItems: "center", gap: 5 }}
+            title="Start a new public post"
+          >
+            <SquarePen size={15} /> write
+          </button>
+        ) : (
+          <p
+            style={{
+              margin: 0,
+              fontSize: 14,
+              color: "var(--dos-light)",
+              lineHeight: 1.5,
+              flex: "1 1 200px",
+              minWidth: 0,
+            }}
+          >
+            {totalCount > 0 ? (
+              <>
+                <strong style={{ fontWeight: 600 }}>@{username}</strong>
+                {hasOwnerProgress && (
+                  <> has watched Season {String(ownerProgress!.s).padStart(2, "0")} Episode {String(ownerProgress!.e).padStart(2, "0")} and</>
+                )}
+                {" "}has written {totalCount} {totalCount === 1 ? "entry" : "entries"}. How far along are you?
+              </>
+            ) : null}
+          </p>
+        )}
         <div style={{ flexShrink: 0 }}>
           <OneSelectProgress
             show={show}
