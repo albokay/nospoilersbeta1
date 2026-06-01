@@ -1984,8 +1984,21 @@ export default function ShowSection({
                   <span
                     className="bannerTitle editorial"
                     role={chromeThread ? "button" : "heading"}
-                    title={chromeThread ? "Back to forum" : "Show"}
-                    onClick={chromeThread ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
+                    title={chromeThread ? (chromeThread.isPublic ? "Back to forum" : "Back to your journal") : "Show"}
+                    onClick={chromeThread ? () => {
+                      if (chromeThread.isPublic) {
+                        // Public thread (dead friend-room branch): collapse
+                        // back to the forum on the same surface.
+                        setActiveThreadId(null);
+                        setTimeout(() => scrollToShowTop(), 0);
+                      } else {
+                        // Private entry: the show name no longer links to the
+                        // retired public aggregate (public-rooms scope, 2026).
+                        // Go back to the journal (that show's tab), where
+                        // private entries live.
+                        navigate("/journal", { state: { activeTab: showId } });
+                      }
+                    } : undefined}
                     style={{
                       fontSize: 34, fontWeight: 600, letterSpacing: .5, lineHeight: 1.05,
                       color: "var(--dos-light)", cursor: chromeThread ? "pointer" : "default", userSelect: "none",

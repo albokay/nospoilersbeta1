@@ -996,9 +996,10 @@ function AppShell() {
         );
         // On non-profile-family pages (showProfile || showJournal is
         // false), render a second "go to your profile" pill directly to
-        // the right of the journal pill. Same dimensions, white outline +
-        // transparent fill + white text, icons mirrored to the right of
-        // the label. Matches V2Layout's equivalent treatment.
+        // the right of the journal pill. Canon-yellow fill + yellow outline
+        // (V2Layout's treatment for non-yellow surfaces — the reachable V1
+        // surface here is the private-post thread view, which is green/not
+        // public-context). Icons mirrored to the right of the label.
         const showProfilePill = !(showProfile || showJournal || showLegacyProfile) && user && profile;
         return (
           <span className="topHeaderPillFixed" style={{ display: "inline-flex", gap: 8 }}>
@@ -1013,8 +1014,8 @@ function AppShell() {
                   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
                 }}
                 style={{
-                  background: "transparent",
-                  border: "2px solid #fff",
+                  background: "#dea838",
+                  border: "2px solid #dea838",
                 }}
               >
                 <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your profile</span>
