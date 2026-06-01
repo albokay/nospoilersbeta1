@@ -1517,6 +1517,10 @@ export default function ShowSection({
   // does flip to a focused thread view.
   const isInlineExpandMode = !activeGroupId && !(thread && !thread.isPublic);
   const chromeThread = isInlineExpandMode ? null : thread;
+  // The show-name title acts as a "back to forum" link ONLY for a public
+  // chrome thread (the dead friend-room branch). On a private entry it's
+  // plain text — no link, no underline (the public aggregate is retired).
+  const titleBackLink = !!chromeThread && chromeThread.isPublic;
 
   // Shared progress-confirm handler: updates progress, then navigates back to
   // the forum if the currently-open thread is no longer visible at the new progress.
@@ -1983,25 +1987,12 @@ export default function ShowSection({
                   })()}
                   <span
                     className="bannerTitle editorial"
-                    role={chromeThread ? "button" : "heading"}
-                    title={chromeThread ? (chromeThread.isPublic ? "Back to forum" : "Back to your journal") : "Show"}
-                    onClick={chromeThread ? () => {
-                      if (chromeThread.isPublic) {
-                        // Public thread (dead friend-room branch): collapse
-                        // back to the forum on the same surface.
-                        setActiveThreadId(null);
-                        setTimeout(() => scrollToShowTop(), 0);
-                      } else {
-                        // Private entry: the show name no longer links to the
-                        // retired public aggregate (public-rooms scope, 2026).
-                        // Go back to the journal (that show's tab), where
-                        // private entries live.
-                        navigate("/journal", { state: { activeTab: showId } });
-                      }
-                    } : undefined}
+                    role={titleBackLink ? "button" : "heading"}
+                    title={titleBackLink ? "Back to forum" : "Show"}
+                    onClick={titleBackLink ? () => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); } : undefined}
                     style={{
                       fontSize: 34, fontWeight: 600, letterSpacing: .5, lineHeight: 1.05,
-                      color: "var(--dos-light)", cursor: chromeThread ? "pointer" : "default", userSelect: "none",
+                      color: "var(--dos-light)", cursor: titleBackLink ? "pointer" : "default", userSelect: "none",
                       minWidth: 0, overflowWrap: "break-word",
                       display: "inline-flex", alignItems: "flex-start", gap: 6,
                       // Underline when the title is acting as a link back to
@@ -2012,7 +2003,7 @@ export default function ShowSection({
                       // the link affordance explicit. Inline-expand mode
                       // (public surface) suppresses the underline because
                       // expansion stays on the same surface.
-                      textDecoration: chromeThread ? "underline" : "none",
+                      textDecoration: titleBackLink ? "underline" : "none",
                       textUnderlineOffset: 4,
                     }}
                   >
