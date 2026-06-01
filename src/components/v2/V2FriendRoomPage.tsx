@@ -388,6 +388,33 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     // wouldn't otherwise land in feedEntries until next manual refresh).
   }, [groupId, user?.id, refetchCounter]);
 
+  // Keep the viewer's OWN map column in sync with their live progress. The map
+  // derives each column's reach from mapMembers[].progress (fetched once at
+  // bootstrap), so an in-room progress advance wouldn't move the viewer's
+  // column until a refetch/refresh. Mirror progressForShow into the viewer's
+  // mapMembers entry whenever it changes (guarded so it doesn't loop).
+  useEffect(() => {
+    if (!user?.id || !progressForShow) return;
+    setMapMembers((prev) => {
+      const idx = prev.findIndex((m) => m.userId === user.id);
+      if (idx < 0) return prev;
+      const cur = prev[idx].progress;
+      if (
+        cur &&
+        cur.s === progressForShow.s &&
+        cur.e === progressForShow.e &&
+        (cur.isRewatching ?? false) === (progressForShow.isRewatching ?? false) &&
+        cur.highestS === progressForShow.highestS &&
+        cur.highestE === progressForShow.highestE
+      ) {
+        return prev;
+      }
+      const next = [...prev];
+      next[idx] = { ...next[idx], progress: progressForShow };
+      return next;
+    });
+  }, [progressForShow, user?.id]);
+
   // ── Yellow highlight notification dot data (C10) ─────────────────────
   // After feedEntries arrives, fetch:
   //   - highlights on each entry (target_type='thread')
@@ -1155,6 +1182,11 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                 engagedThreadIds={engagedSet}
                 initialExpandedThreadId={initialExpandThreadId ?? undefined}
                 initialFocusReplyId={initialFocusReplyId ?? undefined}
+                onReplyAdded={(tid) =>
+                  setFeedEntries((prev) =>
+                    prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)),
+                  )
+                }
               />
               );
             })()}

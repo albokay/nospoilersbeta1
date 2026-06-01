@@ -156,6 +156,9 @@ export type V2RoomFeedProps = {
       owner's approval rather than published. Omitted everywhere else, so the
       friend room / general aggregate are unaffected. */
   publicRoomGate?: PublicRoomResponseGate;
+  /** Fires after a reply is published from any entry's composer, so the parent
+      can bump that entry's reply count without a refetch. */
+  onReplyAdded?: (threadId: string) => void;
 };
 
 export interface PublicRoomResponseGate {
@@ -199,6 +202,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     entryIcon,
     preserveOrder = false,
     publicRoomGate,
+    onReplyAdded,
   },
   ref,
 ) {
@@ -707,6 +711,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                           : undefined
                       }
                       publicRoomGate={publicRoomGate}
+                      onReplyAdded={onReplyAdded}
                     />
                   </div>
                 ) : entry.isDeleted ? (

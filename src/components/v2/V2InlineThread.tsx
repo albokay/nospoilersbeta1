@@ -78,6 +78,9 @@ export type V2InlineThreadProps = {
    *  when present and canRespondDirect is false, the composer runs in
    *  request-to-respond mode for this thread's owner. */
   publicRoomGate?: PublicRoomResponseGate;
+  /** Fires after a reply is published from this thread's composer, so the
+   *  parent feed can bump the entry's reply count without a refetch. */
+  onReplyAdded?: (threadId: string) => void;
 };
 
 export default function V2InlineThread({
@@ -95,6 +98,7 @@ export default function V2InlineThread({
   onClickProfile,
   focusReplyId,
   publicRoomGate,
+  onReplyAdded,
 }: V2InlineThreadProps) {
   const { profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
@@ -479,7 +483,8 @@ export default function V2InlineThread({
     setRepliesKey((k) => k + 1);
     setComposerOpen(false);
     setPendingReferenceRaw(null);
-  }, [onDraftChange]);
+    onReplyAdded?.(thread.id);
+  }, [onDraftChange, onReplyAdded, thread.id]);
 
   // Cancel inside the composer — close the composer entirely (not just
   // clear text). composerKey bump ensures the next open mounts a fresh
