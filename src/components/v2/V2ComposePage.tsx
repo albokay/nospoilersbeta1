@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ComposeForm from "./ComposeForm";
+import { useAuth } from "../../lib/auth";
 
 // Standalone full-page route wrapper at `/compose/:showId`. Owns:
 //   - the cream-palette body classes (compose's writing-paper visual is
@@ -19,6 +20,7 @@ import ComposeForm from "./ComposeForm";
 export default function V2ComposePage({ showId }: { showId?: string }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { profile } = useAuth();
 
   // Rating-flow entry markers (preserved for any direct callers that
   // still navigate here with state). fromRating drives intro-copy variant
@@ -49,15 +51,18 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
     else navigate("/journal");
   }
 
-  // Post-publish navigation — preserves the original destination-based
-  // landing logic: private → journal with private-lane filter,
-  // public → V1 show page, friend-room → V2 room.
-  function handleSubmitted(destination: "private" | "public" | string) {
+  // Post-publish navigation — private → journal with private-lane filter,
+  // public → the author's own public room (public-rooms scope, 2026; the
+  // show-wide aggregate is no longer navigable), friend-room → V2 room.
+  function handleSubmitted(destination: "private" | "public" | string, threadId?: string) {
     if (destination === "private") {
       navigate("/journal", { state: { activeTab: showId, activeFilter: "private" } });
     } else if (destination === "public") {
-      if (showId) navigate(`/show/${showId}`);
-      else navigate("/journal");
+      if (showId && profile?.username) {
+        navigate(`/u/${profile.username}/show/${showId}/posts`, { state: { publishedThreadId: threadId } });
+      } else {
+        navigate("/journal");
+      }
     } else {
       navigate(`/room/${destination}`);
     }

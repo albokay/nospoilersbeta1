@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import {
   fetchShows,
@@ -14,9 +14,8 @@ import type { Show } from "../../lib/db";
 import type { ProgressEntry, Thread } from "../../types";
 import V2Layout from "./V2Layout";
 import TreatedArt from "../TreatedArt";
-import { navigateToShow } from "./v2nav";
 import OneSelectProgress from "../OneSelectProgress";
-import { ArrowRight, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import AuthModal from "../AuthModal";
 import V2RoomFeed, { type V2RoomFeedEntry } from "./V2RoomFeed";
@@ -43,7 +42,15 @@ function writeBrowseProgress(showId: string, entry: ProgressEntry) {
 
 export default function V2UserAggregatePage({ username, showId }: { username: string; showId: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
+
+  // Captured once on mount. After publishing a public post the author lands
+  // here (public-rooms scope, 2026); ComposeModal / V2ComposePage pass the
+  // new thread id via location.state so we can auto-expand it in the feed.
+  const [publishedThreadId] = useState<string | null>(
+    () => (location.state as { publishedThreadId?: string } | null)?.publishedThreadId ?? null,
+  );
 
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -270,17 +277,14 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
       </div>
 
       {/* === H1 ROW ===
-          SHOW NAME on the left, "all public posts on SHOW →" button on
-          the right (mirrors the friend-room "to public conversation"
-          button placement, ShowSection.tsx:1867). Flex-wrap allows the
-          button to drop to a new line on narrow viewports. */}
+          SHOW NAME. The old "all public posts on SHOW →" button (which
+          linked to the show-wide public aggregate) was removed in the
+          public-rooms scope (2026) — the aggregate is no longer a
+          navigable destination. */}
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "flex-end",
-          gap: 12,
-          flexWrap: "wrap",
           marginBottom: 14,
         }}
       >
@@ -301,21 +305,6 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         >
           {show.name}
         </h1>
-        <button
-          className="btn"
-          onClick={() => navigateToShow(navigate, show.id)}
-          style={{
-            whiteSpace: "nowrap",
-            fontSize: 13,
-            flexShrink: 0,
-            padding: "3px 12px",
-            background: "transparent",
-            border: "2px solid #fff",
-            color: "#fff",
-          }}
-        >
-          all public posts on {show.name} <ArrowRight size={14} color="var(--icon-color)" style={{ verticalAlign: "middle" }} />
-        </button>
       </div>
 
       {/* === NAV ROW ===
@@ -388,6 +377,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
               userId={user?.id ?? null}
               onAuthRequired={() => setShowAuthModal(true)}
               onClickProfile={(name) => navigate(`/u/${encodeURIComponent(name)}`)}
+              initialExpandedThreadId={publishedThreadId ?? undefined}
             />
           )}
 

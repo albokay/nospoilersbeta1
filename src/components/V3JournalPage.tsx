@@ -474,8 +474,9 @@ export default function V3JournalPage({
   }, [tabDropdownOpen]);
   const goToShowRoom = (sid: string, groupId?: string) => {
     // Friend-room destinations route to the V2 room page; the no-groupId
-    // path (show-only nav from the tab dropdown) stays on the live v1
-    // ShowSection per the V2 scope boundary.
+    // path (show-only nav from the tab dropdown) now opens the user's own
+    // public room (the show-wide public aggregate is no longer a navigable
+    // destination per the public-rooms scope, 2026).
     setTabDropdownOpen(null);
     if (groupId) {
       navigate(`/room/${groupId}`);
@@ -483,7 +484,8 @@ export default function V3JournalPage({
       return;
     }
     sessionStorage.removeItem(`ns_active_group_${sid}`);
-    openShow(sid);
+    navigate(`/u/${username}/show/${sid}/posts`);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   };
 
   // Stop-watching modal — ported from V2JournalPage. Opens from the
@@ -958,7 +960,10 @@ export default function V3JournalPage({
       showTabOrder: visibleTabOrder,
       activeTab,
       onTabClick: (sid: string) => {
-        if (sid === activeTab) openShow(sid);
+        // Clicking the already-active tab opens the user's own public room
+        // for that show (was the show-wide public aggregate, removed in the
+        // public-rooms scope, 2026).
+        if (sid === activeTab) navigate(`/u/${username}/show/${sid}/posts`);
         else { setActiveTab(sid); setViewedTabIds(prev => new Set([...prev, sid])); }
       },
       tabActivity,

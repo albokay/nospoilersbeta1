@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowRight, ChevronDown, Globe, Settings, SquarePen, Users } from "lucide-react";
+import { ChevronDown, Settings, SquarePen, Users } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -18,7 +18,6 @@ import {
 import type { FriendGroup, Thread } from "../../types";
 import type { ProgressEntry } from "../../types";
 import { effectiveProgress } from "../../lib/utils";
-import Tooltip from "../Tooltip";
 import V2Layout from "./V2Layout";
 import { useComposeModal } from "./ComposeModal";
 import V2RoomFeed, {
@@ -33,7 +32,6 @@ import RatingCaptureModal from "../RatingCaptureModal";
 import IncomingPingSticky from "../IncomingPingSticky";
 import PollSticky from "../PollSticky";
 import SIKWSticky from "../SIKWSticky";
-import { navigateToShow } from "./v2nav";
 
 // V2 friend room page at /v2/room/:groupId. Two-pane layout: feed of entry
 // tickets on the left/center, season map on the right. Coordinated by
@@ -507,11 +505,6 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     // extra navigation fires when the target matches the current path).
     composeModal.open({ showId: show.id, returnTo: location.pathname });
   }, [composeModal, show, location.pathname]);
-
-  const handleToPublic = useCallback(() => {
-    if (!show) return;
-    navigateToShow(navigate, show.id);
-  }, [navigate, show]);
 
   // Edit succeeded — patch the matching entry's content in feedEntries so
   // the card re-renders with the new title / body / preview / tag / edited
@@ -1025,36 +1018,11 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                   </span>
                 </div>
               </div>
-              {/* Tooltip portal={true} — without it the bubble is captured
-                  by an ancestor stacking context (position: sticky on the
-                  map pane creates one) and renders pinned to the viewport's
-                  right edge instead of below the button. Same fix shape as
-                  the highlight picker portal. */}
-              <Tooltip
-                text="go to public conversation"
-                direction="below"
-                portal
-                tooltipStyle={{ width: "auto", whiteSpace: "nowrap", padding: "6px 10px" }}
-              >
-                <button
-                  className="btn dim-hover"
-                  onClick={handleToPublic}
-                  aria-label="go to public conversation"
-                  style={{
-                    flexShrink: 0,
-                    padding: "5px 10px",
-                    background: "transparent",
-                    border: "2px solid #fff",
-                    color: "#fff",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <Globe size={16} color="#fff" style={{ flexShrink: 0 }} />
-                  <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
-                </button>
-              </Tooltip>
+              {/* Public-rooms scope (2026): the old "to public conversation"
+                  link to the show-wide public aggregate was removed. The
+                  aggregate is no longer a navigable destination; a member's
+                  public writing lives in their own public room, reached from
+                  their profile. */}
             </div>
 
             {/* Banner row 2 — write button + sort + watch-progress */}

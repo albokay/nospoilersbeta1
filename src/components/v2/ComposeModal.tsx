@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import ComposeForm, { type ComposeFormHandle } from "./ComposeForm";
+import { useAuth } from "../../lib/auth";
 
 // Compose-form-cream + ink colors mirrored from ComposeForm so the modal
 // card's chrome (close button, etc.) reads as part of the writing surface.
@@ -54,6 +55,7 @@ export function useComposeModal(): ComposeModalContextValue {
 export function ComposeModalProvider({ children }: { children: React.ReactNode }) {
   const [args, setArgs] = useState<ComposeModalOpenArgs | null>(null);
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const formRef = useRef<ComposeFormHandle>(null);
 
   const open = useCallback((newArgs: ComposeModalOpenArgs) => {
@@ -124,19 +126,22 @@ export function ComposeModalProvider({ children }: { children: React.ReactNode }
       if (destination === "private") {
         navigate("/journal", { state: { activeTab: showId, activeFilter: "private" } });
       } else if (destination === "public") {
-        // Same publishedThreadId signal as the group-destination case —
-        // ShowSection (the public show page) watches location.state for
-        // this and refetches + auto-expands the new entry in its V2
-        // inline-expand feed. Without it, writing a public post from
-        // /show/<id> leaves the new entry missing from the page's
-        // already-loaded thread list until manual refresh.
-        if (showId) navigate(`/show/${showId}`, { state: { publishedThreadId: threadId } });
-        else navigate("/journal");
+        // Public-rooms scope (2026): a public post now lands the author on
+        // their OWN public room (/u/<me>/show/<id>/posts), not the show-wide
+        // aggregate (which is no longer a navigable destination). The
+        // publishedThreadId signal is read by V2UserAggregatePage, which
+        // auto-expands the freshly-written entry. Falls back to /journal if
+        // the author's username isn't loaded.
+        if (showId && profile?.username) {
+          navigate(`/u/${profile.username}/show/${showId}/posts`, { state: { publishedThreadId: threadId } });
+        } else {
+          navigate("/journal");
+        }
       } else {
         navigate(`/room/${destination}`, { state: { publishedThreadId: threadId } });
       }
     },
-    [args, close, navigate],
+    [args, close, navigate, profile],
   );
 
   return (
