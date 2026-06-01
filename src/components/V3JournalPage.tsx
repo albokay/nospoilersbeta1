@@ -1385,7 +1385,7 @@ export default function V3JournalPage({
                       // Zero the scroll area's horizontal padding so the
                       // per-entry colored bands extend all the way to
                       // the diary card's white border. Vertical padding
-                      // preserved (12 top / 32 bottom).
+                      // preserved (12 top / 0 bottom — flush last ticket).
                       paddingLeft: 0,
                       paddingRight: 0,
                     } : undefined}
