@@ -2054,26 +2054,10 @@ export default function V3JournalPage({
           boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
           minWidth: 260,
         }}>
-          {/* Friend-room access lives in the show-tab header now; this
-             dropdown is simplified to just Public conversations + Close. */}
-          {/* 1. Public conversations */}
-          <Tooltip text={`See what others are writing about ${showName(tabDropdownOpen)}.`} direction="below">
-            <button className="btn" style={{
-              fontSize: 13, whiteSpace: "nowrap",
-              display: "flex", alignItems: "center", width: "100%",
-              background: "#dea838", color: "#fff", border: "none",
-            }}
-              onClick={() => goToShowRoom(tabDropdownOpen)}>
-              <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>Public conversations</span>
-              <Globe size={14} color="#fff" style={{ flexShrink: 0 }} />
-            </button>
-          </Tooltip>
-          {/* 2. Divider — half-width, centered, same 2px weight as the
-             journal-page outlines with 0.75 opacity so it reads as a soft
-             separator rather than a hard rule. */}
-          <div style={{ borderTop: "2px solid var(--dos-border)", width: "50%", margin: "2px auto", opacity: 0.75 }} />
-          {/* 3. Close show tab — quiet local hide. The show stays where
+          {/* Friend-room access lives in the show-tab header; the public
+             aggregate is no longer a navigable destination (public-rooms
+             scope, 2026), so this dropdown is just Close show tab. */}
+          {/* Close show tab — quiet local hide. The show stays where
              it is on the profile (Watching Now / Finished / etc.); only
              the journal tab disappears. Useful for cleaning up the
              journal view without changing watch status (e.g. a show

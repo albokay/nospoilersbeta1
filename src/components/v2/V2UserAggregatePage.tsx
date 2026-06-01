@@ -549,6 +549,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
           {feedEntries.length > 0 && (
             <V2RoomFeed
               entries={feedEntries}
+              sortOrder="desc"
               viewerProgress={visitorProgress}
               userId={user?.id ?? null}
               onAuthRequired={() => setShowAuthModal(true)}

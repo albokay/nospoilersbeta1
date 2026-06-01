@@ -16,6 +16,7 @@ import {
   updateProfileThought,
   deleteProfileThought,
   fetchAllFriendGroupsWithActivity,
+  fetchPublicThreadsForUser,
   type V2BlurbKind,
   type ShelfName,
 } from "../../lib/db";
@@ -381,6 +382,49 @@ function FriendRoomCTA({
   );
 }
 
+// Per-show shelf CTAs: the friend-room button(s) followed by a
+// "go to your public writing" button (transparent fill, white outline/text,
+// same size as the friend-room button) when the user has public writing for
+// the show. Renders nothing when neither applies.
+function ShelfCTAs({
+  showId,
+  rooms,
+  hasPublicWriting,
+  username,
+  navigate,
+}: {
+  showId: string;
+  rooms: FriendGroup[] | undefined;
+  hasPublicWriting: boolean;
+  username: string;
+  navigate: ReturnType<typeof useNavigate>;
+}) {
+  const hasRooms = !!rooms && rooms.length > 0;
+  if (!hasRooms && !hasPublicWriting) return null;
+  return (
+    <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+      {hasRooms && <FriendRoomCTA rooms={rooms!} navigate={navigate} />}
+      {hasPublicWriting && (
+        <button
+          className="btn h40"
+          onClick={() => navigate(`/u/${username}/show/${showId}/posts`)}
+          style={{
+            fontSize: 12,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            background: "transparent",
+            border: "2px solid #fff",
+            color: "#fff",
+          }}
+        >
+          <ArrowRight size={13} /> go to your public writing
+        </button>
+      )}
+    </div>
+  );
+}
+
 function BlurbField({
   kind,
   value,
@@ -549,6 +593,9 @@ export default function V2ProfileSelfPage() {
   // shelf cards. One query at page load (cheap) avoids per-card lazy
   // fetches and keeps the render synchronous.
   const [allUserRooms, setAllUserRooms] = useState<FriendGroup[]>([]);
+  // Shows this user has (non-deleted) public writing for — drives the
+  // "go to your public writing" CTA on shelf cards.
+  const [publicWritingShows, setPublicWritingShows] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -558,13 +605,17 @@ export default function V2ProfileSelfPage() {
       fetchProgress(user.id),
       fetchProfileThoughtsForOwner(user.id),
       fetchAllFriendGroupsWithActivity(user.id),
+      fetchPublicThreadsForUser(user.id),
     ])
-      .then(([s, p, t, rooms]) => {
+      .then(([s, p, t, rooms, publicThreads]) => {
         if (cancelled) return;
         setShows(s);
         setProgress(p);
         setThoughts(t);
         setAllUserRooms(rooms);
+        setPublicWritingShows(
+          new Set(publicThreads.filter((th) => !th.isDeleted).map((th) => th.showId)),
+        );
         setThoughtsLoaded(true);
       })
       .catch((err) => {
@@ -788,6 +839,7 @@ export default function V2ProfileSelfPage() {
   return (
     <V2Layout
       palette="profile"
+      viewerIsHome={false}
       pairedHeader={{
         left: "this is your public profile",
         rightLabel: "go to your journal",
@@ -1029,15 +1081,13 @@ export default function V2ProfileSelfPage() {
                           onSaved={(v) => updateLocalProgress(sid, { watchingQuote: v })}
                         />
                       </div>
-                      {(() => {
-                        const r = roomsByShow.get(sid);
-                        if (!r || r.length === 0) return null;
-                        return (
-                          <div style={{ marginTop: 14 }}>
-                            <FriendRoomCTA rooms={r} navigate={navigate} />
-                          </div>
-                        );
-                      })()}
+                      <ShelfCTAs
+                        showId={sid}
+                        rooms={roomsByShow.get(sid)}
+                        hasPublicWriting={publicWritingShows.has(sid)}
+                        username={profile?.username ?? ""}
+                        navigate={navigate}
+                      />
                     </SortableCard>
                   );
                 })}
@@ -1100,15 +1150,13 @@ export default function V2ProfileSelfPage() {
                         />
                       </span>
                     </div>
-                    {(() => {
-                      const r = roomsByShow.get(sid);
-                      if (!r || r.length === 0) return null;
-                      return (
-                        <div style={{ marginTop: 14 }}>
-                          <FriendRoomCTA rooms={r} navigate={navigate} />
-                        </div>
-                      );
-                    })()}
+                    <ShelfCTAs
+                      showId={sid}
+                      rooms={roomsByShow.get(sid)}
+                      hasPublicWriting={publicWritingShows.has(sid)}
+                      username={profile?.username ?? ""}
+                      navigate={navigate}
+                    />
                   </SortableCard>
                 );
               })}
@@ -1285,15 +1333,13 @@ export default function V2ProfileSelfPage() {
                         showId={sid}
                         onSaved={(v) => updateLocalProgress(sid, { canonTake: v })}
                       />
-                      {(() => {
-                        const r = roomsByShow.get(sid);
-                        if (!r || r.length === 0) return null;
-                        return (
-                          <div style={{ marginTop: 14 }}>
-                            <FriendRoomCTA rooms={r} navigate={navigate} />
-                          </div>
-                        );
-                      })()}
+                      <ShelfCTAs
+                        showId={sid}
+                        rooms={roomsByShow.get(sid)}
+                        hasPublicWriting={publicWritingShows.has(sid)}
+                        username={profile?.username ?? ""}
+                        navigate={navigate}
+                      />
                     </SortableCard>
                   );
                 })}
@@ -1376,15 +1422,13 @@ export default function V2ProfileSelfPage() {
                         showId={sid}
                         onSaved={(v) => updateLocalProgress(sid, { stoppedReason: v })}
                       />
-                      {(() => {
-                        const r = roomsByShow.get(sid);
-                        if (!r || r.length === 0) return null;
-                        return (
-                          <div style={{ marginTop: 14 }}>
-                            <FriendRoomCTA rooms={r} navigate={navigate} />
-                          </div>
-                        );
-                      })()}
+                      <ShelfCTAs
+                        showId={sid}
+                        rooms={roomsByShow.get(sid)}
+                        hasPublicWriting={publicWritingShows.has(sid)}
+                        username={profile?.username ?? ""}
+                        navigate={navigate}
+                      />
                     </SortableCard>
                   );
                 })}
