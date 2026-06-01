@@ -1822,11 +1822,11 @@ export async function insertPendingPublicResponse(data: {
   referencedReplyId?: string | null;
   referencedThreadId?: string | null;
   quotedText?: string | null;
-}): Promise<void> {
+}): Promise<string> {
   await checkRateLimit('public_response_request', 10, 60);
   validateLength("Response", data.body, 1, 5000);
   if (data.message && data.message.trim()) validateLength("Message", data.message, 1, 500);
-  const { error } = await supabase.from("pending_public_responses").insert({
+  const { data: inserted, error } = await supabase.from("pending_public_responses").insert({
     thread_id: data.threadId, show_id: data.showId,
     owner_id: data.ownerId,
     requester_id: data.requesterId, requester_name: data.requesterName,
@@ -1836,8 +1836,52 @@ export async function insertPendingPublicResponse(data: {
     referenced_reply_id: data.referencedReplyId ?? null,
     referenced_thread_id: data.referencedThreadId ?? null,
     quoted_text: data.quotedText ?? null,
-  });
+  }).select("id").single();
   if (error) throw error;
+  return inserted.id as string;
+}
+
+/** Email the public room's owner that a held response is waiting (best-effort).
+ *  The edge function decides whether to include the response body based on the
+ *  requester's progress vs the owner's. Failure here doesn't undo the held row. */
+export async function notifyPublicResponseRequest(pendingId: string): Promise<void> {
+  const { error } = await supabase.functions.invoke("send-message", {
+    body: { template_type: "public_response_request", pending_id: pendingId },
+  });
+  if (error) console.warn("public_response_request email failed:", error.message);
+}
+
+/** Summary for the Allow page (owner-only). Returns null if the caller isn't
+ *  the owner or the request no longer exists. `body` is null when the requester
+ *  has watched further than the owner. */
+export async function fetchPublicResponseRequest(id: string): Promise<{
+  requesterUsername: string;
+  showId: string;
+  showName: string;
+  message: string | null;
+  requesterAhead: boolean;
+  body: string | null;
+} | null> {
+  const { data, error } = await supabase.rpc("get_public_response_request", { p_id: id });
+  if (error) { console.warn("get_public_response_request failed:", error.message); return null; }
+  if (!data) return null;
+  return {
+    requesterUsername: data.requester_username,
+    showId: data.show_id,
+    showName: data.show_name,
+    message: data.message ?? null,
+    requesterAhead: !!data.requester_ahead,
+    body: data.body ?? null,
+  };
+}
+
+/** Owner approves a held request: grants the requester blanket permission and
+ *  publishes all of their held responses. Returns the thread id to land on. */
+export async function approvePublicResponse(id: string): Promise<{ ok: boolean; threadId?: string; error?: string }> {
+  const { data, error } = await supabase.rpc("approve_public_response", { p_id: id });
+  if (error) return { ok: false, error: error.message };
+  if (!data?.ok) return { ok: false, error: data?.error ?? "unknown" };
+  return { ok: true, threadId: data.thread_id ?? undefined };
 }
 
 /** Thread ids in `ownerId`'s public rooms that `requesterId` already has a

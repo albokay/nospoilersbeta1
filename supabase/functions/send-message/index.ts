@@ -65,6 +65,7 @@ const POLL_VOTE_NOTIFICATION_BATCH_MIN   = 5;
 const PING_TEMPLATES = new Set(["nudge_ahead", "nudge_same", "nudge_behind"]);
 const POLL_TEMPLATES = new Set(["poll_invite", "poll_close", "poll_vote_notification"]);
 const SIKW_TEMPLATES = new Set(["sikw_ask_invite", "sikw_reply"]);
+const PUBLIC_TEMPLATES = new Set(["public_response_request"]);
 
 // Type alias to keep handler signatures readable.
 // deno-lint-ignore no-explicit-any
@@ -113,7 +114,8 @@ serve(async (req) => {
     if (!template_type
         || (!PING_TEMPLATES.has(template_type)
             && !POLL_TEMPLATES.has(template_type)
-            && !SIKW_TEMPLATES.has(template_type))) {
+            && !SIKW_TEMPLATES.has(template_type)
+            && !PUBLIC_TEMPLATES.has(template_type))) {
       return jsonError("invalid_template_type", 400);
     }
 
@@ -126,6 +128,9 @@ serve(async (req) => {
     }
     if (SIKW_TEMPLATES.has(template_type)) {
       return await handleSikw(body, user, admin, jsonOk, jsonError);
+    }
+    if (PUBLIC_TEMPLATES.has(template_type)) {
+      return await handlePublicResponseRequest(body, user, admin, jsonOk, jsonError);
     }
     return jsonError("invalid_template_type", 400);
   } catch (err: unknown) {
@@ -926,6 +931,177 @@ Replies appear in the room, not in this email — so you can read them in contex
 
 function formatSE(season: number, episode: number): string {
   return `S${String(season).padStart(2, "0")} E${String(episode).padStart(2, "0")}`;
+}
+
+// ── Public-room response requests ──────────────────────────────────────────
+// One sub-template: { template_type: "public_response_request", pending_id }.
+// Sent by the requester right after parking a held response. Emails the public
+// room's owner an Allow link. The response itself is included ONLY if the
+// requester hasn't watched further than the owner (same spoiler rule the site
+// uses everywhere). "Ignore to deny" — there is no decline action.
+async function handlePublicResponseRequest(
+  body: Record<string, unknown>,
+  user: { id: string },
+  admin: AdminClient,
+  jsonOk: (b: Record<string, unknown>) => Response,
+  jsonError: (code: string, status: number, message?: string) => Response,
+): Promise<Response> {
+  const pending_id = (body as Record<string, string>).pending_id;
+  if (!pending_id) return jsonError("missing_pending_id", 400);
+
+  const { data: pending, error: pErr } = await admin
+    .from("pending_public_responses")
+    .select("id, thread_id, show_id, owner_id, requester_id, requester_name, body, message, season, episode")
+    .eq("id", pending_id)
+    .single();
+  if (pErr || !pending) return jsonError("pending_not_found", 404);
+
+  // Only the requester themselves can trigger this email.
+  if (pending.requester_id !== user.id) return jsonError("forbidden", 403);
+
+  const { data: ownerUser, error: oErr } = await admin.auth.admin.getUserById(pending.owner_id);
+  if (oErr || !ownerUser?.user?.email) {
+    return jsonOk({ channel: "none", warning: "no_owner_email" });
+  }
+  const ownerEmail = ownerUser.user.email;
+
+  const { data: showRow } = await admin.from("shows").select("name").eq("id", pending.show_id).single();
+  const showName = showRow?.name?.trim() || "a show";
+
+  // Owner effective progress (rewatch ceiling when rewatching) → is the
+  // requester ahead of where the owner has watched?
+  const { data: prog } = await admin
+    .from("progress")
+    .select("season, episode, is_rewatching, highest_season, highest_episode")
+    .eq("user_id", pending.owner_id)
+    .eq("show_id", pending.show_id)
+    .maybeSingle();
+  let ownerS: number | null = null;
+  let ownerE: number | null = null;
+  if (prog) {
+    ownerS = prog.is_rewatching && prog.highest_season != null ? prog.highest_season : prog.season;
+    ownerE = prog.is_rewatching && prog.highest_episode != null ? prog.highest_episode : prog.episode;
+  }
+  const requesterAhead = !(ownerS != null && (
+    pending.season < ownerS || (pending.season === ownerS && pending.episode <= (ownerE as number))
+  ));
+
+  const hint = await computeMutualHint(admin, pending.owner_id, pending.requester_id, pending.requester_name);
+
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendKey) return jsonOk({ channel: "none", warning: "email_not_configured" });
+
+  const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
+  const allowUrl = `${baseUrl}/allow-response/${encodeURIComponent(pending.id)}`;
+  const handle = pending.requester_name || "Someone";
+  const subject = `@${handle} wants to respond to your writing on ${showName}`;
+
+  const noteHtml = pending.message
+    ? `<p style="margin:0 0 20px;padding:14px 18px;background:#f6f4ee;border-left:3px solid #1a2c3a;font-size:15px;color:#1a2c3a;font-style:italic;line-height:1.5">${escapeHtml(pending.message)}</p>`
+    : "";
+  const responseHtml = requesterAhead
+    ? `<p style="margin:0 0 20px;font-size:15px;color:#7a6f5c;line-height:1.55;font-style:italic">This person has watched further than you have. If you approve them, you'll see their response once you catch up.</p>`
+    : `<p style="margin:0 0 8px;font-size:13px;color:rgba(26,44,58,0.6);text-transform:uppercase;letter-spacing:0.04em">Their response</p>
+       <p style="margin:0 0 20px;padding:16px 20px;background:#fef8ea;border:1px solid #e7dcc2;border-radius:8px;font-size:15px;color:#1a2c3a;line-height:1.55;white-space:pre-wrap">${escapeHtml(pending.body)}</p>`;
+  const hintHtml = hint
+    ? `<p style="margin:0 0 20px;font-size:14px;color:#1a2c3a;line-height:1.5">${escapeHtml(hint)}</p>`
+    : "";
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:56px 32px">
+  <h1 style="margin:0 0 20px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
+    @${escapeHtml(handle)} wants to respond to your writing.
+  </h1>
+  <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
+    Someone outside your friend rooms would like to respond to your public writing on <strong><em>${escapeHtml(showName)}</em></strong>.
+  </p>
+  ${noteHtml}
+  ${responseHtml}
+  ${hintHtml}
+  <p style="margin:0 0 24px;font-size:14px;color:#1a2c3a;line-height:1.5">
+    Approving lets @${escapeHtml(handle)} respond to <strong>all</strong> of your public writing, on every show &mdash; not just this one.
+  </p>
+  <a href="${allowUrl}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
+    Allow @${escapeHtml(handle)} to respond
+  </a>
+  <p style="margin:24px 0 0;font-size:13px;color:rgba(26,44,58,0.6);line-height:1.5">
+    Ignore this email if you would like to deny the request.
+  </p>
+  <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
+    You're getting this because someone asked to respond to your public writing on Sidebar.
+  </p>
+</div>
+</body>
+</html>`;
+
+  const text = `@${handle} wants to respond to your writing.
+
+Someone outside your friend rooms would like to respond to your public writing on ${showName}.
+${pending.message ? `\n  "${pending.message}"\n` : ""}
+${requesterAhead
+  ? "This person has watched further than you have. If you approve them, you'll see their response once you catch up."
+  : `Their response:\n\n  ${pending.body}`}
+${hint ? `\n${hint}\n` : ""}
+Approving lets @${handle} respond to ALL of your public writing, on every show — not just this one.
+
+Allow them to respond: ${allowUrl}
+
+Ignore this email if you would like to deny the request.
+
+You're getting this because someone asked to respond to your public writing on Sidebar.`;
+
+  const sent = await sendResendEmail(resendKey, ownerEmail, subject, html, text);
+  return jsonOk({ channel: sent ? "email" : "none", ...(sent ? {} : { warning: "email_send_failed" }) });
+}
+
+// Friend-of-friend hint: find a person the requester shares a friend room with
+// who is ALSO in a friend room with the owner, and name the owner's room they
+// share. Returns null when there's no such connection.
+async function computeMutualHint(
+  admin: AdminClient,
+  ownerId: string,
+  requesterId: string,
+  requesterName: string,
+): Promise<string | null> {
+  const { data: ownerGroups } = await admin
+    .from("friend_group_members").select("group_id").eq("user_id", ownerId);
+  const { data: reqGroups } = await admin
+    .from("friend_group_members").select("group_id").eq("user_id", requesterId);
+  if (!ownerGroups?.length || !reqGroups?.length) return null;
+
+  const ownerGroupIds = [...new Set(ownerGroups.map((g: { group_id: string }) => g.group_id))];
+  const reqGroupIds = [...new Set(reqGroups.map((g: { group_id: string }) => g.group_id))];
+
+  // Members of the requester's rooms = candidate mutual people.
+  const { data: reqMembers } = await admin
+    .from("friend_group_members").select("user_id").in("group_id", reqGroupIds);
+  const candidateIds = [...new Set((reqMembers ?? []).map((m: { user_id: string }) => m.user_id))]
+    .filter((id) => id !== ownerId && id !== requesterId);
+  if (!candidateIds.length) return null;
+
+  // For each owner room, which candidate is in it? Take the first match.
+  const { data: ownerMembers } = await admin
+    .from("friend_group_members").select("user_id, group_id").in("group_id", ownerGroupIds);
+  let mutualId: string | null = null;
+  let sharedGroupId: string | null = null;
+  for (const m of (ownerMembers ?? []) as { user_id: string; group_id: string }[]) {
+    if (candidateIds.includes(m.user_id)) { mutualId = m.user_id; sharedGroupId = m.group_id; break; }
+  }
+  if (!mutualId || !sharedGroupId) return null;
+
+  const { data: mutualProfile } = await admin.from("profiles").select("username").eq("id", mutualId).single();
+  if (!mutualProfile?.username) return null;
+
+  const { data: grp } = await admin.from("friend_groups").select("show_id").eq("id", sharedGroupId).single();
+  let roomShow = "a";
+  if (grp?.show_id) {
+    const { data: s } = await admin.from("shows").select("name").eq("id", grp.show_id).single();
+    roomShow = s?.name?.trim() || "a";
+  }
+  return `${requesterName} is in a friend room with @${mutualProfile.username}, who is in your ${roomShow} friend room.`;
 }
 
 // ── shared helpers ───────────────────────────────────────────────────────

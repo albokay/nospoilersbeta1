@@ -40,6 +40,7 @@ const HowItWorks = lazy(() => import("./components/HowItWorks"));
 const HowItWorksV2 = lazy(() => import("./components/HowItWorksV2"));
 import HomepageNarrative from "./components/HomepageNarrative";
 const InviteAcceptPage = lazy(() => import("./components/InviteAcceptPage"));
+const AllowResponsePage = lazy(() => import("./components/AllowResponsePage"));
 const MobileApp = lazy(() => import("./mobile/MobileApp"));
 // Promoted V2 surfaces (formerly /v2/...). Each chunked individually so the
 // main bundle stays lean for users who only visit one or two of these.
@@ -126,6 +127,13 @@ export default function App() {
       return <Navigate to={`/m/invite/${pathParts[1]}`} replace />;
     }
     return <Suspense fallback={<RouteFallback />}><InviteAcceptPage token={pathParts[1]} /></Suspense>;
+  }
+  // Public-rooms "Allow" link from the response-request email (2026). Sits
+  // above AppShell so the owner (a signed-in non-admin) isn't bounced to
+  // /journal by the auth-routing redirect before they can approve. The page
+  // prompts sign-in itself when needed; approval is RPC-gated to the owner.
+  if (pathParts[0] === "allow-response" && pathParts[1]) {
+    return <Suspense fallback={<RouteFallback />}><AllowResponsePage id={pathParts[1]} /></Suspense>;
   }
   if (pathParts[0] === "m") return <Suspense fallback={<RouteFallback />}><MobileApp /></Suspense>;
   // ── Backward-compat redirects for the URL promotion (2026-05-27) ───

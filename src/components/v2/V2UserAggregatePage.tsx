@@ -10,6 +10,7 @@ import {
   upsertProgress,
   canRespondToPublicRoom,
   insertPendingPublicResponse,
+  notifyPublicResponseRequest,
   fetchMyPendingResponseThreadIds,
 } from "../../lib/db";
 import { supabase } from "../../lib/supabaseClient";
@@ -101,7 +102,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   const handleSubmitRequest = useCallback<PublicRoomResponseGate["onSubmitRequest"]>(
     async (threadId, payload) => {
       if (!user || !profile || !ownerId) return;
-      await insertPendingPublicResponse({
+      const pendingId = await insertPendingPublicResponse({
         threadId,
         showId,
         ownerId,
@@ -116,6 +117,8 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
         referencedThreadId: payload.reference?.threadId ?? null,
         quotedText: payload.reference?.type === "quote" ? payload.reference.quotedText ?? null : null,
       });
+      // Email the owner (best-effort — the held response is already saved).
+      notifyPublicResponseRequest(pendingId).catch(() => {});
       setPendingThreadIds((prev) => new Set([...prev, threadId]));
     },
     [user, profile, ownerId, showId],
