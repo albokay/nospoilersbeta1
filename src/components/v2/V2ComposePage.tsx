@@ -56,7 +56,14 @@ export default function V2ComposePage({ showId }: { showId?: string }) {
   // show-wide aggregate is no longer navigable), friend-room → V2 room.
   function handleSubmitted(destination: "private" | "public" | string, threadId?: string) {
     if (destination === "private") {
-      navigate("/journal", { state: { activeTab: showId, activeFilter: "private" } });
+      // Open the new private post directly (V1 thread view) rather than the
+      // journal, where it wouldn't be visible until a manual refresh.
+      if (showId && threadId) {
+        sessionStorage.removeItem(`ns_active_group_${showId}`);
+        navigate(`/show/${showId}/thread/${threadId}`);
+      } else {
+        navigate("/journal", { state: { activeTab: showId, activeFilter: "private" } });
+      }
     } else if (destination === "public") {
       if (showId && profile?.username) {
         navigate(`/u/${profile.username}/show/${showId}/posts`, { state: { publishedThreadId: threadId } });

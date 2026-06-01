@@ -124,7 +124,15 @@ export function ComposeModalProvider({ children }: { children: React.ReactNode }
       const showId = args?.showId;
       close();
       if (destination === "private") {
-        navigate("/journal", { state: { activeTab: showId, activeFilter: "private" } });
+        // Open the new private post directly (V1 thread view) — landing back
+        // on the journal left the just-written entry invisible until a manual
+        // refresh. Clear any stale group context so it opens in private mode.
+        if (showId) {
+          sessionStorage.removeItem(`ns_active_group_${showId}`);
+          navigate(`/show/${showId}/thread/${threadId}`);
+        } else {
+          navigate("/journal");
+        }
       } else if (destination === "public") {
         // Public-rooms scope (2026): a public post now lands the author on
         // their OWN public room (/u/<me>/show/<id>/posts), not the show-wide
