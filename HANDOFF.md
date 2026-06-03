@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-06-01)
+# Sidebar — Technical State (2026-06-03)
 
 > **Communication rule (read first):** Speak to Alborz in terms of the experience and results for the user — what a visitor / logged-in user / room member actually sees or does on the site. Keep code-level vocabulary (RLS policies, RPCs, migrations, table/function names, SQL terms) to an absolute minimum. Questions to him should be answerable purely from "as a [visitor / user], when I do X, I see/don't see Y." Implementation choices (which mechanism, which option a vs b) are Claude's to make — default to the simpler approach, don't surface as a question unless the user experience differs. Code references only when he asks "how." See [feedback_speak_in_user_terms](~/.claude/projects/-Users-alborzkamalizad-Downloads-no-spoilers-v072-fullui-ready/memory/feedback_speak_in_user_terms.md) for the full pattern.
 
@@ -4186,7 +4186,7 @@ Both pre-launch blockers from the pings/polls arc shipped on 2026-05-07: rate li
 
 **Pre-beta checklist (4 of 5 remaining):**
 - **Account deletion** — full user data purge with care for shared catalog (TSP seeds etc.). See §6 item 25 for the gotcha pattern (don't sweep up `is_seed=true` author content via thread-scoped joins).
-- **Error tracking** — wire Sentry or similar so prod errors aren't invisible. Currently only `console.warn` lands in browser dev tools.
+- **Error tracking — HALF DONE 2026-06-03.** Shipped a top-level in-app error boundary ([src/components/ErrorBoundary.tsx](src/components/ErrorBoundary.tsx), mounted as the outermost wrapper in [src/index.tsx](src/index.tsx)) — render-time crashes now show a recoverable canon-green "Something went wrong / Reload" screen instead of a blank page. **Still needed:** a real REMOTE reporter (probably Sentry) so prod errors are visible to the team — the boundary only logs locally (no remote visibility) and only catches render crashes, NOT event-handler failures (button clicks) or async/background failures (the Supabase calls in db.ts, ~29 files using console.warn/error). `componentDidCatch` in ErrorBoundary.tsx is the single hook point for a future reporter; pair with `window.onerror` + `unhandledrejection` + Sentry init in index.tsx. Sentry traffic goes to Sentry's servers (no Supabase egress impact). Errors-only scope recommended first; replay/perf later.
 - **Feedback-read flow** — admins see unread feedback count badge ([App.tsx:632](src/App.tsx:632)) but there's no per-item read-state tracking. Each feedback row should be markable as read so the badge clears properly.
 - **Beta copy pass** — top-to-bottom copy review across all surfaces.
 

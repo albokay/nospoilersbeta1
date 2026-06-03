@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./lib/auth";
 import App from "./App";
 import BetaGate from "./components/BetaGate";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { ComposeModalProvider } from "./components/v2/ComposeModal";
 import { startHeaderClickAudit } from "./lib/devHeaderAudit";
 
@@ -18,13 +19,15 @@ if (!window.__reactRoot) {
 }
 
 window.__reactRoot.render(
-  <BetaGate>
-    <BrowserRouter>
-      <AuthProvider>
-        <ComposeModalProvider>
-          <App />
-        </ComposeModalProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </BetaGate>
+  <ErrorBoundary>
+    <BetaGate>
+      <BrowserRouter>
+        <AuthProvider>
+          <ComposeModalProvider>
+            <App />
+          </ComposeModalProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </BetaGate>
+  </ErrorBoundary>
 );
