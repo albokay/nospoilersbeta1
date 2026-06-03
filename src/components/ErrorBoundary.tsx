@@ -1,4 +1,5 @@
 import React from "react";
+import SidebarLogo from "./SidebarLogo";
 
 /**
  * Top-level error boundary — the "friendly crash screen" half of the
@@ -16,10 +17,13 @@ import React from "react";
  * or async/background work (Supabase calls) — those still land in
  * console.warn as before. A real tracker is what closes that gap.
  *
- * The fallback screen deliberately uses hardcoded canon colors and no
- * imported components, because the crash may have happened before the
+ * The fallback screen deliberately uses hardcoded canon colors and avoids
+ * app context (router/auth), because the crash may have happened before the
  * theme CSS was injected (App injects it in an effect) or inside a shared
  * dependency. Keeping the screen self-contained means it can always render.
+ * The ONE imported component is <SidebarLogo> (the corner brand mark), which
+ * is safe here: it depends only on React hooks + document.body, has no
+ * router/auth/theme-CSS dependency, and uses hardcoded inline colors.
  */
 
 interface Props {
@@ -53,6 +57,7 @@ function ErrorScreen() {
   return (
     <div
       style={{
+        position: "relative",
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
@@ -67,6 +72,11 @@ function ErrorScreen() {
           "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
       }}
     >
+      {/* The dynamic corner brand mark, in its usual top-left spot (scale 0.6
+          matches the app header). Decorative here — the buttons handle nav. */}
+      <div style={{ position: "absolute", top: 12, left: 16 }}>
+        <SidebarLogo scale={0.6} />
+      </div>
       <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: "0.005em" }}>
         Oops, something went wrong.
       </h1>
@@ -89,7 +99,7 @@ function ErrorScreen() {
             fontFamily: "inherit",
           }}
         >
-          Reload Sidebar
+          Reload this page
         </button>
         <button
           type="button"
@@ -106,7 +116,7 @@ function ErrorScreen() {
             fontFamily: "inherit",
           }}
         >
-          Back to start
+          go back home
         </button>
       </div>
       <p style={{ margin: 0, marginTop: 8, maxWidth: 420, lineHeight: 1.5, fontSize: 15, color: "rgba(255,255,255,0.85)" }}>
