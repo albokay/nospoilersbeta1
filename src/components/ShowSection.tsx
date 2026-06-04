@@ -342,6 +342,10 @@ export default function ShowSection({
   const friendRoomsDropdownRef = useRef<HTMLDivElement | null>(null);
   const [groupThreadsData, setGroupThreadsData] = useState<Thread[]>([]);
   const [groupReplyCounts, setGroupReplyCounts] = useState<Record<string, number>>({});
+  // Per-thread shared_at (room-arrival time) for the V1 open-thread byline, so
+  // it matches V2 (both show when the entry arrived in the room, not when it
+  // was written/edited).
+  const [groupSharedAt, setGroupSharedAt] = useState<Record<string, number>>({});
   const [groupThreadsLoading, setGroupThreadsLoading] = useState(false);
   // Create-group modal
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
@@ -540,9 +544,10 @@ export default function ShowSection({
     const prog = effectiveProgress || { s: 1, e: 1 };
     setGroupThreadsLoading(true);
     fetchGroupThreads(activeGroupId, prog.s, prog.e)
-      .then(({ threads, replyCounts }) => {
+      .then(({ threads, replyCounts, sharedAt }) => {
         setGroupThreadsData(threads);
         setGroupReplyCounts(replyCounts);
+        setGroupSharedAt(sharedAt);
       })
       .catch(() => {})
       .finally(() => setGroupThreadsLoading(false));
@@ -2820,6 +2825,7 @@ export default function ShowSection({
           show={allShows.find(s => s.id === showId) || { name: showId }}
           inGroupContext={!!activeGroupId}
           groupId={activeGroupId}
+          sharedAt={activeGroupId ? groupSharedAt[thread.id] : undefined}
           departedUsernames={departedUsernameSet}
           onBack={() => { setActiveThreadId(null); setTimeout(() => scrollToShowTop(), 0); }}
           progressForShow={effectiveProgress || { s: 1, e: 1 }}

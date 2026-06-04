@@ -212,10 +212,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     entryIcon === undefined
       ? (groupId ? <Users size={14} color="var(--icon-color)" /> : null)
       : entryIcon;
-  // Episode sort. Within an episode, reverse-chronological by updatedAt
-  // always (newest first — most recent activity floats to the top within
-  // its episode bucket). Across episodes, asc/desc controlled by
-  // sortOrder (desc puts the newest episode tag at the top).
+  // Episode sort. Within an episode, reverse-chronological by the entry's
+  // room-arrival time (the `updatedAt` field carries group_threads.shared_at;
+  // see V2FriendRoomPage) — newest arrival floats to the top within its
+  // episode bucket. Across episodes, asc/desc controlled by sortOrder (desc
+  // puts the newest episode tag at the top).
   const sorted = useMemo(() => {
     if (preserveOrder) return entries;
     const dir = sortOrder === "desc" ? -1 : 1;

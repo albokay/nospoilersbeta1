@@ -2506,6 +2506,14 @@ export async function fetchGroupThreads(
    * `showAheadStubs` opt-in prop is set.
    */
   aheadCounts: Record<string, number>;
+  /**
+   * Per-thread `group_threads.shared_at` (ms) — when the entry ARRIVED in
+   * this room. This is the room-relevant "time" (entry-card timestamp +
+   * within-episode ordering), as opposed to threads.created_at (originally
+   * written) or updated_at (last edited). For a privately-written post later
+   * converted into the room, this is the conversion moment.
+   */
+  sharedAt: Record<string, number>;
 }> {
   // Fetch threads linked to this group, with reply count scoped to this group_id
   // (shared seed threads have per-room reply copies — without the group_id filter,
@@ -2514,7 +2522,7 @@ export async function fetchGroupThreads(
   // visible reply" timestamp can be computed alongside the count.
   const { data, error } = await supabase
     .from("group_threads")
-    .select("threads(*, replies!thread_id(id, group_id, author_id, season, episode, is_deleted, referenced_reply_id, created_at))")
+    .select("shared_at, threads(*, replies!thread_id(id, group_id, author_id, season, episode, is_deleted, referenced_reply_id, created_at))")
     .eq("group_id", groupId)
     .order("shared_at", { ascending: false });
   if (error) throw error;
@@ -2525,6 +2533,7 @@ export async function fetchGroupThreads(
   const hiddenCounts: Record<string, number> = {};
   const latestHiddenReplyAt: Record<string, number> = {};
   const aheadCounts: Record<string, number> = {};
+  const sharedAt: Record<string, number> = {};
   for (const row of data ?? []) {
     const t = (row as any).threads;
     if (!t) continue;
@@ -2554,6 +2563,7 @@ export async function fetchGroupThreads(
     const thread = rowToThread(t);
     if (thread.season > maxS || (thread.season === maxS && thread.episode > maxE)) continue;
     threads.push(thread);
+    sharedAt[thread.id] = (row as any).shared_at ? new Date((row as any).shared_at).getTime() : 0;
     replyCounts[thread.id] = replyCount;
     // Track per-thread newest visible reply timestamp for thread-card
     // "new since last visit" indicators.
@@ -2605,7 +2615,7 @@ export async function fetchGroupThreads(
     }
     if (ahead > 0) aheadCounts[thread.id] = ahead;
   }
-  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, latestHiddenReplyAt, aheadCounts };
+  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, latestHiddenReplyAt, aheadCounts, sharedAt };
 }
 
 /** Rename a friend group. */

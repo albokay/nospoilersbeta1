@@ -288,6 +288,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               hiddenCounts: {} as Record<string, number>,
               latestHiddenReplyAt: {} as Record<string, number>,
               aheadCounts: {} as Record<string, number>,
+              sharedAt: {} as Record<string, number>,
             };
 
         const departedUsernames = new Set(
@@ -323,7 +324,13 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
           isEdited: t.isEdited,
           isDeparted: departedUsernames.has(t.author),
           isDeleted: t.isDeleted ?? false,
-          updatedAt: t.updatedAt,
+          // Room-relevant timestamp = when the entry ARRIVED in this room
+          // (group_threads.shared_at), not when it was written/edited. Drives
+          // the entry-card "time ago" + within-episode ordering, and keeps the
+          // room consistent with the digest (which also keys on shared_at). A
+          // privately-written post converted in reads as freshly arrived.
+          // Falls back to updatedAt if shared_at is somehow missing.
+          updatedAt: groupResult.sharedAt?.[t.id] || t.updatedAt,
           // V2 reply count = visible chain-visible replies + ahead-of-progress
           // stubs (RepliesList renders these via showAheadStubs). Matches the
           // user-facing "responses" total the entry card displays.

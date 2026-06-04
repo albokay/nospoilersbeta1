@@ -38,6 +38,7 @@ export default function InlineThreadView({
   userGroups,
   onThreadMovedToGroup,
   departedUsernames,
+  sharedAt,
 }: {
   thread: Thread;
   show: any;
@@ -79,6 +80,10 @@ export default function InlineThreadView({
   userGroups?: FriendGroup[];
   onThreadMovedToGroup?: (groupId: string, threadId: string) => void;
   departedUsernames?: Set<string>;
+  /** Room-arrival time (group_threads.shared_at, ms). In a friend room the
+   *  byline shows this — when the entry arrived in the room — to match V2.
+   *  Undefined outside room context; falls back to the thread's updatedAt. */
+  sharedAt?: number;
 }) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -644,7 +649,7 @@ export default function InlineThreadView({
               {inGroupContext && departedUsernames?.has(thread.author) && (
                 <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6, marginLeft: 4 }}>has left the room</span>
               )}
-              {" "}• {timeAgo(thread.updatedAt)}
+              {" "}• {timeAgo(sharedAt ?? thread.updatedAt)}
             </div>
 
             {thread.isDeleted ? (
