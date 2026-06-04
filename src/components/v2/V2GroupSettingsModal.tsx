@@ -4,11 +4,13 @@ import Modal from "../Modal";
 import {
   fetchDepartedMembers,
   fetchFriendGroupMembers,
+  fetchRoomDigestOptOut,
   fetchSentInvitations,
   recordDepartedMember,
   removeGroupMember,
   renameFriendGroup,
   sendInvite,
+  setRoomDigestOptOut,
   softDeleteFriendGroup,
   transferGroupOwnership,
 } from "../../lib/db";
@@ -65,6 +67,11 @@ export default function V2GroupSettingsModal({
   const [membersLoading, setMembersLoading] = useState(true);
   const [departed, setDeparted] = useState<{ userId: string; username: string; departedAt: number }[]>([]);
 
+  // Daily digest opt-out for THIS viewer in THIS room (null until loaded).
+  // false = digests on (default). Private — only the viewer's own pref is read.
+  const [digestOptOut, setDigestOptOut] = useState<boolean | null>(null);
+  const [digestSaving, setDigestSaving] = useState(false);
+
   const [renameValue, setRenameValue] = useState(room.name);
   const [renameSubmitting, setRenameSubmitting] = useState(false);
 
@@ -89,6 +96,9 @@ export default function V2GroupSettingsModal({
     fetchDepartedMembers(room.id)
       .then((d) => { if (!cancelled) setDeparted(d); })
       .catch(() => { if (!cancelled) setDeparted([]); });
+    fetchRoomDigestOptOut(room.id)
+      .then((v) => { if (!cancelled) setDigestOptOut(v); })
+      .catch(() => { if (!cancelled) setDigestOptOut(null); });
     if (user?.id) {
       setPendingInvitesLoading(true);
       fetchSentInvitations(user.id)
@@ -98,6 +108,22 @@ export default function V2GroupSettingsModal({
     }
     return () => { cancelled = true; };
   }, [room.id, user?.id]);
+
+  // Optimistic flip of the viewer's own digest preference; revert on failure.
+  const toggleDigest = async () => {
+    if (digestOptOut === null || digestSaving) return;
+    const next = !digestOptOut;
+    setDigestOptOut(next);
+    setDigestSaving(true);
+    try {
+      await setRoomDigestOptOut(room.id, next);
+    } catch {
+      setDigestOptOut(!next);
+      alert("Couldn't update your digest setting. Please try again.");
+    } finally {
+      setDigestSaving(false);
+    }
+  };
 
   const handleRename = async () => {
     if (!renameValue.trim() || renameValue.trim() === room.name) return;
@@ -277,12 +303,38 @@ export default function V2GroupSettingsModal({
               {members.map((m) => (
                 <div
                   key={m.userId}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14 }}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14, minHeight: 26 }}
                 >
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                     @{m.username}
                     {m.userId === room.createdBy && <Crown size={14} color="var(--icon-color)" />}
                   </span>
+                  {m.userId === user?.id && digestOptOut !== null && (
+                    <button
+                      type="button"
+                      onClick={toggleDigest}
+                      disabled={digestSaving}
+                      title="A daily email listing new entries in this room. Turn off to stop these emails for this room."
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        background: "transparent",
+                        border: "1.5px solid currentColor",
+                        borderRadius: 999,
+                        color: "inherit",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: "2px 9px",
+                        cursor: digestSaving ? "default" : "pointer",
+                        opacity: digestSaving ? 0.5 : 0.85,
+                        fontFamily: "inherit",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      email digest: {digestOptOut ? "off" : "on"}
+                    </button>
+                  )}
                 </div>
               ))}
               {departed.map((d) => (

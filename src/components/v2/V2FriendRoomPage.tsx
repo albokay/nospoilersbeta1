@@ -63,8 +63,16 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // a reply (responses to you / your responses / your starred responses)
   // rather than the entry itself. Plumbed through V2RoomFeed →
   // V2InlineThread → RepliesList's existing focusReplyId support.
+  //
+  // EXTERNAL deep-link: the daily digest email links to a specific entry as
+  // `/room/<id>?entry=<threadId>`. Plain URLs can't carry React Router state,
+  // so we also read the `entry` query param here. In-app `state` wins when
+  // both are present (SPA nav is more specific than a shared link).
   const [initialExpandThreadId] = useState<string | null>(
-    () => (location.state as { expandThreadId?: string } | null)?.expandThreadId ?? null,
+    () =>
+      (location.state as { expandThreadId?: string } | null)?.expandThreadId ??
+      new URLSearchParams(location.search).get("entry") ??
+      null,
   );
   const [initialFocusReplyId] = useState<string | null>(
     () => (location.state as { focusReplyId?: string } | null)?.focusReplyId ?? null,

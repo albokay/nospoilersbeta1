@@ -2308,6 +2308,26 @@ export async function fetchRoomLastSeen(userId: string, groupId: string): Promis
   return new Date(data.last_seen_at).getTime();
 }
 
+// ── Friend-room daily digest: per-room opt-out ───────────────────────────────
+//
+// Backed by 20260603_friend_room_digest_optout.sql. Digests are ON by default
+// (opt_out = false). Each member's preference is private from co-members, so
+// the column isn't REST-readable — reads/writes go through SECURITY DEFINER
+// RPCs that only ever touch the caller's own membership row.
+
+/** Read the calling user's digest opt-out for a room. false = digests ON. */
+export async function fetchRoomDigestOptOut(groupId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("get_room_digest_opt_out", { p_group_id: groupId });
+  if (error) throw error;
+  return !!data;
+}
+
+/** Set the calling user's digest opt-out for a room. true = stop digests. */
+export async function setRoomDigestOptOut(groupId: string, optOut: boolean): Promise<void> {
+  const { error } = await supabase.rpc("set_room_digest_opt_out", { p_group_id: groupId, p_opt_out: optOut });
+  if (error) throw error;
+}
+
 export type RoomVisibility = {
   groupId: string;
   /** ms since epoch, or null if the user has never entered the room. */
