@@ -14,3 +14,10 @@ verify_jwt = false
 # inside via admin.auth.getUser(jwt); gateway check is redundant and
 # would 401 with the project's ES256 keys.
 verify_jwt = false
+
+[functions.send-digests]
+# Not user-invoked — called by pg_cron (and manually for testing), not by a
+# browser with a user JWT. Gateway JWT verification is disabled; the function
+# instead gates on a shared secret (DIGEST_CRON_SECRET via x-digest-secret
+# header). See HANDOFF.md §"Edge function deploy notes".
+verify_jwt = false
