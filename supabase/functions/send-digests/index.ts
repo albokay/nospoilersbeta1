@@ -16,10 +16,13 @@
 //     { "dry_run": true }            → compute + return who WOULD get mail, send nothing
 //     { "only_user_id": "<uuid>" }   → restrict recipients to one user (testing)
 //
-// "New" = entry created in the last 24h, by another member, not deleted,
-// that the recipient can currently see (progress gate). Entries that became
-// visible only because the recipient advanced their progress past an OLDER
-// entry are intentionally NOT included (lean v1 — no progress-history).
+// "New" = entry that ARRIVED in the room (group_threads.shared_at) in the
+// last 24h, by another member, not deleted, that the recipient can currently
+// see (progress gate). Keying on shared_at (not threads.created_at) means an
+// entry written privately days ago and only just converted/shared into a room
+// still counts as new-to-the-room. Entries that became visible only because
+// the recipient advanced their progress past an OLDER entry are intentionally
+// NOT included (lean v1 — no progress-history).
 //
 // Environment variables required:
 //   SUPABASE_URL              (auto-injected)
@@ -189,20 +192,30 @@ serve(async (req) => {
 
   const since = new Date(Date.now() - WINDOW_HOURS * 3600 * 1000).toISOString();
 
-  // 1. Entries created in the last 24h (friend-room/private shape; the room
-  //    link in step 2 narrows to actual friend-room entries).
-  const { data: recent, error: recentErr } = await admin
-    .from("threads")
-    .select("id, author_id, title, season, episode, created_at")
-    .gte("created_at", since)
-    .eq("is_deleted", false)
-    .eq("is_public", false);
-  if (recentErr) return json({ error: "threads_query_failed", detail: recentErr.message }, 500);
-  if (!recent?.length) return json({ ok: true, sent: 0, reason: "no recent entries" });
+  // 1. Friend-room entries that ARRIVED in a room in the last 24h, keyed on
+  //    group_threads.shared_at (when the entry was linked into the room) — NOT
+  //    threads.created_at — so a privately-written post that was just converted
+  //    or shared into a room still counts as new-to-the-room. Each link is per
+  //    (room, thread), which matches the per-room digest grouping. The thread
+  //    row is pulled in via the embedded join.
+  const { data: links, error: linkErr } = await admin
+    .from("group_threads")
+    .select("group_id, thread_id, shared_at, threads(id, author_id, title, season, episode, is_deleted, is_public)")
+    .gte("shared_at", since);
+  if (linkErr) return json({ error: "links_query_failed", detail: linkErr.message }, 500);
+  if (!links?.length) return json({ ok: true, sent: 0, reason: "no recently-shared entries" });
 
-  // Author identities up front — used to drop seed-authored content (not a
-  // "friend") and to build bylines for departed authors too.
-  const recentAuthorIds = [...new Set(recent.map((t) => t.author_id))];
+  // Keep only live friend-room entries (not deleted, not public).
+  const recentLinks = (links as any[]).filter(
+    (l) => l.threads && !l.threads.is_deleted && l.threads.is_public === false,
+  );
+  if (!recentLinks.length) return json({ ok: true, sent: 0, reason: "no room entries" });
+
+  // Index thread rows (from the embedded join) + author identities. Seed/demo
+  // authors are dropped (not a "friend"); departed authors still resolve.
+  const threadById = new Map<string, any>();
+  for (const l of recentLinks) threadById.set(l.threads.id, l.threads);
+  const recentAuthorIds = [...new Set([...threadById.values()].map((t) => t.author_id))];
   const { data: authorProfs } = await admin
     .from("profiles")
     .select("id, username, is_seed")
@@ -210,18 +223,8 @@ serve(async (req) => {
   const usernameById = new Map<string, string>((authorProfs ?? []).map((p: any) => [p.id, p.username]));
   const seedAuthors = new Set<string>((authorProfs ?? []).filter((p: any) => p.is_seed).map((p: any) => p.id));
 
-  const threadById = new Map<string, any>(recent.map((t) => [t.id, t]));
-
-  // 2. Which of those entries live in which rooms.
-  const { data: links, error: linkErr } = await admin
-    .from("group_threads")
-    .select("group_id, thread_id")
-    .in("thread_id", [...threadById.keys()]);
-  if (linkErr) return json({ error: "links_query_failed", detail: linkErr.message }, 500);
-  if (!links?.length) return json({ ok: true, sent: 0, reason: "no room entries" });
-
   // 3. Active rooms only (skip soft-deleted).
-  const groupIds = [...new Set(links.map((l) => l.group_id))];
+  const groupIds = [...new Set(recentLinks.map((l) => l.group_id))];
   const { data: groups } = await admin
     .from("friend_groups")
     .select("id, show_id, name, deleted_at")
@@ -253,7 +256,7 @@ serve(async (req) => {
   // 6. Compute per-recipient, per-room visible-new entries.
   //    perUser: Map<userId, Map<groupId, { roomName, entries[] }>>
   const perUser = new Map<string, Map<string, { roomName: string; entries: any[] }>>();
-  for (const link of links) {
+  for (const link of recentLinks) {
     const g = activeGroups.get(link.group_id);
     if (!g) continue;
     const t = threadById.get(link.thread_id);
@@ -274,7 +277,7 @@ serve(async (req) => {
         threadId: t.id,
         title: (t.title && String(t.title).trim()) || "(untitled)",
         authorId: t.author_id,
-        createdAt: t.created_at,
+        sharedAt: link.shared_at,
       });
     }
   }
@@ -291,7 +294,7 @@ serve(async (req) => {
     const roomDigests: RoomDigest[] = [...rooms.entries()]
       .map(([groupId, r]) => {
         const entries: DigestEntry[] = r.entries
-          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          .sort((a, b) => new Date(a.sharedAt).getTime() - new Date(b.sharedAt).getTime())
           .map((e) => ({
             threadId: e.threadId,
             title: e.title,

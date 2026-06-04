@@ -2901,11 +2901,11 @@ export default function ShowSection({
           threadCitations={threadCitations}
           onRepliesLoaded={handleRepliesLoaded}
           userGroups={userGroups}
-          onThreadMovedToGroup={(groupId) => {
-            // Switch to the group view where the post now lives
-            setActiveGroupId(groupId);
-            setActiveThreadId(null);
-            setTimeout(() => scrollToShowTop(), 0);
+          onThreadMovedToGroup={(groupId, threadId) => {
+            // The post now lives in the room — go to the V2 friend room (map +
+            // inline feed) with the entry expanded, instead of flipping V1
+            // ShowSection into its dead group branch.
+            navigate(`/room/${groupId}`, { state: { expandThreadId: threadId } });
           }}
         />
       ) : (

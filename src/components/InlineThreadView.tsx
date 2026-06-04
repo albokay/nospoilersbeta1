@@ -77,7 +77,7 @@ export default function InlineThreadView({
   inGroupContext?: boolean;
   groupId?: string | null;
   userGroups?: FriendGroup[];
-  onThreadMovedToGroup?: (groupId: string) => void;
+  onThreadMovedToGroup?: (groupId: string, threadId: string) => void;
   departedUsernames?: Set<string>;
 }) {
   const { user, profile } = useAuth();
@@ -461,7 +461,7 @@ export default function InlineThreadView({
     try {
       await addThreadToGroup(thread.id, groupId);
       setShowMoveOptions(false);
-      onThreadMovedToGroup?.(groupId);
+      onThreadMovedToGroup?.(groupId, thread.id);
     } catch (err: any) {
       alert("Failed: " + (err?.message ?? JSON.stringify(err)));
     }
