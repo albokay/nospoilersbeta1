@@ -83,6 +83,22 @@ type ShelfStatus = "watching" | "want" | "finished" | "stopped";
 const DEFAULT_TSP_BLURB =
   "Want to see a room in action? Take a look at this mock friend room for a mock show.";
 
+// --- Onboarding reveal pacing + interrupt sensitivity (all tunable) ---------
+// The reveal alternates discrete actions — fade · BEAT · scroll · BEAT · fade …
+// REVEAL_FADE_MS  : how long each content block takes to fade in.
+// REVEAL_BEAT_MS  : the pause between every action (the "BEAT").
+// REVEAL_START_DELAY_MS : settle time before the first fade.
+const REVEAL_FADE_MS = 850;
+const REVEAL_BEAT_MS = 1500;
+const REVEAL_START_DELAY_MS = 800;
+// Interrupt sensitivity. A single wheel event must exceed this |deltaY| to
+// count as an intentional scroll — filters trackpad jitter / a barely-nudged
+// mouse that used to kill the sequence. Clicks + (non-modifier) keypresses
+// also cancel, but only after the grace window so an accidental input right as
+// the reveal begins doesn't abort it.
+const REVEAL_WHEEL_THRESHOLD = 28;
+const REVEAL_GRACE_MS = 1000;
+
 // Owner-view sort for "Thoughts on…" pieces. Per spec:
 //   - The currently-featured public piece (most recent by last_published_at)
 //     is first.
@@ -577,6 +593,7 @@ export default function V2ProfileSelfPage() {
   const [revealStep, setRevealStep] = useState<number | null>(null);
   const revealTimers = useRef<number[]>([]);
   const pendingRevealRef = useRef(false);
+  const revealStartRef = useRef(0);
   const thoughtsRef = useRef<HTMLElement | null>(null);
   const watchingRef = useRef<HTMLElement | null>(null);
   const wantRef = useRef<HTMLElement | null>(null);
@@ -588,7 +605,7 @@ export default function V2ProfileSelfPage() {
     return {
       opacity: shown ? 1 : 0,
       transform: shown ? "none" : "translateY(12px)",
-      transition: "opacity 650ms ease, transform 650ms ease",
+      transition: `opacity ${REVEAL_FADE_MS}ms ease, transform ${REVEAL_FADE_MS}ms ease`,
       pointerEvents: shown ? undefined : "none",
     };
   };
@@ -604,31 +621,51 @@ export default function V2ProfileSelfPage() {
     clearRevealTimers();
     window.scrollTo({ top: 0, behavior: "auto" });
     setRevealStep(0);
-    const beats: { delay: number; run: () => void }[] = [
-      { delay: 400,  run: () => { setRevealStep(1); scrollToRef(thoughtsRef); } },
-      { delay: 1700, run: () => { setRevealStep(2); scrollToRef(watchingRef); } },
-      { delay: 3100, run: () => { setRevealStep(3); scrollToRef(wantRef); } },
-      { delay: 4500, run: () => { setRevealStep(4); scrollToRef(finishedRef); } },
-      { delay: 5900, run: () => { setRevealStep(5); window.scrollTo({ top: 0, behavior: "smooth" }); } },
-      { delay: 7300, run: () => { setRevealStep(null); } },
+    revealStartRef.current = performance.now();
+    // Each fade and each scroll is its OWN action, separated by a BEAT — so the
+    // rhythm reads fade · BEAT · scroll · BEAT · fade · BEAT · scroll · …
+    // rather than fading + scrolling at once.
+    const actions: Array<() => void> = [
+      () => setRevealStep(1),                                // fade in thoughts (we're at top)
+      () => scrollToRef(watchingRef),                        // scroll down to watching
+      () => setRevealStep(2),                                // fade in watching
+      () => scrollToRef(wantRef),                            // scroll down to want
+      () => setRevealStep(3),                                // fade in want
+      () => scrollToRef(finishedRef),                        // scroll down to finished
+      () => setRevealStep(4),                                // fade in finished
+      () => window.scrollTo({ top: 0, behavior: "smooth" }), // scroll back to top
+      () => setRevealStep(5),                                // fade in top chrome
+      () => setRevealStep(null),                             // done — fully interactive
     ];
-    beats.forEach((b) => { revealTimers.current.push(window.setTimeout(b.run, b.delay) as unknown as number); });
+    let t = REVEAL_START_DELAY_MS;
+    actions.forEach((act) => {
+      revealTimers.current.push(window.setTimeout(act, t) as unknown as number);
+      t += REVEAL_BEAT_MS;
+    });
   }
-  // Interruptible: any genuine user input cancels the remaining sequence and
-  // leaves the page fully interactive. We deliberately don't listen for
-  // 'scroll' so our own smooth-scrolls don't self-cancel.
+  // Interruptible — but only by a clearly INTENTIONAL gesture, and only after a
+  // short grace window, so a barely-nudged mouse / trackpad jitter no longer
+  // aborts the sequence mid-way. We don't listen for 'scroll' so our own
+  // smooth-scrolls can't self-cancel. On cancel, everything fades to visible.
   useEffect(() => {
     if (revealStep === null) return;
-    const cancel = () => endReveal();
-    window.addEventListener("wheel", cancel, { passive: true });
-    window.addEventListener("touchstart", cancel, { passive: true });
-    window.addEventListener("keydown", cancel);
-    window.addEventListener("pointerdown", cancel);
+    const pastGrace = () => performance.now() - revealStartRef.current >= REVEAL_GRACE_MS;
+    const onWheel = (e: WheelEvent) => {
+      if (pastGrace() && Math.abs(e.deltaY) >= REVEAL_WHEEL_THRESHOLD) endReveal();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (!pastGrace()) return;
+      if (e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") return;
+      endReveal();
+    };
+    const onPointer = () => { if (pastGrace()) endReveal(); };
+    window.addEventListener("wheel", onWheel, { passive: true });
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onPointer);
     return () => {
-      window.removeEventListener("wheel", cancel);
-      window.removeEventListener("touchstart", cancel);
-      window.removeEventListener("keydown", cancel);
-      window.removeEventListener("pointerdown", cancel);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
     };
   }, [revealStep]);
   useEffect(() => () => clearRevealTimers(), []);
@@ -1674,7 +1711,7 @@ export default function V2ProfileSelfPage() {
       {onboardingOpen && user && (
         <OnboardingModal
           onComplete={handleOnboardingComplete}
-          onClosingStart={() => setRevealStep(0)}
+          onClosingStart={() => { revealStartRef.current = performance.now(); setRevealStep(0); }}
         />
       )}
     </V2Layout>
