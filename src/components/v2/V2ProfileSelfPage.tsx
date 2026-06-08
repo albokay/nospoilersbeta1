@@ -568,6 +568,71 @@ export default function V2ProfileSelfPage() {
     if (profile.onboarded_at == null) setOnboardingOpen(true);
   }, [authLoading, user, profile]);
 
+  // --- The self-assembling reveal (spec §4) -------------------------------
+  // Beats: 1 = thoughts panel, 2 = watching shelf, 3 = want shelf,
+  // 4 = finished shelf, 5 = top chrome (pairedHeader). revealStep === null
+  // means "normal" (everything visible); a number means the reveal is in
+  // progress and content whose beat <= revealStep is shown. Runs once, right
+  // after onboarding completes, and bows out on any genuine user input.
+  const [revealStep, setRevealStep] = useState<number | null>(null);
+  const revealTimers = useRef<number[]>([]);
+  const pendingRevealRef = useRef(false);
+  const thoughtsRef = useRef<HTMLElement | null>(null);
+  const watchingRef = useRef<HTMLElement | null>(null);
+  const wantRef = useRef<HTMLElement | null>(null);
+  const finishedRef = useRef<HTMLElement | null>(null);
+
+  const revealShown = (beat: number) => revealStep === null || revealStep >= beat;
+  const revealStyle = (beat: number): React.CSSProperties => {
+    const shown = revealShown(beat);
+    return {
+      opacity: shown ? 1 : 0,
+      transform: shown ? "none" : "translateY(12px)",
+      transition: "opacity 650ms ease, transform 650ms ease",
+      pointerEvents: shown ? undefined : "none",
+    };
+  };
+  function clearRevealTimers() { revealTimers.current.forEach((t) => clearTimeout(t)); revealTimers.current = []; }
+  function endReveal() { clearRevealTimers(); setRevealStep(null); }
+  function scrollToRef(ref: React.RefObject<HTMLElement | null>) {
+    const el = ref.current;
+    if (!el) return;
+    const y = el.getBoundingClientRect().top + window.scrollY - 96;
+    window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+  }
+  function startReveal() {
+    clearRevealTimers();
+    window.scrollTo({ top: 0, behavior: "auto" });
+    setRevealStep(0);
+    const beats: { delay: number; run: () => void }[] = [
+      { delay: 400,  run: () => { setRevealStep(1); scrollToRef(thoughtsRef); } },
+      { delay: 1700, run: () => { setRevealStep(2); scrollToRef(watchingRef); } },
+      { delay: 3100, run: () => { setRevealStep(3); scrollToRef(wantRef); } },
+      { delay: 4500, run: () => { setRevealStep(4); scrollToRef(finishedRef); } },
+      { delay: 5900, run: () => { setRevealStep(5); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+      { delay: 7300, run: () => { setRevealStep(null); } },
+    ];
+    beats.forEach((b) => { revealTimers.current.push(window.setTimeout(b.run, b.delay) as unknown as number); });
+  }
+  // Interruptible: any genuine user input cancels the remaining sequence and
+  // leaves the page fully interactive. We deliberately don't listen for
+  // 'scroll' so our own smooth-scrolls don't self-cancel.
+  useEffect(() => {
+    if (revealStep === null) return;
+    const cancel = () => endReveal();
+    window.addEventListener("wheel", cancel, { passive: true });
+    window.addEventListener("touchstart", cancel, { passive: true });
+    window.addEventListener("keydown", cancel);
+    window.addEventListener("pointerdown", cancel);
+    return () => {
+      window.removeEventListener("wheel", cancel);
+      window.removeEventListener("touchstart", cancel);
+      window.removeEventListener("keydown", cancel);
+      window.removeEventListener("pointerdown", cancel);
+    };
+  }, [revealStep]);
+  useEffect(() => () => clearRevealTimers(), []);
+
   async function handleOnboardingComplete() {
     onboardingDoneRef.current = true;
     setOnboardingOpen(false);
@@ -581,6 +646,9 @@ export default function V2ProfileSelfPage() {
       }
     }
     try { await refreshProfile(); } catch { /* non-fatal */ }
+    // Run the reveal once the refreshed data lands (bootstrap effect's .then
+    // checks this flag). revealStep is already 0 from the modal's onClosingStart.
+    pendingRevealRef.current = true;
     setReloadKey((k) => k + 1);
   }
 
@@ -593,7 +661,10 @@ export default function V2ProfileSelfPage() {
 
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
-  const [addOpen, setAddOpen] = useState(false);
+  // Which shelf's inline "+ add a show" tile is currently expanded (only one
+  // at a time). null = all collapsed. Want, Watching, and Finished each get a
+  // tile (the latter two only when they have no real show — onboarding spec).
+  const [addOpenShelf, setAddOpenShelf] = useState<ShelfStatus | null>(null);
 
   // Treated art — random show pick from this profile's progress list,
   // locked once when progress data first loads. Stable for the life of
@@ -658,6 +729,13 @@ export default function V2ProfileSelfPage() {
           new Set(publicThreads.filter((th) => !th.isDeleted).map((th) => th.showId)),
         );
         setThoughtsLoaded(true);
+        // Onboarding just finished + data is now in state → run the reveal.
+        if (pendingRevealRef.current) {
+          pendingRevealRef.current = false;
+          // Defer one tick so the freshly-rendered shelves exist as scroll
+          // targets before the timed beats start.
+          requestAnimationFrame(() => startReveal());
+        }
       })
       .catch((err) => {
         if (cancelled) return;
@@ -666,6 +744,11 @@ export default function V2ProfileSelfPage() {
         // can write a new piece. fetchProfileThoughtsForOwner failures will
         // surface again on the next mount.
         setThoughtsLoaded(true);
+        // Don't strand the page in frame-only state if the refetch failed.
+        if (pendingRevealRef.current) {
+          pendingRevealRef.current = false;
+          endReveal();
+        }
       });
     return () => { cancelled = true; };
   }, [user?.id, reloadKey]);
@@ -885,6 +968,78 @@ export default function V2ProfileSelfPage() {
     };
   }
 
+  // Reusable inline "+ add a show" tile (Want shelf always; Watching/Finished
+  // when they have no real show — onboarding spec "stay permanently"). Opens
+  // SearchShows inline; on pick, persists progress, refetches, and lands the
+  // user on the new show's journal tab (matches the existing add-tile flow).
+  function renderAddTile(shelf: ShelfStatus, label: string) {
+    if (addOpenShelf !== shelf) {
+      return (
+        <button
+          onClick={() => setAddOpenShelf(shelf)}
+          className="card"
+          style={{
+            ...PROFILE_ADD_TILE,
+            padding: "14px 22px",
+            width: "100%",
+            textAlign: "left",
+            cursor: "pointer",
+            fontFamily: "Lora, Georgia, serif",
+            fontStyle: "italic",
+            fontSize: 15,
+            color: "var(--dos-fg)",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <Plus size={16} color="currentColor" /> {label}
+        </button>
+      );
+    }
+    return (
+      <div className="card" style={{ ...PROFILE_CARD, padding: "16px 22px" }}>
+        <SearchShows
+          shows={shows}
+          progress={progress}
+          onShowCreated={async (s, entry) => {
+            // Persist the entry from the modal (createShow alone writes no
+            // progress row), refetch, then land on the new show's journal tab.
+            if (!user) return;
+            try {
+              await upsertRewatchStatus(user.id, s.id, entry);
+            } catch (err) {
+              console.warn("upsertRewatchStatus failed:", err);
+            }
+            const next = await fetchProgress(user.id);
+            setProgress(next);
+            setAddOpenShelf(null);
+            navigate("/journal", { state: { activeTab: s.id } });
+          }}
+          onReopenJournal={async (showId) => {
+            if (user && progress[showId]?.stoppedWatching) {
+              try {
+                await setStoppedWatching(user.id, showId, false);
+              } catch (err) {
+                console.warn("clear-stopped failed:", err);
+              }
+            }
+            navigate(`/journal`, { state: { activeTab: showId } });
+          }}
+          onAuthRequired={() => navigate("/")}
+          placeholder="find a show"
+        />
+        <button
+          onClick={() => setAddOpenShelf(null)}
+          className="btn h40"
+          style={{ marginTop: 12, fontSize: 12 }}
+        >
+          cancel
+        </button>
+      </div>
+    );
+  }
+
   return (
     <V2Layout
       palette="profile"
@@ -893,6 +1048,7 @@ export default function V2ProfileSelfPage() {
         rightLabel: "go to your journal",
         rightTo: "/journal",
       }}
+      pairedHeaderHidden={!revealShown(5)}
     >
       {/* === PROFILE IDENTITY ===
           Centered, full column width — visual parity with the visitor view
@@ -927,7 +1083,7 @@ export default function V2ProfileSelfPage() {
           the cycling prompt, shared state). The compose modal is mounted
           at the bottom of this component as a fixed-position overlay. */}
       {thoughtsLoaded && user && (
-        <section style={{ marginBottom: 40, textAlign: "center" }}>
+        <section ref={thoughtsRef as React.RefObject<HTMLElement>} style={{ marginBottom: 40, textAlign: "center", ...revealStyle(1) }}>
           {thoughts.length === 0 ? (
             // Empty state: inline version of the Thoughts-on compose modal.
             // Two destination-implicit buttons ("post privately" / "post to
@@ -1066,9 +1222,11 @@ export default function V2ProfileSelfPage() {
         {user?.created_at ? ` · on Sidebar since ${formatJoinedSince(user.created_at)}` : ""}
       </p>
 
-      {/* === WATCHING NOW === */}
-      {buckets.watching.length > 0 && (
-        <section style={{ marginBottom: 56 }}>
+      {/* === WATCHING NOW — always rendered: frame for the reveal + a
+          permanent add-tile when there's no real (non-TSP) show. TSP lives
+          here post-onboarding. Heading stays visible (frame); only the
+          content fades during the reveal (beat 2). === */}
+      <section ref={watchingRef as React.RefObject<HTMLElement>} style={{ marginBottom: 56 }}>
           <HomeDivider color={dividerColors[0]} />
           <ShelfHead
             eyebrow="what you're in the middle of:"
@@ -1076,6 +1234,7 @@ export default function V2ProfileSelfPage() {
             editing={editingShelves.has("watching")}
             onToggleEdit={() => toggleShelfEdit("watching")}
           />
+          <div style={revealStyle(2)}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={makeDragEndHandler("watching")}>
             <SortableContext items={buckets.watching} strategy={verticalListSortingStrategy}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14 }}>
@@ -1142,11 +1301,16 @@ export default function V2ProfileSelfPage() {
               </div>
             </SortableContext>
           </DndContext>
+          {buckets.watching.filter((s) => s !== "tsp").length === 0 && (
+            <div style={{ marginTop: 14 }}>
+              {renderAddTile("watching", "add a show you're watching")}
+            </div>
+          )}
+          </div>
         </section>
-      )}
 
       {/* === WANT TO WATCH (always renders for the + add tile) === */}
-      <section style={{ marginBottom: 56 }}>
+      <section ref={wantRef as React.RefObject<HTMLElement>} style={{ marginBottom: 56 }}>
         <HomeDivider color={dividerColors[1]} />
         <ShelfHead
           eyebrow="on your watch list:"
@@ -1154,6 +1318,7 @@ export default function V2ProfileSelfPage() {
           editing={editingShelves.has("want")}
           onToggleEdit={() => toggleShelfEdit("want")}
         />
+        <div style={revealStyle(3)}>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={makeDragEndHandler("want")}>
           <SortableContext items={buckets.want} strategy={verticalListSortingStrategy}>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1209,92 +1374,19 @@ export default function V2ProfileSelfPage() {
                 );
               })}
 
-          {/* + add tile — opens inline SearchShows. The component already
-              defaults to (0,0) per 80299d9 so any pick lands as want-to-watch. */}
-          {!addOpen ? (
-            <button
-              onClick={() => setAddOpen(true)}
-              className="card"
-              style={{
-                ...PROFILE_ADD_TILE,
-                padding: "14px 22px",
-                width: "100%",
-                textAlign: "left",
-                cursor: "pointer",
-                fontFamily: "Lora, Georgia, serif",
-                fontStyle: "italic",
-                fontSize: 15,
-                color: "var(--dos-fg)",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <Plus size={16} color="currentColor" /> add a show to your list
-            </button>
-          ) : (
-            <div
-              className="card"
-              style={{
-                ...PROFILE_CARD,
-                padding: "16px 22px",
-              }}
-            >
-              <SearchShows
-                shows={shows}
-                progress={progress}
-                onShowCreated={async (s, entry) => {
-                  // Persist the entry the user filled out in the modal — without
-                  // this, createShow / createFriendGroup land but no progress row
-                  // is written, so the refetch below returns empty for this show
-                  // and it never appears on any shelf.
-                  if (!user) return;
-                  try {
-                    await upsertRewatchStatus(user.id, s.id, entry);
-                  } catch (err) {
-                    console.warn("upsertRewatchStatus failed:", err);
-                  }
-                  const next = await fetchProgress(user.id);
-                  setProgress(next);
-                  setAddOpen(false);
-                  // Land in the journal with the new show's tab active —
-                  // matches the AppShell's onShowCreated solo behavior.
-                  // V3JournalPage reads state.activeTab to seed the tab
-                  // and auto-unhide it.
-                  navigate("/journal", { state: { activeTab: s.id } });
-                }}
-                onReopenJournal={async (showId) => {
-                  // Resurrection from the profile + add tile: clear the
-                  // stopped flag if set, then route to the journal.
-                  if (user && progress[showId]?.stoppedWatching) {
-                    try {
-                      await setStoppedWatching(user.id, showId, false);
-                    } catch (err) {
-                      console.warn("clear-stopped failed:", err);
-                    }
-                  }
-                  navigate(`/journal`, { state: { activeTab: showId } });
-                }}
-                onAuthRequired={() => navigate("/")}
-                placeholder="find a show"
-              />
-              <button
-                onClick={() => setAddOpen(false)}
-                className="btn h40"
-                style={{ marginTop: 12, fontSize: 12 }}
-              >
-                cancel
-              </button>
-            </div>
-          )}
+          {/* + add tile — opens inline SearchShows (defaults to (0,0) so a
+              pick lands as want-to-watch). Shared renderer; see renderAddTile. */}
+          {renderAddTile("want", "add a show to your list")}
             </div>
           </SortableContext>
         </DndContext>
+        </div>
       </section>
 
-      {/* === FINISHED WATCHING === */}
-      {finishedDisplay.length > 0 && (
-        <section style={{ marginBottom: 56 }}>
+      {/* === FINISHED WATCHING — always rendered: frame for the reveal +
+          permanent add-tile when empty. Heading stays visible (frame); only
+          the content fades during the reveal (beat 4). === */}
+      <section ref={finishedRef as React.RefObject<HTMLElement>} style={{ marginBottom: 56 }}>
           <HomeDivider color={dividerColors[2]} />
           <ShelfHead
             eyebrow="shows you've completed:"
@@ -1302,6 +1394,12 @@ export default function V2ProfileSelfPage() {
             editing={editingShelves.has("finished")}
             onToggleEdit={() => toggleShelfEdit("finished")}
           />
+          <div style={revealStyle(4)}>
+          {buckets.finished.length === 0 && (
+            <div style={{ marginBottom: 12 }}>
+              {renderAddTile("finished", "add a show to your list")}
+            </div>
+          )}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={makeDragEndHandler("finished")}>
             <SortableContext items={finishedDisplay} strategy={rectSortingStrategy}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
@@ -1410,8 +1508,8 @@ export default function V2ProfileSelfPage() {
               </button>
             </div>
           )}
+          </div>
         </section>
-      )}
 
       {/* === STOPPED WATCHING ===
           Same double-column grid as Finished Watching for shelf parity:
@@ -1574,7 +1672,10 @@ export default function V2ProfileSelfPage() {
       {/* First-login onboarding modal (sidebar_spec_onboarding_v03). Opens
           over this profile for never-onboarded users; portals to body. */}
       {onboardingOpen && user && (
-        <OnboardingModal onComplete={handleOnboardingComplete} />
+        <OnboardingModal
+          onComplete={handleOnboardingComplete}
+          onClosingStart={() => setRevealStep(0)}
+        />
       )}
     </V2Layout>
   );

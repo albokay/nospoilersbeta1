@@ -12,6 +12,10 @@ type Palette = "journal" | "profile" | "compose" | "room";
 type V2LayoutProps = {
   palette: Palette;
   pairedHeader?: { left: string; rightLabel: string; rightTo: string };
+  // When true, the pairedHeader pair is rendered but faded out (opacity 0,
+  // non-interactive) — used by the first-login onboarding reveal, which fades
+  // this "top chrome" in as its final beat. Default false (always visible).
+  pairedHeaderHidden?: boolean;
   // When true, V2Layout skips its centered max-width <main> and renders
   // children directly. Used by surfaces that manage their own page
   // geometry — e.g. V2ComposePage (manages its own root + animation),
@@ -43,7 +47,7 @@ type V2LayoutProps = {
 //   the user perceives one continuous frame as they navigate. Without this
 //   reuse the chrome jumped between pages because AppShell and v2 each had
 //   their own positioning code.
-export default function V2Layout({ palette, pairedHeader, bareMain, viewerIsHome = true, children }: V2LayoutProps) {
+export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = false, bareMain, viewerIsHome = true, children }: V2LayoutProps) {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
 
@@ -234,6 +238,9 @@ export default function V2Layout({ palette, pairedHeader, bareMain, viewerIsHome
                 marginBottom: 12,
                 flexWrap: "wrap",
                 minHeight: 28,
+                opacity: pairedHeaderHidden ? 0 : 1,
+                pointerEvents: pairedHeaderHidden ? "none" : undefined,
+                transition: "opacity 650ms ease",
               }}
             >
               <div

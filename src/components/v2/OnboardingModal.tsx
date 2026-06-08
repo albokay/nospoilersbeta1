@@ -262,11 +262,21 @@ function PageDots({ page, total }: { page: number; total: number }) {
 // Confirm or "Not now") locks the page; there is no back/forward navigation.
 // After page 3 advances, onComplete fires (parent stamps onboarded_at, refreshes
 // data, and runs the reveal).
-export default function OnboardingModal({ onComplete }: { onComplete: () => void }) {
+export default function OnboardingModal({
+  onComplete,
+  onClosingStart,
+}: {
+  onComplete: () => void;
+  // Fired the instant the modal begins its fade-out (before onComplete). Lets
+  // the parent put the profile behind into its "frame-only" reveal state while
+  // the modal fades, so there's no flash of the full profile.
+  onClosingStart?: () => void;
+}) {
   const { user } = useAuth();
   const [page, setPage] = useState<0 | 1 | 2>(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
 
   // Canon page
   const [canonRows, setCanonRows] = useState<(CanonSelection | null)[]>([null, null, null]);
@@ -294,7 +304,15 @@ export default function OnboardingModal({ onComplete }: { onComplete: () => void
   function advance() {
     setError(null);
     if (page < 2) setPage((p) => (p + 1) as 0 | 1 | 2);
-    else onComplete();
+    else finishFlow();
+  }
+
+  // Last page advanced — fade the modal out, then hand off to the reveal.
+  function finishFlow() {
+    if (closing) return;
+    onClosingStart?.();
+    setClosing(true);
+    window.setTimeout(() => onComplete(), 450);
   }
 
   async function pickWatching(tv: TVmazeShow) {
@@ -435,6 +453,9 @@ export default function OnboardingModal({ onComplete }: { onComplete: () => void
         background: "rgba(0,0,0,0.2)",
         zIndex: 10000,
         display: "flex", alignItems: "center", justifyContent: "center",
+        opacity: closing ? 0 : 1,
+        pointerEvents: closing ? "none" : undefined,
+        transition: "opacity 450ms ease",
       }}
     >
       <style>{`
