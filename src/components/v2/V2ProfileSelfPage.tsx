@@ -84,12 +84,14 @@ const DEFAULT_TSP_BLURB =
   "Want to see a room in action? Take a look at this mock friend room for a mock show.";
 
 // --- Onboarding reveal pacing + interrupt sensitivity (all tunable) ---------
-// The reveal alternates discrete actions — fade · BEAT · scroll · BEAT · fade …
-// REVEAL_FADE_MS  : how long each content block takes to fade in.
-// REVEAL_BEAT_MS  : the pause between every action (the "BEAT").
-// REVEAL_START_DELAY_MS : settle time before the first fade.
-const REVEAL_FADE_MS = 850;
-const REVEAL_BEAT_MS = 1500;
+// The reveal alternates discrete actions — fade · BEAT · scroll · settle · BEAT
+// · fade … A scroll is given SCROLL_SETTLE + BEAT before the next fade, so the
+// scroll fully stops and holds for a beat BEFORE its shelf fades in (they used
+// to land near-simultaneously). A fade is given FADE + BEAT before the next
+// scroll, so the pulse finishes and holds before we move on.
+const REVEAL_FADE_MS = 1700;          // fade duration (doubled — slow, deliberate)
+const REVEAL_BEAT_MS = 1200;          // the explicit pause (the "BEAT")
+const REVEAL_SCROLL_SETTLE_MS = 1100; // time to let a smooth-scroll come to rest
 const REVEAL_START_DELAY_MS = 800;
 // Interrupt sensitivity. A single wheel event must exceed this |deltaY| to
 // count as an intentional scroll — filters trackpad jitter / a barely-nudged
@@ -601,13 +603,22 @@ export default function V2ProfileSelfPage() {
 
   const revealShown = (beat: number) => revealStep === null || revealStep >= beat;
   const revealStyle = (beat: number): React.CSSProperties => {
-    const shown = revealShown(beat);
-    return {
-      opacity: shown ? 1 : 0,
-      transform: shown ? "none" : "translateY(12px)",
-      transition: `opacity ${REVEAL_FADE_MS}ms ease, transform ${REVEAL_FADE_MS}ms ease`,
-      pointerEvents: shown ? undefined : "none",
-    };
+    if (!revealShown(beat)) {
+      // Not yet revealed. A transition is kept so that a *cancel* (revealStep →
+      // null) fades the remaining content in gracefully instead of snapping.
+      return {
+        opacity: 0,
+        transform: "translateY(12px)",
+        transition: "opacity 500ms ease, transform 500ms ease",
+        pointerEvents: "none",
+      };
+    }
+    // Normal mode (or after a cancel): simply visible.
+    if (revealStep === null) {
+      return { opacity: 1, transition: "opacity 500ms ease, transform 500ms ease" };
+    }
+    // Mid-reveal, this beat just became visible → play the double-pulse fade.
+    return { animation: `reveal-pulse-in ${REVEAL_FADE_MS}ms ease both` };
   };
   function clearRevealTimers() { revealTimers.current.forEach((t) => clearTimeout(t)); revealTimers.current = []; }
   function endReveal() { clearRevealTimers(); setRevealStep(null); }
@@ -622,25 +633,29 @@ export default function V2ProfileSelfPage() {
     window.scrollTo({ top: 0, behavior: "auto" });
     setRevealStep(0);
     revealStartRef.current = performance.now();
-    // Each fade and each scroll is its OWN action, separated by a BEAT — so the
-    // rhythm reads fade · BEAT · scroll · BEAT · fade · BEAT · scroll · …
-    // rather than fading + scrolling at once.
-    const actions: Array<() => void> = [
-      () => setRevealStep(1),                                // fade in thoughts (we're at top)
-      () => scrollToRef(watchingRef),                        // scroll down to watching
-      () => setRevealStep(2),                                // fade in watching
-      () => scrollToRef(wantRef),                            // scroll down to want
-      () => setRevealStep(3),                                // fade in want
-      () => scrollToRef(finishedRef),                        // scroll down to finished
-      () => setRevealStep(4),                                // fade in finished
-      () => window.scrollTo({ top: 0, behavior: "smooth" }), // scroll back to top
-      () => setRevealStep(5),                                // fade in top chrome
-      () => setRevealStep(null),                             // done — fully interactive
+    // Each fade and each scroll is its OWN discrete action. The gap AFTER an
+    // action depends on its kind: a scroll gets SCROLL_SETTLE + BEAT (let it
+    // come fully to rest and hold a beat before the next fade); a fade gets
+    // FADE + BEAT (let the pulse finish and hold before scrolling on). The
+    // "thoughts" beat has NO scroll — it fades in with the page at the top.
+    const steps: Array<{ kind: "fade" | "scroll" | "end"; run: () => void }> = [
+      { kind: "fade",   run: () => setRevealStep(1) },                                 // thoughts (at top, no scroll)
+      { kind: "scroll", run: () => scrollToRef(watchingRef) },
+      { kind: "fade",   run: () => setRevealStep(2) },                                 // watching
+      { kind: "scroll", run: () => scrollToRef(wantRef) },
+      { kind: "fade",   run: () => setRevealStep(3) },                                 // want
+      { kind: "scroll", run: () => scrollToRef(finishedRef) },
+      { kind: "fade",   run: () => setRevealStep(4) },                                 // finished
+      { kind: "scroll", run: () => window.scrollTo({ top: 0, behavior: "smooth" }) },  // back to top
+      { kind: "fade",   run: () => setRevealStep(5) },                                 // top chrome
+      { kind: "end",    run: () => setRevealStep(null) },                              // done — fully interactive
     ];
     let t = REVEAL_START_DELAY_MS;
-    actions.forEach((act) => {
-      revealTimers.current.push(window.setTimeout(act, t) as unknown as number);
-      t += REVEAL_BEAT_MS;
+    steps.forEach((step) => {
+      revealTimers.current.push(window.setTimeout(step.run, t) as unknown as number);
+      t += step.kind === "scroll"
+        ? REVEAL_SCROLL_SETTLE_MS + REVEAL_BEAT_MS  // scroll stops, then a beat, then the fade
+        : REVEAL_FADE_MS + REVEAL_BEAT_MS;          // fade finishes, then a beat, then the scroll
     });
   }
   // Interruptible — but only by a clearly INTENTIONAL gesture, and only after a

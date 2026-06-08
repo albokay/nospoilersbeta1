@@ -439,6 +439,17 @@ header.site{
   100% { border-color:rgba(53,94,184,0); }
 }
 
+/* Onboarding reveal — content fade-in with a double pulse (rise · dip · rise),
+   echoing the map-cell highlight oscillation (flash-border-blue) but settling
+   fully visible. Used by the first-login self-assembling reveal. */
+@keyframes reveal-pulse-in{
+  0%   { opacity:0;   transform:translateY(12px); }
+  30%  { opacity:0.9; }
+  50%  { opacity:0.4; }
+  75%  { opacity:1; }
+  100% { opacity:1;   transform:translateY(0); }
+}
+
 /* Animated ellipsis dots (e.g. "sending invite" indicator in the group
    settings modal). Three dots fade in sequence, then all fade, loop. */
 @keyframes invite-dot-fade{
