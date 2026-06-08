@@ -89,9 +89,10 @@ const DEFAULT_TSP_BLURB =
 // scroll fully stops and holds for a beat BEFORE its shelf fades in (they used
 // to land near-simultaneously). A fade is given FADE + BEAT before the next
 // scroll, so the pulse finishes and holds before we move on.
-const REVEAL_FADE_MS = 850;           // fade duration
-const REVEAL_BEAT_MS = 600;           // the explicit pause (the "BEAT")
+const REVEAL_FADE_MS = 850;           // fade-in duration
+const REVEAL_BEAT_MS = 600;           // pause AFTER a fade finishes, before scrolling on
 const REVEAL_SCROLL_SETTLE_MS = 550;  // time to let a smooth-scroll come to rest
+const REVEAL_SCROLL_BEAT_MS = 300;    // pause AFTER a scroll lands, before its shelf fades in
 const REVEAL_START_DELAY_MS = 400;
 // Interrupt sensitivity. A single wheel event must exceed this |deltaY| to
 // count as an intentional scroll — filters trackpad jitter / a barely-nudged
@@ -653,8 +654,8 @@ export default function V2ProfileSelfPage() {
     steps.forEach((step) => {
       revealTimers.current.push(window.setTimeout(step.run, t) as unknown as number);
       t += step.kind === "scroll"
-        ? REVEAL_SCROLL_SETTLE_MS + REVEAL_BEAT_MS  // scroll stops, then a beat, then the fade
-        : REVEAL_FADE_MS + REVEAL_BEAT_MS;          // fade finishes, then a beat, then the scroll
+        ? REVEAL_SCROLL_SETTLE_MS + REVEAL_SCROLL_BEAT_MS  // scroll lands, short beat, then the fade
+        : REVEAL_FADE_MS + REVEAL_BEAT_MS;                 // fade finishes, then a beat, then the scroll
     });
   }
   // Interruptible — but only by a clearly INTENTIONAL gesture, and only after a
