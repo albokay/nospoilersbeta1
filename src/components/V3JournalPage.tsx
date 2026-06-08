@@ -1430,6 +1430,16 @@ export default function V3JournalPage({
                         if (hasSelfCreatedRoom) {
                           return <EmptyProfileWelcome selfCreatedRoom={true} showName={activeTab ? showName(activeTab) : undefined} />;
                         }
+                        // No room for this show yet (onboarding spec §7) — the
+                        // user added a show (e.g. via the onboarding
+                        // watching-now step) but hasn't started a friend room.
+                        // Mutually exclusive with selfCreatedRoom (which needs
+                        // tabGroups > 0). CTA points at the existing "+ friends"
+                        // toolbar button. Sits ahead of the legacy "haven't
+                        // written for any friends yet" fallthrough.
+                        if (!!activeTab && tabGroups.length === 0) {
+                          return <EmptyProfileWelcome noRoomYet={true} showName={showName(activeTab)} />;
+                        }
                         // else: fall through to per-mode copy below.
                       }
                       const sName = showName(activeTab);

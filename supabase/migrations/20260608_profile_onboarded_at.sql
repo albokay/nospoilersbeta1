@@ -1,0 +1,28 @@
+-- Adds an `onboarded_at` timestamp to the profiles table. This is the
+-- single durable marker for the first-login onboarding experience
+-- (sidebar_spec_onboarding_v03):
+--
+--   • NULL  → the user has never completed (or skipped through) the paged
+--             onboarding modal. On their next login they are routed to
+--             /profile, where the modal opens over V2ProfileSelfPage and
+--             the self-assembling reveal plays.
+--   • set   → onboarding is done forever; normal post-login routing applies
+--             (→ /journal). The TSP demo card also surfaces in the user's
+--             own Watching-now shelf once this is set (per spec §6 + the
+--             "anyone who runs onboarding" decision).
+--
+-- A durable column (not sessionStorage) is used deliberately so the modal +
+-- reveal fire exactly once across sessions and devices.
+--
+-- Per the locked decision "everyone not yet onboarded sees it", existing
+-- users are intentionally NOT backfilled — they keep onboarded_at = NULL and
+-- will run the flow on their next login.
+--
+-- RLS is unchanged: profiles_select is public (USING true) and
+-- profiles_update is owner-only (USING auth.uid() = id), so only the user can
+-- stamp their own onboarded_at. The existing policies already cover the new
+-- column (see 20260413_enable_rls_all_tables.sql).
+--
+-- IF NOT EXISTS so the migration is idempotent (safe to re-run).
+
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS onboarded_at timestamptz;

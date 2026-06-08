@@ -75,9 +75,15 @@ type Props = {
    *  destination pills + cancel + single submit; no discard-confirm; no
    *  body-scroll lock; no overlay backdrop. mode is always "create". */
   inline?: boolean;
+  /** Inline-mode surface tint for the footer buttons. The default ("dark")
+   *  renders the "post privately" button white-on-transparent for the
+   *  canon-yellow profile bg. "cream" renders it ink-on-transparent so it
+   *  stays legible when the inline form is embedded on a cream surface —
+   *  used by the first-login OnboardingModal's Thoughts page. */
+  creamSurface?: boolean;
 };
 
-export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit, onClose, inline = false }: Props) {
+export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit, onClose, inline = false, creamSurface = false }: Props) {
   // Title: in create mode, pre-populate with a random prompt suggestion. In
   // edit modes, mirror the existing piece's completion. The user can edit
   // freely, or cycle to a different prompt via the ↻ affordance — cycling
@@ -420,8 +426,8 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
             disabled={submitting}
             style={{
               background: "transparent",
-              border: "2px solid #fff",
-              color: "#fff",
+              border: `2px solid ${creamSurface ? INK : "#fff"}`,
+              color: creamSurface ? INK : "#fff",
               borderRadius: 9999,
               padding: "10px 22px",
               fontFamily: "Inter, sans-serif",

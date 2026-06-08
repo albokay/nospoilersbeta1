@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import type { User } from "@supabase/supabase-js";
 
-type Profile = { id: string; username: string; is_seed: boolean; is_admin: boolean; bio: string | null };
+type Profile = { id: string; username: string; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null };
 
 type AuthCtx = {
   user: User | null;
@@ -11,6 +11,10 @@ type AuthCtx = {
   signUp: (email: string, password: string, username: string) => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
+  // Re-reads the current user's profile row into context. Called after the
+  // onboarding flow stamps onboarded_at so first-login routing/gating sees
+  // the fresh value without a full reload.
+  refreshProfile: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -21,17 +25,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId: string) {
-    // Try with bio first; if the bio column doesn't exist in this env
-    // (migration 20260510_profile_bio.sql not yet applied), fall back
-    // to the legacy select. Without this fallback, the failed select
-    // returns data=null and profile gets set to null — which cascades
-    // to /v3/journal and /profile rendering blank because both are
-    // gated on profile.username being defined.
+    // Column-tolerant cascade (same pattern as the bio fallback — see §6
+    // item 28 in HANDOFF). Try the fullest select first; if a newer column
+    // doesn't exist in this env yet, step down. Without this, a failed
+    // select returns data=null and profile gets set to null — which cascades
+    // to /journal and /profile rendering blank (both gate on
+    // profile.username) and breaks first-login routing.
+    //
+    //   tier 1: bio + onboarded_at  (20260510 + 20260608 applied)
+    //   tier 2: bio                 (only 20260510 applied)
+    //   tier 3: legacy              (neither applied)
+    let onboardedSupported = true;
     let res = await supabase
       .from("profiles")
-      .select("id, username, is_seed, is_admin, bio")
+      .select("id, username, is_seed, is_admin, bio, onboarded_at")
       .eq("id", userId)
       .single();
+    if (res.error) {
+      onboardedSupported = false;
+      res = await supabase
+        .from("profiles")
+        .select("id, username, is_seed, is_admin, bio")
+        .eq("id", userId)
+        .single();
+    }
     let bioSupported = !res.error;
     if (res.error) {
       res = await supabase
@@ -47,10 +64,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         is_seed: res.data.is_seed,
         is_admin: res.data.is_admin,
         bio: bioSupported ? (res.data.bio ?? null) : null,
+        onboarded_at: onboardedSupported ? (res.data.onboarded_at ?? null) : null,
       });
     } else {
       setProfile(null);
     }
+  }
+
+  async function refreshProfile() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) await loadProfile(session.user.id);
   }
 
   useEffect(() => {
@@ -132,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ user, profile, loading, signUp, signIn, signOut }}>
+    <Ctx.Provider value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </Ctx.Provider>
   );

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function EmptyProfileWelcome({ isTsp = false, showName, invitedMode = false, selfCreatedRoom = false }: { isTsp?: boolean; showName?: string; invitedMode?: boolean; selfCreatedRoom?: boolean }) {
+export default function EmptyProfileWelcome({ isTsp = false, showName, invitedMode = false, selfCreatedRoom = false, noRoomYet = false }: { isTsp?: boolean; showName?: string; invitedMode?: boolean; selfCreatedRoom?: boolean; noRoomYet?: boolean }) {
   const bodyStyle: React.CSSProperties = {
     margin: "0 0 14px",
     fontSize: 16,
@@ -79,6 +79,32 @@ export default function EmptyProfileWelcome({ isTsp = false, showName, invitedMo
           </p>
           <p style={{ ...bodyStyle, margin: 0 }}>
             All of your entries will appear in this space, creating an ongoing journal of all of your own writing.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // No-room-yet variant (onboarding spec §7): the user has a show tab but
+  // no friend room for it yet (not TSP, not freshly invited). Primary
+  // invitation is to start a friend room via the existing "+ friends"
+  // button in the journal toolbar. Sits AHEAD of the legacy "you haven't
+  // written for any friends yet" fallthrough in V3JournalPage.
+  if (noRoomYet && showName) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 0 48px" }}>
+        <div style={{ width: "min(400px, 100%)" }}>
+          <p style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 700, lineHeight: 1.4, color: "var(--dos-fg)", textAlign: "left" }}>
+            You&rsquo;re watching <em>{showName}</em>.
+          </p>
+          <p style={bodyStyle}>
+            Sidebar comes alive when you&rsquo;re watching alongside friends. Start a friend room for <em>{showName}</em> and invite the people you&rsquo;ll want to dig into it with &mdash; just click &ldquo;+ friends&rdquo; up top.
+          </p>
+          <p style={bodyStyle}>
+            Not ready for that yet? You can also use this space to write private posts. Only you will see them. Sometimes the best thinking happens when you write just for yourself&hellip;
+          </p>
+          <p style={{ ...bodyStyle, margin: 0 }}>
+            All of your entries will appear in this space, creating an ongoing journal of all of your writing. Click the write button to get started.
           </p>
         </div>
       </div>

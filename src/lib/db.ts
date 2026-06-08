@@ -1335,6 +1335,19 @@ export async function setCanonPin(
   if (error) throw error;
 }
 
+// Stamps profiles.onboarded_at = now() for the user. The durable marker that
+// the first-login onboarding modal + reveal have run (confirmed or skipped
+// through). Set once the paged modal flow ends; after that, normal post-login
+// routing applies and the TSP demo card surfaces in Watching-now.
+// Owner-only via the existing profiles_update RLS policy (auth.uid() = id).
+export async function markOnboarded(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ onboarded_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
 // === v2 profile-display layer (2026-05-11) =====================================
 //
 // shelfOverride pins a (user, show) to a specific shelf on the V2 profile UI

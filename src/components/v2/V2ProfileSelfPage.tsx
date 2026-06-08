@@ -17,6 +17,7 @@ import {
   deleteProfileThought,
   fetchAllFriendGroupsWithActivity,
   fetchPublicThreadsForUser,
+  markOnboarded,
   type V2BlurbKind,
   type ShelfName,
 } from "../../lib/db";
@@ -27,6 +28,7 @@ import SearchShows from "../SearchShows";
 import Modal from "../Modal";
 import ProfileThoughtsCompose, { type ProfileThoughtsComposeMode, type ProfileThoughtsSubmitPayload } from "./ProfileThoughtsCompose";
 import ProfileThoughtsCarousel from "./ProfileThoughtsCarousel";
+import OnboardingModal from "./OnboardingModal";
 import ZigzagDivider from "./ZigzagDivider";
 import SidebarAvatar from "../SidebarAvatar";
 import TreatedArt from "../TreatedArt";
@@ -75,6 +77,11 @@ const PROFILE_ADD_TILE: React.CSSProperties = {
 };
 
 type ShelfStatus = "watching" | "want" | "finished" | "stopped";
+
+// Default (editable, clearable) blurb seeded on the TSP card at onboarding
+// completion (sidebar_spec_onboarding_v03 §6).
+const DEFAULT_TSP_BLURB =
+  "Want to see a room in action? Take a look at this mock friend room for a mock show.";
 
 // Owner-view sort for "Thoughts on…" pieces. Per spec:
 //   - The currently-featured public piece (most recent by last_published_at)
@@ -541,7 +548,41 @@ function BlurbField({
 
 export default function V2ProfileSelfPage() {
   const navigate = useNavigate();
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
+
+  // === First-login onboarding (sidebar_spec_onboarding_v03) ================
+  // The paged modal + reveal open over this profile when the user has never
+  // onboarded (profiles.onboarded_at IS NULL). Seed/fictional users are
+  // excluded. onboardingDoneRef latches once the flow completes so the
+  // open-effect can't re-fire during the async markOnboarded + refreshProfile
+  // window (onboarded_at is still null until refreshProfile lands).
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const onboardingDoneRef = useRef(false);
+  // Bumped after onboarding completes to re-run the data bootstrap so the
+  // freshly-created shows / thought populate the profile behind the modal.
+  const [reloadKey, setReloadKey] = useState(0);
+  useEffect(() => {
+    if (authLoading || !user || !profile) return;
+    if (onboardingDoneRef.current) return;
+    if (profile.is_seed) return;
+    if (profile.onboarded_at == null) setOnboardingOpen(true);
+  }, [authLoading, user, profile]);
+
+  async function handleOnboardingComplete() {
+    onboardingDoneRef.current = true;
+    setOnboardingOpen(false);
+    if (user) {
+      try { await markOnboarded(user.id); } catch (e) { console.warn("markOnboarded failed:", e); }
+      // Seed the TSP card's default (editable) blurb — only if the user has a
+      // TSP row and hasn't already set/cleared one. Runs once (onboarding is
+      // once), so a later clear sticks. The card surfaces post-onboarding.
+      if (progress["tsp"] && !progress["tsp"].watchingQuote) {
+        try { await setShelfBlurb(user.id, "tsp", "watching_quote", DEFAULT_TSP_BLURB); } catch { /* best-effort */ }
+      }
+    }
+    try { await refreshProfile(); } catch { /* non-fatal */ }
+    setReloadKey((k) => k + 1);
+  }
 
   // Four distinct canon-block colors for the shelf section dividers (one
   // each before Watching Now / Want / Finished / Stopped). Picked once at
@@ -627,7 +668,7 @@ export default function V2ProfileSelfPage() {
         setThoughtsLoaded(true);
       });
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user?.id, reloadKey]);
 
   // Per-show friend-rooms lookup. Built from allUserRooms once, used by
   // shelf cards to render the friend-room CTA per show (single → button,
@@ -727,10 +768,18 @@ export default function V2ProfileSelfPage() {
   const buckets = useMemo(() => {
     const out: Record<ShelfStatus, string[]> = { watching: [], want: [], finished: [], stopped: [] };
     for (const sid of Object.keys(progress)) {
-      // TSP (Sidebar Protocol demo show) is a private onboarding/demo
-      // surface — never surface it on the public-facing profile, even
-      // for the profile owner. Stays filtered out of all four shelves.
-      if (sid === "tsp") continue;
+      // TSP (Sidebar Protocol demo show). Per the onboarding spec (§6) it
+      // surfaces in the OWNER's Watching-now shelf once they've onboarded —
+      // and only until they stop watching it (the stop-watching cascade sets
+      // stoppedWatching, at which point it drops off the profile entirely; it
+      // never appears on the Stopped shelf — the user "graduates" past it).
+      // Still hidden from the public/visitor profile unconditionally
+      // (V2ProfileVisitorPage filters it). A non-onboarded owner doesn't see
+      // it either (it's part of the post-onboarding furniture).
+      if (sid === "tsp") {
+        if (profile?.onboarded_at && !progress[sid]?.stoppedWatching) out.watching.push(sid);
+        continue;
+      }
       const p = progress[sid];
       const show = shows.find((s) => s.id === sid);
       out[classifyShow(p, show)].push(sid);
@@ -742,7 +791,7 @@ export default function V2ProfileSelfPage() {
     out.finished = sortShelf(out.finished, "finished", shows, progress);
     out.stopped = sortShelf(out.stopped, "stopped", shows, progress);
     return out;
-  }, [progress, shows]);
+  }, [progress, shows, profile?.onboarded_at]);
 
   // Finished shelf paging: when there are more than 6 finished shows,
   // collapse to the first 6 by default with a "see all N shows" button.
@@ -1521,6 +1570,12 @@ export default function V2ProfileSelfPage() {
           until artShowId is set (i.e. until progress data lands).
           See src/components/TreatedArt.tsx for per-mount semantics. */}
       <TreatedArt key={artShowId ?? "pending"} showId={artShowId} anchor="fixed" />
+
+      {/* First-login onboarding modal (sidebar_spec_onboarding_v03). Opens
+          over this profile for never-onboarded users; portals to body. */}
+      {onboardingOpen && user && (
+        <OnboardingModal onComplete={handleOnboardingComplete} />
+      )}
     </V2Layout>
   );
 }

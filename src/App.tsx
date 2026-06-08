@@ -383,6 +383,7 @@ function AppShell() {
   // during the session) navigate to /profile as intended.
   const hasSettledRef = useRef(false);
   const prevUserRef = useRef<typeof user>(null);
+  const justSignedInRef = useRef(false);
   useEffect(() => {
     if (authLoading) return;
     if (!hasSettledRef.current) {
@@ -391,11 +392,29 @@ function AppShell() {
       return;
     }
     if (prevUserRef.current === null && user !== null) {
-      navigate("/journal");
-      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+      // Defer the actual navigation until the profile row loads so we can
+      // branch on onboarding state (handled by the routing effect below).
+      justSignedInRef.current = true;
     }
     prevUserRef.current = user;
   }, [user, authLoading]);
+
+  // Post-login destination. Waits for the profile row so a never-onboarded
+  // user (onboarded_at == null) lands on /profile — where the first-login
+  // onboarding modal + self-assembling reveal play over V2ProfileSelfPage —
+  // while everyone else lands on their journal as before. If the profile load
+  // fails (dangling-token / RLS race, §6 items 11/15) we simply don't redirect,
+  // leaving the existing degraded-state behavior unchanged.
+  useEffect(() => {
+    if (authLoading) return;
+    if (!justSignedInRef.current) return;
+    if (!user) { justSignedInRef.current = false; return; }
+    if (!profile) return; // profile still loading — wait one more tick
+    justSignedInRef.current = false;
+    const dest = profile.onboarded_at == null ? "/profile" : "/journal";
+    navigate(dest);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+  }, [user, profile, authLoading, navigate]);
 
   // Replies-to-user for profile pill badge
   const [repliesToUser, setRepliesToUser] = useState<{ reply: Reply; thread: Thread; groupId?: string }[]>([]);
@@ -803,7 +822,11 @@ function AppShell() {
     // off /. Otherwise admin sign-in briefly sees profile=null → isAdmin=false
     // and bounces them off / before the profile load settles.
     if (user && profile && !isAdmin && p === "/") {
-      navigate("/journal", { replace: true });
+      // Never-onboarded users go to /profile (the onboarding modal lives
+      // there); everyone else to their journal. Admins are exempt from this
+      // bounce entirely so they can reach the admin panel via / — a
+      // never-onboarded admin can still trigger the modal by visiting /profile.
+      navigate(profile.onboarded_at == null ? "/profile" : "/journal", { replace: true });
     }
   }, [authLoading, user, profile, isAdmin, location.pathname, navigate]);
 
