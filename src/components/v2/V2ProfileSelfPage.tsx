@@ -89,10 +89,10 @@ const DEFAULT_TSP_BLURB =
 // scroll fully stops and holds for a beat BEFORE its shelf fades in (they used
 // to land near-simultaneously). A fade is given FADE + BEAT before the next
 // scroll, so the pulse finishes and holds before we move on.
-const REVEAL_FADE_MS = 1700;          // fade duration (doubled — slow, deliberate)
-const REVEAL_BEAT_MS = 1200;          // the explicit pause (the "BEAT")
-const REVEAL_SCROLL_SETTLE_MS = 1100; // time to let a smooth-scroll come to rest
-const REVEAL_START_DELAY_MS = 800;
+const REVEAL_FADE_MS = 850;           // fade duration
+const REVEAL_BEAT_MS = 600;           // the explicit pause (the "BEAT")
+const REVEAL_SCROLL_SETTLE_MS = 550;  // time to let a smooth-scroll come to rest
+const REVEAL_START_DELAY_MS = 400;
 // Interrupt sensitivity. A single wheel event must exceed this |deltaY| to
 // count as an intentional scroll — filters trackpad jitter / a barely-nudged
 // mouse that used to kill the sequence. Clicks + (non-modifier) keypresses
@@ -579,12 +579,6 @@ export default function V2ProfileSelfPage() {
   // Bumped after onboarding completes to re-run the data bootstrap so the
   // freshly-created shows / thought populate the profile behind the modal.
   const [reloadKey, setReloadKey] = useState(0);
-  useEffect(() => {
-    if (authLoading || !user || !profile) return;
-    if (onboardingDoneRef.current) return;
-    if (profile.is_seed) return;
-    if (profile.onboarded_at == null) setOnboardingOpen(true);
-  }, [authLoading, user, profile]);
 
   // --- The self-assembling reveal (spec §4) -------------------------------
   // Beats: 1 = thoughts panel, 2 = watching shelf, 3 = want shelf,
@@ -592,7 +586,15 @@ export default function V2ProfileSelfPage() {
   // means "normal" (everything visible); a number means the reveal is in
   // progress and content whose beat <= revealStep is shown. Runs once, right
   // after onboarding completes, and bows out on any genuine user input.
+  // revealStep: which beats are currently shown (0 = frame-only, 1..5 = beats,
+  //   null = everything visible / normal). Set to 0 the moment the modal opens
+  //   so the profile behind is frame-only from the start — nothing shows
+  //   through the modal and nothing fades OUT when it closes.
+  // revealActive: true ONLY while the timed beat sequence is running. Gates the
+  //   interrupt listeners (so clicks/scrolls INSIDE the modal don't count) and
+  //   selects the pulse animation vs. plain visible.
   const [revealStep, setRevealStep] = useState<number | null>(null);
+  const [revealActive, setRevealActive] = useState(false);
   const revealTimers = useRef<number[]>([]);
   const pendingRevealRef = useRef(false);
   const revealStartRef = useRef(0);
@@ -604,24 +606,20 @@ export default function V2ProfileSelfPage() {
   const revealShown = (beat: number) => revealStep === null || revealStep >= beat;
   const revealStyle = (beat: number): React.CSSProperties => {
     if (!revealShown(beat)) {
-      // Not yet revealed. A transition is kept so that a *cancel* (revealStep →
-      // null) fades the remaining content in gracefully instead of snapping.
-      return {
-        opacity: 0,
-        transform: "translateY(12px)",
-        transition: "opacity 500ms ease, transform 500ms ease",
-        pointerEvents: "none",
-      };
+      // Hidden — INSTANT, no transition. Dropping into frame-only (when the
+      // modal opens) must not animate existing content fading away; that was
+      // the pre-reveal flash. The reveal only ever fades content IN.
+      return { opacity: 0, transform: "translateY(12px)", pointerEvents: "none" };
     }
-    // Normal mode (or after a cancel): simply visible.
-    if (revealStep === null) {
-      return { opacity: 1, transition: "opacity 500ms ease, transform 500ms ease" };
+    if (!revealActive) {
+      // Normal mode, or after the reveal finishes / is cancelled: just visible.
+      return { opacity: 1 };
     }
-    // Mid-reveal, this beat just became visible → play the double-pulse fade.
+    // Mid-reveal, this beat is now visible → play the double-pulse fade-in.
     return { animation: `reveal-pulse-in ${REVEAL_FADE_MS}ms ease both` };
   };
   function clearRevealTimers() { revealTimers.current.forEach((t) => clearTimeout(t)); revealTimers.current = []; }
-  function endReveal() { clearRevealTimers(); setRevealStep(null); }
+  function endReveal() { clearRevealTimers(); setRevealActive(false); setRevealStep(null); }
   function scrollToRef(ref: React.RefObject<HTMLElement | null>) {
     const el = ref.current;
     if (!el) return;
@@ -632,6 +630,7 @@ export default function V2ProfileSelfPage() {
     clearRevealTimers();
     window.scrollTo({ top: 0, behavior: "auto" });
     setRevealStep(0);
+    setRevealActive(true);
     revealStartRef.current = performance.now();
     // Each fade and each scroll is its OWN discrete action. The gap AFTER an
     // action depends on its kind: a scroll gets SCROLL_SETTLE + BEAT (let it
@@ -648,7 +647,7 @@ export default function V2ProfileSelfPage() {
       { kind: "fade",   run: () => setRevealStep(4) },                                 // finished
       { kind: "scroll", run: () => window.scrollTo({ top: 0, behavior: "smooth" }) },  // back to top
       { kind: "fade",   run: () => setRevealStep(5) },                                 // top chrome
-      { kind: "end",    run: () => setRevealStep(null) },                              // done — fully interactive
+      { kind: "end",    run: () => { setRevealActive(false); setRevealStep(null); } }, // done — fully interactive
     ];
     let t = REVEAL_START_DELAY_MS;
     steps.forEach((step) => {
@@ -663,7 +662,7 @@ export default function V2ProfileSelfPage() {
   // aborts the sequence mid-way. We don't listen for 'scroll' so our own
   // smooth-scrolls can't self-cancel. On cancel, everything fades to visible.
   useEffect(() => {
-    if (revealStep === null) return;
+    if (!revealActive) return;
     const pastGrace = () => performance.now() - revealStartRef.current >= REVEAL_GRACE_MS;
     const onWheel = (e: WheelEvent) => {
       if (pastGrace() && Math.abs(e.deltaY) >= REVEAL_WHEEL_THRESHOLD) endReveal();
@@ -682,8 +681,24 @@ export default function V2ProfileSelfPage() {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("pointerdown", onPointer);
     };
-  }, [revealStep]);
+  }, [revealActive]);
   useEffect(() => () => clearRevealTimers(), []);
+
+  // Open the onboarding modal for never-onboarded users — and immediately drop
+  // the profile behind into frame-only (revealStep 0) so nothing shows through
+  // the modal's translucent backdrop / margins, and there's nothing to fade
+  // OUT when it closes (the reveal only ever fades content IN). revealActive
+  // stays false here, so interactions inside the modal don't trip the
+  // interrupt listeners.
+  useEffect(() => {
+    if (authLoading || !user || !profile) return;
+    if (onboardingDoneRef.current) return;
+    if (profile.is_seed) return;
+    if (profile.onboarded_at == null) {
+      setOnboardingOpen(true);
+      setRevealStep(0);
+    }
+  }, [authLoading, user, profile]);
 
   async function handleOnboardingComplete() {
     onboardingDoneRef.current = true;
