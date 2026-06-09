@@ -90,7 +90,7 @@ const DEFAULT_TSP_BLURB =
 // to land near-simultaneously). A fade is given FADE + BEAT before the next
 // scroll, so the pulse finishes and holds before we move on.
 const REVEAL_FADE_MS = 850;           // fade-in duration
-const REVEAL_BEAT_MS = 100;           // pause AFTER a fade finishes, before scrolling on
+const REVEAL_BEAT_MS = 200;           // pause AFTER a fade finishes, before scrolling on
 const REVEAL_SCROLL_SETTLE_MS = 550;  // time to let a smooth-scroll come to rest
 const REVEAL_SCROLL_BEAT_MS = 300;    // pause AFTER a scroll lands, before its shelf fades in
 const REVEAL_START_DELAY_MS = 400;
@@ -577,6 +577,10 @@ export default function V2ProfileSelfPage() {
   // window (onboarded_at is still null until refreshProfile lands).
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const onboardingDoneRef = useRef(false);
+  // Hides the V2Layout chrome logo while the onboarding modal is up (the modal
+  // shows its own logo). Set false as the modal fades so the chrome logo fades
+  // into the corner at the same time. Default false (normal visits show it).
+  const [chromeLogoHidden, setChromeLogoHidden] = useState(false);
 
   // --- The self-assembling reveal (spec §4) -------------------------------
   // Beats: 1 = thoughts panel, 2 = watching shelf, 3 = want shelf,
@@ -694,6 +698,7 @@ export default function V2ProfileSelfPage() {
     if (profile.onboarded_at == null) {
       setOnboardingOpen(true);
       setRevealStep(0);
+      setChromeLogoHidden(true);
     }
   }, [authLoading, user, profile]);
 
@@ -1119,6 +1124,7 @@ export default function V2ProfileSelfPage() {
         rightTo: "/journal",
       }}
       pairedHeaderHidden={!revealShown(5)}
+      chromeLogoHidden={chromeLogoHidden}
     >
       {/* === PROFILE IDENTITY ===
           Centered, full column width — visual parity with the visitor view
@@ -1745,6 +1751,7 @@ export default function V2ProfileSelfPage() {
         <OnboardingModal
           onComplete={handleOnboardingComplete}
           onRevealStart={handleRevealStart}
+          onFadeStart={() => setChromeLogoHidden(false)}
         />
       )}
     </V2Layout>

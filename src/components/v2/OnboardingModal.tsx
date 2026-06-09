@@ -18,8 +18,9 @@ import {
   type TVmazeShow,
 } from "../../lib/tvmaze";
 import EpisodeSelectInline from "../EpisodeSelectInline";
-import ProfileThoughtsCompose, { type ProfileThoughtsSubmitPayload } from "./ProfileThoughtsCompose";
+import ProfileThoughtsCompose, { type ProfileThoughtsSubmitPayload, type ProfileThoughtsComposeHandle } from "./ProfileThoughtsCompose";
 import Tooltip from "../Tooltip";
+import SidebarLogo from "../SidebarLogo";
 
 // ── Cream/ink palette (mirrors ComposeModal + ProfileThoughtsCompose) ───────
 const CREAM_BG = "#fef8ea";
@@ -27,7 +28,25 @@ const INK = "#2b2418";
 const INK_SOFT = "#5a4d3a";
 const INK_FAINT = "#8a7860";
 const RULE = "rgba(43, 36, 24, 0.32)";
-const ACCENT = "#355eb8"; // canon blue, for the primary "confirm" action
+const ACCENT = "#355eb8";        // canon blue (primary "confirm" action)
+const CANON_YELLOW = "#dea838";  // canon yellow (welcome text, dots, radios)
+const CANON_DARK_BLUE = "#1a3a4a";
+
+// Site-consistent field styling: pill radius, no hard outline, just a subtle
+// lift so it still reads as a field on the cream surface.
+const FIELD: React.CSSProperties = {
+  width: "100%",
+  background: "#fff",
+  color: INK,
+  border: "none",
+  borderRadius: 9999,
+  padding: "12px 18px",
+  fontFamily: "Inter, sans-serif",
+  fontSize: 15,
+  outline: "none",
+  boxSizing: "border-box",
+  boxShadow: "0 1px 3px rgba(43,36,24,0.12)",
+};
 
 // ── Shared debounced TVMaze search hook ─────────────────────────────────────
 function useTvSearch(query: string) {
@@ -75,44 +94,35 @@ function ShowSearchField({
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 160)}
         onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
-        style={{
-          width: "100%",
-          background: "#fff",
-          color: INK,
-          border: `2px solid ${RULE}`,
-          borderRadius: 0,
-          padding: "10px 12px",
-          fontFamily: "Inter, sans-serif",
-          fontSize: 15,
-          outline: "none",
-          boxSizing: "border-box",
-        }}
+        style={FIELD}
       />
       {open && !!query.trim() && (
         <div
           role="listbox"
           style={{
             position: "absolute",
-            top: "calc(100% + 4px)",
+            top: "calc(100% + 6px)",
             left: 0,
             right: 0,
             background: "#fff",
-            border: `2px solid ${RULE}`,
+            border: "none",
+            borderRadius: 18,
             zIndex: 20,
             maxHeight: 260,
             overflowY: "auto",
             boxShadow: "0 10px 30px rgba(0,0,0,0.18)",
+            padding: "6px 0",
           }}
         >
           {loading && (
-            <div style={{ padding: "8px 10px", fontSize: 13, color: INK_FAINT }}>Searching…</div>
+            <div style={{ padding: "8px 16px", fontSize: 13, color: INK_FAINT }}>Searching…</div>
           )}
           {!loading && results.map((tv) => (
             <div
               key={tv.id}
               role="option"
               onMouseDown={(e) => { e.preventDefault(); onPick(tv); setQuery(tv.name); setOpen(false); }}
-              style={{ padding: "8px 10px", cursor: "pointer", color: INK }}
+              style={{ padding: "8px 16px", cursor: "pointer", color: INK }}
               onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(43,36,24,0.06)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
@@ -123,10 +133,36 @@ function ShowSearchField({
             </div>
           ))}
           {!loading && results.length === 0 && (
-            <div style={{ padding: "8px 10px", fontSize: 13, color: INK_FAINT }}>No results found.</div>
+            <div style={{ padding: "8px 16px", fontSize: 13, color: INK_FAINT }}>No results found.</div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// A selected-show "chip" — pill, no outline, with an × to clear.
+function SelectedChip({ name, onClear, big = false }: { name: string; onClear: () => void; big?: boolean }) {
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+        background: "#fff", border: "none", borderRadius: 9999,
+        padding: big ? "12px 18px" : "11px 18px",
+        boxShadow: "0 1px 3px rgba(43,36,24,0.12)", boxSizing: "border-box",
+        minHeight: 46,
+      }}
+    >
+      <span style={{ fontWeight: big ? 700 : 600, color: INK, fontSize: big ? 16 : 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {name}
+      </span>
+      <button
+        onClick={onClear}
+        title="choose a different show"
+        style={{ background: "transparent", border: "none", color: INK_FAINT, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 4, flexShrink: 0 }}
+      >
+        ×
+      </button>
     </div>
   );
 }
@@ -167,24 +203,7 @@ function CanonRow({
     <div style={{ display: "flex", gap: 10, alignItems: "stretch", flexWrap: "wrap" }}>
       <div style={{ flex: "1 1 240px", minWidth: 200 }}>
         {selected ? (
-          <div
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-              background: "#fff", border: `2px solid ${RULE}`, padding: "10px 12px",
-              boxSizing: "border-box", minHeight: 46,
-            }}
-          >
-            <span style={{ fontWeight: 600, color: INK, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {selected.name}
-            </span>
-            <button
-              onClick={() => { setSelected(null); setSeasons(null); setBlurb(""); }}
-              title="choose a different show"
-              style={{ background: "transparent", border: "none", color: INK_FAINT, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 4 }}
-            >
-              ×
-            </button>
-          </div>
+          <SelectedChip name={selected.name} onClear={() => { setSelected(null); setSeasons(null); setBlurb(""); }} />
         ) : (
           <ShowSearchField placeholder="find a show" onPick={pick} />
         )}
@@ -196,16 +215,9 @@ function CanonRow({
           placeholder={selected ? "why it's great (optional)" : ""}
           onChange={(e) => setBlurb(e.target.value.slice(0, 280))}
           style={{
-            width: "100%",
+            ...FIELD,
             background: selected ? "#fff" : "rgba(43,36,24,0.04)",
-            color: INK,
-            border: `2px solid ${RULE}`,
-            borderRadius: 0,
-            padding: "10px 12px",
-            fontFamily: "Inter, sans-serif",
-            fontSize: 15,
-            outline: "none",
-            boxSizing: "border-box",
+            boxShadow: selected ? FIELD.boxShadow : "none",
             opacity: selected ? 1 : 0.5,
           }}
         />
@@ -214,7 +226,7 @@ function CanonRow({
   );
 }
 
-// ── Watch-status radio ──────────────────────────────────────────────────────
+// ── Watch-status radio: canon-yellow circle; selected → dark-blue inner dot ──
 function WatchRadio({
   selected,
   label,
@@ -229,15 +241,16 @@ function WatchRadio({
       onClick={onSelect}
       style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 15, color: INK }}
     >
-      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: `2px solid ${INK}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {selected && <div style={{ width: 10, height: 10, borderRadius: "50%", background: ACCENT }} />}
+      <div style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, background: CANON_YELLOW, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {selected && <div style={{ width: 11, height: 11, borderRadius: "50%", background: CANON_DARK_BLUE }} />}
       </div>
       {label}
     </div>
   );
 }
 
-// ── Bottom-bar page dots ────────────────────────────────────────────────────
+// ── Bottom-bar page dots (position indicator, not clickable). Same styling as
+//    the homepage "how it works" dots, but canon-yellow / faded-canon-yellow. ──
 function PageDots({ page, total }: { page: number; total: number }) {
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -245,11 +258,10 @@ function PageDots({ page, total }: { page: number; total: number }) {
         <div
           key={i}
           style={{
-            height: 8,
-            width: i === page ? 22 : 8,
-            borderRadius: 9999,
-            background: i === page ? INK : "rgba(43,36,24,0.25)",
-            transition: "width 220ms ease, background 220ms ease",
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            background: i === page ? CANON_YELLOW : "rgba(222,168,56,0.35)",
           }}
         />
       ))}
@@ -260,25 +272,27 @@ function PageDots({ page, total }: { page: number; total: number }) {
 // ── The modal ────────────────────────────────────────────────────────────────
 // Forward-only, three pages: Canon → Thoughts → Watching-now. Advancing (by
 // Confirm or "Not now") locks the page; there is no back/forward navigation.
-// After page 3 advances, onComplete fires (parent stamps onboarded_at, refreshes
-// data, and runs the reveal).
 export default function OnboardingModal({
   onComplete,
   onRevealStart,
+  onFadeStart,
 }: {
   // Runs while the modal is STILL fully visible: the parent stamps onboarded_at
   // and refetches/applies profile data so the frame behind is at final layout
   // before the modal fades (kills the post-close pop-in). Awaited.
   onComplete: () => void | Promise<void>;
-  // Fired AFTER the fade-out completes: the parent unmounts the modal and
-  // starts the beat sequence.
+  // Fired AFTER the fade-out completes: parent unmounts the modal + starts beats.
   onRevealStart?: () => void;
+  // Fired the instant the modal begins fading: parent fades the profile's chrome
+  // logo IN at the same time (cross-fade with the modal's own logo).
+  onFadeStart?: () => void;
 }) {
   const { user } = useAuth();
   const [page, setPage] = useState<0 | 1 | 2>(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const thoughtsRef = useRef<ProfileThoughtsComposeHandle>(null);
 
   // Canon page
   const [canonRows, setCanonRows] = useState<(CanonSelection | null)[]>([null, null, null]);
@@ -310,12 +324,13 @@ export default function OnboardingModal({
   }
 
   // Last page advanced. Finalize (writes + data refetch) while the modal is
-  // STILL visible so the frame behind reaches final layout, THEN fade the modal
-  // out, THEN hand off to the reveal beats.
+  // STILL visible so the frame behind reaches final layout, THEN fade out (and
+  // signal the chrome logo to fade in), THEN hand off to the reveal beats.
   async function finishFlow() {
     if (closing) return;
     setBusy(true);
     try { await onComplete(); } catch (e) { console.warn("onboarding finalize failed:", e); }
+    onFadeStart?.();
     setClosing(true);
     window.setTimeout(() => onRevealStart?.(), 450);
   }
@@ -375,10 +390,7 @@ export default function OnboardingModal({
           status: sel.tv.status === "Running" ? "Running" : "Ended",
         });
         // Canon = finished + pinned. Progress at the latest available episode
-        // (final season / last aired episode) makes classifyShow resolve to
-        // "finished"; the pin elevates it to canon. No shelf_override — natural
-        // progress-derived classification (lets the future canon-show-lifecycle
-        // spec move it off "finished" when new episodes air).
+        // makes classifyShow resolve to "finished"; the pin elevates to canon.
         const finalS = seasons.length;
         const finalE = seasons[finalS - 1] || 1;
         await upsertRewatchStatus(user.id, show.id, { s: finalS, e: finalE, isRewatching: false });
@@ -413,9 +425,7 @@ export default function OnboardingModal({
         status: watchingSelected.status === "Running" ? "Running" : "Ended",
       });
       await upsertRewatchStatus(user.id, show.id, entry);
-      // Pin to the watching-now shelf explicitly (spec §8.4 "placed on the
-      // watching-now shelf") so the card deterministically lands there for the
-      // reveal regardless of the picked progress.
+      // Pin to the watching-now shelf so the card deterministically lands there.
       try { await setShelfOverride(user.id, show.id, "watching"); } catch { /* best-effort */ }
       advance();
     } catch (e: any) {
@@ -425,7 +435,8 @@ export default function OnboardingModal({
     }
   }
 
-  // Thoughts page submit (both private + public allowed). insert → advance.
+  // Thoughts page: the modal's Confirm drives this. Always posts PUBLIC (private
+  // is discoverable later on the profile, not afforded here).
   async function submitThought(payload: ProfileThoughtsSubmitPayload) {
     if (!user) return;
     await insertProfileThought({
@@ -437,13 +448,13 @@ export default function OnboardingModal({
   }
 
   const HEADINGS = [
-    'Shows that exemplify "good TV" for you.',
+    "Shows that exemplify the best TV has to offer.",
     "Share a thought to start your profile.",
     "What are you watching now?",
   ];
   const SUBHEADINGS = [
-    "Pick up to three. They'll be pinned to your profile as canon.",
-    "It becomes the first thing people see on your profile — or keep it private, just for you.",
+    "Pick up to three — they'll be pinned to your profile as your canon.",
+    "It becomes the first thing people see on your profile.",
     "Just the show and where you are. You can start a friend room for it later.",
   ];
 
@@ -484,18 +495,41 @@ export default function OnboardingModal({
           overflow: "hidden",
         }}
       >
-        {/* Scrollable page body — small, centered content in a lot of space. */}
-        <div style={{ flex: 1, overflowY: "auto", display: "flex", justifyContent: "center" }}>
+        {/* Dynamic Sidebar logo, top-left of the modal. Fades out WITH the modal;
+            the profile's chrome logo fades IN at the same time (onFadeStart). */}
+        <div style={{ position: "absolute", top: 22, left: 28, zIndex: 5, pointerEvents: "none" }}>
+          <SidebarLogo scale={0.55} />
+        </div>
+
+        {/* Scrollable page body — content cluster vertically centered (margin
+            auto) in the large cream space; scrolls if it ever overflows. */}
+        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
           <div
             key={page}
             className="ob-page"
             style={{
               width: "min(620px, 92%)",
-              padding: "64px 0 40px",
+              margin: "auto",
+              padding: "40px 0",
               display: "flex",
               flexDirection: "column",
             }}
           >
+            {page === 0 && (
+              <p
+                style={{
+                  fontFamily: "Lora, Georgia, serif",
+                  fontWeight: 600,
+                  fontSize: 22,
+                  lineHeight: 1.35,
+                  color: CANON_YELLOW,
+                  textAlign: "center",
+                  margin: "0 0 20px",
+                }}
+              >
+                Welcome to Sidebar. Let&rsquo;s set you up to put you in a TV mood.
+              </p>
+            )}
             <h2
               style={{
                 fontFamily: "Lora, Georgia, serif",
@@ -522,12 +556,14 @@ export default function OnboardingModal({
               </div>
             )}
 
-            {/* ── Page 1: Thoughts ──────────────────────────────────────── */}
+            {/* ── Page 1: Thoughts (modal Confirm drives it; public-only) ── */}
             {page === 1 && (
               <ProfileThoughtsCompose
+                ref={thoughtsRef}
                 mode="create"
                 inline
                 creamSurface
+                hideActions
                 initialContent={null}
                 onSubmit={submitThought}
                 onClose={advance}
@@ -538,20 +574,7 @@ export default function OnboardingModal({
             {page === 2 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 {watchingSelected ? (
-                  <div
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-                      background: "#fff", border: `2px solid ${RULE}`, padding: "12px 14px",
-                    }}
-                  >
-                    <span style={{ fontWeight: 700, color: INK, fontSize: 16 }}>{watchingSelected.name}</span>
-                    <button
-                      onClick={() => { setWatchingSelected(null); setWatchingSeasons(null); setWatchChoice(null); }}
-                      style={{ background: "transparent", border: "none", color: INK_FAINT, cursor: "pointer", fontSize: 16, padding: 4 }}
-                    >
-                      ×
-                    </button>
-                  </div>
+                  <SelectedChip big name={watchingSelected.name} onClear={() => { setWatchingSelected(null); setWatchingSeasons(null); setWatchChoice(null); }} />
                 ) : (
                   <ShowSearchField placeholder="find a show" onPick={pickWatching} />
                 )}
@@ -581,7 +604,7 @@ export default function OnboardingModal({
                     {!seasonsLoading && watchingSeasons && watchChoice === "rewatch" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>
-                          <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4, color: INK }}>
+                          <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: INK }}>
                             What's the furthest you watched last time?
                           </label>
                           <EpisodeSelectInline
@@ -589,10 +612,11 @@ export default function OnboardingModal({
                             value={highestSel}
                             onChange={(v) => { setHighestSel(v); setProgressTouched(true); }}
                             disableAtOrBelow={progressTouched ? rewatchSel : undefined}
+                            style={SELECT_FIELD}
                           />
                         </div>
                         <div>
-                          <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4, color: INK }}>
+                          <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: INK }}>
                             How far are you on your rewatch?
                           </label>
                           <EpisodeSelectInline
@@ -601,6 +625,7 @@ export default function OnboardingModal({
                             onChange={(v) => { setRewatchSel(v); setProgressTouched(true); }}
                             disableAtOrAbove={progressTouched ? highestSel : undefined}
                             allowZero
+                            style={SELECT_FIELD}
                           />
                         </div>
                       </div>
@@ -608,14 +633,15 @@ export default function OnboardingModal({
 
                     {!seasonsLoading && watchingSeasons && watchChoice === "first" && (
                       <div>
-                        <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 4, color: INK }}>
-                          How far have you watched?
+                        <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: INK }}>
+                          What's the last episode you've watched?
                         </label>
                         <EpisodeSelectInline
                           seasons={watchingSeasons}
                           value={firstTimeSel}
                           onChange={(v) => { setFirstTimeSel(v); setProgressTouched(true); }}
                           allowZero
+                          style={SELECT_FIELD}
                         />
                       </div>
                     )}
@@ -628,14 +654,13 @@ export default function OnboardingModal({
           </div>
         </div>
 
-        {/* ── Bottom bar: dots (center) + Not-now/Confirm (right) ──────────── */}
+        {/* ── Bottom bar: dots (center) + Not-now / Confirm (right) ────────── */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "1fr auto 1fr",
             alignItems: "center",
-            padding: "16px 28px",
-            borderTop: `1px solid ${RULE}`,
+            padding: "18px 28px",
             background: CREAM_BG,
           }}
         >
@@ -662,14 +687,13 @@ export default function OnboardingModal({
               </button>
             </Tooltip>
 
-            {/* Page 1 (thoughts) has no Confirm here — the compose's own
-                post buttons advance. Pages 0 + 2 get a Confirm. */}
             {page === 0 && (
-              <button
-                onClick={confirmCanon}
-                disabled={busy || !canonHasSelection}
-                style={confirmStyle(busy || !canonHasSelection)}
-              >
+              <button onClick={confirmCanon} disabled={busy || !canonHasSelection} style={confirmStyle(busy || !canonHasSelection)}>
+                {busy ? "Saving…" : "Confirm"}
+              </button>
+            )}
+            {page === 1 && (
+              <button onClick={() => thoughtsRef.current?.submitPublic()} disabled={busy} style={confirmStyle(busy)}>
                 {busy ? "Saving…" : "Confirm"}
               </button>
             )}
@@ -689,6 +713,17 @@ export default function OnboardingModal({
     document.body
   );
 }
+
+// Episode <select> styling for the modal: pill, no hard outline, subtle lift.
+const SELECT_FIELD: React.CSSProperties = {
+  background: "#fff",
+  color: INK,
+  border: "none",
+  borderRadius: 9999,
+  padding: "11px 16px",
+  fontSize: 14,
+  boxShadow: "0 1px 3px rgba(43,36,24,0.12)",
+};
 
 function confirmStyle(disabled: boolean): React.CSSProperties {
   return {

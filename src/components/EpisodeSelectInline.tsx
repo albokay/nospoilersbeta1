@@ -10,11 +10,15 @@ export default function EpisodeSelectInline({
   allowZero = false,
   disableAtOrAbove,
   disableAtOrBelow,
+  style,
 }: {
   seasons: number[];
   value: { s: number; e: number };
   onChange: (v: { s: number; e: number }) => void;
   allowZero?: boolean;
+  /** Optional style overrides merged onto the <select> (e.g. radii/no-outline
+   *  for the onboarding modal). Callers that omit it keep the default look. */
+  style?: React.CSSProperties;
   // Rewatch pairing: options that are (s,e) >= this bound are disabled.
   // Used on the rewatch-position selector when highest is set — rewatch
   // must be strictly less than highest.
@@ -46,6 +50,7 @@ export default function EpisodeSelectInline({
         background: "#fff", color: "#000",
         border: "1px solid var(--dos-border)", borderRadius: 6,
         padding: "4px 8px", fontSize: 13, width: "100%",
+        ...style,
       }}
     >
       {allowZero && (

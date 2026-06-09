@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { X, RefreshCw } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import { pickProfileThoughtPrompt } from "../../lib/profileThoughtPrompts";
@@ -81,9 +81,15 @@ type Props = {
    *  stays legible when the inline form is embedded on a cream surface —
    *  used by the first-login OnboardingModal's Thoughts page. */
   creamSurface?: boolean;
+  /** Inline-mode: render the writing surface only, NO footer buttons. The
+   *  caller drives submission via the imperative `submitPublic()` handle
+   *  (used by the OnboardingModal, which supplies its own Confirm / Not-now). */
+  hideActions?: boolean;
 };
 
-export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit, onClose, inline = false, creamSurface = false }: Props) {
+export type ProfileThoughtsComposeHandle = { submitPublic: () => Promise<void> };
+
+const ProfileThoughtsCompose = forwardRef<ProfileThoughtsComposeHandle, Props>(function ProfileThoughtsCompose({ mode, initialContent, onSubmit, onClose, inline = false, creamSurface = false, hideActions = false }, ref) {
   // Title: in create mode, pre-populate with a random prompt suggestion. In
   // edit modes, mirror the existing piece's completion. The user can edit
   // freely, or cycle to a different prompt via the ↻ affordance — cycling
@@ -228,6 +234,11 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
       setSubmitting(false);
     }
   }
+
+  // Imperative submit for callers that supply their own buttons (OnboardingModal
+  // Thoughts page → Confirm). Always posts PUBLIC. Resolves on success (parent's
+  // onClose runs), rejects/no-ops with an inline error if the body is empty.
+  useImperativeHandle(ref, () => ({ submitPublic: () => handleSubmit("featured") }), []);
 
   // (actionLabel removed — replaced by the two-button footer that picks
   // destination implicitly; edit-public's "save" label is inlined into
@@ -411,6 +422,7 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
       <div style={{ width: "100%" }}>
         {styleBlock}
         {whitePaper}
+        {!hideActions && (
         <div
           style={{
             display: "flex",
@@ -458,8 +470,9 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
             post to your profile
           </button>
         </div>
+        )}
         {submitError && (
-          <div style={{ textAlign: "right", marginTop: 8, color: "var(--danger)", fontSize: 13 }}>
+          <div style={{ textAlign: hideActions ? "left" : "right", marginTop: 8, color: "var(--danger)", fontSize: 13 }}>
             {submitError}
           </div>
         )}
@@ -670,7 +683,9 @@ export default function ProfileThoughtsCompose({ mode, initialContent, onSubmit,
       )}
     </>
   );
-}
+});
+
+export default ProfileThoughtsCompose;
 
 // DestinationPill helper removed — the new two-button footer replaces
 // the radio-style pill UI. Each button picks its destination implicitly.

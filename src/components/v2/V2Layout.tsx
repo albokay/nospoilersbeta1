@@ -16,6 +16,10 @@ type V2LayoutProps = {
   // non-interactive) — used by the first-login onboarding reveal, which fades
   // this "top chrome" in as its final beat. Default false (always visible).
   pairedHeaderHidden?: boolean;
+  // When true, the top-left brand logo is faded out — used during first-login
+  // onboarding (the modal shows its OWN logo); set false as the modal fades so
+  // the chrome logo fades into the corner at the same time. Default false.
+  chromeLogoHidden?: boolean;
   // When true, V2Layout skips its centered max-width <main> and renders
   // children directly. Used by surfaces that manage their own page
   // geometry — e.g. V2ComposePage (manages its own root + animation),
@@ -47,7 +51,7 @@ type V2LayoutProps = {
 //   the user perceives one continuous frame as they navigate. Without this
 //   reuse the chrome jumped between pages because AppShell and v2 each had
 //   their own positioning code.
-export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = false, bareMain, viewerIsHome = true, children }: V2LayoutProps) {
+export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = false, chromeLogoHidden = false, bareMain, viewerIsHome = true, children }: V2LayoutProps) {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
 
@@ -98,7 +102,12 @@ export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = f
           <div className="topHeaderLeft">
             <h1
               className="brand"
-              style={{ margin: 0, cursor: "pointer", marginLeft: 16 }}
+              style={{
+                margin: 0, cursor: "pointer", marginLeft: 16,
+                opacity: chromeLogoHidden ? 0 : 1,
+                pointerEvents: chromeLogoHidden ? "none" : undefined,
+                transition: "opacity 450ms ease",
+              }}
               tabIndex={0}
               role="button"
               aria-label="Go to your journal"
