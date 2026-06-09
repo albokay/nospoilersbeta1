@@ -90,7 +90,7 @@ const DEFAULT_TSP_BLURB =
 // to land near-simultaneously). A fade is given FADE + BEAT before the next
 // scroll, so the pulse finishes and holds before we move on.
 const REVEAL_FADE_MS = 850;           // fade-in duration
-const REVEAL_BEAT_MS = 200;           // pause AFTER a fade finishes, before scrolling on
+const REVEAL_BEAT_MS = 300;           // pause AFTER a fade finishes, before scrolling on
 const REVEAL_SCROLL_SETTLE_MS = 550;  // time to let a smooth-scroll come to rest
 const REVEAL_SCROLL_BEAT_MS = 300;    // pause AFTER a scroll lands, before its shelf fades in
 const REVEAL_START_DELAY_MS = 400;

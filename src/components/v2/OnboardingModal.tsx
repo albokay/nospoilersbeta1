@@ -28,9 +28,8 @@ const INK = "#2b2418";
 const INK_SOFT = "#5a4d3a";
 const INK_FAINT = "#8a7860";
 const RULE = "rgba(43, 36, 24, 0.32)";
-const ACCENT = "#355eb8";        // canon blue (primary "confirm" action)
-const CANON_YELLOW = "#dea838";  // canon yellow (welcome text, dots, radios)
-const CANON_DARK_BLUE = "#1a3a4a";
+const ACCENT = "#355eb8";        // canon blue (primary "confirm" action + radio dot)
+const CANON_YELLOW = "#dea838";  // canon yellow (welcome text, dots, radios, wordmark)
 
 // Site-consistent field styling: pill radius, no hard outline, just a subtle
 // lift so it still reads as a field on the cream surface.
@@ -242,7 +241,7 @@ function WatchRadio({
       style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 15, color: INK }}
     >
       <div style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, background: CANON_YELLOW, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {selected && <div style={{ width: 11, height: 11, borderRadius: "50%", background: CANON_DARK_BLUE }} />}
+        {selected && <div style={{ width: 11, height: 11, borderRadius: "50%", background: ACCENT }} />}
       </div>
       {label}
     </div>
@@ -480,6 +479,7 @@ export default function OnboardingModal({
           to   { opacity: 1; transform: translateX(0); }
         }
         .ob-page { animation: ob-page-in 320ms cubic-bezier(0.22, 1, 0.36, 1); }
+        .ob-balance { text-wrap: balance; }
       `}</style>
       <div
         style={{
@@ -498,7 +498,7 @@ export default function OnboardingModal({
         {/* Dynamic Sidebar logo, top-left of the modal. Fades out WITH the modal;
             the profile's chrome logo fades IN at the same time (onFadeStart). */}
         <div style={{ position: "absolute", top: 22, left: 28, zIndex: 5, pointerEvents: "none" }}>
-          <SidebarLogo scale={0.55} />
+          <SidebarLogo scale={0.55} wordmarkTint={CANON_YELLOW} />
         </div>
 
         {/* Scrollable page body — content cluster vertically centered (margin
@@ -517,6 +517,7 @@ export default function OnboardingModal({
           >
             {page === 0 && (
               <p
+                className="ob-balance"
                 style={{
                   fontFamily: "Lora, Georgia, serif",
                   fontWeight: 600,
@@ -527,10 +528,11 @@ export default function OnboardingModal({
                   margin: "0 0 20px",
                 }}
               >
-                Welcome to Sidebar. Let&rsquo;s set you up to put you in a TV mood.
+                Welcome to Sidebar. Let&rsquo;s set you up to get you in a TV state of mind.
               </p>
             )}
             <h2
+              className="ob-balance"
               style={{
                 fontFamily: "Lora, Georgia, serif",
                 fontWeight: 600,

@@ -97,6 +97,13 @@ export interface SidebarLogoProps {
    * type-only wordmark. Default: 1 (no fade — full dynamic logo).
    */
   blocksOpacity?: number;
+  /**
+   * When set, the "sidebar" wordmark renders as a solid fill of this color
+   * (via a CSS mask of the wordmark PNG) instead of the default art. Used by
+   * the first-login OnboardingModal to show the wordmark in canon yellow on
+   * the cream surface. Default: undefined (the normal PNG renders).
+   */
+  wordmarkTint?: string;
 }
 
 export default function SidebarLogo({
@@ -104,6 +111,7 @@ export default function SidebarLogo({
   duration = 750,
   stagger = 40,
   blocksOpacity = 1,
+  wordmarkTint,
 }: SidebarLogoProps) {
   const [layout, setLayout] = useState<Layout | null>(null);
   const [settled, setSettled] = useState(false);
@@ -211,20 +219,46 @@ export default function SidebarLogo({
             />
           ))}
 
-        <img
-          src="/sidebar-logo.png"
-          alt="sidebar"
-          style={{
-            position: "absolute",
-            left: 45,
-            bottom: 0,
-            height: 52,
-            width: "auto",
-            display: "block",
-            zIndex: 6,
-            mixBlendMode: "normal",
-          }}
-        />
+        {wordmarkTint ? (
+          // Tinted wordmark: the PNG (aspect ~3.17) used as an alpha mask over a
+          // solid canon-colored box → exact-color "sidebar" type. Width = 52 *
+          // (3108/980) ≈ 165 to preserve the wordmark's proportions.
+          <div
+            aria-label="sidebar"
+            style={{
+              position: "absolute",
+              left: 45,
+              bottom: 0,
+              height: 52,
+              width: 165,
+              zIndex: 6,
+              background: wordmarkTint,
+              WebkitMaskImage: "url(/sidebar-logo.png)",
+              maskImage: "url(/sidebar-logo.png)",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "left bottom",
+              maskPosition: "left bottom",
+            }}
+          />
+        ) : (
+          <img
+            src="/sidebar-logo.png"
+            alt="sidebar"
+            style={{
+              position: "absolute",
+              left: 45,
+              bottom: 0,
+              height: 52,
+              width: "auto",
+              display: "block",
+              zIndex: 6,
+              mixBlendMode: "normal",
+            }}
+          />
+        )}
       </div>
     </div>
   );

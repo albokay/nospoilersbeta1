@@ -237,8 +237,12 @@ const ProfileThoughtsCompose = forwardRef<ProfileThoughtsComposeHandle, Props>(f
 
   // Imperative submit for callers that supply their own buttons (OnboardingModal
   // Thoughts page → Confirm). Always posts PUBLIC. Resolves on success (parent's
-  // onClose runs), rejects/no-ops with an inline error if the body is empty.
-  useImperativeHandle(ref, () => ({ submitPublic: () => handleSubmit("featured") }), []);
+  // onClose runs), no-ops with an inline error if the body is empty.
+  // NOTE: no deps array on purpose — the handle must wrap the CURRENT-render
+  // handleSubmit so it sees the latest title/body. An empty-deps array froze the
+  // first render's closure (body=""), which surfaced as a spurious "add a body"
+  // error even when the user had typed one.
+  useImperativeHandle(ref, () => ({ submitPublic: () => handleSubmit("featured") }));
 
   // (actionLabel removed — replaced by the two-button footer that picks
   // destination implicitly; edit-public's "save" label is inlined into
