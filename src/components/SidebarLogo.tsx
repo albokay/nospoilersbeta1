@@ -32,7 +32,7 @@ function darken10(hex: string): string {
 
 type BlockId = (typeof BLOCKS)[number]["id"];
 type Pos = { x: number; y: number };
-type Layout = Record<BlockId, Pos>;
+export type Layout = Record<BlockId, Pos>;
 
 // Four arrangements matched to reference screenshots.
 // Canvas: 280×148px. Block: 52×52px. Logo: left=45, bottom=0.
@@ -104,6 +104,12 @@ export interface SidebarLogoProps {
    * the cream surface. Default: undefined (the normal PNG renders).
    */
   wordmarkTint?: string;
+  /**
+   * Override the pool of block arrangements the logo randomly picks from.
+   * Default: the built-in ARRANGEMENTS (4). The OnboardingModal passes a
+   * 2-arrangement pool whose blocks never overlap the wordmark.
+   */
+  arrangements?: Layout[];
 }
 
 export default function SidebarLogo({
@@ -112,6 +118,7 @@ export default function SidebarLogo({
   stagger = 40,
   blocksOpacity = 1,
   wordmarkTint,
+  arrangements,
 }: SidebarLogoProps) {
   const [layout, setLayout] = useState<Layout | null>(null);
   const [settled, setSettled] = useState(false);
@@ -142,8 +149,8 @@ export default function SidebarLogo({
   }, []);
 
   useEffect(() => {
-    const target =
-      ARRANGEMENTS[Math.floor(Math.random() * ARRANGEMENTS.length)];
+    const pool = arrangements && arrangements.length ? arrangements : ARRANGEMENTS;
+    const target = pool[Math.floor(Math.random() * pool.length)];
 
     const scatter = {} as Layout;
     for (const b of BLOCKS) {

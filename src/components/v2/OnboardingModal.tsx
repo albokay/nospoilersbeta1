@@ -20,7 +20,15 @@ import {
 import EpisodeSelectInline from "../EpisodeSelectInline";
 import ProfileThoughtsCompose, { type ProfileThoughtsSubmitPayload, type ProfileThoughtsComposeHandle } from "./ProfileThoughtsCompose";
 import Tooltip from "../Tooltip";
-import SidebarLogo from "../SidebarLogo";
+import SidebarLogo, { type Layout as LogoLayout } from "../SidebarLogo";
+
+// Two block arrangements for the modal only — every block stays clear of the
+// "sidebar" wordmark zone (x:45–210, y:96+), so blocks never overlap the
+// logotype here. (Block 52×52; "green" is the gold block, "white" the cream.)
+const MODAL_LOGO_ARRANGEMENTS: LogoLayout[] = [
+  { white: { x: 52, y: 4 },  green: { x: 96, y: 30 },  lightBlue: { x: 150, y: 10 }, blue: { x: 200, y: 34 }, orange: { x: -12, y: 60 } },
+  { green: { x: -12, y: 64 }, white: { x: 70, y: 6 },   orange:   { x: 110, y: 30 }, lightBlue: { x: 158, y: 12 }, blue: { x: 214, y: 8 } },
+];
 
 // ── Cream/ink palette (mirrors ComposeModal + ProfileThoughtsCompose) ───────
 const CREAM_BG = "#fef8ea";
@@ -447,7 +455,7 @@ export default function OnboardingModal({
   }
 
   const HEADINGS = [
-    "Shows that exemplify the best TV has to offer.",
+    "Shows that represent the best TV has to offer.",
     "Share a thought to start your profile.",
     "What are you watching now?",
   ];
@@ -498,7 +506,7 @@ export default function OnboardingModal({
         {/* Dynamic Sidebar logo, top-left of the modal. Fades out WITH the modal;
             the profile's chrome logo fades IN at the same time (onFadeStart). */}
         <div style={{ position: "absolute", top: 22, left: 28, zIndex: 5, pointerEvents: "none" }}>
-          <SidebarLogo scale={0.55} wordmarkTint={CANON_YELLOW} />
+          <SidebarLogo scale={0.55} wordmarkTint={CANON_YELLOW} arrangements={MODAL_LOGO_ARRANGEMENTS} />
         </div>
 
         {/* Scrollable page body — content cluster vertically centered (margin
@@ -517,7 +525,6 @@ export default function OnboardingModal({
           >
             {page === 0 && (
               <p
-                className="ob-balance"
                 style={{
                   fontFamily: "Lora, Georgia, serif",
                   fontWeight: 600,
@@ -528,7 +535,8 @@ export default function OnboardingModal({
                   margin: "0 0 20px",
                 }}
               >
-                Welcome to Sidebar. Let&rsquo;s set you up to get you in a TV state of mind.
+                Welcome to Sidebar.<br />
+                Let&rsquo;s set things up to put you in a TV state of mind.
               </p>
             )}
             <h2
