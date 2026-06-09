@@ -264,13 +264,15 @@ function PageDots({ page, total }: { page: number; total: number }) {
 // data, and runs the reveal).
 export default function OnboardingModal({
   onComplete,
-  onClosingStart,
+  onRevealStart,
 }: {
-  onComplete: () => void;
-  // Fired the instant the modal begins its fade-out (before onComplete). Lets
-  // the parent put the profile behind into its "frame-only" reveal state while
-  // the modal fades, so there's no flash of the full profile.
-  onClosingStart?: () => void;
+  // Runs while the modal is STILL fully visible: the parent stamps onboarded_at
+  // and refetches/applies profile data so the frame behind is at final layout
+  // before the modal fades (kills the post-close pop-in). Awaited.
+  onComplete: () => void | Promise<void>;
+  // Fired AFTER the fade-out completes: the parent unmounts the modal and
+  // starts the beat sequence.
+  onRevealStart?: () => void;
 }) {
   const { user } = useAuth();
   const [page, setPage] = useState<0 | 1 | 2>(0);
@@ -307,12 +309,15 @@ export default function OnboardingModal({
     else finishFlow();
   }
 
-  // Last page advanced — fade the modal out, then hand off to the reveal.
-  function finishFlow() {
+  // Last page advanced. Finalize (writes + data refetch) while the modal is
+  // STILL visible so the frame behind reaches final layout, THEN fade the modal
+  // out, THEN hand off to the reveal beats.
+  async function finishFlow() {
     if (closing) return;
-    onClosingStart?.();
+    setBusy(true);
+    try { await onComplete(); } catch (e) { console.warn("onboarding finalize failed:", e); }
     setClosing(true);
-    window.setTimeout(() => onComplete(), 450);
+    window.setTimeout(() => onRevealStart?.(), 450);
   }
 
   async function pickWatching(tv: TVmazeShow) {

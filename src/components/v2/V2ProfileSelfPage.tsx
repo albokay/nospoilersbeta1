@@ -90,7 +90,7 @@ const DEFAULT_TSP_BLURB =
 // to land near-simultaneously). A fade is given FADE + BEAT before the next
 // scroll, so the pulse finishes and holds before we move on.
 const REVEAL_FADE_MS = 850;           // fade-in duration
-const REVEAL_BEAT_MS = 600;           // pause AFTER a fade finishes, before scrolling on
+const REVEAL_BEAT_MS = 100;           // pause AFTER a fade finishes, before scrolling on
 const REVEAL_SCROLL_SETTLE_MS = 550;  // time to let a smooth-scroll come to rest
 const REVEAL_SCROLL_BEAT_MS = 300;    // pause AFTER a scroll lands, before its shelf fades in
 const REVEAL_START_DELAY_MS = 400;
@@ -577,9 +577,6 @@ export default function V2ProfileSelfPage() {
   // window (onboarded_at is still null until refreshProfile lands).
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const onboardingDoneRef = useRef(false);
-  // Bumped after onboarding completes to re-run the data bootstrap so the
-  // freshly-created shows / thought populate the profile behind the modal.
-  const [reloadKey, setReloadKey] = useState(0);
 
   // --- The self-assembling reveal (spec §4) -------------------------------
   // Beats: 1 = thoughts panel, 2 = watching shelf, 3 = want shelf,
@@ -597,7 +594,6 @@ export default function V2ProfileSelfPage() {
   const [revealStep, setRevealStep] = useState<number | null>(null);
   const [revealActive, setRevealActive] = useState(false);
   const revealTimers = useRef<number[]>([]);
-  const pendingRevealRef = useRef(false);
   const revealStartRef = useRef(0);
   const thoughtsRef = useRef<HTMLElement | null>(null);
   const watchingRef = useRef<HTMLElement | null>(null);
@@ -701,23 +697,32 @@ export default function V2ProfileSelfPage() {
     }
   }, [authLoading, user, profile]);
 
+  // Called while the modal is STILL fully visible (before it fades). Stamps
+  // onboarded_at, seeds the TSP blurb, refreshes the profile, and — crucially —
+  // refetches + applies the new profile data so the frame behind the modal is
+  // at its FINAL layout (stats line, zigzag, shelf heights all settled) before
+  // the modal dissolves. That kills the post-close pop-in / page-length jump.
+  // revealStep is already 0 (frame-only) from the open effect, so the loaded
+  // content stays hidden, ready for the reveal's fade-ins.
   async function handleOnboardingComplete() {
     onboardingDoneRef.current = true;
-    setOnboardingOpen(false);
+    setRevealStep(0);
     if (user) {
       try { await markOnboarded(user.id); } catch (e) { console.warn("markOnboarded failed:", e); }
-      // Seed the TSP card's default (editable) blurb — only if the user has a
-      // TSP row and hasn't already set/cleared one. Runs once (onboarding is
-      // once), so a later clear sticks. The card surfaces post-onboarding.
       if (progress["tsp"] && !progress["tsp"].watchingQuote) {
         try { await setShelfBlurb(user.id, "tsp", "watching_quote", DEFAULT_TSP_BLURB); } catch { /* best-effort */ }
       }
+      try { await refreshProfile(); } catch { /* non-fatal */ }
+      try { applyProfileData(await fetchAllProfileData(user.id)); } catch (e) { console.warn("profile refetch failed:", e); }
     }
-    try { await refreshProfile(); } catch { /* non-fatal */ }
-    // Run the reveal once the refreshed data lands (bootstrap effect's .then
-    // checks this flag). revealStep is already 0 from the modal's onClosingStart.
-    pendingRevealRef.current = true;
-    setReloadKey((k) => k + 1);
+  }
+
+  // Called after the modal has finished fading out. The frame is already fully
+  // laid out (handleOnboardingComplete loaded the data), so we just unmount the
+  // now-invisible modal and start the beat sequence.
+  function handleRevealStart() {
+    setOnboardingOpen(false);
+    startReveal();
   }
 
   // Four distinct canon-block colors for the shelf section dividers (one
@@ -777,49 +782,46 @@ export default function V2ProfileSelfPage() {
   // "go to your public writing" CTA on shelf cards.
   const [publicWritingShows, setPublicWritingShows] = useState<Set<string>>(new Set());
 
+  // Fetch the full profile data set. Pure (no state writes) so it can be
+  // awaited from both the mount effect AND the onboarding-complete path.
+  async function fetchAllProfileData(uid: string) {
+    const [s, p, t, rooms, publicThreads] = await Promise.all([
+      fetchShows(),
+      fetchProgress(uid),
+      fetchProfileThoughtsForOwner(uid),
+      fetchAllFriendGroupsWithActivity(uid),
+      fetchPublicThreadsForUser(uid),
+    ]);
+    return {
+      shows: s,
+      progress: p,
+      thoughts: t,
+      rooms,
+      publicWriting: new Set(publicThreads.filter((th) => !th.isDeleted).map((th) => th.showId)),
+    };
+  }
+  function applyProfileData(d: Awaited<ReturnType<typeof fetchAllProfileData>>) {
+    setShows(d.shows);
+    setProgress(d.progress);
+    setThoughts(d.thoughts);
+    setAllUserRooms(d.rooms);
+    setPublicWritingShows(d.publicWriting);
+    setThoughtsLoaded(true);
+  }
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    Promise.all([
-      fetchShows(),
-      fetchProgress(user.id),
-      fetchProfileThoughtsForOwner(user.id),
-      fetchAllFriendGroupsWithActivity(user.id),
-      fetchPublicThreadsForUser(user.id),
-    ])
-      .then(([s, p, t, rooms, publicThreads]) => {
-        if (cancelled) return;
-        setShows(s);
-        setProgress(p);
-        setThoughts(t);
-        setAllUserRooms(rooms);
-        setPublicWritingShows(
-          new Set(publicThreads.filter((th) => !th.isDeleted).map((th) => th.showId)),
-        );
-        setThoughtsLoaded(true);
-        // Onboarding just finished + data is now in state → run the reveal.
-        if (pendingRevealRef.current) {
-          pendingRevealRef.current = false;
-          // Defer one tick so the freshly-rendered shelves exist as scroll
-          // targets before the timed beats start.
-          requestAnimationFrame(() => startReveal());
-        }
-      })
+    fetchAllProfileData(user.id)
+      .then((d) => { if (!cancelled) applyProfileData(d); })
       .catch((err) => {
         if (cancelled) return;
         console.warn("V2ProfileSelfPage bootstrap failed:", err);
-        // Unblock empty-state rendering even on partial failure so the user
-        // can write a new piece. fetchProfileThoughtsForOwner failures will
-        // surface again on the next mount.
+        // Unblock empty-state rendering even on partial failure.
         setThoughtsLoaded(true);
-        // Don't strand the page in frame-only state if the refetch failed.
-        if (pendingRevealRef.current) {
-          pendingRevealRef.current = false;
-          endReveal();
-        }
       });
     return () => { cancelled = true; };
-  }, [user?.id, reloadKey]);
+  }, [user?.id]);
 
   // Per-show friend-rooms lookup. Built from allUserRooms once, used by
   // shelf cards to render the friend-room CTA per show (single → button,
@@ -1742,7 +1744,7 @@ export default function V2ProfileSelfPage() {
       {onboardingOpen && user && (
         <OnboardingModal
           onComplete={handleOnboardingComplete}
-          onClosingStart={() => { revealStartRef.current = performance.now(); setRevealStep(0); }}
+          onRevealStart={handleRevealStart}
         />
       )}
     </V2Layout>
