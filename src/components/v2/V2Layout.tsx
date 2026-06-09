@@ -243,6 +243,7 @@ export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = f
               style={{
                 display: "flex",
                 alignItems: "baseline",
+                justifyContent: "center",
                 gap: 16,
                 marginBottom: 12,
                 flexWrap: "wrap",
@@ -252,9 +253,13 @@ export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = f
                 transition: "opacity 650ms ease",
               }}
             >
+              {/* Centered within the content column (matches the centered
+                  profile content below). marginLeft:0 neutralizes the
+                  .journalShift +56px so the pair is truly centered, not
+                  offset right. */}
               <div
                 className="title profile-journal-heading"
-                style={{ fontSize: 22 }}
+                style={{ fontSize: 22, marginLeft: 0 }}
               >
                 {pairedHeader.left}
               </div>

@@ -991,8 +991,11 @@ export default function V3JournalPage({
              compose, entries) renders in its usual form. */}
           <div className="hangLContent" style={{ paddingTop: 0 }}>
             <section style={{ marginTop: 0 }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap", marginTop: 0, marginBottom: 12, minHeight: 28 }}>
-                <div className="title profile-journal-heading" style={{ fontSize: 22 }}>this is your journal</div>
+              {/* Centered within the content column to match the profile's
+                  "this is your public profile" pair placement (the flip).
+                  marginLeft:0 neutralizes the .journalShift +56px offset. */}
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 16, flexWrap: "wrap", marginTop: 0, marginBottom: 12, minHeight: 28 }}>
+                <div className="title profile-journal-heading" style={{ fontSize: 22, marginLeft: 0 }}>this is your journal</div>
                 {/* Restored from v2: companion link to the v2 self profile
                     page (/v2/profile). Lives next to "this is your journal"
                     so the user can hop between their two homes. */}
