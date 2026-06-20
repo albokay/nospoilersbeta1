@@ -33,6 +33,7 @@ import {
   createPeopleGroup,
   setShowVote,
   startShowRoom,
+  createPeopleGroupInvite,
   type Show,
   type GroupDashboardShow,
 } from "../lib/db";
@@ -77,6 +78,9 @@ export default function DashboardPage() {
 
   // Invite / create-group modal
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState<string[]>([""]);
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteLinks, setInviteLinks] = useState<{ email: string; link?: string; error?: string }[] | null>(null);
 
   // §9 click-model popover (group context). mode captured at click time.
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq" } | null>(null);
@@ -199,17 +203,38 @@ export default function DashboardPage() {
     closeSearch();
   }
 
-  async function createGroupAndEnter() {
-    if (!user) return;
+  function openInvite() {
+    setInviteEmails([""]);
+    setInviteLinks(null);
+    setInviteOpen(true);
+  }
+
+  // INVITE FRIENDS: a new group forms and an invite link is minted per email.
+  // (Email delivery is CP5b; for now the inviter shares the link in-app.)
+  async function sendInvites() {
+    if (!user || inviteSending) return;
+    const emails = inviteEmails.map((e) => e.trim()).filter(Boolean);
+    setInviteSending(true);
     try {
       const id = await createPeopleGroup();
+      const links: { email: string; link?: string; error?: string }[] = [];
+      for (const email of emails) {
+        try {
+          const token = await createPeopleGroupInvite(id, email);
+          links.push({ email, link: `${window.location.origin}/group-invite/${token}` });
+        } catch (e: any) {
+          links.push({ email, error: e?.message || "failed" });
+        }
+      }
+      setInviteLinks(links);
       const rail = await loadRail(user.id);
       setRailGroups(rail);
-      setActiveGroupId(id);
     } catch (e) {
-      console.error("[dashboard] create group failed", e);
+      console.error("[dashboard] create group / invites failed", e);
+      setInviteLinks([{ email: "", error: "Could not create the group." }]);
+    } finally {
+      setInviteSending(false);
     }
-    setInviteOpen(false);
   }
 
   function openShow(_showId: string) {
@@ -350,7 +375,7 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ textAlign: "center", marginTop: 72 }}>
-            <button style={invitePill} onClick={() => setInviteOpen(true)}>INVITE FRIENDS</button>
+            <button style={invitePill} onClick={openInvite}>INVITE FRIENDS</button>
           </div>
         </div>
       )}
@@ -419,12 +444,49 @@ export default function DashboardPage() {
             <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: -2, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
               Email a friend to<br />start a watch group:
             </h1>
-            <div style={{ color: C.midnight, fontSize: 12, textAlign: "center", marginBottom: 20, opacity: 0.85 }}>
-              Email invites land in CP5 — for now this creates the group.
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <button style={invitePill} onClick={createGroupAndEnter}>create group</button>
-            </div>
+
+            {!inviteLinks ? (
+              <>
+                {inviteEmails.map((email, i) => (
+                  <input
+                    key={i}
+                    value={email}
+                    onChange={(e) => setInviteEmails((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
+                    placeholder="email"
+                    style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, marginBottom: 10 }}
+                  />
+                ))}
+                <button
+                  onClick={() => setInviteEmails((prev) => [...prev, ""])}
+                  style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.cream, color: C.midnight, fontSize: 20, cursor: "pointer", marginTop: 2 }}
+                >+</button>
+                <div style={{ color: C.midnight, fontSize: 11, marginTop: 16, opacity: 0.8 }}>
+                  CP5a: sending mints a shareable invite link (email delivery is CP5b).
+                </div>
+                <div style={{ textAlign: "right", marginTop: 16 }}>
+                  <button style={{ ...invitePill, opacity: inviteSending ? 0.6 : 1 }} disabled={inviteSending} onClick={sendInvites}>
+                    {inviteSending ? "creating…" : "send invite"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ color: C.midnight, fontSize: 13, marginBottom: 12 }}>
+                  Group created. Share each link with that person — they open it (signed in with that email) to join:
+                </div>
+                {inviteLinks.map((r, i) => (
+                  <div key={i} style={{ background: C.cream, borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.midnight }}>{r.email || "—"}</div>
+                    {r.link
+                      ? <div style={{ fontSize: 11, color: C.blue, wordBreak: "break-all", marginTop: 4 }}>{r.link}</div>
+                      : <div style={{ fontSize: 11, color: C.red, marginTop: 4 }}>{r.error}</div>}
+                  </div>
+                ))}
+                <div style={{ textAlign: "right", marginTop: 12 }}>
+                  <button style={invitePill} onClick={() => setInviteOpen(false)}>done</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

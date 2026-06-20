@@ -53,6 +53,7 @@ const ResetPasswordPage = lazy(() => import("./components/ResetPasswordPage"));
 // Restructure (groups + show rooms): the new green home. Working route that
 // coexists with the live site until the gated cutover promotes it to home.
 const DashboardPage = lazy(() => import("./components/DashboardPage"));
+const GroupInviteAcceptPage = lazy(() => import("./components/GroupInviteAcceptPage"));
 
 // Full-screen fallback for lazy chunks. Matches the canon palette so the
 // transition from main bundle → lazy chunk doesn't flash white. Only
@@ -204,6 +205,10 @@ export default function App() {
   // surfaces; redirects to "/" when signed-out (handled inside DashboardPage).
   if (pathParts[0] === "dashboard" && !pathParts[1]) {
     return <Suspense fallback={<RouteFallback />}><DashboardPage /></Suspense>;
+  }
+  // Restructure people-group invite accept (separate from /invite/:token).
+  if (pathParts[0] === "group-invite" && pathParts[1]) {
+    return <Suspense fallback={<RouteFallback />}><GroupInviteAcceptPage token={pathParts[1]} /></Suspense>;
   }
   return <AppShell />;
 }

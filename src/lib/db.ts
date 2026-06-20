@@ -2400,6 +2400,56 @@ export async function fetchRoomForGroupShow(groupId: string, showId: string): Pr
   return data?.id ?? null;
 }
 
+// ── People-group invitations (restructure) ──────────────────────────────────
+
+/** Create (or reuse) a people-group invite for an email. Returns the token. */
+export async function createPeopleGroupInvite(groupId: string, email: string): Promise<string> {
+  await checkRateLimit('send_invite', 6, 60);
+  const { data, error } = await supabase.rpc("create_people_group_invitation", {
+    p_group_id: groupId, p_email: email,
+  });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "create invite failed");
+  return data.token as string;
+}
+
+export type GroupInviteInfo = {
+  groupId: string;
+  inviterName: string;
+  memberNames: string[];
+  expiresAt: number;
+};
+
+/** Look up a people-group invite by token (for the accept page). */
+export async function getPeopleGroupInvite(
+  token: string
+): Promise<{ ok: true; info: GroupInviteInfo } | { ok: false; error: string }> {
+  const { data, error } = await supabase.rpc("get_people_group_invitation", { p_token: token });
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.ok === false) return { ok: false, error: data?.error || "invalid" };
+  return {
+    ok: true,
+    info: {
+      groupId: data.group_id,
+      inviterName: data.inviter_name ?? "someone",
+      memberNames: data.member_names ?? [],
+      expiresAt: new Date(data.expires_at).getTime(),
+    },
+  };
+}
+
+/** Accept a people-group invite (recipient-bound). */
+export async function acceptPeopleGroupInvite(
+  token: string
+): Promise<{ ok: true; groupId: string } | { ok: false; error: string; maskedEmail?: string }> {
+  const { data, error } = await supabase.rpc("accept_people_group_invitation", { p_token: token });
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.ok === false) {
+    return { ok: false, error: data?.error || "failed", maskedEmail: data?.invitee_email_masked };
+  }
+  return { ok: true, groupId: data.group_id };
+}
+
 // Per-member opt-in/progress/writing for one pooled show in a group.
 export type GroupDashboardMember = {
   userId: string;
