@@ -87,6 +87,11 @@ type ComposeFormProps = {
    *  top-right corner. Default false (standalone page renders both the
    *  fixed top-right × AND the action-row "× not now"). */
   hideTopRightClose?: boolean;
+  /** Restructure show room: when set, the destination choice is limited to
+   *  THIS friend room ("this friend room") + "keep it private" — no "everyone"
+   *  (public) and no other groups. Live compose leaves this undefined and is
+   *  unaffected. */
+  restrictGroupId?: string;
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -101,7 +106,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false },
+  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -694,13 +699,13 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               share the width of the widest one's content (no dead space
               on the right when titles are short). */}
           <div style={{ display: "grid", gridTemplateColumns: "max-content", justifyContent: "center", gap: 8 }}>
-            {groups.map((g) => (
+            {(restrictGroupId ? groups.filter((g) => g.id === restrictGroupId) : groups).map((g) => (
               <DestinationPill
                 key={g.id}
                 selected={destination === g.id}
                 bg="#adc8d7"
                 fg="#fff"
-                title={<>my friends: <em style={{ fontStyle: "italic", fontWeight: 700 }}>{g.name}</em></>}
+                title={restrictGroupId ? "this friend room" : <>my friends: <em style={{ fontStyle: "italic", fontWeight: 700 }}>{g.name}</em></>}
                 onClick={() => setDestination(g.id)}
               />
             ))}
@@ -711,13 +716,15 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               title="keep it private"
               onClick={() => setDestination("private")}
             />
-            <DestinationPill
-              selected={destination === "public"}
-              bg="#dea838"
-              fg="#fff"
-              title="everyone"
-              onClick={() => setDestination("public")}
-            />
+            {!restrictGroupId && (
+              <DestinationPill
+                selected={destination === "public"}
+                bg="#dea838"
+                fg="#fff"
+                title="everyone"
+                onClick={() => setDestination("public")}
+              />
+            )}
           </div>
 
         </div>

@@ -20,7 +20,7 @@
  *   • clicking a show into its room                           → CP4
  */
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { X, Settings, UsersRound, Pencil } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
@@ -60,6 +60,7 @@ type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[] };
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
@@ -137,6 +138,13 @@ export default function DashboardPage() {
       setGroupShows([]);
     }
   }, []);
+
+  // Active group is driven by the URL (?g=<id>) so it survives navigation —
+  // e.g. the show room's × returns here with ?g set and re-enters the group.
+  useEffect(() => {
+    const g = new URLSearchParams(location.search).get("g");
+    setActiveGroupId(g);
+  }, [location.search]);
 
   useEffect(() => {
     if (!activeGroupId) { setGroupShows([]); return; }
@@ -383,8 +391,8 @@ export default function DashboardPage() {
         groups={railGroups}
         selfUserId={selfUserId}
         activeGroupId={activeGroupId}
-        onEnter={setActiveGroupId}
-        onExit={() => setActiveGroupId(null)}
+        onEnter={(id) => navigate(`/dashboard?g=${id}`)}
+        onExit={() => navigate("/dashboard")}
       />
 
       {/* Search overlay (shared by both contexts) */}

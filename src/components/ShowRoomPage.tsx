@@ -1,61 +1,53 @@
 /**
  * ShowRoomPage — the restructure (group × show) room (CP4a).
  *
- * Two tabs:
- *   • friend room — the group's feed + season map + dice + nudges, reusing
- *     V2RoomFeed / V2RoomMap (which work against any friend_groups row; the
- *     new rooms ARE parented friend_groups rows).
- *   • private writing — the user's global private journal for this show.
+ * Two tabs (friend room / private writing), reusing V2RoomFeed / V2RoomMap for
+ * the friend feed + season map + dice + nudges. "write" opens the existing
+ * ComposeForm, constrained (restrictGroupId) to THIS friend room + private —
+ * no public, no other groups. Mounted at /show-room/:roomId; legacy
+ * /room/:groupId (V2FriendRoomPage) is left untouched.
  *
- * Compose is destination-less: "write" publishes ONLY to the current tab —
- * the friend room, or your private journal. No destination picker, no
- * cross-group publishing (the old ComposeForm's picker is retired here).
- *
- * Mounted at /show-room/:roomId, separate from the legacy /room/:groupId
- * (V2FriendRoomPage), which stays untouched for existing friend rooms.
- *
- * Deferred to CP4b (marked inline): rating capture (read-only dice for now),
- * the dashboard private-only standalone, the in-room progress picker, and the
- * notification-signal polish (green/red dots, new-entry outlines).
+ * Deferred to CP4b (inline): rating capture (read-only dice for now), the
+ * dashboard private-only standalone, the in-room progress picker, notification
+ * dots, polls/SIKW/highlights stickies.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { X, SquarePen } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
-  fetchShows, fetchProgress, fetchRoomMapData, fetchGroupThreads,
-  fetchUserThreads, insertThread, addThreadToGroup,
+  fetchShows, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember } from "./v2/V2RoomMap";
+import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import SidebarLogo from "./SidebarLogo";
 
 const C = { green: "#7ABD8E", sky: "#ADC8D7", blue: "#355EB8", yellow: "#DEA838", cream: "#FEF8EA", midnight: "#1A3A4A" };
 const LORA = '"Lora", Georgia, serif';
+const HEADER_H = 92;
 type Tab = "friend" | "private";
 
 export default function ShowRoomPage({ roomId }: { roomId: string }) {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const feedRef = useRef<V2RoomFeedHandle>(null);
+  const composeFormRef = useRef<ComposeFormHandle>(null);
 
   const [show, setShow] = useState<Show | null>(null);
+  const [parentGroupId, setParentGroupId] = useState<string | null>(null);
   const [progressForShow, setProgressForShow] = useState<ProgressEntry | null>(null);
   const [feedEntries, setFeedEntries] = useState<V2RoomFeedEntry[]>([]);
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
   const [privateEntries, setPrivateEntries] = useState<Thread[]>([]);
   const [tab, setTab] = useState<Tab>("friend");
   const [loading, setLoading] = useState(true);
-
-  // Compose (destination-less)
   const [composeOpen, setComposeOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [posting, setPosting] = useState(false);
 
   // The reused V2 feed/map expect the group-context palette.
   useEffect(() => {
@@ -69,12 +61,13 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
     try {
       const { data: roomRow, error: roomErr } = await supabase
         .from("friend_groups")
-        .select("id, show_id, deleted_at")
+        .select("id, show_id, parent_group_id, deleted_at")
         .eq("id", roomId)
         .maybeSingle();
       if (roomErr) throw roomErr;
       if (!roomRow || roomRow.deleted_at) throw new Error("room not found");
       const showId = roomRow.show_id as string;
+      setParentGroupId(roomRow.parent_group_id ?? null);
 
       const [allShows, progressMap, roomMapData] = await Promise.all([
         fetchShows(), fetchProgress(user.id), fetchRoomMapData(roomId),
@@ -83,7 +76,7 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
       const progress = progressMap[showId] ?? null;
       const eff = effectiveProgress(progress);
 
-      const empty = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number>, latestVisibleReplyAt: {}, hiddenCounts: {}, latestHiddenReplyAt: {} };
+      const empty = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number> };
       const gr: any = eff ? await fetchGroupThreads(roomId, eff.s, eff.e, user.id) : empty;
 
       const departed = new Set(roomMapData.filter((m) => m.isDeparted).map((m) => m.username ?? "").filter(Boolean));
@@ -127,26 +120,9 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
     load();
   }, [authLoading, user, load, navigate]);
 
-  async function post() {
-    if (!user || !show || posting || !title.trim() || !body.trim()) return;
-    const eff = effectiveProgress(progressForShow) ?? { s: progressForShow?.s ?? 0, e: progressForShow?.e ?? 0 };
-    const authorName = profile?.username ?? mapMembers.find((m) => m.userId === user.id)?.username ?? "you";
-    setPosting(true);
-    try {
-      const preview = body.slice(0, 240) + (body.length > 240 ? "…" : "");
-      const thread = await insertThread({
-        showId: show.id, season: eff.s, episode: eff.e,
-        authorId: user.id, authorName, title: title.trim(), preview, body: body.trim(), isPublic: false,
-      });
-      // Destination = the current tab. Friend tab → share into THIS room only.
-      if (tab === "friend") await addThreadToGroup(thread.id, roomId);
-      setTitle(""); setBody(""); setComposeOpen(false);
-      await load();
-    } catch (e) {
-      console.error("[show-room] post failed", e);
-    } finally {
-      setPosting(false);
-    }
+  // × closes the room → back to the group it belongs to (sky group context).
+  function closeRoom() {
+    navigate(parentGroupId ? `/dashboard?g=${parentGroupId}` : "/dashboard");
   }
 
   if (authLoading || loading) {
@@ -157,44 +133,42 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
 
   return (
     <div style={{ ...page, background: bodyBg }}>
-      {/* Header strip */}
-      <div style={header}>
-        <div style={{ position: "absolute", left: 16, top: 8 }}><SidebarLogo scale={0.45} blocksOpacity={1} /></div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 0 }}>
-          <button style={tab === "friend" ? tabActive : tabIdle} onClick={() => setTab("friend")}>friend room</button>
-          <button style={tab === "private" ? tabActive : tabIdle} onClick={() => setTab("private")}>private writing</button>
+      {/* ── Header strip: logo left · centered name + × · tabs on the divider ── */}
+      <div style={{ position: "relative", background: C.green, height: HEADER_H }}>
+        <div style={{ position: "absolute", left: 20, top: 12 }}><SidebarLogo scale={0.45} blocksOpacity={1} /></div>
+
+        <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 14 }}>
+          <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: C.cream, margin: 0 }}>{show?.name ?? "Show"}</h1>
+          <button onClick={closeRoom} title="close room" style={circleX}><X size={18} color={C.green} strokeWidth={2.5} /></button>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: -1, color: C.cream, margin: 0 }}>{show?.name ?? "Show"}</h1>
-          <button style={closeBtn} title="back to group" onClick={() => navigate("/dashboard")}><X size={20} color={C.cream} /></button>
+
+        <div style={{ position: "absolute", left: "26%", bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
+          <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />
+          <RoomTab label="private writing" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
         </div>
+
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 2, background: C.cream }} />
       </div>
 
-      {/* Toolbar */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 40px 0" }}>
-        <button style={writeBtn} onClick={() => setComposeOpen(true)}>
-          <SquarePen size={16} /> write
-        </button>
+      {/* ── Toolbar: write (left) · progress (right) ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 40px 0" }}>
+        <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
         {progressForShow && (
-          <div style={{ background: "transparent", border: "2px solid #fff", borderRadius: 65, padding: "10px 22px", color: "#fff", fontSize: 13, fontWeight: 600 }}>
+          <div style={progressPill}>
             you've watched: S{String(progressForShow.s ?? 0).padStart(2, "0")} E{String(progressForShow.e ?? 0).padStart(2, "0")}
           </div>
         )}
       </div>
 
-      {/* Body */}
+      {/* ── Body ── */}
       {tab === "friend" ? (
         <div style={{ display: "flex", gap: 32, padding: "24px 40px 60px", alignItems: "flex-start" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {feedEntries.length === 0 ? (
               <div style={{ maxWidth: 420 }}>
                 <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
-                <p style={{ color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 }}>
-                  You're the first one in here. Start writing so that your friends have your thoughts ready when they finish episodes.
-                </p>
-                <p style={{ color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 }}>
-                  Think of it as sending them a letter from the future!
-                </p>
+                <p style={emptyCopy}>You're the first one in here. Start writing so that your friends have your thoughts ready when they finish episodes.</p>
+                <p style={emptyCopy}>Think of it as sending them a letter from the future!</p>
               </div>
             ) : (
               <V2RoomFeed
@@ -228,58 +202,78 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
           ))}
           <div style={{ marginTop: privateEntries.length ? 40 : 8 }}>
             <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "0 0 12px" }}>Sidebar is best with friends.</p>
-            <p style={{ color: C.cream, opacity: 0.8, fontSize: 14, lineHeight: 1.5, maxWidth: 460 }}>
-              But you can use this private space to write drafts or to keep a personal journal. No one will see what you write here. Sometimes we do our best thinking when we write for ourselves.
-            </p>
+            <p style={{ ...emptyCopy, maxWidth: 460 }}>But you can use this private space to write drafts or to keep a personal journal. No one will see what you write here. Sometimes we do our best thinking when we write for ourselves.</p>
           </div>
         </div>
       )}
 
-      {/* Compose (destination-less) */}
-      {composeOpen && (
-        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setComposeOpen(false); }}>
-          <div style={composeCard}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, marginBottom: 12 }}>
-              {tab === "friend" ? "Writing to this friend room" : "Writing to your private journal"}
-            </div>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="title" style={composeInput} />
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="what are you thinking?" rows={8} style={{ ...composeInput, resize: "vertical", marginTop: 10 }} />
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
-              <button style={ghostBtn} onClick={() => setComposeOpen(false)}>cancel</button>
-              <button style={{ ...postBtn, opacity: posting || !title.trim() || !body.trim() ? 0.5 : 1 }} disabled={posting || !title.trim() || !body.trim()} onClick={post}>
-                {posting ? "posting…" : "post"}
-              </button>
-            </div>
+      {/* ── Compose: the existing ComposeForm, constrained to this room + private ── */}
+      {composeOpen && createPortal(
+        <div style={composeBackdrop}>
+          <div style={composeCardOuter}>
+            <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}>×</button>
+            <ComposeForm
+              ref={composeFormRef}
+              showId={show?.id}
+              restrictGroupId={roomId}
+              hideTopRightClose
+              onCancel={() => setComposeOpen(false)}
+              onSubmitted={(destination) => {
+                setComposeOpen(false);
+                setTab(destination === "private" ? "private" : "friend");
+                load();
+              }}
+            />
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
 }
 
+function RoomTab({ label, active, bg, onClick }: { label: string; active: boolean; bg: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        border: "none", cursor: "pointer", padding: "10px 20px",
+        borderTopLeftRadius: 12, borderTopRightRadius: 12,
+        fontSize: 13, fontWeight: active ? 700 : 600, letterSpacing: -0.3,
+        background: active ? bg : "transparent",
+        color: active ? C.midnight : "rgba(255,255,255,0.75)",
+        position: "relative", bottom: -2, // sit on top of the 2px divider line
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 const page: React.CSSProperties = { position: "fixed", inset: 0, overflowY: "auto", fontFamily: '"Inter", system-ui, sans-serif' };
-const header: React.CSSProperties = {
-  position: "relative", display: "flex", alignItems: "flex-end", justifyContent: "space-between",
-  background: C.green, padding: "14px 40px 0", minHeight: 70,
+const circleX: React.CSSProperties = {
+  width: 32, height: 32, borderRadius: "50%", background: C.cream, border: "none",
+  display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
 };
-const tabIdle: React.CSSProperties = {
-  border: "none", background: "transparent", color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 600,
-  padding: "10px 18px", cursor: "pointer",
-};
-const tabActive: React.CSSProperties = {
-  border: "none", background: C.sky, color: C.midnight, fontSize: 13, fontWeight: 700,
-  padding: "10px 18px", cursor: "pointer", borderTopLeftRadius: 12, borderTopRightRadius: 12,
-};
-const closeBtn: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0 };
 const writeBtn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: "#fff",
   fontWeight: 700, fontSize: 14, padding: "12px 24px", borderRadius: 65, cursor: "pointer",
 };
-const overlay: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(26,58,74,0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60 };
-const composeCard: React.CSSProperties = { background: C.cream, borderRadius: 20, padding: 28, width: "min(620px, 92vw)" };
-const composeInput: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", border: `2px solid ${C.sky}`, borderRadius: 12,
-  padding: "12px 16px", fontFamily: '"Inter", sans-serif', fontSize: 14, color: C.midnight, background: "#fff", outline: "none",
+const progressPill: React.CSSProperties = {
+  background: "transparent", border: "2px solid #fff", borderRadius: 65, padding: "10px 22px",
+  color: "#fff", fontSize: 13, fontWeight: 600,
 };
-const ghostBtn: React.CSSProperties = { border: "none", background: "transparent", color: C.midnight, fontWeight: 700, fontSize: 14, padding: "10px 18px", cursor: "pointer" };
-const postBtn: React.CSSProperties = { border: "none", background: C.blue, color: "#fff", fontWeight: 700, fontSize: 14, padding: "10px 32px", borderRadius: 65, cursor: "pointer" };
+const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 };
+const composeBackdrop: React.CSSProperties = {
+  position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", display: "flex",
+  alignItems: "center", justifyContent: "center", zIndex: 1000,
+};
+const composeCardOuter: React.CSSProperties = {
+  position: "relative", width: "85vw", height: "90vh", background: C.cream,
+  borderRadius: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.25)", overflow: "auto",
+};
+const composeCloseX: React.CSSProperties = {
+  position: "absolute", top: 20, right: 24, background: "transparent", border: "2px solid rgba(43,36,24,0.32)",
+  color: "#5a4d3a", borderRadius: "50%", width: 34, height: 34, padding: 0,
+  display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: "pointer", zIndex: 10,
+};
