@@ -268,8 +268,7 @@ export default function DashboardPage() {
     try {
       const { roomId } = await startShowRoom(activeGroupId, showId);
       setClicked(null);
-      // CP4 builds the new two-tab room view; for now we route to the room.
-      navigate(`/room/${roomId}`);
+      navigate(`/show-room/${roomId}`);
     } catch (e) { console.error("[dashboard] start/open room failed", e); }
   }
 
