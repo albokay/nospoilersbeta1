@@ -26,6 +26,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   const [status, setStatus] = useState<Status>("loading");
   const [info, setInfo] = useState<GroupInviteInfo | null>(null);
   const [masked, setMasked] = useState<string | undefined>();
+  const [detail, setDetail] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +34,8 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
       const res = await getPeopleGroupInvite(token);
       if (cancelled) return;
       if (!res.ok) {
+        console.error("[group-invite] lookup failed", { token, error: res.error });
+        setDetail(`token=${token} · ${res.error}`);
         setStatus(res.error === "expired" ? "expired" : res.error === "already_accepted" ? "already" : "invalid");
         return;
       }
@@ -98,6 +101,9 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
         {status === "expired" && <p style={title}>This invitation has expired.</p>}
         {status === "invalid" && <p style={title}>This invitation link isn't valid.</p>}
         {status === "error" && <p style={title}>Something went wrong. Try the link again.</p>}
+        {detail && (status === "invalid" || status === "error" || status === "expired" || status === "already") && (
+          <p style={{ ...muted, fontSize: 11, wordBreak: "break-all", opacity: 0.7 }}>{detail}</p>
+        )}
       </div>
     </div>
   );
