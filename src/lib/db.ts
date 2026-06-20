@@ -2410,6 +2410,42 @@ export async function fetchRoomForGroupShow(groupId: string, showId: string): Pr
   return data?.id ?? null;
 }
 
+// ── People-group lifecycle (restructure) ────────────────────────────────────
+
+/** Leave a people-group (§13 cascade — handled atomically server-side). */
+export async function leavePeopleGroup(groupId: string): Promise<void> {
+  const { data, error } = await supabase.rpc("leave_people_group", { p_group_id: groupId });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "leave failed");
+}
+
+/** Set (or clear, with empty string) a group's shared custom name. */
+export async function renamePeopleGroup(groupId: string, name: string): Promise<void> {
+  const { data, error } = await supabase.rpc("rename_people_group", { p_group_id: groupId, p_name: name });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "rename failed");
+}
+
+export type PendingGroupInvite = {
+  token: string;
+  groupId: string;
+  inviterName: string;
+  memberNames: string[];
+};
+
+/** Pending people-group invites addressed to the caller (rail "*you're invited"). */
+export async function fetchMyPendingGroupInvites(): Promise<PendingGroupInvite[]> {
+  const { data, error } = await supabase.rpc("get_my_pending_group_invites");
+  if (error) throw error;
+  if (!data || data.ok === false) return [];
+  return (data.invites ?? []).map((i: any) => ({
+    token: i.token,
+    groupId: i.group_id,
+    inviterName: i.inviter_name ?? "someone",
+    memberNames: i.member_names ?? [],
+  }));
+}
+
 // ── People-group invitations (restructure) ──────────────────────────────────
 
 /** Create (or reuse) a people-group invite for an email. Returns the token. */

@@ -34,8 +34,13 @@ import {
   setShowVote,
   startShowRoom,
   createPeopleGroupInvite,
+  acceptPeopleGroupInvite,
+  leavePeopleGroup,
+  renamePeopleGroup,
+  fetchMyPendingGroupInvites,
   type Show,
   type GroupDashboardShow,
+  type PendingGroupInvite,
 } from "../lib/db";
 import { computePill, type PillData } from "../lib/groupPills";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
@@ -87,6 +92,12 @@ export default function DashboardPage() {
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq" } | null>(null);
   const [declaredProgress, setDeclaredProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
 
+  // CP5b: pending invites (rail "*you're invited"), group options (gear).
+  const [pendingInvites, setPendingInvites] = useState<PendingGroupInvite[]>([]);
+  const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
+  const [optionsFor, setOptionsFor] = useState<string | null>(null); // group id whose gear options are open
+  const [renameValue, setRenameValue] = useState("");
+
   const selfUserId = user?.id ?? "";
   const inGroup = !!activeGroupId;
 
@@ -124,6 +135,10 @@ export default function DashboardPage() {
       }
       const rail = await loadRail(user.id);
       if (!cancelled) setRailGroups(rail);
+      try {
+        const inv = await fetchMyPendingGroupInvites();
+        if (!cancelled) setPendingInvites(inv);
+      } catch (e) { console.warn("[dashboard] pending invites not loaded", e); }
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, navigate, loadRail]);
@@ -290,6 +305,38 @@ export default function DashboardPage() {
     } catch (e) { console.error("[dashboard] declare+start failed", e); }
   }
 
+  // ── CP5b: invites + group options ────────────────────────────────────────
+  async function refreshRailAndInvites() {
+    if (!user) return;
+    setRailGroups(await loadRail(user.id));
+    try { setPendingInvites(await fetchMyPendingGroupInvites()); } catch { /* tolerant */ }
+  }
+
+  async function acceptInvite(inv: PendingGroupInvite) {
+    setInvitePrompt(null);
+    const res = await acceptPeopleGroupInvite(inv.token);
+    if (res.ok) {
+      await refreshRailAndInvites();
+      navigate(`/dashboard?g=${inv.groupId}`);
+    } else {
+      console.error("[dashboard] accept invite failed", res.error);
+    }
+  }
+
+  async function doLeave(groupId: string) {
+    setOptionsFor(null);
+    try { await leavePeopleGroup(groupId); } catch (e) { console.error("[dashboard] leave failed", e); }
+    await refreshRailAndInvites();
+    navigate("/dashboard");
+  }
+
+  async function doRename(groupId: string) {
+    setOptionsFor(null);
+    try { await renamePeopleGroup(groupId, renameValue); } catch (e) { console.error("[dashboard] rename failed", e); }
+    setRenameValue("");
+    if (user) setRailGroups(await loadRail(user.id));
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────────
   if (authLoading || loading) {
     return <div style={{ ...pageStyle, background: C.green }} aria-busy="true" />;
@@ -391,8 +438,11 @@ export default function DashboardPage() {
         groups={railGroups}
         selfUserId={selfUserId}
         activeGroupId={activeGroupId}
+        pendingInvites={pendingInvites}
         onEnter={(id) => navigate(`/dashboard?g=${id}`)}
         onExit={() => navigate("/dashboard")}
+        onInviteClick={(inv) => setInvitePrompt(inv)}
+        onGearClick={(id) => { setOptionsFor(id); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
       />
 
       {/* Search overlay (shared by both contexts) */}
@@ -549,8 +599,50 @@ export default function DashboardPage() {
           </div>
         );
       })()}
+
+      {/* CP5b: "Join a group with @X?" from a pending invite (rail red cluster) */}
+      {invitePrompt && (
+        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setInvitePrompt(null); }}>
+          <div style={yellowCard}>
+            <button style={modalClose} onClick={() => setInvitePrompt(null)}><X size={16} color="#fff" /></button>
+            <div style={yellowTitle}>Join a group with {inviteNames(invitePrompt)}?</div>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
+              <button style={startBtn} onClick={() => acceptInvite(invitePrompt)}>Yes</button>
+              <button style={{ ...startBtn, background: "transparent", color: "#fff", border: "2px solid #fff" }} onClick={() => setInvitePrompt(null)}>no</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CP5b: group options (gear) — rename + leave */}
+      {optionsFor && (
+        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setOptionsFor(null); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={yellowCard}>
+              <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color="#fff" /></button>
+              <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
+              <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight }} />
+              <button style={{ ...startBtn, marginTop: 12 }} onClick={() => doRename(optionsFor)}>confirm name</button>
+            </div>
+            <div style={yellowCard}>
+              <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this group?</div>
+              <button style={{ ...startBtn, color: C.red, borderColor: C.red }} onClick={() => doLeave(optionsFor)}>yes, leave</button>
+              <div style={yellowDivider} />
+              <div style={{ color: "#fff", fontSize: 12, opacity: 0.9 }}>You can join again if someone sends you another invite.</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+/** Format a pending invite's members as "@X and @Y" for the join prompt. */
+function inviteNames(inv: PendingGroupInvite): string {
+  const ns = (inv.memberNames.length ? inv.memberNames : [inv.inviterName]).map((n) => `@${n}`);
+  if (ns.length === 1) return ns[0];
+  if (ns.length === 2) return `${ns[0]} and ${ns[1]}`;
+  return `${ns.slice(0, -1).join(", ")} and ${ns[ns.length - 1]}`;
 }
 
 // A copyable invite-link row (raw text is too easy to mis-transcribe — 0 vs O).
@@ -641,19 +733,43 @@ function PillRightSide({ right }: { right: PillData["right"] }) {
 
 // ── Groups rail ────────────────────────────────────────────────────────────────
 function GroupsRail({
-  groups, selfUserId, activeGroupId, onEnter, onExit,
+  groups, selfUserId, activeGroupId, pendingInvites, onEnter, onExit, onInviteClick, onGearClick,
 }: {
   groups: RailGroup[];
   selfUserId: string;
   activeGroupId: string | null;
+  pendingInvites: PendingGroupInvite[];
   onEnter: (id: string) => void;
   onExit: () => void;
+  onInviteClick: (inv: PendingGroupInvite) => void;
+  onGearClick: (groupId: string) => void;
 }) {
   return (
     <div style={railWrap}>
       <div style={{ fontWeight: 700, fontSize: 14, letterSpacing: -1, color: C.green, textAlign: "center", marginBottom: 24 }}>
         groups:
       </div>
+
+      {/* Incoming invites — red "*you're invited" cluster (§8). */}
+      {pendingInvites.map((inv) => {
+        const names = inv.memberNames.length ? inv.memberNames : [inv.inviterName];
+        return (
+          <button
+            key={inv.token}
+            onClick={() => onInviteClick(inv)}
+            title={`Join a group with @${names[0]}?`}
+            style={{ border: "none", background: "transparent", cursor: "pointer", display: "block", width: "100%", textAlign: "center", marginBottom: 36 }}
+          >
+            <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 4, maxWidth: 96, margin: "0 auto" }}>
+              {names.map((n, i) => (
+                <span key={i} style={{ ...avatar, background: C.red }}>{(n[0] ?? "?").toUpperCase()}</span>
+              ))}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 13, letterSpacing: -1, color: C.red, fontWeight: 700 }}>*you're invited</div>
+          </button>
+        );
+      })}
+
       {groups.map(({ group, members }) => {
         const others = members.filter((m) => m.userId !== selfUserId);
         const active = group.id === activeGroupId;
@@ -662,8 +778,7 @@ function GroupsRail({
             {active && (
               <div style={{ position: "absolute", top: -4, right: 6, display: "flex", flexDirection: "column", gap: 8 }}>
                 <button style={railIcon} title="back to dashboard" onClick={onExit}><X size={16} color={C.midnight} /></button>
-                {/* CP5: group options (rename / leave) */}
-                <button style={railIcon} title="group options" onClick={() => { /* CP5 */ }}><Settings size={15} color={C.midnight} /></button>
+                <button style={railIcon} title="group options" onClick={() => onGearClick(group.id)}><Settings size={15} color={C.midnight} /></button>
               </div>
             )}
             <button
