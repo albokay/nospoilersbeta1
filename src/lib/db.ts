@@ -2326,18 +2326,28 @@ export async function fetchPeopleGroupsForUser(userId: string): Promise<PeopleGr
   return (data ?? []).map(rowToPeopleGroup);
 }
 
-/** Members of a people-group with usernames (drives the auto-name + rail). */
+/** Members of a people-group with usernames (drives the auto-name + rail).
+ *  user_id references auth.users (not profiles), so the profiles(username)
+ *  embed has no FK to follow — resolve usernames in a second query instead. */
 export async function fetchPeopleGroupMembers(groupId: string): Promise<PeopleGroupMember[]> {
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from("people_group_members")
-    .select("group_id, user_id, joined_at, profiles(username)")
+    .select("group_id, user_id, joined_at")
     .eq("group_id", groupId)
     .order("joined_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+
+  const ids = (rows ?? []).map((r: any) => r.user_id);
+  const usernames: Record<string, string> = {};
+  if (ids.length) {
+    const { data: profs } = await supabase.from("profiles").select("id, username").in("id", ids);
+    for (const p of profs ?? []) usernames[p.id] = p.username;
+  }
+
+  return (rows ?? []).map((row: any) => ({
     groupId:  row.group_id,
     userId:   row.user_id,
-    username: row.profiles?.username ?? "unknown",
+    username: usernames[row.user_id] ?? "unknown",
     joinedAt: new Date(row.joined_at).getTime(),
   }));
 }
