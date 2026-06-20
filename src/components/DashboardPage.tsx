@@ -475,12 +475,7 @@ export default function DashboardPage() {
                   Group created. Share each link with that person — they open it (signed in with that email) to join:
                 </div>
                 {inviteLinks.map((r, i) => (
-                  <div key={i} style={{ background: C.cream, borderRadius: 12, padding: 12, marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: C.midnight }}>{r.email || "—"}</div>
-                    {r.link
-                      ? <div style={{ fontSize: 11, color: C.blue, wordBreak: "break-all", marginTop: 4 }}>{r.link}</div>
-                      : <div style={{ fontSize: 11, color: C.red, marginTop: 4 }}>{r.error}</div>}
-                  </div>
+                  <CopyRow key={i} email={r.email} link={r.link} error={r.error} />
                 ))}
                 <div style={{ textAlign: "right", marginTop: 12 }}>
                   <button style={invitePill} onClick={() => setInviteOpen(false)}>done</button>
@@ -547,6 +542,27 @@ export default function DashboardPage() {
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+// A copyable invite-link row (raw text is too easy to mis-transcribe — 0 vs O).
+function CopyRow({ email, link, error }: { email: string; link?: string; error?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div style={{ background: C.cream, borderRadius: 12, padding: 12, marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.midnight }}>{email || "—"}</div>
+      {link ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+          <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.blue, wordBreak: "break-all", flex: 1, textDecoration: "none" }}>{link}</a>
+          <button
+            onClick={() => { try { navigator.clipboard?.writeText(link); } catch { /* ignore */ } setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+            style={{ border: "none", background: C.blue, color: "#fff", fontSize: 11, fontWeight: 700, padding: "6px 14px", borderRadius: 65, cursor: "pointer", whiteSpace: "nowrap" }}
+          >{copied ? "copied!" : "copy"}</button>
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: C.red, marginTop: 4 }}>{error}</div>
+      )}
     </div>
   );
 }
