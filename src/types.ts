@@ -32,6 +32,34 @@ export type FriendGroupMember = {
   joinedAt: number;
 };
 
+// ── People-groups (restructure: a group is a set of PEOPLE, spanning shows) ──
+// A people-group has many (group × show) rooms; each room is a friend_groups
+// row whose parent_group_id points back here. `name` is the optional custom
+// name shared across members; null → use the auto-name built from the other
+// members' usernames.
+
+export type PeopleGroup = {
+  id: string;
+  name: string | null;
+  createdBy: string;
+  createdAt: number;
+};
+
+export type PeopleGroupMember = {
+  groupId: string;
+  userId: string;
+  username: string;
+  joinedAt: number;
+};
+
+// A per-(group, user, show) opt-in / "want to watch" vote. Presence = voted yes.
+export type GroupShowVote = {
+  groupId: string;
+  userId: string;
+  showId: string;
+  createdAt: number;
+};
+
 // ── Invitations ───────────────────────────────────────────────────────────────
 
 export type Invitation = {

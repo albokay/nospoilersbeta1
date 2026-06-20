@@ -3,7 +3,7 @@
  * All reads are public (no auth required).
  */
 import { supabase } from "./supabaseClient";
-import type { Thread, Reply, FriendGroup, FriendGroupMember, Invitation } from "../types";
+import type { Thread, Reply, FriendGroup, FriendGroupMember, Invitation, PeopleGroup, PeopleGroupMember, GroupShowVote } from "../types";
 import type { PromptEntry } from "./promptData";
 import { repliesByThread } from "./mockData";
 import { canView, type ViewerProgress } from "./utils";
@@ -2277,6 +2277,166 @@ export async function fetchFriendGroupMembers(
     userId:   row.user_id,
     username: row.profiles?.username ?? "unknown",
     joinedAt: new Date(row.joined_at).getTime(),
+  }));
+}
+
+// ── People-groups (restructure foundation) ──────────────────────────────────
+// A people-group is a set of people spanning shows. Each (group × show) room
+// is a friend_groups row with parent_group_id pointing at the people-group, so
+// the existing room machinery is reused unchanged. All writes go through the
+// atomic SECURITY DEFINER RPCs added in 20260619_restructure_phase1_people_groups.sql.
+
+function rowToPeopleGroup(row: any): PeopleGroup {
+  return {
+    id:        row.id,
+    name:      row.name ?? null,
+    createdBy: row.created_by,
+    createdAt: new Date(row.created_at).getTime(),
+  };
+}
+
+/** Create a people-group (caller becomes first member). Returns the new id. */
+export async function createPeopleGroup(name?: string): Promise<string> {
+  await checkRateLimit('create_group', 3, 60);
+  const { data, error } = await supabase.rpc("create_people_group", {
+    p_name: name ?? null,
+  });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "create_people_group failed");
+  return data.group_id as string;
+}
+
+/** All non-deleted people-groups the caller is a member of. */
+export async function fetchPeopleGroupsForUser(userId: string): Promise<PeopleGroup[]> {
+  const { data: memberRows, error: mErr } = await supabase
+    .from("people_group_members")
+    .select("group_id")
+    .eq("user_id", userId);
+  if (mErr) throw mErr;
+  const groupIds = (memberRows ?? []).map((r: any) => r.group_id);
+  if (!groupIds.length) return [];
+
+  const { data, error } = await supabase
+    .from("people_groups")
+    .select("*")
+    .in("id", groupIds)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToPeopleGroup);
+}
+
+/** Members of a people-group with usernames (drives the auto-name + rail). */
+export async function fetchPeopleGroupMembers(groupId: string): Promise<PeopleGroupMember[]> {
+  const { data, error } = await supabase
+    .from("people_group_members")
+    .select("group_id, user_id, joined_at, profiles(username)")
+    .eq("group_id", groupId)
+    .order("joined_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    groupId:  row.group_id,
+    userId:   row.user_id,
+    username: row.profiles?.username ?? "unknown",
+    joinedAt: new Date(row.joined_at).getTime(),
+  }));
+}
+
+/** All show-votes in a people-group (every member's opt-ins), for pill counts. */
+export async function fetchGroupShowVotes(groupId: string): Promise<GroupShowVote[]> {
+  const { data, error } = await supabase
+    .from("group_show_votes")
+    .select("group_id, user_id, show_id, created_at")
+    .eq("group_id", groupId);
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    groupId:   row.group_id,
+    userId:    row.user_id,
+    showId:    row.show_id,
+    createdAt: new Date(row.created_at).getTime(),
+  }));
+}
+
+/** Toggle the caller's per-group opt-in ("want to watch") for a show. */
+export async function setShowVote(groupId: string, showId: string, voted: boolean): Promise<void> {
+  const { data, error } = await supabase.rpc("set_show_vote", {
+    p_group_id: groupId,
+    p_show_id:  showId,
+    p_voted:    voted,
+  });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "set_show_vote failed");
+}
+
+/**
+ * Start (or open) the one (people-group × show) room. Creates it on first call
+ * and auto-enrolls opted-in members; on later calls returns the existing room.
+ * Returns the room's friend_groups id and whether it was just created.
+ */
+export async function startShowRoom(
+  groupId: string,
+  showId: string
+): Promise<{ roomId: string; created: boolean }> {
+  const { data, error } = await supabase.rpc("start_show_room", {
+    p_group_id: groupId,
+    p_show_id:  showId,
+  });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "start_show_room failed");
+  return { roomId: data.room_id as string, created: !!data.created };
+}
+
+/** The existing (group × show) room id, or null if none has been started yet. */
+export async function fetchRoomForGroupShow(groupId: string, showId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("friend_groups")
+    .select("id")
+    .eq("parent_group_id", groupId)
+    .eq("show_id", showId)
+    .is("deleted_at", null)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
+// Per-member opt-in/progress/writing for one pooled show in a group.
+export type GroupDashboardMember = {
+  userId: string;
+  voted: boolean;
+  s: number | null;
+  e: number | null;
+  wrote: boolean;
+};
+
+// One pooled show in a group, with everything the pill system needs.
+export type GroupDashboardShow = {
+  showId: string;
+  roomId: string | null;
+  inRoom: boolean;
+  members: GroupDashboardMember[];
+};
+
+/**
+ * The group-context dashboard: every show in the group's pool with each
+ * member's vote / watch-progress / whether-they-wrote, so the client can
+ * compute the §7 pill states + shelf placement. Member-gated via RPC.
+ */
+export async function fetchGroupDashboard(groupId: string): Promise<GroupDashboardShow[]> {
+  const { data, error } = await supabase.rpc("get_group_dashboard", { p_group_id: groupId });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "get_group_dashboard failed");
+  return (data.shows ?? []).map((s: any) => ({
+    showId: s.show_id,
+    roomId: s.room_id ?? null,
+    inRoom: !!s.in_room,
+    members: (s.members ?? []).map((m: any) => ({
+      userId: m.user_id,
+      voted:  !!m.voted,
+      s:      m.s ?? null,
+      e:      m.e ?? null,
+      wrote:  !!m.wrote,
+    })),
   }));
 }
 

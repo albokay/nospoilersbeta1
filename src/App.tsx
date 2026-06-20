@@ -50,6 +50,9 @@ const V2ProfileVisitorPage = lazy(() => import("./components/v2/V2ProfileVisitor
 const V2UserAggregatePage = lazy(() => import("./components/v2/V2UserAggregatePage"));
 const V2ComposePage = lazy(() => import("./components/v2/V2ComposePage"));
 const ResetPasswordPage = lazy(() => import("./components/ResetPasswordPage"));
+// Restructure (groups + show rooms): the new green home. Working route that
+// coexists with the live site until the gated cutover promotes it to home.
+const DashboardPage = lazy(() => import("./components/DashboardPage"));
 
 // Full-screen fallback for lazy chunks. Matches the canon palette so the
 // transition from main bundle → lazy chunk doesn't flash white. Only
@@ -197,6 +200,11 @@ export default function App() {
     return <Suspense fallback={<RouteFallback />}><V2ProfileVisitorPage username={username} /></Suspense>;
   }
   if (pathParts[0] === "reset-password") return <Suspense fallback={<RouteFallback />}><ResetPasswordPage /></Suspense>;
+  // Restructure dashboard (groups + show rooms). Self-contained like the V2
+  // surfaces; redirects to "/" when signed-out (handled inside DashboardPage).
+  if (pathParts[0] === "dashboard" && !pathParts[1]) {
+    return <Suspense fallback={<RouteFallback />}><DashboardPage /></Suspense>;
+  }
   return <AppShell />;
 }
 
