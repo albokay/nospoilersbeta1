@@ -20,6 +20,7 @@
  *   • clicking a show into its room                           → CP4
  */
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { X, Settings, UsersRound, Pencil, ArrowUp, LogOut, ArrowLeft, MessageCircle } from "lucide-react";
 import { useAuth } from "../lib/auth";
@@ -115,6 +116,16 @@ export default function DashboardPage() {
   const [chatGroupId, setChatGroupId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<GroupMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
+
+  // Cursor-following tooltip (opt-in avatars + show-button watch progress).
+  const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null);
+  function tipProps(text?: string) {
+    if (!text) return {};
+    return {
+      onMouseMove: (e: React.MouseEvent) => setTip({ text, x: e.clientX, y: e.clientY }),
+      onMouseLeave: () => setTip(null),
+    };
+  }
 
   const selfUserId = user?.id ?? "";
   const inGroup = !!activeGroupId;
@@ -224,14 +235,21 @@ export default function DashboardPage() {
 
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
-    type Row = { pill: PillData; name: string; members: string[] };
+    type OptIn = { username: string; s: number | null; e: number | null };
+    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
-      const members = gs.members.map((mm) => (mm.userId === selfUserId ? "you" : memberNameById[mm.userId] ?? "someone"));
-      const row = { pill, name: show?.name ?? gs.showId, members };
+      // Opted-in members other than you → the avatars overlapping the pill.
+      const opted: OptIn[] = gs.members
+        .filter((mm) => mm.userId !== selfUserId)
+        .map((mm) => ({ username: memberNameById[mm.userId] ?? "someone", s: mm.s, e: mm.e }));
+      // Your own progress on this show (if any) → the show-button tooltip.
+      const self = gs.members.find((mm) => mm.userId === selfUserId);
+      const selfProg = self && ((self.s ?? 0) > 0 || (self.e ?? 0) > 0) ? { s: self.s as number, e: self.e as number } : null;
+      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
     const byName = (a: Row, b: Row) => a.name.localeCompare(b.name);
@@ -244,8 +262,11 @@ export default function DashboardPage() {
     if (!q) return [];
     // Exclude shows already in pool; KEEP removed (out-of-pool) shows so they
     // can be re-added (which restores their saved progress).
+    // Keep already-in-pool shows in the list (flagged) so we can show an
+    // "already in the watch pool" note instead of silently hiding them.
     return shows
-      .filter((s) => !s.isHidden && s.name.toLowerCase().includes(q) && (!progress[s.id] || outOfPool.has(s.id)))
+      .filter((s) => !s.isHidden && s.name.toLowerCase().includes(q))
+      .map((s) => ({ show: s, inPool: !!progress[s.id] && !outOfPool.has(s.id) }))
       .slice(0, 8);
   }, [query, shows, progress, outOfPool]);
 
@@ -475,9 +496,10 @@ export default function DashboardPage() {
               <div style={shelfGrid}>
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
-                    <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
-                    {r.members.length > 0 && <div className="group-pill-tt">{r.members.map((n) => (n === "you" ? "you" : "@" + n)).join(", ")}</div>}
-                    <OptInAvatars names={r.members.filter((n) => n !== "you")} />
+                    <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined)}>
+                      <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
+                    </div>
+                    <OptInAvatars members={r.opted} withTooltip onTip={setTip} />
                   </div>
                 ))}
               </div>
@@ -494,9 +516,10 @@ export default function DashboardPage() {
             <div style={shelfGrid}>
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
-                  <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
-                  {r.members.length > 0 && <div className="group-pill-tt">{r.members.map((n) => (n === "you" ? "you" : "@" + n)).join(", ")}</div>}
-                  <OptInAvatars names={r.members.filter((n) => n !== "you")} />
+                  <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined)}>
+                    <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
+                  </div>
+                  <OptInAvatars members={r.opted} withTooltip={false} onTip={setTip} />
                 </div>
               ))}
             </div>
@@ -571,10 +594,14 @@ export default function DashboardPage() {
               />
               {results.length > 0 && (
                 <div style={{ marginTop: 8 }}>
-                  {results.map((s) => (
-                    <button key={s.id} className="dash-result" onClick={() => { if (outOfPool.has(s.id)) { restoreShow(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}>
-                      {s.name}{outOfPool.has(s.id) ? " · restore" : ""}
-                    </button>
+                  {results.map(({ show: s, inPool }) => (
+                    inPool ? (
+                      <div key={s.id} className="dash-result dash-result--inpool">{s.name} is already in the watch pool.</div>
+                    ) : (
+                      <button key={s.id} className="dash-result" onClick={() => { if (outOfPool.has(s.id)) { restoreShow(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}>
+                        {s.name}{outOfPool.has(s.id) ? " · restore" : ""}
+                      </button>
+                    )
                   ))}
                 </div>
               )}
@@ -809,6 +836,12 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Cursor-following tooltip bubble (opt-in avatars + watch progress). */}
+      {tip && createPortal(
+        <div style={{ ...tipBubble, left: tip.x + 14, top: tip.y + 16 }}>{tip.text}</div>,
+        document.body,
+      )}
     </div>
   );
 }
@@ -878,7 +911,7 @@ function GroupPill({ pill, name, onClick }: { pill: PillData; name: string; onCl
     cursor: "pointer", textAlign: "left",
   };
   return (
-    <button style={base} onClick={onClick} title={`${pill.count} in pool`}>
+    <button style={base} onClick={onClick}>
       {/* Left badge cluster */}
       {pill.people ? (
         <span style={leftIcon}><UsersRound size={16} /></span>
@@ -918,13 +951,28 @@ function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pendi
 /** Opt-in member avatars overlapping a group-pill's bottom edge (the friends
  *  who have this show in the group's pool). Decorative — pointer-events off so
  *  they never block a pill click. */
-function OptInAvatars({ names }: { names: string[] }) {
-  if (!names.length) return null;
+function OptInAvatars({ members, withTooltip, onTip }: {
+  members: { username: string; s: number | null; e: number | null }[];
+  withTooltip: boolean;
+  onTip: (t: { text: string; x: number; y: number } | null) => void;
+}) {
+  if (!members.length) return null;
   return (
     <div style={optInRow}>
-      {names.map((n, i) => (
-        <span key={`${n}-${i}`} style={optInAvatar}>{(n[0] ?? "?").toUpperCase()}</span>
-      ))}
+      {members.map((m, i) => {
+        const watched = (m.s ?? 0) > 0 || (m.e ?? 0) > 0;
+        const tip = watched ? `Has watched: S${m.s} E${m.e}` : "Hasn't started yet";
+        return (
+          <span
+            key={`${m.username}-${i}`}
+            style={optInAvatar}
+            onMouseMove={withTooltip ? (e) => onTip({ text: tip, x: e.clientX, y: e.clientY }) : undefined}
+            onMouseLeave={withTooltip ? () => onTip(null) : undefined}
+          >
+            {(m.username[0] ?? "?").toUpperCase()}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -1051,13 +1099,20 @@ const avatarCircle: React.CSSProperties = {
   justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 32, letterSpacing: 0,
 };
 const optInRow: React.CSSProperties = {
-  position: "absolute", left: "50%", bottom: 0, transform: "translate(-50%, 50%)",
+  // Right-anchored: avatars fill from the button's right edge toward center.
+  position: "absolute", right: 40, bottom: 0, transform: "translateY(50%)",
   display: "flex", gap: 6, pointerEvents: "none", zIndex: 5,
 };
 const optInAvatar: React.CSSProperties = {
   width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.cream}`, background: C.sky,
   color: C.blue, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
   display: "inline-flex", alignItems: "center", justifyContent: "center",
+  pointerEvents: "auto", // hoverable for the per-member tooltip
+};
+const tipBubble: React.CSSProperties = {
+  position: "fixed", background: C.green, color: "#fff", padding: "7px 12px", borderRadius: 12,
+  fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 600, lineHeight: 1.3,
+  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 9999, boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
 };
 const clusterName: React.CSSProperties = {
   marginTop: 8, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: -1,
@@ -1172,6 +1227,8 @@ function DashboardStyles() {
         font-size: 14px; font-weight: 600; color: ${C.green};
       }
       .dash-result:hover { background: rgba(122,189,142,0.14); }
+      .dash-result--inpool { cursor: default; opacity: 0.55; }
+      .dash-result--inpool:hover { background: transparent; }
       .dash-pill-wrap { position: relative; }
       .dash-pill-x {
         position: absolute; top: -7px; right: -3px; width: 22px; height: 22px; border-radius: 50%;
@@ -1181,14 +1238,6 @@ function DashboardStyles() {
       }
       .dash-pill-wrap:hover .dash-pill-x { opacity: 1; }
       .group-pill-wrap { position: relative; }
-      .group-pill-tt {
-        position: absolute; bottom: calc(100% - 2px); left: 50%; transform: translateX(-50%);
-        background: ${C.green}; color: #fff; padding: 10px 14px; border-radius: 15px;
-        font-size: 13px; line-height: 1.4; width: max-content; max-width: 240px;
-        opacity: 0; pointer-events: none; transition: opacity 120ms; z-index: 40;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.2);
-      }
-      .group-pill-wrap:hover .group-pill-tt { opacity: 1; }
     `}</style>
   );
 }
