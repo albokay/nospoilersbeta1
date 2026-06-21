@@ -21,7 +21,7 @@
  */
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { X, Settings, UsersRound, Pencil, ArrowUp, LogOut } from "lucide-react";
+import { X, Settings, UsersRound, Pencil, ArrowUp, LogOut, ArrowLeft, MessageCircle } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchShows,
@@ -229,7 +229,7 @@ export default function DashboardPage() {
     for (const gs of groupShows) {
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
-      const members = gs.members.map((mm) => memberNameById[mm.userId] ?? "someone");
+      const members = gs.members.map((mm) => (mm.userId === selfUserId ? "you" : memberNameById[mm.userId] ?? "someone"));
       const row = { pill, name: show?.name ?? gs.showId, members };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
@@ -452,8 +452,14 @@ export default function DashboardPage() {
         onExit={() => navigate("/dashboard")}
         onInviteClick={(inv) => setInvitePrompt(inv)}
         onGearClick={(id) => { setOptionsFor(id); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
-        onOpenChat={(id) => setChatGroupId(id)}
       />
+
+      {/* Chat affordance — partial pill at the right edge (group context only) */}
+      {inGroup && (
+        <button style={chatTab} title="open chat" onClick={() => activeGroupId && setChatGroupId(activeGroupId)}>
+          <MessageCircle size={24} color={C.green} />
+        </button>
+      )}
 
       {inGroup ? (
         // ── Group context (sky) ───────────────────────────────────────────────
@@ -465,7 +471,7 @@ export default function DashboardPage() {
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
                     <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
-                    {r.members.length > 0 && <div className="group-pill-tt">{r.members.map((n) => `@${n}`).join(", ")}</div>}
+                    {r.members.length > 0 && <div className="group-pill-tt">{r.members.map((n) => (n === "you" ? "you" : "@" + n)).join(", ")}</div>}
                   </div>
                 ))}
               </div>
@@ -483,7 +489,7 @@ export default function DashboardPage() {
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
                   <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
-                  {r.members.length > 0 && <div className="group-pill-tt">{r.members.map((n) => `@${n}`).join(", ")}</div>}
+                  {r.members.length > 0 && <div className="group-pill-tt">{r.members.map((n) => (n === "you" ? "you" : "@" + n)).join(", ")}</div>}
                 </div>
               ))}
             </div>
@@ -688,6 +694,7 @@ export default function DashboardPage() {
                       value={{ s: 0, e: 0 }}
                       allowZero
                       requireConfirm={false}
+                      pillBg="transparent"
                       onChangeSelected={(v) => setDeclaredProgress(v)}
                       onConfirm={() => {}}
                     />
@@ -894,7 +901,7 @@ function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pendi
 }
 
 function GroupClusters({
-  groups, selfUserId, activeGroupId, pendingInvites, onEnter, onExit, onInviteClick, onGearClick, onOpenChat,
+  groups, selfUserId, activeGroupId, pendingInvites, onEnter, onExit, onInviteClick, onGearClick,
 }: {
   groups: RailGroup[];
   selfUserId: string;
@@ -904,29 +911,19 @@ function GroupClusters({
   onExit: () => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string) => void;
-  onOpenChat: (groupId: string) => void;
 }) {
   const active = groups.find((g) => g.group.id === activeGroupId);
 
-  // Group context (sky): only the active group's cluster + controls.
+  // Group context (sky): a left-aligned heading — ← group-name · members · gear.
   if (active) {
     const others = active.members.filter((m) => m.userId !== selfUserId);
-    const display = others.length ? others : active.members;
+    const names = others.map((m) => m.username).join(", ");
     return (
-      <div style={clustersRow}>
-        <div style={{ textAlign: "center", position: "relative" }}>
-          <div style={{ position: "absolute", top: -6, right: -28, display: "flex", flexDirection: "column", gap: 8 }}>
-            <button style={clusterIcon} title="back to dashboard" onClick={onExit}><X size={16} color={C.midnight} /></button>
-            <button style={clusterIcon} title="group options" onClick={() => onGearClick(active.group.id)}><Settings size={15} color={C.midnight} /></button>
-          </div>
-          <button style={clusterBtn} title="open chat" onClick={() => onOpenChat(active.group.id)}>
-            <div style={avatarPile}>
-              {display.map((m) => <Avatar key={m.userId} letter={m.username[0]} state="accepted" />)}
-              {active.pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />)}
-            </div>
-            <div style={{ ...clusterName, color: C.midnight }}>{groupAutoName(active.group, others)}</div>
-          </button>
-        </div>
+      <div style={groupHeadingRow}>
+        <button style={headingIconBtn} title="back to dashboard" onClick={onExit}><ArrowLeft size={30} color="#fff" /></button>
+        <h1 style={groupHeadingTitle}>{active.group.name || groupAutoName(active.group, others)}</h1>
+        {names && <span style={groupHeadingMembers}>{names}</span>}
+        <button style={headingIconBtn} title="group options" onClick={() => onGearClick(active.group.id)}><Settings size={22} color="#fff" /></button>
       </div>
     );
   }
@@ -1020,14 +1017,31 @@ const avatarPile: React.CSSProperties = {
   display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 4, maxWidth: 104, margin: "0 auto",
 };
 const avatarCircle: React.CSSProperties = {
-  width: 44, height: 44, borderRadius: "50%", display: "inline-flex", alignItems: "center",
-  justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 22,
+  width: 60, height: 60, borderRadius: "50%", display: "inline-flex", alignItems: "center",
+  justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 32, letterSpacing: -2,
 };
 const clusterName: React.CSSProperties = {
   marginTop: 8, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: -1,
   color: "#fff", maxWidth: 120, lineHeight: 1.25, marginLeft: "auto", marginRight: "auto",
 };
 const clusterIcon: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0 };
+const groupHeadingRow: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 16, padding: "4px 28px 28px",
+};
+const headingIconBtn: React.CSSProperties = {
+  border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0, display: "inline-flex", alignItems: "center",
+};
+const groupHeadingTitle: React.CSSProperties = {
+  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -2, color: "#fff", margin: 0,
+};
+const groupHeadingMembers: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: -2, color: "#fff",
+};
+const chatTab: React.CSSProperties = {
+  position: "fixed", right: 0, top: "45%", background: C.cream, border: "none", cursor: "pointer",
+  borderTopLeftRadius: 28, borderBottomLeftRadius: 28, padding: "16px 14px 16px 22px",
+  display: "inline-flex", alignItems: "center", boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
+};
 const countCircle: React.CSSProperties = {
   minWidth: 22, height: 22, padding: "0 6px", borderRadius: 11, background: C.green, color: "#fff",
   fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -1123,7 +1137,7 @@ function DashboardStyles() {
       .dash-pill-wrap:hover .dash-pill-x { opacity: 1; }
       .group-pill-wrap { position: relative; }
       .group-pill-tt {
-        position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+        position: absolute; bottom: calc(100% - 2px); left: 50%; transform: translateX(-50%);
         background: ${C.green}; color: #fff; padding: 10px 14px; border-radius: 15px;
         font-size: 13px; line-height: 1.4; width: max-content; max-width: 240px;
         opacity: 0; pointer-events: none; transition: opacity 120ms; z-index: 40;
