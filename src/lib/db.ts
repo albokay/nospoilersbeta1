@@ -1177,9 +1177,11 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
       .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason, shelf_override, shelf_position, updated_at")
       .eq("user_id", userId);
     if (res.error) {
+      // Fallback WITHOUT the newer columns (updated_at / shelf_*) so a missing
+      // column degrades gracefully (no recency sort) instead of throwing.
       const legacy = await supabase
         .from("progress")
-        .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason, updated_at")
+        .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason")
         .eq("user_id", userId);
       if (legacy.error) throw legacy.error;
       data = legacy.data;
