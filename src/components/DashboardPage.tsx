@@ -222,8 +222,10 @@ export default function DashboardPage() {
       const started = (entry.s ?? 0) > 0 || (entry.e ?? 0) > 0;
       (started ? watching : notStarted).push({ show, entry });
     }
-    const byName = (a: { show: Show }, b: { show: Show }) => a.show.name.localeCompare(b.show.name);
-    return { watching: watching.sort(byName), notStarted: notStarted.sort(byName) };
+    // Most-recently-updated progress first (then name as a stable tiebreak).
+    const byRecent = (a: { show: Show; entry: ProgressEntry }, b: { show: Show; entry: ProgressEntry }) =>
+      ((b.entry.progressUpdatedAt ?? 0) - (a.entry.progressUpdatedAt ?? 0)) || a.show.name.localeCompare(b.show.name);
+    return { watching: watching.sort(byRecent), notStarted: notStarted.sort(byRecent) };
   }, [progress, showsById, outOfPool]);
 
   const hasAnyShows = watching.length + notStarted.length > 0;
@@ -239,7 +241,7 @@ export default function DashboardPage() {
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
     type OptIn = { username: string; s: number | null; e: number | null };
-    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null };
+    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; tier: number; lastActivityAt: number | null };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
@@ -252,11 +254,18 @@ export default function DashboardPage() {
       // Your own progress on this show (if any) → the show-button tooltip.
       const self = gs.members.find((mm) => mm.userId === selfUserId);
       const selfProg = self && ((self.s ?? 0) > 0 || (self.e ?? 0) > 0) ? { s: self.s as number, e: self.e as number } : null;
-      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg };
+      // Activity bucket: 2+ writing → 1 writing → 2+ watching → 1 watching.
+      const writerCount = pill.writerCount;
+      const watcherCount = gs.members.filter((mm) => (mm.s ?? 0) > 0 || (mm.e ?? 0) > 0).length;
+      const tier = writerCount >= 2 ? 0 : writerCount === 1 ? 1 : watcherCount >= 2 ? 2 : watcherCount >= 1 ? 3 : 4;
+      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, tier, lastActivityAt: gs.lastActivityAt };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
     const byName = (a: Row, b: Row) => a.name.localeCompare(b.name);
-    return { watching: watching.sort(byName), notStarted: notStarted.sort(byName) };
+    // Currently-watching shelf: by bucket, then most recent activity within it.
+    const byActivity = (a: Row, b: Row) =>
+      (a.tier - b.tier) || ((b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0)) || a.name.localeCompare(b.name);
+    return { watching: watching.sort(byActivity), notStarted: notStarted.sort(byName) };
   }, [groupShows, showsById, selfUserId, memberNameById]);
 
   // Catalog search (CP2: catalog-only; TVMaze add is a later refinement).

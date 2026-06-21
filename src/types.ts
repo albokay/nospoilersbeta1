@@ -165,6 +165,9 @@ export type ProgressEntry = {
   // the V2 profile UI.
   shelfOverride?: "watching" | "want" | "finished" | "stopped" | null;
   shelfPosition?: number | null;
+  // ms — progress row's last update time. Used to order dashboard show buttons
+  // by most-recently-updated. Optional (legacy fetches may omit it).
+  progressUpdatedAt?: number;
 };
 
 // "Thoughts on..." pieces — show-agnostic reflective writing that lives on

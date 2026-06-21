@@ -1174,12 +1174,12 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
   {
     const res = await supabase
       .from("progress")
-      .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason, shelf_override, shelf_position")
+      .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason, shelf_override, shelf_position, updated_at")
       .eq("user_id", userId);
     if (res.error) {
       const legacy = await supabase
         .from("progress")
-        .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason")
+        .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason, updated_at")
         .eq("user_id", userId);
       if (legacy.error) throw legacy.error;
       data = legacy.data;
@@ -1210,6 +1210,7 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
       // v2 profile-display columns (2026-05-11). null when on legacy fallback.
       shelfOverride:   usedFallback ? null : (row.shelf_override ?? null),
       shelfPosition:   usedFallback ? null : (row.shelf_position ?? null),
+      progressUpdatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
     };
   }
   return result;
@@ -2608,6 +2609,9 @@ export type GroupDashboardShow = {
   showId: string;
   roomId: string | null;
   inRoom: boolean;
+  /** ms — newest of room writing + any member's progress update (null if none).
+   *  Drives within-bucket ordering on the group dashboard. */
+  lastActivityAt: number | null;
   members: GroupDashboardMember[];
 };
 
@@ -2624,6 +2628,7 @@ export async function fetchGroupDashboard(groupId: string): Promise<GroupDashboa
     showId: s.show_id,
     roomId: s.room_id ?? null,
     inRoom: !!s.in_room,
+    lastActivityAt: s.last_activity_at ? new Date(s.last_activity_at).getTime() : null,
     members: (s.members ?? []).map((m: any) => ({
       userId: m.user_id,
       voted:  !!m.voted,
