@@ -216,43 +216,65 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
         </div>
       </div>
 
-      {/* ── Toolbar: write (left) · progress (right) ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 40px 0" }}>
-        <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
-        {show && progressForShow && (
-          <OneSelectProgress
-            show={show}
-            value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
-            onConfirm={onProgressConfirm}
-            onForwardPick={onForwardPick}
-            requireConfirm
-            allowZero={(effectiveProgress(progressForShow)?.s ?? 1) === 0}
-          />
-        )}
-      </div>
+      {/* ── Two-pane body — mirrors the live room (V2FriendRoomPage): a 672px
+            feed column + season map, the pair centered within a 1400 max width.
+            Write + progress live at the top of the column. The private tab
+            reuses the same column at the same position; the map area is kept
+            (visibility:hidden) so the column doesn't shift between tabs. ── */}
+      <div style={{ padding: "24px 24px 0" }}>
+        <div style={{ display: "flex", gap: 64, alignItems: "flex-start", justifyContent: "center", maxWidth: 1400, margin: "0 auto" }}>
+          {/* LEFT/CENTER pane: toolbar + feed (friend) or private writing */}
+          <div style={{ flex: "0 1 672px", minWidth: 0, paddingBottom: 120 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
+              {show && progressForShow && (
+                <OneSelectProgress
+                  show={show}
+                  value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
+                  onConfirm={onProgressConfirm}
+                  onForwardPick={onForwardPick}
+                  requireConfirm
+                  allowZero={(effectiveProgress(progressForShow)?.s ?? 1) === 0}
+                />
+              )}
+            </div>
 
-      {/* ── Body ── */}
-      {tab === "friend" ? (
-        <div style={{ display: "flex", gap: 32, padding: "24px 40px 60px", alignItems: "flex-start" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {feedEntries.length === 0 ? (
-              <div style={{ maxWidth: 420 }}>
-                <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
-                <p style={emptyCopy}>You're the first one in here. Start writing so that your friends have your thoughts ready when they finish episodes.</p>
-                <p style={emptyCopy}>Think of it as sending them a letter from the future!</p>
-              </div>
+            {tab === "friend" ? (
+              feedEntries.length === 0 ? (
+                <div style={{ maxWidth: 420 }}>
+                  <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
+                  <p style={emptyCopy}>You're the first one in here. Start writing so that your friends have your thoughts ready when they finish episodes.</p>
+                  <p style={emptyCopy}>Think of it as sending them a letter from the future!</p>
+                </div>
+              ) : (
+                <V2RoomFeed
+                  ref={feedRef}
+                  entries={feedEntries}
+                  groupId={roomId}
+                  viewerProgress={progressForShow}
+                  userId={user?.id ?? ""}
+                  onReplyAdded={(tid) => setFeedEntries((prev) => prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)))}
+                />
+              )
             ) : (
-              <V2RoomFeed
-                ref={feedRef}
-                entries={feedEntries}
-                groupId={roomId}
-                viewerProgress={progressForShow}
-                userId={user?.id ?? ""}
-                onReplyAdded={(tid) => setFeedEntries((prev) => prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)))}
-              />
+              <>
+                {privateEntries.map((t) => (
+                  <div key={t.id} style={{ border: `2px solid ${C.cream}`, borderRadius: 16, padding: 18, marginBottom: 12 }}>
+                    <div style={{ fontWeight: 700, color: C.cream, fontSize: 15 }}>{t.titleBase} <span style={{ opacity: 0.7, fontWeight: 500 }}>· S{t.season} E{t.episode}</span></div>
+                    <div style={{ color: C.cream, opacity: 0.85, fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{t.preview || t.body}</div>
+                  </div>
+                ))}
+                <div style={{ marginTop: privateEntries.length ? 40 : 8 }}>
+                  <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "0 0 12px" }}>Sidebar is best with friends.</p>
+                  <p style={{ ...emptyCopy, maxWidth: 460 }}>But you can use this private space to write drafts or to keep a personal journal. No one will see what you write here. Sometimes we do our best thinking when we write for ourselves.</p>
+                </div>
+              </>
             )}
           </div>
-          <div style={{ flex: "0 0 auto" }}>
+
+          {/* RIGHT pane: season map. Reserved but hidden on the private tab so
+              the left column keeps the exact same placement across tabs. */}
+          <div style={{ flex: "0 0 auto", visibility: tab === "friend" ? "visible" : "hidden" }} aria-hidden={tab !== "friend"}>
             <V2RoomMap
               members={mapMembers}
               seasons={show?.seasons ?? []}
@@ -265,20 +287,7 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
             />
           </div>
         </div>
-      ) : (
-        <div style={{ padding: "24px 40px 60px", maxWidth: 720 }}>
-          {privateEntries.map((t) => (
-            <div key={t.id} style={{ border: `2px solid ${C.cream}`, borderRadius: 16, padding: 18, marginBottom: 12 }}>
-              <div style={{ fontWeight: 700, color: C.cream, fontSize: 15 }}>{t.titleBase} <span style={{ opacity: 0.7, fontWeight: 500 }}>· S{t.season} E{t.episode}</span></div>
-              <div style={{ color: C.cream, opacity: 0.85, fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{t.preview || t.body}</div>
-            </div>
-          ))}
-          <div style={{ marginTop: privateEntries.length ? 40 : 8 }}>
-            <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "0 0 12px" }}>Sidebar is best with friends.</p>
-            <p style={{ ...emptyCopy, maxWidth: 460 }}>But you can use this private space to write drafts or to keep a personal journal. No one will see what you write here. Sometimes we do our best thinking when we write for ourselves.</p>
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* ── Compose: the existing ComposeForm, constrained to this room + private ── */}
       {composeOpen && createPortal(
@@ -328,7 +337,7 @@ function RoomTab({ label, active, bg, onClick }: { label: string; active: boolea
         borderLeft: active ? "none" : `2px solid ${C.cream}`,
         borderRight: active ? "none" : `2px solid ${C.cream}`,
         borderBottom: "none",
-        fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: -0.3,
+        fontFamily: LORA, fontWeight: 700, fontSize: 18, letterSpacing: -0.3,
         background: active ? bg : "transparent",
         color: active ? C.midnight : "rgba(255,255,255,0.75)",
         position: "relative", bottom: -2, // bleed into the panel below
