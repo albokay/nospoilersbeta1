@@ -596,7 +596,7 @@ export default function DashboardPage() {
                 <div style={{ marginTop: 8 }}>
                   {results.map(({ show: s, inPool }) => (
                     inPool ? (
-                      <div key={s.id} className="dash-result dash-result--inpool">{s.name} is already in the watch pool.</div>
+                      <div key={s.id} className="dash-result dash-result--inpool">You've already added <i>{s.name}</i> to your watch pool.</div>
                     ) : (
                       <button key={s.id} className="dash-result" onClick={() => { if (outOfPool.has(s.id)) { restoreShow(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}>
                         {s.name}{outOfPool.has(s.id) ? " · restore" : ""}
@@ -691,6 +691,8 @@ export default function DashboardPage() {
         const gs = groupShows.find((s) => s.showId === clicked.showId);
         const selfVoted = !!gs?.members.find((m) => m.userId === selfUserId)?.voted;
         const roomLabel = gs?.roomId ? "Open show room" : "Start a show room?";
+        // "Solo" only when you're the sole opt-in; 2+ opted in → plain show room.
+        const optedCount = gs?.members.length ?? 0;
         return (
           <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
             <div style={yellowCard}>
@@ -698,7 +700,7 @@ export default function DashboardPage() {
 
               {clicked.mode === "solo" && (
                 <>
-                  <div style={yellowTitle}>{gs?.roomId ? "Open show room" : "Start a solo show room?"}</div>
+                  <div style={yellowTitle}>{gs?.roomId ? "Open show room" : optedCount > 1 ? "Start a show room?" : "Start a solo show room?"}</div>
                   <button style={{ ...startBtn, marginTop: 16 }} onClick={() => goToRoom(clicked.showId)}>Yes</button>
                 </>
               )}
@@ -961,7 +963,7 @@ function OptInAvatars({ members, withTooltip, onTip }: {
     <div style={optInRow}>
       {members.map((m, i) => {
         const watched = (m.s ?? 0) > 0 || (m.e ?? 0) > 0;
-        const tip = watched ? `Has watched: S${m.s} E${m.e}` : "Hasn't started yet";
+        const tip = watched ? `${m.username} has watched: S${m.s} E${m.e}` : `${m.username} hasn't started yet`;
         return (
           <span
             key={`${m.username}-${i}`}
