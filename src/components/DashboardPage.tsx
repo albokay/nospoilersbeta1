@@ -623,7 +623,7 @@ export default function DashboardPage() {
 
               {clicked.mode === "solo" && (
                 <>
-                  <div style={yellowTitle}>Start a solo show room?</div>
+                  <div style={yellowTitle}>{gs?.roomId ? "Open show room" : "Start a solo show room?"}</div>
                   <button style={{ ...startBtn, marginTop: 16 }} onClick={() => goToRoom(clicked.showId)}>Yes</button>
                 </>
               )}
