@@ -21,7 +21,7 @@
  */
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { X, Settings, UsersRound, Pencil } from "lucide-react";
+import { X, Settings, UsersRound, Pencil, ArrowUp } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchShows,
@@ -38,9 +38,12 @@ import {
   leavePeopleGroup,
   renamePeopleGroup,
   fetchMyPendingGroupInvites,
+  fetchGroupMessages,
+  sendGroupMessage,
   type Show,
   type GroupDashboardShow,
   type PendingGroupInvite,
+  type GroupMessage,
 } from "../lib/db";
 import { computePill, type PillData } from "../lib/groupPills";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
@@ -97,6 +100,11 @@ export default function DashboardPage() {
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
   const [optionsFor, setOptionsFor] = useState<string | null>(null); // group id whose gear options are open
   const [renameValue, setRenameValue] = useState("");
+
+  // CP6: group chat panel.
+  const [chatGroupId, setChatGroupId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<GroupMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
 
   const selfUserId = user?.id ?? "";
   const inGroup = !!activeGroupId;
@@ -337,6 +345,26 @@ export default function DashboardPage() {
     if (user) setRailGroups(await loadRail(user.id));
   }
 
+  // ── CP6: chat (per group, not real-time) ─────────────────────────────────
+  const loadChat = useCallback(async (groupId: string) => {
+    try { setChatMessages(await fetchGroupMessages(groupId)); } catch (e) { console.error("[dashboard] chat load failed", e); }
+  }, []);
+
+  useEffect(() => {
+    if (!chatGroupId) { setChatMessages([]); return; }
+    loadChat(chatGroupId);
+  }, [chatGroupId, loadChat]);
+
+  async function sendChat() {
+    if (!user || !chatGroupId || !chatInput.trim()) return;
+    const body = chatInput.trim();
+    setChatInput("");
+    try {
+      await sendGroupMessage(chatGroupId, user.id, body);
+      await loadChat(chatGroupId);
+    } catch (e) { console.error("[dashboard] send message failed", e); }
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────────
   if (authLoading || loading) {
     return <div style={{ ...pageStyle, background: C.green }} aria-busy="true" />;
@@ -443,6 +471,7 @@ export default function DashboardPage() {
         onExit={() => navigate("/dashboard")}
         onInviteClick={(inv) => setInvitePrompt(inv)}
         onGearClick={(id) => { setOptionsFor(id); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
+        onOpenChat={(id) => setChatGroupId(id)}
       />
 
       {/* Search overlay (shared by both contexts) */}
@@ -633,6 +662,42 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* CP6: group chat panel (opened via the active group's avatar) */}
+      {chatGroupId && (() => {
+        const cg = railGroups.find((r) => r.group.id === chatGroupId);
+        const others = cg ? cg.members.filter((m) => m.userId !== selfUserId) : [];
+        const connected = others.length ? others.map((m) => `@${m.username}`).join(", ") : "just you";
+        return (
+          <div style={chatPanel}>
+            <div style={chatHeader}>
+              <div style={{ fontWeight: 700, color: C.green, fontSize: 14, lineHeight: 1.3 }}>You're connected with:<br />{connected}</div>
+              <button style={{ border: "none", background: "transparent", cursor: "pointer" }} onClick={() => setChatGroupId(null)}><X size={18} color={C.sky} /></button>
+            </div>
+            <div style={chatBody}>
+              {chatMessages.map((m) => {
+                const mine = m.authorId === selfUserId;
+                return (
+                  <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
+                    {!mine && <div style={{ fontSize: 11, color: "#fff", opacity: 0.85, marginBottom: 3 }}>{m.username}</div>}
+                    <div style={mine ? chatBubbleMine : chatBubbleOther}>{m.body}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={chatInputRow}>
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }}
+                placeholder="message…"
+                style={chatInputBox}
+              />
+              <button style={chatSend} onClick={sendChat}><ArrowUp size={18} color="#fff" /></button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -733,7 +798,7 @@ function PillRightSide({ right }: { right: PillData["right"] }) {
 
 // ── Groups rail ────────────────────────────────────────────────────────────────
 function GroupsRail({
-  groups, selfUserId, activeGroupId, pendingInvites, onEnter, onExit, onInviteClick, onGearClick,
+  groups, selfUserId, activeGroupId, pendingInvites, onEnter, onExit, onInviteClick, onGearClick, onOpenChat,
 }: {
   groups: RailGroup[];
   selfUserId: string;
@@ -743,6 +808,7 @@ function GroupsRail({
   onExit: () => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string) => void;
+  onOpenChat: (groupId: string) => void;
 }) {
   return (
     <div style={railWrap}>
@@ -782,9 +848,9 @@ function GroupsRail({
               </div>
             )}
             <button
-              onClick={() => (active ? undefined : onEnter(group.id))}
+              onClick={() => (active ? onOpenChat(group.id) : onEnter(group.id))}
               title={active ? "open chat" : "open group"}
-              style={{ border: "none", background: "transparent", cursor: active ? "default" : "pointer", padding: 0 }}
+              style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}
             >
               <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 4, maxWidth: 96, margin: "0 auto" }}>
                 {(others.length ? others : members).map((m) => (
@@ -860,6 +926,30 @@ const countCircle: React.CSSProperties = {
   fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center",
 };
 const leftIcon: React.CSSProperties = { display: "inline-flex", alignItems: "center", color: "#fff" };
+const chatPanel: React.CSSProperties = {
+  position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px, 44vw)", background: C.green,
+  display: "flex", flexDirection: "column", zIndex: 70, boxShadow: "-12px 0 30px rgba(0,0,0,0.18)",
+};
+const chatHeader: React.CSSProperties = {
+  display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
+  background: C.cream, padding: "18px 20px",
+};
+const chatBody: React.CSSProperties = { flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column" };
+const chatBubbleOther: React.CSSProperties = {
+  background: C.sky, color: C.midnight, padding: "10px 14px", borderRadius: 16, maxWidth: "78%", fontSize: 13, lineHeight: 1.4,
+};
+const chatBubbleMine: React.CSSProperties = {
+  background: C.cream, color: C.midnight, padding: "10px 14px", borderRadius: 16, maxWidth: "78%", fontSize: 13, lineHeight: 1.4,
+};
+const chatInputRow: React.CSSProperties = { display: "flex", gap: 8, alignItems: "center", padding: "14px 16px", background: C.cream };
+const chatInputBox: React.CSSProperties = {
+  flex: 1, border: "none", borderRadius: 65, padding: "12px 18px", fontFamily: '"Inter", sans-serif',
+  fontSize: 13, color: C.midnight, background: "#fff", outline: "none",
+};
+const chatSend: React.CSSProperties = {
+  border: "none", background: C.blue, borderRadius: "50%", width: 38, height: 38, display: "inline-flex",
+  alignItems: "center", justifyContent: "center", cursor: "pointer", flex: "0 0 auto",
+};
 const overlay: React.CSSProperties = {
   position: "fixed", inset: 0, background: "rgba(26,58,74,0.25)", display: "flex",
   alignItems: "center", justifyContent: "center", zIndex: 50,

@@ -2410,6 +2410,51 @@ export async function fetchRoomForGroupShow(groupId: string, showId: string): Pr
   return data?.id ?? null;
 }
 
+// ── Group chat (restructure §12) ────────────────────────────────────────────
+
+export type GroupMessage = {
+  id: string;
+  authorId: string;
+  username: string;
+  body: string;
+  createdAt: number;
+};
+
+/** All messages in a group's chat, oldest first. Not spoiler-gated. */
+export async function fetchGroupMessages(groupId: string): Promise<GroupMessage[]> {
+  const { data: rows, error } = await supabase
+    .from("group_messages")
+    .select("id, author_id, body, created_at")
+    .eq("group_id", groupId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+
+  const ids = Array.from(new Set((rows ?? []).map((r: any) => r.author_id)));
+  const usernames: Record<string, string> = {};
+  if (ids.length) {
+    const { data: profs } = await supabase.from("profiles").select("id, username").in("id", ids);
+    for (const p of profs ?? []) usernames[p.id] = p.username;
+  }
+
+  return (rows ?? []).map((r: any) => ({
+    id: r.id,
+    authorId: r.author_id,
+    username: usernames[r.author_id] ?? "unknown",
+    body: r.body,
+    createdAt: new Date(r.created_at).getTime(),
+  }));
+}
+
+/** Post a message to a group's chat. */
+export async function sendGroupMessage(groupId: string, authorId: string, body: string): Promise<void> {
+  await checkRateLimit('group_message', 20, 60);
+  validateLength("Message", body, 1, 2000);
+  const { error } = await supabase
+    .from("group_messages")
+    .insert({ group_id: groupId, author_id: authorId, body: body.trim() });
+  if (error) throw error;
+}
+
 // ── People-group lifecycle (restructure) ────────────────────────────────────
 
 /** Leave a people-group (§13 cascade — handled atomically server-side). */
