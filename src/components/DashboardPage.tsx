@@ -21,7 +21,7 @@
  */
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { X, Settings, UsersRound, Pencil, ArrowUp } from "lucide-react";
+import { X, Settings, UsersRound, Pencil, ArrowUp, LogOut } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchShows,
@@ -39,6 +39,7 @@ import {
   leavePeopleGroup,
   renamePeopleGroup,
   fetchMyPendingGroupInvites,
+  fetchGroupPendingInvites,
   fetchGroupMessages,
   sendGroupMessage,
   fetchOutOfPoolShows,
@@ -67,10 +68,10 @@ const C = {
 };
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
-type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[] };
+type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingHandles: string[] };
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, signOut } = useAuth() as any;
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -123,7 +124,11 @@ export default function DashboardPage() {
     try {
       const groups = await fetchPeopleGroupsForUser(uid);
       const withMembers = await Promise.all(
-        groups.map(async (g) => ({ group: g, members: await fetchPeopleGroupMembers(g.id) }))
+        groups.map(async (g) => ({
+          group: g,
+          members: await fetchPeopleGroupMembers(g.id),
+          pendingHandles: await fetchGroupPendingInvites(g.id),
+        }))
       );
       return withMembers;
     } catch (e) {
@@ -208,19 +213,29 @@ export default function DashboardPage() {
 
   const hasAnyShows = watching.length + notStarted.length > 0;
 
+  // userId → username for the active group (drives the opted-in tooltip).
+  const memberNameById = useMemo(() => {
+    const m: Record<string, string> = {};
+    const ag = railGroups.find((r) => r.group.id === activeGroupId);
+    for (const mem of ag?.members ?? []) m[mem.userId] = mem.username;
+    return m;
+  }, [railGroups, activeGroupId]);
+
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
-    const watching: { pill: PillData; name: string }[] = [];
-    const notStarted: { pill: PillData; name: string }[] = [];
+    type Row = { pill: PillData; name: string; members: string[] };
+    const watching: Row[] = [];
+    const notStarted: Row[] = [];
     for (const gs of groupShows) {
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
-      const row = { pill, name: show?.name ?? gs.showId };
+      const members = gs.members.map((mm) => memberNameById[mm.userId] ?? "someone");
+      const row = { pill, name: show?.name ?? gs.showId, members };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
-    const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+    const byName = (a: Row, b: Row) => a.name.localeCompare(b.name);
     return { watching: watching.sort(byName), notStarted: notStarted.sort(byName) };
-  }, [groupShows, showsById, selfUserId]);
+  }, [groupShows, showsById, selfUserId, memberNameById]);
 
   // Catalog search (CP2: catalog-only; TVMaze add is a later refinement).
   const results = useMemo(() => {
@@ -411,9 +426,34 @@ export default function DashboardPage() {
     <div style={{ ...pageStyle, background: inGroup ? C.sky : C.green }}>
       <DashboardStyles />
 
-      <div style={{ position: "absolute", top: 16, left: 20 }}>
+      {/* Top bar: logo left · INVITE FRIENDS + sign-out + admin right */}
+      <div style={topBar}>
         <SidebarLogo scale={0.5} blocksOpacity={1} />
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button style={invitePill} onClick={() => openInvite()}>INVITE FRIENDS</button>
+          <button style={topCircleBtn(inGroup)} title="sign out" onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}>
+            <LogOut size={18} color={inGroup ? C.midnight : "#fff"} />
+          </button>
+          {profile?.is_admin && (
+            <button style={topCircleBtn(inGroup)} title="admin" onClick={() => navigate("/?admin")}>
+              <Settings size={18} color={inGroup ? C.midnight : "#fff"} />
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Group clusters (top of the body) — replaces the old right rail */}
+      <GroupClusters
+        groups={railGroups}
+        selfUserId={selfUserId}
+        activeGroupId={activeGroupId}
+        pendingInvites={pendingInvites}
+        onEnter={(id) => navigate(`/dashboard?g=${id}`)}
+        onExit={() => navigate("/dashboard")}
+        onInviteClick={(inv) => setInvitePrompt(inv)}
+        onGearClick={(id) => { setOptionsFor(id); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
+        onOpenChat={(id) => setChatGroupId(id)}
+      />
 
       {inGroup ? (
         // ── Group context (sky) ───────────────────────────────────────────────
@@ -423,7 +463,10 @@ export default function DashboardPage() {
               <h1 style={shelfHeader}>CURRENTLY WATCHING:</h1>
               <div style={shelfGrid}>
                 {groupShelves.watching.map((r) => (
-                  <GroupPill key={r.pill.showId} pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
+                  <div key={r.pill.showId} className="group-pill-wrap">
+                    <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
+                    {r.members.length > 0 && <div className="group-pill-tt">{r.members.map((n) => `@${n}`).join(", ")}</div>}
+                  </div>
                 ))}
               </div>
             </>
@@ -438,7 +481,10 @@ export default function DashboardPage() {
           {groupShelves.notStarted.length > 0 && (
             <div style={shelfGrid}>
               {groupShelves.notStarted.map((r) => (
-                <GroupPill key={r.pill.showId} pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
+                <div key={r.pill.showId} className="group-pill-wrap">
+                  <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
+                  {r.members.length > 0 && <div className="group-pill-tt">{r.members.map((n) => `@${n}`).join(", ")}</div>}
+                </div>
               ))}
             </div>
           )}
@@ -498,24 +544,8 @@ export default function DashboardPage() {
             <h1 style={{ ...shelfHeader, textTransform: "none", marginBottom: 16 }}>What else?</h1>
             <button style={searchPill} onClick={openSearch}>SEARCH</button>
           </div>
-
-          <div style={{ textAlign: "center", marginTop: 72 }}>
-            <button style={invitePill} onClick={() => openInvite()}>INVITE FRIENDS</button>
-          </div>
         </div>
       )}
-
-      <GroupsRail
-        groups={railGroups}
-        selfUserId={selfUserId}
-        activeGroupId={activeGroupId}
-        pendingInvites={pendingInvites}
-        onEnter={(id) => navigate(`/dashboard?g=${id}`)}
-        onExit={() => navigate("/dashboard")}
-        onInviteClick={(inv) => setInvitePrompt(inv)}
-        onGearClick={(id) => { setOptionsFor(id); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
-        onOpenChat={(id) => setChatGroupId(id)}
-      />
 
       {/* Search overlay (shared by both contexts) */}
       {searchOpen && (
@@ -698,7 +728,7 @@ export default function DashboardPage() {
             </div>
             <div style={yellowCard}>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this group?</div>
-              <button style={{ ...startBtn, color: C.red, borderColor: C.red }} onClick={() => doLeave(optionsFor)}>yes, leave</button>
+              <button style={dangerBtn} onClick={() => doLeave(optionsFor)}>yes, leave</button>
               <div style={yellowDivider} />
               <div style={{ color: "#fff", fontSize: 12, opacity: 0.9 }}>You can join again if someone sends you another invite.</div>
             </div>
@@ -752,7 +782,7 @@ export default function DashboardPage() {
             <div style={{ color: "#fff", fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>BUT, your progress will be saved and restored if you search for and add the show back to your show pool.</div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={{ border: "none", background: "transparent", color: C.midnight, fontWeight: 700, fontSize: 13, cursor: "pointer" }} onClick={() => setRemoveConfirm(null)}>cancel</button>
-              <button style={{ ...startBtn, color: C.red, borderColor: C.red, padding: "8px 24px" }} onClick={() => doRemoveFromPool(removeConfirm.id)}>remove</button>
+              <button style={dangerBtn} onClick={() => doRemoveFromPool(removeConfirm.id)}>remove</button>
             </div>
           </div>
         </div>
@@ -855,8 +885,15 @@ function PillRightSide({ right }: { right: PillData["right"] }) {
   );
 }
 
-// ── Groups rail ────────────────────────────────────────────────────────────────
-function GroupsRail({
+// ── Group clusters (top of the dashboard body) ───────────────────────────────
+function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pending" | "invited" }) {
+  // accepted = cream/green · pending (invite sent) = yellow/cream · invited-to-you = red/green
+  const bg = state === "accepted" ? C.cream : state === "pending" ? C.yellow : C.red;
+  const fg = state === "accepted" ? C.green : state === "pending" ? C.cream : C.green;
+  return <span style={{ ...avatarCircle, background: bg, color: fg }}>{(letter ?? "?").toUpperCase()}</span>;
+}
+
+function GroupClusters({
   groups, selfUserId, activeGroupId, pendingInvites, onEnter, onExit, onInviteClick, onGearClick, onOpenChat,
 }: {
   groups: RailGroup[];
@@ -869,60 +906,57 @@ function GroupsRail({
   onGearClick: (groupId: string) => void;
   onOpenChat: (groupId: string) => void;
 }) {
-  return (
-    <div style={railWrap}>
-      <div style={{ fontWeight: 700, fontSize: 14, letterSpacing: -1, color: C.green, textAlign: "center", marginBottom: 24 }}>
-        groups:
-      </div>
+  const active = groups.find((g) => g.group.id === activeGroupId);
 
-      {/* Incoming invites — red "*you're invited" cluster (§8). */}
-      {pendingInvites.map((inv) => {
-        const names = inv.memberNames.length ? inv.memberNames : [inv.inviterName];
-        return (
-          <button
-            key={inv.token}
-            onClick={() => onInviteClick(inv)}
-            title={`Join a group with @${names[0]}?`}
-            style={{ border: "none", background: "transparent", cursor: "pointer", display: "block", width: "100%", textAlign: "center", marginBottom: 36 }}
-          >
-            <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 4, maxWidth: 96, margin: "0 auto" }}>
-              {names.map((n, i) => (
-                <span key={i} style={{ ...avatar, background: C.red }}>{(n[0] ?? "?").toUpperCase()}</span>
-              ))}
+  // Group context (sky): only the active group's cluster + controls.
+  if (active) {
+    const others = active.members.filter((m) => m.userId !== selfUserId);
+    const display = others.length ? others : active.members;
+    return (
+      <div style={clustersRow}>
+        <div style={{ textAlign: "center", position: "relative" }}>
+          <div style={{ position: "absolute", top: -6, right: -28, display: "flex", flexDirection: "column", gap: 8 }}>
+            <button style={clusterIcon} title="back to dashboard" onClick={onExit}><X size={16} color={C.midnight} /></button>
+            <button style={clusterIcon} title="group options" onClick={() => onGearClick(active.group.id)}><Settings size={15} color={C.midnight} /></button>
+          </div>
+          <button style={clusterBtn} title="open chat" onClick={() => onOpenChat(active.group.id)}>
+            <div style={avatarPile}>
+              {display.map((m) => <Avatar key={m.userId} letter={m.username[0]} state="accepted" />)}
+              {active.pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />)}
             </div>
-            <div style={{ marginTop: 8, fontSize: 13, letterSpacing: -1, color: C.red, fontWeight: 700 }}>*you're invited</div>
+            <div style={{ ...clusterName, color: C.midnight }}>{groupAutoName(active.group, others)}</div>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Green dashboard: every group you're in + every group you're invited to.
+  return (
+    <div style={clustersRow}>
+      {groups.map(({ group, members, pendingHandles }) => {
+        const others = members.filter((m) => m.userId !== selfUserId);
+        const display = others.length ? others : members;
+        return (
+          <button key={group.id} style={clusterBtn} title="open group" onClick={() => onEnter(group.id)}>
+            <div style={avatarPile}>
+              {display.map((m) => <Avatar key={m.userId} letter={m.username[0]} state="accepted" />)}
+              {pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />)}
+            </div>
+            <div style={clusterName}>{groupAutoName(group, others)}</div>
           </button>
         );
       })}
-
-      {groups.map(({ group, members }) => {
-        const others = members.filter((m) => m.userId !== selfUserId);
-        const active = group.id === activeGroupId;
+      {pendingInvites.map((inv) => {
+        const names = inv.memberNames.length ? inv.memberNames : [inv.inviterName];
+        const label = inv.groupName || names.join(", ");
         return (
-          <div key={group.id} style={{ textAlign: "center", marginBottom: 40, position: "relative" }}>
-            {active && (
-              <div style={{ position: "absolute", top: -4, right: 6, display: "flex", flexDirection: "column", gap: 8 }}>
-                <button style={railIcon} title="back to dashboard" onClick={onExit}><X size={16} color={C.midnight} /></button>
-                <button style={railIcon} title="group options" onClick={() => onGearClick(group.id)}><Settings size={15} color={C.midnight} /></button>
-              </div>
-            )}
-            <button
-              onClick={() => (active ? onOpenChat(group.id) : onEnter(group.id))}
-              title={active ? "open chat" : "open group"}
-              style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}
-            >
-              <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 4, maxWidth: 96, margin: "0 auto" }}>
-                {(others.length ? others : members).map((m) => (
-                  <span key={m.userId} style={{ ...avatar, background: active ? C.green : C.sky }} title={m.username}>
-                    {(m.username[0] ?? "?").toUpperCase()}
-                  </span>
-                ))}
-              </div>
-              <div style={{ marginTop: 8, fontSize: 13, letterSpacing: -1, color: C.green }}>
-                {groupAutoName(group, others)}
-              </div>
-            </button>
-          </div>
+          <button key={inv.token} style={clusterBtn} title="you're invited" onClick={() => onInviteClick(inv)}>
+            <div style={avatarPile}>
+              {names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)}
+            </div>
+            <div style={clusterName}>{label}</div>
+          </button>
         );
       })}
     </div>
@@ -948,7 +982,7 @@ const heroH1: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 44, lineHeight: 1.15, letterSpacing: -2, color: C.cream, margin: 0,
 };
 const contentWrap: React.CSSProperties = {
-  maxWidth: 1040, margin: "0 auto", padding: "96px 200px 80px 64px",
+  maxWidth: 1040, margin: "0 auto", padding: "8px 64px 80px",
 };
 const shelfHeader: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -2, color: C.cream,
@@ -969,17 +1003,31 @@ const connectMorePill: React.CSSProperties = {
   border: "2px solid #fff", background: "transparent", color: "#fff", fontWeight: 700, fontSize: 14,
   padding: "16px 40px", borderRadius: 65, cursor: "pointer", letterSpacing: -0.5,
 };
-const railWrap: React.CSSProperties = {
-  position: "fixed", top: 0, right: 0, bottom: 0, width: 160, background: C.cream,
-  borderTopLeftRadius: 24, borderBottomLeftRadius: 24, padding: "32px 12px", overflowY: "auto",
+const topBar: React.CSSProperties = {
+  display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 28px",
 };
-const avatar: React.CSSProperties = {
-  width: 28, height: 28, borderRadius: "50%", color: "#fff", fontSize: 12, fontWeight: 700,
+const topCircleBtn = (inGroup: boolean): React.CSSProperties => ({
+  width: 44, height: 44, borderRadius: "50%", background: "transparent",
+  border: `2px solid ${inGroup ? C.midnight : "#fff"}`, cursor: "pointer",
   display: "inline-flex", alignItems: "center", justifyContent: "center",
+});
+const clustersRow: React.CSSProperties = {
+  display: "flex", justifyContent: "center", alignItems: "flex-start", flexWrap: "wrap",
+  gap: 56, padding: "16px 80px 36px",
 };
-const railIcon: React.CSSProperties = {
-  border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0,
+const clusterBtn: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 0 };
+const avatarPile: React.CSSProperties = {
+  display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 4, maxWidth: 104, margin: "0 auto",
 };
+const avatarCircle: React.CSSProperties = {
+  width: 44, height: 44, borderRadius: "50%", display: "inline-flex", alignItems: "center",
+  justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 22,
+};
+const clusterName: React.CSSProperties = {
+  marginTop: 8, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: -1,
+  color: "#fff", maxWidth: 120, lineHeight: 1.25, marginLeft: "auto", marginRight: "auto",
+};
+const clusterIcon: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0 };
 const countCircle: React.CSSProperties = {
   minWidth: 22, height: 22, padding: "0 6px", borderRadius: 11, background: C.green, color: "#fff",
   fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -1036,9 +1084,14 @@ const yellowTitle: React.CSSProperties = {
 const yellowDivider: React.CSSProperties = {
   height: 1, background: "rgba(255,255,255,0.5)", margin: "20px 0 14px",
 };
+// Button-outline rule: solid fill = no contrasting outline; outlined = transparent fill.
 const startBtn: React.CSSProperties = {
-  border: `2px solid ${C.blue}`, background: C.cream, color: C.blue, fontWeight: 700, fontSize: 14,
-  padding: "10px 36px", borderRadius: 65, cursor: "pointer",
+  border: "none", background: C.blue, color: "#fff", fontWeight: 700, fontSize: 14,
+  padding: "11px 38px", borderRadius: 65, cursor: "pointer",
+};
+const dangerBtn: React.CSSProperties = {
+  border: `2px solid ${C.red}`, background: "transparent", color: C.red, fontWeight: 700, fontSize: 14,
+  padding: "10px 32px", borderRadius: 65, cursor: "pointer",
 };
 
 function DashboardStyles() {
@@ -1068,6 +1121,15 @@ function DashboardStyles() {
         box-shadow: 0 2px 6px rgba(0,0,0,0.18);
       }
       .dash-pill-wrap:hover .dash-pill-x { opacity: 1; }
+      .group-pill-wrap { position: relative; }
+      .group-pill-tt {
+        position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+        background: ${C.green}; color: #fff; padding: 10px 14px; border-radius: 15px;
+        font-size: 13px; line-height: 1.4; width: max-content; max-width: 240px;
+        opacity: 0; pointer-events: none; transition: opacity 120ms; z-index: 40;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+      }
+      .group-pill-wrap:hover .group-pill-tt { opacity: 1; }
     `}</style>
   );
 }

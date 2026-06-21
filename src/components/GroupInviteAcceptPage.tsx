@@ -118,6 +118,6 @@ const card: React.CSSProperties = {
 };
 const title: React.CSSProperties = { fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: -1, color: "#fff", margin: "0 0 8px" };
 const muted: React.CSSProperties = { color: C.midnight, fontSize: 13, margin: "8px 0 0" };
-const yes: React.CSSProperties = { border: `2px solid ${C.blue}`, background: C.cream, color: C.blue, fontWeight: 700, fontSize: 14, padding: "10px 36px", borderRadius: 65, cursor: "pointer" };
+const yes: React.CSSProperties = { border: "none", background: C.blue, color: "#fff", fontWeight: 700, fontSize: 14, padding: "11px 38px", borderRadius: 65, cursor: "pointer" };
 const no: React.CSSProperties = { border: "2px solid #fff", background: "transparent", color: "#fff", fontWeight: 700, fontSize: 14, padding: "10px 30px", borderRadius: 65, cursor: "pointer" };
 const ghost: React.CSSProperties = { border: "2px solid #fff", background: "transparent", color: "#fff", fontWeight: 700, fontSize: 14, padding: "10px 28px", borderRadius: 65, cursor: "pointer", marginTop: 14 };

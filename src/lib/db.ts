@@ -2505,11 +2505,12 @@ export async function renamePeopleGroup(groupId: string, name: string): Promise<
 export type PendingGroupInvite = {
   token: string;
   groupId: string;
+  groupName: string | null;
   inviterName: string;
   memberNames: string[];
 };
 
-/** Pending people-group invites addressed to the caller (rail "*you're invited"). */
+/** Pending people-group invites addressed to the caller ("*you're invited"). */
 export async function fetchMyPendingGroupInvites(): Promise<PendingGroupInvite[]> {
   const { data, error } = await supabase.rpc("get_my_pending_group_invites");
   if (error) throw error;
@@ -2517,9 +2518,18 @@ export async function fetchMyPendingGroupInvites(): Promise<PendingGroupInvite[]
   return (data.invites ?? []).map((i: any) => ({
     token: i.token,
     groupId: i.group_id,
+    groupName: i.group_name ?? null,
     inviterName: i.inviter_name ?? "someone",
     memberNames: i.member_names ?? [],
   }));
+}
+
+/** Pending invitees of a group (their handle/username), for the yellow avatars. */
+export async function fetchGroupPendingInvites(groupId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc("get_group_pending_invites", { p_group_id: groupId });
+  if (error) return [];
+  if (!data || data.ok === false) return [];
+  return data.handles ?? [];
 }
 
 // ── People-group invitations (restructure) ──────────────────────────────────
