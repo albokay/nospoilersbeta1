@@ -108,6 +108,7 @@ export default function DashboardPage() {
   const [pendingInvites, setPendingInvites] = useState<PendingGroupInvite[]>([]);
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
   const [optionsFor, setOptionsFor] = useState<string | null>(null); // group id whose gear options are open
+  const [optionsAnchor, setOptionsAnchor] = useState<{ x: number; y: number } | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
   // CP6: group chat panel.
@@ -451,7 +452,7 @@ export default function DashboardPage() {
         onEnter={(id) => navigate(`/dashboard?g=${id}`)}
         onExit={() => navigate("/dashboard")}
         onInviteClick={(inv) => setInvitePrompt(inv)}
-        onGearClick={(id) => { setOptionsFor(id); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
+        onGearClick={(id, rect) => { setOptionsFor(id); setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 }); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
       />
 
       {/* Chat affordance — partial pill at the right edge (group context only) */}
@@ -574,7 +575,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div style={pickerCard}>
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -2, color: C.green }}>
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: C.green }}>
                 {pickShow.name}
               </div>
               <div style={{ marginTop: 24, color: C.green, fontWeight: 600, fontSize: 13, letterSpacing: -1, textAlign: "center" }}>
@@ -606,7 +607,7 @@ export default function DashboardPage() {
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setInviteOpen(false); }}>
           <div style={{ ...searchCard, background: C.sky, position: "relative" }}>
             <button style={modalClose} onClick={() => setInviteOpen(false)}><X size={18} color="#fff" /></button>
-            <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: -2, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
+            <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
               {inviteTargetGroupId ? <>Connect more friends<br />to this group:</> : <>Email a friend to<br />start a watch group:</>}
             </h1>
 
@@ -723,10 +724,18 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* CP5b: group options (gear) — rename + leave */}
+      {/* CP5b: group options (gear) — rename + leave, anchored near the gear */}
       {optionsFor && (
-        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setOptionsFor(null); }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 50 }} onClick={() => setOptionsFor(null)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "fixed",
+              top: optionsAnchor?.y ?? 80,
+              left: Math.min(optionsAnchor?.x ?? 28, (typeof window !== "undefined" ? window.innerWidth : 1024) - 380),
+              display: "flex", flexDirection: "column", gap: 16, width: 360,
+            }}
+          >
             <div style={yellowCard}>
               <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color="#fff" /></button>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
@@ -910,7 +919,7 @@ function GroupClusters({
   onEnter: (id: string) => void;
   onExit: () => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
-  onGearClick: (groupId: string) => void;
+  onGearClick: (groupId: string, rect: DOMRect) => void;
 }) {
   const active = groups.find((g) => g.group.id === activeGroupId);
 
@@ -920,10 +929,10 @@ function GroupClusters({
     const names = others.map((m) => m.username).join(", ");
     return (
       <div style={groupHeadingRow}>
-        <button style={headingIconBtn} title="back to dashboard" onClick={onExit}><ArrowLeft size={30} color="#fff" /></button>
+        <button style={{ ...headingIconBtn, position: "absolute", left: -46 }} title="back to dashboard" onClick={onExit}><ArrowLeft size={30} color="#fff" /></button>
         <h1 style={groupHeadingTitle}>{active.group.name || groupAutoName(active.group, others)}</h1>
         {names && <span style={groupHeadingMembers}>{names}</span>}
-        <button style={headingIconBtn} title="group options" onClick={() => onGearClick(active.group.id)}><Settings size={22} color="#fff" /></button>
+        <button style={headingIconBtn} title="group options" onClick={(e) => onGearClick(active.group.id, e.currentTarget.getBoundingClientRect())}><Settings size={22} color="#fff" /></button>
       </div>
     );
   }
@@ -976,13 +985,13 @@ const heroWrap: React.CSSProperties = {
   justifyContent: "center", textAlign: "center", gap: 32, padding: "0 24px",
 };
 const heroH1: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 44, lineHeight: 1.15, letterSpacing: -2, color: C.cream, margin: 0,
+  fontFamily: LORA, fontWeight: 700, fontSize: 44, lineHeight: 1.15, letterSpacing: 0, color: C.cream, margin: 0,
 };
 const contentWrap: React.CSSProperties = {
   maxWidth: 1040, margin: "0 auto", padding: "8px 64px 80px",
 };
 const shelfHeader: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -2, color: C.cream,
+  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: C.cream,
   textAlign: "center", textTransform: "uppercase", margin: "0 0 24px",
 };
 const shelfGrid: React.CSSProperties = {
@@ -1018,7 +1027,7 @@ const avatarPile: React.CSSProperties = {
 };
 const avatarCircle: React.CSSProperties = {
   width: 60, height: 60, borderRadius: "50%", display: "inline-flex", alignItems: "center",
-  justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 32, letterSpacing: -2,
+  justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 32, letterSpacing: 0,
 };
 const clusterName: React.CSSProperties = {
   marginTop: 8, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: -1,
@@ -1026,16 +1035,17 @@ const clusterName: React.CSSProperties = {
 };
 const clusterIcon: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0 };
 const groupHeadingRow: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 16, padding: "4px 28px 28px",
+  maxWidth: 880, margin: "0 auto", padding: "4px 0 28px", position: "relative",
+  display: "flex", alignItems: "center", gap: 14,
 };
 const headingIconBtn: React.CSSProperties = {
   border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0, display: "inline-flex", alignItems: "center",
 };
 const groupHeadingTitle: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -2, color: "#fff", margin: 0,
+  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: "#fff", margin: 0,
 };
 const groupHeadingMembers: React.CSSProperties = {
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: -2, color: "#fff",
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: "#fff",
 };
 const chatTab: React.CSSProperties = {
   position: "fixed", right: 0, top: "45%", background: C.cream, border: "none", cursor: "pointer",
