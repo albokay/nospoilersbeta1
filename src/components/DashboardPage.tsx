@@ -450,12 +450,16 @@ export default function DashboardPage() {
         activeGroupId={activeGroupId}
         pendingInvites={pendingInvites}
         onEnter={(id) => navigate(`/dashboard?g=${id}`)}
-        onExit={() => navigate("/dashboard")}
         onInviteClick={(inv) => setInvitePrompt(inv)}
         onGearClick={(id, rect) => { setOptionsFor(id); setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 }); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
       />
 
-      {/* Chat affordance — partial pill at the right edge (group context only) */}
+      {/* Edge tabs (group context only): back-to-dashboard left · chat right */}
+      {inGroup && (
+        <button style={backTab} title="back to dashboard" onClick={() => navigate("/dashboard")}>
+          <ArrowLeft size={24} color={C.green} />
+        </button>
+      )}
       {inGroup && (
         <button style={chatTab} title="open chat" onClick={() => activeGroupId && setChatGroupId(activeGroupId)}>
           <MessageCircle size={24} color={C.green} />
@@ -910,28 +914,27 @@ function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pendi
 }
 
 function GroupClusters({
-  groups, selfUserId, activeGroupId, pendingInvites, onEnter, onExit, onInviteClick, onGearClick,
+  groups, selfUserId, activeGroupId, pendingInvites, onEnter, onInviteClick, onGearClick,
 }: {
   groups: RailGroup[];
   selfUserId: string;
   activeGroupId: string | null;
   pendingInvites: PendingGroupInvite[];
   onEnter: (id: string) => void;
-  onExit: () => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string, rect: DOMRect) => void;
 }) {
   const active = groups.find((g) => g.group.id === activeGroupId);
 
-  // Group context (sky): a left-aligned heading — ← group-name · members · gear.
+  // Group context (sky): a left-aligned heading — group-name · with members · gear.
+  // (Back-to-dashboard lives in the left-edge tab in the page chrome.)
   if (active) {
     const others = active.members.filter((m) => m.userId !== selfUserId);
     const names = others.map((m) => m.username).join(", ");
     return (
       <div style={groupHeadingRow}>
-        <button style={{ ...headingIconBtn, position: "absolute", left: -46 }} title="back to dashboard" onClick={onExit}><ArrowLeft size={30} color="#fff" /></button>
         <h1 style={groupHeadingTitle}>{active.group.name || groupAutoName(active.group, others)}</h1>
-        {names && <span style={groupHeadingMembers}>{names}</span>}
+        {names && <span style={groupHeadingMembers}><span style={{ color: C.greyblue }}>with</span> {names}</span>}
         <button style={headingIconBtn} title="group options" onClick={(e) => onGearClick(active.group.id, e.currentTarget.getBoundingClientRect())}><Settings size={22} color="#fff" /></button>
       </div>
     );
@@ -1047,8 +1050,13 @@ const groupHeadingTitle: React.CSSProperties = {
 const groupHeadingMembers: React.CSSProperties = {
   fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: "#fff",
 };
+const backTab: React.CSSProperties = {
+  position: "fixed", left: 0, top: "18%", background: C.cream, border: "none", cursor: "pointer",
+  borderTopRightRadius: 28, borderBottomRightRadius: 28, padding: "16px 22px 16px 14px",
+  display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
+};
 const chatTab: React.CSSProperties = {
-  position: "fixed", right: 0, top: "45%", background: C.cream, border: "none", cursor: "pointer",
+  position: "fixed", right: 0, top: "60%", background: C.cream, border: "none", cursor: "pointer",
   borderTopLeftRadius: 28, borderBottomLeftRadius: 28, padding: "16px 14px 16px 22px",
   display: "inline-flex", alignItems: "center", boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };

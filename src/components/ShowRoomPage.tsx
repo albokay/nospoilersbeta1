@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { X, SquarePen } from "lucide-react";
+import { ArrowLeft, SquarePen } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
@@ -197,21 +197,23 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
 
   return (
     <div style={{ ...page, background: bodyBg }}>
-      {/* ── Header strip: logo left · centered name + × · tabs on the divider ── */}
+      {/* ── Back-to-group tab — partial pill at the left edge (mirrors chat) ── */}
+      <button style={backTab} title="back to group" onClick={closeRoom}>
+        <ArrowLeft size={24} color={C.green} />
+      </button>
+
+      {/* ── Header strip: logo left · centered name · tabs on the boundary ── */}
       <div style={{ position: "relative", background: C.green, height: HEADER_H }}>
         <div style={{ position: "absolute", left: 20, top: 12 }}><SidebarLogo scale={0.45} blocksOpacity={1} /></div>
 
-        <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)" }}>
           <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: C.cream, margin: 0 }}>{show?.name ?? "Show"}</h1>
-          <button onClick={closeRoom} title="close room" style={circleX}><X size={18} color={C.green} strokeWidth={2.5} /></button>
         </div>
 
         <div style={{ position: "absolute", left: "26%", bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
           <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />
           <RoomTab label="private writing" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
         </div>
-
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 2, background: C.cream }} />
       </div>
 
       {/* ── Toolbar: write (left) · progress (right) ── */}
@@ -318,12 +320,18 @@ function RoomTab({ label, active, bg, onClick }: { label: string; active: boolea
     <button
       onClick={onClick}
       style={{
-        border: "none", cursor: "pointer", padding: "10px 20px",
-        borderTopLeftRadius: 12, borderTopRightRadius: 12,
-        fontSize: 13, fontWeight: active ? 700 : 600, letterSpacing: -0.3,
+        cursor: "pointer", padding: "6px 22px",
+        borderTopLeftRadius: 14, borderTopRightRadius: 14,
+        // Cream outline lives only on the deselected tab; the selected tab is
+        // a clean fill that bleeds into the panel below.
+        borderTop: active ? "none" : `2px solid ${C.cream}`,
+        borderLeft: active ? "none" : `2px solid ${C.cream}`,
+        borderRight: active ? "none" : `2px solid ${C.cream}`,
+        borderBottom: "none",
+        fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: -0.3,
         background: active ? bg : "transparent",
         color: active ? C.midnight : "rgba(255,255,255,0.75)",
-        position: "relative", bottom: -2, // sit on top of the 2px divider line
+        position: "relative", bottom: -2, // bleed into the panel below
       }}
     >
       {label}
@@ -332,9 +340,10 @@ function RoomTab({ label, active, bg, onClick }: { label: string; active: boolea
 }
 
 const page: React.CSSProperties = { position: "fixed", inset: 0, overflowY: "auto", fontFamily: '"Inter", system-ui, sans-serif' };
-const circleX: React.CSSProperties = {
-  width: 32, height: 32, borderRadius: "50%", background: C.cream, border: "none",
-  display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+const backTab: React.CSSProperties = {
+  position: "fixed", left: 0, top: "18%", background: C.cream, border: "none", cursor: "pointer",
+  borderTopRightRadius: 28, borderBottomRightRadius: 28, padding: "16px 22px 16px 14px",
+  display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
 const writeBtn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: "#fff",
