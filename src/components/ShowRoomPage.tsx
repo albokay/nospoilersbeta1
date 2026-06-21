@@ -242,14 +242,18 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
               {show && progressForShow && (
-                <OneSelectProgress
-                  show={show}
-                  value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
-                  onConfirm={onProgressConfirm}
-                  onForwardPick={onForwardPick}
-                  requireConfirm
-                  allowZero={(effectiveProgress(progressForShow)?.s ?? 1) === 0}
-                />
+                // On the private tab (green body) the default green picker
+                // outline is invisible — switch it to cream there.
+                <div className={tab === "private" ? "private-progress" : undefined}>
+                  <OneSelectProgress
+                    show={show}
+                    value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
+                    onConfirm={onProgressConfirm}
+                    onForwardPick={onForwardPick}
+                    requireConfirm
+                    allowZero={(effectiveProgress(progressForShow)?.s ?? 1) === 0}
+                  />
+                </div>
               )}
             </div>
 

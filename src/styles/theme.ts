@@ -104,6 +104,9 @@ body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd
 body.public-context .progress-control{ border-color:#7abd8e !important; }
 body.group-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
 body.group-context .progress-control{ border-color:#7abd8e !important; }
+/* Show room private tab sits on a green body, where the green picker outline
+   is invisible — give that picker a cream outline. */
+body.group-context .private-progress .progress-control{ border-color:#fef8ea !important; }
 /* Inside modals (portaled, with [data-modal-root]), the .progress-control
    keeps its white outline regardless of body context. The compose modal's
    in-modal picker sits on the modal's own colored frame and reads against

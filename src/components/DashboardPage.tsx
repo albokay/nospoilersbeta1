@@ -477,6 +477,7 @@ export default function DashboardPage() {
                   <div key={r.pill.showId} className="group-pill-wrap">
                     <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                     {r.members.length > 0 && <div className="group-pill-tt">{r.members.map((n) => (n === "you" ? "you" : "@" + n)).join(", ")}</div>}
+                    <OptInAvatars names={r.members.filter((n) => n !== "you")} />
                   </div>
                 ))}
               </div>
@@ -495,6 +496,7 @@ export default function DashboardPage() {
                 <div key={r.pill.showId} className="group-pill-wrap">
                   <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                   {r.members.length > 0 && <div className="group-pill-tt">{r.members.map((n) => (n === "you" ? "you" : "@" + n)).join(", ")}</div>}
+                  <OptInAvatars names={r.members.filter((n) => n !== "you")} />
                 </div>
               ))}
             </div>
@@ -913,6 +915,20 @@ function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pendi
   return <span style={{ ...avatarCircle, background: bg, color: fg }}>{(letter ?? "?").toUpperCase()}</span>;
 }
 
+/** Opt-in member avatars overlapping a group-pill's bottom edge (the friends
+ *  who have this show in the group's pool). Decorative — pointer-events off so
+ *  they never block a pill click. */
+function OptInAvatars({ names }: { names: string[] }) {
+  if (!names.length) return null;
+  return (
+    <div style={optInRow}>
+      {names.map((n, i) => (
+        <span key={`${n}-${i}`} style={optInAvatar}>{(n[0] ?? "?").toUpperCase()}</span>
+      ))}
+    </div>
+  );
+}
+
 function GroupClusters({
   groups, selfUserId, activeGroupId, pendingInvites, onEnter, onInviteClick, onGearClick,
 }: {
@@ -998,7 +1014,9 @@ const shelfHeader: React.CSSProperties = {
   textAlign: "center", textTransform: "uppercase", margin: "0 0 24px",
 };
 const shelfGrid: React.CSSProperties = {
-  display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, maxWidth: 880, margin: "0 auto",
+  // 24px vertical separation (row) leaves room for the opt-in avatars that
+  // overlap each pill's bottom edge in the group view; 16px between columns.
+  display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px 16px", maxWidth: 880, margin: "0 auto",
 };
 const searchPill: React.CSSProperties = {
   border: "none", background: C.cream, color: C.red, fontWeight: 700, fontSize: 14,
@@ -1031,6 +1049,15 @@ const avatarPile: React.CSSProperties = {
 const avatarCircle: React.CSSProperties = {
   width: 60, height: 60, borderRadius: "50%", display: "inline-flex", alignItems: "center",
   justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 32, letterSpacing: 0,
+};
+const optInRow: React.CSSProperties = {
+  position: "absolute", left: "50%", bottom: 0, transform: "translate(-50%, 50%)",
+  display: "flex", gap: 6, pointerEvents: "none", zIndex: 5,
+};
+const optInAvatar: React.CSSProperties = {
+  width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.cream}`, background: C.sky,
+  color: C.blue, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
 };
 const clusterName: React.CSSProperties = {
   marginTop: 8, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: -1,
