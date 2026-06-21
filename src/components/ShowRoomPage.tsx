@@ -36,7 +36,10 @@ const LORA = '"Lora", Georgia, serif';
 const HEADER_H = 92;
 type Tab = "friend" | "private";
 
-export default function ShowRoomPage({ roomId }: { roomId: string }) {
+export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: string; privateShowId?: string }) {
+  // Private-only standalone (dashboard "write by yourself"): no group/room,
+  // just the viewer's private writing for a show. Group-independent.
+  const privateOnly = !!privateShowId && !roomId;
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const feedRef = useRef<V2RoomFeedHandle>(null);
@@ -48,7 +51,7 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
   const [feedEntries, setFeedEntries] = useState<V2RoomFeedEntry[]>([]);
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
   const [privateEntries, setPrivateEntries] = useState<Thread[]>([]);
-  const [tab, setTab] = useState<Tab>("friend");
+  const [tab, setTab] = useState<Tab>(privateOnly ? "private" : "friend");
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
 
@@ -66,6 +69,20 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
     if (!user) return;
     setLoading(true);
     try {
+      // Private-only standalone: no group/room — load show + progress + the
+      // viewer's private threads only.
+      if (privateOnly && privateShowId) {
+        const [allShows, progressMap] = await Promise.all([fetchShows(), fetchProgress(user.id)]);
+        const mine = await fetchUserThreads(user.id, privateShowId);
+        setShow(allShows.find((s) => s.id === privateShowId) ?? null);
+        setProgressForShow(progressMap[privateShowId] ?? null);
+        setPrivateEntries(mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread));
+        setParentGroupId(null);
+        setFeedEntries([]);
+        setMapMembers([]);
+        return;
+      }
+      if (!roomId) return;
       const { data: roomRow, error: roomErr } = await supabase
         .from("friend_groups")
         .select("id, show_id, parent_group_id, deleted_at")
@@ -119,7 +136,7 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [roomId, user]);
+  }, [roomId, privateShowId, privateOnly, user]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -210,7 +227,7 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
   return (
     <div style={{ ...page, background: bodyBg }}>
       {/* ── Back-to-group tab — partial pill at the left edge (mirrors chat) ── */}
-      <button style={backTab} title="back to group" onClick={closeRoom}>
+      <button style={backTab} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
         <ArrowLeft size={24} color={C.green} />
       </button>
 
@@ -225,7 +242,7 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
         </div>
 
         <div style={{ position: "absolute", left: 160, bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
-          <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />
+          {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
           <RoomTab label="private writing" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
         </div>
       </div>
@@ -294,19 +311,22 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
           </div>
 
           {/* RIGHT pane: season map. Reserved but hidden on the private tab so
-              the left column keeps the exact same placement across tabs. */}
-          <div style={{ flex: "0 0 auto", visibility: tab === "friend" ? "visible" : "hidden" }} aria-hidden={tab !== "friend"}>
-            <V2RoomMap
-              members={mapMembers}
-              seasons={show?.seasons ?? []}
-              viewerProgress={progressForShow}
-              viewerUserId={user?.id}
-              groupId={roomId}
-              onEntryClick={(threadId) => feedRef.current?.scrollToEntry(threadId)}
-              onRateOwnCell={rateOwnCell}
-              onCommitRatings={commitRatings}
-            />
-          </div>
+              the left column keeps the exact same placement across tabs.
+              Omitted entirely in the private-only standalone (no group). */}
+          {!privateOnly && roomId && (
+            <div style={{ flex: "0 0 auto", visibility: tab === "friend" ? "visible" : "hidden" }} aria-hidden={tab !== "friend"}>
+              <V2RoomMap
+                members={mapMembers}
+                seasons={show?.seasons ?? []}
+                viewerProgress={progressForShow}
+                viewerUserId={user?.id}
+                groupId={roomId}
+                onEntryClick={(threadId) => feedRef.current?.scrollToEntry(threadId)}
+                onRateOwnCell={rateOwnCell}
+                onCommitRatings={commitRatings}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -318,12 +338,13 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
             <ComposeForm
               ref={composeFormRef}
               showId={show?.id}
-              restrictGroupId={roomId}
+              restrictGroupId={privateOnly ? undefined : roomId}
+              privateOnly={privateOnly}
               hideTopRightClose
               onCancel={() => setComposeOpen(false)}
               onSubmitted={(destination) => {
                 setComposeOpen(false);
-                setTab(destination === "private" ? "private" : "friend");
+                setTab(privateOnly || destination === "private" ? "private" : "friend");
                 load();
               }}
             />

@@ -117,6 +117,9 @@ export default function DashboardPage() {
   const [chatMessages, setChatMessages] = useState<GroupMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
 
+  // Dashboard "write by yourself" confirm (personal currently-watching shelf).
+  const [writeSolo, setWriteSolo] = useState<{ showId: string; name: string } | null>(null);
+
   // Cursor-following tooltip (opt-in avatars + show-button watch progress).
   const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null);
   function tipProps(text?: string) {
@@ -549,7 +552,7 @@ export default function DashboardPage() {
               <div style={shelfGrid}>
                 {watching.map(({ show, entry }) => (
                   <div key={show.id} className="dash-pill-wrap">
-                    <button className="dash-pill dash-pill--watching" onClick={() => openShow(show.id)}>
+                    <button className="dash-pill dash-pill--watching" onClick={() => setWriteSolo({ showId: show.id, name: show.name })}>
                       <span className="dash-pill__name">{show.name}</span>
                       <span className="dash-pill__prog">s{entry.s} e{entry.e}</span>
                     </button>
@@ -835,6 +838,20 @@ export default function DashboardPage() {
               <button style={{ border: "none", background: "transparent", color: C.midnight, fontWeight: 700, fontSize: 13, cursor: "pointer" }} onClick={() => setRemoveConfirm(null)}>cancel</button>
               <button style={dangerBtn} onClick={() => doRemoveFromPool(removeConfirm.id)}>remove</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dashboard "write by yourself" → private-only standalone show room. */}
+      {writeSolo && (
+        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setWriteSolo(null); }}>
+          <div style={yellowCard}>
+            <button style={modalClose} onClick={() => setWriteSolo(null)}><X size={16} color="#fff" /></button>
+            <div style={yellowTitle}>Do you want to write by yourself?</div>
+            <button
+              style={{ ...startBtn, marginTop: 16 }}
+              onClick={() => { const id = writeSolo.showId; setWriteSolo(null); navigate(`/show-room/private/${id}`); }}
+            >Yes</button>
           </div>
         </div>
       )}

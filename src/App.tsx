@@ -211,6 +211,10 @@ export default function App() {
   if (pathParts[0] === "group-invite" && pathParts[1]) {
     return <Suspense fallback={<RouteFallback />}><GroupInviteAcceptPage token={pathParts[1]} /></Suspense>;
   }
+  // Dashboard "write by yourself" — private-only standalone for a show (no group).
+  if (pathParts[0] === "show-room" && pathParts[1] === "private" && pathParts[2]) {
+    return <Suspense fallback={<RouteFallback />}><ShowRoomPage privateShowId={pathParts[2]} /></Suspense>;
+  }
   // Restructure (group × show) room — two tabs (separate from legacy /room/:id).
   if (pathParts[0] === "show-room" && pathParts[1]) {
     return <Suspense fallback={<RouteFallback />}><ShowRoomPage roomId={pathParts[1]} /></Suspense>;

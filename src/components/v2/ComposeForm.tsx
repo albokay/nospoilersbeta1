@@ -92,6 +92,9 @@ type ComposeFormProps = {
    *  (public) and no other groups. Live compose leaves this undefined and is
    *  unaffected. */
   restrictGroupId?: string;
+  /** Dashboard "write by yourself" standalone: the only destination is "keep
+   *  it private" (no friend rooms, no public). Defaults the choice to private. */
+  privateOnly?: boolean;
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -106,7 +109,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId },
+  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -126,7 +129,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   // destination is selected. "private" / "public" are special string
   // values; any other string is a friend_group id (post is also added
   // to that room via group_threads).
-  const [destination, setDestination] = useState<"private" | "public" | string | null>(null);
+  const [destination, setDestination] = useState<"private" | "public" | string | null>(privateOnly ? "private" : null);
 
   // Prompt feature — same shape as live ShowSection.
   const [activePrompt, setActivePrompt] = useState<PromptEntry | null>(null);
@@ -699,7 +702,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               share the width of the widest one's content (no dead space
               on the right when titles are short). */}
           <div style={{ display: "grid", gridTemplateColumns: "max-content", justifyContent: "center", gap: 8 }}>
-            {(restrictGroupId ? groups.filter((g) => g.id === restrictGroupId) : groups).map((g) => (
+            {!privateOnly && (restrictGroupId ? groups.filter((g) => g.id === restrictGroupId) : groups).map((g) => (
               <DestinationPill
                 key={g.id}
                 selected={destination === g.id}
@@ -716,7 +719,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               title="keep it private"
               onClick={() => setDestination("private")}
             />
-            {!restrictGroupId && (
+            {!restrictGroupId && !privateOnly && (
               <DestinationPill
                 selected={destination === "public"}
                 bg="#dea838"
