@@ -2410,6 +2410,37 @@ export async function fetchRoomForGroupShow(groupId: string, showId: string): Pr
   return data?.id ?? null;
 }
 
+// ── Remove-from-pool (restructure §4) ───────────────────────────────────────
+
+/** Show ids the caller has removed from their pool (progress kept). Tolerant —
+ *  returns empty if the in_pool column isn't present yet. */
+export async function fetchOutOfPoolShows(userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("progress")
+    .select("show_id, in_pool")
+    .eq("user_id", userId)
+    .eq("in_pool", false);
+  if (error) return new Set(); // column not yet migrated
+  return new Set((data ?? []).map((r: any) => r.show_id));
+}
+
+/** Globally remove a show from the caller's pool (§4 cascade, atomic). */
+export async function removeShowFromPool(showId: string): Promise<void> {
+  const { data, error } = await supabase.rpc("remove_show_from_pool", { p_show_id: showId });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "remove failed");
+}
+
+/** Re-add a removed show to the pool (saved progress is restored). */
+export async function restoreShowToPool(userId: string, showId: string): Promise<void> {
+  const { error } = await supabase
+    .from("progress")
+    .update({ in_pool: true })
+    .eq("user_id", userId)
+    .eq("show_id", showId);
+  if (error) throw error;
+}
+
 // ── Group chat (restructure §12) ────────────────────────────────────────────
 
 export type GroupMessage = {

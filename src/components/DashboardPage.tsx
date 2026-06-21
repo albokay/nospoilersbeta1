@@ -40,6 +40,9 @@ import {
   fetchMyPendingGroupInvites,
   fetchGroupMessages,
   sendGroupMessage,
+  fetchOutOfPoolShows,
+  removeShowFromPool,
+  restoreShowToPool,
   type Show,
   type GroupDashboardShow,
   type PendingGroupInvite,
@@ -74,6 +77,8 @@ export default function DashboardPage() {
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [railGroups, setRailGroups] = useState<RailGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [outOfPool, setOutOfPool] = useState<Set<string>>(new Set());
+  const [removeConfirm, setRemoveConfirm] = useState<{ id: string; name: string } | null>(null);
 
   // Group context
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
@@ -132,10 +137,13 @@ export default function DashboardPage() {
     (async () => {
       setLoading(true);
       try {
-        const [showRows, prog] = await Promise.all([fetchShows(), fetchProgress(user.id)]);
+        const [showRows, prog, oop] = await Promise.all([
+          fetchShows(), fetchProgress(user.id), fetchOutOfPoolShows(user.id),
+        ]);
         if (cancelled) return;
         setShows(showRows);
         setProgress(prog);
+        setOutOfPool(oop);
       } catch (e) {
         console.error("[dashboard] core load failed", e);
       } finally {
@@ -187,12 +195,13 @@ export default function DashboardPage() {
     for (const [showId, entry] of Object.entries(progress)) {
       const show = showsById[showId];
       if (!show) continue;
+      if (outOfPool.has(showId)) continue; // removed from pool (progress kept)
       const started = (entry.s ?? 0) > 0 || (entry.e ?? 0) > 0;
       (started ? watching : notStarted).push({ show, entry });
     }
     const byName = (a: { show: Show }, b: { show: Show }) => a.show.name.localeCompare(b.show.name);
     return { watching: watching.sort(byName), notStarted: notStarted.sort(byName) };
-  }, [progress, showsById]);
+  }, [progress, showsById, outOfPool]);
 
   const hasAnyShows = watching.length + notStarted.length > 0;
 
@@ -214,8 +223,12 @@ export default function DashboardPage() {
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return shows.filter((s) => !s.isHidden && s.name.toLowerCase().includes(q) && !progress[s.id]).slice(0, 8);
-  }, [query, shows, progress]);
+    // Exclude shows already in pool; KEEP removed (out-of-pool) shows so they
+    // can be re-added (which restores their saved progress).
+    return shows
+      .filter((s) => !s.isHidden && s.name.toLowerCase().includes(q) && (!progress[s.id] || outOfPool.has(s.id)))
+      .slice(0, 8);
+  }, [query, shows, progress, outOfPool]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   function openSearch() { setSearchOpen(true); setQuery(""); }
@@ -232,6 +245,25 @@ export default function DashboardPage() {
       console.error("[dashboard] add show failed", e);
     }
     closeSearch();
+  }
+
+  // Re-add a removed show: restore its saved progress (no picker).
+  async function restoreShow(show: Show) {
+    if (!user) return;
+    try {
+      await restoreShowToPool(user.id, show.id);
+      setOutOfPool((prev) => { const n = new Set(prev); n.delete(show.id); return n; });
+    } catch (e) { console.error("[dashboard] restore show failed", e); }
+    closeSearch();
+  }
+
+  // §4 remove-from-pool: global down-vote + leave rooms; progress kept.
+  async function doRemoveFromPool(showId: string) {
+    setRemoveConfirm(null);
+    try {
+      await removeShowFromPool(showId);
+      setOutOfPool((prev) => new Set(prev).add(showId));
+    } catch (e) { console.error("[dashboard] remove from pool failed", e); }
   }
 
   function openInvite() {
@@ -429,10 +461,13 @@ export default function DashboardPage() {
               <h1 style={shelfHeader}>CURRENTLY WATCHING:</h1>
               <div style={shelfGrid}>
                 {watching.map(({ show, entry }) => (
-                  <button key={show.id} className="dash-pill dash-pill--watching" onClick={() => openShow(show.id)}>
-                    <span className="dash-pill__name">{show.name}</span>
-                    <span className="dash-pill__prog">s{entry.s} e{entry.e}</span>
-                  </button>
+                  <div key={show.id} className="dash-pill-wrap">
+                    <button className="dash-pill dash-pill--watching" onClick={() => openShow(show.id)}>
+                      <span className="dash-pill__name">{show.name}</span>
+                      <span className="dash-pill__prog">s{entry.s} e{entry.e}</span>
+                    </button>
+                    <button className="dash-pill-x" title="remove from pool" onClick={() => setRemoveConfirm({ id: show.id, name: show.name })}>×</button>
+                  </div>
                 ))}
               </div>
             </>
@@ -444,9 +479,12 @@ export default function DashboardPage() {
           {notStarted.length > 0 && (
             <div style={shelfGrid}>
               {notStarted.map(({ show }) => (
-                <button key={show.id} className="dash-pill dash-pill--want" onClick={() => openShow(show.id)}>
-                  <span className="dash-pill__name">{show.name}</span>
-                </button>
+                <div key={show.id} className="dash-pill-wrap">
+                  <button className="dash-pill dash-pill--want" onClick={() => openShow(show.id)}>
+                    <span className="dash-pill__name">{show.name}</span>
+                  </button>
+                  <button className="dash-pill-x" title="remove from pool" onClick={() => setRemoveConfirm({ id: show.id, name: show.name })}>×</button>
+                </div>
               ))}
             </div>
           )}
@@ -486,8 +524,8 @@ export default function DashboardPage() {
               {results.length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   {results.map((s) => (
-                    <button key={s.id} className="dash-result" onClick={() => { setPickShow(s); setPickProgress({ s: 0, e: 0 }); }}>
-                      {s.name}
+                    <button key={s.id} className="dash-result" onClick={() => { if (outOfPool.has(s.id)) { restoreShow(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}>
+                      {s.name}{outOfPool.has(s.id) ? " · restore" : ""}
                     </button>
                   ))}
                 </div>
@@ -698,6 +736,22 @@ export default function DashboardPage() {
           </div>
         );
       })()}
+
+      {/* §4 remove-from-pool confirm */}
+      {removeConfirm && (
+        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setRemoveConfirm(null); }}>
+          <div style={{ background: C.sky, borderRadius: 15, padding: "26px 30px", width: "min(340px, 90vw)", position: "relative" }}>
+            <button style={modalClose} onClick={() => setRemoveConfirm(null)}><X size={16} color="#fff" /></button>
+            <div style={{ color: C.red, fontWeight: 700, fontSize: 15, marginBottom: 12, letterSpacing: -0.3 }}>Remove this show from your pool?</div>
+            <div style={{ color: "#fff", fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>This will down vote the show across all your groups and you will leave all your friend rooms.</div>
+            <div style={{ color: "#fff", fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>BUT, your progress will be saved and restored if you search for and add the show back to your show pool.</div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button style={{ border: "none", background: "transparent", color: C.midnight, fontWeight: 700, fontSize: 13, cursor: "pointer" }} onClick={() => setRemoveConfirm(null)}>cancel</button>
+              <button style={{ ...startBtn, color: C.red, borderColor: C.red, padding: "8px 24px" }} onClick={() => doRemoveFromPool(removeConfirm.id)}>remove</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1001,6 +1055,14 @@ function DashboardStyles() {
         font-size: 14px; font-weight: 600; color: ${C.green};
       }
       .dash-result:hover { background: rgba(122,189,142,0.14); }
+      .dash-pill-wrap { position: relative; }
+      .dash-pill-x {
+        position: absolute; top: -7px; right: -3px; width: 22px; height: 22px; border-radius: 50%;
+        border: none; background: ${C.cream}; color: ${C.red}; font-size: 15px; line-height: 1; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 120ms;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+      }
+      .dash-pill-wrap:hover .dash-pill-x { opacity: 1; }
     `}</style>
   );
 }
