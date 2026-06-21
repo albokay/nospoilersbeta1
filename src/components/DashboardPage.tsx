@@ -390,6 +390,19 @@ export default function DashboardPage() {
     } catch (e) { console.error("[dashboard] declare+start failed", e); }
   }
 
+  // "Just log my progress for now": record progress (which opts you into the
+  // group's pool per the dashboard RPC) without starting/opening a show room.
+  async function declareProgressOnly(showId: string, val: { s: number; e: number }) {
+    if (!user || !activeGroupId) return;
+    try {
+      const entry: ProgressEntry = { s: val.s, e: val.e, highestS: val.s, highestE: val.e };
+      await upsertRewatchStatus(user.id, showId, entry);
+      setProgress((prev) => ({ ...prev, [showId]: entry }));
+      setClicked(null);
+      await refreshGroup(activeGroupId);
+    } catch (e) { console.error("[dashboard] log-progress failed", e); }
+  }
+
   // ── CP5b: invites + group options ────────────────────────────────────────
   async function refreshRailAndInvites() {
     if (!user) return;
@@ -740,7 +753,13 @@ export default function DashboardPage() {
                   </div>
                   <div style={yellowDivider} />
                   <div style={{ ...yellowTitle, fontSize: 13 }}>{roomLabel}</div>
-                  <button style={{ ...startBtn, marginTop: 12 }} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>Yes</button>
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
+                    <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>Yes</button>
+                    <button
+                      style={{ ...startBtn, background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
+                      onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
+                    >just log my progress for now</button>
+                  </div>
                 </>
               )}
             </div>
