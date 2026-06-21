@@ -19,6 +19,7 @@ import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
+  persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating,
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
@@ -26,6 +27,8 @@ import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember } from "./v2/V2RoomMap";
 import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
+import OneSelectProgress from "./OneSelectProgress";
+import RatingCaptureModal from "./RatingCaptureModal";
 import SidebarLogo from "./SidebarLogo";
 
 const C = { green: "#7ABD8E", sky: "#ADC8D7", blue: "#355EB8", yellow: "#DEA838", cream: "#FEF8EA", midnight: "#1A3A4A" };
@@ -48,6 +51,10 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
   const [tab, setTab] = useState<Tab>("friend");
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
+
+  // CP4b: progress picker + rating capture.
+  const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
+  const ratingTimersRef = useRef<Record<string, number>>({});
 
   // The reused V2 feed/map expect the group-context palette.
   useEffect(() => {
@@ -125,6 +132,63 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
     navigate(parentGroupId ? `/dashboard?g=${parentGroupId}` : "/dashboard");
   }
 
+  // ── CP4b: progress picker → rating-capture (forward) / confirm (backward) ──
+  // Forward pick → rate the episode you finished, then advance + refetch
+  // (the feed re-filters to the newly-visible episodes).
+  function onForwardPick(val: { s: number; e: number }) { setPendingRating(val); }
+
+  async function commitRating(rating: number) {
+    if (!user || !show || !pendingRating) return;
+    const target = pendingRating;
+    setPendingRating(null);
+    upsertEpisodeRating({ userId: user.id, showId: show.id, season: target.s, episode: target.e, rating })
+      .catch((e) => console.warn("rating upsert failed", e));
+    try {
+      await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, target);
+    } catch (e) { console.warn("progress write failed", e); }
+    await load();
+  }
+
+  async function onProgressConfirm(val: { s: number; e: number }) {
+    if (!user || !show) return;
+    try { await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, val); }
+    catch (e) { console.warn("progress write failed", e); }
+    await load();
+  }
+
+  // Click-to-rate a self map cell: optimistic update + debounced write.
+  function rateOwnCell(season: number, episode: number, newRating: number | null) {
+    if (!user || !show) return;
+    setMapMembers((prev) => prev.map((m) => {
+      if (m.userId !== user.id) return m;
+      if (newRating === null) return { ...m, ratings: m.ratings.filter((r) => !(r.s === season && r.e === episode)) };
+      const idx = m.ratings.findIndex((r) => r.s === season && r.e === episode);
+      const ratings = idx >= 0 ? m.ratings.map((r, i) => (i === idx ? { ...r, rating: newRating } : r)) : [...m.ratings, { s: season, e: episode, rating: newRating }];
+      return { ...m, ratings };
+    }));
+    const key = `${season}-${episode}`;
+    if (ratingTimersRef.current[key]) window.clearTimeout(ratingTimersRef.current[key]);
+    ratingTimersRef.current[key] = window.setTimeout(() => {
+      const op = newRating === null
+        ? deleteEpisodeRating({ userId: user.id, showId: show.id, season, episode })
+        : upsertEpisodeRating({ userId: user.id, showId: show.id, season, episode, rating: newRating });
+      op.catch((e) => console.warn("rating write failed", e));
+      delete ratingTimersRef.current[key];
+    }, 500);
+  }
+
+  async function commitRatings(changes: { s: number; e: number; rating: number | null }[]): Promise<{ ok: boolean }> {
+    if (!user || !show) return { ok: false };
+    if (!changes.length) return { ok: true };
+    try {
+      await Promise.all(changes.map((c) => c.rating === null
+        ? deleteEpisodeRating({ userId: user.id, showId: show.id, season: c.s, episode: c.e })
+        : upsertEpisodeRating({ userId: user.id, showId: show.id, season: c.s, episode: c.e, rating: c.rating })));
+      await load();
+      return { ok: true };
+    } catch (e) { console.warn("batch rating commit failed", e); return { ok: false }; }
+  }
+
   if (authLoading || loading) {
     return <div style={{ ...page, background: C.green }} aria-busy="true" />;
   }
@@ -153,10 +217,15 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
       {/* ── Toolbar: write (left) · progress (right) ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 40px 0" }}>
         <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
-        {progressForShow && (
-          <div style={progressPill}>
-            you've watched: S{String(progressForShow.s ?? 0).padStart(2, "0")} E{String(progressForShow.e ?? 0).padStart(2, "0")}
-          </div>
+        {show && progressForShow && (
+          <OneSelectProgress
+            show={show}
+            value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
+            onConfirm={onProgressConfirm}
+            onForwardPick={onForwardPick}
+            requireConfirm
+            allowZero={(effectiveProgress(progressForShow)?.s ?? 1) === 0}
+          />
         )}
       </div>
 
@@ -189,6 +258,8 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
               viewerUserId={user?.id}
               groupId={roomId}
               onEntryClick={(threadId) => feedRef.current?.scrollToEntry(threadId)}
+              onRateOwnCell={rateOwnCell}
+              onCommitRatings={commitRatings}
             />
           </div>
         </div>
@@ -228,6 +299,16 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
         </div>,
         document.body,
       )}
+
+      {/* CP4b: rate the episode you just finished (forward progress pick) */}
+      {pendingRating && (
+        <RatingCaptureModal
+          season={pendingRating.s}
+          episode={pendingRating.e}
+          onCommit={commitRating}
+          onCancel={() => setPendingRating(null)}
+        />
+      )}
     </div>
   );
 }
@@ -258,10 +339,6 @@ const circleX: React.CSSProperties = {
 const writeBtn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: "#fff",
   fontWeight: 700, fontSize: 14, padding: "12px 24px", borderRadius: 65, cursor: "pointer",
-};
-const progressPill: React.CSSProperties = {
-  background: "transparent", border: "2px solid #fff", borderRadius: 65, padding: "10px 22px",
-  color: "#fff", fontSize: 13, fontWeight: 600,
 };
 const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 };
 const composeBackdrop: React.CSSProperties = {
