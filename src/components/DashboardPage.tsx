@@ -95,6 +95,8 @@ export default function DashboardPage() {
   const [inviteEmails, setInviteEmails] = useState<string[]>([""]);
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteLinks, setInviteLinks] = useState<{ email: string; link?: string; error?: string }[] | null>(null);
+  // null = INVITE FRIENDS (form a NEW group); set = "connect more" to this group.
+  const [inviteTargetGroupId, setInviteTargetGroupId] = useState<string | null>(null);
 
   // §9 click-model popover (group context). mode captured at click time.
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq" } | null>(null);
@@ -266,35 +268,36 @@ export default function DashboardPage() {
     } catch (e) { console.error("[dashboard] remove from pool failed", e); }
   }
 
-  function openInvite() {
+  function openInvite(targetGroupId?: string) {
+    setInviteTargetGroupId(targetGroupId ?? null);
     setInviteEmails([""]);
     setInviteLinks(null);
     setInviteOpen(true);
   }
 
-  // INVITE FRIENDS: a new group forms and an invite link is minted per email.
-  // (Email delivery is CP5b; for now the inviter shares the link in-app.)
+  // INVITE FRIENDS forms a NEW group; "connect more friends" invites into the
+  // current group (inviteTargetGroupId). Either way each email mints a link.
   async function sendInvites() {
     if (!user || inviteSending) return;
     const emails = inviteEmails.map((e) => e.trim()).filter(Boolean);
     setInviteSending(true);
     try {
-      const id = await createPeopleGroup();
+      const id = inviteTargetGroupId ?? (await createPeopleGroup());
       const links: { email: string; link?: string; error?: string }[] = [];
       for (const email of emails) {
         try {
           const token = await createPeopleGroupInvite(id, email);
           links.push({ email, link: `${window.location.origin}/group-invite/${token}` });
         } catch (e: any) {
-          links.push({ email, error: e?.message || "failed" });
+          links.push({ email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
         }
       }
       setInviteLinks(links);
       const rail = await loadRail(user.id);
       setRailGroups(rail);
     } catch (e) {
-      console.error("[dashboard] create group / invites failed", e);
-      setInviteLinks([{ email: "", error: "Could not create the group." }]);
+      console.error("[dashboard] invites failed", e);
+      setInviteLinks([{ email: "", error: "Could not send invites." }]);
     } finally {
       setInviteSending(false);
     }
@@ -439,8 +442,8 @@ export default function DashboardPage() {
           )}
 
           <div style={{ textAlign: "center", marginTop: 64 }}>
-            {/* CP5: adds members to the CURRENT group (distinct from INVITE FRIENDS). */}
-            <button style={connectMorePill} onClick={() => { /* CP5 */ }}>
+            {/* Adds members to the CURRENT group (distinct from INVITE FRIENDS). */}
+            <button style={connectMorePill} onClick={() => activeGroupId && openInvite(activeGroupId)}>
               CONNECT MORE FRIENDS TO THIS GROUP
             </button>
           </div>
@@ -495,7 +498,7 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ textAlign: "center", marginTop: 72 }}>
-            <button style={invitePill} onClick={openInvite}>INVITE FRIENDS</button>
+            <button style={invitePill} onClick={() => openInvite()}>INVITE FRIENDS</button>
           </div>
         </div>
       )}
@@ -566,7 +569,7 @@ export default function DashboardPage() {
           <div style={{ ...searchCard, background: C.sky, position: "relative" }}>
             <button style={modalClose} onClick={() => setInviteOpen(false)}><X size={18} color="#fff" /></button>
             <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: -2, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
-              Email a friend to<br />start a watch group:
+              {inviteTargetGroupId ? <>Connect more friends<br />to this group:</> : <>Email a friend to<br />start a watch group:</>}
             </h1>
 
             {!inviteLinks ? (
