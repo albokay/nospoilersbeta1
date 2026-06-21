@@ -34,6 +34,7 @@ import {
   setShowVote,
   startShowRoom,
   createPeopleGroupInvite,
+  sendGroupInviteEmail,
   acceptPeopleGroupInvite,
   leavePeopleGroup,
   renamePeopleGroup,
@@ -287,6 +288,7 @@ export default function DashboardPage() {
       for (const email of emails) {
         try {
           const token = await createPeopleGroupInvite(id, email);
+          sendGroupInviteEmail(token); // best-effort email; link below is the fallback
           links.push({ email, link: `${window.location.origin}/group-invite/${token}` });
         } catch (e: any) {
           links.push({ email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
@@ -599,7 +601,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div style={{ color: C.midnight, fontSize: 13, marginBottom: 12 }}>
-                  Group created. Share each link with that person — they open it (signed in with that email) to join:
+                  Invites emailed. The link is here too as a backup — they open it (signed in with that email) to join:
                 </div>
                 {inviteLinks.map((r, i) => (
                   <CopyRow key={i} email={r.email} link={r.link} error={r.error} />

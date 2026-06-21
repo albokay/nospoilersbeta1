@@ -9,6 +9,11 @@
 # remember --no-verify-jwt. See HANDOFF.md §"Edge function deploy notes".
 verify_jwt = false
 
+[functions.send-group-invite]
+# Restructure people-group invites. Same ES256 reason as send-invite — the
+# function verifies the JWT itself via admin.auth.getUser(jwt).
+verify_jwt = false
+
 [functions.send-message]
 # Same reason as send-invite — function does its own JWT verification
 # inside via admin.auth.getUser(jwt); gateway check is redundant and

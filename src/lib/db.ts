@@ -2535,6 +2535,18 @@ export async function createPeopleGroupInvite(groupId: string, email: string): P
   return data.token as string;
 }
 
+/** Email an existing people-group invite via the send-group-invite edge
+ *  function. Best-effort — never throws; the in-app link is the fallback. */
+export async function sendGroupInviteEmail(token: string): Promise<void> {
+  try {
+    await supabase.functions.invoke("send-group-invite", {
+      body: { token, appUrl: window.location.origin },
+    });
+  } catch (e) {
+    console.warn("[send-group-invite] email send failed (link still works)", e);
+  }
+}
+
 export type GroupInviteInfo = {
   groupId: string;
   inviterName: string;
