@@ -711,7 +711,8 @@ export default function DashboardPage() {
         const optedCount = gs?.members.length ?? 0;
         return (
           <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
-            <div style={yellowCard}>
+            {/* watchq is wider to fit the "Yes" + "just log my progress" row on one line. */}
+            <div style={{ ...yellowCard, ...(clicked.mode === "watchq" ? { width: "min(460px, 92vw)" } : {}) }}>
               <button style={modalClose} onClick={() => setClicked(null)}><X size={16} color="#fff" /></button>
 
               {clicked.mode === "solo" && (
@@ -756,9 +757,9 @@ export default function DashboardPage() {
                   <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
                     <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>Yes</button>
                     <button
-                      style={{ ...startBtn, background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
+                      style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
                       onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
-                    >just log my progress for now</button>
+                    >just log my progress</button>
                   </div>
                 </>
               )}
