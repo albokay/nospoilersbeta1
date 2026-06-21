@@ -60,9 +60,11 @@ body.group-context header.site{ background:rgba(173,200,215,0.98); }
 body.group-context .stickybar{ background:rgba(173,200,215,0.98); }
 /* In friend rooms, reply cards should use dark text matching thread entries (not washed-out blue) */
 body.group-context .reply-card{ color:#1a3a4a !important; --dos-accent:#1a3a4a; --dos-cyan:#1a3a4a; --dos-gray:rgba(26,58,74,0.65); border-color:transparent !important; }
-/* In friend rooms, star button circle + star should both use the muted border color */
-body.group-context .likeWrap{ color:rgba(26,58,74,0.3) !important; border-color:rgba(26,58,74,0.3) !important; }
-body.group-context .likeWrap:hover{ background:rgba(26,58,74,0.08) !important; }
+/* In friend rooms (+ the new show room, same palette), entry ticket outlines
+   and the star button circle/glyph use a 2px cream outline. */
+body.group-context .threadCard{ border:2px solid #fef8ea !important; }
+body.group-context .likeWrap{ color:#fef8ea !important; border-color:#fef8ea !important; }
+body.group-context .likeWrap:hover{ background:rgba(254,248,234,0.14) !important; }
 /* In friend rooms, the default .btn:hover border-color (--dos-light = dark
    navy) reads as a black outline against the light-blue bg. Swap to white.
    Reply-cards are already handled by the non-contextual .reply-card rules

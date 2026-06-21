@@ -195,6 +195,18 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
 
   const bodyBg = tab === "friend" ? C.sky : C.green;
 
+  // Private entries rendered through the same V2RoomFeed as the friend feed so
+  // the cards have identical mechanics (expand/collapse, star, edit/delete).
+  // No groupId → public-conversation mode (these are the viewer's own private
+  // threads; nobody else can see them).
+  const privateFeedEntries: V2RoomFeedEntry[] = privateEntries.map((t) => ({
+    threadId: t.id, s: t.season, e: t.episode, title: t.titleBase, body: t.body, preview: t.preview,
+    authorId: user?.id ?? "", authorUsername: t.author,
+    isRewatch: t.isRewatch, rewatchS: t.rewatchS, rewatchE: t.rewatchE, isEdited: t.isEdited,
+    isDeparted: false, isDeleted: t.isDeleted ?? false,
+    updatedAt: t.updatedAt, replyCount: 0, thread: t,
+  }));
+
   return (
     <div style={{ ...page, background: bodyBg }}>
       {/* ── Back-to-group tab — partial pill at the left edge (mirrors chat) ── */}
@@ -202,15 +214,17 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
         <ArrowLeft size={24} color={C.green} />
       </button>
 
-      {/* ── Header strip: logo left · centered name · tabs on the boundary ── */}
-      <div style={{ position: "relative", background: C.green, height: HEADER_H }}>
+      {/* ── Header strip: logo left · centered name · tabs on the boundary.
+            Header + body colors swap by mode: friend = green header / sky body,
+            private = sky header / green body (the inactive tab shows through). ── */}
+      <div style={{ position: "relative", background: tab === "friend" ? C.green : C.sky, height: HEADER_H }}>
         <div style={{ position: "absolute", left: 20, top: 12 }}><SidebarLogo scale={0.45} blocksOpacity={1} /></div>
 
         <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)" }}>
           <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: C.cream, margin: 0 }}>{show?.name ?? "Show"}</h1>
         </div>
 
-        <div style={{ position: "absolute", left: "26%", bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
+        <div style={{ position: "absolute", left: 160, bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
           <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />
           <RoomTab label="private writing" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
         </div>
@@ -258,13 +272,16 @@ export default function ShowRoomPage({ roomId }: { roomId: string }) {
               )
             ) : (
               <>
-                {privateEntries.map((t) => (
-                  <div key={t.id} style={{ border: `2px solid ${C.cream}`, borderRadius: 16, padding: 18, marginBottom: 12 }}>
-                    <div style={{ fontWeight: 700, color: C.cream, fontSize: 15 }}>{t.titleBase} <span style={{ opacity: 0.7, fontWeight: 500 }}>· S{t.season} E{t.episode}</span></div>
-                    <div style={{ color: C.cream, opacity: 0.85, fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>{t.preview || t.body}</div>
-                  </div>
-                ))}
-                <div style={{ marginTop: privateEntries.length ? 40 : 8 }}>
+                {privateFeedEntries.length > 0 && (
+                  <V2RoomFeed
+                    entries={privateFeedEntries}
+                    viewerProgress={progressForShow}
+                    userId={user?.id ?? ""}
+                    onThreadEdited={() => load()}
+                    onThreadDeleted={() => load()}
+                  />
+                )}
+                <div style={{ marginTop: privateFeedEntries.length ? 40 : 8 }}>
                   <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "0 0 12px" }}>Sidebar is best with friends.</p>
                   <p style={{ ...emptyCopy, maxWidth: 460 }}>But you can use this private space to write drafts or to keep a personal journal. No one will see what you write here. Sometimes we do our best thinking when we write for ourselves.</p>
                 </div>
@@ -337,9 +354,10 @@ function RoomTab({ label, active, bg, onClick }: { label: string; active: boolea
         borderLeft: active ? "none" : `2px solid ${C.cream}`,
         borderRight: active ? "none" : `2px solid ${C.cream}`,
         borderBottom: "none",
-        fontFamily: LORA, fontWeight: 700, fontSize: 18, letterSpacing: -0.3,
+        // Header 2 spec: Inter, 17px, semibold. Cream in both tab states.
+        fontFamily: '"Inter", system-ui, sans-serif', fontWeight: 600, fontSize: 17, letterSpacing: "0.005em",
         background: active ? bg : "transparent",
-        color: active ? C.midnight : "rgba(255,255,255,0.75)",
+        color: C.cream,
         position: "relative", bottom: -2, // bleed into the panel below
       }}
     >
