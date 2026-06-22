@@ -55,6 +55,7 @@ const ResetPasswordPage = lazy(() => import("./components/ResetPasswordPage"));
 const DashboardPage = lazy(() => import("./components/DashboardPage"));
 const GroupInviteAcceptPage = lazy(() => import("./components/GroupInviteAcceptPage"));
 const ShowRoomPage = lazy(() => import("./components/ShowRoomPage"));
+const PublicDashboardPage = lazy(() => import("./components/PublicDashboardPage"));
 
 // Full-screen fallback for lazy chunks. Matches the canon palette so the
 // transition from main bundle → lazy chunk doesn't flash white. Only
@@ -210,6 +211,11 @@ export default function App() {
   // Restructure people-group invite accept (separate from /invite/:token).
   if (pathParts[0] === "group-invite" && pathParts[1]) {
     return <Suspense fallback={<RouteFallback />}><GroupInviteAcceptPage token={pathParts[1]} /></Suspense>;
+  }
+  // Public read-only view of a user's show pool (restructure; reached from the
+  // show room's member-name clicks). Distinct from the live /u/:username profile.
+  if (pathParts[0] === "pool" && pathParts[1]) {
+    return <Suspense fallback={<RouteFallback />}><PublicDashboardPage username={decodeURIComponent(pathParts[1])} /></Suspense>;
   }
   // Dashboard "write by yourself" — private-only standalone for a show (no group).
   if (pathParts[0] === "show-room" && pathParts[1] === "private" && pathParts[2]) {

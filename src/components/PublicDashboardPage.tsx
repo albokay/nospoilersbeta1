@@ -1,0 +1,166 @@
+/**
+ * PublicDashboardPage — a read-only, public view of another user's show pool,
+ * styled like the green dashboard. Reached from the show room when you click a
+ * member's name (/pool/:username). No groups, chat, private writing, search,
+ * or editing — just "here's what they're watching." Public data only
+ * (fetchPublicProgressForUser), so it works logged-out; logged-out visitors
+ * get a "sign in" button where the dashboard shows "invite friends".
+ */
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../lib/auth";
+import {
+  fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser,
+  type Show,
+} from "../lib/db";
+import type { ProgressEntry } from "../types";
+import SidebarLogo from "./SidebarLogo";
+
+const C = { green: "#7ABD8E", sky: "#ADC8D7", blue: "#355EB8", yellow: "#DEA838", cream: "#FEF8EA", midnight: "#1A3A4A" };
+const LORA = '"Lora", Georgia, serif';
+
+export default function PublicDashboardPage({ username }: { username: string }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [shows, setShows] = useState<Show[]>([]);
+  const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const prof = await fetchPublicProfileByUsername(username);
+        if (!prof) { if (!cancelled) { setNotFound(true); setLoading(false); } return; }
+        const [allShows, prog] = await Promise.all([fetchShows(), fetchPublicProgressForUser(prof.id)]);
+        if (cancelled) return;
+        setShows(allShows);
+        setProgress(prog);
+      } catch (e) {
+        console.error("[public-dashboard] load failed", e);
+        if (!cancelled) setNotFound(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [username]);
+
+  const showsById = useMemo(() => {
+    const m: Record<string, Show> = {};
+    for (const s of shows) m[s.id] = s;
+    return m;
+  }, [shows]);
+
+  // Pool = the user's shows split into watching (started) / haven't-started.
+  // Stopped shows are excluded (not part of the watch pool).
+  const { watching, notStarted } = useMemo(() => {
+    const w: { show: Show; entry: ProgressEntry }[] = [];
+    const n: { show: Show; entry: ProgressEntry }[] = [];
+    for (const [showId, entry] of Object.entries(progress)) {
+      const show = showsById[showId];
+      if (!show || show.isHidden) continue;
+      if (entry.stoppedWatching) continue;
+      const started = (entry.s ?? 0) > 0 || (entry.e ?? 0) > 0;
+      (started ? w : n).push({ show, entry });
+    }
+    const byName = (a: { show: Show }, b: { show: Show }) => a.show.name.localeCompare(b.show.name);
+    return { watching: w.sort(byName), notStarted: n.sort(byName) };
+  }, [progress, showsById]);
+
+  if (loading) return <div style={{ ...pageStyle, background: C.green }} aria-busy="true" />;
+
+  return (
+    <div style={{ ...pageStyle, background: C.green }}>
+      <div style={topBar}>
+        <SidebarLogo scale={0.5} blocksOpacity={1} />
+      </div>
+
+      {notFound ? (
+        <div style={{ textAlign: "center", marginTop: 80, color: C.cream, fontFamily: LORA, fontSize: 24, fontWeight: 700 }}>
+          We couldn&rsquo;t find that person.
+        </div>
+      ) : (
+        <div style={contentWrap}>
+          <h1 style={heading}>What <span style={{ color: C.cream }}>@{username}</span> is watching</h1>
+
+          {watching.length > 0 && (
+            <>
+              <h2 style={shelfHeader}>CURRENTLY WATCHING:</h2>
+              <div style={shelfGrid}>
+                {watching.map(({ show, entry }) => (
+                  <div key={show.id} style={{ ...pill, ...pillWatching }}>
+                    <span style={pillName}>{show.name}</span>
+                    <span style={pillProg}>s{entry.s} e{entry.e}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {notStarted.length > 0 && (
+            <>
+              <h2 style={{ ...shelfHeader, textTransform: "none", marginTop: watching.length ? 48 : 0 }}>Haven&rsquo;t started yet:</h2>
+              <div style={shelfGrid}>
+                {notStarted.map(({ show }) => (
+                  <div key={show.id} style={{ ...pill, ...pillWant }}>
+                    <span style={pillName}>{show.name}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {watching.length === 0 && notStarted.length === 0 && (
+            <div style={{ textAlign: "center", color: C.cream, opacity: 0.85, marginTop: 24 }}>
+              @{username} hasn&rsquo;t added any shows yet.
+            </div>
+          )}
+
+          {/* Logged-out visitors get a sign-in CTA where signed-in users see
+              "invite friends" on their own dashboard. */}
+          {!user && (
+            <div style={{ textAlign: "center", marginTop: 64 }}>
+              <button style={signInPill} onClick={() => navigate("/")}>SIGN IN</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const pageStyle: React.CSSProperties = {
+  position: "fixed", inset: 0, overflowY: "auto", fontFamily: '"Inter", system-ui, sans-serif',
+};
+const topBar: React.CSSProperties = {
+  display: "flex", alignItems: "center", padding: "20px 28px",
+};
+const contentWrap: React.CSSProperties = { maxWidth: 1040, margin: "0 auto", padding: "8px 64px 80px" };
+const heading: React.CSSProperties = {
+  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: "#fff",
+  textAlign: "center", margin: "8px 0 40px",
+};
+const shelfHeader: React.CSSProperties = {
+  fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream,
+  textAlign: "center", textTransform: "uppercase", margin: "0 0 24px",
+};
+const shelfGrid: React.CSSProperties = {
+  display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", maxWidth: 880, margin: "0 auto",
+};
+const pill: React.CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+  padding: "14px 24px", borderRadius: 65, fontFamily: '"Inter", sans-serif',
+  fontWeight: 700, fontSize: 14, letterSpacing: -1, boxSizing: "border-box",
+};
+const pillWatching: React.CSSProperties = { background: "transparent", border: `2px solid ${C.cream}`, color: C.cream };
+const pillWant: React.CSSProperties = { background: C.cream, border: `2px solid ${C.cream}`, color: C.green };
+const pillName: React.CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+const pillProg: React.CSSProperties = { fontWeight: 500, opacity: 0.8 };
+const signInPill: React.CSSProperties = {
+  border: "none", background: C.blue, color: "#fff", fontWeight: 800, fontSize: 14,
+  letterSpacing: 0.5, padding: "14px 40px", borderRadius: 65, cursor: "pointer",
+};

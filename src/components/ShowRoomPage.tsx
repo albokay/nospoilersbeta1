@@ -393,9 +393,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     });
   }, []);
 
-  // Username byline click → that person's public dashboard (pass 3 route).
+  // Username byline click → that person's public dashboard (read-only pool),
+  // not the old profile.
   const handleClickProfile = useCallback((username: string) => {
-    navigate(`/u/${encodeURIComponent(username)}`);
+    navigate(`/pool/${encodeURIComponent(username)}`);
   }, [navigate]);
 
   if (authLoading || loading) {
