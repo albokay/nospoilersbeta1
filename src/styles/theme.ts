@@ -443,6 +443,16 @@ header.site{
   80%  { border-color:#355eb8; }
   100% { border-color:rgba(53,94,184,0); }
 }
+/* Map-cell-click attention pulse that leaves the (cream) outline alone — a
+   cream glow oscillation echoing flash-border-blue's rhythm. */
+@keyframes flash-glow-cream{
+  0%   { box-shadow:0 0 0 0 rgba(254,248,234,0); }
+  20%  { box-shadow:0 0 16px 3px rgba(254,248,234,0.95); }
+  40%  { box-shadow:0 0 7px 1px rgba(254,248,234,0.35); }
+  60%  { box-shadow:0 0 16px 3px rgba(254,248,234,0.95); }
+  80%  { box-shadow:0 0 7px 1px rgba(254,248,234,0.35); }
+  100% { box-shadow:0 0 0 0 rgba(254,248,234,0); }
+}
 
 /* Onboarding reveal — content fade-in with a double pulse (rise · dip · rise),
    echoing the map-cell highlight oscillation (flash-border-blue) but settling

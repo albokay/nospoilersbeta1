@@ -565,21 +565,16 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 position: "relative",
                 paddingTop: 12,
                 paddingBottom: 36,
-                // Border precedence: blue flash (map-cell click) wins
-                // briefly, then falls back to white-when-new, then default.
-                // The blue border animates color through `flash-border-blue`
-                // (theme.ts) so the outline oscillates instead of holding a
-                // static blue. Inline border-color sets the initial value;
-                // the keyframes override during the animation. After the
-                // 1.2s animation completes, isHighlighted clears (via
-                // HIGHLIGHT_MS = 1500) and the border falls back.
-                border: isHighlighted
-                  ? "4px solid #355eb8"
-                  : isNew
+                // Map-cell-click highlight: the OUTLINE stays its normal color
+                // (cream in rooms); the attention pulse is a cream glow
+                // (`flash-glow-cream`, box-shadow) so the lines never flash
+                // blue. Border precedence otherwise: white-when-new, then
+                // default. isHighlighted clears via HIGHLIGHT_MS = 1500.
+                border: isNew
                   ? "4px solid #fff"
                   : "4px solid var(--dos-border)",
                 animation: isHighlighted
-                  ? "flash-border-blue 1.2s ease forwards"
+                  ? "flash-glow-cream 1.2s ease forwards"
                   : undefined,
                 // A4 dim: 50% opacity once the user has expanded-and-
                 // collapsed this entry at least once this session.
