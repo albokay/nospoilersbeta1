@@ -78,6 +78,10 @@ const C = {
 };
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
+// New-activity tooltip copy (matches the live site's room/feed notification text).
+const NOTIF_VISIBLE = "There is new writing in here for you.";
+const NOTIF_INVISIBLE = "There is new writing in here for you… for when you catch up.";
+
 type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingHandles: string[] };
 
 export default function DashboardPage() {
@@ -135,13 +139,28 @@ export default function DashboardPage() {
   const [pillModal, setPillModal] = useState<{ showId: string; name: string; mode: "watching" | "notStarted" } | null>(null);
 
   // Cursor-following tooltip (opt-in avatars + show-button watch progress).
-  const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null);
-  function tipProps(text?: string) {
-    if (!text) return {};
+  // `sub` adds a second line beneath a divider — used to hang the new-activity
+  // notification copy under a show button's "You've watched…" line. `wrap`
+  // lets the longer notification copy break instead of forcing a wide bubble.
+  const [tip, setTip] = useState<{ text: string; sub?: string; wrap?: boolean; x: number; y: number } | null>(null);
+  // progress = the "You've watched…" line (top); notif = the new-activity line.
+  // When both exist the notif hangs beneath a divider; a notif alone shows on
+  // its own. Nothing to show → no tooltip.
+  function tipProps(progress?: string, notif?: string) {
+    const primary = progress ?? notif;
+    if (!primary) return {};
+    const sub = progress ? notif : undefined;
+    const wrap = !!notif; // notification copy is long → allow it to wrap
     return {
-      onMouseMove: (e: React.MouseEvent) => setTip({ text, x: e.clientX, y: e.clientY }),
+      onMouseMove: (e: React.MouseEvent) => setTip({ text: primary, sub, wrap, x: e.clientX, y: e.clientY }),
       onMouseLeave: () => setTip(null),
     };
+  }
+  // New-activity notification copy for a room's dot (blue = visible writing,
+  // red = invisible/ahead-of-progress), or undefined when the room has no dot.
+  function roomNotif(roomId?: string | null): string | undefined {
+    const dot = roomId ? roomDotByRoomId.get(roomId) : undefined;
+    return dot === "red" ? NOTIF_INVISIBLE : dot === "blue" ? NOTIF_VISIBLE : undefined;
   }
 
   const selfUserId = user?.id ?? "";
@@ -619,6 +638,7 @@ export default function DashboardPage() {
         onEnter={(id) => navigate(`/dashboard?g=${id}`)}
         onInviteClick={(inv) => setInvitePrompt(inv)}
         onGearClick={(id, rect) => { setOptionsFor(id); setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 }); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
+        onTip={setTip}
       />
 
       {/* Edge tabs (group context only): back-to-dashboard left · chat right */}
@@ -644,7 +664,7 @@ export default function DashboardPage() {
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
                     {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
-                    <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined)}>
+                    <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
                       <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                     </div>
                     <OptInAvatars members={r.opted} markWriter={r.markWriter} withTooltip onTip={setTip} />
@@ -665,7 +685,7 @@ export default function DashboardPage() {
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
                   {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
-                  <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined)}>
+                  <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
                     <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
                   <OptInAvatars members={r.opted} markWriter={r.markWriter} withTooltip={false} onTip={setTip} />
@@ -1071,9 +1091,13 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* Cursor-following tooltip bubble (opt-in avatars + watch progress). */}
+      {/* Cursor-following tooltip bubble (opt-in avatars + watch progress;
+          optional new-activity line beneath a divider). */}
       {tip && createPortal(
-        <div style={{ ...tipBubble, left: tip.x + 14, top: tip.y + 16 }}>{tip.text}</div>,
+        <div style={{ ...tipBubble, ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x + 14, top: tip.y + 16 }}>
+          {tip.text}
+          {tip.sub && (<><div style={tipDivider} />{tip.sub}</>)}
+        </div>,
         document.body,
       )}
     </div>
@@ -1212,7 +1236,7 @@ function OptInAvatars({ members, withTooltip, onTip, markWriter = false }: {
 }
 
 function GroupClusters({
-  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, onEnter, onInviteClick, onGearClick,
+  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, onEnter, onInviteClick, onGearClick, onTip,
 }: {
   groups: RailGroup[];
   selfUserId: string;
@@ -1222,6 +1246,7 @@ function GroupClusters({
   onEnter: (id: string) => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string, rect: DOMRect) => void;
+  onTip: (t: { text: string; wrap?: boolean; x: number; y: number } | null) => void;
 }) {
   const active = groups.find((g) => g.group.id === activeGroupId);
 
@@ -1245,14 +1270,24 @@ function GroupClusters({
       {groups.map(({ group, members, pendingHandles }) => {
         const others = members.filter((m) => m.userId !== selfUserId);
         const display = others.length ? others : members;
+        const dot = clusterDotByGroup.get(group.id);
+        const notif = dot === "red" ? NOTIF_INVISIBLE : dot === "blue" ? NOTIF_VISIBLE : undefined;
         return (
-          <button key={group.id} style={clusterBtn} title="open group" onClick={() => onEnter(group.id)}>
+          <button
+            key={group.id}
+            style={clusterBtn}
+            // Native title would compete with the new-activity tooltip; drop it when a dot is up.
+            title={notif ? undefined : "open group"}
+            onClick={() => onEnter(group.id)}
+            onMouseMove={notif ? (e) => onTip({ text: notif, wrap: true, x: e.clientX, y: e.clientY }) : undefined}
+            onMouseLeave={notif ? () => onTip(null) : undefined}
+          >
             <div style={avatarPile}>
               {display.map((m) => <Avatar key={m.userId} letter={m.username[0]} state="accepted" />)}
               {pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />)}
             </div>
             <div style={clusterName}>
-              {clusterDotByGroup.get(group.id) && <span style={{ ...notifDotCluster, background: clusterDotByGroup.get(group.id) === "red" ? C.red : C.blue }} />}
+              {dot && <span style={{ ...notifDotCluster, background: dot === "red" ? C.red : C.blue }} />}
               {groupAutoName(group, others)}
             </div>
           </button>
@@ -1357,7 +1392,7 @@ const writerPencilBadge: React.CSSProperties = {
 // New-activity dots (blue, 16px), slightly overlapping their surface.
 const notifDotButton: React.CSSProperties = {
   position: "absolute", top: -6, left: 6, width: 16, height: 16, borderRadius: "50%",
-  background: C.blue, zIndex: 6,
+  background: C.blue, zIndex: 6, pointerEvents: "none", // let the pill's tooltip fire through the dot
 };
 const notifDotChat: React.CSSProperties = {
   position: "absolute", top: -4, left: -4, width: 16, height: 16, borderRadius: "50%",
@@ -1371,6 +1406,10 @@ const tipBubble: React.CSSProperties = {
   position: "fixed", background: C.green, color: "#fff", padding: "7px 12px", borderRadius: 12,
   fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 600, lineHeight: 1.3,
   whiteSpace: "nowrap", pointerEvents: "none", zIndex: 9999, boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
+};
+// Divider between the "You've watched…" line and the new-activity line.
+const tipDivider: React.CSSProperties = {
+  height: 1, background: "rgba(255,255,255,0.45)", margin: "7px 0",
 };
 const clusterName: React.CSSProperties = {
   marginTop: 8, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: -1,
