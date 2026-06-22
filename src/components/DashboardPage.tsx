@@ -19,7 +19,7 @@
  *   • email invites + accept, rail invite/color states, chat, gear options → CP5/CP6
  *   • clicking a show into its room                           → CP4
  */
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
@@ -129,6 +129,13 @@ export default function DashboardPage() {
   const [chatGroupId, setChatGroupId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<GroupMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
+  // Keep the chat scrolled to the newest message (on open, send, or an
+  // incoming realtime message while the panel is open).
+  const chatBodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = chatBodyRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chatMessages]);
 
   // New-activity dots: per-room visibility (own excluded) + per-group chat state.
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
@@ -859,7 +866,7 @@ export default function DashboardPage() {
       {clicked && (() => {
         const gs = groupShows.find((s) => s.showId === clicked.showId);
         const selfVoted = !!gs?.members.find((m) => m.userId === selfUserId)?.voted;
-        const roomLabel = gs?.roomId ? "Open show room" : "Start a show room?";
+        const roomLabel = gs?.roomId ? "Open show room?" : "Start a show room?";
         // "Solo" only when you're the sole opt-in; 2+ opted in → plain show room.
         const optedCount = gs?.members.length ?? 0;
         const cur = progress[clicked.showId];
@@ -885,7 +892,7 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div style={yellowDivider} />
-                  <div style={{ ...yellowTitle, fontSize: 13 }}>{gs?.roomId ? "Open show room" : optedCount > 1 ? "Start a show room?" : "Start a solo show room?"}</div>
+                  <div style={{ ...yellowTitle, fontSize: 13 }}>{gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : "Start a solo show room?"}</div>
                   <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
                     <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>Yes</button>
                     <button
@@ -995,7 +1002,7 @@ export default function DashboardPage() {
               <div style={{ fontWeight: 700, color: C.green, fontSize: 14, lineHeight: 1.3 }}>You're connected with:<br />{connected}</div>
               <button style={{ border: "none", background: "transparent", cursor: "pointer" }} onClick={() => setChatGroupId(null)}><X size={18} color={C.sky} /></button>
             </div>
-            <div style={chatBody}>
+            <div style={chatBody} ref={chatBodyRef}>
               {chatMessages.map((m) => {
                 const mine = m.authorId === selfUserId;
                 return (

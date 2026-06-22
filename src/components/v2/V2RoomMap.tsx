@@ -1670,17 +1670,17 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   const filledBg = isSelf ? "#355eb8" : "#7abd8e";
   const outlineColor = isSelf ? "#355eb8" : "var(--dos-border)";
   // Hidden-entry cell: the member authored at (s, e) but the viewer
-  // hasn't reached it yet — the entry is invisible to them. Solid fill
-  // in the same grey as the spine. NO border: var(--dos-border) is an
-  // rgba color (alpha 0.3 in friend-room context), so a border declared
-  // in the same value would stack alpha on top of the fill and render
-  // the 2px ring visibly darker than the cell center. Notification dots
-  // still render on top (per-cell signal isn't gated on viewer
-  // visibility here; the dot is anchored at the wrapper's left edge
-  // regardless of fill).
+  // hasn't reached it yet — the entry is invisible to them. OPAQUE grey-
+  // blue fill: #819dad is the solid equivalent of var(--dos-border)
+  // (rgba(26,58,74,0.3)) composited over the friend-room bg (#adc8d7),
+  // so a lone hidden cell looks identical to before, but a multi-entry
+  // stack's TOP cell stays fully opaque instead of letting the offset
+  // receding back layers bleed through (which read as transparency). The
+  // back layers themselves still recede via their own opacity:0.3. NO
+  // border (keep the fill flat). Notification dots still render on top.
   if (isReached && hasEntry && aboveViewer) {
     return {
-      background: "var(--dos-border)",
+      background: "#819dad",
       borderRadius: CELL_RADIUS,
     };
   }
