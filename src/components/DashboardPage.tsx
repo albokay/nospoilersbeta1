@@ -47,10 +47,17 @@ import {
   fetchOutOfPoolShows,
   removeShowFromPool,
   restoreShowToPool,
+  fetchRoomActivityVisibility,
+  roomHasNewActivity,
+  fetchGroupChatActivity,
+  chatHasNewActivity,
+  markGroupChatSeen,
   type Show,
   type GroupDashboardShow,
   type PendingGroupInvite,
   type GroupMessage,
+  type RoomVisibility,
+  type GroupChatActivity,
 } from "../lib/db";
 import { computePill, type PillData } from "../lib/groupPills";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
@@ -118,6 +125,10 @@ export default function DashboardPage() {
   const [chatMessages, setChatMessages] = useState<GroupMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
 
+  // New-activity dots: per-room visibility (own excluded) + per-group chat state.
+  const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
+  const [chatActivity, setChatActivity] = useState<GroupChatActivity[]>([]);
+
   // Personal-dashboard pill click → progress dropdown (+ write-by-yourself on
   // the currently-watching shelf). mode distinguishes the two shelves.
   const [pillModal, setPillModal] = useState<{ showId: string; name: string; mode: "watching" | "notStarted" } | null>(null);
@@ -180,6 +191,14 @@ export default function DashboardPage() {
         const inv = await fetchMyPendingGroupInvites();
         if (!cancelled) setPendingInvites(inv);
       } catch (e) { console.warn("[dashboard] pending invites not loaded", e); }
+      // New-activity dots — tolerant (degrade to no dots if migrations missing).
+      try {
+        const [rv, ca] = await Promise.all([
+          fetchRoomActivityVisibility(user.id, true),
+          fetchGroupChatActivity(user.id),
+        ]);
+        if (!cancelled) { setRoomVis(rv); setChatActivity(ca); }
+      } catch (e) { console.warn("[dashboard] activity dots not loaded", e); }
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, navigate, loadRail]);
@@ -242,8 +261,8 @@ export default function DashboardPage() {
 
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
-    type OptIn = { username: string; s: number | null; e: number | null };
-    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; tier: number; lastActivityAt: number | null };
+    type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean };
+    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; tier: number; lastActivityAt: number | null; markWriter: boolean };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
@@ -252,7 +271,7 @@ export default function DashboardPage() {
       // Opted-in members other than you → the avatars overlapping the pill.
       const opted: OptIn[] = gs.members
         .filter((mm) => mm.userId !== selfUserId)
-        .map((mm) => ({ username: memberNameById[mm.userId] ?? "someone", s: mm.s, e: mm.e }));
+        .map((mm) => ({ username: memberNameById[mm.userId] ?? "someone", s: mm.s, e: mm.e, wrote: !!mm.wrote }));
       // Your own progress on this show (if any) → the show-button tooltip.
       const self = gs.members.find((mm) => mm.userId === selfUserId);
       const selfProg = self && ((self.s ?? 0) > 0 || (self.e ?? 0) > 0) ? { s: self.s as number, e: self.e as number } : null;
@@ -260,7 +279,9 @@ export default function DashboardPage() {
       const writerCount = pill.writerCount;
       const watcherCount = gs.members.filter((mm) => (mm.s ?? 0) > 0 || (mm.e ?? 0) > 0).length;
       const tier = writerCount >= 2 ? 0 : writerCount === 1 ? 1 : watcherCount >= 2 ? 2 : watcherCount >= 1 ? 3 : 4;
-      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, tier, lastActivityAt: gs.lastActivityAt };
+      // Exactly one writer → mark that writer's avatar (green fill + pencil).
+      // (If the lone writer is you, no avatar exists to mark — nothing shows.)
+      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, tier, lastActivityAt: gs.lastActivityAt, markWriter: writerCount === 1 };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
     const byName = (a: Row, b: Row) => a.name.localeCompare(b.name);
@@ -269,6 +290,26 @@ export default function DashboardPage() {
       (a.tier - b.tier) || ((b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0)) || a.name.localeCompare(b.name);
     return { watching: watching.sort(byActivity), notStarted: notStarted.sort(byName) };
   }, [groupShows, showsById, selfUserId, memberNameById]);
+
+  // ── New-activity dots ──────────────────────────────────────────────────────
+  const roomNewByRoomId = useMemo(() => {
+    const m = new Map<string, boolean>();
+    for (const v of roomVis) m.set(v.groupId, roomHasNewActivity(v));
+    return m;
+  }, [roomVis]);
+  const chatNewByGroup = useMemo(() => {
+    const m = new Map<string, boolean>();
+    for (const a of chatActivity) m.set(a.groupId, chatHasNewActivity(a));
+    return m;
+  }, [chatActivity]);
+  // A group cluster lights up when any of its rooms has new visible writing OR
+  // its chat has new messages.
+  const newGroupIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const v of roomVis) if (v.parentGroupId && roomHasNewActivity(v)) s.add(v.parentGroupId);
+    for (const a of chatActivity) if (chatHasNewActivity(a)) s.add(a.groupId);
+    return s;
+  }, [roomVis, chatActivity]);
 
   // Catalog search (CP2: catalog-only; TVMaze add is a later refinement).
   const results = useMemo(() => {
@@ -512,6 +553,9 @@ export default function DashboardPage() {
         });
     })();
     loadChat(chatGroupId);
+    // Opening the chat clears its new-message dot (server stamp + optimistic).
+    markGroupChatSeen(chatGroupId).catch(() => { /* tolerate */ });
+    setChatActivity((prev) => prev.map((a) => (a.groupId === chatGroupId ? { ...a, chatLastSeenAt: Date.now() } : a)));
     return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
   }, [chatGroupId, loadChat, railGroups]);
 
@@ -556,6 +600,7 @@ export default function DashboardPage() {
         selfUserId={selfUserId}
         activeGroupId={activeGroupId}
         pendingInvites={pendingInvites}
+        newGroupIds={newGroupIds}
         onEnter={(id) => navigate(`/dashboard?g=${id}`)}
         onInviteClick={(inv) => setInvitePrompt(inv)}
         onGearClick={(id, rect) => { setOptionsFor(id); setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 }); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
@@ -569,6 +614,7 @@ export default function DashboardPage() {
       )}
       {inGroup && (
         <button style={chatTab} title="open chat" onClick={() => activeGroupId && setChatGroupId(activeGroupId)}>
+          {!!activeGroupId && chatNewByGroup.get(activeGroupId) && <span style={notifDotChat} />}
           <MessageCircle size={24} color={C.green} />
         </button>
       )}
@@ -582,10 +628,11 @@ export default function DashboardPage() {
               <div style={shelfGrid}>
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
+                    {r.pill.roomId && roomNewByRoomId.get(r.pill.roomId) && <span style={notifDotButton} />}
                     <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined)}>
                       <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                     </div>
-                    <OptInAvatars members={r.opted} withTooltip onTip={setTip} />
+                    <OptInAvatars members={r.opted} markWriter={r.markWriter} withTooltip onTip={setTip} />
                   </div>
                 ))}
               </div>
@@ -602,10 +649,11 @@ export default function DashboardPage() {
             <div style={shelfGrid}>
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
+                  {r.pill.roomId && roomNewByRoomId.get(r.pill.roomId) && <span style={notifDotButton} />}
                   <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined)}>
                     <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
-                  <OptInAvatars members={r.opted} withTooltip={false} onTip={setTip} />
+                  <OptInAvatars members={r.opted} markWriter={r.markWriter} withTooltip={false} onTip={setTip} />
                 </div>
               ))}
             </div>
@@ -1083,15 +1131,10 @@ function GroupPill({ pill, name, onClick }: { pill: PillData; name: string; onCl
   };
   return (
     <button style={base} onClick={onClick}>
-      {/* Left badge cluster */}
-      {pill.people ? (
-        <span style={leftIcon}><UsersRound size={16} /></span>
-      ) : (
-        <>
-          {pill.showCount && <span style={countCircle}>{pill.count}</span>}
-          {pill.pencil && <span style={{ ...leftIcon, color: isCream ? C.green : "#fff" }}><Pencil size={14} /></span>}
-        </>
-      )}
+      {/* Left badge — only the 2+ writers people icon. The count number and the
+          single-writer pencil were dropped: opted-in avatars convey who's in,
+          and the lone-writer case is shown on that writer's avatar instead. */}
+      {pill.people && <span style={leftIcon}><UsersRound size={16} /></span>}
       <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
       <PillRightSide right={pill.right} />
     </button>
@@ -1122,10 +1165,13 @@ function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pendi
 /** Opt-in member avatars overlapping a group-pill's bottom edge (the friends
  *  who have this show in the group's pool). Decorative — pointer-events off so
  *  they never block a pill click. */
-function OptInAvatars({ members, withTooltip, onTip }: {
-  members: { username: string; s: number | null; e: number | null }[];
+function OptInAvatars({ members, withTooltip, onTip, markWriter = false }: {
+  members: { username: string; s: number | null; e: number | null; wrote?: boolean }[];
   withTooltip: boolean;
   onTip: (t: { text: string; x: number; y: number } | null) => void;
+  // When exactly one member has written, mark that member's avatar (green
+  // fill + pencil) to show a single person wrote in the show room.
+  markWriter?: boolean;
 }) {
   if (!members.length) return null;
   return (
@@ -1133,14 +1179,16 @@ function OptInAvatars({ members, withTooltip, onTip }: {
       {members.map((m, i) => {
         const watched = (m.s ?? 0) > 0 || (m.e ?? 0) > 0;
         const tip = watched ? `${m.username} has watched: S${m.s} E${m.e}` : `${m.username} hasn't started yet`;
+        const isWriter = markWriter && !!m.wrote;
         return (
           <span
             key={`${m.username}-${i}`}
-            style={optInAvatar}
+            style={isWriter ? { ...optInAvatar, background: C.green } : optInAvatar}
             onMouseMove={withTooltip ? (e) => onTip({ text: tip, x: e.clientX, y: e.clientY }) : undefined}
             onMouseLeave={withTooltip ? () => onTip(null) : undefined}
           >
             {(m.username[0] ?? "?").toUpperCase()}
+            {isWriter && <span style={writerPencilBadge}><Pencil size={9} color="#fff" strokeWidth={2.5} /></span>}
           </span>
         );
       })}
@@ -1149,12 +1197,13 @@ function OptInAvatars({ members, withTooltip, onTip }: {
 }
 
 function GroupClusters({
-  groups, selfUserId, activeGroupId, pendingInvites, onEnter, onInviteClick, onGearClick,
+  groups, selfUserId, activeGroupId, pendingInvites, newGroupIds, onEnter, onInviteClick, onGearClick,
 }: {
   groups: RailGroup[];
   selfUserId: string;
   activeGroupId: string | null;
   pendingInvites: PendingGroupInvite[];
+  newGroupIds: Set<string>;
   onEnter: (id: string) => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string, rect: DOMRect) => void;
@@ -1187,7 +1236,10 @@ function GroupClusters({
               {display.map((m) => <Avatar key={m.userId} letter={m.username[0]} state="accepted" />)}
               {pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />)}
             </div>
-            <div style={clusterName}>{groupAutoName(group, others)}</div>
+            <div style={clusterName}>
+              {newGroupIds.has(group.id) && <span style={notifDotCluster} />}
+              {groupAutoName(group, others)}
+            </div>
           </button>
         );
       })}
@@ -1275,10 +1327,30 @@ const optInRow: React.CSSProperties = {
   display: "flex", gap: 6, pointerEvents: "none", zIndex: 5,
 };
 const optInAvatar: React.CSSProperties = {
+  position: "relative",
   width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.cream}`, background: C.sky,
   color: C.blue, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
   display: "inline-flex", alignItems: "center", justifyContent: "center",
   pointerEvents: "auto", // hoverable for the per-member tooltip
+};
+// Pencil badge on the lone-writer's avatar (top-right corner).
+const writerPencilBadge: React.CSSProperties = {
+  position: "absolute", top: -3, right: -3, width: 15, height: 15, borderRadius: "50%",
+  background: C.green, border: `1.5px solid ${C.cream}`, display: "inline-flex",
+  alignItems: "center", justifyContent: "center",
+};
+// New-activity dots (blue, 16px), slightly overlapping their surface.
+const notifDotButton: React.CSSProperties = {
+  position: "absolute", top: -6, left: 6, width: 16, height: 16, borderRadius: "50%",
+  background: C.blue, zIndex: 6,
+};
+const notifDotChat: React.CSSProperties = {
+  position: "absolute", top: -4, left: -4, width: 16, height: 16, borderRadius: "50%",
+  background: C.blue, zIndex: 1,
+};
+const notifDotCluster: React.CSSProperties = {
+  display: "inline-block", width: 16, height: 16, borderRadius: "50%",
+  background: C.blue, verticalAlign: "middle", marginRight: 8,
 };
 const tipBubble: React.CSSProperties = {
   position: "fixed", background: C.green, color: "#fff", padding: "7px 12px", borderRadius: 12,

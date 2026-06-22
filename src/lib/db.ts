@@ -2704,6 +2704,8 @@ export async function setRoomDigestOptOut(groupId: string, optOut: boolean): Pro
 
 export type RoomVisibility = {
   groupId: string;
+  /** Restructure show rooms are parented to a people-group; null for legacy rooms. */
+  parentGroupId: string | null;
   /** ms since epoch, or null if the user has never entered the room. */
   lastSeenAt: number | null;
   /** ms since epoch, or null if no canView-visible activity exists yet. */
@@ -2716,16 +2718,57 @@ export type RoomVisibility = {
  * against `lastSeenAt` (via roomHasNewVisibleActivity) to decide whether
  * to render a "new" indicator.
  */
-export async function fetchRoomActivityVisibility(userId: string): Promise<RoomVisibility[]> {
-  const { data, error } = await supabase.rpc("get_room_activity_visibility", { p_user_id: userId });
+export async function fetchRoomActivityVisibility(userId: string, excludeOwn = false): Promise<RoomVisibility[]> {
+  // Only pass p_exclude_own when true so existing (1-arg) callers keep matching
+  // the pre-migration function signature; the 2-arg overload needs the migration.
+  const params: Record<string, unknown> = { p_user_id: userId };
+  if (excludeOwn) params.p_exclude_own = true;
+  const { data, error } = await supabase.rpc("get_room_activity_visibility", params);
   if (error) throw error;
   return (data ?? []).map((r: any) => ({
     groupId: r.group_id,
+    parentGroupId: r.parent_group_id ?? null,
     lastSeenAt: r.last_seen_at ? new Date(r.last_seen_at).getTime() : null,
     latestVisibleActivityAt: r.latest_visible_activity_at
       ? new Date(r.latest_visible_activity_at).getTime()
       : null,
   }));
+}
+
+/** Whether a room visibility row should show a "new activity" dot. */
+export function roomHasNewActivity(v: { lastSeenAt: number | null; latestVisibleActivityAt: number | null }): boolean {
+  if (v.latestVisibleActivityAt == null) return false;
+  return v.lastSeenAt == null || v.latestVisibleActivityAt > v.lastSeenAt;
+}
+
+export type GroupChatActivity = {
+  groupId: string;
+  chatLastSeenAt: number | null;
+  /** Newest OTHER member's message (own excluded), or null. */
+  latestMessageAt: number | null;
+};
+
+/** Per people-group chat new-message state for the caller (own msgs excluded). */
+export async function fetchGroupChatActivity(userId: string): Promise<GroupChatActivity[]> {
+  const { data, error } = await supabase.rpc("get_group_chat_activity", { p_user_id: userId });
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    groupId: r.group_id,
+    chatLastSeenAt: r.chat_last_seen_at ? new Date(r.chat_last_seen_at).getTime() : null,
+    latestMessageAt: r.latest_message_at ? new Date(r.latest_message_at).getTime() : null,
+  }));
+}
+
+/** Whether a group's chat should show a "new messages" dot. */
+export function chatHasNewActivity(a: { chatLastSeenAt: number | null; latestMessageAt: number | null }): boolean {
+  if (a.latestMessageAt == null) return false;
+  return a.chatLastSeenAt == null || a.latestMessageAt > a.chatLastSeenAt;
+}
+
+/** Stamp the caller's chat_last_seen_at to NOW() for a people-group. */
+export async function markGroupChatSeen(groupId: string): Promise<void> {
+  const { error } = await supabase.rpc("mark_group_chat_seen", { p_group_id: groupId });
+  if (error) throw error;
 }
 
 /**

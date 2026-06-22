@@ -19,7 +19,7 @@ import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
-  persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating,
+  persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen,
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
@@ -92,6 +92,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if (!roomRow || roomRow.deleted_at) throw new Error("room not found");
       const showId = roomRow.show_id as string;
       setParentGroupId(roomRow.parent_group_id ?? null);
+      // Entering the room clears its new-activity dot on the dashboard/group view.
+      markRoomSeen(roomId).catch(() => { /* tolerate (migration not applied) */ });
 
       const [allShows, progressMap, roomMapData] = await Promise.all([
         fetchShows(), fetchProgress(user.id), fetchRoomMapData(roomId),
