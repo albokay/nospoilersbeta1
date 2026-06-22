@@ -49,6 +49,7 @@ import {
   restoreShowToPool,
   fetchRoomActivityVisibility,
   roomHasNewActivity,
+  roomHasNewInvisibleActivity,
   fetchGroupChatActivity,
   chatHasNewActivity,
   markGroupChatSeen,
@@ -292,9 +293,15 @@ export default function DashboardPage() {
   }, [groupShows, showsById, selfUserId, memberNameById]);
 
   // ── New-activity dots ──────────────────────────────────────────────────────
-  const roomNewByRoomId = useMemo(() => {
-    const m = new Map<string, boolean>();
-    for (const v of roomVis) m.set(v.groupId, roomHasNewActivity(v));
+  // Per room: blue = new VISIBLE writing; red = new INVISIBLE (ahead-of-progress)
+  // writing with nothing new visible (visible takes priority). Both clear when
+  // you open the room (same last_seen stamp), cascading up to the cluster.
+  const roomDotByRoomId = useMemo(() => {
+    const m = new Map<string, "blue" | "red">();
+    for (const v of roomVis) {
+      if (roomHasNewActivity(v)) m.set(v.groupId, "blue");
+      else if (roomHasNewInvisibleActivity(v)) m.set(v.groupId, "red");
+    }
     return m;
   }, [roomVis]);
   const chatNewByGroup = useMemo(() => {
@@ -302,13 +309,21 @@ export default function DashboardPage() {
     for (const a of chatActivity) m.set(a.groupId, chatHasNewActivity(a));
     return m;
   }, [chatActivity]);
-  // A group cluster lights up when any of its rooms has new visible writing OR
-  // its chat has new messages.
-  const newGroupIds = useMemo(() => {
-    const s = new Set<string>();
-    for (const v of roomVis) if (v.parentGroupId && roomHasNewActivity(v)) s.add(v.parentGroupId);
-    for (const a of chatActivity) if (chatHasNewActivity(a)) s.add(a.groupId);
-    return s;
+  // Cluster dot: blue if any room has new visible writing OR chat is new; else
+  // red if any room has new invisible writing.
+  const clusterDotByGroup = useMemo(() => {
+    const visible = new Set<string>();
+    const invisible = new Set<string>();
+    for (const v of roomVis) {
+      if (!v.parentGroupId) continue;
+      if (roomHasNewActivity(v)) visible.add(v.parentGroupId);
+      else if (roomHasNewInvisibleActivity(v)) invisible.add(v.parentGroupId);
+    }
+    for (const a of chatActivity) if (chatHasNewActivity(a)) visible.add(a.groupId);
+    const m = new Map<string, "blue" | "red">();
+    for (const g of invisible) m.set(g, "red");
+    for (const g of visible) m.set(g, "blue"); // priority
+    return m;
   }, [roomVis, chatActivity]);
 
   // Catalog search (CP2: catalog-only; TVMaze add is a later refinement).
@@ -600,7 +615,7 @@ export default function DashboardPage() {
         selfUserId={selfUserId}
         activeGroupId={activeGroupId}
         pendingInvites={pendingInvites}
-        newGroupIds={newGroupIds}
+        clusterDotByGroup={clusterDotByGroup}
         onEnter={(id) => navigate(`/dashboard?g=${id}`)}
         onInviteClick={(inv) => setInvitePrompt(inv)}
         onGearClick={(id, rect) => { setOptionsFor(id); setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 }); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
@@ -628,7 +643,7 @@ export default function DashboardPage() {
               <div style={shelfGrid}>
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
-                    {r.pill.roomId && roomNewByRoomId.get(r.pill.roomId) && <span style={notifDotButton} />}
+                    {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
                     <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined)}>
                       <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                     </div>
@@ -649,7 +664,7 @@ export default function DashboardPage() {
             <div style={shelfGrid}>
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
-                  {r.pill.roomId && roomNewByRoomId.get(r.pill.roomId) && <span style={notifDotButton} />}
+                  {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
                   <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined)}>
                     <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
@@ -1197,13 +1212,13 @@ function OptInAvatars({ members, withTooltip, onTip, markWriter = false }: {
 }
 
 function GroupClusters({
-  groups, selfUserId, activeGroupId, pendingInvites, newGroupIds, onEnter, onInviteClick, onGearClick,
+  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, onEnter, onInviteClick, onGearClick,
 }: {
   groups: RailGroup[];
   selfUserId: string;
   activeGroupId: string | null;
   pendingInvites: PendingGroupInvite[];
-  newGroupIds: Set<string>;
+  clusterDotByGroup: Map<string, "blue" | "red">;
   onEnter: (id: string) => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string, rect: DOMRect) => void;
@@ -1237,7 +1252,7 @@ function GroupClusters({
               {pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />)}
             </div>
             <div style={clusterName}>
-              {newGroupIds.has(group.id) && <span style={notifDotCluster} />}
+              {clusterDotByGroup.get(group.id) && <span style={{ ...notifDotCluster, background: clusterDotByGroup.get(group.id) === "red" ? C.red : C.blue }} />}
               {groupAutoName(group, others)}
             </div>
           </button>

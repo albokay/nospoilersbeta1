@@ -2710,6 +2710,8 @@ export type RoomVisibility = {
   lastSeenAt: number | null;
   /** ms since epoch, or null if no canView-visible activity exists yet. */
   latestVisibleActivityAt: number | null;
+  /** ms — newest OTHER writing the user CAN'T see yet (ahead of progress). */
+  latestInvisibleActivityAt: number | null;
 };
 
 /**
@@ -2732,13 +2734,22 @@ export async function fetchRoomActivityVisibility(userId: string, excludeOwn = f
     latestVisibleActivityAt: r.latest_visible_activity_at
       ? new Date(r.latest_visible_activity_at).getTime()
       : null,
+    latestInvisibleActivityAt: r.latest_invisible_activity_at
+      ? new Date(r.latest_invisible_activity_at).getTime()
+      : null,
   }));
 }
 
-/** Whether a room visibility row should show a "new activity" dot. */
+/** Whether a room has new VISIBLE activity since last seen (blue dot). */
 export function roomHasNewActivity(v: { lastSeenAt: number | null; latestVisibleActivityAt: number | null }): boolean {
   if (v.latestVisibleActivityAt == null) return false;
   return v.lastSeenAt == null || v.latestVisibleActivityAt > v.lastSeenAt;
+}
+
+/** Whether a room has new INVISIBLE (ahead-of-progress) writing since last seen. */
+export function roomHasNewInvisibleActivity(v: { lastSeenAt: number | null; latestInvisibleActivityAt: number | null }): boolean {
+  if (v.latestInvisibleActivityAt == null) return false;
+  return v.lastSeenAt == null || v.latestInvisibleActivityAt > v.lastSeenAt;
 }
 
 export type GroupChatActivity = {

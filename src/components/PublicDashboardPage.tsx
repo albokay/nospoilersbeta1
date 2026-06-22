@@ -8,6 +8,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser,
@@ -75,6 +76,11 @@ export default function PublicDashboardPage({ username }: { username: string }) 
 
   return (
     <div style={{ ...pageStyle, background: C.green }}>
+      {/* Back-to-where-you-came-from tab — cream edge pill (mirrors the rooms). */}
+      <button style={backTab} title="back" onClick={() => navigate(-1)}>
+        <ArrowLeft size={24} color={C.green} />
+      </button>
+
       <div style={topBar}>
         <SidebarLogo scale={0.5} blocksOpacity={1} />
       </div>
@@ -135,6 +141,11 @@ export default function PublicDashboardPage({ username }: { username: string }) 
 
 const pageStyle: React.CSSProperties = {
   position: "fixed", inset: 0, overflowY: "auto", fontFamily: '"Inter", system-ui, sans-serif',
+};
+const backTab: React.CSSProperties = {
+  position: "fixed", left: 0, top: "18%", background: C.cream, border: "none", cursor: "pointer",
+  borderTopRightRadius: 28, borderBottomRightRadius: 28, padding: "16px 22px 16px 14px",
+  display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
 const topBar: React.CSSProperties = {
   display: "flex", alignItems: "center", padding: "20px 28px",
