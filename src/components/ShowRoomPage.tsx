@@ -31,6 +31,9 @@ import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import OneSelectProgress from "./OneSelectProgress";
 import RatingCaptureModal from "./RatingCaptureModal";
 import SidebarLogo from "./SidebarLogo";
+import IncomingPingSticky from "./IncomingPingSticky";
+import PollSticky from "./PollSticky";
+import SIKWSticky from "./SIKWSticky";
 
 const C = { green: "#7ABD8E", sky: "#ADC8D7", blue: "#355EB8", yellow: "#DEA838", cream: "#FEF8EA", midnight: "#1A3A4A" };
 const LORA = '"Lora", Georgia, serif';
@@ -82,6 +85,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const [lastHighlightSeenAt, setLastHighlightSeenAt] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem("ns_highlight_seen") || "{}"); } catch { return {}; }
   });
+  // Poll launcher refresh + feed sort / member filter (parity with live room).
+  const [pollRefreshKey, setPollRefreshKey] = useState(0);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [userFilter, setUserFilter] = useState<string | null>(null);
 
   // The reused V2 feed/map expect the group-context palette.
   useEffect(() => {
@@ -370,6 +377,27 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     setFirstHighlightedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
   }, []);
 
+  // Edit/delete reflect in the feed without a refetch (parity with live room).
+  const handleThreadEdited = useCallback((updated: Thread) => {
+    setFeedEntries((prev) => prev.map((e) => (e.threadId === updated.id ? {
+      ...e, title: updated.titleBase, body: updated.body, preview: updated.preview,
+      s: updated.season, e: updated.episode, isEdited: updated.isEdited, thread: updated,
+    } : e)));
+  }, []);
+  const handleThreadDeleted = useCallback((threadId: string) => {
+    setFeedEntries((prev) => {
+      const entry = prev.find((e) => e.threadId === threadId);
+      if (!entry) return prev;
+      if (entry.replyCount === 0) return prev.filter((e) => e.threadId !== threadId);
+      return prev.map((e) => (e.threadId === threadId ? { ...e, isDeleted: true, thread: { ...e.thread, isDeleted: true } } : e));
+    });
+  }, []);
+
+  // Username byline click → that person's public dashboard (pass 3 route).
+  const handleClickProfile = useCallback((username: string) => {
+    navigate(`/u/${encodeURIComponent(username)}`);
+  }, [navigate]);
+
   if (authLoading || loading) {
     return <div style={{ ...page, background: C.green }} aria-busy="true" />;
   }
@@ -380,6 +408,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // the cards have identical mechanics (expand/collapse, star, edit/delete).
   // No groupId → public-conversation mode (these are the viewer's own private
   // threads; nobody else can see them).
+  // Member filter: restrict the friend feed to one author (dims the others'
+  // map columns via filteredUserId); sort forced to desc while filtering.
+  const visibleFriendEntries = userFilter ? feedEntries.filter((e) => e.authorId === userFilter) : feedEntries;
+  const effectiveSortOrder = userFilter ? "desc" : sortOrder;
+
   const privateFeedEntries: V2RoomFeedEntry[] = privateEntries.map((t) => ({
     threadId: t.id, s: t.season, e: t.episode, title: t.titleBase, body: t.body, preview: t.preview,
     authorId: user?.id ?? "", authorUsername: t.author,
@@ -421,7 +454,32 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           {/* LEFT/CENTER pane: toolbar + feed (friend) or private writing */}
           <div style={{ flex: "0 1 672px", minWidth: 0, paddingBottom: 120 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
+                {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
+                  <select
+                    value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v.startsWith("sort:")) { setSortOrder(v.slice(5) as "asc" | "desc"); setUserFilter(null); }
+                      else if (v.startsWith("user:")) setUserFilter(v.slice(5));
+                    }}
+                    style={sortSelect}
+                  >
+                    <optgroup label="Sort">
+                      <option value="sort:desc">newest first</option>
+                      <option value="sort:asc">oldest first</option>
+                    </optgroup>
+                    {mapMembers.length > 0 && (
+                      <optgroup label="Filter by member">
+                        {mapMembers.map((m) => (
+                          <option key={m.userId} value={`user:${m.userId}`}>only @{m.username}{m.isDeparted ? " (left)" : ""}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                )}
+              </div>
               {show && progressForShow && (
                 // On the private tab (green body) the default green picker
                 // outline is invisible — switch it to cream there.
@@ -448,8 +506,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               ) : (
                 <V2RoomFeed
                   ref={feedRef}
-                  entries={feedEntries}
-                  sortOrder="desc"
+                  entries={visibleFriendEntries}
+                  sortOrder={effectiveSortOrder}
                   scrollContainerRef={pageRef}
                   groupId={roomId}
                   viewerProgress={progressForShow}
@@ -457,6 +515,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   onVisibleEntriesChange={setVisibleEntryIds}
                   onEntryExpanded={handleEntryExpanded}
                   onEntryCollapsed={handleEntryCollapsed}
+                  onThreadEdited={handleThreadEdited}
+                  onThreadDeleted={handleThreadDeleted}
+                  onClickProfile={handleClickProfile}
                   isNewMap={isNewMap}
                   cellSignals={cellSignals}
                   engagedThreadIds={engagedSet}
@@ -498,10 +559,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 onEntryClick={handleCellClick}
                 onRateOwnCell={rateOwnCell}
                 onCommitRatings={commitRatings}
+                onPollOpened={() => setPollRefreshKey((k) => k + 1)}
                 cellSignals={cellSignals}
                 isNewMap={isNewMap}
                 onDismissRedDot={handleDismissRedDot}
                 firstHighlightedSet={firstHighlightedSet}
+                filteredUserId={userFilter}
               />
               </div>
             </div>
@@ -521,10 +584,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               privateOnly={privateOnly}
               hideTopRightClose
               onCancel={() => setComposeOpen(false)}
-              onSubmitted={(destination) => {
+              onSubmitted={(destination, threadId) => {
                 setComposeOpen(false);
-                setTab(privateOnly || destination === "private" ? "private" : "friend");
-                load();
+                const toPrivate = privateOnly || destination === "private";
+                setTab(toPrivate ? "private" : "friend");
+                load().then(() => {
+                  if (!toPrivate && threadId) setTimeout(() => feedRef.current?.expandEntry(threadId), 0);
+                });
               }}
             />
           </div>
@@ -540,6 +606,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           onCommit={commitRating}
           onCancel={() => setPendingRating(null)}
         />
+      )}
+
+      {/* Pings / polls / SIKW stickies — fixed-position, self-gating; friend
+          room only (no group context in the private-only standalone). */}
+      {!privateOnly && roomId && user && (
+        <>
+          <IncomingPingSticky groupId={roomId} currentUserId={user.id} />
+          <PollSticky groupId={roomId} currentUserId={user.id} refreshKey={pollRefreshKey} />
+          {show && <SIKWSticky groupId={roomId} currentUserId={user.id} seasons={show.seasons} />}
+        </>
       )}
     </div>
   );
@@ -579,6 +655,12 @@ const backTab: React.CSSProperties = {
 const writeBtn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: "#fff",
   fontWeight: 700, fontSize: 14, padding: "12px 24px", borderRadius: 65, cursor: "pointer",
+};
+const sortSelect: React.CSSProperties = {
+  appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+  background: "transparent", border: `2px solid ${C.cream}`, color: C.cream,
+  borderRadius: 65, padding: "8px 18px", fontSize: 12, fontWeight: 700,
+  fontFamily: '"Inter", system-ui, sans-serif', cursor: "pointer", outline: "none",
 };
 const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 };
 const composeBackdrop: React.CSSProperties = {
