@@ -45,6 +45,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const navigate = useNavigate();
   const feedRef = useRef<V2RoomFeedHandle>(null);
   const composeFormRef = useRef<ComposeFormHandle>(null);
+  const pageRef = useRef<HTMLDivElement>(null); // the fixed scroll container
 
   const [show, setShow] = useState<Show | null>(null);
   const [parentGroupId, setParentGroupId] = useState<string | null>(null);
@@ -388,7 +389,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }));
 
   return (
-    <div style={{ ...page, background: bodyBg }}>
+    <div ref={pageRef} style={{ ...page, background: bodyBg }}>
       {/* ── Back-to-group tab — partial pill at the left edge (mirrors chat) ── */}
       <button style={backTab} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
         <ArrowLeft size={24} color={C.green} />
@@ -448,6 +449,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 <V2RoomFeed
                   ref={feedRef}
                   entries={feedEntries}
+                  sortOrder="desc"
+                  scrollContainerRef={pageRef}
                   groupId={roomId}
                   viewerProgress={progressForShow}
                   userId={user?.id ?? ""}
@@ -483,7 +486,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               the left column keeps the exact same placement across tabs.
               Omitted entirely in the private-only standalone (no group). */}
           {!privateOnly && roomId && (
-            <div style={{ flex: "0 0 auto", visibility: tab === "friend" ? "visible" : "hidden" }} aria-hidden={tab !== "friend"}>
+            <div style={{ flex: "0 0 auto", alignSelf: "stretch", visibility: tab === "friend" ? "visible" : "hidden" }} aria-hidden={tab !== "friend"}>
+              <div style={{ position: "sticky", top: 24 }}>
               <V2RoomMap
                 members={mapMembers}
                 seasons={show?.seasons ?? []}
@@ -499,6 +503,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 onDismissRedDot={handleDismissRedDot}
                 firstHighlightedSet={firstHighlightedSet}
               />
+              </div>
             </div>
           )}
         </div>

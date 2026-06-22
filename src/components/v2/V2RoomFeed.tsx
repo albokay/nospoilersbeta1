@@ -159,6 +159,11 @@ export type V2RoomFeedProps = {
   /** Fires after a reply is published from any entry's composer, so the parent
       can bump that entry's reply count without a refetch. */
   onReplyAdded?: (threadId: string) => void;
+  /** Optional scroll container. When provided, scrollToEntry scrolls THIS
+      element instead of the window — needed when the room lives inside a
+      fixed/overflow:auto wrapper (the restructure ShowRoomPage) rather than
+      the normal document flow (live V2FriendRoomPage). */
+  scrollContainerRef?: React.RefObject<HTMLElement | null>;
 };
 
 export interface PublicRoomResponseGate {
@@ -203,6 +208,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     preserveOrder = false,
     publicRoomGate,
     onReplyAdded,
+    scrollContainerRef,
   },
   ref,
 ) {
@@ -412,16 +418,21 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   const scrollToEntry = useCallback((threadId: string) => {
     const el = ticketRefs.current[threadId];
     if (!el) return;
-    // Use window.scrollTo (not el.scrollIntoView) so we ONLY scroll the
-    // window/document — never any other scrollable container. The map
-    // wrapper is a sticky sibling with its own internal overflow:auto;
-    // scrollIntoView's "scroll all ancestors to make target visible"
-    // semantics was causing the map's scroll position to shift, knocking
-    // the clicked cell out from under the user's cursor. Explicit
-    // window.scrollTo keeps the map pinned.
+    // Use explicit scroll (not el.scrollIntoView) so we ONLY scroll the intended
+    // scroller — never the map's internal overflow:auto sibling, which would
+    // knock the clicked cell out from under the cursor.
     // 72px offset matches the existing scroll-margin-top:72 on tickets.
-    const targetY = el.getBoundingClientRect().top + window.scrollY - 72;
-    window.scrollTo({ top: targetY, behavior: "smooth" });
+    const container = scrollContainerRef?.current;
+    if (container) {
+      // Room lives inside a fixed/overflow:auto wrapper (ShowRoomPage): scroll
+      // THAT element, since the window doesn't scroll there.
+      const cRect = container.getBoundingClientRect();
+      const targetTop = container.scrollTop + (el.getBoundingClientRect().top - cRect.top) - 72;
+      container.scrollTo({ top: targetTop, behavior: "smooth" });
+    } else {
+      const targetY = el.getBoundingClientRect().top + window.scrollY - 72;
+      window.scrollTo({ top: targetY, behavior: "smooth" });
+    }
     setHighlightedId(threadId);
     if (highlightTimer.current) window.clearTimeout(highlightTimer.current);
     highlightTimer.current = window.setTimeout(() => {
