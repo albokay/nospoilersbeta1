@@ -473,28 +473,46 @@ export default function DashboardPage() {
     const grp = railGroups.find((r) => r.group.id === chatGroupId);
     const nameById: Record<string, string> = {};
     for (const m of grp?.members ?? []) nameById[m.userId] = m.username;
-    // Subscribe (append-only, filtered to THIS group) BEFORE the initial fetch
-    // so a message that lands during the fetch isn't missed; dedupe by id.
-    const channel = supabase
-      .channel(`group-chat-rt-${chatGroupId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${chatGroupId}` },
-        (payload) => {
-          const r = payload.new as any;
-          if (!r) return;
-          setChatMessages((prev) => prev.some((m) => m.id === r.id) ? prev : [...prev, {
-            id: r.id,
-            authorId: r.author_id,
-            username: nameById[r.author_id] ?? "unknown",
-            body: r.body,
-            createdAt: new Date(r.created_at).getTime(),
-          }]);
-        },
-      )
-      .subscribe();
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+    (async () => {
+      // group_messages is member-gated RLS, so the realtime socket must carry
+      // the user's token or it silently delivers nothing. supabase-js's auto-
+      // wiring can miss restored sessions, so set it explicitly before
+      // subscribing. (The app's other realtime is on anon-readable rows, which
+      // is why this never surfaced before.)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) supabase.realtime.setAuth(session.access_token);
+      } catch { /* tolerate */ }
+      if (cancelled) return;
+      // Append-only, filtered to THIS group; dedupe by id.
+      channel = supabase
+        .channel(`group-chat-rt-${chatGroupId}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${chatGroupId}` },
+          (payload) => {
+            const r = payload.new as any;
+            if (!r) return;
+            setChatMessages((prev) => prev.some((m) => m.id === r.id) ? prev : [...prev, {
+              id: r.id,
+              authorId: r.author_id,
+              username: nameById[r.author_id] ?? "unknown",
+              body: r.body,
+              createdAt: new Date(r.created_at).getTime(),
+            }]);
+          },
+        )
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            console.warn("[dashboard] chat realtime status:", status);
+          }
+        });
+    })();
     loadChat(chatGroupId);
-    return () => { supabase.removeChannel(channel); };
+    return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
   }, [chatGroupId, loadChat, railGroups]);
 
   async function sendChat() {
