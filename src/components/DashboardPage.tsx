@@ -117,8 +117,9 @@ export default function DashboardPage() {
   const [chatMessages, setChatMessages] = useState<GroupMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
 
-  // Dashboard "write by yourself" confirm (personal currently-watching shelf).
-  const [writeSolo, setWriteSolo] = useState<{ showId: string; name: string } | null>(null);
+  // Personal-dashboard pill click → progress dropdown (+ write-by-yourself on
+  // the currently-watching shelf). mode distinguishes the two shelves.
+  const [pillModal, setPillModal] = useState<{ showId: string; name: string; mode: "watching" | "notStarted" } | null>(null);
 
   // Cursor-following tooltip (opt-in avatars + show-button watch progress).
   const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null);
@@ -354,10 +355,6 @@ export default function DashboardPage() {
     }
   }
 
-  function openShow(_showId: string) {
-    // CP4: dashboard (green) click opens the show's PRIVATE tab ("Want to write
-    // by yourself?"). Rides with the room view. No-op until CP4.
-  }
 
   // ── §9 click model (group context) ──────────────────────────────────────────
   function onPillClick(pill: PillData, name: string) {
@@ -368,7 +365,10 @@ export default function DashboardPage() {
     // want-only show → vote; else (others watching / written) → "also watching?".
     const selfHasShow = !!progress[pill.showId];
     const mode = selfHasShow ? "solo" : pill.shelf === "notStarted" ? "vote" : "watchq";
-    setDeclaredProgress({ s: 0, e: 0 });
+    // Default the picker to your current progress (solo) so a button press
+    // without touching the dropdown can't reset it; 0 for vote/watchq.
+    const cur = progress[pill.showId];
+    setDeclaredProgress(cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 });
     setClicked({ showId: pill.showId, name, mode });
   }
 
@@ -410,6 +410,22 @@ export default function DashboardPage() {
       setClicked(null);
       await refreshGroup(activeGroupId);
     } catch (e) { console.error("[dashboard] log-progress failed", e); }
+  }
+
+  // Personal dashboard: record progress for a show (no group, no room). Keeps
+  // the user's highest-watched point so a re-save can't regress a rewatcher.
+  async function logProgressPersonal(showId: string, val: { s: number; e: number }) {
+    if (!user) return;
+    const prev = progress[showId];
+    let highestS = val.s, highestE = val.e;
+    if (prev?.highestS != null && (prev.highestS > val.s || (prev.highestS === val.s && (prev.highestE ?? 0) >= val.e))) {
+      highestS = prev.highestS; highestE = prev.highestE ?? val.e;
+    }
+    const entry: ProgressEntry = { ...(prev ?? {}), s: val.s, e: val.e, highestS, highestE };
+    try {
+      await upsertRewatchStatus(user.id, showId, entry);
+      setProgress((p) => ({ ...p, [showId]: entry }));
+    } catch (e) { console.error("[dashboard] personal log-progress failed", e); }
   }
 
   // ── CP5b: invites + group options ────────────────────────────────────────
@@ -574,7 +590,7 @@ export default function DashboardPage() {
               <div style={shelfGrid}>
                 {watching.map(({ show, entry }) => (
                   <div key={show.id} className="dash-pill-wrap">
-                    <button className="dash-pill dash-pill--watching" onClick={() => setWriteSolo({ showId: show.id, name: show.name })}>
+                    <button className="dash-pill dash-pill--watching" onClick={() => { setDeclaredProgress({ s: entry.s, e: entry.e }); setPillModal({ showId: show.id, name: show.name, mode: "watching" }); }}>
                       <span className="dash-pill__name">{show.name}</span>
                       <span className="dash-pill__prog">s{entry.s} e{entry.e}</span>
                     </button>
@@ -592,7 +608,7 @@ export default function DashboardPage() {
             <div style={shelfGrid}>
               {notStarted.map(({ show }) => (
                 <div key={show.id} className="dash-pill-wrap">
-                  <button className="dash-pill dash-pill--want" onClick={() => openShow(show.id)}>
+                  <button className="dash-pill dash-pill--want" onClick={() => { setDeclaredProgress({ s: 0, e: 0 }); setPillModal({ showId: show.id, name: show.name, mode: "notStarted" }); }}>
                     <span className="dash-pill__name">{show.name}</span>
                   </button>
                   <button className="dash-pill-x" title="remove from pool" onClick={() => setRemoveConfirm({ id: show.id, name: show.name })}>×</button>
@@ -718,16 +734,37 @@ export default function DashboardPage() {
         const roomLabel = gs?.roomId ? "Open show room" : "Start a show room?";
         // "Solo" only when you're the sole opt-in; 2+ opted in → plain show room.
         const optedCount = gs?.members.length ?? 0;
+        const cur = progress[clicked.showId];
+        const curVal = cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 };
         return (
           <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
-            {/* watchq is wider to fit the "Yes" + "just log my progress" row on one line. */}
-            <div style={{ ...yellowCard, ...(clicked.mode === "watchq" ? { width: "min(460px, 92vw)" } : {}) }}>
+            {/* solo + watchq are wider to fit the "Yes" + "just log my progress" row. */}
+            <div style={{ ...yellowCard, ...(clicked.mode === "watchq" || clicked.mode === "solo" ? { width: "min(460px, 92vw)" } : {}) }}>
               <button style={modalClose} onClick={() => setClicked(null)}><X size={16} color="#fff" /></button>
 
               {clicked.mode === "solo" && (
                 <>
-                  <div style={yellowTitle}>{gs?.roomId ? "Open show room" : optedCount > 1 ? "Start a show room?" : "Start a solo show room?"}</div>
-                  <button style={{ ...startBtn, marginTop: 16 }} onClick={() => goToRoom(clicked.showId)}>Yes</button>
+                  <div style={yellowTitle}>Have you watched more?</div>
+                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                    <OneSelectProgress
+                      show={showsById[clicked.showId] ?? { seasons: [] }}
+                      value={curVal}
+                      allowZero
+                      requireConfirm={false}
+                      pillBg="transparent"
+                      onChangeSelected={(v) => setDeclaredProgress(v)}
+                      onConfirm={() => {}}
+                    />
+                  </div>
+                  <div style={yellowDivider} />
+                  <div style={{ ...yellowTitle, fontSize: 13 }}>{gs?.roomId ? "Open show room" : optedCount > 1 ? "Start a show room?" : "Start a solo show room?"}</div>
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
+                    <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>Yes</button>
+                    <button
+                      style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
+                      onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
+                    >just log my progress</button>
+                  </div>
                 </>
               )}
 
@@ -871,19 +908,60 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Dashboard "write by yourself" → private-only standalone show room. */}
-      {writeSolo && (
-        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setWriteSolo(null); }}>
-          <div style={yellowCard}>
-            <button style={modalClose} onClick={() => setWriteSolo(null)}><X size={16} color="#fff" /></button>
-            <div style={yellowTitle}>Do you want to write by yourself?</div>
-            <button
-              style={{ ...startBtn, marginTop: 16 }}
-              onClick={() => { const id = writeSolo.showId; setWriteSolo(null); navigate(`/show-room/private/${id}`); }}
-            >Yes</button>
+      {/* Personal dashboard pill → progress dropdown. Currently-watching also
+          offers write-by-yourself; haven't-started is a self-committing picker. */}
+      {pillModal && (() => {
+        const cur = progress[pillModal.showId];
+        const curVal = cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 };
+        const isWatching = pillModal.mode === "watching";
+        return (
+          <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setPillModal(null); }}>
+            <div style={{ ...yellowCard, ...(isWatching ? { width: "min(460px, 92vw)" } : {}) }}>
+              <button style={modalClose} onClick={() => setPillModal(null)}><X size={16} color="#fff" /></button>
+
+              {!isWatching ? (
+                <>
+                  <div style={yellowTitle}>Have you started watching?</div>
+                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                    <OneSelectProgress
+                      show={showsById[pillModal.showId] ?? { seasons: [] }}
+                      value={{ s: 0, e: 0 }}
+                      allowZero
+                      pillBg="transparent"
+                      onForwardPick={(v) => { logProgressPersonal(pillModal.showId, v); setPillModal(null); }}
+                      onConfirm={(v) => { logProgressPersonal(pillModal.showId, v); setPillModal(null); }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={yellowTitle}>Have you watched more?</div>
+                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                    <OneSelectProgress
+                      show={showsById[pillModal.showId] ?? { seasons: [] }}
+                      value={curVal}
+                      allowZero
+                      requireConfirm={false}
+                      pillBg="transparent"
+                      onChangeSelected={(v) => setDeclaredProgress(v)}
+                      onConfirm={() => {}}
+                    />
+                  </div>
+                  <div style={yellowDivider} />
+                  <div style={{ ...yellowTitle, fontSize: 13 }}>Do you want to write by yourself?</div>
+                  <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
+                    <button style={startBtn} onClick={() => { const id = pillModal.showId; logProgressPersonal(id, declaredProgress); setPillModal(null); navigate(`/show-room/private/${id}`); }}>Yes</button>
+                    <button
+                      style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
+                      onClick={() => { logProgressPersonal(pillModal.showId, declaredProgress); setPillModal(null); }}
+                    >just log my progress</button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Cursor-following tooltip bubble (opt-in avatars + watch progress). */}
       {tip && createPortal(
