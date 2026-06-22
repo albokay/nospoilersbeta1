@@ -11,7 +11,7 @@
  * dashboard private-only standalone, the in-room progress picker, notification
  * dots, polls/SIKW/highlights stickies.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, SquarePen } from "lucide-react";
@@ -20,6 +20,7 @@ import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen,
+  fetchHighlights,
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
@@ -40,7 +41,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // Private-only standalone (dashboard "write by yourself"): no group/room,
   // just the viewer's private writing for a show. Group-independent.
   const privateOnly = !!privateShowId && !roomId;
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const feedRef = useRef<V2RoomFeedHandle>(null);
   const composeFormRef = useRef<ComposeFormHandle>(null);
@@ -59,11 +60,52 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
   const ratingTimersRef = useRef<Record<string, number>>({});
 
+  // ── In-room notification-signal state (ported from V2FriendRoomPage) ──────
+  // Green (new visible responses since you last opened the entry), yellow
+  // (unseen highlight on your writing), red (own-entry hidden responses), and
+  // the white "new since last visit" outline. localStorage-backed where the
+  // live room is, with room-scoped keys.
+  const prevVisibleThreadIdsRef = useRef<Set<string>>(new Set());
+  const [visibleEntryIds, setVisibleEntryIds] = useState<Set<string>>(new Set());
+  const [lastOpenedAt, setLastOpenedAt] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("ns_last_opened") || "{}"); } catch { return {}; }
+  });
+  const [perThreadLatestReply, setPerThreadLatestReply] = useState<Record<string, number>>({});
+  const [perThreadHiddenCount, setPerThreadHiddenCount] = useState<Record<string, number>>({});
+  const [perThreadLatestHidden, setPerThreadLatestHidden] = useState<Record<string, number>>({});
+  const [engagedSet, setEngagedSet] = useState<Set<string>>(new Set());
+  const [greenDismissedSet, setGreenDismissedSet] = useState<Set<string>>(new Set());
+  const [redDismissedAt, setRedDismissedAt] = useState<Record<string, number>>({});
+  const [firstHighlightedSet, setFirstHighlightedSet] = useState<Set<string>>(new Set());
+  const [latestHighlightOnViewerWriting, setLatestHighlightOnViewerWriting] = useState<Record<string, number>>({});
+  const [lastHighlightSeenAt, setLastHighlightSeenAt] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("ns_highlight_seen") || "{}"); } catch { return {}; }
+  });
+
   // The reused V2 feed/map expect the group-context palette.
   useEffect(() => {
     document.body.classList.add("group-context");
     return () => { document.body.classList.remove("group-context"); };
   }, []);
+
+  // Capture the set of entry ids that were visible to me at my LAST visit (for
+  // the white "new since last visit" outline). Captured once per room; the
+  // fresh set is written by the effect below after feedEntries loads.
+  useEffect(() => {
+    if (privateOnly || !roomId || !user?.id) return;
+    const vKey = `ns_room_visible_threads_${user.id}_${roomId}`;
+    try {
+      const v = localStorage.getItem(vKey);
+      prevVisibleThreadIdsRef.current = v ? new Set(JSON.parse(v)) : new Set();
+    } catch { prevVisibleThreadIdsRef.current = new Set(); }
+  }, [user?.id, roomId, privateOnly]);
+
+  useEffect(() => {
+    if (privateOnly || !roomId || !user?.id) return;
+    const vKey = `ns_room_visible_threads_${user.id}_${roomId}`;
+    const ids = feedEntries.filter((e) => !e.isDeleted).map((e) => e.threadId);
+    try { localStorage.setItem(vKey, JSON.stringify(ids)); } catch { /* ignore quota */ }
+  }, [user?.id, roomId, privateOnly, feedEntries]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -102,7 +144,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const progress = progressMap[showId] ?? null;
       const eff = effectiveProgress(progress);
 
-      const empty = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number> };
+      const empty = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number>, latestVisibleReplyAt: {} as Record<string, number>, hiddenCounts: {} as Record<string, number>, latestHiddenReplyAt: {} as Record<string, number> };
       const gr: any = eff ? await fetchGroupThreads(roomId, eff.s, eff.e, user.id) : empty;
 
       const departed = new Set(roomMapData.filter((m) => m.isDeparted).map((m) => m.username ?? "").filter(Boolean));
@@ -133,6 +175,17 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       setFeedEntries(entries);
       setMapMembers(members);
       setPrivateEntries(priv);
+      // Per-thread freshness data driving the map notification signals.
+      setPerThreadLatestReply(gr.latestVisibleReplyAt ?? {});
+      setPerThreadHiddenCount(gr.hiddenCounts ?? {});
+      setPerThreadLatestHidden(gr.latestHiddenReplyAt ?? {});
+      // Hydrate manual red-dot dismissals from localStorage (persist across sessions).
+      const dismisses: Record<string, number> = {};
+      for (const t of gr.threads as Thread[]) {
+        const v = localStorage.getItem(`ns_tdot_dismiss_${t.id}`);
+        if (v) dismisses[t.id] = parseInt(v, 10);
+      }
+      setRedDismissedAt(dismisses);
     } catch (e) {
       console.error("[show-room] load failed", e);
     } finally {
@@ -207,6 +260,114 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       return { ok: true };
     } catch (e) { console.warn("batch rating commit failed", e); return { ok: false }; }
   }
+
+  // ── Yellow-highlight signal data: highlights on the viewer's own writing
+  //    (entry or reply) by other users, that the viewer hasn't seen. ──────────
+  useEffect(() => {
+    if (privateOnly || !roomId || !user?.id || feedEntries.length === 0) {
+      setLatestHighlightOnViewerWriting({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const entryIds = feedEntries.map((e) => e.threadId);
+        const { data: viewerReplyRows } = await supabase
+          .from("replies").select("id, thread_id").eq("group_id", roomId).eq("author_id", user.id);
+        const allViewerReplyIds = (viewerReplyRows ?? []).map((r: any) => r.id);
+        const [entryHL, replyHL] = await Promise.all([
+          fetchHighlights({ targetType: "thread", targetIds: entryIds, viewerProgress: progressForShow ?? undefined }),
+          allViewerReplyIds.length > 0
+            ? fetchHighlights({ targetType: "reply", targetIds: allViewerReplyIds, viewerProgress: progressForShow ?? undefined })
+            : Promise.resolve([]),
+        ]);
+        const latest: Record<string, number> = {};
+        const viewerUsername = profile?.username ?? null;
+        const isViewerEntry: Record<string, boolean> = {};
+        for (const e of feedEntries) isViewerEntry[e.threadId] = !!viewerUsername && e.authorUsername === viewerUsername;
+        for (const h of entryHL) {
+          if (!isViewerEntry[h.targetId] || h.authorId === user.id) continue;
+          if (h.createdAt > (latest[h.targetId] ?? 0)) latest[h.targetId] = h.createdAt;
+        }
+        const replyToThread: Record<string, string> = {};
+        for (const r of viewerReplyRows ?? []) replyToThread[r.id] = r.thread_id;
+        for (const h of replyHL) {
+          if (h.authorId === user.id) continue;
+          const tid = replyToThread[h.targetId];
+          if (tid && h.createdAt > (latest[tid] ?? 0)) latest[tid] = h.createdAt;
+        }
+        if (!cancelled) setLatestHighlightOnViewerWriting(latest);
+      } catch (err) { console.warn("highlight-signal fetch failed:", err); }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, roomId, privateOnly, feedEntries, progressForShow, profile?.username]);
+
+  // ── Per-entry map signal (precedence GREEN > YELLOW > RED, one per cell) ────
+  const cellSignals = useMemo(() => {
+    const out: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }> = {};
+    for (const entry of feedEntries) {
+      if (entry.isDeleted) continue;
+      const tid = entry.threadId;
+      if ((perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0)) { out[tid] = { kind: "green" }; continue; }
+      if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
+      const isOwn = !!profile?.username && entry.authorUsername === profile.username;
+      const hiddenCount = perThreadHiddenCount[tid] ?? 0;
+      const dismissedAt = redDismissedAt[tid] ?? 0;
+      const manuallyDismissed = dismissedAt > 0 && dismissedAt >= (perThreadLatestHidden[tid] ?? 0);
+      if (isOwn && hiddenCount > 0 && !greenDismissedSet.has(tid) && !manuallyDismissed) {
+        out[tid] = { kind: "red", redCount: hiddenCount };
+      }
+    }
+    return out;
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, perThreadLatestHidden, greenDismissedSet, redDismissedAt, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
+
+  // ── White "new since last visit" outline (others' entries, not yet engaged) ─
+  const isNewMap = useMemo(() => {
+    const out: Record<string, boolean> = {};
+    if (!profile?.username) return out;
+    const prevSet = prevVisibleThreadIdsRef.current;
+    for (const entry of feedEntries) {
+      if (entry.isDeleted || entry.authorUsername === profile.username) continue;
+      if (!prevSet.has(entry.threadId) && !engagedSet.has(entry.threadId)) out[entry.threadId] = true;
+    }
+    return out;
+  }, [feedEntries, engagedSet, profile?.username]);
+
+  // ── Signal-clearing handlers (ported) ──────────────────────────────────────
+  const handleEntryExpanded = useCallback((threadId: string) => {
+    const latestSeenAt = perThreadLatestReply[threadId] ?? 0;
+    const wasGreen = latestSeenAt > (lastOpenedAt[threadId] ?? 0);
+    setLastOpenedAt((prev) => {
+      const next = { ...prev, [threadId]: latestSeenAt };
+      try { localStorage.setItem("ns_last_opened", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+    const nowMs = Date.now();
+    setLastHighlightSeenAt((prev) => {
+      const next = { ...prev, [threadId]: nowMs };
+      try { localStorage.setItem("ns_highlight_seen", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+    if (wasGreen) setGreenDismissedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
+    setEngagedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
+  }, [perThreadLatestReply, lastOpenedAt]);
+
+  const handleEntryCollapsed = useCallback((threadId: string) => {
+    setEngagedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
+  }, []);
+
+  const handleDismissRedDot = useCallback((threadId: string) => {
+    const now = Date.now();
+    try { localStorage.setItem(`ns_tdot_dismiss_${threadId}`, String(now)); } catch { /* ignore */ }
+    setRedDismissedAt((prev) => ({ ...prev, [threadId]: now }));
+  }, []);
+
+  // Map cell click: scroll the feed to the entry + register the first-highlight
+  // (so a self-cell with a notification highlights before it rotates a rating).
+  const handleCellClick = useCallback((threadId: string) => {
+    feedRef.current?.scrollToEntry(threadId);
+    setFirstHighlightedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
+  }, []);
 
   if (authLoading || loading) {
     return <div style={{ ...page, background: C.green }} aria-busy="true" />;
@@ -290,6 +451,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   groupId={roomId}
                   viewerProgress={progressForShow}
                   userId={user?.id ?? ""}
+                  onVisibleEntriesChange={setVisibleEntryIds}
+                  onEntryExpanded={handleEntryExpanded}
+                  onEntryCollapsed={handleEntryCollapsed}
+                  isNewMap={isNewMap}
+                  cellSignals={cellSignals}
+                  engagedThreadIds={engagedSet}
                   onReplyAdded={(tid) => setFeedEntries((prev) => prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)))}
                 />
               )
@@ -323,9 +490,14 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 viewerProgress={progressForShow}
                 viewerUserId={user?.id}
                 groupId={roomId}
-                onEntryClick={(threadId) => feedRef.current?.scrollToEntry(threadId)}
+                visibleEntryIds={visibleEntryIds}
+                onEntryClick={handleCellClick}
                 onRateOwnCell={rateOwnCell}
                 onCommitRatings={commitRatings}
+                cellSignals={cellSignals}
+                isNewMap={isNewMap}
+                onDismissRedDot={handleDismissRedDot}
+                firstHighlightedSet={firstHighlightedSet}
               />
             </div>
           )}
