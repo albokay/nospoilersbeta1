@@ -566,15 +566,15 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 paddingTop: 12,
                 paddingBottom: 36,
                 // Map-cell-click highlight: the OUTLINE stays its normal color
-                // (cream in rooms); the attention pulse is a cream glow
-                // (`flash-glow-cream`, box-shadow) so the lines never flash
-                // blue. Border precedence otherwise: white-when-new, then
-                // default. isHighlighted clears via HIGHLIGHT_MS = 1500.
+                // (cream in rooms); the attention pulse is a midnight-blue
+                // flashing dropshadow (`flash-glow`, box-shadow) so the lines
+                // never change color. Border precedence otherwise:
+                // white-when-new, then default. Clears via HIGHLIGHT_MS = 1500.
                 border: isNew
                   ? "4px solid #fff"
                   : "4px solid var(--dos-border)",
                 animation: isHighlighted
-                  ? "flash-glow-cream 1.2s ease forwards"
+                  ? "flash-glow 1.2s ease forwards"
                   : undefined,
                 // A4 dim: 50% opacity once the user has expanded-and-
                 // collapsed this entry at least once this session.

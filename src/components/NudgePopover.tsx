@@ -228,7 +228,7 @@ export default function NudgePopover({
   function handleViewProfile(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
     onClose();
-    navigate(`/u/${encodeURIComponent(recipientUsername)}`);
+    navigate(`/pool/${encodeURIComponent(recipientUsername)}`);
   }
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -478,7 +478,7 @@ export default function NudgePopover({
         }}
       >
         <a
-          href={`/u/${encodeURIComponent(recipientUsername)}`}
+          href={`/pool/${encodeURIComponent(recipientUsername)}`}
           onClick={handleViewProfile}
           style={{
             fontSize: 11,
