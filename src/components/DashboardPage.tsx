@@ -22,6 +22,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
 import { X, Settings, UsersRound, Pencil, ArrowUp, LogOut, ArrowLeft, MessageCircle } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
@@ -460,15 +461,41 @@ export default function DashboardPage() {
     if (user) setRailGroups(await loadRail(user.id));
   }
 
-  // ── CP6: chat (per group, not real-time) ─────────────────────────────────
+  // ── CP6: chat (per group) — real-time via a filtered Supabase subscription ──
   const loadChat = useCallback(async (groupId: string) => {
     try { setChatMessages(await fetchGroupMessages(groupId)); } catch (e) { console.error("[dashboard] chat load failed", e); }
   }, []);
 
   useEffect(() => {
     if (!chatGroupId) { setChatMessages([]); return; }
+    // Resolve author usernames for live rows from the group's member list
+    // (every chat author is a member, so this covers them without a query).
+    const grp = railGroups.find((r) => r.group.id === chatGroupId);
+    const nameById: Record<string, string> = {};
+    for (const m of grp?.members ?? []) nameById[m.userId] = m.username;
+    // Subscribe (append-only, filtered to THIS group) BEFORE the initial fetch
+    // so a message that lands during the fetch isn't missed; dedupe by id.
+    const channel = supabase
+      .channel(`group-chat-rt-${chatGroupId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${chatGroupId}` },
+        (payload) => {
+          const r = payload.new as any;
+          if (!r) return;
+          setChatMessages((prev) => prev.some((m) => m.id === r.id) ? prev : [...prev, {
+            id: r.id,
+            authorId: r.author_id,
+            username: nameById[r.author_id] ?? "unknown",
+            body: r.body,
+            createdAt: new Date(r.created_at).getTime(),
+          }]);
+        },
+      )
+      .subscribe();
     loadChat(chatGroupId);
-  }, [chatGroupId, loadChat]);
+    return () => { supabase.removeChannel(channel); };
+  }, [chatGroupId, loadChat, railGroups]);
 
   async function sendChat() {
     if (!user || !chatGroupId || !chatInput.trim()) return;
