@@ -171,11 +171,11 @@ export default function DashboardPage() {
   }
   // "Haven't started yet" show button: tooltip lists the other friends who are
   // also interested in the show; falls back to the standard progress/notif tip.
-  function interestedTipProps(opted: { username: string }[], showName: string, selfProgText?: string, notif?: string) {
+  function interestedTipProps(opted: { username: string }[], showName: string, selfOpted: boolean, selfProgText?: string, notif?: string) {
     if (!opted.length) return tipProps(selfProgText, notif);
     const names = opted.map((o) => o.username);
     return {
-      onMouseMove: (e: React.MouseEvent) => setTip({ text: interestedNode(names, showName), wrap: true, x: e.clientX, y: e.clientY }),
+      onMouseMove: (e: React.MouseEvent) => setTip({ text: interestedNode(names, showName, selfOpted), wrap: true, x: e.clientX, y: e.clientY }),
       onMouseLeave: () => setTip(null),
     };
   }
@@ -299,7 +299,7 @@ export default function DashboardPage() {
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
     type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean };
-    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; tier: number; lastActivityAt: number | null; markWriter: boolean };
+    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; tier: number; lastActivityAt: number | null; markWriter: boolean };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
@@ -318,7 +318,7 @@ export default function DashboardPage() {
       const tier = writerCount >= 2 ? 0 : writerCount === 1 ? 1 : watcherCount >= 2 ? 2 : watcherCount >= 1 ? 3 : 4;
       // Exactly one writer → mark that writer's avatar (green fill + pencil).
       // (If the lone writer is you, no avatar exists to mark — nothing shows.)
-      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, tier, lastActivityAt: gs.lastActivityAt, markWriter: writerCount === 1 };
+      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, tier, lastActivityAt: gs.lastActivityAt, markWriter: writerCount === 1 };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
     const byName = (a: Row, b: Row) => a.name.localeCompare(b.name);
@@ -720,7 +720,7 @@ export default function DashboardPage() {
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
                   {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
-                  <div {...interestedTipProps(r.opted, r.name, r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
+                  <div {...interestedTipProps(r.opted, r.name, r.selfOpted, r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
                     <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
                   <OptInAvatars members={r.opted} markWriter={r.markWriter} withTooltip={false} onTip={setTip} />
@@ -1247,11 +1247,14 @@ function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pendi
 /** "Haven't started yet" tooltip: which other friends are interested in a show
  *  (show name italic). 1 → "X is also…", 2 → "X and Y are also…", 3+ → "N
  *  friends are also…". */
-function interestedNode(names: string[], showName: string): React.ReactNode {
+function interestedNode(names: string[], showName: string, selfOpted: boolean): React.ReactNode {
   const show = <i>{showName}</i>;
-  if (names.length === 1) return <>{names[0]} is also interested in watching {show}.</>;
-  if (names.length === 2) return <>{names[0]} and {names[1]} are also interested in watching {show}.</>;
-  return <>{names.length} friends are also interested in watching {show}.</>;
+  // "also" only when YOU've opted in too (the others are interested in addition
+  // to you); otherwise just state the others' interest.
+  const also = selfOpted ? "also " : "";
+  if (names.length === 1) return <>{names[0]} is {also}interested in watching {show}.</>;
+  if (names.length === 2) return <>{names[0]} and {names[1]} are {also}interested in watching {show}.</>;
+  return <>{names.length} friends are {also}interested in watching {show}.</>;
 }
 
 /** Per-count icon arrangement (rows, top→bottom), matching the spec's pyramid:
