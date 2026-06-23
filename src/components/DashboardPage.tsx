@@ -1033,7 +1033,7 @@ export default function DashboardPage() {
           <div style={{ background: C.sky, borderRadius: 15, padding: "26px 30px", width: "min(340px, 90vw)", position: "relative" }}>
             <button style={modalClose} onClick={() => setRemoveConfirm(null)}><X size={16} color="#fff" /></button>
             <div style={{ color: C.red, fontWeight: 700, fontSize: 15, marginBottom: 12, letterSpacing: -0.3 }}>Remove this show from your pool?</div>
-            <div style={{ color: "#fff", fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>This will down vote the show across all your groups and you will leave all your friend rooms.</div>
+            <div style={{ color: "#fff", fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>This will opt you out of the show across all your groups and you will leave any friend rooms for the show.</div>
             <div style={{ color: "#fff", fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>BUT, your progress will be saved and restored if you search for and add the show back to your show pool.</div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={{ border: "none", background: "transparent", color: C.midnight, fontWeight: 700, fontSize: 13, cursor: "pointer" }} onClick={() => setRemoveConfirm(null)}>cancel</button>
