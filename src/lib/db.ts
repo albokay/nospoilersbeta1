@@ -51,23 +51,73 @@ export type Show = {
   tvmazeType?: string;
 };
 
+// ── Shows catalog cache (egress) ────────────────────────────────────────────
+// The shows catalog (every show's full season data) is read by nearly every
+// screen — dashboard, show rooms (re-read on each rating/progress action),
+// compose, profiles. Re-downloading the whole catalog on each of those was a
+// major egress driver. We now fetch it ONCE, share a single in-memory copy
+// across every caller, and keep it fresh via a realtime subscription (the
+// catalog changes rarely). A page reload re-fetches from scratch. Mutating
+// helpers below patch the copy in place so the writer sees their change
+// immediately without waiting for the realtime echo.
+let _showsCache: Show[] | null = null;
+let _showsInflight: Promise<Show[]> | null = null;
+let _showsChannel: any = null;
+
+const _rowToShow = (row: any): Show => ({
+  id: row.id,
+  name: row.name,
+  seasons: row.seasons,
+  tvmazeId: row.tvmaze_id ?? undefined,
+  status: row.status ?? "Ended",
+  isHidden: row.is_hidden ?? false,
+  lastSyncedAt: row.last_synced_at ?? undefined,
+  genres: row.genres ?? [],
+  tvmazeType: row.tvmaze_type ?? undefined,
+});
+const _byName = (a: Show, b: Show) => a.name.localeCompare(b.name);
+
+/** Insert-or-replace one show in the shared cache (new array each time so
+ *  holders of the old reference keep a stable snapshot). No-op until warmed. */
+function upsertShowInCache(s: Show) {
+  if (!_showsCache) return;
+  const i = _showsCache.findIndex((x) => x.id === s.id);
+  _showsCache = (i >= 0 ? _showsCache.map((x, j) => (j === i ? s : x)) : [..._showsCache, s]).sort(_byName);
+}
+function removeShowFromCache(id: string) {
+  if (_showsCache) _showsCache = _showsCache.filter((x) => x.id !== id);
+}
+/** Force the next fetchShows() to re-fetch (used after mutations we can't patch exactly). */
+export function invalidateShowsCache() { _showsCache = null; }
+
+function ensureShowsRealtime() {
+  if (_showsChannel) return;
+  // Shows are anon-readable, so this needs no auth token. One subscription for
+  // the whole page lifetime; deltas are tiny and only fire when a show changes.
+  _showsChannel = supabase
+    .channel("shows-catalog-cache")
+    .on("postgres_changes", { event: "*", schema: "public", table: "shows" }, (payload: any) => {
+      if (!_showsCache) return;
+      if (payload.eventType === "DELETE") removeShowFromCache(payload.old?.id);
+      else upsertShowInCache(_rowToShow(payload.new));
+    })
+    .subscribe();
+}
+
 export async function fetchShows(): Promise<Show[]> {
-  const { data, error } = await supabase
-    .from("shows")
-    .select("id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at, genres, tvmaze_type")
-    .order("name");
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({
-    id: row.id,
-    name: row.name,
-    seasons: row.seasons,
-    tvmazeId: row.tvmaze_id ?? undefined,
-    status: row.status ?? "Ended",
-    isHidden: row.is_hidden ?? false,
-    lastSyncedAt: row.last_synced_at ?? undefined,
-    genres: row.genres ?? [],
-    tvmazeType: row.tvmaze_type ?? undefined,
-  }));
+  if (_showsCache) return _showsCache;
+  if (_showsInflight) return _showsInflight; // dedupe concurrent first-loads
+  _showsInflight = (async () => {
+    const { data, error } = await supabase
+      .from("shows")
+      .select("id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at, genres, tvmaze_type")
+      .order("name");
+    if (error) throw error;
+    _showsCache = (data ?? []).map(_rowToShow);
+    ensureShowsRealtime();
+    return _showsCache;
+  })();
+  try { return await _showsInflight; } finally { _showsInflight = null; }
 }
 
 // ── Threads ──────────────────────────────────────────────────────────────────
@@ -945,7 +995,7 @@ export async function createShow(show: {
 
   const { data: inserted, error: insertErr } = await supabase
     .from("shows").insert(insertRow).select().single();
-  if (inserted) return mapRow(inserted);
+  if (inserted) { const s = mapRow(inserted); upsertShowInCache(s); return s; }
 
   // Insert failed — most commonly a unique-key conflict because the row
   // already exists. Targeted UPDATE refreshes the TVMaze-sourced seasons
@@ -956,13 +1006,13 @@ export async function createShow(show: {
     .update({ seasons: show.seasons, last_synced_at: now })
     .eq("id", show.id)
     .select().single();
-  if (updated) return mapRow(updated);
+  if (updated) { const s = mapRow(updated); upsertShowInCache(s); return s; }
 
   // Last resort: return whatever is in the DB so onboarding can still
   // proceed even if both writes failed (e.g. transient network error).
   const { data: existing } = await supabase
     .from("shows").select().eq("id", show.id).single();
-  if (existing) return mapRow(existing);
+  if (existing) { const s = mapRow(existing); upsertShowInCache(s); return s; }
 
   throw insertErr ?? updateErr ?? new Error("createShow failed");
 }
@@ -1037,7 +1087,9 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
     .eq("id", show.id);
   if (error) return null;
 
-  return { ...show, seasons, lastSyncedAt: now, genres, tvmazeType, status: normalizedStatus };
+  const refreshed = { ...show, seasons, lastSyncedAt: now, genres, tvmazeType, status: normalizedStatus };
+  upsertShowInCache(refreshed);
+  return refreshed;
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
@@ -1061,11 +1113,13 @@ export async function adminDeleteShow(showId: string): Promise<void> {
   // 5. delete the show itself
   const { error } = await supabase.from("shows").delete().eq("id", showId);
   if (error) throw error;
+  removeShowFromCache(showId);
 }
 
 export async function adminToggleHidden(showId: string, isHidden: boolean): Promise<void> {
   const { error } = await supabase.from("shows").update({ is_hidden: isHidden }).eq("id", showId);
   if (error) throw error;
+  invalidateShowsCache();
 }
 
 // ── Admin: per-user overview + drill-down activity ────────────────────────────
