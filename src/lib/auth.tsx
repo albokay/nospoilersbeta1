@@ -77,16 +77,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    // Which user id we've already loaded a profile for. Supabase fires
+    // onAuthStateChange on tab-focus session revalidation (TOKEN_REFRESHED /
+    // a redundant SIGNED_IN for the SAME user). The old handler swapped in a
+    // fresh `user` object and reloaded the profile on every such event, which
+    // cascaded into every screen re-bootstrapping (the "come back to the tab
+    // and the page flashes / re-fetches everything" bug). We now only react
+    // when the signed-in identity actually changes; same-user refreshes are
+    // no-ops (keep the same `user` reference, skip the profile reload).
+    let loadedForId: string | null = null;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      const id = session?.user?.id ?? null;
       setUser(session?.user ?? null);
-      if (session?.user) loadProfile(session.user.id);
+      if (id) { loadedForId = id; loadProfile(id); }
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) loadProfile(session.user.id);
-      else setProfile(null);
+      const id = session?.user?.id ?? null;
+      // Same user → keep the exact same object reference so nothing downstream
+      // re-runs. Only build a new user object on a real identity change.
+      setUser((prev) => (prev?.id === id ? prev : (session?.user ?? null)));
+      if (!id) { loadedForId = null; setProfile(null); return; }
+      if (loadedForId !== id) { loadedForId = id; loadProfile(id); }
     });
 
     return () => subscription.unsubscribe();
