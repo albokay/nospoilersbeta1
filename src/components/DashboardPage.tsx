@@ -456,9 +456,27 @@ export default function DashboardPage() {
   }
 
   async function doVote(showId: string, voted: boolean) {
-    if (!activeGroupId) return;
+    if (!activeGroupId || !user) return;
     try {
       await setShowVote(activeGroupId, showId, voted);
+      // Voting "yes" opts you into the show's pool — same as adding it to your
+      // want-to-watch shelf. The composer needs a pool entry to work, so make
+      // sure you have one:
+      //   • no progress yet → create a not-started (S0E0) want-to-watch entry
+      //     (matches the path someone who added the show themselves took);
+      //   • progress exists but you'd removed it from your pool → restore it
+      //     (otherwise voting back in would leave you opted-out everywhere).
+      // Existing real progress is never reset.
+      if (voted) {
+        if (!progress[showId]) {
+          const entry: ProgressEntry = { s: 0, e: 0, highestS: 0, highestE: 0 };
+          await upsertRewatchStatus(user.id, showId, entry);
+          setProgress((prev) => ({ ...prev, [showId]: entry }));
+        } else if (outOfPool.has(showId)) {
+          await restoreShowToPool(user.id, showId);
+          setOutOfPool((prev) => { const next = new Set(prev); next.delete(showId); return next; });
+        }
+      }
       await refreshGroup(activeGroupId);
     } catch (e) { console.error("[dashboard] vote failed", e); }
   }
