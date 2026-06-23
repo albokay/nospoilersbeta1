@@ -8,7 +8,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import { ChevronDown, Mail, Users } from "lucide-react";
+import { ChevronDown, Mail, Users, Sparkles, Flag } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import Username from "../Username";
@@ -193,6 +193,13 @@ export interface PublicRoomResponseGate {
 }
 
 const HIGHLIGHT_MS = 1500;
+
+// TSP demo: read-only expanded entries get their own collapse affordance
+// (V2InlineThread, which normally carries it, isn't mounted in demo mode).
+const demoCollapseBtn: React.CSSProperties = {
+  background: "transparent", border: "2px solid var(--dos-border)", color: "var(--dos-fg)",
+  borderRadius: 999, padding: "5px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+};
 
 const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2RoomFeed(
   {
@@ -582,7 +589,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 // flashing dropshadow (`flash-glow`, box-shadow) so the lines
                 // never change color. Border precedence otherwise:
                 // white-when-new, then default. Clears via HIGHLIGHT_MS = 1500.
-                border: isNew
+                border: entry.isInstructional
+                  ? "4px solid #355eb8"            // TSP demo: guide tickets get a blue outline
+                  : isNew
                   ? "4px solid #fff"
                   : "4px solid var(--dos-border)",
                 animation: isHighlighted
@@ -617,7 +626,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   {entry.isInstructional && (
                     // TSP demo: distinct leading glyph marks an instructional
                     // "Alborz" entry (flag-driven, never literal title text).
-                    <span style={{ marginRight: 6, color: "#dea838" }}>✦</span>
+                    <span style={{ marginRight: 6, display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
+                      <Sparkles size={18} color="#fef8ea" fill="#fef8ea" />
+                    </span>
                   )}
                   {entry.isDeleted ? "(deleted entry)" : entry.title}
                   {!entry.isDeleted && (
@@ -651,7 +662,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     likedByMe via onThreadLikeStateChange after its fetch. */}
                 {!entry.isDeleted && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {isExpanded && expandedLikeState ? (
+                    {entry.isInstructional ? (
+                      // TSP demo: guide entries get a cream flag, not a star.
+                      <Flag size={20} color="#fef8ea" />
+                    ) : isExpanded && expandedLikeState ? (
                       <LikeBadge
                         count={expandedLikeState.count}
                         userLiked={expandedLikeState.likedByMe}
@@ -704,6 +718,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   // already-gated replies, no V2InlineThread (no fetch, no
                   // composer/likes). Reuses the entry colors of the room.
                   <div onClick={(e) => e.stopPropagation()}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+                      <button style={demoCollapseBtn} onClick={() => handleCollapseTop(entry.threadId)}>collapse ▲</button>
+                    </div>
                     <div style={{ whiteSpace: "pre-line", lineHeight: 1.5 }}>{entry.body}</div>
                     {(demoReplies?.[entry.threadId] ?? []).length > 0 && (
                       <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -720,6 +737,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                         ))}
                       </div>
                     )}
+                    <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>
+                      <button style={demoCollapseBtn} onClick={() => handleCollapseTop(entry.threadId)}>collapse ▲</button>
+                    </div>
                   </div>
                 ) : isExpanded ? (
                   // Stop click propagation so interactive elements inside
@@ -769,6 +789,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     {parsePromptTokens(entry.preview).map((part, i) => (
                       <React.Fragment key={`prev-${i}`}>{part}</React.Fragment>
                     ))}
+                    {demoMode && " …"}
                   </div>
                 )}
               </div>

@@ -26,6 +26,7 @@ const C = { green: "#7abd8e", sky: "#adc8d7", cream: "#fef8ea", midnight: "#1a3a
 export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
   const { user, profile } = useAuth();
   const feedRef = useRef<V2RoomFeedHandle>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Local state — discarded on close (spec §8).
   const [selectedEpisode, setSelectedEpisode] = useState(0); // 0 = haven't started
@@ -88,12 +89,15 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)",
       display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
     }}>
+      {/* Card: fixed header + footer, only the feed/map scroll between them so
+          the map and the exit control stay put (sticky), spec tweak. */}
       <div style={{
         position: "relative", width: "85vw", height: "90vh", background: CREAM_BG,
-        borderRadius: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.25)", overflow: "auto",
+        borderRadius: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.25)", overflow: "hidden",
+        display: "flex", flexDirection: "column",
       }}>
-        {/* Header chrome — eyebrow + Lora title (no progress dropdown here, §2). */}
-        <div style={{ padding: "28px 36px 0" }}>
+        {/* Header chrome — centered eyebrow + Lora title (no dropdown here, §2). */}
+        <div style={{ flex: "0 0 auto", padding: "28px 36px 16px", textAlign: "center" }}>
           <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: INK_SOFT }}>
             a quick tour of a show room
           </div>
@@ -102,11 +106,10 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
           </h1>
         </div>
 
-        {/* Room surface — sky panel so the reused components read like a live
-            room; the progress dropdown sits at the TOP of it, real in-room
-            position (§2/§5). */}
-        <div style={{ margin: "20px 24px 96px", background: C.sky, borderRadius: 16, padding: "20px 20px 28px" }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+        {/* Room surface — sky panel, fills the middle. Dropdown pinned at its
+            top (real in-room position, §2/§5); only the feed/map scroll. */}
+        <div style={{ flex: "1 1 auto", minHeight: 0, margin: "0 24px", background: C.sky, borderRadius: 16, padding: "16px 20px 0", display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: "0 0 auto", display: "flex", justifyContent: "center", marginBottom: 16 }}>
             <OneSelectProgress
               show={TSP_DEMO_SHOW}
               value={selectedEpisode > 0 ? { s: 1, e: selectedEpisode } : { s: 0, e: 0 }}
@@ -118,19 +121,21 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <div style={{ display: "flex", gap: 48, justifyContent: "center", alignItems: "flex-start", maxWidth: 1400, margin: "0 auto" }}>
+          {/* Scroll area: the feed scrolls; the map sticks to the top. */}
+          <div ref={scrollRef} style={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", display: "flex", gap: 48, justifyContent: "center", alignItems: "flex-start", paddingBottom: 24 }}>
             <div style={{ flex: "1 1 672px", maxWidth: 672 }}>
               <V2RoomFeed
                 ref={feedRef}
                 entries={gatedEntries}
                 viewerProgress={userProgress}
                 userId={user?.id ?? null}
-                sortOrder="asc"
+                sortOrder="desc"
                 demoMode
                 demoReplies={gatedReplies}
+                scrollContainerRef={scrollRef}
               />
             </div>
-            <div style={{ flex: "0 0 auto", alignSelf: "stretch" }}>
+            <div style={{ flex: "0 0 auto", position: "sticky", top: 0, alignSelf: "flex-start" }}>
               <V2RoomMap
                 members={mapMembers}
                 seasons={TSP_DEMO_SHOW.seasons}
@@ -144,21 +149,22 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        {/* Single exit control (§2): bottom-right, present the whole time,
-            forward-framed + two-state by whether E6 has been reached. */}
-        <button
-          onClick={onClose}
-          style={{
-            position: "absolute", right: 28, bottom: 24,
-            background: reachedE6 ? C.green : "transparent",
-            color: reachedE6 ? "#fff" : INK_SOFT,
-            border: reachedE6 ? `2px solid ${C.green}` : `2px solid ${RULE}`,
-            borderRadius: 999, padding: "11px 22px", fontWeight: 700, fontSize: 14,
-            cursor: "pointer", fontFamily: '"Inter", sans-serif',
-          }}
-        >
-          {reachedE6 ? "start finding shows →" : "skip the tour"}
-        </button>
+        {/* Footer: single exit control, fixed (doesn't scroll). Forward-framed,
+            two-state by whether E6 has been reached (§2). */}
+        <div style={{ flex: "0 0 auto", padding: "14px 28px", display: "flex", justifyContent: "flex-end" }}>
+          <button
+            onClick={onClose}
+            style={{
+              background: reachedE6 ? C.green : "transparent",
+              color: reachedE6 ? "#fff" : INK_SOFT,
+              border: reachedE6 ? `2px solid ${C.green}` : `2px solid ${RULE}`,
+              borderRadius: 999, padding: "11px 22px", fontWeight: 700, fontSize: 14,
+              cursor: "pointer", fontFamily: '"Inter", sans-serif',
+            }}
+          >
+            {reachedE6 ? "start finding shows →" : "skip the tour"}
+          </button>
+        </div>
       </div>
     </div>
   );

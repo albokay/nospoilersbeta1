@@ -118,7 +118,7 @@ const INSTRUCTIONAL_ENTRIES: V2RoomFeedEntry[] = [
   entry({ id: "tsp-gate-0", e: 0, author: U.alborz, isInstructional: true,
     title: "Hello! Welcome to Sidebar.",
     preview: `This is a show room for a fake show called The Sidebar Protocol.`,
-    body: `This is a show room for a fake show called The Sidebar Protocol. You can't write in here, but it's populated with mock entries to help you understand how the spoiler-gating works on the site. I'll guide you through the functions of the site with a few instructional entries like this one.\n\nSee that dropdown menu to the right with "haven't started" selected? That means that you haven't watched any episodes of this show yet — but people can still write. Anyone can open a room and leave thoughts before having started watching. You can say "hello," "I'm so excited," or whatever else to friends who show up later.\n\nNow open the dropdown above and tell Sidebar that you've watched Episode 1.` }),
+    body: `This is a show room for a fake show called The Sidebar Protocol. You can't write in here, but it's populated with mock entries to help you understand how the spoiler-gating works on the site. I'll guide you through the functions of the site with a few instructional entries like this one.\n\nSee that dropdown menu up top with "haven't started" selected? That means that you haven't watched any episodes of this show yet. This could still be a good time to start a conversation with your friends. You can write about why you're excited to start watching the show.\n\nNow open the dropdown above and tell Sidebar that you've watched Episode 1.` }),
   entry({ id: "tsp-gate-1", e: 1, author: U.alborz, isInstructional: true,
     title: "This appeared because you've now watched Episode 1",
     preview: `That's the whole idea of Sidebar. Nothing about an episode reaches you until you've actually seen it.`,
@@ -130,7 +130,7 @@ const INSTRUCTIONAL_ENTRIES: V2RoomFeedEntry[] = [
   entry({ id: "tsp-gate-3", e: 3, author: U.alborz, isInstructional: true,
     title: "The map on the right is keeping score",
     preview: `Glance at the grid. Each row is an episode, each column is a person, and the little dice faces are ratings.`,
-    body: `Glance at the grid. Each row is an episode, each column is a person, and the little dice faces are ratings. You can see the shape of everyone's journey at a glance, even episodes you haven't reached. It's the spoiler-free way to know your friends are out there and how much they've watched and written.\n\nTry clicking the edit button at the top of your column. That unlocks the cells so that you can leave ratings for the episodes you've watched.` }),
+    body: `Take a look at the grid. Each row represents an episode, each column represents a friend, and the little dice faces are everyone's episode ratings. You can see the shape of everyone's journey at a glance. You can click on the map to navigate to entries available to you (the green cells) and also have an indication of what's waiting for you as you watch more (the grey cells). It's the spoiler-free way to know your friends are out there.\n\nTry clicking the edit button at the top of your column. That unlocks the cells so that you can leave ratings for the episodes you've watched.` }),
   entry({ id: "tsp-gate-4", e: 4, author: U.alborz, isInstructional: true,
     title: "You're ahead of someone now",
     preview: `Now that you're moving along, the room can tell you where you stand. Someone here is still back on an earlier episode.`,
@@ -142,7 +142,7 @@ const INSTRUCTIONAL_ENTRIES: V2RoomFeedEntry[] = [
   entry({ id: "tsp-gate-6", e: 6, author: U.alborz, isInstructional: true,
     title: "Your turn.",
     preview: `That's the tour. You've experienced the main thing that makes Sidebar different: the spoiler-gate.`,
-    body: `That's the tour. You've experienced the main thing that makes Sidebar different: the spoiler-gate. I think it changes how you engage with your friends and the shows you're watching (in a good way!). I can't wait to hear how it works for you.\n\nThe next room is yours. Close this window when you're ready, and let's find a show you're actually watching.\n\n~ Alborz` }),
+    body: `That's the tour. You've experienced the main thing that makes Sidebar unique: the spoiler-gate. I think it changes how you engage with your friends and the shows you're watching (in a good way!). I can't wait to hear how it works for you.\n\nThe next room is yours. Close this window when you're ready, and let's find a show you're actually watching.\n\n~ Alborz` }),
 ];
 
 /** Full feed fixture — mock + instructional, interleaved (the feed sorts by episode). */
