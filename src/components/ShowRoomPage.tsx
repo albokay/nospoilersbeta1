@@ -583,6 +583,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               showId={show?.id}
               restrictGroupId={privateOnly ? undefined : roomId}
               privateOnly={privateOnly}
+              // Default the destination to match the tab you wrote from:
+              // friend tab → this room, private tab → private.
+              defaultDestination={privateOnly ? undefined : (tab === "private" ? "private" : roomId)}
               hideTopRightClose
               onCancel={() => setComposeOpen(false)}
               onSubmitted={(destination, threadId) => {

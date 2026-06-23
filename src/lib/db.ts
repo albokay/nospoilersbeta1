@@ -2295,6 +2295,7 @@ function rowToPeopleGroup(row: any): PeopleGroup {
     name:      row.name ?? null,
     createdBy: row.created_by,
     createdAt: new Date(row.created_at).getTime(),
+    seq:       row.seq ?? null,
   };
 }
 

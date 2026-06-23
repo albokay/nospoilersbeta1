@@ -95,6 +95,10 @@ type ComposeFormProps = {
   /** Dashboard "write by yourself" standalone: the only destination is "keep
    *  it private" (no friend rooms, no public). Defaults the choice to private. */
   privateOnly?: boolean;
+  /** Pre-select a destination when the composer opens — the show room passes
+   *  the room id when opened from the friend tab and "private" from the private
+   *  tab. Unset → no default (the user must pick). */
+  defaultDestination?: "private" | string;
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -109,7 +113,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false },
+  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -129,7 +133,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   // destination is selected. "private" / "public" are special string
   // values; any other string is a friend_group id (post is also added
   // to that room via group_threads).
-  const [destination, setDestination] = useState<"private" | "public" | string | null>(privateOnly ? "private" : null);
+  const [destination, setDestination] = useState<"private" | "public" | string | null>(privateOnly ? "private" : (defaultDestination ?? null));
 
   // Prompt feature — same shape as live ShowSection.
   const [activePrompt, setActivePrompt] = useState<PromptEntry | null>(null);

@@ -149,7 +149,7 @@ export default function DashboardPage() {
   // `sub` adds a second line beneath a divider — used to hang the new-activity
   // notification copy under a show button's "You've watched…" line. `wrap`
   // lets the longer notification copy break instead of forcing a wide bubble.
-  const [tip, setTip] = useState<{ text: string; sub?: string; wrap?: boolean; x: number; y: number } | null>(null);
+  const [tip, setTip] = useState<{ text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number } | null>(null);
   // progress = the "You've watched…" line (top); notif = the new-activity line.
   // When both exist the notif hangs beneath a divider; a notif alone shows on
   // its own. Nothing to show → no tooltip.
@@ -168,6 +168,16 @@ export default function DashboardPage() {
   function roomNotif(roomId?: string | null): string | undefined {
     const dot = roomId ? roomDotByRoomId.get(roomId) : undefined;
     return dot === "red" ? NOTIF_INVISIBLE : dot === "blue" ? NOTIF_VISIBLE : undefined;
+  }
+  // "Haven't started yet" show button: tooltip lists the other friends who are
+  // also interested in the show; falls back to the standard progress/notif tip.
+  function interestedTipProps(opted: { username: string }[], showName: string, selfProgText?: string, notif?: string) {
+    if (!opted.length) return tipProps(selfProgText, notif);
+    const names = opted.map((o) => o.username);
+    return {
+      onMouseMove: (e: React.MouseEvent) => setTip({ text: interestedNode(names, showName), wrap: true, x: e.clientX, y: e.clientY }),
+      onMouseLeave: () => setTip(null),
+    };
   }
 
   const selfUserId = user?.id ?? "";
@@ -710,7 +720,7 @@ export default function DashboardPage() {
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
                   {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
-                  <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
+                  <div {...interestedTipProps(r.opted, r.name, r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
                     <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
                   <OptInAvatars members={r.opted} markWriter={r.markWriter} withTooltip={false} onTip={setTip} />
@@ -931,7 +941,13 @@ export default function DashboardPage() {
                     <>
                       <div style={yellowDivider} />
                       <div style={{ ...yellowTitle, fontSize: 13 }}>{roomLabel}</div>
-                      <button style={{ ...startBtn, marginTop: 12 }} onClick={() => goToRoom(clicked.showId)}>Yes</button>
+                      <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
+                        <button style={startBtn} onClick={() => goToRoom(clicked.showId)}>Yes</button>
+                        <button
+                          style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
+                          onClick={() => setClicked(null)}
+                        >not yet</button>
+                      </div>
                     </>
                   )}
                 </>
@@ -1160,6 +1176,8 @@ function CopyRow({ email, link, error }: { email: string; link?: string; error?:
 
 // A simple no/yes pill toggle (used for the vote question).
 function YesNoToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  // Colored sliding dot carries the active label only: "no" = yellow dot left,
+  // "yes" = green dot right. The inactive label is not shown.
   return (
     <button
       onClick={() => onChange(!value)}
@@ -1170,10 +1188,10 @@ function YesNoToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
     >
       <span style={{
         position: "absolute", left: value ? 46 : 3, top: 3, width: 35, height: 26, borderRadius: 65,
-        background: "#fff", transition: "left 120ms",
-      }} />
-      <span style={{ width: "50%", textAlign: "center", fontSize: 12, fontWeight: 700, color: value ? "rgba(0,0,0,0.35)" : C.midnight, zIndex: 1 }}>no</span>
-      <span style={{ width: "50%", textAlign: "center", fontSize: 12, fontWeight: 700, color: value ? C.green : "rgba(0,0,0,0.35)", zIndex: 1 }}>yes</span>
+        background: value ? C.green : C.yellow, transition: "left 120ms, background 120ms",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 12, fontWeight: 700, color: C.cream,
+      }}>{value ? "yes" : "no"}</span>
     </button>
   );
 }
@@ -1226,13 +1244,60 @@ function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pendi
   return <span style={{ ...avatarCircle, background: bg, color: fg }}>{(letter ?? "?").toUpperCase()}</span>;
 }
 
+/** "Haven't started yet" tooltip: which other friends are interested in a show
+ *  (show name italic). 1 → "X is also…", 2 → "X and Y are also…", 3+ → "N
+ *  friends are also…". */
+function interestedNode(names: string[], showName: string): React.ReactNode {
+  const show = <i>{showName}</i>;
+  if (names.length === 1) return <>{names[0]} is also interested in watching {show}.</>;
+  if (names.length === 2) return <>{names[0]} and {names[1]} are also interested in watching {show}.</>;
+  return <>{names.length} friends are also interested in watching {show}.</>;
+}
+
+/** Per-count icon arrangement (rows, top→bottom), matching the spec's pyramid:
+ *  1·alone, 2·side-by-side, 3·triangle, then a growing pyramid. Cap is 8. */
+function pyramidRows(n: number): number[] {
+  switch (n) {
+    case 0: return [];
+    case 1: return [1];
+    case 2: return [2];
+    case 3: return [1, 2];
+    case 4: return [1, 2, 1];
+    case 5: return [1, 2, 2];
+    case 6: return [1, 2, 3];
+    case 7: return [1, 2, 3, 1];
+    case 8: return [1, 2, 3, 2];
+    default: { // defensive (>8): 1, 2, then rows of 3
+      const rows = [1, 2];
+      let rem = n - 3;
+      while (rem > 0) { rows.push(Math.min(3, rem)); rem -= 3; }
+      return rows;
+    }
+  }
+}
+
+/** Stacks avatars into the pyramid arrangement, centered, rows tucked. */
+function AvatarPile({ avatars }: { avatars: React.ReactNode[] }) {
+  const rows = pyramidRows(avatars.length);
+  let idx = 0;
+  return (
+    <div style={avatarPile}>
+      {rows.map((size, r) => {
+        const slice = avatars.slice(idx, idx + size);
+        idx += size;
+        return <div key={r} style={{ display: "flex", justifyContent: "center", gap: 3, marginTop: r === 0 ? 0 : -12 }}>{slice}</div>;
+      })}
+    </div>
+  );
+}
+
 /** Opt-in member avatars overlapping a group-pill's bottom edge (the friends
  *  who have this show in the group's pool). Decorative — pointer-events off so
  *  they never block a pill click. */
 function OptInAvatars({ members, withTooltip, onTip, markWriter = false }: {
   members: { username: string; s: number | null; e: number | null; wrote?: boolean }[];
   withTooltip: boolean;
-  onTip: (t: { text: string; x: number; y: number } | null) => void;
+  onTip: (t: { text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number } | null) => void;
   // When exactly one member has written, mark that member's avatar (green
   // fill + pencil) to show a single person wrote in the show room.
   markWriter?: boolean;
@@ -1244,11 +1309,13 @@ function OptInAvatars({ members, withTooltip, onTip, markWriter = false }: {
         const watched = (m.s ?? 0) > 0 || (m.e ?? 0) > 0;
         const tip = watched ? `${m.username} has watched: S${m.s} E${m.e}` : `${m.username} hasn't started yet`;
         const isWriter = markWriter && !!m.wrote;
+        // The lone writer's avatar (green + pencil) also notes they've begun writing.
+        const sub = isWriter ? "They have started writing in here." : undefined;
         return (
           <span
             key={`${m.username}-${i}`}
             style={isWriter ? { ...optInAvatar, background: C.green } : optInAvatar}
-            onMouseMove={withTooltip ? (e) => onTip({ text: tip, x: e.clientX, y: e.clientY }) : undefined}
+            onMouseMove={withTooltip ? (e) => onTip({ text: tip, sub, wrap: !!sub, x: e.clientX, y: e.clientY }) : undefined}
             onMouseLeave={withTooltip ? () => onTip(null) : undefined}
           >
             {(m.username[0] ?? "?").toUpperCase()}
@@ -1293,8 +1360,13 @@ function GroupClusters({
   return (
     <div style={clustersRow}>
       {groups.map(({ group, members, pendingHandles }) => {
+        // Cluster icons = the OTHER people (accepted cream, not-yet-accepted
+        // invitees yellow). Never your own icon, even before anyone accepts.
         const others = members.filter((m) => m.userId !== selfUserId);
-        const display = others.length ? others : members;
+        const avatars = [
+          ...others.map((m) => <Avatar key={m.userId} letter={m.username[0]} state="accepted" />),
+          ...pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />),
+        ];
         const dot = clusterDotByGroup.get(group.id);
         const notif = dot === "red" ? NOTIF_INVISIBLE : dot === "blue" ? NOTIF_VISIBLE : undefined;
         return (
@@ -1307,10 +1379,7 @@ function GroupClusters({
             onMouseMove={notif ? (e) => onTip({ text: notif, wrap: true, x: e.clientX, y: e.clientY }) : undefined}
             onMouseLeave={notif ? () => onTip(null) : undefined}
           >
-            <div style={avatarPile}>
-              {display.map((m) => <Avatar key={m.userId} letter={m.username[0]} state="accepted" />)}
-              {pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />)}
-            </div>
+            <AvatarPile avatars={avatars} />
             <div style={clusterName}>
               {dot && <span style={{ ...notifDotCluster, background: dot === "red" ? C.red : C.blue }} />}
               {groupAutoName(group, others)}
@@ -1323,9 +1392,7 @@ function GroupClusters({
         const label = inv.groupName || names.join(", ");
         return (
           <button key={inv.token} style={clusterBtn} title="you're invited" onClick={() => onInviteClick(inv)}>
-            <div style={avatarPile}>
-              {names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)}
-            </div>
+            <AvatarPile avatars={names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)} />
             <div style={clusterName}>{label}</div>
           </button>
         );
@@ -1334,10 +1401,12 @@ function GroupClusters({
   );
 }
 
-/** Custom name if set, else the other members' usernames, alphabetical. */
+/** Custom name if set, else a stable generic "Group <seq>". (Pre-seq-migration
+ *  fallback: the other members' usernames, alphabetical, else "Group".) */
 function groupAutoName(group: PeopleGroup, others: PeopleGroupMember[]): string {
   if (group.name) return group.name;
-  if (!others.length) return "(just you)";
+  if (group.seq != null) return `Group ${group.seq}`;
+  if (!others.length) return "Group";
   return others.map((m) => m.username).sort((a, b) => a.localeCompare(b)).join(", ");
 }
 
@@ -1390,7 +1459,7 @@ const clustersRow: React.CSSProperties = {
 };
 const clusterBtn: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 0 };
 const avatarPile: React.CSSProperties = {
-  display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 4, maxWidth: 104, margin: "0 auto",
+  display: "flex", flexDirection: "column", alignItems: "center", margin: "0 auto",
 };
 const avatarCircle: React.CSSProperties = {
   width: 60, height: 60, borderRadius: "50%", display: "inline-flex", alignItems: "center",

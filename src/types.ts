@@ -43,6 +43,9 @@ export type PeopleGroup = {
   name: string | null;
   createdBy: string;
   createdAt: number;
+  /** Stable per-creator group number; unnamed groups display as "Group <seq>".
+   *  null when the seq migration hasn't been applied yet (tolerant fallback). */
+  seq: number | null;
 };
 
 export type PeopleGroupMember = {
