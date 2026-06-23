@@ -7,9 +7,11 @@
  *   • count   = watchers + wanters (everyone opted in)
  *   • fill    = cream (want-only) / outlined (≥1 watching) / green (2+ writers)
  *   • pencil  at exactly 1 writer; people icon (replaces number) at 2+ writers
- *   • ▲N/▼N   relative progress vs the rest of the room (only when YOU watch and
- *             progress differs); single/identical watchers show s/e instead;
- *             a written-but-unwatched room shows "s0 e0" with no arrow
+ *   • ▲N/▼N   your progress vs the room: ▲ when you're the furthest along, ▼ for
+ *             how far behind the furthest watcher you are (incl. when you haven't
+ *             started — effectively s0 e0). Only shows s/e (no arrow) when you ARE
+ *             watching and everyone's at the same point; a written-but-unwatched
+ *             room (no watchers) shows "s0 e0" with no arrow
  *   • shelf   = currentlyWatching once anyone watches OR anyone has written
  */
 import type { GroupDashboardShow } from "./db";
@@ -93,13 +95,16 @@ export function computePill(
       } else {
         right = { kind: "arrow", dir: "down", n: maxIdx - selfIdx };
       }
-    } else if (!spread) {
-      // 1 watcher, or everyone identical → show that progress.
-      right = { kind: "progress", s: idxs[0].s, e: idxs[0].e };
+    } else if (!selfWatching) {
+      // You haven't started but others have → red ▼ for how far behind the
+      // furthest-along watcher you are (your progress is effectively s0 e0).
+      // Previously this showed the watcher's raw s/e, which read like it was
+      // YOUR progress on your own button.
+      const selfIdx = linearIndex(self?.s ?? 0, self?.e ?? 0, seasons);
+      right = { kind: "arrow", dir: "down", n: maxIdx - selfIdx };
     } else {
-      // Spread, but you're not watching → show the leader's progress.
-      const leader = idxs.reduce((a, b) => (b.idx > a.idx ? b : a));
-      right = { kind: "progress", s: leader.s, e: leader.e };
+      // You're watching and everyone (incl. you) is at the same point → that progress.
+      right = { kind: "progress", s: idxs[0].s, e: idxs[0].e };
     }
   }
 
