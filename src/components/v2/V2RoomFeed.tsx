@@ -22,7 +22,7 @@ import {
   likeThread as dbLikeThread,
   unlikeThread as dbUnlikeThread,
 } from "../../lib/db";
-import type { ProgressEntry, Thread } from "../../types";
+import type { ProgressEntry, Thread, Reply } from "../../types";
 
 // V2 friend room feed — episode-ascending list of entry tickets.
 //
@@ -63,6 +63,9 @@ export type V2RoomFeedEntry = {
       V2InlineThread, which expects the Thread shape (not the lean entry
       projection). Built from the raw fetchGroupThreads result. */
   thread: Thread;
+  /** TSP onboarding demo only: instructional "Alborz" entry — gets a distinct
+      treatment and no map cell. Undefined/false everywhere in live rooms. */
+  isInstructional?: boolean;
 };
 
 export type V2RoomFeedHandle = {
@@ -164,6 +167,13 @@ export type V2RoomFeedProps = {
       fixed/overflow:auto wrapper (the restructure ShowRoomPage) rather than
       the normal document flow (live V2FriendRoomPage). */
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
+  /** TSP onboarding demo only. When true, the feed is read-only: expanding an
+      entry renders its full body + the supplied (already-gated) replies inline
+      instead of mounting V2InlineThread (no DB fetch, no composer/likes). */
+  demoMode?: boolean;
+  /** Demo mode: read-only replies per threadId, already gated to the viewer's
+      selected episode by the caller. */
+  demoReplies?: Record<string, Reply[]>;
 };
 
 export interface PublicRoomResponseGate {
@@ -209,6 +219,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     publicRoomGate,
     onReplyAdded,
     scrollContainerRef,
+    demoMode = false,
+    demoReplies,
   },
   ref,
 ) {
@@ -602,6 +614,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       {resolvedEntryIcon}
                     </span>
                   )}
+                  {entry.isInstructional && (
+                    // TSP demo: distinct leading glyph marks an instructional
+                    // "Alborz" entry (flag-driven, never literal title text).
+                    <span style={{ marginRight: 6, color: "#dea838" }}>✦</span>
+                  )}
                   {entry.isDeleted ? "(deleted entry)" : entry.title}
                   {!entry.isDeleted && (
                     // SE tag rendered inline AFTER the title with a " • "
@@ -682,7 +699,29 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               </div>
 
               <div style={{ marginTop: 6 }}>
-                {isExpanded ? (
+                {isExpanded && demoMode ? (
+                  // TSP demo: read-only expanded view — full body + the
+                  // already-gated replies, no V2InlineThread (no fetch, no
+                  // composer/likes). Reuses the entry colors of the room.
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <div style={{ whiteSpace: "pre-line", lineHeight: 1.5 }}>{entry.body}</div>
+                    {(demoReplies?.[entry.threadId] ?? []).length > 0 && (
+                      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                        {(demoReplies?.[entry.threadId] ?? []).map((r) => (
+                          <div key={r.id} style={{ border: "2px solid var(--dos-border)", borderRadius: 16, padding: "10px 14px" }}>
+                            <div className="muted" style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                              <Username name={r.author} userId={r.author} onClickProfile={() => {}} bold />
+                              <span style={{ color: "#fff", whiteSpace: "nowrap" }}>
+                                {" • "}<EpisodeTag season={r.season} episode={r.episode} naturalNumbers parens={false} />
+                              </span>
+                            </div>
+                            <div style={{ whiteSpace: "pre-line", lineHeight: 1.5 }}>{r.body}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : isExpanded ? (
                   // Stop click propagation so interactive elements inside
                   // the expanded view (action buttons, composer textarea,
                   // edit form) don't bubble to the card's whole-card
