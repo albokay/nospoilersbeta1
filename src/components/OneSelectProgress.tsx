@@ -35,7 +35,7 @@ function isWithinPreviousHighest(s: number, e: number, highest?: { s: number; e:
 }
 
 export default function OneSelectProgress({
-  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, onForwardPick, compactLabel, allowZero = false, rewatchHighest, plain = false, pillBg
+  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, onForwardPick, compactLabel, allowZero = false, rewatchHighest, plain = false, pillBg, forceZeroOption = false
 }: {
   show: any;
   value: any;
@@ -73,6 +73,10 @@ export default function OneSelectProgress({
   // friends, canon-yellow on public). Default keeps the canon-green
   // pill for every other callsite (ShowSection, mobile, etc.).
   pillBg?: string;
+  // TSP onboarding demo only: keep "haven't started" available even after the
+  // user moves past episode 0, so the demo's free up/down picking (spec §5) can
+  // return to it. Off for every live caller (zero stays monotonic in real rooms).
+  forceZeroOption?: boolean;
 }) {
   const effectivePillBg = pillBg ?? "#7abd8e";
   const opts = buildProgressOptions(show);
@@ -88,7 +92,7 @@ export default function OneSelectProgress({
 
   // Defense-in-depth: the zero option is monotonic. Once the user is past zero,
   // it must never be offered again, even if a caller passes allowZero={true}.
-  const showZeroOption = allowZero && curS === 0 && curE === 0;
+  const showZeroOption = allowZero && (forceZeroOption || (curS === 0 && curE === 0));
 
   // Prefix helper for an option label. Rewatching users see "you rewatched: "
   // for options within their previous highest, and "you've watched: " past it.

@@ -2499,6 +2499,22 @@ export async function restoreShowToPool(userId: string, showId: string): Promise
   if (error) throw error;
 }
 
+// ── TSP onboarding demo once-only gate (spec §3) ────────────────────────────
+
+/** Has the caller already seen the TSP onboarding demo? Tolerant — returns
+ *  false (treat as unseen) if the column isn't migrated yet. */
+export async function fetchTspDemoSeen(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("profiles").select("tsp_demo_seen_at").eq("id", userId).maybeSingle();
+  if (error) return false; // column not yet migrated
+  return !!(data as any)?.tsp_demo_seen_at;
+}
+
+/** Mark the TSP onboarding demo as seen (durable, once-only). Tolerant. */
+export async function markTspDemoSeen(userId: string): Promise<void> {
+  await supabase.from("profiles").update({ tsp_demo_seen_at: new Date().toISOString() }).eq("id", userId);
+}
+
 // ── Group chat (restructure §12) ────────────────────────────────────────────
 
 export type GroupMessage = {

@@ -53,6 +53,8 @@ import {
   fetchGroupChatActivity,
   chatHasNewActivity,
   markGroupChatSeen,
+  fetchTspDemoSeen,
+  markTspDemoSeen,
   type Show,
   type GroupDashboardShow,
   type PendingGroupInvite,
@@ -64,6 +66,14 @@ import { computePill, type PillData } from "../lib/groupPills";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
 import OneSelectProgress from "./OneSelectProgress";
+import TSPDemoModal from "./TSPDemoModal";
+
+// TSP onboarding demo placement (spec §9). INERT until the restructure cutover:
+// the real post-signup auto-show is gated off here, so it never appears for
+// live users ahead of cutover. Flip to true at cutover (when /dashboard
+// becomes the post-signup landing) + apply 20260623_profiles_tsp_demo_seen.sql.
+// Testable now without enabling for anyone: open the dashboard with ?tspdemo=1.
+const TSP_DEMO_ENABLED = false;
 
 // ── §16 palette (authoritative) ──────────────────────────────────────────────
 const C = {
@@ -93,6 +103,23 @@ export default function DashboardPage() {
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [railGroups, setRailGroups] = useState<RailGroup[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // TSP onboarding demo (spec §9). Force-show for testing with ?tspdemo=1; the
+  // real once-only post-signup auto-show is gated behind TSP_DEMO_ENABLED
+  // (off until cutover) + the durable tsp_demo_seen_at flag.
+  const forceTspDemo = new URLSearchParams(location.search).get("tspdemo") === "1";
+  const [showTspDemo, setShowTspDemo] = useState(forceTspDemo);
+  useEffect(() => {
+    if (forceTspDemo) { setShowTspDemo(true); return; }
+    if (!TSP_DEMO_ENABLED || !user) return;
+    let cancelled = false;
+    fetchTspDemoSeen(user.id).then((seen) => { if (!cancelled && !seen) setShowTspDemo(true); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [forceTspDemo, user]);
+  function closeTspDemo() {
+    setShowTspDemo(false);
+    if (!forceTspDemo && user) markTspDemoSeen(user.id).catch(() => {});
+  }
   const [outOfPool, setOutOfPool] = useState<Set<string>>(new Set());
   const [removeConfirm, setRemoveConfirm] = useState<{ id: string; name: string } | null>(null);
 
@@ -1141,6 +1168,9 @@ export default function DashboardPage() {
         </div>,
         document.body,
       )}
+
+      {/* TSP onboarding demo — over the empty dashboard (spec §9). */}
+      {showTspDemo && <TSPDemoModal onClose={closeTspDemo} />}
     </div>
   );
 }
