@@ -135,6 +135,9 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
                 demoMode
                 demoReplies={tspDemoReplies}
                 scrollContainerRef={scrollRef}
+                // Expand the first ("haven't started") guide entry on open so
+                // people read the full welcome + instructions.
+                initialExpandedThreadId="tsp-gate-0"
               />
             </div>
             <div style={{ flex: "0 0 auto", position: "sticky", top: 0, alignSelf: "flex-start" }}>
