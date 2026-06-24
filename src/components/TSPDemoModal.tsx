@@ -39,6 +39,13 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
     return () => { document.body.classList.remove("group-context"); };
   }, []);
 
+  // On a progress change, scroll the feed back to the top so the newly-revealed
+  // guide entry (newest in its episode) is noticed even if the user had
+  // scrolled down.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [selectedEpisode]);
+
   // Gate (spec §5): visible iff episode <= selectedEpisode (episode 0 always
   // visible). Evaluated on local state — never the live spoiler engine.
   const gatedEntries = useMemo(
