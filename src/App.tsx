@@ -118,6 +118,11 @@ export default function App() {
   useEffect(injectDOSStyles, []);
   const location = useLocation();
   const pathParts = location.pathname.split("/").filter(Boolean);
+  // CP7 navigation cutover: the restructured world (dashboard / show rooms) is
+  // desktop-only, so the legacy-route redirects below apply to DESKTOP only.
+  // On mobile (<768px) every old route falls through to its existing handling
+  // (the /m surface + mobile lockout are left entirely untouched — §15.7).
+  const onMobile = typeof window !== "undefined" && window.innerWidth < 768;
   if (pathParts[0] === "lab") return <Suspense fallback={<RouteFallback />}><HomepageLab /></Suspense>;
   if (pathParts[0] === "how-it-works") return <Suspense fallback={<RouteFallback />}><HowItWorksV2 /></Suspense>;
   if (pathParts[0] === "how-it-works-v1") return <Suspense fallback={<RouteFallback />}><HowItWorks /></Suspense>;
@@ -129,10 +134,13 @@ export default function App() {
     // hitting the desktop modal-style InviteAcceptPage on a phone.
     // Admins included in the redirect by design — mobile invite-accept
     // is the correct UX at <768px regardless of role.
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
+    if (onMobile) {
       return <Navigate to={`/m/invite/${pathParts[1]}`} replace />;
     }
-    return <Suspense fallback={<RouteFallback />}><InviteAcceptPage token={pathParts[1]} /></Suspense>;
+    // CP7: legacy friend-room invites are retired in the new world. No pending
+    // ones need to keep working (confirmed), so land desktop visitors on the
+    // dashboard rather than the old accept page.
+    return <Navigate to="/dashboard" replace />;
   }
   // Public-rooms "Allow" link from the response-request email (2026). Sits
   // above AppShell so the owner (a signed-in non-admin) isn't bounced to
@@ -187,9 +195,15 @@ export default function App() {
   // /compose — the V2 components handle no-user state internally
   // (matches their pre-promotion behavior at /v2/*).
   if (pathParts[0] === "profile" && !pathParts[1]) {
+    // CP7: the profile page is retired in the new world → dashboard (desktop).
+    if (!onMobile) return <Navigate to="/dashboard" replace />;
     return <Suspense fallback={<RouteFallback />}><V2ProfileSelfPage /></Suspense>;
   }
   if (pathParts[0] === "room" && pathParts[1]) {
+    // CP7: legacy friend rooms → the new (group × show) show room (desktop).
+    // The id lines up (a parented friend_groups row IS the show-room roomId).
+    // Preserve ?entry= so already-sent digest deep-links open the right post.
+    if (!onMobile) return <Navigate to={`/show-room/${pathParts[1]}${location.search}`} replace />;
     return <Suspense fallback={<RouteFallback />}><V2FriendRoomPage groupId={pathParts[1]} /></Suspense>;
   }
   if (pathParts[0] === "compose" && pathParts[1]) {
@@ -197,6 +211,9 @@ export default function App() {
   }
   if (pathParts[0] === "u" && pathParts[1]) {
     const username = decodeURIComponent(pathParts[1]);
+    // CP7: public profiles + the per-show aggregate are retired → the new
+    // read-only show pool (desktop). Mobile keeps the old visitor profile.
+    if (!onMobile) return <Navigate to={`/pool/${encodeURIComponent(username)}`} replace />;
     if (pathParts[2] === "show" && pathParts[3] && pathParts[4] === "posts") {
       return <Suspense fallback={<RouteFallback />}><V2UserAggregatePage username={username} showId={pathParts[3]} /></Suspense>;
     }
@@ -224,6 +241,11 @@ export default function App() {
   // Restructure (group × show) room — two tabs (separate from legacy /room/:id).
   if (pathParts[0] === "show-room" && pathParts[1]) {
     return <Suspense fallback={<RouteFallback />}><ShowRoomPage roomId={pathParts[1]} /></Suspense>;
+  }
+  // CP7: the old journal home is retired → dashboard (desktop). Signed-out
+  // visitors bounce on to "/" from DashboardPage. Mobile keeps its own surface.
+  if (pathParts[0] === "journal" && !pathParts[1] && !onMobile) {
+    return <Navigate to="/dashboard" replace />;
   }
   return <AppShell />;
 }
@@ -453,10 +475,13 @@ function AppShell() {
     }
     if (!profile) return; // profile still loading — wait one more tick
     justSignedInRef.current = false;
-    const dest = profile.onboarded_at == null ? "/profile" : "/journal";
+    // CP7: every desktop sign-in now lands in the restructured world
+    // (/dashboard), where the guided tour auto-fires for first-timers. Mobile
+    // keeps the old destination so its lockout → /m flow is untouched.
+    const dest = isMobileLocked ? (profile.onboarded_at == null ? "/profile" : "/journal") : "/dashboard";
     navigate(dest);
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
-  }, [user, profile, authLoading, navigate]);
+  }, [user, profile, authLoading, navigate, isMobileLocked]);
 
   // Replies-to-user for profile pill badge
   const [repliesToUser, setRepliesToUser] = useState<{ reply: Reply; thread: Thread; groupId?: string }[]>([]);
@@ -864,13 +889,13 @@ function AppShell() {
     // off /. Otherwise admin sign-in briefly sees profile=null → isAdmin=false
     // and bounces them off / before the profile load settles.
     if (user && profile && !isAdmin && p === "/") {
-      // Never-onboarded users go to /profile (the onboarding modal lives
-      // there); everyone else to their journal. Admins are exempt from this
-      // bounce entirely so they can reach the admin panel via / — a
-      // never-onboarded admin can still trigger the modal by visiting /profile.
-      navigate(profile.onboarded_at == null ? "/profile" : "/journal", { replace: true });
+      // CP7: signed-in desktop users bounce off the homepage into the
+      // restructured world (/dashboard). Mobile keeps the old journal/profile
+      // bounce so its lockout → /m flow is untouched. Admins stay exempt so
+      // they can reach the admin panel via / (?admin).
+      navigate(isMobileLocked ? (profile.onboarded_at == null ? "/profile" : "/journal") : "/dashboard", { replace: true });
     }
-  }, [authLoading, user, profile, isAdmin, location.pathname, navigate]);
+  }, [authLoading, user, profile, isAdmin, location.pathname, navigate, isMobileLocked]);
 
   const fixedHelp = null;
 

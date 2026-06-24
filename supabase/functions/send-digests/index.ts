@@ -106,7 +106,11 @@ function buildDigestHtml(rooms: RoomDigest[], baseUrl: string): string {
       const verb = r.entries.length === 1 ? "wrote a new entry" : "wrote new entries";
       const items = r.entries
         .map((e) => {
-          const url = `${baseUrl}/room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(e.threadId)}`;
+          // CP7: point at the restructured show room. The id lines up (a
+          // parented friend_groups id IS the show-room roomId); ShowRoomPage
+          // reads ?entry= and auto-expands the post. Old emails still resolve
+          // via the /room/:id -> /show-room/:id redirect.
+          const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(e.threadId)}`;
           const byline = multiAuthor
             ? ` <span style="color:rgba(26,44,58,0.6)">by @${escapeHtml(e.authorUsername)}</span>`
             : "";
@@ -146,7 +150,11 @@ function buildDigestText(rooms: RoomDigest[], baseUrl: string): string {
       const verb = r.entries.length === 1 ? "wrote a new entry" : "wrote new entries";
       const items = r.entries
         .map((e) => {
-          const url = `${baseUrl}/room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(e.threadId)}`;
+          // CP7: point at the restructured show room. The id lines up (a
+          // parented friend_groups id IS the show-room roomId); ShowRoomPage
+          // reads ?entry= and auto-expands the post. Old emails still resolve
+          // via the /room/:id -> /show-room/:id redirect.
+          const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(e.threadId)}`;
           const byline = multiAuthor ? ` by @${e.authorUsername}` : "";
           return `  - "${e.title}"${byline} — ${url}`;
         })

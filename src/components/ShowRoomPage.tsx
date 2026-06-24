@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, SquarePen } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
@@ -46,6 +46,18 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const privateOnly = !!privateShowId && !roomId;
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // CP7: digest-email deep-links arrive as /show-room/<id>?entry=<threadId>
+  // (and the legacy /room/<id>?entry= redirect preserves it). Read once on
+  // mount and hand it to the friend feed, which auto-expands + scrolls to that
+  // post — same pattern the legacy room used. Router state wins for in-app
+  // navigations that can carry it; the query param covers plain email URLs.
+  const [initialExpandThreadId] = useState<string | null>(
+    () =>
+      (location.state as { expandThreadId?: string } | null)?.expandThreadId ??
+      new URLSearchParams(location.search).get("entry") ??
+      null,
+  );
   const feedRef = useRef<V2RoomFeedHandle>(null);
   const composeFormRef = useRef<ComposeFormHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null); // the fixed scroll container
@@ -508,6 +520,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   ref={feedRef}
                   entries={visibleFriendEntries}
                   sortOrder={effectiveSortOrder}
+                  initialExpandedThreadId={initialExpandThreadId ?? undefined}
                   scrollContainerRef={pageRef}
                   groupId={roomId}
                   viewerProgress={progressForShow}
