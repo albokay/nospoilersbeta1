@@ -68,12 +68,16 @@ import SidebarLogo from "./SidebarLogo";
 import OneSelectProgress from "./OneSelectProgress";
 import TSPDemoModal from "./TSPDemoModal";
 
-// TSP onboarding demo placement (spec §9). INERT until the restructure cutover:
-// the real post-signup auto-show is gated off here, so it never appears for
-// live users ahead of cutover. Flip to true at cutover (when /dashboard
-// becomes the post-signup landing) + apply 20260623_profiles_tsp_demo_seen.sql.
-// Testable now without enabling for anyone: open the dashboard with ?tspdemo=1.
-const TSP_DEMO_ENABLED = false;
+// TSP onboarding demo (spec §9): the onboarding for the NEW /dashboard world.
+// ENABLED — the demo auto-shows once on a user's first arrival at the base
+// /dashboard (gated by the durable profiles.tsp_demo_seen_at flag). This does
+// NOT change live signup routing: general new sign-ups still get the old
+// onboarding → /journal; only people who reach /dashboard (e.g. accepting a
+// group invite, which routes here) see the demo. Requires migration
+// 20260623_profiles_tsp_demo_seen.sql applied, or the demo re-shows every
+// /dashboard visit (the once-only flag can't persist without the column).
+// ?tspdemo=1 still force-shows for testing.
+const TSP_DEMO_ENABLED = true;
 
 // ── §16 palette (authoritative) ──────────────────────────────────────────────
 const C = {
@@ -112,10 +116,13 @@ export default function DashboardPage() {
   useEffect(() => {
     if (forceTspDemo) { setShowTspDemo(true); return; }
     if (!TSP_DEMO_ENABLED || !user) return;
+    // Only auto-show on the BASE dashboard — never overlay a deep-linked group
+    // context (?g=…). Invitees land on the plain /dashboard, so this still fires.
+    if (new URLSearchParams(location.search).get("g")) return;
     let cancelled = false;
     fetchTspDemoSeen(user.id).then((seen) => { if (!cancelled && !seen) setShowTspDemo(true); }).catch(() => {});
     return () => { cancelled = true; };
-  }, [forceTspDemo, user]);
+  }, [forceTspDemo, user, location.search]);
   function closeTspDemo() {
     setShowTspDemo(false);
     if (!forceTspDemo && user) markTspDemoSeen(user.id).catch(() => {});
