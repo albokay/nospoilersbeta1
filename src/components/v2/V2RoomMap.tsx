@@ -1632,7 +1632,10 @@ function MapCellDot({
         fontWeight: 800,
         lineHeight: 1,
         cursor: isRed ? "pointer" : "default",
-        zIndex: 3,
+        // Below the sticky header (zIndex 2) so a dot on a cell scrolling up
+        // disappears behind the header instead of floating over the usernames;
+        // still above the cells (zIndex auto) so it overlaps the left edge.
+        zIndex: 1,
         pointerEvents: isRed ? "auto" : "none",
       }}
       onMouseEnter={isRed ? onDotMouseEnter : undefined}

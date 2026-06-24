@@ -328,9 +328,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     for (const entry of feedEntries) {
       if (entry.isDeleted) continue;
       const tid = entry.threadId;
-      if ((perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0)) { out[tid] = { kind: "green" }; continue; }
-      if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const isOwn = !!profile?.username && entry.authorUsername === profile.username;
+      // Green = a new reply since you last opened it, but ONLY on your OWN
+      // entries ("someone replied to your writing"). It must not fire on other
+      // members' cells — the map's own contract is green/red are own-column
+      // only; others' brand-new entries surface via the white "new" outline.
+      if (isOwn && (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0)) { out[tid] = { kind: "green" }; continue; }
+      if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
       const dismissedAt = redDismissedAt[tid] ?? 0;
       const manuallyDismissed = dismissedAt > 0 && dismissedAt >= (perThreadLatestHidden[tid] ?? 0);

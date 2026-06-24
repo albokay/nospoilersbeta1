@@ -800,10 +800,12 @@ export default function DashboardPage() {
             </>
           )}
 
-          <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: groupShelves.watching.length ? 56 : 0 }}>
-            Haven&rsquo;t started yet:
-          </h1>
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
+          {groupShelves.notStarted.length > 0 && (
+            <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: groupShelves.watching.length ? 56 : 0 }}>
+              Haven&rsquo;t started yet:
+            </h1>
+          )}
+          <div style={{ textAlign: "center", marginBottom: 24, marginTop: groupShelves.notStarted.length === 0 && groupShelves.watching.length ? 56 : 0 }}>
             <button style={searchPill} onClick={openSearch}>SEARCH</button>
           </div>
           {groupShelves.notStarted.length > 0 && (
@@ -855,9 +857,11 @@ export default function DashboardPage() {
             </>
           )}
 
-          <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: watching.length ? 56 : 0 }}>
-            Haven&rsquo;t started yet:
-          </h1>
+          {notStarted.length > 0 && (
+            <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: watching.length ? 56 : 0 }}>
+              Haven&rsquo;t started yet:
+            </h1>
+          )}
           {notStarted.length > 0 && (
             <div style={shelfGrid}>
               {notStarted.map(({ show }) => (
@@ -1559,7 +1563,7 @@ const avatarPile: React.CSSProperties = {
   display: "flex", flexDirection: "column", alignItems: "center", margin: "0 auto",
 };
 const avatarCircle: React.CSSProperties = {
-  width: 60, height: 60, borderRadius: "50%", display: "inline-flex", alignItems: "center",
+  width: 40, height: 40, borderRadius: "50%", display: "inline-flex", alignItems: "center",
   justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 32, letterSpacing: 0,
 };
 const optInRow: React.CSSProperties = {
