@@ -110,7 +110,7 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
 
         {/* Room surface — sky panel, fills the middle. Dropdown pinned at its
             top (real in-room position, §2/§5); only the feed/map scroll. */}
-        <div style={{ flex: "1 1 auto", minHeight: 0, margin: "0 24px", background: C.sky, borderRadius: 16, padding: "16px 20px 0", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: "1 1 auto", minHeight: 0, margin: "0 64px", background: C.sky, borderRadius: 16, padding: "16px 20px 0", display: "flex", flexDirection: "column" }}>
           <div style={{ flex: "0 0 auto", display: "flex", justifyContent: "center", marginBottom: 16 }}>
             <OneSelectProgress
               show={TSP_DEMO_SHOW}
