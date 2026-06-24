@@ -8,7 +8,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import { ChevronDown, Mail, Users, Sparkles, Flag } from "lucide-react";
+import { ChevronDown, ChevronUp, Mail, Users, Sparkles, Flag } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import Username from "../Username";
@@ -196,9 +196,11 @@ const HIGHLIGHT_MS = 1500;
 
 // TSP demo: read-only expanded entries get their own collapse affordance
 // (V2InlineThread, which normally carries it, isn't mounted in demo mode).
+// Matches the live friend-room collapse button exactly.
 const demoCollapseBtn: React.CSSProperties = {
-  background: "transparent", border: "2px solid var(--dos-border)", color: "var(--dos-fg)",
-  borderRadius: 999, padding: "5px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer",
+  background: "transparent", border: "none", color: "#fff", cursor: "pointer",
+  fontSize: 13, padding: "4px 8px", display: "inline-flex", alignItems: "center",
+  gap: 5, fontFamily: "inherit",
 };
 
 const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2RoomFeed(
@@ -571,7 +573,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
             }}
           >
             <div
-              className="card threadCard"
+              className={`card threadCard${entry.isInstructional ? " tsp-guide" : ""}`}
               style={{
                 margin: 0,
                 // Pointer cursor + click-to-toggle are scoped to COLLAPSED
@@ -589,9 +591,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 // flashing dropshadow (`flash-glow`, box-shadow) so the lines
                 // never change color. Border precedence otherwise:
                 // white-when-new, then default. Clears via HIGHLIGHT_MS = 1500.
-                border: entry.isInstructional
-                  ? "4px solid #355eb8"            // TSP demo: guide tickets get a blue outline
-                  : isNew
+                // (Guide-ticket yellow outline is applied via the .tsp-guide
+                // class, since group-context forces the ticket border !important.)
+                border: isNew
                   ? "4px solid #fff"
                   : "4px solid var(--dos-border)",
                 animation: isHighlighted
@@ -617,17 +619,26 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   opacity: entry.isDeleted ? 0.35 : 1,
                 }}
               >
-                <h2 style={{ margin: 0, fontSize: 22 }} className="title">
+                <h2
+                  className="title"
+                  style={{
+                    margin: 0, fontSize: 22,
+                    // TSP demo: guide titles render blue; balance wrapping so a
+                    // lone word/number doesn't drop to its own line.
+                    ...(entry.isInstructional ? { color: "#355eb8" } : null),
+                    ...(demoMode ? ({ textWrap: "balance" } as React.CSSProperties) : null),
+                  }}
+                >
                   {resolvedEntryIcon && (
                     <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}>
                       {resolvedEntryIcon}
                     </span>
                   )}
                   {entry.isInstructional && (
-                    // TSP demo: distinct leading glyph marks an instructional
-                    // "Alborz" entry (flag-driven, never literal title text).
+                    // TSP demo: cream flag leads an instructional "Alborz" entry
+                    // title (flag-driven, never literal title text).
                     <span style={{ marginRight: 6, display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
-                      <Sparkles size={18} color="#fef8ea" fill="#fef8ea" />
+                      <Flag size={18} color="#fef8ea" />
                     </span>
                   )}
                   {entry.isDeleted ? "(deleted entry)" : entry.title}
@@ -660,12 +671,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     in V2RoomFeed so the star doesn't move between collapsed
                     and expanded — V2InlineThread reports the caller's
                     likedByMe via onThreadLikeStateChange after its fetch. */}
-                {!entry.isDeleted && (
+                {!entry.isDeleted && !entry.isInstructional && (
+                  // TSP demo: guide entries have no star (the flag leads the
+                  // title instead).
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {entry.isInstructional ? (
-                      // TSP demo: guide entries get a cream flag, not a star.
-                      <Flag size={20} color="#fef8ea" />
-                    ) : isExpanded && expandedLikeState ? (
+                    {isExpanded && expandedLikeState ? (
                       <LikeBadge
                         count={expandedLikeState.count}
                         userLiked={expandedLikeState.likedByMe}
@@ -700,6 +710,12 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   opacity: entry.isDeleted ? 0.35 : undefined,
                 }}
               >
+                {entry.isInstructional && (
+                  // TSP demo: sparkles sits to the left of the "Alborz" byline.
+                  <span style={{ display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
+                    <Sparkles size={15} color="#fef8ea" fill="#fef8ea" />
+                  </span>
+                )}
                 <Username
                   name={entry.authorUsername}
                   userId={entry.authorId}
@@ -718,9 +734,6 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   // already-gated replies, no V2InlineThread (no fetch, no
                   // composer/likes). Reuses the entry colors of the room.
                   <div onClick={(e) => e.stopPropagation()}>
-                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
-                      <button style={demoCollapseBtn} onClick={() => handleCollapseTop(entry.threadId)}>collapse ▲</button>
-                    </div>
                     <div style={{ whiteSpace: "pre-line", lineHeight: 1.5 }}>{entry.body}</div>
                     {(demoReplies?.[entry.threadId] ?? []).length > 0 && (
                       <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -738,7 +751,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       </div>
                     )}
                     <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>
-                      <button style={demoCollapseBtn} onClick={() => handleCollapseTop(entry.threadId)}>collapse ▲</button>
+                      <button style={demoCollapseBtn} onClick={() => handleCollapseTop(entry.threadId)}>
+                        <ChevronUp size={13} color="#fff" /> collapse
+                      </button>
                     </div>
                   </div>
                 ) : isExpanded ? (

@@ -63,6 +63,8 @@ body.group-context .reply-card{ color:#1a3a4a !important; --dos-accent:#1a3a4a; 
 /* In friend rooms (+ the new show room, same palette), entry ticket outlines
    and the star button circle/glyph use a 2px cream outline. */
 body.group-context .threadCard{ border:2px solid #fef8ea !important; }
+/* TSP demo: instructional "Alborz" guide tickets get a yellow outline. */
+body.group-context .threadCard.tsp-guide{ border-color:#dea838 !important; }
 body.group-context .likeWrap{ color:#fef8ea !important; border-color:#fef8ea !important; }
 body.group-context .likeWrap:hover{ background:rgba(254,248,234,0.14) !important; }
 /* In friend rooms, the default .btn:hover border-color (--dos-light = dark
