@@ -662,6 +662,54 @@ export default function DashboardPage() {
     return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
   }, [chatGroupId, loadChat, railGroups]);
 
+  // Live chat dot while you're VIEWING a group with the panel closed: a
+  // filtered, per-group realtime listen that flips the new-message dot the
+  // instant another member posts — no refetch, nothing polls (egress is just
+  // the small INSERT push for this one group, same cost as the open-chat
+  // socket). Mirrors that socket's auth handling: group_messages is member-
+  // gated RLS, so the token must be on the socket or it delivers nothing.
+  // Skipped while the panel is open for this group (chatGroupId === activeGroupId)
+  // — the open-chat effect already streams + marks seen there.
+  useEffect(() => {
+    if (!activeGroupId || chatGroupId === activeGroupId) return;
+    const gid = activeGroupId;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) supabase.realtime.setAuth(session.access_token);
+      } catch { /* tolerate */ }
+      if (cancelled) return;
+      channel = supabase
+        .channel(`group-chat-dot-${gid}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${gid}` },
+          (payload) => {
+            const r = payload.new as any;
+            if (!r || r.author_id === selfUserId) return;
+            const at = new Date(r.created_at).getTime();
+            setChatActivity((prev) => {
+              const idx = prev.findIndex((a) => a.groupId === gid);
+              if (idx === -1) return [...prev, { groupId: gid, chatLastSeenAt: null, latestMessageAt: at }];
+              const a = prev[idx];
+              if (a.latestMessageAt != null && a.latestMessageAt >= at) return prev;
+              const next = prev.slice();
+              next[idx] = { ...a, latestMessageAt: at };
+              return next;
+            });
+          },
+        )
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            console.warn("[dashboard] chat-dot realtime status:", status);
+          }
+        });
+    })();
+    return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
+  }, [activeGroupId, chatGroupId, selfUserId]);
+
   async function sendChat() {
     if (!user || !chatGroupId || !chatInput.trim()) return;
     const body = chatInput.trim();
@@ -935,13 +983,13 @@ export default function DashboardPage() {
         const curVal = cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 };
         return (
           <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
-            {/* solo + watchq are wider to fit the "Yes" + "just log my progress" row. */}
+            {/* solo + watchq are wider to fit the "Yes" + "just confirm my progress" row. */}
             <div style={{ ...yellowCard, ...(clicked.mode === "watchq" || clicked.mode === "solo" ? { width: "min(460px, 92vw)" } : {}) }}>
               <button style={modalClose} onClick={() => setClicked(null)}><X size={16} color="#fff" /></button>
 
               {clicked.mode === "solo" && (
                 <>
-                  <div style={yellowTitle}>Have you watched more?</div>
+                  <div style={yellowTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
                   <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                     <OneSelectProgress
                       show={showsById[clicked.showId] ?? { seasons: [] }}
@@ -960,7 +1008,7 @@ export default function DashboardPage() {
                     <button
                       style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
                       onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
-                    >just log my progress</button>
+                    >just confirm my progress</button>
                   </div>
                 </>
               )}
@@ -1008,7 +1056,7 @@ export default function DashboardPage() {
                     <button
                       style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
                       onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
-                    >just log my progress</button>
+                    >just confirm my progress</button>
                   </div>
                 </>
               )}
@@ -1157,7 +1205,7 @@ export default function DashboardPage() {
                     <button
                       style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
                       onClick={() => { logProgressPersonal(pillModal.showId, declaredProgress); setPillModal(null); }}
-                    >just log my progress</button>
+                    >just confirm my progress</button>
                   </div>
                 </>
               )}

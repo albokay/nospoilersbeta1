@@ -468,8 +468,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     style={sortSelect}
                   >
                     <optgroup label="Sort">
-                      <option value="sort:desc">newest first</option>
-                      <option value="sort:asc">oldest first</option>
+                      <option value="sort:desc">episode order</option>
                     </optgroup>
                     {mapMembers.length > 0 && (
                       <optgroup label="Filter by member">
