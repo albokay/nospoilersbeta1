@@ -194,6 +194,15 @@ export interface PublicRoomResponseGate {
 
 const HIGHLIGHT_MS = 1500;
 
+// TSP demo: keep the last N words of a title together (non-breaking spaces) so
+// a title that wraps drops at least N words to the second row instead of
+// orphaning a lone word/number (e.g. the "1" in "…watched Episode 1").
+function keepTailTogether(text: string, n = 3): string {
+  const words = text.split(" ");
+  if (words.length <= n) return text;
+  return words.slice(0, -n).join(" ") + " " + words.slice(-n).join(" ");
+}
+
 // TSP demo: read-only expanded entries get their own collapse affordance
 // (V2InlineThread, which normally carries it, isn't mounted in demo mode).
 // Matches the live friend-room collapse button exactly.
@@ -623,10 +632,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   className="title"
                   style={{
                     margin: 0, fontSize: 22,
-                    // TSP demo: guide titles render blue; balance wrapping so a
-                    // lone word/number doesn't drop to its own line.
+                    // TSP demo: guide titles render blue. (Wrapping is handled by
+                    // keepTailTogether on the title text, not text-wrap.)
                     ...(entry.isInstructional ? { color: "#355eb8" } : null),
-                    ...(demoMode ? ({ textWrap: "balance" } as React.CSSProperties) : null),
                   }}
                 >
                   {resolvedEntryIcon && (
@@ -641,7 +649,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       <Flag size={18} color="#fef8ea" />
                     </span>
                   )}
-                  {entry.isDeleted ? "(deleted entry)" : entry.title}
+                  {entry.isDeleted ? "(deleted entry)" : demoMode ? keepTailTogether(entry.title) : entry.title}
                   {!entry.isDeleted && (
                     // SE tag rendered inline AFTER the title with a " • "
                     // separator (matches the bullet glyph used in bylines
@@ -710,18 +718,21 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   opacity: entry.isDeleted ? 0.35 : undefined,
                 }}
               >
-                {entry.isInstructional && (
-                  // TSP demo: sparkles sits to the left of the "Alborz" byline.
-                  <span style={{ display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
-                    <Sparkles size={15} color="#fef8ea" fill="#fef8ea" />
+                {entry.isInstructional ? (
+                  // TSP demo: sparkles REPLACES the standard profile avatar for
+                  // Alborz (no SidebarAvatar, not clickable).
+                  <span className="username" style={{ display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" }}>
+                    <Sparkles size={16} color="#fef8ea" fill="#fef8ea" />
+                    <b>{entry.authorUsername}</b>
                   </span>
+                ) : (
+                  <Username
+                    name={entry.authorUsername}
+                    userId={entry.authorId}
+                    onClickProfile={onClickProfile ?? (() => {})}
+                    bold
+                  />
                 )}
-                <Username
-                  name={entry.authorUsername}
-                  userId={entry.authorId}
-                  onClickProfile={onClickProfile ?? (() => {})}
-                  bold
-                />
                 {entry.isDeparted && (
                   <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6 }}>has left the room</span>
                 )}
