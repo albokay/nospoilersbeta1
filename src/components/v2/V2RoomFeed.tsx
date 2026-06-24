@@ -741,24 +741,38 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
 
               <div style={{ marginTop: 6 }}>
                 {isExpanded && demoMode ? (
-                  // TSP demo: read-only expanded view — full body + the
-                  // already-gated replies, no V2InlineThread (no fetch, no
-                  // composer/likes). Reuses the entry colors of the room.
+                  // TSP demo: read-only expanded view — full body + replies,
+                  // gated per-reply: visible replies render fully, ahead-of-
+                  // progress ones render as stubs (mirrors the live reply gate),
+                  // no V2InlineThread (no fetch, no composer/likes).
                   <div onClick={(e) => e.stopPropagation()}>
                     <div style={{ whiteSpace: "pre-line", lineHeight: 1.5 }}>{entry.body}</div>
                     {(demoReplies?.[entry.threadId] ?? []).length > 0 && (
                       <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                        {(demoReplies?.[entry.threadId] ?? []).map((r) => (
-                          <div key={r.id} style={{ border: "2px solid var(--dos-border)", borderRadius: 16, padding: "10px 14px" }}>
-                            <div className="muted" style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                              <Username name={r.author} userId={r.author} onClickProfile={() => {}} bold />
-                              <span style={{ color: "#fff", whiteSpace: "nowrap" }}>
-                                {" • "}<EpisodeTag season={r.season} episode={r.episode} naturalNumbers parens={false} />
-                              </span>
+                        {(demoReplies?.[entry.threadId] ?? []).map((r) => {
+                          // Reply gating: visible iff its episode <= viewer's.
+                          if (r.episode > (viewerProgress?.e ?? 0)) {
+                            // Ahead-of-progress stub — same copy as the live site.
+                            return (
+                              <div key={r.id} className="card redacted" style={{ marginLeft: 8, border: "none", display: "flex", alignItems: "center", minHeight: 32, padding: "4px 14px", cursor: "default" }}>
+                                <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>
+                                  {r.author} responded from episode S{r.season} E{r.episode}.
+                                </div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={r.id} style={{ border: "2px solid var(--dos-border)", borderRadius: 16, padding: "10px 14px" }}>
+                              <div className="muted" style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                                <Username name={r.author} userId={r.author} onClickProfile={() => {}} bold />
+                                <span style={{ color: "#fff", whiteSpace: "nowrap" }}>
+                                  {" • "}<EpisodeTag season={r.season} episode={r.episode} naturalNumbers parens={false} />
+                                </span>
+                              </div>
+                              <div style={{ whiteSpace: "pre-line", lineHeight: 1.5 }}>{r.body}</div>
                             </div>
-                            <div style={{ whiteSpace: "pre-line", lineHeight: 1.5 }}>{r.body}</div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                     <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>

@@ -11,7 +11,7 @@ import { useAuth } from "../lib/auth";
 import V2RoomFeed, { type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember, type V2RoomMapRating } from "./v2/V2RoomMap";
 import OneSelectProgress from "./OneSelectProgress";
-import type { ProgressEntry, Reply } from "../types";
+import type { ProgressEntry } from "../types";
 import {
   TSP_DEMO_SHOW, TSP_EPISODE_COUNT,
   tspDemoFeedEntries, tspDemoReplies, tspDemoSeedMembers,
@@ -45,13 +45,8 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
     () => tspDemoFeedEntries.filter((e) => e.e <= selectedEpisode),
     [selectedEpisode],
   );
-  const gatedReplies = useMemo(() => {
-    const out: Record<string, Reply[]> = {};
-    for (const [tid, list] of Object.entries(tspDemoReplies)) {
-      out[tid] = list.filter((r) => r.episode <= selectedEpisode);
-    }
-    return out;
-  }, [selectedEpisode]);
+  // Pass the FULL reply set; V2RoomFeed's demo render gates per-reply against
+  // viewerProgress, showing ahead-of-progress replies as stubs (reply gating).
 
   const userProgress: ProgressEntry = selectedEpisode > 0
     ? { s: 1, e: selectedEpisode, highestS: 1, highestE: selectedEpisode }
@@ -131,7 +126,7 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
                 userId={user?.id ?? null}
                 sortOrder="desc"
                 demoMode
-                demoReplies={gatedReplies}
+                demoReplies={tspDemoReplies}
                 scrollContainerRef={scrollRef}
               />
             </div>
