@@ -47,6 +47,7 @@ import {
   fetchOutOfPoolShows,
   removeShowFromPool,
   restoreShowToPool,
+  clearMigrationDormantForShow,
   fetchRoomActivityVisibility,
   roomHasNewActivity,
   roomHasNewInvisibleActivity,
@@ -420,6 +421,10 @@ export default function DashboardPage() {
     try {
       await upsertRewatchStatus(user.id, show.id, entry);
       setProgress((prev) => ({ ...prev, [show.id]: entry }));
+      // CP8a: re-adding a show un-hides any dormant group that owns its room
+      // (Beyond the Underdome on Paradise re-add); reload the rail to surface it.
+      await clearMigrationDormantForShow(show.id);
+      setRailGroups(await loadRail(user.id));
       if (activeGroupId) await refreshGroup(activeGroupId);
     } catch (e) {
       console.error("[dashboard] add show failed", e);
@@ -433,6 +438,10 @@ export default function DashboardPage() {
     try {
       await restoreShowToPool(user.id, show.id);
       setOutOfPool((prev) => { const n = new Set(prev); n.delete(show.id); return n; });
+      // CP8a: un-hide a dormant group (Beyond the Underdome) on its show's
+      // re-add, then reload the rail so it reappears.
+      await clearMigrationDormantForShow(show.id);
+      setRailGroups(await loadRail(user.id));
     } catch (e) { console.error("[dashboard] restore show failed", e); }
     closeSearch();
   }

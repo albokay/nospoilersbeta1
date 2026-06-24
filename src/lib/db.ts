@@ -2366,12 +2366,29 @@ export async function createPeopleGroup(name?: string): Promise<string> {
 
 /** All non-deleted people-groups the caller is a member of. */
 export async function fetchPeopleGroupsForUser(userId: string): Promise<PeopleGroup[]> {
-  const { data: memberRows, error: mErr } = await supabase
-    .from("people_group_members")
-    .select("group_id")
-    .eq("user_id", userId);
-  if (mErr) throw mErr;
-  const groupIds = (memberRows ?? []).map((r: any) => r.group_id);
+  // Select migration_dormant so a BTU-style dormant group (CP8a) stays out of
+  // the rail until its show is re-added. Column-tolerant: pre-migration DBs
+  // (no column) fall back to the plain select so nothing breaks.
+  let memberRows: any[] | null = null;
+  {
+    const res = await supabase
+      .from("people_group_members")
+      .select("group_id, migration_dormant")
+      .eq("user_id", userId);
+    if (res.error) {
+      const fb = await supabase
+        .from("people_group_members")
+        .select("group_id")
+        .eq("user_id", userId);
+      if (fb.error) throw fb.error;
+      memberRows = fb.data;
+    } else {
+      memberRows = res.data;
+    }
+  }
+  const groupIds = (memberRows ?? [])
+    .filter((r: any) => !r.migration_dormant)
+    .map((r: any) => r.group_id);
   if (!groupIds.length) return [];
 
   const { data, error } = await supabase
@@ -2497,6 +2514,15 @@ export async function restoreShowToPool(userId: string, showId: string): Promise
     .eq("user_id", userId)
     .eq("show_id", showId);
   if (error) throw error;
+}
+
+/** CP8a: re-adding a show un-hides any group dormant for the caller that owns a
+ *  room for it (un-hides Beyond the Underdome on Paradise re-add). Tolerant —
+ *  no-ops if the RPC isn't migrated yet. */
+export async function clearMigrationDormantForShow(showId: string): Promise<void> {
+  try {
+    await supabase.rpc("clear_migration_dormant_for_show", { p_show_id: showId });
+  } catch { /* pre-migration / no dormant groups — nothing to clear */ }
 }
 
 // ── TSP onboarding demo once-only gate (spec §3) ────────────────────────────
