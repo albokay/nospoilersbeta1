@@ -27,6 +27,7 @@ import { X, Settings, UsersRound, Pencil, ArrowUp, LogOut, ArrowLeft, MessageCir
 import { useAuth } from "../lib/auth";
 import {
   fetchShows,
+  createShow,
   fetchProgress,
   upsertRewatchStatus,
   fetchPeopleGroupsForUser,
@@ -64,6 +65,7 @@ import {
   type GroupChatActivity,
 } from "../lib/db";
 import { computePill, type PillData } from "../lib/groupPills";
+import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
 import OneSelectProgress from "./OneSelectProgress";
@@ -140,6 +142,13 @@ export default function DashboardPage() {
   const [query, setQuery] = useState("");
   const [pickShow, setPickShow] = useState<Show | null>(null);
   const [pickProgress, setPickProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
+  // Add-from-TVMaze: when a search has no catalog match, look the show up on
+  // TVMaze and create it on pick (restores the old app's ability to add a brand-
+  // new show — the restructured dashboard search was catalog-only).
+  const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
+  const [tvLoading, setTvLoading] = useState(false);
+  const [creatingShow, setCreatingShow] = useState(false);
+  const tvDebounceRef = useRef<number | null>(null);
 
   // Invite / create-group modal
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -411,9 +420,68 @@ export default function DashboardPage() {
       .slice(0, 8);
   }, [query, shows, progress, outOfPool]);
 
+  // Debounced TVMaze lookup while the search is open, so a not-yet-cataloged
+  // show (e.g. "The Bear") can be found + added. Only fires for queries of 2+.
+  useEffect(() => {
+    if (!searchOpen) { setTvResults([]); return; }
+    const q = query.trim();
+    if (q.length < 2) { setTvResults([]); setTvLoading(false); return; }
+    if (tvDebounceRef.current) window.clearTimeout(tvDebounceRef.current);
+    let cancelled = false;
+    setTvLoading(true);
+    tvDebounceRef.current = window.setTimeout(async () => {
+      try {
+        const r = await tvmazeSearch(q);
+        if (!cancelled) setTvResults(r);
+      } catch { if (!cancelled) setTvResults([]); }
+      finally { if (!cancelled) setTvLoading(false); }
+    }, 320);
+    return () => { cancelled = true; if (tvDebounceRef.current) window.clearTimeout(tvDebounceRef.current); };
+  }, [query, searchOpen]);
+
+  // TVMaze matches that aren't already in the catalog (those show as `results`).
+  const tvToAdd = useMemo(() => {
+    const known = new Set(shows.map((s) => s.id));
+    const seen = new Set<string>();
+    const out: { tv: TVmazeShow; id: string }[] = [];
+    for (const tv of tvResults) {
+      const id = slugify(tv.name);
+      if (known.has(id) || seen.has(id)) continue;
+      seen.add(id);
+      out.push({ tv, id });
+      if (out.length >= 8) break;
+    }
+    return out;
+  }, [tvResults, shows]);
+
   // ── Actions ────────────────────────────────────────────────────────────────
-  function openSearch() { setSearchOpen(true); setQuery(""); }
-  function closeSearch() { setSearchOpen(false); setQuery(""); setPickShow(null); }
+  function openSearch() { setSearchOpen(true); setQuery(""); setTvResults([]); }
+  function closeSearch() { setSearchOpen(false); setQuery(""); setPickShow(null); setTvResults([]); }
+
+  // Create a brand-new show in the catalog from a TVMaze hit, then hand off to
+  // the normal progress picker → add-to-pool flow.
+  async function addFromTvmaze(tv: TVmazeShow) {
+    if (creatingShow) return;
+    setCreatingShow(true);
+    try {
+      const seasons = await tvmazeEpisodes(tv.id);
+      const show = await createShow({
+        id: slugify(tv.name),
+        name: tv.name,
+        seasons,
+        tvmazeId: String(tv.id),
+        status: tv.status,
+      });
+      setShows((prev) => (prev.some((s) => s.id === show.id) ? prev : [...prev, show]));
+      setTvResults([]);
+      setPickShow(show);
+      setPickProgress({ s: 0, e: 0 });
+    } catch (e) {
+      console.error("[dashboard] add show from TVMaze failed", e);
+    } finally {
+      setCreatingShow(false);
+    }
+  }
 
   async function addShow(show: Show, val: { s: number; e: number }) {
     if (!user) return;
@@ -902,6 +970,23 @@ export default function DashboardPage() {
                       </button>
                     )
                   ))}
+                </div>
+              )}
+              {tvToAdd.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  {results.length > 0 && (
+                    <div style={{ padding: "4px 16px 6px", fontSize: 11, fontWeight: 700, color: C.midnight, opacity: 0.6 }}>Not in the list? Add it:</div>
+                  )}
+                  {tvToAdd.map(({ tv, id }) => (
+                    <button key={id} className="dash-result" disabled={creatingShow} onClick={() => addFromTvmaze(tv)}>
+                      {tv.name}{networkLabel(tv) ? ` · ${networkLabel(tv)}` : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {query.trim().length >= 2 && results.length === 0 && tvToAdd.length === 0 && (
+                <div style={{ padding: "12px 16px", fontSize: 13, color: C.midnight, opacity: 0.6 }}>
+                  {creatingShow ? "adding…" : tvLoading ? "searching…" : "No shows found."}
                 </div>
               )}
             </div>
