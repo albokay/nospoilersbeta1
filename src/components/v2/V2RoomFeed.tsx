@@ -297,6 +297,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const ticketRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const highlightTimer = useRef<number | null>(null);
+  const scrollPollRaf = useRef<number | null>(null);
 
   // Reply-focus pending state. Seeded from initialFocusReplyId so the
   // initially-expanded thread's RepliesList runs its scroll-to-reply
@@ -399,6 +400,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
 
   useEffect(() => () => {
     if (highlightTimer.current) window.clearTimeout(highlightTimer.current);
+    if (scrollPollRaf.current) cancelAnimationFrame(scrollPollRaf.current);
   }, []);
 
   // Viewport-visibility observer. Tracks which entry tickets are currently
@@ -463,13 +465,35 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
       const targetY = el.getBoundingClientRect().top + window.scrollY - 72;
       window.scrollTo({ top: targetY, behavior: "smooth" });
     }
-    setHighlightedId(threadId);
-    if (highlightTimer.current) window.clearTimeout(highlightTimer.current);
-    highlightTimer.current = window.setTimeout(() => {
-      setHighlightedId(null);
-      highlightTimer.current = null;
-    }, HIGHLIGHT_MS);
-  }, []);
+    // Flash the ticket outline only AFTER the smooth scroll lands — otherwise a
+    // long scroll can finish (or nearly) the 1.5s animation before the entry is
+    // even in view. Poll the scroll position; trigger the highlight once it
+    // settles (3 still frames) or after a safety cap. A position already in
+    // view settles immediately, so a no-scroll click still flashes at once.
+    if (highlightTimer.current) { window.clearTimeout(highlightTimer.current); highlightTimer.current = null; }
+    if (scrollPollRaf.current) cancelAnimationFrame(scrollPollRaf.current);
+    setHighlightedId(null);
+    const readTop = () => (container ? container.scrollTop : window.scrollY);
+    let lastTop = readTop();
+    let stable = 0;
+    const startedAt = performance.now();
+    const poll = () => {
+      const top = readTop();
+      stable = Math.abs(top - lastTop) < 1 ? stable + 1 : 0;
+      lastTop = top;
+      if (stable >= 3 || performance.now() - startedAt > 1200) {
+        scrollPollRaf.current = null;
+        setHighlightedId(threadId);
+        highlightTimer.current = window.setTimeout(() => {
+          setHighlightedId(null);
+          highlightTimer.current = null;
+        }, HIGHLIGHT_MS);
+        return;
+      }
+      scrollPollRaf.current = requestAnimationFrame(poll);
+    };
+    scrollPollRaf.current = requestAnimationFrame(poll);
+  }, [scrollContainerRef]);
 
   const expandEntry = useCallback((threadId: string) => {
     setExpandedThreadId(threadId);

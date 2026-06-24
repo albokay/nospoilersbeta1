@@ -786,7 +786,7 @@ export default function DashboardPage() {
           {groupShelves.watching.length > 0 && (
             <>
               <h1 style={shelfHeader}>CURRENTLY WATCHING:</h1>
-              <div style={shelfGrid}>
+              <div style={shelfLayout(groupShelves.watching.length)}>
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
                     {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
@@ -809,7 +809,7 @@ export default function DashboardPage() {
             <button style={searchPill} onClick={openSearch}>SEARCH</button>
           </div>
           {groupShelves.notStarted.length > 0 && (
-            <div style={shelfGrid}>
+            <div style={shelfLayout(groupShelves.notStarted.length)}>
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
                   {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
@@ -843,7 +843,7 @@ export default function DashboardPage() {
           {watching.length > 0 && (
             <>
               <h1 style={shelfHeader}>CURRENTLY WATCHING:</h1>
-              <div style={shelfGrid}>
+              <div style={shelfLayout(watching.length)}>
                 {watching.map(({ show, entry }) => (
                   <div key={show.id} className="dash-pill-wrap">
                     <button className="dash-pill dash-pill--watching" onClick={() => { setDeclaredProgress({ s: entry.s, e: entry.e }); setPillModal({ showId: show.id, name: show.name, mode: "watching" }); }}>
@@ -863,7 +863,7 @@ export default function DashboardPage() {
             </h1>
           )}
           {notStarted.length > 0 && (
-            <div style={shelfGrid}>
+            <div style={shelfLayout(notStarted.length)}>
               {notStarted.map(({ show }) => (
                 <div key={show.id} className="dash-pill-wrap">
                   <button className="dash-pill dash-pill--want" onClick={() => { setDeclaredProgress({ s: 0, e: 0 }); setPillModal({ showId: show.id, name: show.name, mode: "notStarted" }); }}>
@@ -1534,8 +1534,20 @@ const shelfGrid: React.CSSProperties = {
   // overlap each pill's bottom edge in the group view; 16px between columns.
   display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px 16px", maxWidth: 880, margin: "0 auto",
 };
+// ≈ the 3-column width at maxWidth 880 with 16px gaps: (880 - 2*16) / 3.
+const SHELF_COL = 283;
+// 1–2 shows center (fixed columns matching the 3-col width); 3+ lock into the
+// 3-column grid (so 4 reads as 3 on top + 1 bottom-left).
+function shelfLayout(count: number): React.CSSProperties {
+  if (count >= 3) return shelfGrid;
+  return {
+    display: "grid",
+    gridTemplateColumns: `repeat(${Math.max(count, 1)}, ${SHELF_COL}px)`,
+    gap: "24px 16px", justifyContent: "center", maxWidth: 880, margin: "0 auto",
+  };
+}
 const searchPill: React.CSSProperties = {
-  border: "none", background: C.cream, color: C.red, fontWeight: 700, fontSize: 14,
+  border: "none", background: C.yellow, color: C.cream, fontWeight: 700, fontSize: 14,
   padding: "16px 56px", borderRadius: 65, cursor: "pointer",
 };
 const invitePill: React.CSSProperties = {
