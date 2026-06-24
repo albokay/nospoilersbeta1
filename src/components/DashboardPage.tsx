@@ -1024,9 +1024,11 @@ export default function DashboardPage() {
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setInviteOpen(false); }}>
           <div style={{ ...searchCard, background: C.sky, position: "relative" }}>
             <button style={modalClose} onClick={() => setInviteOpen(false)}><X size={18} color="#fff" /></button>
-            <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
-              {inviteTargetGroupId ? <>Connect more friends<br />to this group:</> : <>Email a friend to<br />start a watch group:</>}
-            </h1>
+            {!inviteLinks && (
+              <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
+                {inviteTargetGroupId ? <>Connect more friends<br />to this group:</> : <>Email a friend to<br />start a watch group:</>}
+              </h1>
+            )}
 
             {!inviteLinks ? (
               <>
@@ -1043,9 +1045,6 @@ export default function DashboardPage() {
                   onClick={() => setInviteEmails((prev) => [...prev, ""])}
                   style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.cream, color: C.midnight, fontSize: 20, cursor: "pointer", marginTop: 2 }}
                 >+</button>
-                <div style={{ color: C.midnight, fontSize: 11, marginTop: 16, opacity: 0.8 }}>
-                  CP5a: sending mints a shareable invite link (email delivery is CP5b).
-                </div>
                 <div style={{ textAlign: "right", marginTop: 16 }}>
                   <button style={{ ...invitePill, opacity: inviteSending ? 0.6 : 1 }} disabled={inviteSending} onClick={sendInvites}>
                     {inviteSending ? "creating…" : "send invite"}
@@ -1054,12 +1053,15 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                <div style={{ color: C.midnight, fontSize: 13, marginBottom: 12 }}>
-                  Invites emailed. The link is here too as a backup — they open it (signed in with that email) to join:
-                </div>
-                {inviteLinks.map((r, i) => (
-                  <CopyRow key={i} email={r.email} link={r.link} error={r.error} />
-                ))}
+                {inviteLinks.some((r) => r.error) ? (
+                  <div style={{ color: C.red, fontSize: 14, fontWeight: 700, textAlign: "center", margin: "8px 0 16px" }}>
+                    {inviteLinks.filter((r) => r.error).map((r, i) => <div key={i}>{r.error}</div>)}
+                  </div>
+                ) : (
+                  <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
+                    Invites sent!
+                  </h1>
+                )}
                 <div style={{ textAlign: "right", marginTop: 12 }}>
                   <button style={invitePill} onClick={() => setInviteOpen(false)}>done</button>
                 </div>
@@ -1423,7 +1425,7 @@ function PillRightSide({ right }: { right: PillData["right"] }) {
 function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pending" | "invited" }) {
   // accepted = cream/green · pending (invite sent) = yellow/cream · invited-to-you = red/green
   const bg = state === "accepted" ? C.cream : state === "pending" ? C.yellow : C.red;
-  const fg = state === "accepted" ? C.green : state === "pending" ? C.cream : C.green;
+  const fg = state === "accepted" ? C.green : state === "pending" ? "#fff" : C.green;
   return <span style={{ ...avatarCircle, background: bg, color: fg }}>{(letter ?? "?").toUpperCase()}</span>;
 }
 
