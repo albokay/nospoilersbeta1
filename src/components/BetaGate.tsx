@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-const KEY = "ns_beta_access";
+// Bump this key whenever the beta password rotates — every already-unlocked
+// browser then re-gates and must enter the new password (the old flag is
+// ignored). Last rotated 2026-06-23.
+const KEY = "ns_beta_access_2";
 
 export function useBetaAccess() {
   return localStorage.getItem(KEY) === "1";
