@@ -1386,7 +1386,7 @@ function AvatarPile({ avatars }: { avatars: React.ReactNode[] }) {
       {rows.map((size, r) => {
         const slice = avatars.slice(idx, idx + size);
         idx += size;
-        return <div key={r} style={{ display: "flex", justifyContent: "center", gap: 3, marginTop: r === 0 ? 0 : -12 }}>{slice}</div>;
+        return <div key={r} style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: r === 0 ? 0 : 4 }}>{slice}</div>;
       })}
     </div>
   );
