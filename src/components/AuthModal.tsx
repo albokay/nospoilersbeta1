@@ -7,10 +7,10 @@ import { supabase } from "../lib/supabaseClient";
 
 type Mode = "signin" | "signup" | "recovery";
 
-export default function AuthModal({ onClose, hint, initialMode = "signin" }: { onClose: () => void; hint?: string; initialMode?: Mode }) {
+export default function AuthModal({ onClose, onSuccess, hint, initialMode = "signin", initialEmail = "", lockEmail = false }: { onClose: () => void; onSuccess?: () => void; hint?: string; initialMode?: Mode; initialEmail?: string; lockEmail?: boolean }) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<Mode>(initialMode);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +62,7 @@ export default function AuthModal({ onClose, hint, initialMode = "signin" }: { o
 
     setLoading(false);
     if (err) { setError(err); return; }
+    onSuccess?.();
     onClose();
   }
 
@@ -175,8 +176,9 @@ export default function AuthModal({ onClose, hint, initialMode = "signin" }: { o
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          style={{ height: 40, width: "100%" }}
-          autoFocus={mode === "signin"}
+          readOnly={lockEmail}
+          style={{ height: 40, width: "100%", ...(lockEmail ? { opacity: 0.7, cursor: "not-allowed" } : null) }}
+          autoFocus={mode === "signin" && !lockEmail}
           autoComplete="email"
         />
         <input

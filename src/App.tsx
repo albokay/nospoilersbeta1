@@ -437,6 +437,20 @@ function AppShell() {
     if (authLoading) return;
     if (!justSignedInRef.current) return;
     if (!user) { justSignedInRef.current = false; return; }
+    // CP5b: an invite sign-up sets this one-shot flag so the brand-new
+    // account lands on the restructure dashboard (where the guided tour
+    // auto-fires) instead of the old /profile onboarding. Checked BEFORE the
+    // profile-load gate so it routes even while the fresh profile row loads.
+    // Only the invite flow ever sets it — the general sign-up path below is
+    // unchanged. Read + clear (one-shot).
+    const forcedDest = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("ns_post_signup_dest") : null;
+    if (forcedDest) {
+      justSignedInRef.current = false;
+      sessionStorage.removeItem("ns_post_signup_dest");
+      navigate(forcedDest, { replace: true });
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+      return;
+    }
     if (!profile) return; // profile still loading — wait one more tick
     justSignedInRef.current = false;
     const dest = profile.onboarded_at == null ? "/profile" : "/journal";

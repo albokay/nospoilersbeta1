@@ -9,11 +9,18 @@
  * is left untouched. The pre-account landing for brand-new users is CP5b; for
  * now the invitee must already be signed in with the invited email.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { getPeopleGroupInvite, acceptPeopleGroupInvite, type GroupInviteInfo } from "../lib/db";
 import SidebarLogo from "./SidebarLogo";
+import AuthModal from "./AuthModal";
+
+// After an invite sign-up, route the new account to /dashboard (where the
+// guided tour auto-fires) instead of the old onboarding. App's post-login
+// routing reads + clears this flag; only the invite flow ever sets it, so
+// the general sign-up path is untouched.
+const POST_SIGNUP_DEST_KEY = "ns_post_signup_dest";
 
 const C = { green: "#7ABD8E", blue: "#355EB8", yellow: "#DEA838", red: "#F45028", cream: "#FEF8EA", midnight: "#1A3A4A" };
 const LORA = '"Lora", Georgia, serif';
@@ -27,6 +34,23 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   const [info, setInfo] = useState<GroupInviteInfo | null>(null);
   const [masked, setMasked] = useState<string | undefined>();
   const [detail, setDetail] = useState<string>("");
+  // CP5b: brand-new invitee sign-up. "welcome" → rich landing; "signup" →
+  // account creation modal; "entering" → account made, App is routing them in.
+  const [phase, setPhase] = useState<"welcome" | "signup" | "entering">("welcome");
+  const enteringRef = useRef(false);
+
+  function startSignup() {
+    sessionStorage.setItem(POST_SIGNUP_DEST_KEY, "/dashboard");
+    setPhase("signup");
+  }
+  function onSignupSuccess() {
+    enteringRef.current = true;
+    setPhase("entering");
+  }
+  function onSignupClose() {
+    // Closed without creating an account → drop the routing intent + return.
+    if (!enteringRef.current) { sessionStorage.removeItem(POST_SIGNUP_DEST_KEY); setPhase("welcome"); }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +69,13 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
     return () => { cancelled = true; };
   }, [token]);
 
+  // Safety net: once the invite sign-up account exists, make sure we land on
+  // the dashboard even if the global post-login routing didn't fire (both
+  // target /dashboard with replace, so a double-navigate is harmless).
+  useEffect(() => {
+    if (phase === "entering" && user) navigate("/dashboard", { replace: true });
+  }, [phase, user, navigate]);
+
   async function join() {
     setStatus("joining");
     const res = await acceptPeopleGroupInvite(token);
@@ -55,6 +86,8 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
     setStatus("error");
   }
 
+  const wants = info?.inviterWants ?? [];
+  const watching = info?.inviterWatching ?? [];
   const others = info ? info.memberNames.filter((n) => n) : [];
   const names = others.length
     ? others.map((n) => `@${n}`).reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
@@ -68,11 +101,36 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
 
         {status === "ready" && (
           !user && !authLoading ? (
-            <>
-              <p style={title}>Join a group with {names}?</p>
-              <p style={muted}>Sign in with the invited email first, then reopen this link.</p>
-              <button style={ghost} onClick={() => navigate("/")}>Go to sign in</button>
-            </>
+            phase === "signup" ? (
+              <AuthModal
+                initialMode="signup"
+                initialEmail={info?.inviteeEmail ?? ""}
+                lockEmail={!!info?.inviteeEmail}
+                hint={`Create your account to watch shows with @${info?.inviterName ?? "your friend"} on Sidebar.`}
+                onSuccess={onSignupSuccess}
+                onClose={onSignupClose}
+              />
+            ) : phase === "entering" ? (
+              <p style={title}>Welcome to Sidebar! Setting up your account…</p>
+            ) : (
+              <>
+                <p style={title}>@{info?.inviterName ?? "Someone"} wants to watch shows with you</p>
+                {wants.length > 0 && (
+                  <div style={listBlock}>
+                    <div style={listLabel}>wants to watch these shows:</div>
+                    <div style={chipRow}>{wants.map((n, i) => <span key={i} style={chip}>{n}</span>)}</div>
+                  </div>
+                )}
+                {watching.length > 0 && (
+                  <div style={listBlock}>
+                    <div style={listLabel}>and is already watching these:</div>
+                    <div style={chipRow}>{watching.map((n, i) => <span key={i} style={chip}>{n}</span>)}</div>
+                  </div>
+                )}
+                <p style={{ ...muted, marginTop: 18, fontSize: 14 }}>Want to watch something with them?</p>
+                <button style={{ ...yes, marginTop: 14, padding: "13px 44px", fontSize: 15 }} onClick={startSignup}>JOIN IN</button>
+              </>
+            )
           ) : (
             <>
               <p style={title}>Join a group with {names}?</p>
@@ -121,3 +179,7 @@ const muted: React.CSSProperties = { color: C.midnight, fontSize: 13, margin: "8
 const yes: React.CSSProperties = { border: "none", background: C.blue, color: "#fff", fontWeight: 700, fontSize: 14, padding: "11px 38px", borderRadius: 65, cursor: "pointer" };
 const no: React.CSSProperties = { border: "2px solid #fff", background: "transparent", color: "#fff", fontWeight: 700, fontSize: 14, padding: "10px 30px", borderRadius: 65, cursor: "pointer" };
 const ghost: React.CSSProperties = { border: "2px solid #fff", background: "transparent", color: "#fff", fontWeight: 700, fontSize: 14, padding: "10px 28px", borderRadius: 65, cursor: "pointer", marginTop: 14 };
+const listBlock: React.CSSProperties = { marginTop: 16, textAlign: "left" };
+const listLabel: React.CSSProperties = { color: C.midnight, fontSize: 12, fontWeight: 700, marginBottom: 8 };
+const chipRow: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-start" };
+const chip: React.CSSProperties = { background: C.cream, color: C.midnight, fontSize: 13, fontWeight: 600, padding: "6px 12px", borderRadius: 65 };

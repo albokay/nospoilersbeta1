@@ -23,8 +23,19 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
   // already cleared the gate at signup); regating is redundant. Checked
   // synchronously via window.location since BetaGate sits outside any
   // router.
-  const onResetPasswordPath =
-    typeof window !== "undefined" && window.location.pathname.startsWith("/reset-password");
+  // Two paths are exempt from the gate:
+  //  • /reset-password — the recovery token is single-use and consumed on load;
+  //    gating/reloading loses it (account already cleared the gate at signup).
+  //  • /group-invite/<token> — a brand-new invitee (CP5b) reaches this from an
+  //    email link to CREATE an account; they don't have the beta password yet,
+  //    and growth is invite-only, so the invite link IS their authorization.
+  //    Gating here would dead-end every invitee. The rest of the site stays
+  //    walled. (Mirrors reset-password: also skips the mobile /m bounce so the
+  //    token survives.)
+  const path = typeof window !== "undefined" ? window.location.pathname : "";
+  const onResetPasswordPath = path.startsWith("/reset-password");
+  const onGroupInvitePath = path.startsWith("/group-invite/");
+  const gateExempt = onResetPasswordPath || onGroupInvitePath;
 
   // Mobile redirect: when the gate triggers on a mobile viewport, send the
   // user to /m before rendering the password form. Without this, returning
@@ -36,16 +47,16 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
   // page directly without the /m bounce).
   useEffect(() => {
     if (unlocked) return;
-    if (onResetPasswordPath) return;
+    if (gateExempt) return;
     if (typeof window === "undefined") return;
     const isMobile = window.innerWidth < 768;
     const onMobilePath = window.location.pathname.startsWith("/m");
     if (isMobile && !onMobilePath) {
       window.location.replace("/m");
     }
-  }, [unlocked, onResetPasswordPath]);
+  }, [unlocked, gateExempt]);
 
-  if (unlocked || onResetPasswordPath) return <>{children}</>;
+  if (unlocked || gateExempt) return <>{children}</>;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

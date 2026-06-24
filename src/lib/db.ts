@@ -2635,6 +2635,14 @@ export type GroupInviteInfo = {
   groupId: string;
   inviterName: string;
   memberNames: string[];
+  /** Inviter's pool, for the pre-account welcome (CP5b §5). Names only.
+   *  Tolerant of older servers that don't return them yet (→ []). */
+  inviterWatching: string[];
+  inviterWants: string[];
+  /** Address this invite was sent to — pre-fills + locks sign-up so the
+   *  pending invite surfaces in the new account's rail (email-matched).
+   *  Undefined on older servers. */
+  inviteeEmail?: string;
   expiresAt: number;
 };
 
@@ -2651,6 +2659,9 @@ export async function getPeopleGroupInvite(
       groupId: data.group_id,
       inviterName: data.inviter_name ?? "someone",
       memberNames: data.member_names ?? [],
+      inviterWatching: data.inviter_watching ?? [],
+      inviterWants: data.inviter_wants ?? [],
+      inviteeEmail: data.invitee_email ?? undefined,
       expiresAt: new Date(data.expires_at).getTime(),
     },
   };
