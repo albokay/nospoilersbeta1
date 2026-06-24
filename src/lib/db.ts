@@ -2705,6 +2705,14 @@ export async function acceptPeopleGroupInvite(
   return { ok: true, groupId: data.group_id };
 }
 
+/** Decline a people-group invite (recipient-bound; deletes the row so it
+ *  leaves both the invitee's rail and the inviter's pending avatars). Tolerant. */
+export async function declinePeopleGroupInvite(token: string): Promise<void> {
+  try {
+    await supabase.rpc("decline_people_group_invitation", { p_token: token });
+  } catch { /* tolerate — pre-migration or already gone */ }
+}
+
 // Per-member opt-in/progress/writing for one pooled show in a group.
 export type GroupDashboardMember = {
   userId: string;

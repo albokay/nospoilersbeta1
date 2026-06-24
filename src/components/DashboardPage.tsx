@@ -19,7 +19,7 @@
  *   • email invites + accept, rail invite/color states, chat, gear options → CP5/CP6
  *   • clicking a show into its room                           → CP4
  */
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
@@ -39,6 +39,7 @@ import {
   createPeopleGroupInvite,
   sendGroupInviteEmail,
   acceptPeopleGroupInvite,
+  declinePeopleGroupInvite,
   leavePeopleGroup,
   renamePeopleGroup,
   fetchMyPendingGroupInvites,
@@ -64,7 +65,7 @@ import {
   type RoomVisibility,
   type GroupChatActivity,
 } from "../lib/db";
-import { computePill, type PillData } from "../lib/groupPills";
+import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
@@ -212,6 +213,46 @@ export default function DashboardPage() {
   function roomNotif(roomId?: string | null): string | undefined {
     const dot = roomId ? roomDotByRoomId.get(roomId) : undefined;
     return dot === "red" ? NOTIF_INVISIBLE : dot === "blue" ? NOTIF_VISIBLE : undefined;
+  }
+  // Currently-watching gap line: your progress vs the OTHER watchers (the N
+  // matches the pill's ▲/▼ arrow). Null when there's no one to compare against,
+  // or you're even with the leader.
+  type WatchRow = { pill: PillData; opted: { username: string; s: number | null; e: number | null }[]; selfProg: { s: number; e: number } | null };
+  function watchGapLine(r: WatchRow): string | null {
+    const seasons = showsById[r.pill.showId]?.seasons;
+    const others = r.opted.filter((o) => (o.s ?? 0) > 0 || (o.e ?? 0) > 0);
+    if (!others.length) return null;
+    const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
+    const eps = (n: number) => (n === 1 ? "1 episode" : `${n} episodes`);
+    if (others.length === 1) {
+      const o = others[0];
+      const n = selfIdx - linearIndex(o.s ?? 0, o.e ?? 0, seasons);
+      if (n === 0) return null;
+      return n > 0 ? `You're ${eps(n)} ahead of ${o.username}.` : `You're ${eps(-n)} behind ${o.username}.`;
+    }
+    const maxOther = Math.max(...others.map((o) => linearIndex(o.s ?? 0, o.e ?? 0, seasons)));
+    if (selfIdx < maxOther) return `You're ${eps(maxOther - selfIdx)} behind the furthest watcher.`;
+    if (selfIdx > maxOther) return `You're ${eps(selfIdx - maxOther)} ahead of your next friend.`;
+    return null; // even with the furthest watcher
+  }
+  // Currently-watching pill tooltip: progress, gap line, then new-activity notif
+  // — each separated by a thin cream divider.
+  function watchingTipProps(r: WatchRow) {
+    const lines: React.ReactNode[] = [];
+    if (r.selfProg) lines.push(`You've watched: S${r.selfProg.s} E${r.selfProg.e}`);
+    const gap = watchGapLine(r);
+    if (gap) lines.push(gap);
+    const notif = roomNotif(r.pill.roomId);
+    if (notif) lines.push(notif);
+    if (!lines.length) return {};
+    const [primary, ...rest] = lines;
+    const sub = rest.length
+      ? <>{rest.map((l, i) => <Fragment key={i}>{i > 0 && <div style={tipDivider} />}{l}</Fragment>)}</>
+      : undefined;
+    return {
+      onMouseMove: (e: React.MouseEvent) => setTip({ text: primary, sub, wrap: true, x: e.clientX, y: e.clientY }),
+      onMouseLeave: () => setTip(null),
+    };
   }
   // "Haven't started yet" show button: tooltip lists the other friends who are
   // also interested in the show; falls back to the standard progress/notif tip.
@@ -668,6 +709,15 @@ export default function DashboardPage() {
     }
   }
 
+  // "no" on the invite prompt declines it: deletes the invite so it leaves the
+  // dashboard (the only way to clear an awaiting invite without joining).
+  async function declineInvite(inv: PendingGroupInvite) {
+    setInvitePrompt(null);
+    setPendingInvites((prev) => prev.filter((p) => p.token !== inv.token)); // optimistic
+    await declinePeopleGroupInvite(inv.token);
+    await refreshRailAndInvites();
+  }
+
   async function doLeave(groupId: string) {
     setOptionsFor(null);
     try { await leavePeopleGroup(groupId); } catch (e) { console.error("[dashboard] leave failed", e); }
@@ -858,7 +908,7 @@ export default function DashboardPage() {
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
                     {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
-                    <div {...tipProps(r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
+                    <div {...watchingTipProps(r)}>
                       <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                     </div>
                     <OptInAvatars members={r.opted} markWriter={r.markWriter} withTooltip onTip={setTip} />
@@ -1173,7 +1223,7 @@ export default function DashboardPage() {
             <div style={yellowTitle}>Join a group with {inviteNames(invitePrompt)}?</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
               <button style={startBtn} onClick={() => acceptInvite(invitePrompt)}>Yes</button>
-              <button style={{ ...startBtn, background: "transparent", color: "#fff", border: "2px solid #fff" }} onClick={() => setInvitePrompt(null)}>no</button>
+              <button style={{ ...startBtn, background: "transparent", color: "#fff", border: "2px solid #fff" }} onClick={() => declineInvite(invitePrompt)}>no</button>
             </div>
           </div>
         </div>
@@ -1526,7 +1576,7 @@ function GroupClusters({
   onEnter: (id: string) => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string, rect: DOMRect) => void;
-  onTip: (t: { text: string; wrap?: boolean; x: number; y: number } | null) => void;
+  onTip: (t: { text: React.ReactNode; wrap?: boolean; x: number; y: number } | null) => void;
 }) {
   const active = groups.find((g) => g.group.id === activeGroupId);
 
@@ -1579,7 +1629,13 @@ function GroupClusters({
         const names = inv.memberNames.length ? inv.memberNames : [inv.inviterName];
         const label = inv.groupName || names.join(", ");
         return (
-          <button key={inv.token} style={clusterBtn} title="you're invited" onClick={() => onInviteClick(inv)}>
+          <button
+            key={inv.token}
+            style={clusterBtn}
+            onClick={() => onInviteClick(inv)}
+            onMouseMove={(e) => onTip({ text: <>You&rsquo;ve been invited by @{inv.inviterName}<br />to join a watch group.</>, wrap: true, x: e.clientX, y: e.clientY })}
+            onMouseLeave={() => onTip(null)}
+          >
             <AvatarPile avatars={names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)} />
             <div style={clusterName}>{label}</div>
           </button>
