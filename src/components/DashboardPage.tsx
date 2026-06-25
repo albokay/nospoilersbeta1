@@ -863,10 +863,10 @@ export default function DashboardPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* Context-aware: dashboard → new group (blue); group room → add to this group (cream). */}
           <button
-            style={inGroup ? { ...invitePill, background: C.cream, color: C.green } : invitePill}
+            style={inGroup ? { ...invitePill, background: C.cream, color: C.green, boxShadow: "none" } : invitePill}
             onClick={() => (inGroup && activeGroupId ? openInvite(activeGroupId) : openInvite())}
           >
-            {inGroup ? "Add friends to this group?" : "Create a new group?"}
+            {inGroup ? "Add more friends to this group?" : "Invite new friends?"}
           </button>
           <button style={topCircleBtn(inGroup)} title="sign out" onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}>
             <LogOut size={18} color={inGroup ? C.midnight : "#fff"} />
@@ -908,7 +908,9 @@ export default function DashboardPage() {
 
       {inGroup ? (
         // ── Group context (sky) ───────────────────────────────────────────────
-        <div style={contentWrap}>
+        // paddingTop 24 (= base 8 + 16) lowers the heading/shelves/show buttons
+        // by 16px; the top banner + back/chat tabs are positioned separately.
+        <div style={{ ...contentWrap, paddingTop: 24 }}>
           {groupShelves.watching.length > 0 && (
             <>
               <h1 style={shelfHeader}>CURRENTLY WATCHING:</h1>
