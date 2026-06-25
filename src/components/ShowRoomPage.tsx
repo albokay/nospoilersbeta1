@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, SquarePen } from "lucide-react";
+import { ArrowLeft, SquarePen, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
@@ -593,7 +593,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {composeOpen && createPortal(
         <div style={composeBackdrop}>
           <div style={composeCardOuter}>
-            <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}>×</button>
+            <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={16} color="#f45028" /></button>
             <ComposeForm
               ref={composeFormRef}
               showId={show?.id}
@@ -692,7 +692,7 @@ const composeCardOuter: React.CSSProperties = {
   borderRadius: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.25)", overflow: "auto",
 };
 const composeCloseX: React.CSSProperties = {
-  position: "absolute", top: 20, right: 24, background: "transparent", border: "2px solid rgba(43,36,24,0.32)",
-  color: "#5a4d3a", borderRadius: "50%", width: 34, height: 34, padding: 0,
+  position: "absolute", top: 20, right: 24, background: "transparent", border: "2px solid #f45028",
+  color: "#f45028", borderRadius: "50%", width: 34, height: 34, padding: 0,
   display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: "pointer", zIndex: 10,
 };

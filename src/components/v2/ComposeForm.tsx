@@ -27,7 +27,7 @@ import { Sparkles, X, ArrowRight } from "lucide-react";
 // its own top-right ("× not now") rather than the standard you-pill cluster.
 const CREAM_BG = "#fef8ea";
 const PAPER_BG = "#fdfbf3";
-const INK = "#2b2418";
+const INK = "#1a3a4a"; // midnightblue — filled-in title + body text
 const INK_SOFT = "#5a4d3a";
 const INK_FAINT = "#8a7860";
 const RULE = "rgba(43, 36, 24, 0.32)";
@@ -47,7 +47,7 @@ const RULE_GRADIENT = `repeating-linear-gradient(
   transparent ${LH}px
 )`;
 
-const BODY_MIN_LINES = 7; // initial render = 7 lines = 196px (auto-grows with content)
+const BODY_MIN_LINES = 10; // 3 lines taller now that the destination chooser is gone (auto-grows)
 
 function progressShort(p: ProgressEntry): string {
   if (p.s === 0 && p.e === 0) return "haven't started";
@@ -454,13 +454,13 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           background-repeat: repeat !important;
           color: ${INK} !important;
         }
-        .v2-compose-paper-input::placeholder { color: ${INK_FAINT}; font-style: italic; font-family: 'Lora', Georgia, serif; }
+        .v2-compose-paper-input::placeholder { color: #dea838; opacity: 1; font-style: italic; font-family: 'Lora', Georgia, serif; }
         .v2-compose-title-input {
           background-color: transparent !important;
           background-image: none !important;
           color: ${INK} !important;
         }
-        .v2-compose-title-input::placeholder { color: ${INK_FAINT}; font-weight: 500; }
+        .v2-compose-title-input::placeholder { color: #dea838; opacity: 1; font-weight: 500; }
       `}</style>
 
       {/* TOP-RIGHT: × not now (duplicate of action-row cancel).
@@ -494,8 +494,9 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           <div
             style={{
               fontFamily: "Inter, sans-serif",
-              fontSize: 15,
-              color: INK_FAINT,
+              fontSize: 13,
+              fontWeight: 400,
+              color: "#355eb8",
               marginBottom: 4,
             }}
           >
@@ -507,7 +508,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               fontWeight: 700,
               fontSize: 36,
               letterSpacing: "0.02em",
-              color: INK,
+              color: "#355eb8",
               textTransform: "uppercase",
               margin: 0,
               marginBottom: 10,
@@ -585,7 +586,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         <div
           style={{
             background: "#fff",
-            border: `2px solid ${RULE}`,
+            border: `2px solid #355eb8`,
             borderRadius: 0,
             padding: "20px 40px",
             marginBottom: 16,
@@ -682,59 +683,8 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           )}
         </div>
 
-        {/* === DESTINATION CHOOSER === */}
-        <div style={{ marginTop: 12 }}>
-          <div
-            style={{
-              textAlign: "center",
-              fontFamily: "Inter, sans-serif",
-              fontSize: 16,
-              color: INK_SOFT,
-              marginBottom: 14,
-            }}
-          >
-            who would you like to share this with?
-          </div>
-
-          {/* Single-select destination pills — h40 (height-matched to the
-              post-entry button), always full opacity, with a cream radio
-              circle on the left. Selected radio shows an inner dot in the
-              pill's bg color. Order per spec: friend rooms, private,
-              public. Default state is null (nothing selected) — the user
-              must pick before posting.
-              Layout: grid with a single max-content column so all pills
-              share the width of the widest one's content (no dead space
-              on the right when titles are short). */}
-          <div style={{ display: "grid", gridTemplateColumns: "max-content", justifyContent: "center", gap: 8 }}>
-            {!privateOnly && (restrictGroupId ? groups.filter((g) => g.id === restrictGroupId) : groups).map((g) => (
-              <DestinationPill
-                key={g.id}
-                selected={destination === g.id}
-                bg="#adc8d7"
-                fg="#fff"
-                title={restrictGroupId ? "this friend room" : <>my friends: <em style={{ fontStyle: "italic", fontWeight: 700 }}>{g.name}</em></>}
-                onClick={() => setDestination(g.id)}
-              />
-            ))}
-            <DestinationPill
-              selected={destination === "private"}
-              bg="#7abd8e"
-              fg="#fff"
-              title="keep it private"
-              onClick={() => setDestination("private")}
-            />
-            {!restrictGroupId && !privateOnly && (
-              <DestinationPill
-                selected={destination === "public"}
-                bg="#dea838"
-                fg="#fff"
-                title="everyone"
-                onClick={() => setDestination("public")}
-              />
-            )}
-          </div>
-
-        </div>
+        {/* Destination is fixed by the tab the writer came from (friend room
+            or private) — no chooser. The post button label reflects it. */}
 
       </main>
 
@@ -770,30 +720,6 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
             pointerEvents: "auto",
           }}
         >
-          {destination !== null && (
-            <p
-              style={{
-                fontFamily: "Inter, sans-serif",
-                fontSize: 14,
-                color: INK_SOFT,
-                lineHeight: 1.5,
-                margin: 0,
-                textAlign: "right",
-                // Narrower max width than the prior inline layout (320 →
-                // 240) so the typical destination explainer wraps to
-                // three balanced lines as designed. Shorter explainers
-                // still render naturally (1–2 lines) when the copy fits.
-                maxWidth: 240,
-                textWrap: "balance",
-              }}
-            >
-              {destination === "public"
-                ? <>Anyone can read your writing if they've at least watched <strong style={{ whiteSpace: "nowrap" }}>{tagLong}</strong>.</>
-                : destination === "private"
-                ? <>No one else will see. Some of your best thinking happens when you write for yourself…</>
-                : <>Your friends will see your entry once they've watched <strong style={{ whiteSpace: "nowrap" }}>{tagLong}</strong>.</>}
-            </p>
-          )}
           <div
             style={{
               display: "flex",
@@ -806,8 +732,8 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               disabled={submitting}
               style={{
                 background: "transparent",
-                border: `2px solid ${RULE}`,
-                color: INK_SOFT,
+                border: `2px solid #f45028`,
+                color: "#f45028",
                 borderRadius: 9999,
                 padding: "10px 20px",
                 fontFamily: "Inter, sans-serif",
@@ -816,7 +742,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 cursor: submitting ? "not-allowed" : "pointer",
               }}
             >
-              × not now
+              not now
             </button>
             {(() => {
               const hasContent =
@@ -843,7 +769,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                     ? null
                     : submitting
                       ? <>posting<LoadingDots /></>
-                      : <>post entry<ArrowRight size={14} /></>}
+                      : <>{destination === "private" ? "save privately" : "share entry"}<ArrowRight size={14} /></>}
                 </button>
               );
             })()}
