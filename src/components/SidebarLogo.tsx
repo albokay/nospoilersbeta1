@@ -200,7 +200,19 @@ export default function SidebarLogo({
         }}
       >
         {layout &&
-          BLOCKS.map((block, i) => (
+          BLOCKS.map((block, i) => {
+            // §16: opaque blocks (simple overlaps, no blend). The sky cell turns
+            // GREEN on a sky background (the group room) and stays sky otherwise;
+            // any other block that matches the context bg is darkened 10% so it
+            // doesn't vanish against the page.
+            const onSkyBg = !!contextBg && contextBg.toLowerCase() === "#adc8d7";
+            const blockBg =
+              block.id === "lightBlue" && onSkyBg
+                ? "#7abd8e"
+                : contextBg && contextBg.toLowerCase() === block.color.toLowerCase()
+                  ? darken10(block.color)
+                  : block.color;
+            return (
             <div
               key={block.id}
               style={{
@@ -208,11 +220,9 @@ export default function SidebarLogo({
                 width: BLOCK,
                 height: BLOCK,
                 borderRadius: 15,
-                background: contextBg && contextBg.toLowerCase() === block.color.toLowerCase()
-                  ? darken10(block.color)
-                  : block.color,
+                background: blockBg,
                 zIndex: block.z,
-                mixBlendMode: block.blend as React.CSSProperties["mixBlendMode"],
+                mixBlendMode: "normal",
                 transform: `translate(${layout[block.id].x}px, ${layout[block.id].y}px)`,
                 // Block opacity tracks the blocksOpacity prop directly —
                 // no CSS transition so scroll-tied updates (from
@@ -224,7 +234,8 @@ export default function SidebarLogo({
                   : "none",
               }}
             />
-          ))}
+            );
+          })}
 
         {wordmarkTint ? (
           // Tinted wordmark: the PNG (aspect ~3.17) used as an alpha mask over a

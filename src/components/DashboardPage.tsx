@@ -1265,7 +1265,7 @@ export default function DashboardPage() {
         return (
           <div style={chatPanel}>
             <div style={chatHeader}>
-              <div style={{ fontWeight: 700, color: C.green, fontSize: 14, lineHeight: 1.3 }}>You're connected with:<br />{connected}</div>
+              <div style={{ fontWeight: 700, color: C.blue, fontSize: 14, lineHeight: 1.3 }}>You're connected with:<br />{connected}</div>
               <button style={{ border: "none", background: "transparent", cursor: "pointer" }} onClick={() => setChatGroupId(null)}><X size={18} color={C.sky} /></button>
             </div>
             <div style={chatBody} ref={chatBodyRef}>
@@ -1475,7 +1475,7 @@ function PillRightSide({ right }: { right: PillData["right"] }) {
 function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pending" | "invited" }) {
   // accepted = cream/green · pending (invite sent) = yellow/cream · invited-to-you = red/green
   const bg = state === "accepted" ? C.cream : state === "pending" ? C.yellow : C.red;
-  const fg = state === "accepted" ? C.green : state === "pending" ? "#fff" : C.green;
+  const fg = state === "accepted" ? C.green : state === "pending" ? "#fff" : C.cream;
   return <span style={{ ...avatarCircle, background: bg, color: fg }}>{(letter ?? "?").toUpperCase()}</span>;
 }
 
