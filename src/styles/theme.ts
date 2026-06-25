@@ -982,13 +982,14 @@ body.public-context .prompt-ref { color: #8a6420; }
   background: var(--dos-bg);
   border: 2px solid #fff;
   padding: 5px 10px;
-  font-size: 13px;
+  font-size: 10px;
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: 400;
+  letter-spacing: 0;
   cursor: pointer;
   color: #fff;
   opacity: 1;
-  font-family: inherit;
+  font-family: "Inter", sans-serif;
   border-radius: 9999px;
   letter-spacing: 0.01em;
   display: inline-flex;

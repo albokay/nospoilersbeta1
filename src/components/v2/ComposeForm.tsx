@@ -454,13 +454,13 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           background-repeat: repeat !important;
           color: ${INK} !important;
         }
-        .v2-compose-paper-input::placeholder { color: #dea838; opacity: 1; font-style: italic; font-family: 'Lora', Georgia, serif; }
+        .v2-compose-paper-input::placeholder { color: #dea838 !important; opacity: 1 !important; font-style: italic; font-family: 'Lora', Georgia, serif; }
         .v2-compose-title-input {
           background-color: transparent !important;
           background-image: none !important;
           color: ${INK} !important;
         }
-        .v2-compose-title-input::placeholder { color: #dea838; opacity: 1; font-weight: 500; }
+        .v2-compose-title-input::placeholder { color: #dea838 !important; opacity: 1 !important; font-weight: 500; }
       `}</style>
 
       {/* TOP-RIGHT: × not now (duplicate of action-row cancel).
@@ -661,8 +661,9 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                     borderRadius: 9999,
                     padding: "9px 18px",
                     fontFamily: "Inter, sans-serif",
-                    fontSize: 13,
-                    fontWeight: 600,
+                    fontSize: 10,
+                    fontWeight: 400,
+                    letterSpacing: 0,
                     cursor: "pointer",
                     display: "inline-flex",
                     alignItems: "center",
@@ -738,7 +739,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 padding: "10px 20px",
                 fontFamily: "Inter, sans-serif",
                 fontSize: 13,
-                fontWeight: 500,
+                fontWeight: 400,
                 cursor: submitting ? "not-allowed" : "pointer",
               }}
             >
@@ -763,6 +764,9 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                     opacity: hasContent ? 1 : 0.4,
                     cursor: canSubmit ? "pointer" : "not-allowed",
                     minWidth: 130,
+                    fontFamily: "Inter, sans-serif",
+                    fontSize: 13,
+                    fontWeight: 400,
                   }}
                 >
                   {!hasContent
