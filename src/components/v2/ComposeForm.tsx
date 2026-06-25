@@ -661,7 +661,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                     borderRadius: 9999,
                     padding: "9px 18px",
                     fontFamily: "Inter, sans-serif",
-                    fontSize: 10,
+                    fontSize: 13,
                     fontWeight: 400,
                     letterSpacing: 0,
                     cursor: "pointer",
@@ -814,10 +814,10 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               color: INK,
             }}
           >
-            <div style={{ fontFamily: "Lora, Georgia, serif", fontWeight: 600, fontSize: 20, marginBottom: 10 }}>
+            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 17, color: "#1a3a4a", marginBottom: 10 }}>
               Are you sure?
             </div>
-            <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, color: INK_SOFT, marginBottom: 24 }}>
+            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: "#1a3a4a", marginBottom: 24 }}>
               You will lose what you've written.
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
@@ -825,12 +825,13 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 onClick={() => setDiscardOpen(false)}
                 style={{
                   background: "transparent",
-                  border: `2px solid ${RULE}`,
-                  color: INK_SOFT,
+                  border: `2px solid #f45028`,
+                  color: "#f45028",
                   borderRadius: 9999,
                   padding: "9px 18px",
+                  fontFamily: "Inter, sans-serif",
                   fontSize: 13,
-                  fontWeight: 500,
+                  fontWeight: 400,
                   cursor: "pointer",
                 }}
               >
@@ -844,15 +845,16 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                   border: "none",
                   borderRadius: 9999,
                   padding: "9px 18px",
+                  fontFamily: "Inter, sans-serif",
                   fontSize: 13,
-                  fontWeight: 600,
+                  fontWeight: 400,
                   cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
                 }}
               >
-                <X size={13} /> discard
+                <X size={14} strokeWidth={2} /> discard
               </button>
             </div>
           </div>

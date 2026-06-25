@@ -982,7 +982,7 @@ body.public-context .prompt-ref { color: #8a6420; }
   background: var(--dos-bg);
   border: 2px solid #fff;
   padding: 5px 10px;
-  font-size: 10px;
+  font-size: 13px;
   white-space: nowrap;
   font-weight: 400;
   letter-spacing: 0;
