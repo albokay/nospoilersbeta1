@@ -110,6 +110,15 @@ export interface SidebarLogoProps {
    * 2-arrangement pool whose blocks never overlap the wordmark.
    */
   arrangements?: Layout[];
+  /**
+   * The background the logo sits on (§16 sky/green cell rule). The sky cell
+   * shows the OPPOSITE color: sky on a green background (default), green on a
+   * sky background (e.g. the group-context dashboard). Driven by an explicit
+   * prop — not the body class — because the body palette (group-context) and
+   * the logo's local header colour can differ (the show room's header is green
+   * even though its body palette is sky). Default "green".
+   */
+  bg?: "green" | "sky";
 }
 
 export default function SidebarLogo({
@@ -119,6 +128,7 @@ export default function SidebarLogo({
   blocksOpacity = 1,
   wordmarkTint,
   arrangements,
+  bg = "green",
 }: SidebarLogoProps) {
   const [layout, setLayout] = useState<Layout | null>(null);
   const [settled, setSettled] = useState(false);
@@ -205,10 +215,9 @@ export default function SidebarLogo({
             // GREEN on a sky background (the group room) and stays sky otherwise;
             // any other block that matches the context bg is darkened 10% so it
             // doesn't vanish against the page.
-            const onSkyBg = !!contextBg && contextBg.toLowerCase() === "#adc8d7";
             const blockBg =
-              block.id === "lightBlue" && onSkyBg
-                ? "#7abd8e"
+              block.id === "lightBlue"
+                ? (bg === "sky" ? "#7abd8e" : block.color) // sky cell: green on sky bg, sky on green bg
                 : contextBg && contextBg.toLowerCase() === block.color.toLowerCase()
                   ? darken10(block.color)
                   : block.color;

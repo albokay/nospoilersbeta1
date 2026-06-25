@@ -858,7 +858,7 @@ export default function DashboardPage() {
 
       {/* Top bar: logo left · INVITE FRIENDS + sign-out + admin right */}
       <div style={topBar}>
-        <SidebarLogo scale={0.5} blocksOpacity={1} />
+        <SidebarLogo scale={0.5} blocksOpacity={1} bg={activeGroupId ? "sky" : "green"} />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button style={invitePill} onClick={() => openInvite()}>INVITE FRIENDS</button>
           <button style={topCircleBtn(inGroup)} title="sign out" onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}>
@@ -1265,7 +1265,7 @@ export default function DashboardPage() {
         return (
           <div style={chatPanel}>
             <div style={chatHeader}>
-              <div style={{ fontWeight: 700, color: C.blue, fontSize: 14, lineHeight: 1.3 }}>You're connected with:<br />{connected}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}><span style={{ color: C.blue }}>You're connected with:</span><br /><span style={{ color: C.green }}>{connected}</span></div>
               <button style={{ border: "none", background: "transparent", cursor: "pointer" }} onClick={() => setChatGroupId(null)}><X size={18} color={C.sky} /></button>
             </div>
             <div style={chatBody} ref={chatBodyRef}>
