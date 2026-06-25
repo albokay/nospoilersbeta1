@@ -39,11 +39,20 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
     return () => { document.body.classList.remove("group-context"); };
   }, []);
 
+  // Guide posts appear EXPANDED the first time their episode is reached (still
+  // collapsible afterward; single-expansion quietly collapses the prior card).
+  // Episode 0's guide opens via initialExpandedThreadId, so seed the set with 0.
+  const autoExpandedGuidesRef = useRef<Set<number>>(new Set([0]));
+
   // On a progress change, scroll the feed back to the top so the newly-revealed
-  // guide entry (newest in its episode) is noticed even if the user had
-  // scrolled down.
+  // guide entry (newest in its episode) is noticed even if the user had scrolled
+  // down — and auto-expand that episode's guide on its first appearance.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    if (!autoExpandedGuidesRef.current.has(selectedEpisode)) {
+      autoExpandedGuidesRef.current.add(selectedEpisode);
+      feedRef.current?.expandEntry(`tsp-gate-${selectedEpisode}`);
+    }
   }, [selectedEpisode]);
 
   // Gate (spec §5): visible iff episode <= selectedEpisode (episode 0 always
