@@ -328,6 +328,18 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   function handleRatingCancel() {
     setPendingRating(null);
   }
+  // "skip rating": commit the progress advance but don't write a rating.
+  async function handleRatingSkip() {
+    if (!pendingRating || !user || !show) return;
+    const target = pendingRating;
+    try {
+      const updated = await persistProgressUpdate(user.id, show.id, progress ?? undefined, target);
+      setProgress(updated);
+    } catch (err) {
+      console.warn("rating-flow progress write failed:", err);
+    }
+    setPendingRating(null);
+  }
 
   // === SUBMIT ===
   async function submitPost() {
@@ -867,6 +879,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           episode={pendingRating.e}
           onCommit={handleRatingCommit}
           onCancel={handleRatingCancel}
+          onSkip={handleRatingSkip}
         />
       )}
     </div>

@@ -248,6 +248,17 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     await load();
   }
 
+  // "skip rating": commit the progress advance for the pending episode but
+  // don't write a rating.
+  async function skipRating() {
+    if (!user || !show || !pendingRating) return;
+    const target = pendingRating;
+    setPendingRating(null);
+    try { await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, target); }
+    catch (e) { console.warn("progress write failed", e); }
+    await load();
+  }
+
   // Click-to-rate a self map cell: optimistic update + debounced write.
   function rateOwnCell(season: number, episode: number, newRating: number | null) {
     if (!user || !show) return;
@@ -625,6 +636,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           episode={pendingRating.e}
           onCommit={commitRating}
           onCancel={() => setPendingRating(null)}
+          onSkip={skipRating}
         />
       )}
 
