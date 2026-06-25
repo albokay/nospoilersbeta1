@@ -71,6 +71,7 @@ import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
 import OneSelectProgress from "./OneSelectProgress";
 import TSPDemoModal from "./TSPDemoModal";
+import GroupRoomSticky from "./GroupRoomSticky";
 
 // TSP onboarding demo (spec §9): the onboarding for the NEW /dashboard world.
 // ENABLED — the demo auto-shows once on a user's first arrival at the base
@@ -897,6 +898,7 @@ export default function DashboardPage() {
           <MessageCircle size={24} color={C.green} />
         </button>
       )}
+      {inGroup && <GroupRoomSticky />}
 
       {inGroup ? (
         // ── Group context (sky) ───────────────────────────────────────────────
@@ -921,6 +923,13 @@ export default function DashboardPage() {
           {groupShelves.notStarted.length > 0 && (
             <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: groupShelves.watching.length ? 56 : 0 }}>
               Haven&rsquo;t started yet:
+            </h1>
+          )}
+          {/* Empty group → mirror the home empty state: the prompt sits just
+              below the clusters, with the search button beneath it. */}
+          {groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0 && (
+            <h1 style={{ ...heroH1, textAlign: "center", marginTop: 8, marginBottom: 8 }}>
+              What shows are you watching<br />or thinking about starting?
             </h1>
           )}
           <div style={{ textAlign: "center", marginBottom: 24, marginTop: groupShelves.notStarted.length === 0 && groupShelves.watching.length ? 56 : 0 }}>
@@ -1660,7 +1669,9 @@ const pageStyle: React.CSSProperties = {
 };
 const heroWrap: React.CSSProperties = {
   minHeight: "100%", display: "flex", flexDirection: "column", alignItems: "center",
-  justifyContent: "center", textAlign: "center", gap: 32, padding: "0 24px",
+  // Top-aligned (was centered) so the prompt sits just below the group clusters
+  // instead of floating in the middle of the page.
+  justifyContent: "flex-start", textAlign: "center", gap: 32, padding: "48px 24px 24px",
 };
 const heroH1: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 44, lineHeight: 1.15, letterSpacing: 0, color: C.cream, margin: 0,

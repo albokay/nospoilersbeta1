@@ -122,7 +122,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
             </>
           )}
           <div style={{ textAlign: "center", marginTop: 72 }}>
-            <h2 style={{ ...heading, margin: "0 0 4px" }}>Want to watch something with them?</h2>
+            <h2 style={{ ...heading, color: C.cream, margin: "0 0 4px" }}>Want to watch something with them?</h2>
             <div style={{ color: C.cream, fontSize: 15, marginBottom: 28 }}>(or propose something else?)</div>
             <button style={signInPill} onClick={invite.onJoin}>JOIN IN</button>
           </div>
