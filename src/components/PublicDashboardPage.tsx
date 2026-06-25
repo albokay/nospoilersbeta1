@@ -101,7 +101,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
           {notStarted.length > 0 && (
             <>
               <h2 style={inviteHeading}><span style={{ color: "#fff" }}>@{username}</span> wants to watch these shows:</h2>
-              <div style={inviteShelf}>
+              <div style={inviteShelfLayout(notStarted.length)}>
                 {notStarted.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, ...pillWant }}><span style={pillName}>{show.name}</span></div>
                 ))}
@@ -111,7 +111,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
           {watching.length > 0 && (
             <>
               <h2 style={{ ...inviteHeading, marginTop: notStarted.length ? 64 : 0 }}>and is already watching these:</h2>
-              <div style={inviteShelf}>
+              <div style={inviteShelfLayout(watching.length)}>
                 {watching.map(({ show, entry }) => (
                   <div key={show.id} style={{ ...pill, ...pillWatching }}>
                     <span style={pillName}>{show.name}</span>
@@ -205,6 +205,16 @@ const inviteHeading: React.CSSProperties = {
 const inviteShelf: React.CSSProperties = {
   display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px 16px", maxWidth: 880, margin: 0,
 };
+// 1–2 shows center (matching the dashboard rule); 3+ keep the left-anchored
+// 3-col grid that sits under the left-aligned invite headings.
+function inviteShelfLayout(count: number): React.CSSProperties {
+  if (count >= 3) return inviteShelf;
+  return {
+    display: "grid",
+    gridTemplateColumns: `repeat(${Math.max(count, 1)}, ${SHELF_COL}px)`,
+    gap: "24px 16px", justifyContent: "center", maxWidth: 880, margin: "0 auto",
+  };
+}
 const shelfGrid: React.CSSProperties = {
   display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", maxWidth: 880, margin: "0 auto",
 };
