@@ -100,7 +100,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
         <div style={contentWrap}>
           {notStarted.length > 0 && (
             <>
-              <h2 style={inviteHeading}><span style={{ color: "#fff" }}>@{username}</span> wants to watch these shows:</h2>
+              <h2 style={inviteHeading}><span style={{ color: C.cream }}>@{username}</span> wants to watch these shows:</h2>
               <div style={inviteShelfLayout(notStarted.length)}>
                 {notStarted.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, ...pillWant }}><span style={pillName}>{show.name}</span></div>
@@ -110,7 +110,11 @@ export default function PublicDashboardPage({ username, invite }: { username: st
           )}
           {watching.length > 0 && (
             <>
-              <h2 style={{ ...inviteHeading, marginTop: notStarted.length ? 64 : 0 }}>and is already watching these:</h2>
+              <h2 style={{ ...inviteHeading, marginTop: notStarted.length ? 64 : 0 }}>
+                {notStarted.length > 0
+                  ? "and is already watching these:"
+                  : <><span style={{ color: C.cream }}>@{username}</span> is watching these shows:</>}
+              </h2>
               <div style={inviteShelfLayout(watching.length)}>
                 {watching.map(({ show, entry }) => (
                   <div key={show.id} style={{ ...pill, ...pillWatching }}>
@@ -197,10 +201,10 @@ const shelfHeader: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream,
   textAlign: "center", textTransform: "uppercase", margin: "0 0 24px",
 };
-// Invite arrival screen: left-aligned sentence headings + left-anchored shelves.
+// Invite arrival screen: centered sentence headings + left-anchored shelves.
 const inviteHeading: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: C.cream,
-  textAlign: "left", margin: "0 0 24px",
+  textAlign: "center", margin: "0 0 24px",
 };
 const inviteShelf: React.CSSProperties = {
   display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px 16px", maxWidth: 880, margin: 0,
