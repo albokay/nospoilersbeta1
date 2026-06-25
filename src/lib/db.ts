@@ -1509,6 +1509,11 @@ export async function upsertRewatchStatus(
       rewatch_episode: entry.rewatchE      ?? null,
       highest_season:  entry.highestS      ?? null,
       highest_episode: entry.highestE      ?? null,
+      // Tracking/updating your progress opts the show back into your pool
+      // (consistent with voting "yes"). The only deliberate way out is the
+      // explicit remove-from-pool action; this re-adds it on any progress
+      // write, fixing the group dashboard ignoring out-of-pool progress.
+      in_pool: true,
     }, { onConflict: "user_id,show_id" });
   if (error) throw error;
 }
