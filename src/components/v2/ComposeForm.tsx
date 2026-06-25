@@ -805,8 +805,8 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         >
           <div
             style={{
-              background: PAPER_BG,
-              border: `2px solid ${INK}`,
+              background: CREAM_BG,
+              border: "none",
               borderRadius: 18,
               padding: "28px 32px",
               maxWidth: 420,
