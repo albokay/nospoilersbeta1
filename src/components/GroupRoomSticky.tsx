@@ -52,11 +52,15 @@ export default function GroupRoomSticky() {
       aria-label="Group room tips"
       style={{
         position: "fixed",
-        right: 24,
-        bottom: 24,
+        // Vertically centered ("about halfway up the page"); horizontally
+        // centered in the right gutter — midway between the centered content
+        // column (max 1040) and the browser's right edge. Clamped so it never
+        // runs off-screen on narrower windows.
+        top: "50%",
+        left: "min(calc(75vw + 260px), calc(100vw - 170px))",
         zIndex: 60,
         width: 300,
-        transform: `rotate(${TILT_DEG}deg) translateY(${entered ? 0 : ENTRY_RISE_PX}px)`,
+        transform: `translate(-50%, calc(-50% + ${entered ? 0 : ENTRY_RISE_PX}px)) rotate(${TILT_DEG}deg)`,
         transformOrigin: "center",
         opacity: entered ? 1 : 0,
         transition: `opacity ${ENTRY_TRANSITION_MS}ms ease-out, transform ${ENTRY_TRANSITION_MS}ms ease-out`,
