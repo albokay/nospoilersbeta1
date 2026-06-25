@@ -20,11 +20,11 @@ import Modal from "./Modal";
 // Integer scale ASCENDS with goodness: 1 = worst, 6 = best. Aligns with
 // the dice-face display on the friend room map (more dots = better).
 export const RATING_LABELS: Record<number, string> = {
-  1: "Nope.",
-  2: "Losing me.",
-  3: "I'll keep going.",
-  4: "Solid.",
-  5: "Things are cooking.",
+  1: "Nope",
+  2: "Losing me",
+  3: "I'll keep going",
+  4: "Solid",
+  5: "Things are cooking",
   6: "Woah!",
 };
 
@@ -37,11 +37,13 @@ const INTER    = "Inter, sans-serif";
 const COMMIT_DELAY_MS = 150;
 
 // Dice-face dot layout (same integer→pip semantics as the map's DiceFace).
-// Sky square (4px radius) + sky dots — drawn locally so the modal's dice can
-// be recolored independently of the map's white-dot DiceFace.
-function RatingDice({ rating, size = 22 }: { rating: number; size?: number }) {
-  const dotSize = Math.max(2, Math.round(size * 0.18));
-  const inset = Math.round(size * 0.27);
+// Solid sky square (4px radius) + cream dots — drawn locally so the modal's
+// dice can be recolored independently of the map's white-dot DiceFace. No
+// border, so the dot coordinates (relative to the size×size box) stay exactly
+// centered.
+function RatingDice({ rating, size = 24 }: { rating: number; size?: number }) {
+  const dotSize = Math.max(2, Math.round(size * 0.16));
+  const inset = Math.round(size * 0.28);
   const center = size / 2;
   const far = size - inset;
   const positions: Record<number, [number, number][]> = {
@@ -53,9 +55,9 @@ function RatingDice({ rating, size = 22 }: { rating: number; size?: number }) {
     6: [[inset, inset], [far, inset], [inset, center], [far, center], [inset, far], [far, far]],
   };
   return (
-    <div style={{ position: "relative", width: size, height: size, border: `2px solid ${SKY}`, borderRadius: 4, flex: "0 0 auto" }}>
+    <div style={{ position: "relative", width: size, height: size, background: SKY, borderRadius: 4, flex: "0 0 auto" }}>
       {(positions[rating] ?? []).map(([x, y], i) => (
-        <div key={i} style={{ position: "absolute", left: x, top: y, width: dotSize, height: dotSize, borderRadius: "50%", background: SKY, transform: "translate(-50%, -50%)" }} />
+        <div key={i} style={{ position: "absolute", left: x, top: y, width: dotSize, height: dotSize, borderRadius: "50%", background: CREAM, transform: "translate(-50%, -50%)" }} />
       ))}
     </div>
   );
@@ -93,7 +95,8 @@ export default function RatingCaptureModal({
     // through the explicit cancel button below.
     <Modal onClose={() => {}} width="min(420px, 92vw)">
       <div style={{ marginBottom: 16 }}>
-        <h3 style={{ fontFamily: INTER, fontWeight: 600, fontSize: 17, color: MIDNIGHT, margin: 0 }}>
+        {/* Header 2 — Inter bold 14 (restructure spec §16; −2 letter-spacing dropped). */}
+        <h3 style={{ fontFamily: INTER, fontWeight: 700, fontSize: 14, color: MIDNIGHT, margin: 0 }}>
           How was episode {episode} (season {season})?
         </h3>
       </div>
@@ -135,7 +138,7 @@ const pillStyle: React.CSSProperties = {
   color: MIDNIGHT,
   border: "none",
   fontFamily: INTER,
-  fontSize: 13,
+  fontSize: 13, // Body — Inter regular 13 (spec §16; −2 letter-spacing dropped)
   fontWeight: 400,
   textAlign: "left",
   cursor: "pointer",
@@ -149,7 +152,7 @@ const outlineStyle: React.CSSProperties = {
   color: CREAM,
   border: `2px solid ${CREAM}`,
   fontFamily: INTER,
-  fontSize: 13,
+  fontSize: 13, // Body — Inter regular 13 (spec §16; −2 letter-spacing dropped)
   fontWeight: 400,
   cursor: "pointer",
 };
