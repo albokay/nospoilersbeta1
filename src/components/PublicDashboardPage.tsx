@@ -91,12 +91,12 @@ export default function PublicDashboardPage({ username }: { username: string }) 
         </div>
       ) : (
         <div style={contentWrap}>
-          <h1 style={heading}>What <span style={{ color: C.cream }}>@{username}</span> is watching</h1>
+          <h1 style={heading}><span style={{ color: C.cream }}>@{username}</span>&rsquo;s watch pool:</h1>
 
           {watching.length > 0 && (
             <>
-              <h2 style={shelfHeader}>CURRENTLY WATCHING:</h2>
-              <div style={shelfGrid}>
+              <h2 style={shelfHeader}>CURRENTLY WATCHING</h2>
+              <div style={shelfLayout(watching.length)}>
                 {watching.map(({ show, entry }) => (
                   <div key={show.id} style={{ ...pill, ...pillWatching }}>
                     <span style={pillName}>{show.name}</span>
@@ -109,8 +109,8 @@ export default function PublicDashboardPage({ username }: { username: string }) 
 
           {notStarted.length > 0 && (
             <>
-              <h2 style={{ ...shelfHeader, textTransform: "none", marginTop: watching.length ? 48 : 0 }}>Haven&rsquo;t started yet:</h2>
-              <div style={shelfGrid}>
+              <h2 style={{ ...shelfHeader, textTransform: "none", marginTop: watching.length ? 48 : 0 }}>Haven&rsquo;t started yet</h2>
+              <div style={shelfLayout(notStarted.length)}>
                 {notStarted.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, ...pillWant }}>
                     <span style={pillName}>{show.name}</span>
@@ -162,6 +162,17 @@ const shelfHeader: React.CSSProperties = {
 const shelfGrid: React.CSSProperties = {
   display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", maxWidth: 880, margin: "0 auto",
 };
+// 1–2 shows center at the 3-col column width; 3+ lock into the 3-col grid
+// (matches the dashboard's shelf layout).
+const SHELF_COL = 283;
+function shelfLayout(count: number): React.CSSProperties {
+  if (count >= 3) return shelfGrid;
+  return {
+    display: "grid",
+    gridTemplateColumns: `repeat(${Math.max(count, 1)}, ${SHELF_COL}px)`,
+    gap: "24px 16px", justifyContent: "center", maxWidth: 880, margin: "0 auto",
+  };
+}
 const pill: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
   padding: "14px 24px", borderRadius: 65, fontFamily: '"Inter", sans-serif',
