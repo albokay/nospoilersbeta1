@@ -20,7 +20,11 @@ import SidebarLogo from "./SidebarLogo";
 const C = { green: "#7ABD8E", sky: "#ADC8D7", blue: "#355EB8", yellow: "#DEA838", cream: "#FEF8EA", midnight: "#1A3A4A" };
 const LORA = '"Lora", Georgia, serif';
 
-export default function PublicDashboardPage({ username }: { username: string }) {
+// `invite` turns the page into the email-invite arrival screen: no back arrow,
+// "@X wants to watch these shows:" / "and is already watching these:" headings
+// (wants first), and a "Want to watch something with them? / JOIN IN" footer
+// instead of the watch-pool title + sign-in CTA. Same data + styling as /pool.
+export default function PublicDashboardPage({ username, invite }: { username: string; invite?: { onJoin: () => void } }) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -76,10 +80,13 @@ export default function PublicDashboardPage({ username }: { username: string }) 
 
   return (
     <div style={{ ...pageStyle, background: C.green }}>
-      {/* Back-to-where-you-came-from tab — cream edge pill (mirrors the rooms). */}
-      <button style={backTab} title="back" onClick={() => navigate(-1)}>
-        <ArrowLeft size={24} color={C.green} />
-      </button>
+      {/* Back-to-where-you-came-from tab — cream edge pill (mirrors the rooms).
+          Hidden on the invite arrival screen (nowhere to go back to). */}
+      {!invite && (
+        <button style={backTab} title="back" onClick={() => navigate(-1)}>
+          <ArrowLeft size={24} color={C.green} />
+        </button>
+      )}
 
       <div style={topBar}>
         <SidebarLogo scale={0.5} blocksOpacity={1} />
@@ -88,6 +95,37 @@ export default function PublicDashboardPage({ username }: { username: string }) 
       {notFound ? (
         <div style={{ textAlign: "center", marginTop: 80, color: C.cream, fontFamily: LORA, fontSize: 24, fontWeight: 700 }}>
           We couldn&rsquo;t find that person.
+        </div>
+      ) : invite ? (
+        <div style={contentWrap}>
+          {notStarted.length > 0 && (
+            <>
+              <h2 style={inviteHeading}><span style={{ color: "#fff" }}>@{username}</span> wants to watch these shows:</h2>
+              <div style={inviteShelf}>
+                {notStarted.map(({ show }) => (
+                  <div key={show.id} style={{ ...pill, ...pillWant }}><span style={pillName}>{show.name}</span></div>
+                ))}
+              </div>
+            </>
+          )}
+          {watching.length > 0 && (
+            <>
+              <h2 style={{ ...inviteHeading, marginTop: notStarted.length ? 64 : 0 }}>and is already watching these:</h2>
+              <div style={inviteShelf}>
+                {watching.map(({ show, entry }) => (
+                  <div key={show.id} style={{ ...pill, ...pillWatching }}>
+                    <span style={pillName}>{show.name}</span>
+                    <span style={pillProg}>s{entry.s} e{entry.e}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          <div style={{ textAlign: "center", marginTop: 72 }}>
+            <h2 style={{ ...heading, margin: "0 0 4px" }}>Want to watch something with them?</h2>
+            <div style={{ color: C.cream, fontSize: 15, marginBottom: 28 }}>(or propose something else?)</div>
+            <button style={signInPill} onClick={invite.onJoin}>JOIN IN</button>
+          </div>
         </div>
       ) : (
         <div style={contentWrap}>
@@ -158,6 +196,14 @@ const heading: React.CSSProperties = {
 const shelfHeader: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream,
   textAlign: "center", textTransform: "uppercase", margin: "0 0 24px",
+};
+// Invite arrival screen: left-aligned sentence headings + left-anchored shelves.
+const inviteHeading: React.CSSProperties = {
+  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: C.cream,
+  textAlign: "left", margin: "0 0 24px",
+};
+const inviteShelf: React.CSSProperties = {
+  display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px 16px", maxWidth: 880, margin: 0,
 };
 const shelfGrid: React.CSSProperties = {
   display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", maxWidth: 880, margin: "0 auto",

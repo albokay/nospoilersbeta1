@@ -15,6 +15,7 @@ import { useAuth } from "../lib/auth";
 import { getPeopleGroupInvite, acceptPeopleGroupInvite, type GroupInviteInfo } from "../lib/db";
 import SidebarLogo from "./SidebarLogo";
 import AuthModal from "./AuthModal";
+import PublicDashboardPage from "./PublicDashboardPage";
 
 // After an invite sign-up, route the new account to /dashboard (where the
 // guided tour auto-fires) instead of the old onboarding. App's post-login
@@ -93,53 +94,50 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
     ? others.map((n) => `@${n}`).reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
     : `@${info?.inviterName ?? "someone"}`;
 
+  // Account just created — brief "setting up" screen while routing to /dashboard.
+  if (phase === "entering") {
+    return (
+      <div style={page}>
+        <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
+        <div style={card}><p style={title}>Welcome to Sidebar! Setting up your account…</p></div>
+      </div>
+    );
+  }
+
+  // Logged-out invite arrival — full-page /pool-style view of the inviter's
+  // shows + a JOIN IN footer; the sign-up modal overlays it when JOIN IN is hit.
+  if (status === "ready" && info && !user && !authLoading) {
+    return (
+      <>
+        <PublicDashboardPage username={info.inviterName} invite={{ onJoin: startSignup }} />
+        {phase === "signup" && (
+          <AuthModal
+            initialMode="signup"
+            initialEmail={info.inviteeEmail ?? ""}
+            lockEmail={!!info.inviteeEmail}
+            hint={`Create your account to watch shows with @${info.inviterName} on Sidebar.`}
+            onSuccess={onSignupSuccess}
+            onClose={onSignupClose}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <div style={page}>
       <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
       <div style={card}>
         {status === "loading" && <p style={muted}>Loading…</p>}
 
-        {status === "ready" && (
-          !user && !authLoading ? (
-            phase === "signup" ? (
-              <AuthModal
-                initialMode="signup"
-                initialEmail={info?.inviteeEmail ?? ""}
-                lockEmail={!!info?.inviteeEmail}
-                hint={`Create your account to watch shows with @${info?.inviterName ?? "your friend"} on Sidebar.`}
-                onSuccess={onSignupSuccess}
-                onClose={onSignupClose}
-              />
-            ) : phase === "entering" ? (
-              <p style={title}>Welcome to Sidebar! Setting up your account…</p>
-            ) : (
-              <>
-                <p style={title}>@{info?.inviterName ?? "Someone"} wants to watch shows with you</p>
-                {wants.length > 0 && (
-                  <div style={listBlock}>
-                    <div style={listLabel}>wants to watch these shows:</div>
-                    <div style={chipRow}>{wants.map((n, i) => <span key={i} style={chip}>{n}</span>)}</div>
-                  </div>
-                )}
-                {watching.length > 0 && (
-                  <div style={listBlock}>
-                    <div style={listLabel}>and is already watching these:</div>
-                    <div style={chipRow}>{watching.map((n, i) => <span key={i} style={chip}>{n}</span>)}</div>
-                  </div>
-                )}
-                <p style={{ ...muted, marginTop: 18, fontSize: 14 }}>Want to watch something with them?</p>
-                <button style={{ ...yes, marginTop: 14, padding: "13px 44px", fontSize: 15 }} onClick={startSignup}>JOIN IN</button>
-              </>
-            )
-          ) : (
-            <>
-              <p style={title}>Join a group with {names}?</p>
-              <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
-                <button style={yes} onClick={join}>Yes</button>
-                <button style={no} onClick={() => navigate("/dashboard")}>no</button>
-              </div>
-            </>
-          )
+        {status === "ready" && user && (
+          <>
+            <p style={title}>Join a group with {names}?</p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
+              <button style={yes} onClick={join}>Yes</button>
+              <button style={no} onClick={() => navigate("/dashboard")}>no</button>
+            </div>
+          </>
         )}
 
         {status === "joining" && <p style={muted}>Joining…</p>}
