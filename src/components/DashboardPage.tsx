@@ -861,7 +861,13 @@ export default function DashboardPage() {
       <div style={topBar}>
         <SidebarLogo scale={0.5} blocksOpacity={1} bg={activeGroupId ? "sky" : "green"} />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button style={invitePill} onClick={() => openInvite()}>INVITE FRIENDS</button>
+          {/* Context-aware: dashboard → new group; group room → add to this group. */}
+          <button
+            style={invitePill}
+            onClick={() => (inGroup && activeGroupId ? openInvite(activeGroupId) : openInvite())}
+          >
+            {inGroup ? "+ friends to this group" : "+ NEW FRIEND GROUP"}
+          </button>
           <button style={topCircleBtn(inGroup)} title="sign out" onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}>
             <LogOut size={18} color={inGroup ? C.midnight : "#fff"} />
           </button>
@@ -948,13 +954,6 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-
-          <div style={{ textAlign: "center", marginTop: 64 }}>
-            {/* Adds members to the CURRENT group (distinct from INVITE FRIENDS). */}
-            <button style={connectMorePill} onClick={() => activeGroupId && openInvite(activeGroupId)}>
-              CONNECT MORE FRIENDS TO THIS GROUP
-            </button>
-          </div>
         </div>
       ) : !hasAnyShows && !searchOpen ? (
         // ── Search-first empty state (green) ──────────────────────────────────
@@ -1709,10 +1708,6 @@ const searchPill: React.CSSProperties = {
 const invitePill: React.CSSProperties = {
   border: "none", background: C.blue, color: "#fff", fontWeight: 700, fontSize: 14,
   padding: "18px 64px", borderRadius: 65, cursor: "pointer", boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
-};
-const connectMorePill: React.CSSProperties = {
-  border: "2px solid #fff", background: "transparent", color: "#fff", fontWeight: 700, fontSize: 14,
-  padding: "16px 40px", borderRadius: 65, cursor: "pointer", letterSpacing: -0.5,
 };
 const topBar: React.CSSProperties = {
   display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 28px",
