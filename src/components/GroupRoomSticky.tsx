@@ -56,7 +56,7 @@ export default function GroupRoomSticky() {
         // centered in the right gutter — midway between the centered content
         // column (max 1040) and the browser's right edge. Clamped so it never
         // runs off-screen on narrower windows.
-        top: "50%",
+        top: "calc(50% + 40px)",
         left: "min(calc(75vw + 180px), calc(100vw - 250px))",
         zIndex: 60,
         width: 300,
