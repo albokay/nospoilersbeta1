@@ -861,12 +861,12 @@ export default function DashboardPage() {
       <div style={topBar}>
         <SidebarLogo scale={0.5} blocksOpacity={1} bg={activeGroupId ? "sky" : "green"} />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Context-aware: dashboard → new group; group room → add to this group. */}
+          {/* Context-aware: dashboard → new group (blue); group room → add to this group (green). */}
           <button
-            style={invitePill}
+            style={inGroup ? { ...invitePill, background: C.green } : invitePill}
             onClick={() => (inGroup && activeGroupId ? openInvite(activeGroupId) : openInvite())}
           >
-            {inGroup ? "+ friends to this group" : "+ NEW FRIEND GROUP"}
+            {inGroup ? "add friends to this group" : "CREATE NEW GROUP"}
           </button>
           <button style={topCircleBtn(inGroup)} title="sign out" onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}>
             <LogOut size={18} color={inGroup ? C.midnight : "#fff"} />
