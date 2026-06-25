@@ -863,10 +863,10 @@ export default function DashboardPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* Context-aware: dashboard → new group (blue); group room → add to this group (green). */}
           <button
-            style={inGroup ? { ...invitePill, background: C.green } : invitePill}
+            style={inGroup ? { ...invitePill, background: C.green, color: C.cream } : invitePill}
             onClick={() => (inGroup && activeGroupId ? openInvite(activeGroupId) : openInvite())}
           >
-            {inGroup ? "add friends to this group" : "CREATE NEW GROUP"}
+            {inGroup ? "Add friends to this group?" : "Create a new room?"}
           </button>
           <button style={topCircleBtn(inGroup)} title="sign out" onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}>
             <LogOut size={18} color={inGroup ? C.midnight : "#fff"} />
