@@ -1086,7 +1086,7 @@ export default function DashboardPage() {
             <button style={modalClose} onClick={() => setInviteOpen(false)}><X size={18} color="#fff" /></button>
             {!inviteLinks && (
               <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
-                {inviteTargetGroupId ? <>Connect more friends<br />to this group:</> : <>Email a friend to<br />start a watch group:</>}
+                {inviteTargetGroupId ? <>Connect more friends<br />to this group:</> : <>Email friends to<br />start a watch group:</>}
               </h1>
             )}
 
@@ -1122,7 +1122,7 @@ export default function DashboardPage() {
                     Invites sent!
                   </h1>
                 )}
-                <div style={{ textAlign: "right", marginTop: 12 }}>
+                <div style={{ textAlign: "center", marginTop: 12 }}>
                   <button style={invitePill} onClick={() => setInviteOpen(false)}>done</button>
                 </div>
               </>

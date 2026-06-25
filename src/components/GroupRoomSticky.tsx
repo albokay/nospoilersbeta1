@@ -95,7 +95,7 @@ export default function GroupRoomSticky() {
 
       <div style={{ paddingRight: 12 }}>
         Shows you and your friends add accumulate here. You can opt into each
-        others{"’"} selections and anyone can start a room for any show. Use
+        other{"’"}s selections and anyone can start a room for any show. Use
         the 💬 button on the right to chat about what you want to watch.
       </div>
       <div style={{ marginTop: 8, fontStyle: "italic", opacity: 0.85 }}>
