@@ -473,6 +473,15 @@ function AppShell() {
       requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
       return;
     }
+    // The group-invite welcome screen owns its own post-sign-in routing: an
+    // existing-account invitee who signs in from JOIN IN should stay on the
+    // page to see the "Join a group?" confirmation, not get bounced to
+    // /dashboard by the generic sign-in redirect below. (Brand-new invitee
+    // sign-ups route via forcedDest above, so they're unaffected.)
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/group-invite")) {
+      justSignedInRef.current = false;
+      return;
+    }
     if (!profile) return; // profile still loading — wait one more tick
     justSignedInRef.current = false;
     // CP7: every desktop sign-in now lands in the restructured world

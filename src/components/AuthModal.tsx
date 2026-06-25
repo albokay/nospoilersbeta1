@@ -7,7 +7,7 @@ import { supabase } from "../lib/supabaseClient";
 
 type Mode = "signin" | "signup" | "recovery";
 
-export default function AuthModal({ onClose, onSuccess, hint, initialMode = "signin", initialEmail = "", lockEmail = false }: { onClose: () => void; onSuccess?: () => void; hint?: string; initialMode?: Mode; initialEmail?: string; lockEmail?: boolean }) {
+export default function AuthModal({ onClose, onSuccess, hint, initialMode = "signin", initialEmail = "", lockEmail = false }: { onClose: () => void; onSuccess?: (mode: Mode) => void; hint?: string; initialMode?: Mode; initialEmail?: string; lockEmail?: boolean }) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState(initialEmail);
@@ -62,7 +62,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
 
     setLoading(false);
     if (err) { setError(err); return; }
-    onSuccess?.();
+    onSuccess?.(mode);
     onClose();
   }
 

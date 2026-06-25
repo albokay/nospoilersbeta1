@@ -39,14 +39,25 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   // account creation modal; "entering" → account made, App is routing them in.
   const [phase, setPhase] = useState<"welcome" | "signup" | "entering">("welcome");
   const enteringRef = useRef(false);
+  // Existing-account invitee signed in from JOIN IN → show the "Join a group?"
+  // confirmation on this page instead of the logged-out welcome screen. (App's
+  // generic sign-in → /dashboard redirect is suppressed for /group-invite.)
+  const [postSignin, setPostSignin] = useState(false);
 
-  function startSignup() {
-    sessionStorage.setItem(POST_SIGNUP_DEST_KEY, "/dashboard");
+  function openAuth() {
+    // Brand-new invitee → create-account; flag App to route them to /dashboard
+    // after sign-up (where the guided tour fires). Existing-account invitee →
+    // sign-in; DON'T set that flag, so they stay here for the join confirm.
+    if (!info?.inviteeHasAccount) sessionStorage.setItem(POST_SIGNUP_DEST_KEY, "/dashboard");
     setPhase("signup");
   }
-  function onSignupSuccess() {
-    enteringRef.current = true;
-    setPhase("entering");
+  function onAuthSuccess(mode: "signin" | "signup" | "recovery") {
+    if (mode === "signin") {
+      setPostSignin(true); // existing account → fall through to the join confirm
+    } else {
+      enteringRef.current = true;
+      setPhase("entering"); // brand-new account → App routes into /dashboard
+    }
   }
   function onSignupClose() {
     // Closed without creating an account → drop the routing intent + return.
@@ -105,18 +116,22 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   }
 
   // Logged-out invite arrival — full-page /pool-style view of the inviter's
-  // shows + a JOIN IN footer; the sign-up modal overlays it when JOIN IN is hit.
-  if (status === "ready" && info && !user && !authLoading) {
+  // shows + a JOIN IN footer; the auth modal overlays it when JOIN IN is hit.
+  // (Skipped once postSignin is set so a just-signed-in existing account falls
+  // through to the join confirmation below, even before `user` propagates.)
+  if (status === "ready" && info && !user && !authLoading && !postSignin) {
     return (
       <>
-        <PublicDashboardPage username={info.inviterName} invite={{ onJoin: startSignup }} />
+        <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth }} />
         {phase === "signup" && (
           <AuthModal
-            initialMode="signup"
+            initialMode={info.inviteeHasAccount ? "signin" : "signup"}
             initialEmail={info.inviteeEmail ?? ""}
             lockEmail={!!info.inviteeEmail}
-            hint={`Create your account to watch shows with @${info.inviterName} on Sidebar.`}
-            onSuccess={onSignupSuccess}
+            hint={info.inviteeHasAccount
+              ? `Sign in to watch shows with @${info.inviterName} on Sidebar.`
+              : `Create your account to watch shows with @${info.inviterName} on Sidebar.`}
+            onSuccess={onAuthSuccess}
             onClose={onSignupClose}
           />
         )}
@@ -129,6 +144,9 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
       <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
       <div style={card}>
         {status === "loading" && <p style={muted}>Loading…</p>}
+
+        {/* Existing account signed in from JOIN IN; bridge until `user` lands. */}
+        {status === "ready" && !user && postSignin && <p style={muted}>Signing you in…</p>}
 
         {status === "ready" && user && (
           <>

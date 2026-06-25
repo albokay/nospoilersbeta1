@@ -2669,6 +2669,10 @@ export type GroupInviteInfo = {
    *  pending invite surfaces in the new account's rail (email-matched).
    *  Undefined on older servers. */
   inviteeEmail?: string;
+  /** Whether the invited address already has an account. Drives the welcome
+   *  screen's JOIN IN button toward sign-in (true) vs create-account (false).
+   *  Defaults false on older servers (→ create-account, prior behavior). */
+  inviteeHasAccount: boolean;
   expiresAt: number;
 };
 
@@ -2688,6 +2692,7 @@ export async function getPeopleGroupInvite(
       inviterWatching: data.inviter_watching ?? [],
       inviterWants: data.inviter_wants ?? [],
       inviteeEmail: data.invitee_email ?? undefined,
+      inviteeHasAccount: data.invitee_has_account === true,
       expiresAt: new Date(data.expires_at).getTime(),
     },
   };
