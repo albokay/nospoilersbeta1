@@ -1161,7 +1161,9 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div style={yellowDivider} />
-                  <div style={{ ...yellowTitle, fontSize: 13 }}>{gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : "Start a solo show room?"}</div>
+                  <div style={{ ...yellowTitle, fontSize: 13 }}>{gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : (
+                    <>Start a show room?<br />Your friends can join in when they&rsquo;re ready.</>
+                  )}</div>
                   <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
                     <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>Yes</button>
                     <button
