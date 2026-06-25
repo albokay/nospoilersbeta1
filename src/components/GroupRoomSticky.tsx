@@ -57,7 +57,7 @@ export default function GroupRoomSticky() {
         // column (max 1040) and the browser's right edge. Clamped so it never
         // runs off-screen on narrower windows.
         top: "50%",
-        left: "min(calc(75vw + 260px), calc(100vw - 170px))",
+        left: "min(calc(75vw + 180px), calc(100vw - 250px))",
         zIndex: 60,
         width: 300,
         transform: `translate(-50%, calc(-50% + ${entered ? 0 : ENTRY_RISE_PX}px)) rotate(${TILT_DEG}deg)`,
@@ -90,7 +90,7 @@ export default function GroupRoomSticky() {
           justifyContent: "center",
         }}
       >
-        <X size={13} />
+        <X size={17} />
       </button>
 
       <div style={{ paddingRight: 12 }}>
