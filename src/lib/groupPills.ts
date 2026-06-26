@@ -8,10 +8,12 @@
  *   • fill    = cream (want-only) / outlined (≥1 watching) / green (2+ writers)
  *   • pencil  at exactly 1 writer; people icon (replaces number) at 2+ writers
  *   • ▲N/▼N   your progress vs the room: ▲ when you're the furthest along, ▼ for
- *             how far behind the furthest watcher you are (incl. when you haven't
- *             started — effectively s0 e0). Only shows s/e (no arrow) when you ARE
- *             watching and everyone's at the same point; a written-but-unwatched
- *             room (no watchers) shows "s0 e0" with no arrow
+ *             how far behind the furthest watcher you are. Shown only once YOU'VE
+ *             opted into the show — either by watching (progress past s0 e0) or by
+ *             writing in its room; a show another member pooled that you haven't
+ *             engaged with shows a blank right side (no arrow). Shows s/e (no
+ *             arrow) when you ARE watching and everyone's at the same point; a
+ *             written-but-unwatched room (no watchers) shows "s0 e0" with no arrow
  *   • shelf   = currentlyWatching once anyone watches OR anyone has written
  */
 import type { GroupDashboardShow } from "./db";
@@ -96,12 +98,17 @@ export function computePill(
         right = { kind: "arrow", dir: "down", n: maxIdx - selfIdx };
       }
     } else if (!selfWatching) {
-      // You haven't started but others have → red ▼ for how far behind the
-      // furthest-along watcher you are (your progress is effectively s0 e0).
-      // Previously this showed the watcher's raw s/e, which read like it was
-      // YOUR progress on your own button.
-      const selfIdx = linearIndex(self?.s ?? 0, self?.e ?? 0, seasons);
-      right = { kind: "arrow", dir: "down", n: maxIdx - selfIdx };
+      // You haven't watched yet (s0 e0). Show the gap ONLY if you've opted into
+      // this show by WRITING in its room — otherwise a show another member
+      // pooled (that you haven't engaged with) leaves the pill's right side
+      // blank, so an invitee's group doesn't read as a wall of red gaps.
+      // (Moving your progress past s0 e0 is the other opt-in, but that makes you
+      // a watcher and is handled by the branch above.)
+      if (self?.wrote) {
+        const selfIdx = linearIndex(self?.s ?? 0, self?.e ?? 0, seasons);
+        right = { kind: "arrow", dir: "down", n: maxIdx - selfIdx };
+      }
+      // else: not opted in → leave right = { kind: "none" } (blank).
     } else {
       // You're watching and everyone (incl. you) is at the same point → that progress.
       right = { kind: "progress", s: idxs[0].s, e: idxs[0].e };
