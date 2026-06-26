@@ -680,8 +680,10 @@ function RoomTab({ label, active, bg, onClick }: { label: string; active: boolea
 
 const page: React.CSSProperties = { position: "fixed", inset: 0, overflowY: "auto", fontFamily: '"Inter", system-ui, sans-serif' };
 const backTab: React.CSSProperties = {
+  // ~50% larger tab matching the dashboard's; padding/radius on the 8px grid
+  // (spec §16). Icon unchanged.
   position: "fixed", left: 0, top: "18%", background: C.cream, border: "none", cursor: "pointer",
-  borderTopRightRadius: 28, borderBottomRightRadius: 28, padding: "16px 22px 16px 14px",
+  borderTopRightRadius: 48, borderBottomRightRadius: 48, padding: "32px 40px 32px 24px",
   display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
 const writeBtn: React.CSSProperties = {
