@@ -72,6 +72,7 @@ import SidebarLogo from "./SidebarLogo";
 import OneSelectProgress from "./OneSelectProgress";
 import TSPDemoModal from "./TSPDemoModal";
 import GroupRoomSticky from "./GroupRoomSticky";
+import { linkifyText } from "../lib/linkify";
 
 // TSP onboarding demo (spec §9): the onboarding for the NEW /dashboard world.
 // ENABLED — the demo auto-shows once on a user's first arrival at the base
@@ -1289,7 +1290,7 @@ export default function DashboardPage() {
                 return (
                   <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
                     {!mine && <div style={{ fontSize: 11, color: "#fff", opacity: 0.85, marginBottom: 3 }}>{m.username}</div>}
-                    <div style={mine ? chatBubbleMine : chatBubbleOther}>{m.body}</div>
+                    <div style={mine ? chatBubbleMine : chatBubbleOther}>{linkifyText(m.body)}</div>
                   </div>
                 );
               })}
