@@ -385,7 +385,7 @@ export default function DashboardPage() {
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
     type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean };
-    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; tier: number; lastActivityAt: number | null; markWriter: boolean };
+    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; tier: number; lastActivityAt: number | null; markWriter: boolean };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
@@ -404,7 +404,7 @@ export default function DashboardPage() {
       const tier = writerCount >= 2 ? 0 : writerCount === 1 ? 1 : watcherCount >= 2 ? 2 : watcherCount >= 1 ? 3 : 4;
       // Exactly one writer → mark that writer's avatar (green fill + pencil).
       // (If the lone writer is you, no avatar exists to mark — nothing shows.)
-      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, tier, lastActivityAt: gs.lastActivityAt, markWriter: writerCount === 1 };
+      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, selfWrote: !!self?.wrote, tier, lastActivityAt: gs.lastActivityAt, markWriter: writerCount === 1 };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
     const byName = (a: Row, b: Row) => a.name.localeCompare(b.name);
@@ -918,7 +918,10 @@ export default function DashboardPage() {
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
                     {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
-                    <div {...watchingTipProps(r)}>
+                    {/* Show tooltip (progress/gap/notif) only once you've opted in
+                        (watching or wrote). Non-opted-in shows another member
+                        pooled get no show tooltip; the avatars keep their own. */}
+                    <div {...(r.selfProg || r.selfWrote ? watchingTipProps(r) : {})}>
                       <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                     </div>
                     <OptInAvatars members={r.opted} markWriter={r.markWriter} withTooltip onTip={setTip} />
