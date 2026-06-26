@@ -1793,13 +1793,15 @@ const groupHeadingMembers: React.CSSProperties = {
   fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: "#fff",
 };
 const backTab: React.CSSProperties = {
+  // ~50% larger tab; padding/radius on the 8px grid (spec §16). Icon unchanged.
   position: "fixed", left: 0, top: "18%", background: C.cream, border: "none", cursor: "pointer",
-  borderTopRightRadius: 28, borderBottomRightRadius: 28, padding: "16px 22px 16px 14px",
+  borderTopRightRadius: 48, borderBottomRightRadius: 48, padding: "32px 40px 32px 24px",
   display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
 const chatTab: React.CSSProperties = {
+  // ~50% larger tab; padding/radius on the 8px grid (spec §16). Icon unchanged.
   position: "fixed", right: 0, top: "60%", background: C.cream, border: "none", cursor: "pointer",
-  borderTopLeftRadius: 28, borderBottomLeftRadius: 28, padding: "16px 14px 16px 22px",
+  borderTopLeftRadius: 48, borderBottomLeftRadius: 48, padding: "32px 24px 32px 40px",
   display: "inline-flex", alignItems: "center", boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
 const countCircle: React.CSSProperties = {
