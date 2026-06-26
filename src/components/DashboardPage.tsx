@@ -1759,7 +1759,10 @@ const notifDotButton: React.CSSProperties = {
   background: C.blue, zIndex: 6, pointerEvents: "none", // let the pill's tooltip fire through the dot
 };
 const notifDotChat: React.CSSProperties = {
-  position: "absolute", top: -4, left: -4, width: 16, height: 16, borderRadius: "50%",
+  // Straddle the enlarged tab's top edge near the icon (top:-6 sits ~6px above,
+  // ~10px on the tab; left:44 clears the rounded left edge), so the dot
+  // partially overlaps the tab instead of floating in the rounded cutaway.
+  position: "absolute", top: -6, left: 44, width: 16, height: 16, borderRadius: "50%",
   background: C.blue, zIndex: 1,
 };
 const notifDotCluster: React.CSSProperties = {
