@@ -20,7 +20,7 @@ import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen,
-  fetchHighlights,
+  fetchHighlights, fetchPeopleGroupsForUser,
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
@@ -37,7 +37,7 @@ import SIKWSticky from "./SIKWSticky";
 
 const C = { green: "#7ABD8E", sky: "#ADC8D7", blue: "#355EB8", yellow: "#DEA838", cream: "#FEF8EA", midnight: "#1A3A4A" };
 const LORA = '"Lora", Georgia, serif';
-const HEADER_H = 92;
+const HEADER_H = 104;
 type Tab = "friend" | "private";
 
 export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: string; privateShowId?: string }) {
@@ -64,6 +64,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
   const [show, setShow] = useState<Show | null>(null);
   const [parentGroupId, setParentGroupId] = useState<string | null>(null);
+  const [groupName, setGroupName] = useState<string | null>(null); // "[show] with [group]" header
   const [progressForShow, setProgressForShow] = useState<ProgressEntry | null>(null);
   const [feedEntries, setFeedEntries] = useState<V2RoomFeedEntry[]>([]);
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
@@ -157,11 +158,17 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // Entering the room clears its new-activity dot on the dashboard/group view.
       markRoomSeen(roomId).catch(() => { /* tolerate (migration not applied) */ });
 
-      const [allShows, progressMap, roomMapData] = await Promise.all([
+      const [allShows, progressMap, roomMapData, myGroups] = await Promise.all([
         fetchShows(), fetchProgress(user.id), fetchRoomMapData(roomId),
+        roomRow.parent_group_id ? fetchPeopleGroupsForUser(user.id).catch(() => []) : Promise.resolve([]),
       ]);
       const showRow = allShows.find((s) => s.id === showId) ?? null;
       const progress = progressMap[showId] ?? null;
+      // Group display name for the "[show] with [group]" header — custom name,
+      // else "Group <seq>" (mirrors the dashboard's groupAutoName). Null → just
+      // the show name (e.g. private-only standalone or an unresolvable group).
+      const pg = roomRow.parent_group_id ? myGroups.find((x) => x.id === roomRow.parent_group_id) : null;
+      const derivedGroupName = pg ? (pg.name || (pg.seq != null ? `Group ${pg.seq}` : null)) : null;
       const eff = effectiveProgress(progress);
 
       const empty = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number>, latestVisibleReplyAt: {} as Record<string, number>, hiddenCounts: {} as Record<string, number>, latestHiddenReplyAt: {} as Record<string, number> };
@@ -191,6 +198,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const priv = mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread);
 
       setShow(showRow);
+      setGroupName(derivedGroupName);
       setProgressForShow(progress);
       setFeedEntries(entries);
       setMapMembers(members);
@@ -463,7 +471,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         <div style={{ position: "absolute", left: 20, top: 12 }}><SidebarLogo scale={0.45} blocksOpacity={1} /></div>
 
         <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)" }}>
-          <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: C.cream, margin: 0 }}>{show?.name ?? "Show"}</h1>
+          <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: C.cream, margin: 0 }}>
+            {show?.name ?? "Show"}
+            {groupName && <span style={{ color: C.blue }}> with {groupName}</span>}
+          </h1>
         </div>
 
         <div style={{ position: "absolute", left: 160, bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
