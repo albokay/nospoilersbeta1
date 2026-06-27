@@ -2730,6 +2730,12 @@ export type GroupDashboardMember = {
   s: number | null;
   e: number | null;
   wrote: boolean;
+  /** Earliest episode at which this member posted a non-deleted ENTRY in the
+   *  show's room (null if none). Lets the client tell "visible writing at the
+   *  viewer's progress" for the "Read what … have written?" prompt. Null on
+   *  older servers (migration not yet applied) → that prompt simply won't show. */
+  wroteEntryMinS: number | null;
+  wroteEntryMinE: number | null;
 };
 
 // One pooled show in a group, with everything the pill system needs.
@@ -2763,6 +2769,8 @@ export async function fetchGroupDashboard(groupId: string): Promise<GroupDashboa
       s:      m.s ?? null,
       e:      m.e ?? null,
       wrote:  !!m.wrote,
+      wroteEntryMinS: m.wrote_entry_min_s ?? null,
+      wroteEntryMinE: m.wrote_entry_min_e ?? null,
     })),
   }));
 }

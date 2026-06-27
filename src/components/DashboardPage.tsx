@@ -1145,6 +1145,19 @@ export default function DashboardPage() {
         const optedCount = gs?.members.length ?? 0;
         const cur = progress[clicked.showId];
         const curVal = cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 };
+        // "Read what … have written?" — other members whose earliest ENTRY is
+        // visible at the viewer's LIVE (in-modal) progress. Entries-only is
+        // sufficient: a reply can't be visible unless its parent entry is. Reacts
+        // live to the progress dropdown (declaredProgress).
+        const seasons = showsById[clicked.showId]?.seasons;
+        const liveIdx = linearIndex(declaredProgress.s, declaredProgress.e, seasons);
+        const visibleWriters = (gs?.members ?? []).filter((m) =>
+          m.userId !== selfUserId && m.wroteEntryMinS != null &&
+          linearIndex(m.wroteEntryMinS, m.wroteEntryMinE ?? 0, seasons) <= liveIdx,
+        );
+        const showRead = !!gs?.roomId && visibleWriters.length >= 1;
+        const readName = visibleWriters.length === 1 ? (memberNameById[visibleWriters[0].userId] ?? "someone") : null;
+        const readText = visibleWriters.length > 1 ? "Read what your friends have written?" : `Read what @${readName} has written?`;
         return (
           <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
             {/* solo + watchq are wider to fit the "Yes" + "just confirm my progress" row. */}
@@ -1166,11 +1179,11 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div style={yellowDivider} />
-                  <div style={{ ...yellowTitle, fontSize: 13 }}>{gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : (
+                  <div style={{ ...yellowTitle, fontSize: 13 }}>{showRead ? readText : gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : (
                     <>Start a show room?<br />Your friends can join in when they&rsquo;re ready.</>
                   )}</div>
                   <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
-                    <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>Yes</button>
+                    <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Yes"}</button>
                     <button
                       style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
                       onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
@@ -1216,9 +1229,9 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div style={yellowDivider} />
-                  <div style={{ ...yellowTitle, fontSize: 13 }}>{roomLabel}</div>
+                  <div style={{ ...yellowTitle, fontSize: 13 }}>{showRead ? readText : roomLabel}</div>
                   <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
-                    <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>Yes</button>
+                    <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Yes"}</button>
                     <button
                       style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
                       onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
