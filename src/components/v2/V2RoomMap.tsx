@@ -1508,17 +1508,13 @@ export default function V2RoomMap({
                           text={`@${m.username} left the room`}
                           direction="left"
                           portal
-                          // Anchor the Tooltip wrapper at the cell's top-left
-                          // with 0 footprint so the inner dot's absolute
-                          // positioning resolves cell-relative (centered on
-                          // the column), not against an inline wrapper.
-                          style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0 }}
+                          // The wrapper span IS the dot's box (same position +
+                          // size), so the hover hit area overlaps the rendered
+                          // dot exactly and the bubble anchors to it.
+                          style={{ position: "absolute", left: CELL / 2 - 4, top: CELL + 8, width: 8, height: 8 }}
                         >
                           <div
                             style={{
-                              position: "absolute",
-                              left: CELL / 2 - 4,
-                              top: CELL + 8,
                               width: 8,
                               height: 8,
                               borderRadius: "50%",
