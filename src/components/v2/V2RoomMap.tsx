@@ -1484,27 +1484,49 @@ export default function V2RoomMap({
                       />
                     )}
 
-                    {/* Terminal dot for departed members — sits in the gap
-                        just below their last-reached cell. */}
+                    {/* Terminal dot for departed members — sits on the
+                        column's spine in the gap below their last-reached
+                        cell (after that cell, before the next one would be),
+                        connected to it by a short spine segment so it reads
+                        as part of the column. */}
                     {showTerminalDot && (
-                      <Tooltip
-                        text={`@${m.username} left the room`}
-                        direction="left"
-                        portal
-                      >
+                      <>
                         <div
+                          aria-hidden
                           style={{
                             position: "absolute",
-                            left: CELL / 2 - 3,
-                            top: CELL + 5,
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
+                            left: CELL / 2 - 1,
+                            top: CELL,
+                            width: 2,
+                            height: 8,
                             background: "var(--dos-border)",
-                            opacity: 0.85,
+                            opacity: 0.55,
                           }}
                         />
-                      </Tooltip>
+                        <Tooltip
+                          text={`@${m.username} left the room`}
+                          direction="left"
+                          portal
+                          // Anchor the Tooltip wrapper at the cell's top-left
+                          // with 0 footprint so the inner dot's absolute
+                          // positioning resolves cell-relative (centered on
+                          // the column), not against an inline wrapper.
+                          style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0 }}
+                        >
+                          <div
+                            style={{
+                              position: "absolute",
+                              left: CELL / 2 - 4,
+                              top: CELL + 4,
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              background: "var(--dos-border)",
+                              opacity: 0.85,
+                            }}
+                          />
+                        </Tooltip>
+                      </>
                     )}
                   </div>
                 );
