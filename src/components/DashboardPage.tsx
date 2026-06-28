@@ -881,7 +881,15 @@ export default function DashboardPage() {
 
       {/* Top bar: logo left · INVITE FRIENDS + sign-out + admin right */}
       <div style={topBar}>
-        <SidebarLogo scale={0.5} blocksOpacity={1} bg={activeGroupId ? "sky" : "green"} />
+        <div
+          onClick={() => navigate("/dashboard")}
+          style={{ cursor: "pointer" }}
+          role="button"
+          aria-label="Home"
+          title="Home"
+        >
+          <SidebarLogo scale={0.5} blocksOpacity={1} bg={activeGroupId ? "sky" : "green"} />
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* Context-aware: dashboard → new group (blue); group room → add to this group (cream). */}
           <button

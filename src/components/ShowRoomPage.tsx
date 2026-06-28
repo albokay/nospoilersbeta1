@@ -481,7 +481,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             Header + body colors swap by mode: friend = green header / sky body,
             private = sky header / green body (the inactive tab shows through). ── */}
       <div style={{ position: "relative", background: tab === "friend" ? C.green : C.sky, height: HEADER_H }}>
-        <div style={{ position: "absolute", left: 20, top: 12 }}><SidebarLogo scale={0.45} blocksOpacity={1} /></div>
+        <div
+          style={{ position: "absolute", left: 20, top: 12, cursor: "pointer" }}
+          onClick={() => navigate("/dashboard")}
+          role="button"
+          aria-label="Home"
+          title="Home"
+        ><SidebarLogo scale={0.45} blocksOpacity={1} /></div>
 
         <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)" }}>
           <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: C.cream, margin: 0 }}>
