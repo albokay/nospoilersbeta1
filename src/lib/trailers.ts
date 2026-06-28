@@ -119,3 +119,32 @@ export async function getTrailerKeyCached(
   _inflight.set(showId, p);
   return p;
 }
+
+// Fire-and-forget background warm-up: resolve trailers for a set of shows so
+// the result is already cached before the viewer opens their opt-in modal —
+// the click then has zero resolution latency. Bounded concurrency so it can't
+// flood the browser's connection pool. Returns immediately (does NOT block the
+// caller); already-cached / in-flight shows are skipped (getTrailerKeyCached
+// dedupes). Callers should additionally defer the call (idle/timeout) so it
+// never competes with the page's own initial load.
+export function prefetchTrailers(
+  shows: Array<{ id: string; tvmazeId: number | string | null | undefined }>,
+): void {
+  const queue = shows.filter(
+    (s) => s.id && !_cache.has(s.id) && !_inflight.has(s.id),
+  );
+  if (!queue.length) return;
+  const CONCURRENCY = 3;
+  let next = 0;
+  const worker = async () => {
+    while (next < queue.length) {
+      const s = queue[next++];
+      try {
+        await getTrailerKeyCached(s.id, s.tvmazeId);
+      } catch {
+        /* best-effort; misses are cached by getTrailerKeyCached */
+      }
+    }
+  };
+  for (let i = 0; i < Math.min(CONCURRENCY, queue.length); i++) void worker();
+}

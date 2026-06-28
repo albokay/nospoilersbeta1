@@ -63,6 +63,11 @@ export default function TrailerCard({
           </button>
         )}
       </div>
+      {/* TMDB attribution — required by the (free, personal-use) TMDB API
+          license. Trailer data is sourced from TMDB. */}
+      <div style={attribution}>
+        This product uses the TMDB API but is not endorsed or certified by TMDB.
+      </div>
     </div>
   );
 }
@@ -119,6 +124,16 @@ const playOverlay: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+};
+// Info = Inter regular 10 (canon_typography), muted, left-aligned under the frame.
+const attribution: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif',
+  fontWeight: 400,
+  fontSize: 10,
+  lineHeight: 1.3,
+  color: "rgba(26,58,74,0.7)",
+  textAlign: "left",
+  marginTop: 8,
 };
 const playTriangle: React.CSSProperties = {
   width: 0,

@@ -72,6 +72,7 @@ import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
 import OneSelectProgress from "./OneSelectProgress";
 import TrailerCard from "./TrailerCard";
+import { prefetchTrailers } from "../lib/trailers";
 import TSPDemoModal from "./TSPDemoModal";
 import GroupRoomSticky from "./GroupRoomSticky";
 import { linkifyText } from "../lib/linkify";
@@ -377,6 +378,32 @@ export default function DashboardPage() {
     for (const s of shows) m[s.id] = s;
     return m;
   }, [shows]);
+
+  // Warm the trailer cache for the active group's NOT-STARTED shows so the
+  // opt-in modal's trailer is already resolved before the viewer clicks (zero
+  // resolution latency on click). Deferred to browser idle (timeout fallback)
+  // so it never competes with the group page's own load — runs only after the
+  // page is on screen, fire-and-forget, third-party only (no Supabase egress).
+  // prefetchTrailers dedupes, so re-runs as progress/shows change are cheap.
+  useEffect(() => {
+    if (!activeGroupId || groupShows.length === 0) return;
+    const targets = groupShows
+      .filter((gs) => { const p = progress[gs.showId]; return !p || (p.s === 0 && p.e === 0); })
+      .map((gs) => showsById[gs.showId])
+      .filter((sh): sh is Show => !!sh)
+      .map((sh) => ({ id: sh.id, tvmazeId: sh.tvmazeId }));
+    if (targets.length === 0) return;
+    let cancelled = false;
+    const ric: any = (window as any).requestIdleCallback;
+    const handle = ric
+      ? ric(() => { if (!cancelled) prefetchTrailers(targets); }, { timeout: 3000 })
+      : setTimeout(() => { if (!cancelled) prefetchTrailers(targets); }, 400);
+    return () => {
+      cancelled = true;
+      if (ric && (window as any).cancelIdleCallback) (window as any).cancelIdleCallback(handle);
+      else clearTimeout(handle as any);
+    };
+  }, [activeGroupId, groupShows, progress, showsById]);
 
   // ── Dashboard shelves (green) ──────────────────────────────────────────────
   const { watching, notStarted } = useMemo(() => {
