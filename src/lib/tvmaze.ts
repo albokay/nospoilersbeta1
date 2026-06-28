@@ -49,6 +49,23 @@ export async function tvmazeEpisodes(tvmazeId: number): Promise<number[]> {
   return seasons;
 }
 
+// External IDs for a show (imdb / thetvdb / tvrage). Used by the trailers
+// bridge (src/lib/trailers.ts) to cross TVMaze → TMDB without a name search.
+// `externals` is NOT stored on our `shows` row, so we fetch the full show
+// record on demand. Tolerant: any failure → null (caller treats as a miss).
+export type TvmazeExternals = { imdb?: string | null; thetvdb?: number | null; tvrage?: number | null };
+
+export async function fetchTvmazeExternals(tvmazeId: number | string): Promise<TvmazeExternals | null> {
+  try {
+    const res = await fetch(`https://api.tvmaze.com/shows/${tvmazeId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data?.externals as TvmazeExternals) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function networkLabel(s: TVmazeShow): string {
   const net = s.network?.name || s.webChannel?.name || "";
   const year = s.premiered ? s.premiered.slice(0, 4) : "";

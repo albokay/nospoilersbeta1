@@ -71,6 +71,7 @@ import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } 
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
 import OneSelectProgress from "./OneSelectProgress";
+import TrailerCard from "./TrailerCard";
 import TSPDemoModal from "./TSPDemoModal";
 import GroupRoomSticky from "./GroupRoomSticky";
 import { linkifyText } from "../lib/linkify";
@@ -1188,7 +1189,12 @@ export default function DashboardPage() {
         const readName = visibleWriters.length === 1 ? (memberNameById[visibleWriters[0].userId] ?? "someone") : null;
         const readText = visibleWriters.length > 1 ? "Read what your friends have written?" : `Read what @${readName} has written?`;
         return (
-          <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
+          // Dedicated scrollable two-layer overlay (NOT the shared `overlay`):
+          // centers [modal + 8px gap + trailer card] as one pair and lets the
+          // pair scroll on short viewports. On a miss / progress > S0E0 the
+          // trailer renders nothing, so the modal centers alone exactly as today.
+          <div style={trailerScrollOverlay} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
+           <div style={trailerCenterColumn} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
             {/* solo + watchq are wider to fit the "Yes" + "just confirm my progress" row. */}
             <div style={{ ...yellowCard, ...(clicked.mode === "watchq" || clicked.mode === "solo" ? { width: "min(460px, 92vw)" } : {}) }}>
               <button style={modalClose} onClick={() => setClicked(null)}><X size={16} color="#fff" /></button>
@@ -1269,6 +1275,14 @@ export default function DashboardPage() {
                 </>
               )}
             </div>
+            {/* Launch trailer — only for a not-started viewer (gate on the
+                PERSISTED progress curVal, never the draggable dropdown, so a
+                dropdown change can't tear out a playing trailer). Renders
+                nothing on a miss. */}
+            {curVal.s === 0 && curVal.e === 0 && (
+              <TrailerCard showId={clicked.showId} tvmazeId={showsById[clicked.showId]?.tvmazeId} />
+            )}
+           </div>
           </div>
         );
       })()}
@@ -1882,6 +1896,18 @@ const chatSend: React.CSSProperties = {
 const overlay: React.CSSProperties = {
   position: "fixed", inset: 0, background: "rgba(26,58,74,0.25)", display: "flex",
   alignItems: "center", justifyContent: "center", zIndex: 50,
+};
+// Trailer-aware overlay for the opt-in modal ONLY (the shared `overlay` above is
+// used by other modals and must stay untouched). Two layers: a fixed scrollable
+// backdrop + an inner column that centers [modal + 8px gap + trailer] as a pair
+// and lets it scroll on short viewports. A lone modal (miss) centers identically.
+const trailerScrollOverlay: React.CSSProperties = {
+  position: "fixed", inset: 0, background: "rgba(26,58,74,0.25)", zIndex: 50, overflowY: "auto",
+};
+const trailerCenterColumn: React.CSSProperties = {
+  minHeight: "100%", display: "flex", flexDirection: "column",
+  alignItems: "center", justifyContent: "center", gap: 8,
+  padding: "24px 16px", boxSizing: "border-box",
 };
 const searchCard: React.CSSProperties = { background: C.cream, borderRadius: 24, padding: 32, width: "min(560px, 86vw)" };
 const pickerCard: React.CSSProperties = {
