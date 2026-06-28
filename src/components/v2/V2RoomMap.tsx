@@ -1498,9 +1498,10 @@ export default function V2RoomMap({
                             left: CELL / 2 - 1,
                             top: CELL,
                             width: 2,
-                            height: 8,
-                            background: "var(--dos-border)",
-                            opacity: 0.55,
+                            height: 10,
+                            // Canon greyblue — flat, no opacity, so the line +
+                            // dot don't darken where they overlap.
+                            background: "#8DAABA",
                           }}
                         />
                         <Tooltip
@@ -1517,12 +1518,11 @@ export default function V2RoomMap({
                             style={{
                               position: "absolute",
                               left: CELL / 2 - 4,
-                              top: CELL + 4,
+                              top: CELL + 8,
                               width: 8,
                               height: 8,
                               borderRadius: "50%",
-                              background: "var(--dos-border)",
-                              opacity: 0.85,
+                              background: "#8DAABA",
                             }}
                           />
                         </Tooltip>
