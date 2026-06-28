@@ -27,6 +27,7 @@ import { X, Settings, UsersRound, Pencil, ArrowUp, LogOut, ArrowLeft, MessageCir
 import { useAuth } from "../lib/auth";
 import {
   fetchShows,
+  refreshStaleShows,
   createShow,
   fetchProgress,
   upsertRewatchStatus,
@@ -296,6 +297,7 @@ export default function DashboardPage() {
     let cancelled = false;
     (async () => {
       setLoading(true);
+      let pooled: Show[] = [];
       try {
         const [showRows, prog, oop] = await Promise.all([
           fetchShows(), fetchProgress(user.id), fetchOutOfPoolShows(user.id),
@@ -304,11 +306,20 @@ export default function DashboardPage() {
         setShows(showRows);
         setProgress(prog);
         setOutOfPool(oop);
+        // Shows the viewer can log progress on from the personal dashboard.
+        pooled = showRows.filter((s) => prog[s.id]);
       } catch (e) {
         console.error("[dashboard] core load failed", e);
       } finally {
         if (!cancelled) setLoading(false);
       }
+      // Quietly keep pooled shows' episode lists current (12h cadence; mostly a
+      // no-op). Non-blocking — every progress dropdown reads show.seasons, so
+      // merging refreshed shows surfaces newly-aired episodes without a reload.
+      refreshStaleShows(pooled).then((upd) => {
+        if (cancelled || !upd.length) return;
+        setShows((prev) => prev.map((s) => upd.find((u) => u.id === s.id) ?? s));
+      }).catch(() => {});
       const rail = await loadRail(user.id);
       if (!cancelled) setRailGroups(rail);
       try {
@@ -332,6 +343,16 @@ export default function DashboardPage() {
     try {
       const rows = await fetchGroupDashboard(groupId);
       setGroupShows(rows);
+      // A group room exposes progress dropdowns for every show in the group —
+      // including ones you haven't pooled yet — and they read the same catalog
+      // (showsById). Keep those shows' episode lists fresh too (12h cadence,
+      // non-blocking). fetchShows() is the warm in-memory cache here.
+      const ids = new Set(rows.map((r) => r.showId));
+      const catalog = await fetchShows();
+      refreshStaleShows(catalog.filter((s) => ids.has(s.id))).then((upd) => {
+        if (!upd.length) return;
+        setShows((prev) => prev.map((s) => upd.find((u) => u.id === s.id) ?? s));
+      }).catch(() => {});
     } catch (e) {
       console.error("[dashboard] group load failed", e);
       setGroupShows([]);

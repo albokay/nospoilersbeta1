@@ -1092,6 +1092,37 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
   return refreshed;
 }
 
+/** Background batch refresh for a set of shows the viewer can act on (their
+ *  pool, a group's shows, etc). Runs refreshShowIfStale over each with bounded
+ *  concurrency so a large pool can't burst past TVMaze's rate limit, and
+ *  returns ONLY the shows whose data actually changed (the 12-hour cadence
+ *  no-ops and any failures drop out). Most calls are a cheap in-memory date
+ *  check with no network. Callers merge the returned shows into local state to
+ *  surface newly-aired episode options in the progress dropdowns. Never throws —
+ *  individual failures are swallowed so one bad show can't sink the batch. */
+export async function refreshStaleShows(shows: Show[]): Promise<Show[]> {
+  // Only shows with a tvmazeId have a refresh path — pre-filter to avoid
+  // scheduling guaranteed no-ops.
+  const candidates = shows.filter((s) => s.tvmazeId);
+  if (!candidates.length) return [];
+  const updated: Show[] = [];
+  const CONCURRENCY = 4; // gentle on TVMaze (2 fetches per stale show); pools are small
+  let next = 0;
+  async function worker() {
+    while (next < candidates.length) {
+      const s = candidates[next++];
+      try {
+        const r = await refreshShowIfStale(s);
+        if (r) updated.push(r);
+      } catch { /* best-effort; ignore individual failures */ }
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, candidates.length) }, worker),
+  );
+  return updated;
+}
+
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 export async function adminDeleteShow(showId: string): Promise<void> {

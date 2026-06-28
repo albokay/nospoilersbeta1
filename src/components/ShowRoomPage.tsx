@@ -18,7 +18,7 @@ import { ArrowLeft, SquarePen, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
-  fetchShows, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
+  fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen,
   fetchHighlights, fetchPeopleGroupsForUser,
   type Show,
@@ -128,6 +128,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     try { localStorage.setItem(vKey, JSON.stringify(ids)); } catch { /* ignore quota */ }
   }, [user?.id, roomId, privateOnly, feedEntries]);
 
+  // Quietly keep this room's show episode list current (12h cadence; mostly a
+  // no-op). Non-blocking — the progress dropdown reads show.seasons, so merging
+  // the refreshed show surfaces newly-aired episodes without a reload. Guarded
+  // so a result that lands after the viewer moved to a different room is ignored.
+  const freshenShow = useCallback((s: Show) => {
+    refreshShowIfStale(s).then((u) => {
+      if (u) setShow((cur) => (cur?.id === u.id ? u : cur));
+    }).catch(() => {});
+  }, []);
+
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -137,7 +147,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if (privateOnly && privateShowId) {
         const [allShows, progressMap] = await Promise.all([fetchShows(), fetchProgress(user.id)]);
         const mine = await fetchUserThreads(user.id, privateShowId);
-        setShow(allShows.find((s) => s.id === privateShowId) ?? null);
+        const psShow = allShows.find((s) => s.id === privateShowId) ?? null;
+        setShow(psShow);
+        if (psShow) freshenShow(psShow);
         setProgressForShow(progressMap[privateShowId] ?? null);
         setPrivateEntries(mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread));
         setParentGroupId(null);
@@ -198,6 +210,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const priv = mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread);
 
       setShow(showRow);
+      if (showRow) freshenShow(showRow);
       setGroupName(derivedGroupName);
       setProgressForShow(progress);
       setFeedEntries(entries);
@@ -219,7 +232,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     } finally {
       setLoading(false);
     }
-  }, [roomId, privateShowId, privateOnly, user]);
+  }, [roomId, privateShowId, privateOnly, user, freshenShow]);
 
   useEffect(() => {
     if (authLoading) return;
