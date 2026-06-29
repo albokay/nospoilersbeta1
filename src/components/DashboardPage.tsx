@@ -1654,12 +1654,14 @@ function OptInAvatars({ members, withTooltip, onTip, markWriter = false }: {
         return (
           <span
             key={`${m.username}-${i}`}
-            style={isWriter ? { ...optInAvatar, background: C.green } : optInAvatar}
+            style={optInAvatar}
             onMouseMove={withTooltip ? (e) => onTip({ text: tip, sub, wrap: !!sub, x: e.clientX, y: e.clientY }) : undefined}
             onMouseLeave={withTooltip ? () => onTip(null) : undefined}
           >
             {(m.username[0] ?? "?").toUpperCase()}
-            {isWriter && <span style={writerPencilBadge}><Pencil size={9} color="#fff" strokeWidth={2.5} /></span>}
+            {/* Sole-writer indicator: cream pen on a green dot. The avatar
+                fill is NOT changed — the badge is the only indicator. */}
+            {isWriter && <span style={writerPencilBadge}><Pencil size={9} color={C.cream} strokeWidth={2.5} /></span>}
           </span>
         );
       })}
