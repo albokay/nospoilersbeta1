@@ -1837,7 +1837,7 @@ const optInAvatar: React.CSSProperties = {
 };
 // Pencil badge on the lone-writer's avatar (top-right corner).
 const writerPencilBadge: React.CSSProperties = {
-  position: "absolute", top: -3, right: -3, width: 15, height: 15, borderRadius: "50%",
+  position: "absolute", top: -7, right: -7, width: 15, height: 15, borderRadius: "50%",
   background: C.green, display: "inline-flex",
   alignItems: "center", justifyContent: "center",
 };
