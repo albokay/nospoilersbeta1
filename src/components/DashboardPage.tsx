@@ -322,20 +322,23 @@ export default function DashboardPage() {
         if (cancelled || !upd.length) return;
         setShows((prev) => prev.map((s) => upd.find((u) => u.id === s.id) ?? s));
       }).catch(() => {});
-      const rail = await loadRail(user.id);
-      if (!cancelled) setRailGroups(rail);
-      try {
-        const inv = await fetchMyPendingGroupInvites();
-        if (!cancelled) setPendingInvites(inv);
-      } catch (e) { console.warn("[dashboard] pending invites not loaded", e); }
+      // Secondary data — all independent of one another. Fire concurrently
+      // (each sets its own state when it resolves) instead of in a sequential
+      // waterfall, so the rail / pending invites / activity dots no longer wait
+      // in line behind each other. Each is independently tolerant.
+      loadRail(user.id)
+        .then((rail) => { if (!cancelled) setRailGroups(rail); })
+        .catch((e) => console.warn("[dashboard] rail not loaded", e));
+      fetchMyPendingGroupInvites()
+        .then((inv) => { if (!cancelled) setPendingInvites(inv); })
+        .catch((e) => console.warn("[dashboard] pending invites not loaded", e));
       // New-activity dots — tolerant (degrade to no dots if migrations missing).
-      try {
-        const [rv, ca] = await Promise.all([
-          fetchRoomActivityVisibility(user.id, true),
-          fetchGroupChatActivity(user.id),
-        ]);
-        if (!cancelled) { setRoomVis(rv); setChatActivity(ca); }
-      } catch (e) { console.warn("[dashboard] activity dots not loaded", e); }
+      Promise.all([
+        fetchRoomActivityVisibility(user.id, true),
+        fetchGroupChatActivity(user.id),
+      ])
+        .then(([rv, ca]) => { if (!cancelled) { setRoomVis(rv); setChatActivity(ca); } })
+        .catch((e) => console.warn("[dashboard] activity dots not loaded", e));
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, navigate, loadRail]);
