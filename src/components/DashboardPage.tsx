@@ -23,7 +23,7 @@ import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "rea
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, Pencil, ArrowUp, LogOut, ArrowLeft, MessageCircle } from "lucide-react";
+import { X, Settings, Pencil, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchShows,
@@ -1557,25 +1557,29 @@ function GroupPill({ pill, name, onClick }: { pill: PillData; name: string; onCl
       {/* No left badge: opted-in avatars convey who's in, and a writer is shown
           by the pen badge on that writer's own avatar (every writer, any count). */}
       <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
-      <PillRightSide right={pill.right} onGreen={isSelfWatching || isGreen} />
+      <PillRightSide right={pill.right} />
     </button>
   );
 }
 
-function PillRightSide({ right, onGreen = false }: { right: PillData["right"]; onGreen?: boolean }) {
+function PillRightSide({ right }: { right: PillData["right"] }) {
   if (right.kind === "none") return null;
   if (right.kind === "progress") {
     return <span style={{ fontWeight: 500, opacity: 0.85, fontSize: 13 }}>s{right.s} e{right.e}</span>;
   }
   const up = right.dir === "up";
-  // On a green button the green ▲ blends into the fill — give the arrow + count
-  // a cream outline so the gap indicator stays legible.
-  const creamOutline = onGreen
-    ? `1px 0 ${C.cream}, -1px 0 ${C.cream}, 0 1px ${C.cream}, 0 -1px ${C.cream}, 1px 1px ${C.cream}, -1px -1px ${C.cream}, 1px -1px ${C.cream}, -1px 1px ${C.cream}`
-    : undefined;
+  // Lucide triangle (clean rounded strokes): green/red fill for direction with
+  // a cream outline; the count is cream. No text outlines.
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: up ? C.green : C.red, fontWeight: 700, textShadow: creamOutline }}>
-      <span style={{ fontSize: 12 }}>{up ? "▲" : "▼"}</span>{right.n}
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
+      <Triangle
+        size={14}
+        color={C.cream}
+        fill={up ? C.green : C.red}
+        strokeWidth={2}
+        style={up ? undefined : { transform: "rotate(180deg)" }}
+      />
+      <span style={{ color: C.cream }}>{right.n}</span>
     </span>
   );
 }
