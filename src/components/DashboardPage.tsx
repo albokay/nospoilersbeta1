@@ -985,7 +985,7 @@ export default function DashboardPage() {
                     <div {...(r.selfProg || r.selfWrote ? watchingTipProps(r) : {})}>
                       <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                     </div>
-                    <OptInAvatars members={r.opted} onGreen={r.pill.selfWatching || r.pill.fill === "green"} withTooltip onTip={setTip} />
+                    <OptInAvatars members={r.opted} withTooltip onTip={setTip} />
                   </div>
                 ))}
               </div>
@@ -1015,7 +1015,7 @@ export default function DashboardPage() {
                   <div {...interestedTipProps(r.opted, r.name, r.selfOpted, r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
                     <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
-                  <OptInAvatars members={r.opted} onGreen={r.pill.selfWatching || r.pill.fill === "green"} withTooltip={false} onTip={setTip} />
+                  <OptInAvatars members={r.opted} withTooltip={false} onTip={setTip} />
                 </div>
               ))}
             </div>
@@ -1636,13 +1636,10 @@ function AvatarPile({ avatars }: { avatars: React.ReactNode[] }) {
 /** Opt-in member avatars overlapping a group-pill's bottom edge (the friends
  *  who have this show in the group's pool). Decorative — pointer-events off so
  *  they never block a pill click. */
-function OptInAvatars({ members, withTooltip, onTip, onGreen = false }: {
+function OptInAvatars({ members, withTooltip, onTip }: {
   members: { username: string; s: number | null; e: number | null; wrote?: boolean }[];
   withTooltip: boolean;
   onTip: (t: { text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number } | null) => void;
-  // The show button this row sits on is green-filled → use a sky pen dot so it
-  // doesn't blend into the green (otherwise green-on-green). Default green.
-  onGreen?: boolean;
 }) {
   if (!members.length) return null;
   return (
@@ -1665,7 +1662,8 @@ function OptInAvatars({ members, withTooltip, onTip, onGreen = false }: {
             {(m.username[0] ?? "?").toUpperCase()}
             {/* Sole-writer indicator: cream pen on a green dot. The avatar
                 fill is NOT changed — the badge is the only indicator. */}
-            {isWriter && <span style={onGreen ? { ...writerPencilBadge, background: C.sky } : writerPencilBadge}><Pencil size={9} color={C.cream} strokeWidth={2.5} /></span>}
+            {/* Sole indicator: the pen icon alone (no dot) — cream lines, sky fill. */}
+            {isWriter && <span style={writerPencilBadge}><Pencil size={14} color={C.cream} fill={C.sky} strokeWidth={2} /></span>}
           </span>
         );
       })}
@@ -1841,8 +1839,7 @@ const optInAvatar: React.CSSProperties = {
 };
 // Pencil badge on the lone-writer's avatar (top-right corner).
 const writerPencilBadge: React.CSSProperties = {
-  position: "absolute", top: -5, right: -5, width: 15, height: 15, borderRadius: "50%",
-  background: C.green, display: "inline-flex",
+  position: "absolute", top: -5, right: -5, display: "inline-flex",
   alignItems: "center", justifyContent: "center",
 };
 // New-activity dots (blue, 16px), slightly overlapping their surface.
