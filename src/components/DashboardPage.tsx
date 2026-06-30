@@ -1557,19 +1557,24 @@ function GroupPill({ pill, name, onClick }: { pill: PillData; name: string; onCl
       {/* No left badge: opted-in avatars convey who's in, and a writer is shown
           by the pen badge on that writer's own avatar (every writer, any count). */}
       <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
-      <PillRightSide right={pill.right} />
+      <PillRightSide right={pill.right} onGreen={isSelfWatching || isGreen} />
     </button>
   );
 }
 
-function PillRightSide({ right }: { right: PillData["right"] }) {
+function PillRightSide({ right, onGreen = false }: { right: PillData["right"]; onGreen?: boolean }) {
   if (right.kind === "none") return null;
   if (right.kind === "progress") {
     return <span style={{ fontWeight: 500, opacity: 0.85, fontSize: 13 }}>s{right.s} e{right.e}</span>;
   }
   const up = right.dir === "up";
+  // On a green button the green ▲ blends into the fill — give the arrow + count
+  // a cream outline so the gap indicator stays legible.
+  const creamOutline = onGreen
+    ? `1px 0 ${C.cream}, -1px 0 ${C.cream}, 0 1px ${C.cream}, 0 -1px ${C.cream}, 1px 1px ${C.cream}, -1px -1px ${C.cream}, 1px -1px ${C.cream}, -1px 1px ${C.cream}`
+    : undefined;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: up ? C.green : C.red, fontWeight: 700 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: up ? C.green : C.red, fontWeight: 700, textShadow: creamOutline }}>
       <span style={{ fontSize: 12 }}>{up ? "▲" : "▼"}</span>{right.n}
     </span>
   );
