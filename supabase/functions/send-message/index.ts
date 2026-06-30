@@ -71,6 +71,32 @@ const PUBLIC_TEMPLATES = new Set(["public_response_request"]);
 // deno-lint-ignore no-explicit-any
 type AdminClient = any;
 
+// ── Rate limiting ─────────────────────────────────────────────────────────
+// Reuses the existing check_rate_limit / check_rate_limit_daily SECURITY
+// DEFINER RPCs (supabase/migrations/20260413_rate_limiting.sql), which key on
+// auth.uid(). Called on a USER-SCOPED client (anon key + the caller's JWT) so
+// auth.uid() resolves to the caller — the service-role admin client has no
+// user context. Throttles ONLY the notification email; the underlying action
+// (poll, reply, request) already happened via its own RPC, so a blocked call
+// returns ok with rate_limited:true rather than an error. Fail-OPEN on an
+// unexpected RPC error so a transient DB hiccup never blocks a legit message.
+async function rateOk(client: AdminClient, action: string, maxCount: number, windowSeconds: number): Promise<boolean> {
+  const { data, error } = await client.rpc("check_rate_limit", {
+    action_name: action, max_count: maxCount, window_seconds: windowSeconds,
+  });
+  if (error) { console.error("rate_limit check failed:", action, error.message); return true; }
+  return data !== false;
+}
+async function dailyOk(client: AdminClient, action: string, maxDaily: number): Promise<boolean> {
+  const { data, error } = await client.rpc("check_rate_limit_daily", {
+    action_name: action, max_daily: maxDaily,
+  });
+  if (error) { console.error("daily_rate_limit check failed:", action, error.message); return true; }
+  return data !== false;
+}
+// Global per-user daily email backstop, shared key across all email functions.
+const EMAIL_DAILY_BACKSTOP = 30;
+
 // ── Top-level dispatch ───────────────────────────────────────────────────
 
 serve(async (req) => {
@@ -106,6 +132,13 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await admin.auth.getUser(jwt);
     if (authErr || !user) return jsonError("unauthorized", 401, authErr?.message);
 
+    // User-scoped client for rate-limit RPCs (auth.uid() = caller).
+    const userClient: AdminClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } }, auth: { autoRefreshToken: false, persistSession: false } },
+    );
+
     // Body parse + template_type validation.
     const body = await req.json().catch(() => null);
     if (!body) return jsonError("invalid_body", 400);
@@ -124,13 +157,13 @@ serve(async (req) => {
       return await handlePing(body, user, admin, jsonOk, jsonError);
     }
     if (POLL_TEMPLATES.has(template_type)) {
-      return await handlePoll(body, user, admin, jsonOk, jsonError);
+      return await handlePoll(body, user, admin, userClient, jsonOk, jsonError);
     }
     if (SIKW_TEMPLATES.has(template_type)) {
-      return await handleSikw(body, user, admin, jsonOk, jsonError);
+      return await handleSikw(body, user, admin, userClient, jsonOk, jsonError);
     }
     if (PUBLIC_TEMPLATES.has(template_type)) {
-      return await handlePublicResponseRequest(body, user, admin, jsonOk, jsonError);
+      return await handlePublicResponseRequest(body, user, admin, userClient, jsonOk, jsonError);
     }
     return jsonError("invalid_template_type", 400);
   } catch (err: unknown) {
@@ -336,6 +369,7 @@ async function handlePoll(
   body: Record<string, unknown>,
   user: { id: string; email?: string },
   admin: AdminClient,
+  userClient: AdminClient,
   jsonOk: (b: Record<string, unknown>) => Response,
   jsonError: (code: string, status: number, message?: string) => Response,
 ): Promise<Response> {
@@ -366,7 +400,7 @@ async function handlePoll(
   const roomName = grp.name?.trim() || "your room";
 
   if (template_type === "poll_invite") {
-    return await handlePollInvite(poll, grp, showName, roomName, user, admin, jsonOk, jsonError);
+    return await handlePollInvite(poll, grp, showName, roomName, user, admin, userClient, jsonOk, jsonError);
   }
   if (template_type === "poll_close") {
     return await handlePollClose(poll, showName, roomName, user, admin, jsonOk, jsonError);
@@ -386,12 +420,20 @@ async function handlePollInvite(
   roomName: string,
   user: { id: string },
   admin: AdminClient,
+  userClient: AdminClient,
   jsonOk: (b: Record<string, unknown>) => Response,
   jsonError: (code: string, status: number, message?: string) => Response,
 ): Promise<Response> {
   // Only the asker can fire poll-invite emails.
   if (poll.asker_id !== user.id) {
     return jsonError("not_asker", 403);
+  }
+
+  // Rate limit: one invite blast per poll per hour + global daily backstop.
+  // The poll already exists; a blocked re-blast returns ok quietly.
+  if (!(await rateOk(userClient, `poll_invite:${poll.id}`, 1, 3600))
+      || !(await dailyOk(userClient, "email_action", EMAIL_DAILY_BACKSTOP))) {
+    return jsonOk({ sent_count: 0, channel: "email", rate_limited: true });
   }
 
   const { data: askerProfile } = await admin
@@ -705,6 +747,7 @@ async function handleSikw(
   body: Record<string, unknown>,
   user: { id: string; email?: string },
   admin: AdminClient,
+  userClient: AdminClient,
   jsonOk: (b: Record<string, unknown>) => Response,
   jsonError: (code: string, status: number, message?: string) => Response,
 ): Promise<Response> {
@@ -734,10 +777,10 @@ async function handleSikw(
   const roomName = grp.name?.trim() || "your room";
 
   if (template_type === "sikw_ask_invite") {
-    return await handleSikwAskInvite(ask, grp, showName, roomName, user, admin, jsonOk, jsonError);
+    return await handleSikwAskInvite(ask, grp, showName, roomName, user, admin, userClient, jsonOk, jsonError);
   }
   if (template_type === "sikw_reply") {
-    return await handleSikwReply(ask, grp, showName, roomName, user, admin, jsonOk, jsonError);
+    return await handleSikwReply(ask, grp, showName, roomName, user, admin, userClient, jsonOk, jsonError);
   }
   return jsonError("invalid_template_type", 400);
 }
@@ -751,10 +794,18 @@ async function handleSikwAskInvite(
   roomName: string,
   user: { id: string },
   admin: AdminClient,
+  userClient: AdminClient,
   jsonOk: (b: Record<string, unknown>) => Response,
   jsonError: (code: string, status: number, message?: string) => Response,
 ): Promise<Response> {
   if (ask.asker_id !== user.id) return jsonError("not_asker", 403);
+
+  // Rate limit: one ask-invite blast per ask per hour + global daily backstop.
+  // The ask already exists; a blocked re-blast returns ok quietly.
+  if (!(await rateOk(userClient, `sikw_invite:${ask.id}`, 1, 3600))
+      || !(await dailyOk(userClient, "email_action", EMAIL_DAILY_BACKSTOP))) {
+    return jsonOk({ sent_count: 0, channel: "email", rate_limited: true });
+  }
 
   const { data: askerProfile } = await admin
     .from("profiles")
@@ -853,6 +904,7 @@ async function handleSikwReply(
   roomName: string,
   user: { id: string },
   admin: AdminClient,
+  userClient: AdminClient,
   jsonOk: (b: Record<string, unknown>) => Response,
   jsonError: (code: string, status: number, message?: string) => Response,
 ): Promise<Response> {
@@ -864,6 +916,14 @@ async function handleSikwReply(
     .eq("replier_id", user.id)
     .maybeSingle();
   if (!replyRow) return jsonError("reply_not_recorded", 400);
+
+  // Rate limit: at most one reply notification to the asker per ask per 10 min
+  // + global daily backstop. The reply is already saved; a blocked notification
+  // returns ok quietly.
+  if (!(await rateOk(userClient, `sikw_reply:${ask.id}`, 1, 600))
+      || !(await dailyOk(userClient, "email_action", EMAIL_DAILY_BACKSTOP))) {
+    return jsonOk({ channel: "email", rate_limited: true });
+  }
 
   const { data: replierProfile } = await admin
     .from("profiles")
@@ -943,6 +1003,7 @@ async function handlePublicResponseRequest(
   body: Record<string, unknown>,
   user: { id: string },
   admin: AdminClient,
+  userClient: AdminClient,
   jsonOk: (b: Record<string, unknown>) => Response,
   jsonError: (code: string, status: number, message?: string) => Response,
 ): Promise<Response> {
@@ -958,6 +1019,13 @@ async function handlePublicResponseRequest(
 
   // Only the requester themselves can trigger this email.
   if (pending.requester_id !== user.id) return jsonError("forbidden", 403);
+
+  // Rate limit: one response-request email per recipient (owner) per 24h
+  // + global daily backstop. A blocked re-request returns ok quietly.
+  if (!(await rateOk(userClient, `pub_resp:${pending.owner_id}`, 1, 86400))
+      || !(await dailyOk(userClient, "email_action", EMAIL_DAILY_BACKSTOP))) {
+    return jsonOk({ channel: "email", rate_limited: true });
+  }
 
   const { data: ownerUser, error: oErr } = await admin.auth.admin.getUserById(pending.owner_id);
   if (oErr || !ownerUser?.user?.email) {

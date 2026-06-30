@@ -39,6 +39,17 @@ function corsHeaders(origin: string | null): Record<string, string> {
 const RATE_LIMIT_PER_DAY = 10;
 const FROM_ADDRESS       = "Sidebar <invites@sidebar.watch>";
 
+// Escape user-controlled values before interpolating into email HTML, so a
+// crafted inviter name / room name (or an edited show title) can't inject
+// markup into the email body. (Matches the helper in send-message.)
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 serve(async (req) => {
   const origin = req.headers.get("origin");
   const cors = corsHeaders(origin);
@@ -192,15 +203,15 @@ serve(async (req) => {
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    📺 <strong>${sender}</strong> has started a friend room on Sidebar to discuss <strong><em>${showLabel}</em></strong>. They want you to join!
+    📺 <strong>${escapeHtml(sender)}</strong> has started a friend room on Sidebar to discuss <strong><em>${escapeHtml(showLabel)}</em></strong>. They want you to join!
   </h1>
   <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    Sidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress. Your friend room is called &ldquo;${groupName}.&rdquo;
+    Sidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress. Your friend room is called &ldquo;${escapeHtml(groupName)}.&rdquo;
   </p>
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;font-style:italic">
     talk. together. whenever.
   </p>
-  <a href="${inviteUrl}"
+  <a href="${escapeHtml(inviteUrl)}"
      style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;
             padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
     Accept invitation →
