@@ -23,7 +23,7 @@ import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "rea
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, UsersRound, Pencil, ArrowUp, LogOut, ArrowLeft, MessageCircle } from "lucide-react";
+import { X, Settings, Pencil, ArrowUp, LogOut, ArrowLeft, MessageCircle } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchShows,
@@ -438,7 +438,7 @@ export default function DashboardPage() {
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
     type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean };
-    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; tier: number; lastActivityAt: number | null; markWriter: boolean };
+    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; tier: number; lastActivityAt: number | null };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
@@ -457,7 +457,7 @@ export default function DashboardPage() {
       const tier = writerCount >= 2 ? 0 : writerCount === 1 ? 1 : watcherCount >= 2 ? 2 : watcherCount >= 1 ? 3 : 4;
       // Exactly one writer → mark that writer's avatar (green fill + pencil).
       // (If the lone writer is you, no avatar exists to mark — nothing shows.)
-      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, selfWrote: !!self?.wrote, tier, lastActivityAt: gs.lastActivityAt, markWriter: writerCount === 1 };
+      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, selfWrote: !!self?.wrote, tier, lastActivityAt: gs.lastActivityAt };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
     const byName = (a: Row, b: Row) => a.name.localeCompare(b.name);
@@ -985,7 +985,7 @@ export default function DashboardPage() {
                     <div {...(r.selfProg || r.selfWrote ? watchingTipProps(r) : {})}>
                       <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                     </div>
-                    <OptInAvatars members={r.opted} markWriter={r.markWriter} withTooltip onTip={setTip} />
+                    <OptInAvatars members={r.opted} withTooltip onTip={setTip} />
                   </div>
                 ))}
               </div>
@@ -1015,7 +1015,7 @@ export default function DashboardPage() {
                   <div {...interestedTipProps(r.opted, r.name, r.selfOpted, r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
                     <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
-                  <OptInAvatars members={r.opted} markWriter={r.markWriter} withTooltip={false} onTip={setTip} />
+                  <OptInAvatars members={r.opted} withTooltip={false} onTip={setTip} />
                 </div>
               ))}
             </div>
@@ -1535,25 +1535,27 @@ function YesNoToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
 
 // ── Group pill (§7) ──────────────────────────────────────────────────────────
 function GroupPill({ pill, name, onClick }: { pill: PillData; name: string; onClick: () => void }) {
+  // Shows the viewer themselves is watching get a green fill + green outline,
+  // regardless of the group's writer/watcher fill tier.
+  const isSelfWatching = pill.selfWatching;
   const isGreen = pill.fill === "green";
   const isCream = pill.fill === "cream";
-  // In sky group-context: green = solid green/white; outlined = white outline +
-  // white text; cream = cream fill + green text.
+  // In sky group-context: self-watching = green fill + green outline; group
+  // green = solid green/white; outlined = white outline + white text; cream =
+  // cream fill + green text.
   const base: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 10, padding: "12px 18px",
     borderRadius: 65, fontFamily: '"Inter", sans-serif', fontWeight: 700,
     fontSize: 14, letterSpacing: -1, width: "100%", boxSizing: "border-box",
-    background: isGreen ? C.green : isCream ? C.cream : "transparent",
-    border: isCream || isGreen ? "2px solid transparent" : "2px solid #fff",
-    color: isGreen ? "#fff" : isCream ? C.green : "#fff",
+    background: isSelfWatching || isGreen ? C.green : isCream ? C.cream : "transparent",
+    border: isSelfWatching ? `2px solid ${C.green}` : (isCream || isGreen ? "2px solid transparent" : "2px solid #fff"),
+    color: isSelfWatching || isGreen ? "#fff" : isCream ? C.green : "#fff",
     cursor: "pointer", textAlign: "left",
   };
   return (
     <button style={base} onClick={onClick}>
-      {/* Left badge — only the 2+ writers people icon. The count number and the
-          single-writer pencil were dropped: opted-in avatars convey who's in,
-          and the lone-writer case is shown on that writer's avatar instead. */}
-      {pill.people && <span style={leftIcon}><UsersRound size={16} /></span>}
+      {/* No left badge: opted-in avatars convey who's in, and a writer is shown
+          by the pen badge on that writer's own avatar (every writer, any count). */}
       <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
       <PillRightSide right={pill.right} />
     </button>
@@ -1634,13 +1636,10 @@ function AvatarPile({ avatars }: { avatars: React.ReactNode[] }) {
 /** Opt-in member avatars overlapping a group-pill's bottom edge (the friends
  *  who have this show in the group's pool). Decorative — pointer-events off so
  *  they never block a pill click. */
-function OptInAvatars({ members, withTooltip, onTip, markWriter = false }: {
+function OptInAvatars({ members, withTooltip, onTip }: {
   members: { username: string; s: number | null; e: number | null; wrote?: boolean }[];
   withTooltip: boolean;
   onTip: (t: { text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number } | null) => void;
-  // When exactly one member has written, mark that member's avatar (green
-  // fill + pencil) to show a single person wrote in the show room.
-  markWriter?: boolean;
 }) {
   if (!members.length) return null;
   return (
@@ -1648,7 +1647,9 @@ function OptInAvatars({ members, withTooltip, onTip, markWriter = false }: {
       {members.map((m, i) => {
         const watched = (m.s ?? 0) > 0 || (m.e ?? 0) > 0;
         const tip = watched ? `${m.username} has watched: S${m.s} E${m.e}` : `${m.username} hasn't started yet`;
-        const isWriter = markWriter && !!m.wrote;
+        // Every member who has written gets the pen badge on their own avatar
+        // (no longer gated to the lone-writer case).
+        const isWriter = !!m.wrote;
         // The lone writer's avatar (green + pencil) also notes they've begun writing.
         const sub = isWriter ? "They have started writing in here." : undefined;
         return (
@@ -1837,8 +1838,8 @@ const optInAvatar: React.CSSProperties = {
 };
 // Pencil badge on the lone-writer's avatar (top-right corner).
 const writerPencilBadge: React.CSSProperties = {
-  position: "absolute", top: -7, right: -7, width: 15, height: 15, borderRadius: "50%",
-  background: C.green, display: "inline-flex",
+  position: "absolute", top: -5, right: -5, width: 15, height: 15, borderRadius: "50%",
+  background: C.green, border: `2px solid ${C.sky}`, display: "inline-flex",
   alignItems: "center", justifyContent: "center",
 };
 // New-activity dots (blue, 16px), slightly overlapping their surface.
@@ -1900,7 +1901,6 @@ const countCircle: React.CSSProperties = {
   minWidth: 22, height: 22, padding: "0 6px", borderRadius: 11, background: C.green, color: "#fff",
   fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center",
 };
-const leftIcon: React.CSSProperties = { display: "inline-flex", alignItems: "center", color: "#fff" };
 const chatPanel: React.CSSProperties = {
   position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px, 44vw)", background: C.green,
   display: "flex", flexDirection: "column", zIndex: 70, boxShadow: "-12px 0 30px rgba(0,0,0,0.18)",

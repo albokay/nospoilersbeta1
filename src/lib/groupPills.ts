@@ -33,6 +33,7 @@ export type PillData = {
   writerCount: number;
   pencil: boolean;        // exactly 1 writer
   people: boolean;        // 2+ writers
+  selfWatching: boolean;  // the viewer themselves has started this show (progress past s0 e0)
   right: PillRight;
   shelf: "watching" | "notStarted";
   roomId: string | null;
@@ -115,5 +116,5 @@ export function computePill(
     }
   }
 
-  return { showId: show.showId, count, showCount, fill, writerCount, pencil, people, right, shelf, roomId: show.roomId, inRoom: show.inRoom };
+  return { showId: show.showId, count, showCount, fill, writerCount, pencil, people, selfWatching, right, shelf, roomId: show.roomId, inRoom: show.inRoom };
 }
