@@ -1568,15 +1568,16 @@ function PillRightSide({ right }: { right: PillData["right"] }) {
     return <span style={{ fontWeight: 500, opacity: 0.85, fontSize: 13 }}>s{right.s} e{right.e}</span>;
   }
   const up = right.dir === "up";
-  // Lucide triangle (clean rounded strokes): green/red fill for direction with
-  // a cream outline; the count is cream. No text outlines.
+  // Lucide triangle, solid fill, no outline: cream for ahead, red for behind
+  // (rotated). The count is cream.
+  const triColor = up ? C.cream : C.red;
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
       <Triangle
         size={14}
-        color={C.cream}
-        fill={up ? C.green : C.red}
-        strokeWidth={2}
+        color={triColor}
+        fill={triColor}
+        strokeWidth={0}
         style={up ? undefined : { transform: "rotate(180deg)" }}
       />
       <span style={{ color: C.cream }}>{right.n}</span>
