@@ -133,6 +133,10 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
               : `Create your account to watch shows with @${info.inviterName} on Sidebar.`}
             onSuccess={onAuthSuccess}
             onClose={onSignupClose}
+            // When "Confirm email" is enabled, a brand-new invitee's confirmation
+            // link returns them HERE (signed in) so they land on the join confirm
+            // and finish joining the group — not on a bare dashboard.
+            signupRedirectTo={typeof window !== "undefined" ? `${window.location.origin}/group-invite/${token}` : undefined}
           />
         )}
       </>

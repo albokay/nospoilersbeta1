@@ -44,21 +44,30 @@ export default function MobileAuth() {
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // After a sign-up when "Confirm email" is enabled: account exists but has no
+  // session until the emailed link is clicked. Show a confirm screen instead
+  // of navigating into the app.
+  const [confirmSent, setConfirmSent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    let err: string | null = null;
     if (mode === "signup") {
       if (!username.trim()) { setError("Please choose a username."); setLoading(false); return; }
       if (username.trim().length < 3) { setError("Username must be at least 3 characters."); setLoading(false); return; }
-      err = await signUp(email.trim(), password, username.trim());
-    } else {
-      err = await signIn(email.trim(), password);
+      // Confirmation link returns the user back into /m (the validated returnTo).
+      const redirect = typeof window !== "undefined" ? `${window.location.origin}${returnTo}` : undefined;
+      const res = await signUp(email.trim(), password, username.trim(), redirect ? { emailRedirectTo: redirect } : undefined);
+      setLoading(false);
+      if (res.error) { setError(res.error); return; }
+      if (res.needsConfirmation) { setConfirmSent(true); return; }
+      navigate(returnTo, { replace: true });
+      return;
     }
 
+    const err = await signIn(email.trim(), password);
     setLoading(false);
     if (err) { setError(err); return; }
     navigate(returnTo, { replace: true });
@@ -77,6 +86,34 @@ export default function MobileAuth() {
     boxSizing: "border-box",
     WebkitAppearance: "none",
   };
+
+  // ── CONFIRM-EMAIL SENT — shown after sign-up when "Confirm email" is on. ──
+  if (confirmSent) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "var(--dos-bg, #7abd8e)",
+        color: "#fff",
+        padding: "32px 20px",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        textAlign: "center",
+      }}>
+        <div style={{ width: "100%", maxWidth: 420 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: "0 0 14px" }}>Check your email</h1>
+          <p style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.95, margin: "0 0 12px" }}>
+            We sent a confirmation link to <strong>{email.trim()}</strong>. Tap it to finish setting up your account — it'll sign you in automatically.
+          </p>
+          <p style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.8, margin: 0 }}>
+            It can take a minute to arrive. If you don't see it, check your spam folder.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{

@@ -4,11 +4,17 @@ import type { User } from "@supabase/supabase-js";
 
 type Profile = { id: string; username: string; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null };
 
+// Result of a sign-up attempt. `needsConfirmation` is true when Supabase
+// "Confirm email" is enabled and the new account has no session yet (the user
+// must click the emailed link first). The caller shows a "check your email"
+// state instead of proceeding into the app.
+export type SignUpResult = { error: string | null; needsConfirmation: boolean };
+
 type AuthCtx = {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, username: string) => Promise<string | null>;
+  signUp: (email: string, password: string, username: string, opts?: { emailRedirectTo?: string }) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   // Re-reads the current user's profile row into context. Called after the
@@ -106,11 +112,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function signUp(email: string, password: string, username: string): Promise<string | null> {
+  async function signUp(
+    email: string,
+    password: string,
+    username: string,
+    opts?: { emailRedirectTo?: string },
+  ): Promise<SignUpResult> {
     // Validate username length
     const trimmed = username.trim();
-    if (trimmed.length < 3) return "Username must be at least 3 characters";
-    if (trimmed.length > 30) return "Username must be 30 characters or less";
+    if (trimmed.length < 3) return { error: "Username must be at least 3 characters", needsConfirmation: false };
+    if (trimmed.length > 30) return { error: "Username must be 30 characters or less", needsConfirmation: false };
 
     // Check username is not already taken
     const { data: existing } = await supabase
@@ -118,12 +129,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .select("id")
       .eq("username", username)
       .single();
-    if (existing) return "An account with that email or username already exists.";
+    if (existing) return { error: "An account with that email or username already exists.", needsConfirmation: false };
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { username } },
+      options: {
+        data: { username },
+        // Where the confirmation link lands the user (only used when "Confirm
+        // email" is enabled). Must be in the Supabase redirect allowlist.
+        ...(opts?.emailRedirectTo ? { emailRedirectTo: opts.emailRedirectTo } : {}),
+      },
     });
     if (error) {
       // Return a generic message to prevent email enumeration
@@ -133,16 +149,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error.message.toLowerCase().includes("registered") ||
         error.message.toLowerCase().includes("duplicate")
       ) {
-        return "An account with that email or username already exists.";
+        return { error: "An account with that email or username already exists.", needsConfirmation: false };
       }
-      return error.message;
+      return { error: error.message, needsConfirmation: false };
     }
-    return null;
+    // No session => "Confirm email" is enabled and the user must click the
+    // emailed link before they're in. Supabase also returns a session-less
+    // user for an already-registered email (enumeration-safe); we surface the
+    // SAME "check your email" state in both cases so the two can't be told
+    // apart. When confirmation is OFF, a session is present and we proceed as
+    // before — so this path is dormant until the dashboard setting is on.
+    return { error: null, needsConfirmation: !data.session };
   }
 
   async function signIn(email: string, password: string): Promise<string | null> {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return error ? error.message : null;
+    if (!error) return null;
+    // Friendlier copy for the not-yet-confirmed case (only reachable once
+    // "Confirm email" is enabled).
+    if (error.message.toLowerCase().includes("not confirmed") || error.message.toLowerCase().includes("email not confirmed")) {
+      return "Please confirm your email first — check your inbox for the link.";
+    }
+    return error.message;
   }
 
   async function signOut() {

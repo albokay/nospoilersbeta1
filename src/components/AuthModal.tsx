@@ -7,7 +7,7 @@ import { supabase } from "../lib/supabaseClient";
 
 type Mode = "signin" | "signup" | "recovery";
 
-export default function AuthModal({ onClose, onSuccess, hint, initialMode = "signin", initialEmail = "", lockEmail = false }: { onClose: () => void; onSuccess?: (mode: Mode) => void; hint?: string; initialMode?: Mode; initialEmail?: string; lockEmail?: boolean }) {
+export default function AuthModal({ onClose, onSuccess, hint, initialMode = "signin", initialEmail = "", lockEmail = false, signupRedirectTo }: { onClose: () => void; onSuccess?: (mode: Mode) => void; hint?: string; initialMode?: Mode; initialEmail?: string; lockEmail?: boolean; signupRedirectTo?: string }) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState(initialEmail);
@@ -15,6 +15,11 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Shown after a sign-up when "Confirm email" is enabled: the account exists
+  // but has no session until the emailed link is clicked. We stay on this
+  // screen (don't call onSuccess / onClose) so the flow doesn't proceed as if
+  // signed in.
+  const [confirmSent, setConfirmSent] = useState(false);
   // Recovery-specific: shows the "check your email" confirmation after a
   // successful resetPasswordForEmail call. Stays in recovery mode so the
   // user can re-send if needed without re-entering their email.
@@ -31,12 +36,21 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
     setError(null);
     setLoading(true);
 
-    let err: string | null = null;
     if (mode === "signup") {
       if (!username.trim()) { setError("Please choose a username."); setLoading(false); return; }
       if (username.trim().length < 3) { setError("Username must be at least 3 characters."); setLoading(false); return; }
-      err = await signUp(email.trim(), password, username.trim());
-    } else if (mode === "signin") {
+      const redirect = signupRedirectTo ?? (typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined);
+      const res = await signUp(email.trim(), password, username.trim(), redirect ? { emailRedirectTo: redirect } : undefined);
+      setLoading(false);
+      if (res.error) { setError(res.error); return; }
+      if (res.needsConfirmation) { setConfirmSent(true); return; }
+      onSuccess?.("signup");
+      onClose();
+      return;
+    }
+
+    let err: string | null = null;
+    if (mode === "signin") {
       err = await signIn(email.trim(), password);
     } else {
       // recovery: trigger Supabase's resetPasswordForEmail with an explicit
@@ -64,6 +78,24 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
     if (err) { setError(err); return; }
     onSuccess?.(mode);
     onClose();
+  }
+
+  // ── CONFIRM-EMAIL SENT — shown after sign-up when "Confirm email" is on.
+  if (confirmSent) {
+    return (
+      <Modal onClose={onClose} topContent={hint ? hint : undefined}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+          <h3 className="title" style={{ margin: 0, fontSize: 20 }}>Check your email</h3>
+          <button className="close-x" onClick={onClose}><X size={14} /></button>
+        </div>
+        <p style={{ fontSize: 14, lineHeight: 1.5, margin: "0 0 12px" }}>
+          We sent a confirmation link to <strong>{email.trim()}</strong>. Click it to finish setting up your account — it'll sign you in automatically.
+        </p>
+        <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+          It can take a minute to arrive. If you don't see it, check your spam folder.
+        </p>
+      </Modal>
+    );
   }
 
   // ── RECOVERY MODE — separate render path so we don't have to thread
