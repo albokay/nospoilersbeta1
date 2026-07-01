@@ -104,6 +104,11 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   const names = others.length
     ? others.map((n) => `@${n}`).reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
     : `@${info?.inviterName ?? "someone"}`;
+  // How the inviter is named to the invitee: "Johnny (@handle)" when a display
+  // name was given, else just "@handle".
+  const inviterLabel = info?.inviterDisplayName
+    ? `${info.inviterDisplayName} (@${info.inviterName})`
+    : `@${info?.inviterName ?? "someone"}`;
 
   // Account just created — brief "setting up" screen while routing to /dashboard.
   if (phase === "entering") {
@@ -129,8 +134,8 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
             initialEmail={info.inviteeEmail ?? ""}
             lockEmail={!!info.inviteeEmail}
             hint={info.inviteeHasAccount
-              ? `Sign in to watch shows with @${info.inviterName} on Sidebar.`
-              : `Create your account to watch shows with @${info.inviterName} on Sidebar.`}
+              ? `Sign in to watch shows with ${inviterLabel} on Sidebar.`
+              : `Create your account to watch shows with ${inviterLabel} on Sidebar.`}
             onSuccess={onAuthSuccess}
             onClose={onSignupClose}
             // When "Confirm email" is enabled, a brand-new invitee's confirmation

@@ -94,8 +94,10 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => null);
     if (!body) return jsonError("invalid_body", 400);
-    const { token, appUrl } = body as Record<string, string>;
+    const { token, appUrl, displayName } = body as Record<string, string>;
     if (!token) return jsonError("missing_fields", 400);
+    // Optional inviter-provided display name ("Johnny"). Trimmed + capped.
+    const customName = (displayName || "").trim().slice(0, 40);
 
     // ── Look up the invitation ───────────────────────────────────────────────
     const { data: inv, error: invErr } = await admin
@@ -114,6 +116,12 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
     if (!membership) return jsonError("not_member", 403);
+
+    // Persist the inviter's display name on the invite so the welcome screen
+    // (get_people_group_invitation) can show it. Only overwrite when provided.
+    if (customName) {
+      await admin.from("people_group_invitations").update({ inviter_display_name: customName }).eq("token", token);
+    }
 
     // ── Rate limit ───────────────────────────────────────────────────────────
     // Cap re-sends of this specific invite (3 / 24h) + a global per-user daily
@@ -146,7 +154,11 @@ serve(async (req) => {
     const inviteUrl = `${baseUrl}/group-invite/${token}`;
     const email     = (inv.invitee_email as string).toLowerCase().trim();
     const groupBit  = groupLabel ? ` &ldquo;${escapeHtml(groupLabel)}&rdquo;` : "";
-    const subject   = `${inviterName} invited you to a watch group on Sidebar`;
+    // Subject shows the recognizable name + handle when provided; the body
+    // always uses the @handle alone.
+    const subject   = customName
+      ? `${customName} (@${inviterName}) invited you to a watch group on Sidebar`
+      : `@${inviterName} invited you to a watch group on Sidebar`;
 
     const html = `
 <!DOCTYPE html>
@@ -154,7 +166,7 @@ serve(async (req) => {
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    📺 <strong>${escapeHtml(inviterName)}</strong> wants to watch shows with you on Sidebar.
+    📺 <strong>@${escapeHtml(inviterName)}</strong> wants to watch shows with you on Sidebar.
   </h1>
   <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
     Sidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — everything is filtered by each person's watch progress. They've invited you to their watch group${groupBit}.
@@ -172,7 +184,7 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    const text = `${inviterName} wants to watch shows with you on Sidebar.\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — filtered by each person's watch progress. They've invited you to their watch group${groupLabel ? ` "${groupLabel}"` : ""}.\n\ntalk. together. whenever.\n\nJoin here: ${inviteUrl}\n\nThis link expires in 48 hours and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
+    const text = `@${inviterName} wants to watch shows with you on Sidebar.\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — filtered by each person's watch progress. They've invited you to their watch group${groupLabel ? ` "${groupLabel}"` : ""}.\n\ntalk. together. whenever.\n\nJoin here: ${inviteUrl}\n\nThis link expires in 48 hours and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",

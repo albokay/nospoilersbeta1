@@ -2687,10 +2687,10 @@ export async function createPeopleGroupInvite(groupId: string, email: string): P
 
 /** Email an existing people-group invite via the send-group-invite edge
  *  function. Best-effort — never throws; the in-app link is the fallback. */
-export async function sendGroupInviteEmail(token: string): Promise<void> {
+export async function sendGroupInviteEmail(token: string, displayName?: string): Promise<void> {
   try {
     await supabase.functions.invoke("send-group-invite", {
-      body: { token, appUrl: window.location.origin },
+      body: { token, appUrl: window.location.origin, ...(displayName ? { displayName } : {}) },
     });
   } catch (e) {
     console.warn("[send-group-invite] email send failed (link still works)", e);
@@ -2700,6 +2700,9 @@ export async function sendGroupInviteEmail(token: string): Promise<void> {
 export type GroupInviteInfo = {
   groupId: string;
   inviterName: string;
+  /** Optional inviter-provided display name ("Johnny"); shown as
+   *  "Johnny (@username)" on the welcome screen. Undefined when not given. */
+  inviterDisplayName?: string;
   memberNames: string[];
   /** Inviter's pool, for the pre-account welcome (CP5b §5). Names only.
    *  Tolerant of older servers that don't return them yet (→ []). */
@@ -2728,6 +2731,7 @@ export async function getPeopleGroupInvite(
     info: {
       groupId: data.group_id,
       inviterName: data.inviter_name ?? "someone",
+      inviterDisplayName: data.inviter_display_name ?? undefined,
       memberNames: data.member_names ?? [],
       inviterWatching: data.inviter_watching ?? [],
       inviterWants: data.inviter_wants ?? [],

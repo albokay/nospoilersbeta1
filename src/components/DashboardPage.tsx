@@ -161,6 +161,7 @@ export default function DashboardPage() {
   // Invite / create-group modal
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmails, setInviteEmails] = useState<string[]>([""]);
+  const [inviteFromName, setInviteFromName] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteLinks, setInviteLinks] = useState<{ email: string; link?: string; error?: string }[] | null>(null);
   // null = INVITE FRIENDS (form a NEW group); set = "connect more" to this group.
@@ -639,7 +640,7 @@ export default function DashboardPage() {
       for (const email of emails) {
         try {
           const token = await createPeopleGroupInvite(id, email);
-          sendGroupInviteEmail(token); // best-effort email; link below is the fallback
+          sendGroupInviteEmail(token, inviteFromName.trim() || undefined); // best-effort email; link below is the fallback
           links.push({ email, link: `${window.location.origin}/group-invite/${token}` });
         } catch (e: any) {
           links.push({ email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
@@ -1176,8 +1177,19 @@ export default function DashboardPage() {
                   onClick={() => setInviteEmails((prev) => [...prev, ""])}
                   style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.cream, color: C.midnight, fontSize: 20, cursor: "pointer", marginTop: 2 }}
                 >+</button>
-                <div style={{ textAlign: "right", marginTop: 16 }}>
-                  <button style={{ ...invitePill, opacity: inviteSending ? 0.6 : 1 }} disabled={inviteSending} onClick={sendInvites}>
+                {/* §16 Body font (Inter regular 13, normal letter-spacing); cream. */}
+                <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal", lineHeight: 1.5, color: C.cream, margin: "28px 0 12px" }}>
+                  Your friend(s) will get an email invite from your username. If you don&rsquo;t think they&rsquo;d recognize it, tell them who you are:
+                </p>
+                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                  <input
+                    value={inviteFromName}
+                    onChange={(e) => setInviteFromName(e.target.value)}
+                    placeholder="hi, it's…"
+                    maxLength={40}
+                    style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, flex: 1, marginBottom: 0 }}
+                  />
+                  <button style={{ ...invitePill, opacity: inviteSending ? 0.6 : 1, flexShrink: 0 }} disabled={inviteSending} onClick={sendInvites}>
                     {inviteSending ? "creating…" : "send invite"}
                   </button>
                 </div>
