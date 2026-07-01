@@ -1148,7 +1148,11 @@ export async function adminDeleteShow(showId: string): Promise<void> {
 }
 
 export async function adminToggleHidden(showId: string, isHidden: boolean): Promise<void> {
-  const { error } = await supabase.from("shows").update({ is_hidden: isHidden }).eq("id", showId);
+  // is_hidden is no longer directly updatable by a regular client (the shows
+  // catalog is column-locked to episode-refresh fields — see migration
+  // 20260630_lock_shows_catalog_columns.sql). Goes through an admin-gated
+  // SECURITY DEFINER RPC instead.
+  const { error } = await supabase.rpc("admin_set_show_hidden", { p_show_id: showId, p_hidden: isHidden });
   if (error) throw error;
   invalidateShowsCache();
 }
