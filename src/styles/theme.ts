@@ -3,9 +3,9 @@ export function injectDOSStyles() {
   if (document.getElementById(id)) return;
   const css = `
 :root{
-  --dos-bg:#7abd8e; --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
+  --dos-bg:var(--role-room-frame-private,#7abd8e); --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
-  --dos-accent:#FFFFFF; --danger:#f45028; --green:#7abd8e; --dos-user:#355eb8; --dos-border:#ffffff;
+  --dos-accent:#FFFFFF; --danger:var(--canon-red,#f45028); --green:var(--canon-green,#7abd8e); --dos-user:var(--canon-blue,#355eb8); --dos-border:#ffffff;
   /* Toggle "off" fill (de-selected segments) and "on" text (selected
      segments). In default/public both equal --dos-border (white) and
      --dos-fg (white) respectively, so no special handling is needed there.
@@ -15,9 +15,9 @@ export function injectDOSStyles() {
   --toggle-on-text:#ffffff;
   --icon-color:#fff;
   /* canonical accent blue */
-  --blue-light:#adc8d7;
+  --blue-light:var(--canon-sky,#adc8d7);
   /* progress dropdown (overridden to green in group context) */
-  --progress-bg:#adc8d7; --progress-fg:#355eb8;
+  --progress-bg:var(--canon-sky,#adc8d7); --progress-fg:var(--canon-blue,#355eb8);
   /* type scale */
   --t1:22px; --t2:17px; --t3:15px; --t4:13px;
   /* Top-header spacer height — used by header.site and .stickybar.
@@ -39,21 +39,21 @@ export function injectDOSStyles() {
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
-  --dos-bg:#adc8d7; --dos-fg:#1a3a4a; --dos-cyan:#1a3a4a;
-  --dos-gray:rgba(26,58,74,0.65); --dos-light:#1a3a4a;
-  --dos-accent:#1a3a4a; --dos-border:rgba(26,58,74,0.3);
+  --dos-bg:var(--role-room-frame-friend,#adc8d7); --dos-fg:var(--canon-midnight,#1a3a4a); --dos-cyan:var(--canon-midnight,#1a3a4a);
+  --dos-gray:rgba(26,58,74,0.65); --dos-light:var(--canon-midnight,#1a3a4a);
+  --dos-accent:var(--canon-midnight,#1a3a4a); --dos-border:rgba(26,58,74,0.3);
   /* Friend-room only: toggles use outline color for both de-selected fill
      and selected text — yields a two-color toggle (transparent + outline). */
   --toggle-off-fill:rgba(26,58,74,0.3);
   --toggle-on-text:rgba(26,58,74,0.3);
   --dos-blue:rgba(26,58,74,0.08);
   --icon-color:#fff;
-  --progress-bg:#7abd8e; --progress-fg:#fff;
-  background: linear-gradient(to bottom,#c8dde8 0px,#adc8d7 180px) fixed,#adc8d7;
+  --progress-bg:var(--canon-green,#7abd8e); --progress-fg:#fff;
+  background: linear-gradient(to bottom,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,#adc8d7) 180px) fixed,var(--role-room-frame-friend,#adc8d7);
   background-attachment:fixed;
 }
 body.group-context.has-header{
-  background: linear-gradient(to top,#c8dde8 0px,#adc8d7 250px) fixed,#adc8d7;
+  background: linear-gradient(to top,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,#adc8d7) 250px) fixed,var(--role-room-frame-friend,#adc8d7);
   background-attachment:fixed;
 }
 body.group-context header.site{ background:rgba(173,200,215,0.98); }
@@ -75,16 +75,16 @@ body.group-context .btn:hover{ border-color:#fff !important; }
 
 /* ── Public room context — golden-yellow theme ─────────────────────────────── */
 body.public-context{
-  --dos-bg:#dea838; --dos-fg:#FFFFFF; --dos-cyan:#FFFFFF;
+  --dos-bg:var(--role-room-frame-public,#dea838); --dos-fg:#FFFFFF; --dos-cyan:#FFFFFF;
   --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
   --dos-accent:#FFFFFF; --dos-border:#ffffff;
   --dos-blue:rgba(0,0,0,0.14);
-  --progress-bg:#7abd8e; --progress-fg:#fff;
-  background: linear-gradient(to bottom,#f0cc60 0px,#dea838 180px) fixed,#dea838;
+  --progress-bg:var(--canon-green,#7abd8e); --progress-fg:#fff;
+  background: linear-gradient(to bottom,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,#dea838) 180px) fixed,var(--role-room-frame-public,#dea838);
   background-attachment:fixed;
 }
 body.public-context.has-header{
-  background: linear-gradient(to top,#f0cc60 0px,#dea838 250px) fixed,#dea838;
+  background: linear-gradient(to top,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,#dea838) 250px) fixed,var(--role-room-frame-public,#dea838);
   background-attachment:fixed;
 }
 body.public-context header.site{ background:rgba(222,168,56,0.98); }
@@ -214,7 +214,7 @@ body.public-context .expand-chip{ color:#7abd8e !important; }
 html,body,#root{ height:100%; }
 body{
   margin:0;
-  background: linear-gradient(to bottom, #c8e4b0 0px, var(--dos-bg) 180px) fixed, var(--dos-bg);
+  background: linear-gradient(to bottom, var(--frame-top-private,#c8e4b0) 0px, var(--dos-bg) 180px) fixed, var(--dos-bg);
   background-attachment: fixed;
   color:var(--dos-fg);
   font-size:var(--t3);
@@ -228,7 +228,7 @@ body.homepage{
   background: var(--dos-bg);
 }
 body.has-header{
-  background: linear-gradient(to top, #c8e4b0 0px, var(--dos-bg) 250px) fixed, var(--dos-bg);
+  background: linear-gradient(to top, var(--frame-top-private,#c8e4b0) 0px, var(--dos-bg) 250px) fixed, var(--dos-bg);
   background-attachment: fixed;
 }
 
