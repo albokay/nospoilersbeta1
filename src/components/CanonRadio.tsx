@@ -1,4 +1,5 @@
 import React from "react";
+import { CANON } from "../styles/canon";
 
 // Canonical Sidebar radio: solid white circle with a colored inner dot
 // when selected. Mirrors the established pattern from SearchShows.tsx
@@ -24,8 +25,8 @@ interface Props {
 
 export default function CanonRadio({
   checked,
-  color = "#7abd8e",
-  bgColor = "#FEF8EA",
+  color = CANON.green,
+  bgColor = CANON.cream,
   size = 14,
   dotSize = 7,
   "aria-label": ariaLabel,

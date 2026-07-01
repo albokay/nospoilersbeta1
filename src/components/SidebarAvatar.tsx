@@ -1,4 +1,5 @@
 import React from "react";
+import { CANON } from "../styles/canon";
 import Avatar from "boring-avatars";
 
 /**
@@ -23,11 +24,11 @@ import Avatar from "boring-avatars";
  * theme.ts, update this array in the same commit.
  */
 const CANON_PALETTE = [
-  "#dea838", // canon yellow  (theme.ts:74 — public-context --dos-bg)
-  "#7abd8e", // canon green   (theme.ts:8 — --green)
-  "#355eb8", // canon dark blue (theme.ts:8 — --dos-user)
-  "#adc8d7", // canon light blue (theme.ts:18 — --blue-light)
-  "#f45028", // canon red     (theme.ts:8 — --danger)
+  CANON.yellow, // canon yellow  (theme.ts:74 — public-context --dos-bg)
+  CANON.green, // canon green   (theme.ts:8 — --green)
+  CANON.blue, // canon dark blue (theme.ts:8 — --dos-user)
+  CANON.sky, // canon light blue (theme.ts:18 — --blue-light)
+  CANON.red, // canon red     (theme.ts:8 — --danger)
 ];
 
 type SidebarAvatarProps = {

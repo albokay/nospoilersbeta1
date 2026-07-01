@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { CANON } from "../styles/canon";
 import { X, ChevronDown } from "lucide-react";
 import Modal from "./Modal";
 import { buildProgressOptions, isZeroProgress } from "../lib/utils";
@@ -66,7 +67,7 @@ export default function OneSelectProgress({
   // no green pill styling). Matches the other in-modal EpisodeSelectInline
   // pickers so modals have a consistent dropdown flavor.
   plain?: boolean;
-  // Override the default pill bg color (#7abd8e canon-green). Used by
+  // Override the default pill bg color (var(--canon-green,#7abd8e) canon-green). Used by
   // ProfilePage's filter-as-destination theming pass: when the diary
   // surface flips per filter, the picker bg should track it so the
   // picker reads as a ghost on the new surface (canon-light-blue on
@@ -78,7 +79,7 @@ export default function OneSelectProgress({
   // return to it. Off for every live caller (zero stays monotonic in real rooms).
   forceZeroOption?: boolean;
 }) {
-  const effectivePillBg = pillBg ?? "#7abd8e";
+  const effectivePillBg = pillBg ?? CANON.green;
   const opts = buildProgressOptions(show);
   const curS = value?.s ?? 1;
   const curE = value?.e ?? 1;
@@ -160,7 +161,7 @@ export default function OneSelectProgress({
       <>
         <button
           className="btn progress-control"
-          style={{ whiteSpace: "nowrap", background: effectivePillBg, color: "#FEF8EA", border: "2px solid #FEF8EA", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
+          style={{ whiteSpace: "nowrap", background: effectivePillBg, color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
           onClick={() => setMobileOpen(true)}
         >
           {compactLabel} ▾
@@ -175,7 +176,7 @@ export default function OneSelectProgress({
               className="badge progress-control"
               value={selectedId}
               onChange={(e) => { onSelect(e); setMobileOpen(false); }}
-              style={{ background: effectivePillBg, color: "#FEF8EA", border: "2px solid #FEF8EA", width: "100%", height: 40 }}
+              style={{ background: effectivePillBg, color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)", width: "100%", height: 40 }}
               size={1}
             >
               {showZeroOption && (
@@ -194,7 +195,7 @@ export default function OneSelectProgress({
           </Modal>
         )}
         {requireConfirm && confirmOpen && (
-          <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: "#f45028" } : undefined}>
+          <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: CANON.red } : undefined}>
             <div style={{ marginBottom: 12 }}>
               <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
             </div>
@@ -227,7 +228,7 @@ export default function OneSelectProgress({
       onChange={onSelect}
       style={plain
         ? {
-            background: "#FEF8EA", color: "#000",
+            background: CANON.cream, color: "#000",
             border: "1px solid var(--dos-border)", borderRadius: 6,
             padding: "4px 8px", fontSize: 13, width: "100%",
           }
@@ -235,7 +236,7 @@ export default function OneSelectProgress({
         // reserves right-padding for the overlay ChevronDown rendered below.
         // Keeps the affordance consistent across browsers (Safari in
         // particular hides the native arrow at this font-size + padding).
-        : { background: effectivePillBg, color: "#FEF8EA", border: "2px solid #FEF8EA", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", paddingRight: 28 }
+        : { background: effectivePillBg, color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", paddingRight: 28 }
       }
     >
       {showZeroOption && (
@@ -264,14 +265,14 @@ export default function OneSelectProgress({
           {selectElement}
           <ChevronDown
             size={14}
-            color="#FEF8EA"
+            color={CANON.cream}
             style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
           />
         </span>
       )}
 
       {requireConfirm && confirmOpen && (
-        <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: "#f45028" } : undefined}>
+        <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: CANON.red } : undefined}>
           <div style={{ marginBottom: 12 }}>
             <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
           </div>
