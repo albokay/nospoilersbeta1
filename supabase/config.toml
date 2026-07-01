@@ -26,3 +26,9 @@ verify_jwt = false
 # instead gates on a shared secret (DIGEST_CRON_SECRET via x-digest-secret
 # header). See HANDOFF.md §"Edge function deploy notes".
 verify_jwt = false
+
+[functions.delete-account]
+# Self-serve account deletion. Same ES256 reason as the others — the function
+# verifies the JWT itself via admin.auth.getUser(jwt), then anonymizes via a
+# user-scoped RPC and scrubs auth.users via the Admin API.
+verify_jwt = false

@@ -23,8 +23,9 @@ import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "rea
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, Pencil, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle } from "lucide-react";
+import { X, Settings, Pencil, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, UserCog } from "lucide-react";
 import { useAuth } from "../lib/auth";
+import AccountModal from "./AccountModal";
 import {
   fetchShows,
   refreshStaleShows,
@@ -116,6 +117,7 @@ export default function DashboardPage() {
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [railGroups, setRailGroups] = useState<RailGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAccount, setShowAccount] = useState(false);
 
   // TSP onboarding demo (spec §9). Force-show for testing with ?tspdemo=1; the
   // real once-only post-signup auto-show is gated behind TSP_DEMO_ENABLED
@@ -929,6 +931,9 @@ export default function DashboardPage() {
           >
             {inGroup ? "Add more friends to this group?" : "Invite new friends?"}
           </button>
+          <button style={topCircleBtn(inGroup)} title="account" onClick={() => setShowAccount(true)}>
+            <UserCog size={18} color={inGroup ? C.midnight : "#fff"} />
+          </button>
           <button style={topCircleBtn(inGroup)} title="sign out" onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}>
             <LogOut size={18} color={inGroup ? C.midnight : "#fff"} />
           </button>
@@ -939,6 +944,8 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
 
       {/* Group clusters (top of the body) — replaces the old right rail */}
       <GroupClusters

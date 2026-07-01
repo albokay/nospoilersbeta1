@@ -3461,6 +3461,33 @@ export async function sendMessage(args: {
 }
 
 /**
+ * Self-serve account deletion (ANONYMIZE model). Invokes the delete-account
+ * edge function, which anonymizes the caller's data via anonymize_own_account()
+ * and scrubs their auth.users identity (email/password) so login is dead. On
+ * success the caller should be signed out. Surfaces the edge function's
+ * structured error message when present.
+ */
+export async function deleteAccount(): Promise<{ ok: boolean; message?: string }> {
+  const { data, error } = await supabase.functions.invoke("delete-account", { body: {} });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const body = await ctx.json();
+        if (body && typeof body === "object" && body.ok === false) {
+          return { ok: false, message: body.message || body.error };
+        }
+      } catch { /* fall through to generic */ }
+    }
+    return { ok: false, message: error.message };
+  }
+  if (data && typeof data === "object" && (data as { ok?: boolean }).ok === false) {
+    return { ok: false, message: (data as { message?: string; error?: string }).message || (data as { error?: string }).error };
+  }
+  return { ok: true };
+}
+
+/**
  * Recipient stamps an active ping as dismissed. Returns true if the call
  * dismissed the row, false otherwise (not yours / doesn't exist /
  * already dismissed — all return false uniformly, no leak).
