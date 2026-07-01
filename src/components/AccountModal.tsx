@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
+import { supabase } from "../lib/supabaseClient";
 import { deleteAccount } from "../lib/db";
 
 // Minimal account surface. Currently houses the self-serve "delete account"
@@ -12,8 +12,7 @@ import { deleteAccount } from "../lib/db";
 const C = { red: "#F45028", cream: "#FEF8EA", midnight: "#1A3A4A", greyblue: "#8DAABA" };
 
 export default function AccountModal({ onClose }: { onClose: () => void }) {
-  const { profile, signOut } = useAuth() as any;
-  const navigate = useNavigate();
+  const { profile } = useAuth() as any;
   const [phase, setPhase] = useState<"main" | "confirm">("main");
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,9 +29,14 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
       setError(res.message || "Something went wrong. Please try again.");
       return;
     }
-    // Success — clear the local session and leave the app.
-    try { await signOut?.(); } catch { /* ignore */ }
-    navigate("/");
+    // Success — the account is now scrubbed + banned server-side. Clear the
+    // local session (local scope: fast, no network call that could hang on the
+    // banned user) and HARD-reload to the homepage. A soft navigate would fire
+    // while the app still holds the user in memory and bounce back to
+    // /dashboard; a full reload re-initializes with no session -> narrative
+    // homepage, signalling the account is truly gone.
+    try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
+    window.location.replace("/");
   }
 
   return (

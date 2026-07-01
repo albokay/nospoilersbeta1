@@ -63,13 +63,10 @@ serve(async (req) => {
     if (authErr || !user) return jsonError("unauthorized", 401, authErr?.message);
 
     // ── 1. Anonymize public-schema data (atomic) ────────────────────────────
-    // User-scoped client so the SECURITY DEFINER function's auth.uid() = caller.
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: `Bearer ${jwt}` } }, auth: { autoRefreshToken: false, persistSession: false } },
-    );
-    const { error: rpcErr } = await userClient.rpc("anonymize_own_account");
+    // Called via the service-role admin client with the JWT-verified caller id.
+    // The function is SECURITY DEFINER + granted to service_role only, so this
+    // is the only path that can invoke it, and only for the verified caller.
+    const { error: rpcErr } = await admin.rpc("anonymize_own_account", { p_user_id: user.id });
     if (rpcErr) return jsonError("anonymize_failed", 500, rpcErr.message);
 
     // ── 2. Scrub the auth identity + disable login (Admin API) ──────────────

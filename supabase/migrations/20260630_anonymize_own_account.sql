@@ -19,23 +19,29 @@
 -- row avoids the large ON DELETE CASCADE blast radius (people_groups.created_by
 -- / friend_groups.created_by, etc.).
 --
--- SECURITY DEFINER + auth.uid(): must be called with the user's JWT (a
--- user-scoped client), never the service role. Idempotent — safe to re-run.
+-- CALLING MODEL: SECURITY DEFINER, takes an explicit p_user_id and is granted
+-- to service_role ONLY. It is invoked exclusively by the delete-account edge
+-- function, which verifies the caller's JWT (admin.auth.getUser) and passes
+-- that verified id. This avoids relying on JWT->auth.uid() propagation inside
+-- the edge runtime (which surfaced as "Auth session missing!"). Regular users
+-- cannot call it directly (no EXECUTE grant). Idempotent — safe to re-run.
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION public.anonymize_own_account()
+DROP FUNCTION IF EXISTS public.anonymize_own_account();
+
+CREATE OR REPLACE FUNCTION public.anonymize_own_account(p_user_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  _uid uuid := auth.uid();
+  _uid uuid := p_user_id;
   _tag text := '[deleted]';
   _private_ids text[];
 BEGIN
   IF _uid IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
+    RAISE EXCEPTION 'p_user_id required';
   END IF;
 
   -- ── 1. Hard-delete PRIVATE (owner-only) threads authored by the caller ────
@@ -104,6 +110,7 @@ BEGIN
 END;
 $$;
 
--- Callable only by an authenticated user, acting on themselves (auth.uid()).
-REVOKE ALL ON FUNCTION public.anonymize_own_account() FROM public, anon;
-GRANT EXECUTE ON FUNCTION public.anonymize_own_account() TO authenticated;
+-- Locked to service_role: only the delete-account edge function (which has
+-- already JWT-verified the caller) may invoke it, passing the verified id.
+REVOKE ALL ON FUNCTION public.anonymize_own_account(uuid) FROM public, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.anonymize_own_account(uuid) TO service_role;
