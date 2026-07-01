@@ -3,6 +3,7 @@ import LoadingDots from "./components/LoadingDots";
 import SidebarAvatar from "./components/SidebarAvatar";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
+import { injectCanonVars } from "./styles/canon";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView } from "./lib/utils";
 import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount, fetchAllFriendGroupsWithActivity, fetchUndismissedPingCountsByShow, markTabCreated } from "./lib/db";
@@ -115,7 +116,10 @@ function EpisodeSelect({ show, value, onChange }: { show: any; value: { s: numbe
 // <AppShell /> below, which mounts only when none of the special routes match.
 // See HANDOFF.md §6 item 19 for the bug class this refactor addresses.
 export default function App() {
-  useEffect(injectDOSStyles, []);
+  // Inject the canon color custom properties FIRST so theme.ts (and any inline
+  // styles) can consume them. injectCanonVars is idempotent and changes nothing
+  // visually on its own — nothing references the vars yet (see src/styles/canon.ts).
+  useEffect(() => { injectCanonVars(); injectDOSStyles(); }, []);
   const location = useLocation();
   const pathParts = location.pathname.split("/").filter(Boolean);
   // CP7 navigation cutover: the restructured world (dashboard / show rooms) is
