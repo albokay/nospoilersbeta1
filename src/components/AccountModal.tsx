@@ -4,12 +4,13 @@ import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import { deleteAccount } from "../lib/db";
+import { CANON } from "../styles/canon";
 
 // Minimal account surface. Currently houses the self-serve "delete account"
 // flow (ANONYMIZE model): personal info + private notes are erased, shared-room
 // posts are kept but shown as "[deleted]". Two-step, type-to-confirm guard
 // because the action is permanent and irreversible.
-const C = { red: "#F45028", cream: "#FEF8EA", midnight: "#1A3A4A", greyblue: "#8DAABA" };
+const C = { red: CANON.red, cream: CANON.cream, midnight: CANON.midnight, greyblue: CANON.greyblue };
 
 export default function AccountModal({ onClose }: { onClose: () => void }) {
   const { profile } = useAuth() as any;

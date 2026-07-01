@@ -22,7 +22,7 @@ const CREAM_BG = CANON.cream;
 const INK_SOFT = "#5a4d3a";
 const RULE = "rgba(43, 36, 24, 0.32)";
 const LORA = '"Lora", Georgia, serif';
-const C = { green: "#7abd8e", sky: "#adc8d7", cream: "#fef8ea", midnight: "#1a3a4a" };
+const C = { green: CANON.green, sky: CANON.sky, cream: CANON.cream, midnight: CANON.midnight };
 
 export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
   const { user, profile } = useAuth();

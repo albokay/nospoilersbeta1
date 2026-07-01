@@ -34,8 +34,9 @@ import SidebarLogo from "./SidebarLogo";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
 import SIKWSticky from "./SIKWSticky";
+import { CANON } from "../styles/canon";
 
-const C = { green: "#7ABD8E", sky: "#ADC8D7", blue: "#355EB8", yellow: "#DEA838", cream: "#FEF8EA", midnight: "#1A3A4A" };
+const C = { green: CANON.green, sky: CANON.sky, blue: CANON.blue, yellow: CANON.yellow, cream: CANON.cream, midnight: CANON.midnight };
 const LORA = '"Lora", Georgia, serif';
 const HEADER_H = 104;
 type Tab = "friend" | "private";

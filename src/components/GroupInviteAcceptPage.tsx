@@ -16,6 +16,7 @@ import { getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite
 import SidebarLogo from "./SidebarLogo";
 import AuthModal from "./AuthModal";
 import PublicDashboardPage from "./PublicDashboardPage";
+import { CANON } from "../styles/canon";
 
 // After an invite sign-up, route the new account to /dashboard (where the
 // guided tour auto-fires) instead of the old onboarding. App's post-login
@@ -23,7 +24,7 @@ import PublicDashboardPage from "./PublicDashboardPage";
 // the general sign-up path is untouched.
 const POST_SIGNUP_DEST_KEY = "ns_post_signup_dest";
 
-const C = { green: "#7ABD8E", blue: "#355EB8", yellow: "#DEA838", red: "#F45028", cream: "#FEF8EA", midnight: "#1A3A4A" };
+const C = { green: CANON.green, blue: CANON.blue, yellow: CANON.yellow, red: CANON.red, cream: CANON.cream, midnight: CANON.midnight };
 const LORA = '"Lora", Georgia, serif';
 
 type Status = "loading" | "ready" | "invalid" | "expired" | "already" | "wrong" | "joining" | "done" | "error";
