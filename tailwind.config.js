@@ -5,15 +5,10 @@ export default {
     './src/**/*.{ts,tsx}',
   ],
   theme: {
-    extend: {
-      colors: {
-        ink: '#1C1C1C',
-        mist: '#F5F0E8',
-        pop: '#5B9A72',
-        orange: '#E05535',
-        gold: '#F0B429',
-      }
-    },
+    // Ghost colors (ink/mist/pop/orange/gold) removed — they were defined here
+    // but never used as utility classes anywhere; the app's palette lives in
+    // src/styles/canon.ts. Nothing references the Tailwind color extension.
+    extend: {},
   },
   plugins: [],
 }
