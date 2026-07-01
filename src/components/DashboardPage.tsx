@@ -174,6 +174,7 @@ export default function DashboardPage() {
   // CP5b: pending invites (rail "*you're invited"), group options (gear).
   const [pendingInvites, setPendingInvites] = useState<PendingGroupInvite[]>([]);
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
   const [optionsFor, setOptionsFor] = useState<string | null>(null); // group id whose gear options are open
   const [optionsAnchor, setOptionsAnchor] = useState<{ x: number; y: number } | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -751,19 +752,32 @@ export default function DashboardPage() {
   // ── CP5b: invites + group options ────────────────────────────────────────
   async function refreshRailAndInvites() {
     if (!user) return;
-    setRailGroups(await loadRail(user.id));
+    // Both tolerant: a throw here must never prevent a caller (e.g. acceptInvite)
+    // from navigating after a successful action.
+    try { setRailGroups(await loadRail(user.id)); } catch { /* tolerant */ }
     try { setPendingInvites(await fetchMyPendingGroupInvites()); } catch { /* tolerant */ }
   }
 
   async function acceptInvite(inv: PendingGroupInvite) {
-    setInvitePrompt(null);
     const res = await acceptPeopleGroupInvite(inv.token);
     if (res.ok) {
-      await refreshRailAndInvites();
-      navigate(`/dashboard?g=${inv.groupId}`);
-    } else {
-      console.error("[dashboard] accept invite failed", res.error);
+      setInvitePrompt(null);
+      setAcceptError(null);
+      await refreshRailAndInvites();            // tolerant — never blocks the nav below
+      navigate(`/dashboard?g=${inv.groupId}`);  // enter the group you just joined
+      return;
     }
+    // Genuine failure — keep the modal open and say why (was a silent console log).
+    console.error("[dashboard] accept invite failed", res.error);
+    setAcceptError(
+      res.error === "wrong_recipient"
+        ? "This invite was sent to a different email than the one you're signed in with."
+        : res.error === "group_full"
+        ? "This group is full (8 members max)."
+        : res.error === "expired"
+        ? "This invitation has expired — ask your friend to invite you again."
+        : "Couldn't join. Ask your friend to invite you again.",
+    );
   }
 
   // "no" on the invite prompt declines it: deletes the invite so it leaves the
@@ -956,7 +970,7 @@ export default function DashboardPage() {
         pendingInvites={pendingInvites}
         clusterDotByGroup={clusterDotByGroup}
         onEnter={(id) => navigate(`/dashboard?g=${id}`)}
-        onInviteClick={(inv) => setInvitePrompt(inv)}
+        onInviteClick={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
         onGearClick={(id, rect) => { setOptionsFor(id); setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 }); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
         onTip={setTip}
       />
@@ -1338,14 +1352,17 @@ export default function DashboardPage() {
 
       {/* CP5b: "Join a group with @X?" from a pending invite (rail red cluster) */}
       {invitePrompt && (
-        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setInvitePrompt(null); }}>
+        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) { setInvitePrompt(null); setAcceptError(null); } }}>
           <div style={yellowCard}>
-            <button style={modalClose} onClick={() => setInvitePrompt(null)}><X size={16} color="#fff" /></button>
+            <button style={modalClose} onClick={() => { setInvitePrompt(null); setAcceptError(null); }}><X size={16} color="#fff" /></button>
             <div style={yellowTitle}>Join a group with {inviteNames(invitePrompt)}?</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
               <button style={startBtn} onClick={() => acceptInvite(invitePrompt)}>Yes</button>
               <button style={{ ...startBtn, background: "transparent", color: "#fff", border: "2px solid #fff" }} onClick={() => declineInvite(invitePrompt)}>no</button>
             </div>
+            {acceptError && (
+              <div style={{ marginTop: 14, textAlign: "center", color: "#fff", fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{acceptError}</div>
+            )}
           </div>
         </div>
       )}

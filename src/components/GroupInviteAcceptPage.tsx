@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
-import { getPeopleGroupInvite, acceptPeopleGroupInvite, type GroupInviteInfo } from "../lib/db";
+import { getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite, type GroupInviteInfo } from "../lib/db";
 import SidebarLogo from "./SidebarLogo";
 import AuthModal from "./AuthModal";
 import PublicDashboardPage from "./PublicDashboardPage";
@@ -98,6 +98,14 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
     setStatus("error");
   }
 
+  // "no" fully declines: deletes the invite (so it doesn't linger as a red
+  // pending cluster) and lands the invitee on a clean dashboard. To reconnect
+  // later they send their own invite. Tolerant — navigates regardless.
+  async function declineAndLeave() {
+    try { await declinePeopleGroupInvite(token); } catch { /* tolerant */ }
+    navigate("/dashboard");
+  }
+
   const wants = info?.inviterWants ?? [];
   const watching = info?.inviterWatching ?? [];
   const others = info ? info.memberNames.filter((n) => n) : [];
@@ -162,7 +170,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
             <p style={title}>Join a group with {names}?</p>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
               <button style={yes} onClick={join}>Yes</button>
-              <button style={no} onClick={() => navigate("/dashboard")}>no</button>
+              <button style={no} onClick={declineAndLeave}>no</button>
             </div>
           </>
         )}
