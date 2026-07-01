@@ -3,14 +3,15 @@ import { createPortal } from "react-dom";
 import { X, ThumbsUp } from "lucide-react";
 import { linkifyText } from "../../lib/linkify";
 import type { Highlight } from "../../lib/db";
+import { CANON } from "../../styles/canon";
 
 // Same regex as src/lib/promptTokens.ts — keep in sync if that ever changes.
 const PROMPT_TOKEN_RE = /\[PROMPT:([\s\S]*?)\]/g;
 
 // Canon palette.
-const CANON_YELLOW = "#dea838";
-const CANON_NAVY   = "#1a3a4a";
-const CREAM        = "#fef8ea";
+const CANON_YELLOW = CANON.yellow;
+const CANON_NAVY   = CANON.midnight;
+const CREAM        = CANON.cream;
 
 // Default highlight fill — used for entry bodies. Reply bodies pass a
 // light-blue override via the `color` prop (canon-light-blue per spec).

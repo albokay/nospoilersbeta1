@@ -6,14 +6,15 @@ import LoadingDots from "./LoadingDots";
 import SidebarAvatar from "./SidebarAvatar";
 import CanonRadio from "./CanonRadio";
 import type { PingType } from "../types";
+import { CANON } from "../styles/canon";
 
 // Canon palette
-const CREAM       = "#fef8ea";
-const CANON_BLUE  = "#355eb8";
-const CANON_GREEN = "#7abd8e";
-const CANON_LIGHT = "#adc8d7";
-const CANON_RED   = "#f45028";
-const CANON_NAVY  = "#1a3a4a";
+const CREAM       = CANON.cream;
+const CANON_BLUE  = CANON.blue;
+const CANON_GREEN = CANON.green;
+const CANON_LIGHT = CANON.sky;
+const CANON_RED   = CANON.red;
+const CANON_NAVY  = CANON.midnight;
 const TEXT_MUTED  = "#5f5e5a";
 
 // ── Direction is FRIEND-relative (matches the right-sticky's framing) ─────

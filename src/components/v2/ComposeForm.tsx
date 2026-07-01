@@ -21,13 +21,14 @@ import { getPromptSuggestion } from "../../lib/prompts";
 import PromptCard from "../PromptCard";
 import LoadingDots from "../LoadingDots";
 import { Sparkles, X, ArrowRight } from "lucide-react";
+import { CANON } from "../../styles/canon";
 
 // Compose-page cream palette + dark ink. Self-contained — V2Layout's
 // chrome (white on green/mustard) wouldn't read on cream, and compose has
 // its own top-right ("× not now") rather than the standard you-pill cluster.
-const CREAM_BG = "#fef8ea";
+const CREAM_BG = CANON.cream;
 const PAPER_BG = "#fdfbf3";
-const INK = "#1a3a4a"; // midnightblue — filled-in title + body text
+const INK = CANON.midnight; // midnightblue — filled-in title + body text
 const INK_SOFT = "#5a4d3a";
 const INK_FAINT = "#8a7860";
 const RULE = "rgba(43, 36, 24, 0.32)";

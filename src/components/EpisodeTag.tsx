@@ -1,8 +1,9 @@
 import React from "react";
 import { HatGlasses } from "lucide-react";
 import Tooltip from "./Tooltip";
+import { CANON } from "../styles/canon";
 
-const CANON_RED = "#f45028";
+const CANON_RED = CANON.red;
 
 function pad(n: number) {
   return String(n).padStart(2, "0");

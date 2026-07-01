@@ -2,10 +2,11 @@ import React, { useEffect, useLayoutEffect, useState } from "react";
 import { X } from "lucide-react";
 import { fetchNextRoomPing, dismissPing } from "../lib/db";
 import type { Ping } from "../types";
+import { CANON } from "../styles/canon";
 
 // ── Visual constants ─────────────────────────────────────────────────────
-const STICKY_BG       = "#fef8ea";  // canon cream
-const TEXT_COLOR      = "#355eb8";  // canon dark blue — readable on cream paper
+const STICKY_BG       = CANON.cream; // canon cream
+const TEXT_COLOR      = CANON.blue;  // canon dark blue — readable on cream paper
 const TILT_DEG        = 4;           // clockwise — matches the green post-it direction at half angle
 const MIN_VIEWPORT_PX = 1160;        // hide on narrow viewports (matches green post-it gate)
 const ENTRY_TRANSITION_MS = 380;

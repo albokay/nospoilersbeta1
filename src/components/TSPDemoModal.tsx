@@ -16,8 +16,9 @@ import {
   TSP_DEMO_SHOW, TSP_EPISODE_COUNT,
   tspDemoFeedEntries, tspDemoReplies, tspDemoSeedMembers,
 } from "../lib/tspDemoFixture";
+import { CANON } from "../styles/canon";
 
-const CREAM_BG = "#fef8ea";
+const CREAM_BG = CANON.cream;
 const INK_SOFT = "#5a4d3a";
 const RULE = "rgba(43, 36, 24, 0.32)";
 const LORA = '"Lora", Georgia, serif';

@@ -9,8 +9,10 @@ import { X } from "lucide-react";
  * DB, no migration). Models the app's canon sticky-note look (cream paper, dark
  * blue text, slight tilt, fade-in).
  */
-const STICKY_BG       = "#fef8ea";  // canon cream
-const TEXT_COLOR      = "#355eb8";  // canon dark blue — readable on cream paper
+import { CANON } from "../styles/canon";
+
+const STICKY_BG       = CANON.cream; // canon cream
+const TEXT_COLOR      = CANON.blue;  // canon dark blue — readable on cream paper
 const TILT_DEG        = 3;
 const MIN_VIEWPORT_PX = 1160;        // hide on narrow viewports (matches the other stickies)
 const ENTRY_TRANSITION_MS = 380;

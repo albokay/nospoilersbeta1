@@ -14,6 +14,7 @@ import {
 import LoadingDots from "./LoadingDots";
 import CanonRadio from "./CanonRadio";
 import SidebarAvatar from "./SidebarAvatar";
+import { CANON } from "../styles/canon";
 
 // ── Visual constants ─────────────────────────────────────────────────────
 // SIKW shares the left-rail amber sticky surface with polls. Same palette,
@@ -22,12 +23,12 @@ import SidebarAvatar from "./SidebarAvatar";
 // (PollSticky + SIKWSticky) mount independently and only one type
 // surfaces at a time given the per-asker enforcement.
 
-const STICKY_BG       = "#dea838";              // canon yellow
+const STICKY_BG       = CANON.yellow;           // canon yellow
 const TEXT_COLOR      = "#fff";                 // primary text over yellow
 const FADED_TEXT      = "rgba(255,255,255,0.7)";// secondary text over yellow
 const DIVIDER_COLOR   = "rgba(255,255,255,0.6)";
-const SUBMIT_BG       = "#7abd8e";              // canon green
-const CANON_NAVY      = "#1a3a4a";              // text on white choice rows
+const SUBMIT_BG       = CANON.green;            // canon green
+const CANON_NAVY      = CANON.midnight;         // text on white choice rows
 const TILT_DEG        = -8;
 const MIN_VIEWPORT_PX = 1160;
 const STICKY_WIDTH    = 280;

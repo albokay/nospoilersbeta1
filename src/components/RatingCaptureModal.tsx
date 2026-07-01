@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Modal from "./Modal";
+import { CANON } from "../styles/canon";
 
 // Rating capture modal — replaces the OneSelectProgress confirm modal on
 // forward progress advancement in V2/V3 surfaces only. Spec:
@@ -29,9 +30,9 @@ export const RATING_LABELS: Record<number, string> = {
 };
 
 // ── Canon palette ────────────────────────────────────────────────────────
-const MIDNIGHT = "#1a3a4a"; // midnightblue
-const CREAM    = "#FEF8EA";
-const SKY      = "#ADC8D7";
+const MIDNIGHT = CANON.midnight; // midnightblue
+const CREAM    = CANON.cream;
+const SKY      = CANON.sky;
 const INTER    = "Inter, sans-serif";
 
 const COMMIT_DELAY_MS = 150;

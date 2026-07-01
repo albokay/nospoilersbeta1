@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import SidebarLogo from "./SidebarLogo";
+import { CANON } from "../styles/canon";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -61,10 +62,10 @@ const panelCaptions: React.ReactNode[] = [
 
 // ── Colors & dimensions ───────────────────────────────────────────────────
 
-const PAGE_BG = "#7abd8e";
+const PAGE_BG = CANON.green;
 const BOX_BG = "rgba(255,255,255,0.92)";
-const GREEN = "#7abd8e";
-const RED = "#f45028";
+const GREEN = CANON.green;
+const RED = CANON.red;
 const BORDER_W = 3;
 const PILL_W = 170;
 const PILL_H = 34;

@@ -8,10 +8,11 @@
 
 import React, { useEffect, useState } from "react";
 import { getTrailerKeyCached } from "../lib/trailers";
+import { CANON } from "../styles/canon";
 
-// Canon palette (see memory canon_palette).
-const YELLOW = "#DEA838";
-const CREAM = "#FEF8EA";
+// Canon palette (see memory canon_palette) — routed to src/styles/canon.ts.
+const YELLOW = CANON.yellow;
+const CREAM = CANON.cream;
 
 export default function TrailerCard({
   showId,

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import CanonRadio from "./CanonRadio";
+import { CANON } from "../styles/canon";
 
 // Two-radio picker shown after the user selects text and clicks the
 // "Highlight…" button. Mirrors NudgePopover / AskTheRoomPicker visually:
@@ -15,10 +16,10 @@ import CanonRadio from "./CanonRadio";
 // The parent owns selection capture, server submit, and any error display.
 // The picker itself stays simple: pick → OK → onConfirm → parent unmounts.
 
-const CREAM        = "#fef8ea";
-const CANON_LIGHT  = "#adc8d7";
-const CANON_NAVY   = "#1a3a4a";
-const CANON_YELLOW = "#dea838";
+const CREAM        = CANON.cream;
+const CANON_LIGHT  = CANON.sky;
+const CANON_NAVY   = CANON.midnight;
+const CANON_YELLOW = CANON.yellow;
 const TEXT_MUTED   = "#5f5e5a";
 
 const POPOVER_WIDTH    = 280;

@@ -5,12 +5,13 @@ import AskTheRoomPicker from "./AskTheRoomPicker";
 import PollComposer from "./PollComposer";
 import SIKWComposer from "./SIKWComposer";
 import type { FriendGroupMember } from "../types";
+import { CANON } from "../styles/canon";
 
 // ── Visual constants (canon palette + post-it accent green) ───────────────
-const POST_IT_BG    = "#7abd8e";  // canon green (write-button green inside friend rooms)
-const HANDLE_COLOR  = "#fffaf0";  // canon white — handles + neutral copy
-const AHEAD_COLOR   = "#f45028";  // canon red — "[N] episodes ahead"
-const BEHIND_COLOR  = "#355eb8";  // canon dark blue — "[N] episodes behind"
+const POST_IT_BG    = CANON.green;  // canon green (write-button green inside friend rooms)
+const HANDLE_COLOR  = CANON.cream;  // canon cream — handles + neutral copy (was #fffaf0)
+const AHEAD_COLOR   = CANON.red;    // canon red — "[N] episodes ahead"
+const BEHIND_COLOR  = CANON.blue;   // canon dark blue — "[N] episodes behind"
 const TILT_DEG      = 8;           // clockwise tilt (was 10; nudged down by request)
 const MIN_VIEWPORT_PX = 1160;     // hide on narrow viewports (mobile separate spec)
 const SCROLL_THRESHOLD_LINES = 20; // internal scroll if more than this many lines

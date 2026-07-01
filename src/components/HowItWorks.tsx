@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
+import { CANON } from "../styles/canon";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -78,12 +79,12 @@ const panels: Panel[] = [
 
 // ── Colors ──────────────────────────────────────────────────────────────────
 
-const PAGE_BG = "#7abd8e";
+const PAGE_BG = CANON.green;
 const BOX_BG = "rgba(255,255,255,0.92)";
-const YOU_THEME = "#375eb8";
-const FRIEND_THEME = "#dea838";
-const YOU_COLOR = "#375eb8";
-const FRIEND_COLOR = "#dea838";
+const YOU_THEME = CANON.blue;   // was #375eb8 — collapsed to canon blue
+const FRIEND_THEME = CANON.yellow;
+const YOU_COLOR = CANON.blue;   // was #375eb8 — collapsed to canon blue
+const FRIEND_COLOR = CANON.yellow;
 
 // ── Animation timing ────────────────────────────────────────────────────────
 

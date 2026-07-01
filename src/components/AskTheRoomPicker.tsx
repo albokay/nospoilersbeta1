@@ -1,14 +1,15 @@
 import React, { useEffect, useRef } from "react";
 import { X, MessageCircleQuestionMark, ChartBar, ArrowRight } from "lucide-react";
+import { CANON } from "../styles/canon";
 
 // Anchored popover that opens when the user clicks "ask the room →"
 // at the bottom of the right sticky. Two cards: poll composer +
 // SIKW composer.
 
 // Canon palette
-const CREAM        = "#fef8ea";
-const CANON_LIGHT  = "#adc8d7";
-const CANON_NAVY   = "#1a3a4a";
+const CREAM        = CANON.cream;
+const CANON_LIGHT  = CANON.sky;
+const CANON_NAVY   = CANON.midnight;
 const TEXT_MUTED   = "#5f5e5a";
 
 interface Props {
