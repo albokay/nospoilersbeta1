@@ -238,6 +238,12 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
         </button>
       </form>
 
+      {mode === "signup" && (
+        <p className="muted" style={{ marginTop: 12, fontSize: 12, lineHeight: 1.5 }}>
+          Sidebar only uses your email to sign you in, send your friend invites, and send an occasional digest (only if your rooms have new activity you haven't seen) — emails are never shared or sold.
+        </p>
+      )}
+
       {mode === "signin" && (
         <div style={{ marginTop: 10, textAlign: "right", fontSize: 13 }}>
           <button

@@ -210,6 +210,12 @@ export default function MobileAuth() {
           </button>
         </form>
 
+        {mode === "signup" && (
+          <p style={{ marginTop: 14, fontSize: 12, lineHeight: 1.5, opacity: 0.8, textAlign: "center" }}>
+            Sidebar only uses your email to sign you in, send your friend invites, and send an occasional digest (only if your rooms have new activity you haven't seen) — emails are never shared or sold.
+          </p>
+        )}
+
         {/* ── Mode toggle ── */}
         <div style={{ marginTop: 20, textAlign: "center", fontSize: 14 }}>
           {mode === "signin" ? (
