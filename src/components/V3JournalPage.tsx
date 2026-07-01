@@ -1011,9 +1011,9 @@ export default function V3JournalPage({
                       fontFamily: "Lora, Georgia, serif",
                       fontStyle: "italic",
                       fontSize: 16,
-                      color: "#fff",
+                      color: "#FEF8EA",
                       background: "transparent",
-                      border: "2px solid #fff",
+                      border: "2px solid #FEF8EA",
                       borderRadius: 9999,
                       padding: "6px 14px",
                       textDecoration: "none",
@@ -1034,7 +1034,7 @@ export default function V3JournalPage({
                     {([48, 32, 16] as const).map(offset => {
                       const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
                       return (
-                        <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
+                        <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(253,248,236,${opacity})` }} />
                       );
                     })}
                     <div className="card" style={{ minHeight: 500, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1 }}>
@@ -1123,7 +1123,7 @@ export default function V3JournalPage({
                   {([48, 32, 16] as const).map(offset => {
                     const opacity = offset === 48 ? 0.18 : offset === 32 ? 0.36 : 0.55;
                     return (
-                      <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(255,255,255,${opacity})` }} />
+                      <div key={offset} className="diaryBackPage" style={{ transform: `translate(-${offset}px, ${offset}px)`, borderColor: `rgba(253,248,236,${opacity})` }} />
                     );
                   })}
                 <div className="card" style={{ height: 650, display: "flex", flexDirection: "column", padding: 0, position: "relative", zIndex: 1, background: tabBg }}>
@@ -1185,14 +1185,14 @@ export default function V3JournalPage({
                               lineHeight: 1.2,
                               display: "inline-flex", alignItems: "center", gap: 5,
                               background: "transparent",
-                              border: "2px solid #fff",
-                              color: "#fff",
+                              border: "2px solid #FEF8EA",
+                              color: "#FEF8EA",
                               whiteSpace: "nowrap",
                             }}
                           >
-                            <ArrowRight size={15} color="#fff" style={{ flexShrink: 0 }} />
+                            <ArrowRight size={15} color="#FEF8EA" style={{ flexShrink: 0 }} />
                             <span>go to friend room</span>
-                            <Users size={15} color="#fff" style={{ flexShrink: 0 }} />
+                            <Users size={15} color="#FEF8EA" style={{ flexShrink: 0 }} />
                           </button>
                         )}
                         {tabGroups.length >= 2 && (
@@ -1206,13 +1206,13 @@ export default function V3JournalPage({
                                 fontSize: 13,
                                 display: "inline-flex", alignItems: "center", gap: 4,
                                 background: "transparent",
-                                border: "2px solid #fff",
-                                color: "#fff",
+                                border: "2px solid #FEF8EA",
+                                color: "#FEF8EA",
                                 whiteSpace: "nowrap",
                               }}
                             >
                               <span>friend rooms</span>
-                              <ChevronDown size={14} color="#fff" style={{ flexShrink: 0 }} />
+                              <ChevronDown size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
                             </button>
                             {roomsHeaderDropdownOpen && (
                               <div style={{
@@ -1234,12 +1234,12 @@ export default function V3JournalPage({
                                     style={{
                                       fontSize: 13, whiteSpace: "nowrap",
                                       display: "flex", alignItems: "center", width: "100%",
-                                      background: "#adc8d7", color: "#fff", border: "none",
+                                      background: "#adc8d7", color: "#FEF8EA", border: "none",
                                     }}
                                   >
-                                    <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                                    <ArrowRight size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
                                     <span style={{ flex: 1, textAlign: "center", margin: "0 8px", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</span>
-                                    <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
+                                    <Users size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
                                   </button>
                                 ))}
                               </div>
@@ -1265,9 +1265,9 @@ export default function V3JournalPage({
                                   width: 28, height: 28, padding: 0,
                                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                                   background: "transparent",
-                                  border: "2px solid #fff",
+                                  border: "2px solid #FEF8EA",
                                   borderRadius: "50%",
-                                  color: "#fff",
+                                  color: "#FEF8EA",
                                 }
                               : {
                                   // Pill state with "friends" label
@@ -1276,8 +1276,8 @@ export default function V3JournalPage({
                                   fontSize: 13,
                                   display: "inline-flex", alignItems: "center", gap: 4,
                                   background: "transparent",
-                                  border: "2px solid #fff",
-                                  color: "#fff",
+                                  border: "2px solid #FEF8EA",
+                                  color: "#FEF8EA",
                                   whiteSpace: "nowrap",
                                 }}
                           >
@@ -1332,7 +1332,7 @@ export default function V3JournalPage({
                               >
                                 <div style={{
                                   width: 14, height: 14, borderRadius: "50%",
-                                  background: "#fff",
+                                  background: "#FEF8EA",
                                   display: "flex", alignItems: "center", justifyContent: "center",
                                   flexShrink: 0,
                                 }}>
@@ -1344,7 +1344,7 @@ export default function V3JournalPage({
                                   fontSize: 10,
                                   lineHeight: 1.2,
                                   fontWeight: active ? 700 : 500,
-                                  color: "#fff",
+                                  color: "#FEF8EA",
                                   whiteSpace: "nowrap",
                                 }}>{label}</span>
                               </button>
@@ -1479,12 +1479,12 @@ export default function V3JournalPage({
                     // (same look as before, just colored explicitly
                     // instead of via inherited tab bg).
                     const cardBg = isGroup ? "#adc8d7" : isPub ? "#dea838" : "#7abd8e";
-                    const cardFg = isGroup ? "#1a3a4a" : "#fff";
-                    const cardMuted = isGroup ? "rgba(26,58,74,0.65)" : "rgba(255,255,255,0.65)";
+                    const cardFg = isGroup ? "#1a3a4a" : "#FEF8EA";
+                    const cardMuted = isGroup ? "rgba(26,58,74,0.65)" : "rgba(253,248,236,0.65)";
                     const epColor = isGroup ? "#1a3a4a" : "var(--dos-cyan)";
                     // expand button: inverted chip using card accent
-                    const chipBg = isGroup ? "#1a3a4a" : isPub ? "rgba(0,0,0,0.18)" : "#fff";
-                    const chipFg = isGroup ? "#adc8d7" : isPub ? "#fff" : "var(--dos-bg)";
+                    const chipBg = isGroup ? "#1a3a4a" : isPub ? "rgba(0,0,0,0.18)" : "#FEF8EA";
+                    const chipFg = isGroup ? "#adc8d7" : isPub ? "#FEF8EA" : "var(--dos-bg)";
                     return (
                     <div key={t.id} className="card threadCard"
                       style={{
@@ -1551,7 +1551,7 @@ export default function V3JournalPage({
                             style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
                             onClick={(e) => { e.stopPropagation(); dismissGreenIndicator(t.id); }}
                           >
-                            <X size={12} color="#fff" />
+                            <X size={12} color="#FEF8EA" />
                           </div>
                         </Tooltip>
                       )}
@@ -1568,7 +1568,7 @@ export default function V3JournalPage({
                             style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--danger)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
                             onClick={(e) => { e.stopPropagation(); dismissIndicator(t.id); }}
                           >
-                            <X size={12} color="#fff" />
+                            <X size={12} color="#FEF8EA" />
                           </div>
                         </Tooltip>
                       )}
@@ -1648,8 +1648,8 @@ export default function V3JournalPage({
                          padding + 12 entry padding = 72px in from the
                          diary's right border). */}
                       {(isGroup || isPub) && visibleReplyCountByThreadId[t.id] > 0 && (
-                        <div style={{ position: "absolute", right: activeFilter === "all" ? 72 : 12, bottom: 8, fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
-                          <Mail size={14} color="#fff" /> {visibleReplyCountByThreadId[t.id]}
+                        <div style={{ position: "absolute", right: activeFilter === "all" ? 72 : 12, bottom: 8, fontSize: 12, fontWeight: 700, color: "#FEF8EA", display: "flex", alignItems: "center", gap: 4 }}>
+                          <Mail size={14} color="#FEF8EA" /> {visibleReplyCountByThreadId[t.id]}
                         </div>
                       )}
                     </div>
@@ -1713,7 +1713,7 @@ export default function V3JournalPage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {showExpand && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#fff", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#FEF8EA", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {isExpanded ? "▴ less" : "▾ expand"}
                             </div>
@@ -1763,7 +1763,7 @@ export default function V3JournalPage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {showExpand && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#fff", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#FEF8EA", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {isExpanded ? "▴ less" : "▾ expand"}
                             </div>
@@ -1815,7 +1815,7 @@ export default function V3JournalPage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {showExpand && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#fff", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#FEF8EA", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
                               {isExpanded ? "▴ less" : "▾ expand"}
                             </div>
@@ -1864,7 +1864,7 @@ export default function V3JournalPage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {showExpand && (
-                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#fff", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#7abd8e", color: "#FEF8EA", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {isExpanded ? "▴ less" : "▾ expand"}
                             </div>
@@ -1969,7 +1969,7 @@ export default function V3JournalPage({
                     : null}
                   pillBg="transparent"
                 />
-                <div style={{ fontSize: 13, color: "#fff", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <div style={{ fontSize: 13, color: "#FEF8EA", display: "inline-flex", alignItems: "center", gap: 4 }}>
                   <ArrowLeft size={14} />
                   Are you sure your watch progress is up to date?
                 </div>
@@ -1994,7 +1994,7 @@ export default function V3JournalPage({
             {/* ── Submit row ── */}
             <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
               {promptEntries.length > 0 && (
-                <button className="prompt-btn" type="button" onClick={handlePromptBtn} title="Get a writing prompt" style={{ marginRight: "auto", background: promptBtnBg, borderColor: promptBtnBg, color: "#fff" }}>
+                <button className="prompt-btn" type="button" onClick={handlePromptBtn} title="Get a writing prompt" style={{ marginRight: "auto", background: promptBtnBg, borderColor: promptBtnBg, color: "#FEF8EA" }}>
                   <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>
               )}
@@ -2007,7 +2007,7 @@ export default function V3JournalPage({
                     onClick={submitPost}
                     disabled={postSubmitting || !formReady}
                     style={{
-                      background: "#fff",
+                      background: "#FEF8EA",
                       border: "none",
                       // Text color tracks destination; icons use currentColor
                       // so they track automatically. Friend-room destination
@@ -2053,8 +2053,8 @@ export default function V3JournalPage({
             autoFocus
           />
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <button className="btn" onClick={() => { setShowCreateRoomModal(false); setNewRoomName(""); }} disabled={createRoomSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
-            <button className="btn" onClick={handleCreateRoom} disabled={createRoomSubmitting || !newRoomName.trim()} style={{ background: "var(--green)", border: "none", color: "#fff" }}>
+            <button className="btn" onClick={() => { setShowCreateRoomModal(false); setNewRoomName(""); }} disabled={createRoomSubmitting} style={{ background: "var(--danger)", border: "none", color: "#FEF8EA" }}>Cancel</button>
+            <button className="btn" onClick={handleCreateRoom} disabled={createRoomSubmitting || !newRoomName.trim()} style={{ background: "var(--green)", border: "none", color: "#FEF8EA" }}>
               {createRoomSubmitting ? "Creating…" : "Create room"}
             </button>
           </div>
@@ -2196,7 +2196,7 @@ export default function V3JournalPage({
                 </button>
                 <button
                   className="btn"
-                  style={{ fontSize: 14, background: "#7abd8e", border: "2px solid #fff", color: "#fff" }}
+                  style={{ fontSize: 14, background: "#7abd8e", border: "2px solid #FEF8EA", color: "#FEF8EA" }}
                   disabled={stopSubmitting}
                   onClick={async () => {
                     if (!user || !profile || !sid) return;

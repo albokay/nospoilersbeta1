@@ -25,7 +25,7 @@ interface Props {
 export default function CanonRadio({
   checked,
   color = "#7abd8e",
-  bgColor = "#fff",
+  bgColor = "#FEF8EA",
   size = 14,
   dotSize = 7,
   "aria-label": ariaLabel,

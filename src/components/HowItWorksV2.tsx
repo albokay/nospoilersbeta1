@@ -63,7 +63,7 @@ const panelCaptions: React.ReactNode[] = [
 // ── Colors & dimensions ───────────────────────────────────────────────────
 
 const PAGE_BG = CANON.green;
-const BOX_BG = "rgba(255,255,255,0.92)";
+const BOX_BG = "rgba(253,248,236,0.92)";
 const GREEN = CANON.green;
 const RED = CANON.red;
 const BORDER_W = 3;
@@ -140,7 +140,7 @@ function basePillStyle(type: PillType, align: PillAlign, slotIndex: number): Rea
     boxSizing: "border-box",
     borderWidth: BORDER_W,
     ...(isYourPost
-      ? { background: GREEN, color: "#fff", borderStyle: "solid" as const, borderColor: "transparent" }
+      ? { background: GREEN, color: "#FEF8EA", borderStyle: "solid" as const, borderColor: "transparent" }
       : { background: "transparent", color, borderStyle: "dashed" as const, borderColor: color }),
   };
 }
@@ -353,7 +353,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
         minHeight: onClose ? undefined : "100vh",
         background: PAGE_BG,
         fontFamily: '"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
-        color: "#fff",
+        color: "#FEF8EA",
         padding: "24px 16px 40px",
         display: "flex",
         flexDirection: "column",
@@ -396,7 +396,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
             <button
               onClick={handleSignup}
               style={{
-                background: "#fff",
+                background: "#FEF8EA",
                 color: PAGE_BG,
                 border: "none",
                 borderRadius: 9999,
@@ -428,7 +428,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                     fontSize: 24,
                     fontWeight: 900,
                     lineHeight: 1.2,
-                    color: "#fff",
+                    color: "#FEF8EA",
                     marginBottom: 32,
                     whiteSpace: "pre-line",
                   }}
@@ -441,7 +441,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                   fontSize: 15,
                   fontWeight: 700,
                   lineHeight: 1.6,
-                  color: "#fff",
+                  color: "#FEF8EA",
                   whiteSpace: "pre-line",
                 }}
               >
@@ -467,12 +467,12 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
             style={{
               width: 36, height: 36,
               background: "transparent",
-              border: "2px solid #fff",
+              border: "2px solid #FEF8EA",
               borderRadius: "50%",
               padding: 0,
               cursor: step === 0 ? "default" : "pointer",
               opacity: step === 0 ? 0.3 : 1,
-              color: "#fff",
+              color: "#FEF8EA",
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -491,7 +491,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                 width: 10,
                 height: 10,
                 borderRadius: "50%",
-                background: i === step ? "#fff" : "rgba(255,255,255,0.35)",
+                background: i === step ? "#FEF8EA" : "rgba(253,248,236,0.35)",
                 cursor: "pointer",
               }}
             />
@@ -508,8 +508,8 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                 left: 0,
                 top: "50%",
                 transform: "translateY(-50%)",
-                background: "rgba(255,255,255,0.92)",
-                border: "2px solid #fff",
+                background: "rgba(253,248,236,0.92)",
+                border: "2px solid #FEF8EA",
                 borderRadius: 9999,
                 padding: "8px 18px",
                 cursor: "pointer",
@@ -527,11 +527,11 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
               style={{
                 width: 36, height: 36,
                 background: "transparent",
-                border: "2px solid #fff",
+                border: "2px solid #FEF8EA",
                 borderRadius: "50%",
                 padding: 0,
                 cursor: "pointer",
-                color: "#fff",
+                color: "#FEF8EA",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",

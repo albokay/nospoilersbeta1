@@ -70,7 +70,7 @@ function ErrorScreen() {
         padding: "32px 24px",
         textAlign: "center",
         background: "#7abd8e", // canon green (--dos-bg default surface)
-        color: "#FFFFFF",
+        color: "#FEF8EA",
         fontFamily:
           "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
       }}
@@ -92,8 +92,8 @@ function ErrorScreen() {
           onClick={() => window.location.reload()}
           style={{
             background: "transparent",
-            color: "#FFFFFF",
-            border: "2px solid #FFFFFF",
+            color: "#FEF8EA",
+            border: "2px solid #FEF8EA",
             borderRadius: 24,
             padding: "10px 22px",
             fontSize: 15,
@@ -109,7 +109,7 @@ function ErrorScreen() {
           onClick={() => window.location.assign("/")}
           style={{
             background: "transparent",
-            color: "rgba(255,255,255,0.85)",
+            color: "rgba(253,248,236,0.85)",
             border: "none",
             padding: "10px 12px",
             fontSize: 15,
@@ -122,7 +122,7 @@ function ErrorScreen() {
           go back home
         </button>
       </div>
-      <p style={{ margin: 0, marginTop: 8, maxWidth: 420, lineHeight: 1.5, fontSize: 15, color: "rgba(255,255,255,0.85)" }}>
+      <p style={{ margin: 0, marginTop: 8, maxWidth: 420, lineHeight: 1.5, fontSize: 15, color: "rgba(253,248,236,0.85)" }}>
         Once you’re back on track, please use the Feedback tab to leave a message about how
         you got to this error message.
       </p>

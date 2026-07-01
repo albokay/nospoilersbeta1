@@ -235,7 +235,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
   const wrapper: React.CSSProperties = {
     minHeight: "100vh",
     background: "var(--dos-bg, #7abd8e)",
-    color: "#fff",
+    color: "#FEF8EA",
     padding: "24px 20px 48px",
     boxSizing: "border-box",
   };
@@ -279,7 +279,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
         <button
           onClick={() => navigate(`/m/rooms/${groupId}`)}
           style={{
-            background: "transparent", color: "#fff",
+            background: "transparent", color: "#FEF8EA",
             border: "none",
             fontSize: 14, fontWeight: 600, cursor: "pointer",
             fontFamily: "inherit", opacity: 0.85,
@@ -291,7 +291,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
 
         {/* ── Thread card ── */}
         <article style={{
-          background: "rgba(255,255,255,0.95)",
+          background: "rgba(253,248,236,0.95)",
           color: "var(--dos-bg, #2a4a36)",
           borderRadius: 12,
           padding: "18px 18px",
@@ -374,8 +374,8 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
 
         {visibleReplies.length === 0 ? (
           <div style={{
-            background: "rgba(255,255,255,0.10)",
-            border: "2px dashed rgba(255,255,255,0.35)",
+            background: "rgba(253,248,236,0.10)",
+            border: "2px dashed rgba(253,248,236,0.35)",
             borderRadius: 12,
             padding: "20px 16px",
             textAlign: "center",
@@ -410,7 +410,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
           width: 56,
           height: 56,
           borderRadius: 9999,
-          background: "#fff",
+          background: "#FEF8EA",
           color: "var(--dos-bg, #2a4a36)",
           border: "none",
           boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
@@ -447,7 +447,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
             right: 16,
             bottom: 24,
             zIndex: 101,
-            background: "#fff",
+            background: "#FEF8EA",
             color: "var(--dos-bg, #2a4a36)",
             borderRadius: 14,
             padding: 6,
@@ -517,7 +517,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
             right: 16,
             transform: "translateY(-50%)",
             zIndex: 111,
-            background: "#fff",
+            background: "#FEF8EA",
             color: "var(--dos-bg, #2a4a36)",
             borderRadius: 14,
             padding: "20px 18px",
@@ -535,7 +535,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
             </p>
             {deleteError && (
               <div style={{
-                color: "#fff",
+                color: "#FEF8EA",
                 background: "#f45028",
                 padding: "8px 12px",
                 borderRadius: 8,
@@ -601,7 +601,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
                 disabled={deleting}
                 style={{
                   background: "#f45028",
-                  color: "#fff",
+                  color: "#FEF8EA",
                   border: "none",
                   borderRadius: 9999,
                   padding: "9px 18px",
@@ -673,8 +673,8 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
     return (
       <div style={{
         background: "transparent",
-        border: "2px dashed rgba(255,255,255,0.4)",
-        color: "rgba(255,255,255,0.6)",
+        border: "2px dashed rgba(253,248,236,0.4)",
+        color: "rgba(253,248,236,0.6)",
         borderRadius: 10,
         padding: "10px 14px",
         fontStyle: "italic",
@@ -695,8 +695,8 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
   return (
     <div style={{
       background: "transparent",
-      border: "2px solid #fff",
-      color: "#fff",
+      border: "2px solid #FEF8EA",
+      color: "#FEF8EA",
       borderRadius: 10,
       padding: "12px 14px",
     }}>
@@ -715,7 +715,7 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontVariantNumeric: "tabular-nums" }}>{tag}</span>
           {isAuthor && (
-            <button onClick={onKebab} aria-label="More actions" style={{ ...kebabButtonStyle, color: "#fff" }}>
+            <button onClick={onKebab} aria-label="More actions" style={{ ...kebabButtonStyle, color: "#FEF8EA" }}>
               <MoreVertical size={16} strokeWidth={2.2} />
             </button>
           )}
@@ -760,8 +760,8 @@ function formatRelativeShort(ts: number): string {
 
 function pillButtonStyle(): React.CSSProperties {
   return {
-    background: "transparent", color: "#fff",
-    border: "2px solid #fff",
+    background: "transparent", color: "#FEF8EA",
+    border: "2px solid #FEF8EA",
     borderRadius: 9999, padding: "10px 24px",
     fontSize: 14, fontWeight: 700, cursor: "pointer",
     fontFamily: "inherit",

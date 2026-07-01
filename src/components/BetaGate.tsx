@@ -94,7 +94,7 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
           style={{ padding: "10px 14px", fontSize: 15, border: "1px solid #ccc", borderRadius: 6, outline: "none" }}
         />
         {error && <div style={{ fontSize: 13, color: "#c00" }}>incorrect password</div>}
-        <button type="submit" disabled={loading} style={{ padding: "10px 14px", fontSize: 15, background: "#222", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
+        <button type="submit" disabled={loading} style={{ padding: "10px 14px", fontSize: 15, background: "#222", color: "#FEF8EA", border: "none", borderRadius: 6, cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
           {loading ? "checking…" : "enter"}
         </button>
       </form>

@@ -72,7 +72,7 @@ export default function DiceFace({
             width: dotSize,
             height: dotSize,
             borderRadius: "50%",
-            background: "#fff",
+            background: "#FEF8EA",
             transform: "translate(-50%, -50%)",
           }}
         />

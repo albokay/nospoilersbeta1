@@ -304,7 +304,7 @@ export default function SearchShows({
                   setOpen(false);
                   if (onReopenJournal) onReopenJournal("tsp");
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.12)")}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(253,248,236,0.12)")}
                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               >
                 <span style={{ fontWeight: 600 }}>The Sidebar Protocol</span>
@@ -320,7 +320,7 @@ export default function SearchShows({
                 role="option"
                 style={{ padding: "6px 8px", cursor: "pointer" }}
                 onMouseDown={(e) => { e.preventDefault(); handlePickTVmaze(tv); }}
-                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.12)")}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(253,248,236,0.12)")}
                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               >
                 <span style={{ fontWeight: 600 }}>{tv.name}</span>
@@ -371,7 +371,7 @@ export default function SearchShows({
                 {(["first", "rewatch"] as const).map(choice => {
                   const row = (
                     <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchChoice(choice)}>
-                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#FEF8EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {watchChoice === choice && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                       </div>
                       {choice === "first" ? "First time" : "Rewatching"}
@@ -441,7 +441,7 @@ export default function SearchShows({
             )}
 
             {/* Divider */}
-            <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "4px 0" }} />
+            <div style={{ height: 1, background: "rgba(253,248,236,0.18)", margin: "4px 0" }} />
 
             {/* Create a friend room section */}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -462,7 +462,7 @@ export default function SearchShows({
               {(() => {
                 const submitDisabled = !canSubmit || !roomName.trim();
                 return (
-                  <button className="btn post" onClick={handleCreateRoom} disabled={submitDisabled} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#fff", opacity: submitDisabled ? 0.4 : 1 }}>
+                  <button className="btn post" onClick={handleCreateRoom} disabled={submitDisabled} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#FEF8EA", opacity: submitDisabled ? 0.4 : 1 }}>
                     {creating ? "Creating…" : "Create room"}
                   </button>
                 );
@@ -470,7 +470,7 @@ export default function SearchShows({
             </div>
 
             {/* Divider */}
-            <div style={{ height: 1, background: "rgba(255,255,255,0.18)", margin: "4px 0" }} />
+            <div style={{ height: 1, background: "rgba(253,248,236,0.18)", margin: "4px 0" }} />
 
             {/* Solo section */}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

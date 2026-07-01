@@ -78,7 +78,7 @@ export default function LikeBadge({
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#fff",
+          color: "#FEF8EA",
         }}
       >
         <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>

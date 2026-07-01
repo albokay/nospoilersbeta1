@@ -112,7 +112,7 @@ export default function MobileRooms() {
     <div style={{
       minHeight: "100vh",
       background: "var(--dos-bg, #7abd8e)",
-      color: "#fff",
+      color: "#FEF8EA",
       padding: "24px 20px 48px",
       boxSizing: "border-box",
     }}>
@@ -137,7 +137,7 @@ export default function MobileRooms() {
             onClick={async () => { await signOut(); navigate("/m"); }}
             style={{
               background: "transparent",
-              color: "#fff",
+              color: "#FEF8EA",
               border: "none",
               fontSize: 13,
               fontWeight: 600,
@@ -163,8 +163,8 @@ export default function MobileRooms() {
           </div>
         ) : rooms.length === 0 ? (
           <div style={{
-            background: "rgba(255,255,255,0.10)",
-            border: "2px dashed rgba(255,255,255,0.4)",
+            background: "rgba(253,248,236,0.10)",
+            border: "2px dashed rgba(253,248,236,0.4)",
             borderRadius: 12,
             padding: "24px 20px",
             textAlign: "center",
@@ -184,7 +184,7 @@ export default function MobileRooms() {
                 style={{
                   width: "100%",
                   textAlign: "left",
-                  background: "rgba(255,255,255,0.95)",
+                  background: "rgba(253,248,236,0.95)",
                   color: "var(--dos-bg, #2a4a36)",
                   border: "none",
                   borderRadius: 12,

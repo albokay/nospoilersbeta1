@@ -123,7 +123,7 @@ export default function MobileEditReply({
   const wrapper: React.CSSProperties = {
     minHeight: "100vh",
     background: "var(--dos-bg, #7abd8e)",
-    color: "#fff",
+    color: "#FEF8EA",
     padding: "16px 20px 32px",
     boxSizing: "border-box",
   };
@@ -149,8 +149,8 @@ export default function MobileEditReply({
         <button
           onClick={() => navigate(`/m/rooms/${groupId}/thread/${threadId}`, { replace: true })}
           style={{
-            background: "transparent", color: "#fff",
-            border: "2px solid #fff",
+            background: "transparent", color: "#FEF8EA",
+            border: "2px solid #FEF8EA",
             borderRadius: 9999, padding: "10px 24px",
             fontSize: 14, fontWeight: 700, cursor: "pointer",
             fontFamily: "inherit",
@@ -171,7 +171,7 @@ export default function MobileEditReply({
         <button
           onClick={() => navigate(`/m/rooms/${groupId}/progress`)}
           style={{
-            background: "#fff", color: "var(--dos-bg)",
+            background: "#FEF8EA", color: "var(--dos-bg)",
             border: "none",
             borderRadius: 9999, padding: "12px 28px",
             fontSize: 15, fontWeight: 800, cursor: "pointer",
@@ -198,7 +198,7 @@ export default function MobileEditReply({
             onClick={() => navigate(`/m/rooms/${groupId}/thread/${threadId}`)}
             disabled={submitting}
             style={{
-              background: "transparent", color: "#fff",
+              background: "transparent", color: "#FEF8EA",
               border: "none",
               fontSize: 15, fontWeight: 600, cursor: submitting ? "default" : "pointer",
               fontFamily: "inherit", opacity: submitting ? 0.55 : 0.85,
@@ -223,7 +223,7 @@ export default function MobileEditReply({
         }}>
           <span style={{
             fontVariantNumeric: "tabular-nums",
-            background: "rgba(255,255,255,0.18)",
+            background: "rgba(253,248,236,0.18)",
             padding: "2px 8px",
             borderRadius: 999,
             fontWeight: 700,
@@ -247,10 +247,10 @@ export default function MobileEditReply({
             fontSize: 16,
             fontFamily: "inherit",
             lineHeight: 1.5,
-            border: "2px solid rgba(255,255,255,0.4)",
+            border: "2px solid rgba(253,248,236,0.4)",
             borderRadius: 10,
-            background: "rgba(255,255,255,0.08)",
-            color: "#fff",
+            background: "rgba(253,248,236,0.08)",
+            color: "#FEF8EA",
             outline: "none",
             boxSizing: "border-box",
             WebkitAppearance: "none",
@@ -262,7 +262,7 @@ export default function MobileEditReply({
         {submitError && (
           <div style={{
             marginTop: 12,
-            color: "#fff",
+            color: "#FEF8EA",
             background: "rgba(244,80,40,0.9)",
             padding: "10px 14px",
             borderRadius: 8,
@@ -283,7 +283,7 @@ export default function MobileEditReply({
             margin: "16px 0 0",
             padding: "12px 14px",
             borderRadius: 10,
-            background: "rgba(255,255,255,0.08)",
+            background: "rgba(253,248,236,0.08)",
             border: "2px solid #f45028",
             fontSize: 13,
             lineHeight: 1.5,
@@ -306,7 +306,7 @@ export default function MobileEditReply({
             fontSize: 18,
             fontWeight: 800,
             fontFamily: "inherit",
-            background: canSubmit ? "#fff" : "rgba(255,255,255,0.4)",
+            background: canSubmit ? "#FEF8EA" : "rgba(253,248,236,0.4)",
             color: "var(--dos-bg)",
             border: "none",
             borderRadius: 9999,

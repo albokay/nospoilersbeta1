@@ -172,14 +172,14 @@ export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = f
             >
               {onProfileFamily ? (
                 <>
-                  <BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} />
-                  <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}>you are <SidebarAvatar userId={user.id} username={profile.username} size={18} />{profile.username}</span>
+                  <BookOpen size={16} color="#FEF8EA" style={{ flexShrink: 0 }} />
+                  <span className="profileChipLabel" style={{ fontWeight: 700, color: "#FEF8EA", display: "inline-flex", alignItems: "center", gap: 6 }}>you are <SidebarAvatar userId={user.id} username={profile.username} size={18} />{profile.username}</span>
                 </>
               ) : (
                 <>
-                  <BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} />
-                  <ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} />
-                  <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span>
+                  <BookMarked size={16} color="#FEF8EA" style={{ flexShrink: 0 }} />
+                  <ArrowLeft size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
+                  <span className="profileChipLabel" style={{ fontWeight: 700, color: "#FEF8EA" }}>go to your journal</span>
                 </>
               )}
             </button>
@@ -197,12 +197,12 @@ export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = f
                 // 34px height including the 2px border.
                 style={{
                   background: "#dea838",
-                  border: `2px solid ${palette === "profile" ? "#fff" : "#dea838"}`,
+                  border: `2px solid ${palette === "profile" ? "#FEF8EA" : "#dea838"}`,
                 }}
               >
-                <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your profile</span>
-                <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
-                <UserPen size={16} color="#fff" style={{ flexShrink: 0 }} />
+                <span className="profileChipLabel" style={{ fontWeight: 700, color: "#FEF8EA" }}>go to your profile</span>
+                <ArrowRight size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
+                <UserPen size={16} color="#FEF8EA" style={{ flexShrink: 0 }} />
               </button>
             )}
           </span>
@@ -276,9 +276,9 @@ export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = f
                   fontFamily: "Lora, Georgia, serif",
                   fontStyle: "italic",
                   fontSize: 16,
-                  color: "#fff",
+                  color: "#FEF8EA",
                   background: "transparent",
-                  border: "2px solid #fff",
+                  border: "2px solid #FEF8EA",
                   borderRadius: 9999,
                   padding: "6px 14px",
                   textDecoration: "none",

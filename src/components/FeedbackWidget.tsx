@@ -89,7 +89,7 @@ export default function FeedbackWidget({
             transform: "translateY(-50%)",
             writingMode: "vertical-rl" as React.CSSProperties["writingMode"],
             zIndex: 10000,
-            background: "#f45028", color: "#fff",
+            background: "#f45028", color: "#FEF8EA",
             padding: "14px 9px",
             cursor: "pointer", fontWeight: 700, fontSize: 13,
             letterSpacing: 0.4, borderRadius: "0 8px 8px 0",
@@ -172,7 +172,7 @@ export default function FeedbackWidget({
               rows={6}
               style={{
                 width: "100%", boxSizing: "border-box",
-                background: "#fff", color: "#000",
+                background: "#FEF8EA", color: "#000",
                 border: "2px solid var(--dos-border)", borderRadius: 8,
                 padding: "10px 12px", fontSize: 14,
                 resize: "vertical", lineHeight: 1.5,

@@ -527,7 +527,7 @@ export default function V2InlineThread({
       style={{
         background: "transparent",
         border: "none",
-        color: "#fff",
+        color: "#FEF8EA",
         cursor: "pointer",
         fontSize: 13,
         padding: "4px 8px",
@@ -537,7 +537,7 @@ export default function V2InlineThread({
         fontFamily: "inherit",
       }}
     >
-      <ChevronUp size={13} color="#fff" /> collapse
+      <ChevronUp size={13} color="#FEF8EA" /> collapse
     </button>
   );
 
@@ -575,7 +575,7 @@ export default function V2InlineThread({
               className="btn"
               onClick={handleSaveEdit}
               disabled={editSubmitting || !editTitle.trim() || !editBody.trim()}
-              style={{ background: "#7abd8e", color: "#fff", border: "2px solid #7abd8e" }}
+              style={{ background: "#7abd8e", color: "#FEF8EA", border: "2px solid #7abd8e" }}
             >
               {editSubmitting ? "Saving…" : "Save"}
             </button>
@@ -611,7 +611,7 @@ export default function V2InlineThread({
                 <button
                   onClick={handleSaveEdit}
                   disabled={editSubmitting}
-                  style={{ border: "none", background: "#355EB8", color: "#fff", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "11px 24px", borderRadius: 65, cursor: "pointer" }}
+                  style={{ border: "none", background: "#355EB8", color: "#FEF8EA", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "11px 24px", borderRadius: 65, cursor: "pointer" }}
                 >
                   {editSubmitting ? "Saving…" : "Save & retag"}
                 </button>
@@ -697,7 +697,7 @@ export default function V2InlineThread({
                 fontSize: 13,
                 padding: "3px 12px",
                 background: "#dea838",
-                color: "#fff",
+                color: "#FEF8EA",
                 border: "2px solid #dea838",
               }}
             >
@@ -896,14 +896,14 @@ export default function V2InlineThread({
                 className="btn"
                 onClick={handleDelete}
                 disabled={deleteSubmitting}
-                style={{ background: "var(--danger)", border: "none", color: "#fff" }}
+                style={{ background: "var(--danger)", border: "none", color: "#FEF8EA" }}
               >
                 {deleteSubmitting ? "Deleting…" : "Delete"}
               </button>
               <button
                 className="btn"
                 onClick={cancelDelete}
-                style={{ background: "transparent", border: "2px solid #fff", color: "#fff" }}
+                style={{ background: "transparent", border: "2px solid #FEF8EA", color: "#FEF8EA" }}
               >
                 Cancel
               </button>

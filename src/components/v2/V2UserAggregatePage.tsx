@@ -84,15 +84,15 @@ function FriendRoomNavButton({
           style={{
             padding: "5px 10px",
             background: "transparent",
-            border: "2px solid #fff",
-            color: "#fff",
+            border: "2px solid #FEF8EA",
+            color: "#FEF8EA",
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
           }}
         >
-          <Users size={16} color="#fff" style={{ flexShrink: 0 }} />
-          <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+          <Users size={16} color="#FEF8EA" style={{ flexShrink: 0 }} />
+          <ArrowRight size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
         </button>
       </Tooltip>
       {open && !single && (
@@ -111,12 +111,12 @@ function FriendRoomNavButton({
               style={{
                 fontSize: 13, whiteSpace: "nowrap",
                 display: "flex", alignItems: "center", width: "100%",
-                background: "transparent", border: "2px solid #fff", color: "#fff",
+                background: "transparent", border: "2px solid #FEF8EA", color: "#FEF8EA",
               }}
             >
-              <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+              <ArrowRight size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>{g.name}</span>
-              <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
+              <Users size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
             </button>
           ))}
         </div>
@@ -676,7 +676,7 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
             <div
               style={{
                 background: "transparent",
-                border: "2px dashed rgba(255,255,255,0.6)",
+                border: "2px dashed rgba(253,248,236,0.6)",
                 borderRadius: 16,
                 padding: "20px 28px",
                 marginTop: visibleThreads.length > 0 ? 24 : 0,

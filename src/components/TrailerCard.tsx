@@ -87,7 +87,7 @@ const header: React.CSSProperties = {
   fontFamily: '"Inter", sans-serif',
   fontWeight: 700,
   fontSize: 14,
-  color: "#fff",
+  color: "#FEF8EA",
   textAlign: "left",
   marginBottom: 12,
 };

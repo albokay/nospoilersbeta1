@@ -80,7 +80,7 @@ const panels: Panel[] = [
 // ── Colors ──────────────────────────────────────────────────────────────────
 
 const PAGE_BG = CANON.green;
-const BOX_BG = "rgba(255,255,255,0.92)";
+const BOX_BG = "rgba(253,248,236,0.92)";
 const YOU_THEME = CANON.blue;   // was #375eb8 — collapsed to canon blue
 const FRIEND_THEME = CANON.yellow;
 const YOU_COLOR = CANON.blue;   // was #375eb8 — collapsed to canon blue
@@ -161,7 +161,7 @@ function Pill({
         animation: `${animName} ${animDur}s ease forwards`,
         animationDelay: `${animDelay}s`,
         ...(isVisible
-          ? { background: color, color: "#fff", border: "2px solid transparent" }
+          ? { background: color, color: "#FEF8EA", border: "2px solid transparent" }
           : { background: "transparent", color: color, border: `2px dashed ${color}` }),
       }}
     >
@@ -278,7 +278,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
         minHeight: onClose ? undefined : "100vh",
         background: PAGE_BG,
         fontFamily: '"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
-        color: "#fff",
+        color: "#FEF8EA",
         padding: "32px 16px 80px",
         display: "flex",
         flexDirection: "column",
@@ -297,7 +297,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
 
       {/* Title */}
       {!isJoinStep && (
-        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 24, textAlign: "center", color: "#fff" }}>
+        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 24, textAlign: "center", color: "#FEF8EA" }}>
           How does the no-spoiler mechanic work?
         </div>
       )}
@@ -319,7 +319,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
             <button
               onClick={handleSignup}
               style={{
-                background: "#fff",
+                background: "#FEF8EA",
                 color: PAGE_BG,
                 border: "none",
                 borderRadius: 9999,
@@ -353,7 +353,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
         }}
       >
         {!isJoinStep && (
-          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.55, textAlign: "center", color: "#fff", opacity: 0.9 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.55, textAlign: "center", color: "#FEF8EA", opacity: 0.9 }}>
             {panels[step].caption}
           </div>
         )}
@@ -366,14 +366,14 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
           disabled={step === 0}
           style={{
             background: "transparent",
-            border: "2px solid #fff",
+            border: "2px solid #FEF8EA",
             borderRadius: 9999,
             padding: "8px 18px",
             cursor: step === 0 ? "default" : "pointer",
             opacity: step === 0 ? 0.3 : 1,
             fontSize: 14,
             fontWeight: 600,
-            color: "#fff",
+            color: "#FEF8EA",
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
@@ -391,7 +391,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
                 width: 10,
                 height: 10,
                 borderRadius: "50%",
-                background: i === step ? "#fff" : "rgba(255,255,255,0.35)",
+                background: i === step ? "#FEF8EA" : "rgba(253,248,236,0.35)",
                 cursor: "pointer",
               }}
             />
@@ -405,14 +405,14 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
           <button
             onClick={() => setStep(s => s + 1)}
             style={{
-              background: isLastPanel ? "rgba(255,255,255,0.92)" : "transparent",
-              border: "2px solid #fff",
+              background: isLastPanel ? "rgba(253,248,236,0.92)" : "transparent",
+              border: "2px solid #FEF8EA",
               borderRadius: 9999,
               padding: "8px 18px",
               cursor: "pointer",
               fontSize: 14,
               fontWeight: 600,
-              color: isLastPanel ? PAGE_BG : "#fff",
+              color: isLastPanel ? PAGE_BG : "#FEF8EA",
               display: "inline-flex",
               alignItems: "center",
               gap: 6,

@@ -125,9 +125,9 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
   // Body copy is friend-space dark navy (#1a3a4a) on BOTH — set explicitly
   // on the body div so private's white `currentColor` cascade doesn't
   // override it.
-  const outlineStyle = "2px dashed #fff";
+  const outlineStyle = "2px dashed #FEF8EA";
   const ticketBg = current.isPublic ? "#fef8ea" : "#7abd8e";
-  const chromeColor = current.isPublic ? "#1a3a4a" : "#fff";
+  const chromeColor = current.isPublic ? "#1a3a4a" : "#FEF8EA";
 
   // Show expand toggle when the body is long enough that 2-line clamp would
   // hide content. Heuristic: > 120 chars or contains a newline. Always show
@@ -185,7 +185,7 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
               state below-carousel "write a new one?" link (italic Lora 14
               + dotted underline). */}
           {!current.isPublic && (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 8, color: "#fff" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 8, color: "#FEF8EA" }}>
               <LockKeyhole size={14} color="currentColor" />
               <span
                 style={{
@@ -386,7 +386,7 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
                 padding: "24px 28px",
                 maxWidth: 440,
                 width: "100%",
-                color: "#fff",
+                color: "#FEF8EA",
               }}
             >
               <p style={{ margin: "0 0 22px", fontSize: 17, lineHeight: 1.5, fontWeight: 600 }}>
@@ -394,14 +394,14 @@ export default function ProfileThoughtsCarousel({ thoughts, ownerMode, ownerHand
               </p>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 <button
-                  style={{ fontSize: 14, background: "transparent", border: "2px solid #fff", color: "#fff", borderRadius: 9999, padding: "8px 16px", cursor: deleting ? "not-allowed" : "pointer", fontWeight: 500 }}
+                  style={{ fontSize: 14, background: "transparent", border: "2px solid #FEF8EA", color: "#FEF8EA", borderRadius: 9999, padding: "8px 16px", cursor: deleting ? "not-allowed" : "pointer", fontWeight: 500 }}
                   onClick={() => setPendingDeleteId(null)}
                   disabled={deleting}
                 >
                   Cancel
                 </button>
                 <button
-                  style={{ fontSize: 14, background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff", borderRadius: 9999, padding: "8px 16px", cursor: deleting ? "not-allowed" : "pointer", fontWeight: 600 }}
+                  style={{ fontSize: 14, background: "var(--danger)", border: "2px solid var(--danger)", color: "#FEF8EA", borderRadius: 9999, padding: "8px 16px", cursor: deleting ? "not-allowed" : "pointer", fontWeight: 600 }}
                   disabled={deleting}
                   onClick={confirmDelete}
                 >

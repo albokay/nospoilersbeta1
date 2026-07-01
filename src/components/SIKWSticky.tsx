@@ -24,9 +24,9 @@ import { CANON } from "../styles/canon";
 // surfaces at a time given the per-asker enforcement.
 
 const STICKY_BG       = CANON.yellow;           // canon yellow
-const TEXT_COLOR      = "#fff";                 // primary text over yellow
-const FADED_TEXT      = "rgba(255,255,255,0.7)";// secondary text over yellow
-const DIVIDER_COLOR   = "rgba(255,255,255,0.6)";
+const TEXT_COLOR      = "#FEF8EA";                 // primary text over yellow
+const FADED_TEXT      = "rgba(253,248,236,0.7)";// secondary text over yellow
+const DIVIDER_COLOR   = "rgba(253,248,236,0.6)";
 const SUBMIT_BG       = CANON.green;            // canon green
 const CANON_NAVY      = CANON.midnight;         // text on white choice rows
 const TILT_DEG        = -8;
@@ -208,7 +208,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
             style={{
               padding: "8px 11px",
               borderRadius: 12,
-              background: "#fff",
+              background: "#FEF8EA",
               fontSize: 12,
               color: CANON_NAVY,
             }}
@@ -247,7 +247,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
         style={{
           padding: "8px 11px",
           borderRadius: 12,
-          background: "#fff",
+          background: "#FEF8EA",
           border: "none",
           fontSize: 12,
           color: CANON_NAVY,
@@ -316,7 +316,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
           {/* Stick with it */}
           <label style={replyOptionStyle(selectedType === "stick_with_it")}>
-            <CanonRadio checked={selectedType === "stick_with_it"} color="#fff" bgColor={STICKY_BG} />
+            <CanonRadio checked={selectedType === "stick_with_it"} color="#FEF8EA" bgColor={STICKY_BG} />
             <input
               type="radio"
               name={`sikw-${ask.id}`}
@@ -347,7 +347,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
 
           {/* Dropping is fair */}
           <label style={replyOptionStyle(selectedType === "dropping_is_fair")}>
-            <CanonRadio checked={selectedType === "dropping_is_fair"} color="#fff" bgColor={STICKY_BG} />
+            <CanonRadio checked={selectedType === "dropping_is_fair"} color="#FEF8EA" bgColor={STICKY_BG} />
             <input
               type="radio"
               name={`sikw-${ask.id}`}
@@ -359,9 +359,9 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
           </label>
 
           {/* Write your own */}
-          <div style={{ padding: "8px 11px", borderRadius: 12, background: "#fff", border: "none" }}>
+          <div style={{ padding: "8px 11px", borderRadius: 12, background: "#FEF8EA", border: "none" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CANON_NAVY, marginBottom: selectedType === "custom" ? 6 : 0, cursor: "pointer" }}>
-              <CanonRadio checked={selectedType === "custom"} color="#fff" bgColor={STICKY_BG} />
+              <CanonRadio checked={selectedType === "custom"} color="#FEF8EA" bgColor={STICKY_BG} />
               <input
                 type="radio"
                 name={`sikw-${ask.id}`}
@@ -401,7 +401,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
           disabled={!canSubmit}
           style={{
             background: canSubmit ? SUBMIT_BG : "rgba(122,189,142,0.45)",
-            color: "#fff",
+            color: "#FEF8EA",
             border: "none",
             padding: "6px 12px",
             borderRadius: 9999,
@@ -490,7 +490,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
                   style={{
                     padding: "8px 11px",
                     borderRadius: 12,
-                    background: "#fff",
+                    background: "#FEF8EA",
                     fontSize: 12,
                     color: CANON_NAVY,
                   }}
@@ -508,7 +508,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
             style={{
               padding: "8px 11px",
               borderRadius: 12,
-              background: "#fff",
+              background: "#FEF8EA",
               border: "none",
               fontSize: 12,
               color: CANON_NAVY,
@@ -579,7 +579,7 @@ function replyOptionStyle(_selected: boolean): React.CSSProperties {
     gap: 8,
     padding: "8px 11px",
     borderRadius: 12,
-    background: "#fff",
+    background: "#FEF8EA",
     border: "none",
     fontSize: 12,
     color: CANON_NAVY,

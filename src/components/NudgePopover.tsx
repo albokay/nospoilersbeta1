@@ -347,7 +347,7 @@ export default function NudgePopover({
                 background: CANON_LIGHT,
                 border: "none",
                 fontSize: 12,
-                color: "#fff",
+                color: "#FEF8EA",
                 cursor: "pointer",
               }}
             >
@@ -379,7 +379,7 @@ export default function NudgePopover({
               alignItems: "center",
               gap: 8,
               fontSize: 12,
-              color: "#fff",
+              color: "#FEF8EA",
               marginBottom: customSelected ? 6 : 0,
               cursor: "pointer",
             }}
@@ -411,7 +411,7 @@ export default function NudgePopover({
                 padding: "5px 10px",
                 borderRadius: 9999,
                 border: "none",
-                background: "rgba(255,255,255,0.7)",
+                background: "rgba(253,248,236,0.7)",
                 height: 26,
                 boxSizing: "border-box",
                 color: CANON_NAVY,
@@ -437,7 +437,7 @@ export default function NudgePopover({
               disabled={!canSubmit}
               style={{
                 background: canSubmit ? CANON_GREEN : "rgba(122,189,142,0.45)",
-                color: "#fff",
+                color: "#FEF8EA",
                 border: canSubmit ? `2px solid ${CANON_GREEN}` : "none",
                 padding: "6px 14px",
                 borderRadius: 9999,

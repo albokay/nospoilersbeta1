@@ -476,7 +476,7 @@ export default function AdminPage({
               style={{
                 display: "flex", alignItems: "center", gap: 12,
                 padding: "12px 16px",
-                borderBottom: i < sorted.length - 1 ? "1px solid rgba(255,255,255,0.2)" : "none",
+                borderBottom: i < sorted.length - 1 ? "1px solid rgba(253,248,236,0.2)" : "none",
                 opacity: busy === show.id ? 0.5 : 1,
               }}
             >
@@ -551,7 +551,7 @@ export default function AdminPage({
             <table style={{
               width: "100%", borderCollapse: "collapse",
               fontSize: 13, fontFamily: "monospace",
-              background: "#fff", color: "#000",
+              background: "#FEF8EA", color: "#000",
             }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid #999", textAlign: "left" }}>
@@ -569,7 +569,7 @@ export default function AdminPage({
                   return (
                     <tr key={row.id} style={{
                       borderBottom: "1px solid #ddd",
-                      background: row.status === "done" ? "#7abd8e" : row.status === "will-do" ? "#adc8d7" : isNew ? "#fffbe6" : i % 2 === 0 ? "#fff" : "#f9f9f9",
+                      background: row.status === "done" ? "#7abd8e" : row.status === "will-do" ? "#adc8d7" : isNew ? "#fffbe6" : i % 2 === 0 ? "#FEF8EA" : "#f9f9f9",
                       verticalAlign: "top",
                     }}>
                       <td style={{ padding: "6px 10px", whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 11 }}>
@@ -730,7 +730,7 @@ export default function AdminPage({
               <button
                 onClick={handleCreatePrompt}
                 disabled={newSaving || !newText.trim()}
-                style={{ fontSize: 12, cursor: "pointer", background: "#355eb8", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
+                style={{ fontSize: 12, cursor: "pointer", background: "#355eb8", color: "#FEF8EA", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
               >
                 {newSaving ? "Adding…" : "Add prompt"}
               </button>
@@ -760,7 +760,7 @@ export default function AdminPage({
                 onClick={() => setPromptFilter(f)}
                 style={{
                   fontSize: 12, padding: "3px 10px",
-                  background: promptFilter === f ? "rgba(255,255,255,0.3)" : "transparent",
+                  background: promptFilter === f ? "rgba(253,248,236,0.3)" : "transparent",
                   fontWeight: promptFilter === f ? 700 : 400,
                 }}
               >
@@ -783,9 +783,9 @@ export default function AdminPage({
             <table style={{
               width: "100%", borderCollapse: "collapse",
               fontSize: 12, fontFamily: "monospace",
-              background: "#fff", color: "#000",
+              background: "#FEF8EA", color: "#000",
             }}>
-              <thead style={{ position: "sticky", top: 0, background: "#fff", zIndex: 1 }}>
+              <thead style={{ position: "sticky", top: 0, background: "#FEF8EA", zIndex: 1 }}>
                 <tr style={{ borderBottom: "2px solid #999", textAlign: "left" }}>
                   <th style={{ padding: "5px 8px", fontWeight: 700 }}>ID</th>
                   <th style={{ padding: "5px 8px", fontWeight: 700 }}>text</th>
@@ -803,7 +803,7 @@ export default function AdminPage({
                     <tr
                       style={{
                         borderBottom: editingId === p.id ? "none" : "1px solid #eee",
-                        background: isAddressed ? "#e8e8e8" : !p.is_active ? "#fafafa" : i % 2 === 0 ? "#fff" : "#f9f9f9",
+                        background: isAddressed ? "#e8e8e8" : !p.is_active ? "#fafafa" : i % 2 === 0 ? "#FEF8EA" : "#f9f9f9",
                         opacity: isAddressed ? 0.5 : p.is_active ? 1 : 0.55,
                         verticalAlign: "top",
                       }}
@@ -873,7 +873,7 @@ export default function AdminPage({
                           <button
                             onClick={() => handleSaveEdit(p.id)}
                             disabled={editSaving}
-                            style={{ position: "absolute", top: 12, right: 16, fontSize: 12, cursor: "pointer", background: "#355eb8", color: "#fff", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
+                            style={{ position: "absolute", top: 12, right: 16, fontSize: 12, cursor: "pointer", background: "#355eb8", color: "#FEF8EA", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
                           >
                             {editSaving ? "Saving…" : "Save changes"}
                           </button>
@@ -988,7 +988,7 @@ export default function AdminPage({
               <table style={{
                 width: "100%", borderCollapse: "collapse",
                 fontSize: 12, fontFamily: "monospace",
-                background: "#fff", color: "#000",
+                background: "#FEF8EA", color: "#000",
               }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #999", textAlign: "left", background: "#f5f5f5" }}>
@@ -1029,7 +1029,7 @@ export default function AdminPage({
                       onClick={() => openDrilldown(row)}
                       style={{
                         borderBottom: "1px solid #eee",
-                        background: i % 2 === 0 ? "#fff" : "#f9f9f9",
+                        background: i % 2 === 0 ? "#FEF8EA" : "#f9f9f9",
                         cursor: "pointer",
                       }}
                     >
@@ -1069,7 +1069,7 @@ export default function AdminPage({
             onClick={e => e.stopPropagation()}
             className="card"
             style={{
-              background: "#fff", color: "#000", border: "none",
+              background: "#FEF8EA", color: "#000", border: "none",
               borderRadius: 10, padding: "20px 24px",
               maxWidth: 800, width: "92vw", maxHeight: "85vh", overflowY: "auto",
               fontFamily: "monospace",
@@ -1112,7 +1112,7 @@ export default function AdminPage({
                     <div
                       key={`${r.kind}-${r.replyId ?? r.threadId}-${i}`}
                       style={{
-                        background: r.isDeleted ? "#fafafa" : "#fff",
+                        background: r.isDeleted ? "#fafafa" : "#FEF8EA",
                         border: "1px solid #e5e5e5",
                         borderRadius: 4,
                         padding: "8px 10px",

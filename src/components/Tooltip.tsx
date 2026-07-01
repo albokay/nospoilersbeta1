@@ -112,7 +112,7 @@ export default function Tooltip({
           <div style={{
             ...(useAbsolute ? getAbsoluteStyle() : getFixedStyle()),
             background: "var(--dos-bg)",
-            color: "#fff",
+            color: "#FEF8EA",
             borderRadius: 18,
             padding: "9px 14px",
             fontSize: 13,

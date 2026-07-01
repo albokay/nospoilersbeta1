@@ -19,7 +19,7 @@ export default function Modal({ children, onClose, topContent, width, cardStyle,
       <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, width: width ?? "min(560px,92vw)" }}>
         {topContent && (
           <div className="card" style={{
-            width: "100%", background: "rgba(255,255,255,0.97)",
+            width: "100%", background: "rgba(253,248,236,0.97)",
             backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.18)", padding: "14px 20px",
             color: "#222", fontWeight: 600, fontSize: 15, textAlign: "center",

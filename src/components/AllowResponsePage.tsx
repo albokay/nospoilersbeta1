@@ -70,7 +70,7 @@ export default function AllowResponsePage({ id }: { id: string }) {
           <button
             className="btn"
             onClick={() => setShowAuth(true)}
-            style={{ background: "#fff", border: "none", color: "#dea838", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
+            style={{ background: "#FEF8EA", border: "none", color: "#dea838", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
           >
             Sign in
           </button>
@@ -125,37 +125,37 @@ export default function AllowResponsePage({ id }: { id: string }) {
     <Page>
       <Emoji><MessageSquare size={44} color="var(--icon-color)" /></Emoji>
       <h2 className="title" style={{ marginBottom: 6 }}>Allow a response?</h2>
-      <p style={{ fontSize: 15, color: "rgba(255,255,255,0.65)", marginBottom: 20, lineHeight: 1.5, maxWidth: 460 }}>
+      <p style={{ fontSize: 15, color: "rgba(253,248,236,0.65)", marginBottom: 20, lineHeight: 1.5, maxWidth: 460 }}>
         <strong style={{ color: "var(--fg)" }}>@{info?.requesterUsername}</strong> would like to respond
         to your public writing on <strong style={{ color: "var(--fg)" }}>{info?.showName}</strong>.
       </p>
 
       {info?.message && (
         <p style={{
-          fontSize: 14, fontStyle: "italic", color: "rgba(255,255,255,0.8)",
+          fontSize: 14, fontStyle: "italic", color: "rgba(253,248,236,0.8)",
           maxWidth: 460, marginBottom: 16, padding: "12px 16px",
-          background: "rgba(255,255,255,0.06)", borderLeft: "3px solid #dea838", borderRadius: 4, textAlign: "left",
+          background: "rgba(253,248,236,0.06)", borderLeft: "3px solid #dea838", borderRadius: 4, textAlign: "left",
         }}>
           "{info.message}"
         </p>
       )}
 
       {info?.requesterAhead ? (
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontStyle: "italic", maxWidth: 460, marginBottom: 20, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: "rgba(253,248,236,0.55)", fontStyle: "italic", maxWidth: 460, marginBottom: 20, lineHeight: 1.5 }}>
           They've watched further than you have. If you approve, you'll see their response once you catch up.
         </p>
       ) : info?.body ? (
         <p style={{
           fontSize: 14, color: "var(--fg)", maxWidth: 460, marginBottom: 20,
-          padding: "14px 18px", background: "rgba(255,255,255,0.06)", borderRadius: 8,
+          padding: "14px 18px", background: "rgba(253,248,236,0.06)", borderRadius: 8,
           whiteSpace: "pre-wrap", textAlign: "left", lineHeight: 1.55,
         }}>
           {info.body}
         </p>
       ) : null}
 
-      <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", maxWidth: 460, marginBottom: 24, lineHeight: 1.5 }}>
-        Approving lets @{info?.requesterUsername} respond to <strong style={{ color: "rgba(255,255,255,0.7)" }}>all</strong> of your public writing, on every show.
+      <p style={{ fontSize: 13, color: "rgba(253,248,236,0.5)", maxWidth: 460, marginBottom: 24, lineHeight: 1.5 }}>
+        Approving lets @{info?.requesterUsername} respond to <strong style={{ color: "rgba(253,248,236,0.7)" }}>all</strong> of your public writing, on every show.
       </p>
 
       {status === "error" && (
@@ -166,12 +166,12 @@ export default function AllowResponsePage({ id }: { id: string }) {
         className="btn"
         onClick={handleApprove}
         disabled={status === "approving"}
-        style={{ background: "#fff", border: "none", color: "#dea838", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
+        style={{ background: "#FEF8EA", border: "none", color: "#dea838", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
       >
         {status === "approving" ? "Allowing…" : `Allow @${info?.requesterUsername}`}
       </button>
 
-      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 18, maxWidth: 420, lineHeight: 1.5 }}>
+      <p style={{ fontSize: 12, color: "rgba(253,248,236,0.35)", marginTop: 18, maxWidth: 420, lineHeight: 1.5 }}>
         To deny, just close this page — nothing is published unless you allow it.
       </p>
     </Page>

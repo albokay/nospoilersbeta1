@@ -718,7 +718,7 @@ const backTab: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
 const writeBtn: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: "#fff",
+  display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: "#FEF8EA",
   fontWeight: 700, fontSize: 14, padding: "12px 24px", borderRadius: 65, cursor: "pointer",
 };
 const sortSelect: React.CSSProperties = {

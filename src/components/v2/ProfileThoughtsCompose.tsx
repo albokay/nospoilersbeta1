@@ -258,7 +258,7 @@ const ProfileThoughtsCompose = forwardRef<ProfileThoughtsComposeHandle, Props>(f
   const styleBlock = (
     <style>{`
       .v2-thoughts-paper-body {
-        background-color: #fff !important;
+        background-color: #FEF8EA !important;
         background-image: ${RULE_GRADIENT} !important;
         background-position: 0 0 !important;
         background-size: 100% ${LH}px !important;
@@ -311,7 +311,7 @@ const ProfileThoughtsCompose = forwardRef<ProfileThoughtsComposeHandle, Props>(f
   const whitePaper = (
     <div
       style={{
-        background: "#fff",
+        background: "#FEF8EA",
         border: `2px solid ${RULE}`,
         borderRadius: 0,
         padding: "32px 32px 24px",
@@ -364,7 +364,7 @@ const ProfileThoughtsCompose = forwardRef<ProfileThoughtsComposeHandle, Props>(f
             marginLeft: 10,
             verticalAlign: "middle",
             background: "#7abd8e",
-            color: "#fff",
+            color: "#FEF8EA",
             border: "none",
             borderRadius: 9999,
             padding: "4px 12px",
@@ -442,8 +442,8 @@ const ProfileThoughtsCompose = forwardRef<ProfileThoughtsComposeHandle, Props>(f
             disabled={submitting}
             style={{
               background: "transparent",
-              border: `2px solid ${creamSurface ? INK : "#fff"}`,
-              color: creamSurface ? INK : "#fff",
+              border: `2px solid ${creamSurface ? INK : "#FEF8EA"}`,
+              color: creamSurface ? INK : "#FEF8EA",
               borderRadius: 9999,
               padding: "10px 22px",
               fontFamily: "Inter, sans-serif",
@@ -460,7 +460,7 @@ const ProfileThoughtsCompose = forwardRef<ProfileThoughtsComposeHandle, Props>(f
             disabled={submitting}
             style={{
               background: "#355eb8",
-              color: "#fff",
+              color: "#FEF8EA",
               border: "none",
               borderRadius: 9999,
               padding: "10px 22px",
@@ -581,7 +581,7 @@ const ProfileThoughtsCompose = forwardRef<ProfileThoughtsComposeHandle, Props>(f
               disabled={submitting}
               style={{
                 background: "#355eb8",
-                color: "#fff",
+                color: "#FEF8EA",
                 border: "none",
                 borderRadius: 9999,
                 padding: "10px 22px",
@@ -667,7 +667,7 @@ const ProfileThoughtsCompose = forwardRef<ProfileThoughtsComposeHandle, Props>(f
                 onClick={() => { setDiscardOpen(false); onClose(); }}
                 style={{
                   background: "var(--danger)",
-                  color: "#fff",
+                  color: "#FEF8EA",
                   border: "none",
                   borderRadius: 9999,
                   padding: "9px 18px",

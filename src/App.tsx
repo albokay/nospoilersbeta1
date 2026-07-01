@@ -1047,7 +1047,7 @@ function AppShell() {
                 <div style={{
                   position: "absolute", top: -6, right: -6,
                   width: 18, height: 18, borderRadius: "50%",
-                  background: "var(--danger)", color: "#fff",
+                  background: "var(--danger)", color: "#FEF8EA",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 10, fontWeight: 800, lineHeight: 1,
                   pointerEvents: "none",
@@ -1085,8 +1085,8 @@ function AppShell() {
               style={(showProfile || showJournal || showLegacyProfile) ? { cursor: "default" } : undefined}
             >
               {(showProfile || showJournal || showLegacyProfile)
-                ? <><BookOpen size={16} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}>you are <SidebarAvatar userId={user?.id} username={username ?? undefined} size={18} />{username}</span></>
-                : <><BookMarked size={16} color="#fff" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#fff" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your journal</span></>
+                ? <><BookOpen size={16} color="#FEF8EA" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#FEF8EA", display: "inline-flex", alignItems: "center", gap: 6 }}>you are <SidebarAvatar userId={user?.id} username={username ?? undefined} size={18} />{username}</span></>
+                : <><BookMarked size={16} color="#FEF8EA" style={{ flexShrink: 0 }} /><ArrowLeft size={14} color="#FEF8EA" style={{ flexShrink: 0 }} /><span className="profileChipLabel" style={{ fontWeight: 700, color: "#FEF8EA" }}>go to your journal</span></>
               }
             </button>
             {pillBadge === "green" && (
@@ -1121,9 +1121,9 @@ function AppShell() {
                   border: "2px solid #dea838",
                 }}
               >
-                <span className="profileChipLabel" style={{ fontWeight: 700, color: "#fff" }}>go to your profile</span>
-                <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
-                <UserPen size={16} color="#fff" style={{ flexShrink: 0 }} />
+                <span className="profileChipLabel" style={{ fontWeight: 700, color: "#FEF8EA" }}>go to your profile</span>
+                <ArrowRight size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
+                <UserPen size={16} color="#FEF8EA" style={{ flexShrink: 0 }} />
               </button>
             )}
           </span>
@@ -1158,7 +1158,7 @@ function AppShell() {
             <div style={{
               position: "absolute", top: -6, right: -6,
               width: 18, height: 18, borderRadius: "50%",
-              background: "var(--danger)", color: "#fff",
+              background: "var(--danger)", color: "#FEF8EA",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 10, fontWeight: 800, lineHeight: 1,
               pointerEvents: "none",
@@ -1285,7 +1285,7 @@ function AppShell() {
                   opacity: arrowOpacity, pointerEvents: "none", zIndex: 10,
                   transition: "opacity 0.15s ease",
                 }}>
-                  <ArrowDown size={49} color="#fff" strokeWidth={2} />
+                  <ArrowDown size={49} color="#FEF8EA" strokeWidth={2} />
                 </div>
               )}
 
@@ -1302,7 +1302,7 @@ function AppShell() {
                 maxWidth: 880, textAlign: "center",
                 margin: "80px 16px 40px",
                 fontSize: isMobile ? 20 : 32, fontWeight: 800,
-                color: "#fff", lineHeight: 1.3,
+                color: "#FEF8EA", lineHeight: 1.3,
               }}>
                 {isMobile ? (
                   <>
@@ -1322,7 +1322,7 @@ function AppShell() {
               {/* "Here's how it works:" */}
               <p style={{
                 fontSize: isMobile ? 20 : 26, fontWeight: 800,
-                color: "#fff", margin: "8px 16px 40px", textAlign: "center",
+                color: "#FEF8EA", margin: "8px 16px 40px", textAlign: "center",
               }}>
                 Here&rsquo;s how it works:
               </p>
@@ -1356,7 +1356,7 @@ function AppShell() {
                         flexDirection: isMobile ? "row" : "column",
                         alignItems: "center",
                         gap: isMobile ? 14 : 8,
-                        background: "rgba(255,255,255,0.92)",
+                        background: "rgba(253,248,236,0.92)",
                       }}>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
                           <span style={{ fontSize: 16, fontWeight: 800, color: "var(--dos-bg)", lineHeight: 1 }}>
@@ -1386,7 +1386,7 @@ function AppShell() {
                     onClick={() => { setAuthInitialMode("signup"); setShowAuthModal(true); }}
                     style={{
                       width: "100%", maxWidth: 420,
-                      background: "#fff", color: "var(--dos-bg)", border: "none",
+                      background: "#FEF8EA", color: "var(--dos-bg)", border: "none",
                       borderRadius: 9999, padding: "14px 0",
                       fontSize: 18, fontWeight: 800, cursor: "pointer",
                       letterSpacing: "0.02em",
@@ -1398,8 +1398,8 @@ function AppShell() {
                     onClick={() => setShowHowItWorks(true)}
                     style={{
                       width: "100%", maxWidth: 420,
-                      background: "transparent", color: "#fff",
-                      border: "2px solid #fff",
+                      background: "transparent", color: "#FEF8EA",
+                      border: "2px solid #FEF8EA",
                       borderRadius: 9999, padding: "12px 0",
                       fontSize: 18, fontWeight: 800, cursor: "pointer",
                       letterSpacing: "0.02em",
@@ -1422,7 +1422,7 @@ function AppShell() {
                   display: "inline-flex",
                   alignItems: "center",
                   borderRadius: 999,
-                  boxShadow: "0 0 0 2px #fff",
+                  boxShadow: "0 0 0 2px #FEF8EA",
                   border: "none",
                   overflow: "hidden",
                   background: "transparent",
@@ -1456,7 +1456,7 @@ function AppShell() {
               {betaOpen && (
                 <div style={{ maxWidth: 690, width: "100%", padding: "0 16px", marginTop: 28, marginBottom: 60 }}>
                   <div style={{
-                    background: "#fff",
+                    background: "#FEF8EA",
                     borderRadius: 12,
                     padding: "20px 24px",
                     color: "var(--dos-bg)",
@@ -1679,7 +1679,7 @@ function AppShell() {
                 <div style={{ display: "flex", gap: 20 }}>
                   {(["first", "rewatch"] as const).map(choice => (
                     <div key={choice} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchStatusChoice(choice)}>
-                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#FEF8EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {watchStatusChoice === choice && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
                       </div>
                       {choice === "first" ? "First time" : "Rewatching"}

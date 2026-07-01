@@ -229,12 +229,12 @@ export default function SidebarLogo({ scale = 1 }: SidebarLogoProps) {
 
           // Draw shape i on tmpA (white = opaque mask)
           ctxA.clearRect(-PAD, -PAD, CW, CH);
-          ctxA.fillStyle = "#fff";
+          ctxA.fillStyle = "#FEF8EA";
           drawDot(ctxA, di.shape, di.x, di.y, di.rot);
 
           // Draw shape j on tmpB
           ctxB.clearRect(-PAD, -PAD, CW, CH);
-          ctxB.fillStyle = "#fff";
+          ctxB.fillStyle = "#FEF8EA";
           drawDot(ctxB, dj.shape, dj.x, dj.y, dj.rot);
 
           // Clip tmpA to intersection: keep only pixels present in both

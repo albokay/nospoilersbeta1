@@ -42,7 +42,7 @@ export default function FriendRoomScroll({ groups, onNavigate }: FriendRoomScrol
             style={{
               flexShrink: 0,
               background: "var(--danger)",
-              color: "#fff",
+              color: "#FEF8EA",
               border: "none",
               borderRadius: 9999,
               padding: "5px 14px",

@@ -215,7 +215,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
   const wrapper: React.CSSProperties = {
     minHeight: "100vh",
     background: "var(--dos-bg, #7abd8e)",
-    color: "#fff",
+    color: "#FEF8EA",
     padding: "24px 20px 48px",
     boxSizing: "border-box",
   };
@@ -239,8 +239,8 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
         <button
           onClick={() => navigate("/m/rooms", { replace: true })}
           style={{
-            background: "transparent", color: "#fff",
-            border: "2px solid #fff",
+            background: "transparent", color: "#FEF8EA",
+            border: "2px solid #FEF8EA",
             borderRadius: 9999, padding: "10px 24px",
             fontSize: 14, fontWeight: 700, cursor: "pointer",
             fontFamily: "inherit",
@@ -273,7 +273,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
         <button
           onClick={() => navigate("/m/rooms")}
           style={{
-            background: "transparent", color: "#fff",
+            background: "transparent", color: "#FEF8EA",
             border: "none",
             fontSize: 14, fontWeight: 600, cursor: "pointer",
             fontFamily: "inherit", opacity: 0.85,
@@ -290,7 +290,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
             aria-label="Open room menu"
             style={{
               background: "transparent",
-              color: "#fff",
+              color: "#FEF8EA",
               border: "none",
               padding: 0,
               margin: "0 0 4px",
@@ -338,7 +338,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
               fontSize: 15,
               fontWeight: 800,
               fontFamily: "inherit",
-              background: "#fff",
+              background: "#FEF8EA",
               color: "var(--dos-bg, #2a4a36)",
               border: "none",
               borderRadius: 9999,
@@ -358,8 +358,8 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
         {/* ── Entries ── */}
         {sortedThreads.length === 0 ? (
           <div style={{
-            background: "rgba(255,255,255,0.10)",
-            border: "2px dashed rgba(255,255,255,0.4)",
+            background: "rgba(253,248,236,0.10)",
+            border: "2px dashed rgba(253,248,236,0.4)",
             borderRadius: 12,
             padding: "28px 20px",
             textAlign: "center",
@@ -412,7 +412,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
           width: 56,
           height: 56,
           borderRadius: 9999,
-          background: "#fff",
+          background: "#FEF8EA",
           color: "var(--dos-bg, #2a4a36)",
           border: "none",
           boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
@@ -445,7 +445,7 @@ function ThreadCard({ thread, replyCount, hasNewActivity, onTap }: { thread: Thr
       style={{
         width: "100%",
         textAlign: "left",
-        background: "rgba(255,255,255,0.95)",
+        background: "rgba(253,248,236,0.95)",
         color: "var(--dos-bg, #2a4a36)",
         border: "none",
         borderRadius: 12,

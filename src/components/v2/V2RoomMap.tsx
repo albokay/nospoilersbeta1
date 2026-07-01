@@ -615,7 +615,7 @@ export default function V2RoomMap({
                     border: "none",
                     padding: 0,
                     cursor: "pointer",
-                    color: "#fff",
+                    color: "#FEF8EA",
                     display: "inline-flex",
                     alignItems: "center",
                   }}
@@ -810,9 +810,9 @@ export default function V2RoomMap({
                     textOverflow: "ellipsis",
                     fontSize: 13,
                     fontWeight: 400,
-                    color: isSelfCol ? "#355eb8" : "#fff",
+                    color: isSelfCol ? "#355eb8" : "#FEF8EA",
                     fontStyle: isClickable ? "italic" : undefined,
-                    borderBottom: isClickable ? "1px dotted #fff" : undefined,
+                    borderBottom: isClickable ? "1px dotted #FEF8EA" : undefined,
                     cursor: (isClickable || isSelfCol) ? "pointer" : undefined,
                   };
                   const usernameDiv = (
@@ -896,7 +896,7 @@ export default function V2RoomMap({
               scrolling up disappear behind the username row's bg (which
               has solid var(--dos-bg) above this line); the line itself is
               the visible chrome boundary. */}
-          <div aria-hidden style={{ height: 2, background: "#fff" }} />
+          <div aria-hidden style={{ height: 2, background: "#FEF8EA" }} />
         </div>
 
         {/* ── 12px breathing spacer between sticky header and body rows.
@@ -976,7 +976,7 @@ export default function V2RoomMap({
                     style={{
                       fontSize: 14,
                       whiteSpace: "nowrap",
-                      color: "#fff",
+                      color: "#FEF8EA",
                     }}
                   >
                     Season {row.season}
@@ -995,7 +995,7 @@ export default function V2RoomMap({
                   justifyContent: "flex-end",
                   paddingRight: 4,
                   fontSize: 12,
-                  color: "#fff",
+                  color: "#FEF8EA",
                 }}
               >
                 e{row.episode}
@@ -1315,7 +1315,7 @@ export default function V2RoomMap({
                       // fill with a contrasting outline color.
                       const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer);
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
-                        ? { border: "2px solid #fff" }
+                        ? { border: "2px solid #FEF8EA" }
                         : {};
 
                       // Receding back layers (multi-entry cells only). Each
@@ -1407,7 +1407,7 @@ export default function V2RoomMap({
                           width="auto"
                           portal
                           tooltipStyle={{
-                            background: "#fff",
+                            background: "#FEF8EA",
                             color: "#1a3a4a",
                             textAlign: "left",
                             lineHeight: 1.25,
@@ -1445,7 +1445,7 @@ export default function V2RoomMap({
                         // still resolves to the cell-relative position.
                         style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0 }}
                         tooltipStyle={{
-                          background: "#fff",
+                          background: "#FEF8EA",
                           color: "#f45028",
                           fontSize: 11,
                           fontWeight: 500,
@@ -1642,7 +1642,7 @@ function MapCellDot({
         height: 16,
         borderRadius: "50%",
         background: bg,
-        color: "#fff",
+        color: "#FEF8EA",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -1720,7 +1720,7 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   }
   return {
     background: "transparent",
-    border: "2px dashed #fff",
+    border: "2px dashed #FEF8EA",
     borderRadius: "50%",
     opacity: 0.5,
   };

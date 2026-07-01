@@ -93,5 +93,5 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
 }
 
 const dangerOutline: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: `2px solid ${C.red}`, background: "transparent", color: C.red, fontSize: 14, fontWeight: 700, cursor: "pointer" };
-const dangerSolid: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: "none", background: C.red, color: "#fff", fontSize: 14, fontWeight: 700 };
+const dangerSolid: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: "none", background: C.red, color: "#FEF8EA", fontSize: 14, fontWeight: 700 };
 const cancelBtn: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: `2px solid ${C.greyblue}`, background: "transparent", color: C.midnight, fontSize: 14, fontWeight: 700, cursor: "pointer" };

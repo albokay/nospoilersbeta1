@@ -3,17 +3,17 @@ export function injectDOSStyles() {
   if (document.getElementById(id)) return;
   const css = `
 :root{
-  --dos-bg:var(--role-room-frame-private,#7abd8e); --dos-fg:#FFFFFF; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FFFFFF;
-  --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
-  --dos-accent:#FFFFFF; --danger:var(--canon-red,#f45028); --green:var(--canon-green,#7abd8e); --dos-user:var(--canon-blue,#355eb8); --dos-border:#ffffff;
+  --dos-bg:var(--role-room-frame-private,#7abd8e); --dos-fg:#FEF8EA; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FEF8EA;
+  --dos-gray:rgba(253,248,236,0.65); --dos-light:#FEF8EA;
+  --dos-accent:#FEF8EA; --danger:var(--canon-red,#f45028); --green:var(--canon-green,#7abd8e); --dos-user:var(--canon-blue,#355eb8); --dos-border:#FEF8EA;
   /* Toggle "off" fill (de-selected segments) and "on" text (selected
      segments). In default/public both equal --dos-border (white) and
      --dos-fg (white) respectively, so no special handling is needed there.
      Friend-room overrides both to var(--dos-border) — the only space where
      the toggle uses a non-bg, non-outline accent. */
-  --toggle-off-fill:#ffffff;
-  --toggle-on-text:#ffffff;
-  --icon-color:#fff;
+  --toggle-off-fill:#FEF8EA;
+  --toggle-on-text:#FEF8EA;
+  --icon-color:#FEF8EA;
   /* canonical accent blue */
   --blue-light:var(--canon-sky,#adc8d7);
   /* progress dropdown (overridden to green in group context) */
@@ -47,8 +47,8 @@ body.group-context{
   --toggle-off-fill:rgba(26,58,74,0.3);
   --toggle-on-text:rgba(26,58,74,0.3);
   --dos-blue:rgba(26,58,74,0.08);
-  --icon-color:#fff;
-  --progress-bg:var(--canon-green,#7abd8e); --progress-fg:#fff;
+  --icon-color:#FEF8EA;
+  --progress-bg:var(--canon-green,#7abd8e); --progress-fg:#FEF8EA;
   background: linear-gradient(to bottom,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,#adc8d7) 180px) fixed,var(--role-room-frame-friend,#adc8d7);
   background-attachment:fixed;
 }
@@ -71,15 +71,15 @@ body.group-context .likeWrap:hover{ background:rgba(254,248,234,0.14) !important
    navy) reads as a black outline against the light-blue bg. Swap to white.
    Reply-cards are already handled by the non-contextual .reply-card rules
    further down (border tracks --dos-bg so only the fill change is visible). */
-body.group-context .btn:hover{ border-color:#fff !important; }
+body.group-context .btn:hover{ border-color:#FEF8EA !important; }
 
 /* ── Public room context — golden-yellow theme ─────────────────────────────── */
 body.public-context{
-  --dos-bg:var(--role-room-frame-public,#dea838); --dos-fg:#FFFFFF; --dos-cyan:#FFFFFF;
-  --dos-gray:rgba(255,255,255,0.65); --dos-light:#FFFFFF;
-  --dos-accent:#FFFFFF; --dos-border:#ffffff;
+  --dos-bg:var(--role-room-frame-public,#dea838); --dos-fg:#FEF8EA; --dos-cyan:#FEF8EA;
+  --dos-gray:rgba(253,248,236,0.65); --dos-light:#FEF8EA;
+  --dos-accent:#FEF8EA; --dos-border:#FEF8EA;
   --dos-blue:rgba(0,0,0,0.14);
-  --progress-bg:var(--canon-green,#7abd8e); --progress-fg:#fff;
+  --progress-bg:var(--canon-green,#7abd8e); --progress-fg:#FEF8EA;
   background: linear-gradient(to bottom,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,#dea838) 180px) fixed,var(--role-room-frame-public,#dea838);
   background-attachment:fixed;
 }
@@ -91,9 +91,9 @@ body.public-context header.site{ background:rgba(222,168,56,0.98); }
 body.public-context .stickybar{ background:rgba(222,168,56,0.98); }
 /* In the yellow public room, reply cards have white bg — swap yellow accents to canon green */
 body.public-context .reply-card .btn:not(.btn-danger){ color:#7abd8e !important; border-color:#7abd8e !important; }
-body.public-context .reply-card .btn:not(.btn-danger):hover{ background:#7abd8e !important; color:#fff !important; border-color:#7abd8e !important; }
+body.public-context .reply-card .btn:not(.btn-danger):hover{ background:#7abd8e !important; color:#FEF8EA !important; border-color:#7abd8e !important; }
 body.public-context .reply-card .likeWrap{ color:#7abd8e !important; border-color:#7abd8e !important; }
-body.public-context .reply-card .likeWrap:hover{ background:#7abd8e !important; color:#fff !important; border-color:#7abd8e !important; }
+body.public-context .reply-card .likeWrap:hover{ background:#7abd8e !important; color:#FEF8EA !important; border-color:#7abd8e !important; }
 body.public-context .blockquote-ref .blockquote-author,
 body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
 /* Friend-room quote blocks pick up the same dark-blue-transparent tone as
@@ -102,9 +102,9 @@ body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
 body.group-context .blockquote-ref .blockquote-author,
 body.group-context .blockquote-ref .blockquote-text{ color:rgba(26,58,74,0.55); opacity:1; }
 body.public-context .responding-to-label{ color:#7abd8e; }
-body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#FEF8EA !important; }
 body.public-context .progress-control{ border-color:#7abd8e !important; }
-body.group-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.group-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#FEF8EA !important; }
 body.group-context .progress-control{ border-color:#7abd8e !important; }
 /* Show room private tab sits on a green body, where the green picker outline
    is invisible — give that picker a cream outline. */
@@ -114,8 +114,8 @@ body.group-context .private-progress .progress-control{ border-color:#fef8ea !im
    in-modal picker sits on the modal's own colored frame and reads against
    white outline. Specificity beats the body-class rules above. */
 body.public-context [data-modal-root] .progress-control,
-body.group-context [data-modal-root] .progress-control{ border-color:#fff !important; }
-body.public-context .btn.primary{ background:#7abd8e !important; border-color:#7abd8e !important; color:#fff !important; }
+body.group-context [data-modal-root] .progress-control{ border-color:#FEF8EA !important; }
+body.public-context .btn.primary{ background:#7abd8e !important; border-color:#7abd8e !important; color:#FEF8EA !important; }
 /* New-reply badge in thread list — green instead of yellow in public context */
 body.public-context .newReplyBadge{ background:#355eb8 !important; }
 /* Radio dot in compose destination selector — green instead of yellow in public context */
@@ -274,18 +274,18 @@ hr{ display:none; }
 /* Consistent close-X button: circle, white outline, white X, transparent fill */
 .close-x{
   width:28px; height:28px; padding:0; background:transparent;
-  border:2px solid #fff; border-radius:50%; color:#fff;
+  border:2px solid #FEF8EA; border-radius:50%; color:#FEF8EA;
   display:inline-flex; align-items:center; justify-content:center;
   cursor:pointer; flex-shrink:0; line-height:1;
 }
-.close-x:hover{ background:rgba(255,255,255,0.15); }
+.close-x:hover{ background:rgba(253,248,236,0.15); }
 .btn.primary{ border-color:var(--dos-cyan); color:var(--dos-cyan); }
-.btn:hover{ background:var(--dos-blue); color:white; border-color:var(--dos-light); }
+.btn:hover{ background:var(--dos-blue); color:#FEF8EA; border-color:var(--dos-light); }
 .btn-danger{ border-color:var(--danger); color:var(--danger); }
-.btn-danger:hover{ background:var(--danger); color:#fff; border-color:var(--danger); }
+.btn-danger:hover{ background:var(--danger); color:#FEF8EA; border-color:var(--danger); }
 /* Standardized write/post button: canon-green fill, white outline, white text */
-.btn.post{ background: #7abd8e; color: #fff; border-color: #fff; }
-.btn.post:hover{ background: #6aad7e; border-color: #fff; color: #fff; }
+.btn.post{ background: #7abd8e; color: #FEF8EA; border-color: #FEF8EA; }
+.btn.post:hover{ background: #6aad7e; border-color: #FEF8EA; color: #FEF8EA; }
 /* Fix dark inputs/textareas */
 select {
   color: var(--dos-fg);
@@ -303,10 +303,10 @@ select {
   background-repeat: no-repeat;
   background-position: right 12px center;
 }
-input, textarea { color: #000; background: #fff; }
+input, textarea { color: #000; background: #FEF8EA; }
 input::placeholder, textarea::placeholder { color: #aaa; }
 /* Ensure compose/reply typing fields stay white even when .badge or .card class is present */
-input.badge, textarea.card, textarea { background: #fff !important; color: #000 !important; }
+input.badge, textarea.card, textarea { background: #FEF8EA !important; color: #000 !important; }
 input.badge::placeholder, textarea::placeholder { color: #aaa !important; }
 .h40{ height:40px; display:inline-flex; align-items:center; }
 
@@ -501,7 +501,7 @@ header.site{
 /* background pages — visual depth only, lower-left cascade */
 .diaryBackPage{
   position:absolute; inset:0;
-  border:2px solid rgba(255,255,255,0.55);
+  border:2px solid rgba(253,248,236,0.55);
   background:var(--dos-bg);
 }
 /* Scroll wrapper around the tab row — lets tabs scroll horizontally while
@@ -529,15 +529,15 @@ header.site{
 .diaryTab{
   padding:4px 12px;
   background:rgba(0,0,0,0.22);
-  border:2px solid rgba(255,255,255,0.85); border-bottom:none;
+  border:2px solid rgba(253,248,236,0.85); border-bottom:none;
   border-radius:8px 8px 0 0;
-  color:#fff; font-size:var(--t4); font-weight:500;
+  color:#FEF8EA; font-size:var(--t4); font-weight:500;
   cursor:pointer; white-space:nowrap; position:relative;
 }
 .diaryTab.active{
   padding:8px 24px;
   background:var(--dos-bg);
-  border-color:#fff;
+  border-color:#FEF8EA;
   border-bottom:2px solid var(--dos-bg);
   font-size:var(--t3); font-weight:800;
   text-decoration:none;
@@ -547,7 +547,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
 }
-.diaryCardWrap > .card{ border:2px solid #fff; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:2px solid #FEF8EA; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
@@ -588,7 +588,7 @@ header.site{
 .avatar{
   width:24px; height:24px; border:none; border-radius:50%;
   display:inline-grid; place-items:center; font-size:12px; line-height:1;
-  background:#fff; color:var(--dos-user); font-weight:700;
+  background:#FEF8EA; color:var(--dos-user); font-weight:700;
 }
 @media(max-width:600px){
   .profileChipLabel{ display:none; }
@@ -612,7 +612,7 @@ header.site{
   /* Flush first tab with the card's left border line */
   .diaryTabRow{ padding-left:0; }
   /* Keep border, zero padding — action bar + scroll area handle their own padding */
-  .diaryCardWrap > .card{ border:2px solid #fff !important; padding:0 !important; }
+  .diaryCardWrap > .card{ border:2px solid #FEF8EA !important; padding:0 !important; }
   .profileActionBar{ padding:10px 16px; }
   .diaryScrollArea{ padding:8px 16px 24px 16px; }
   /* Entry cards: remove the desktop left-margin offset so they're centred in the box */
@@ -654,16 +654,16 @@ header.site{
 .scrollWin::-webkit-scrollbar{ width:8px; }
 .scrollWin::-webkit-scrollbar-track{ background:transparent; }
 .scrollWin::-webkit-scrollbar-thumb{
-  background:rgba(255,255,255,0.4); border:1px solid var(--dos-border); border-radius:8px;
+  background:rgba(253,248,236,0.4); border:1px solid var(--dos-border); border-radius:8px;
 }
-.scrollWin::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,0.6); }
+.scrollWin::-webkit-scrollbar-thumb:hover{ background:rgba(253,248,236,0.6); }
 
 /* Reply cards: white bg, yellow text & buttons */
-.reply-card{ background:#fff !important; }
+.reply-card{ background:#FEF8EA !important; }
 .reply-card .btn:not(.btn-danger){ color:var(--dos-bg) !important; border-color:var(--dos-bg) !important; background:transparent !important; }
-.reply-card .btn:not(.btn-danger):hover{ background:var(--dos-bg) !important; color:#fff !important; border-color:var(--dos-bg) !important; }
+.reply-card .btn:not(.btn-danger):hover{ background:var(--dos-bg) !important; color:#FEF8EA !important; border-color:var(--dos-bg) !important; }
 .reply-card .likeWrap{ color:var(--dos-bg) !important; border-color:var(--dos-bg) !important; background:transparent !important; }
-.reply-card .likeWrap:hover{ background:var(--dos-bg) !important; color:#fff !important; border-color:var(--dos-bg) !important; }
+.reply-card .likeWrap:hover{ background:var(--dos-bg) !important; color:#FEF8EA !important; border-color:var(--dos-bg) !important; }
 
 /* bottom-right replies badge */
 .replyCount{
@@ -691,8 +691,8 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* Highlight flash for scroll-to targets */
 @keyframes response-highlight-blink {
-  0%   { background-color: rgba(255,255,255,0.45); }
-  60%  { background-color: rgba(255,255,255,0.18); }
+  0%   { background-color: rgba(253,248,236,0.45); }
+  60%  { background-color: rgba(253,248,236,0.18); }
   100% { background-color: transparent; }
 }
 .response-highlight {
@@ -766,9 +766,9 @@ body { -webkit-font-smoothing: antialiased; }
 }
 
 /* On the original thread entry (yellow bg) sups and underlines must be white */
-.thread-entry-body .cite-sup-btn { color: #fff; }
+.thread-entry-body .cite-sup-btn { color: #FEF8EA; }
 .thread-entry-body .quoted-passage {
-  text-decoration-color: rgba(255,255,255,0.55);
+  text-decoration-color: rgba(253,248,236,0.55);
 }
 
 /* ── Explanation text ────────────────────────────────────────────────────────
@@ -788,7 +788,7 @@ body { -webkit-font-smoothing: antialiased; }
 }
 .explanation-card .btn:hover {
   background: rgba(0,0,0,0.08) !important;
-  color: #fff !important;
+  color: #FEF8EA !important;
   border-color: #000 !important;
 }
 
@@ -869,11 +869,11 @@ body { -webkit-font-smoothing: antialiased; }
   font-weight: inherit;
   line-height: 1.3;
 }
-.insert-quote-main:hover { background: var(--dos-blue); color: white; }
+.insert-quote-main:hover { background: var(--dos-blue); color:#FEF8EA; }
 .insert-quote-cancel {
   background: transparent;
   border: none;
-  border-left: 1.5px solid rgba(255,255,255,0.45);
+  border-left: 1.5px solid rgba(253,248,236,0.45);
   color: var(--dos-fg);
   cursor: pointer;
   padding: 5px 12px;
@@ -969,7 +969,7 @@ body.public-context .prompt-ref { color: #8a6420; }
 }
 .prompt-card-btn--use {
   background: #355eb8;
-  color: #fff;
+  color: #FEF8EA;
   border-color: #355eb8;
 }
 .prompt-card-btn--use:hover {
@@ -980,14 +980,14 @@ body.public-context .prompt-ref { color: #8a6420; }
 /* ── Prompt trigger button (inside compose / response area) ─────────────── */
 .prompt-btn {
   background: var(--dos-bg);
-  border: 2px solid #fff;
+  border: 2px solid #FEF8EA;
   padding: 5px 10px;
   font-size: 13px;
   white-space: nowrap;
   font-weight: 400;
   letter-spacing: 0;
   cursor: pointer;
-  color: #fff;
+  color: #FEF8EA;
   opacity: 1;
   font-family: "Inter", sans-serif;
   border-radius: 9999px;

@@ -1056,7 +1056,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                     title="Room settings"
                     style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", marginTop: 8, flexShrink: 0 }}
                   >
-                    <Settings size={20} color="#fff" />
+                    <Settings size={20} color="#FEF8EA" />
                   </span>
                 </div>
               </div>

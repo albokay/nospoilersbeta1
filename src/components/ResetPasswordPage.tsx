@@ -146,8 +146,8 @@ export default function ResetPasswordPage() {
       <div style={{
         width: "100%",
         maxWidth: 420,
-        background: "rgba(255,255,255,0.06)",
-        border: "2px solid rgba(255,255,255,0.18)",
+        background: "rgba(253,248,236,0.06)",
+        border: "2px solid rgba(253,248,236,0.18)",
         borderRadius: 16,
         padding: "28px 32px",
       }}>
@@ -186,10 +186,10 @@ function FormView({
   const waiting = phase === "waiting-for-recovery";
   return (
     <>
-      <h1 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 700, color: "#fff" }}>
+      <h1 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 700, color: "#FEF8EA" }}>
         {COPY.heading}
       </h1>
-      <p style={{ margin: "0 0 22px", fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, lineHeight: 1.5, color: "rgba(255,255,255,0.75)" }}>
+      <p style={{ margin: "0 0 22px", fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, lineHeight: 1.5, color: "rgba(253,248,236,0.75)" }}>
         {COPY.subline}
       </p>
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
@@ -233,9 +233,9 @@ function FormView({
             fontFamily: "Lora, Georgia, serif",
             fontStyle: "italic",
             fontSize: 13,
-            color: "rgba(255,255,255,0.7)",
+            color: "rgba(253,248,236,0.7)",
             textDecoration: "none",
-            borderBottom: "1px dotted rgba(255,255,255,0.45)",
+            borderBottom: "1px dotted rgba(253,248,236,0.45)",
             paddingBottom: 1,
           }}
         >
@@ -249,10 +249,10 @@ function FormView({
 function SuccessView() {
   return (
     <div style={{ textAlign: "center" }}>
-      <h1 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 700, color: "#fff" }}>
+      <h1 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 700, color: "#FEF8EA" }}>
         {COPY.successHeading}
       </h1>
-      <p style={{ margin: 0, fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "rgba(255,255,255,0.75)" }}>
+      <p style={{ margin: 0, fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "rgba(253,248,236,0.75)" }}>
         signing you in<LoadingDots />
       </p>
     </div>
@@ -262,7 +262,7 @@ function SuccessView() {
 function NoTokenView() {
   return (
     <>
-      <p style={{ margin: "0 0 18px", fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, lineHeight: 1.5, color: "rgba(255,255,255,0.85)", textAlign: "center" }}>
+      <p style={{ margin: "0 0 18px", fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 15, lineHeight: 1.5, color: "rgba(253,248,236,0.85)", textAlign: "center" }}>
         {COPY.noTokenMessage}
       </p>
       <div style={{ textAlign: "center" }}>
@@ -271,7 +271,7 @@ function NoTokenView() {
           style={{
             display: "inline-block",
             background: "var(--dos-user)",
-            color: "#fff",
+            color: "#FEF8EA",
             fontSize: 14,
             fontWeight: 600,
             textDecoration: "none",

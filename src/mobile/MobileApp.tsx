@@ -50,7 +50,7 @@ function injectMobileStyles() {
   if (document.getElementById(id)) return;
   const styleEl = document.createElement("style");
   styleEl.id = id;
-  styleEl.textContent = `.m-input::placeholder { color: rgba(255,255,255,0.55); }`;
+  styleEl.textContent = `.m-input::placeholder { color: rgba(253,248,236,0.55); }`;
   document.head.appendChild(styleEl);
 }
 

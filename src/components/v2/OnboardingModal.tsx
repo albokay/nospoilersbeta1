@@ -43,7 +43,7 @@ const CANON_YELLOW = "#dea838";  // canon yellow (welcome text, dots, radios, wo
 // lift so it still reads as a field on the cream surface.
 const FIELD: React.CSSProperties = {
   width: "100%",
-  background: "#fff",
+  background: "#FEF8EA",
   color: INK,
   border: "none",
   borderRadius: 9999,
@@ -111,7 +111,7 @@ function ShowSearchField({
             top: "calc(100% + 6px)",
             left: 0,
             right: 0,
-            background: "#fff",
+            background: "#FEF8EA",
             border: "none",
             borderRadius: 18,
             zIndex: 20,
@@ -154,7 +154,7 @@ function SelectedChip({ name, onClear, big = false }: { name: string; onClear: (
     <div
       style={{
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-        background: "#fff", border: "none", borderRadius: 9999,
+        background: "#FEF8EA", border: "none", borderRadius: 9999,
         padding: big ? "12px 18px" : "11px 18px",
         boxShadow: "0 1px 3px rgba(43,36,24,0.12)", boxSizing: "border-box",
         minHeight: 46,
@@ -223,7 +223,7 @@ function CanonRow({
           onChange={(e) => setBlurb(e.target.value.slice(0, 280))}
           style={{
             ...FIELD,
-            background: selected ? "#fff" : "rgba(43,36,24,0.04)",
+            background: selected ? "#FEF8EA" : "rgba(43,36,24,0.04)",
             boxShadow: selected ? FIELD.boxShadow : "none",
             opacity: selected ? 1 : 0.5,
           }}
@@ -726,7 +726,7 @@ export default function OnboardingModal({
 
 // Episode <select> styling for the modal: pill, no hard outline, subtle lift.
 const SELECT_FIELD: React.CSSProperties = {
-  background: "#fff",
+  background: "#FEF8EA",
   color: INK,
   border: "none",
   borderRadius: 9999,
@@ -738,7 +738,7 @@ const SELECT_FIELD: React.CSSProperties = {
 function confirmStyle(disabled: boolean): React.CSSProperties {
   return {
     background: ACCENT,
-    color: "#fff",
+    color: "#FEF8EA",
     border: "none",
     borderRadius: 9999,
     padding: "9px 24px",

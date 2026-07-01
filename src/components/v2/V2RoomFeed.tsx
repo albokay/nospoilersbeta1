@@ -207,7 +207,7 @@ function keepTailTogether(text: string, n = 3): string {
 // (V2InlineThread, which normally carries it, isn't mounted in demo mode).
 // Matches the live friend-room collapse button exactly.
 const demoCollapseBtn: React.CSSProperties = {
-  background: "transparent", border: "none", color: "#fff", cursor: "pointer",
+  background: "transparent", border: "none", color: "#FEF8EA", cursor: "pointer",
   fontSize: 13, padding: "4px 8px", display: "inline-flex", alignItems: "center",
   gap: 5, fontFamily: "inherit",
 };
@@ -627,7 +627,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 // (Guide-ticket yellow outline is applied via the .tsp-guide
                 // class, since group-context forces the ticket border !important.)
                 border: isNew
-                  ? "4px solid #fff"
+                  ? "4px solid #FEF8EA"
                   : "4px solid var(--dos-border)",
                 animation: isHighlighted
                   ? "flash-glow 1.2s ease forwards"
@@ -680,7 +680,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     // elsewhere). Same size / weight / family as the title
                     // (inherits from the h2 .title class) but white — the
                     // tag reads as title-level chrome, not body text.
-                    <span style={{ color: "#fff", whiteSpace: "nowrap", marginLeft: 8 }}>
+                    <span style={{ color: "#FEF8EA", whiteSpace: "nowrap", marginLeft: 8 }}>
                       {" • "}
                       <EpisodeTag
                         season={entry.s}
@@ -789,7 +789,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                             <div key={r.id} style={{ border: "2px solid var(--dos-border)", borderRadius: 16, padding: "10px 14px" }}>
                               <div className="muted" style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                                 <Username name={r.author} userId={r.author} onClickProfile={() => {}} bold />
-                                <span style={{ color: "#fff", whiteSpace: "nowrap" }}>
+                                <span style={{ color: "#FEF8EA", whiteSpace: "nowrap" }}>
                                   {" • "}<EpisodeTag season={r.season} episode={r.episode} naturalNumbers parens={false} />
                                 </span>
                               </div>
@@ -801,7 +801,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     )}
                     <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>
                       <button style={demoCollapseBtn} onClick={() => handleCollapseTop(entry.threadId)}>
-                        <ChevronUp size={13} color="#fff" /> collapse
+                        <ChevronUp size={13} color="#FEF8EA" /> collapse
                       </button>
                     </div>
                   </div>
@@ -887,7 +887,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                             ? {
                                 background: "#7abd8e",
                                 border: "none",
-                                color: "#fff",
+                                color: "#FEF8EA",
                                 cursor: "pointer",
                                 width: 32,
                                 height: 32,
@@ -901,7 +901,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                             : {
                                 background: "transparent",
                                 border: "none",
-                                color: "#fff",
+                                color: "#FEF8EA",
                                 cursor: "pointer",
                                 padding: 4,
                                 display: "inline-flex",
@@ -910,7 +910,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                               }
                         }
                       >
-                        <ChevronDown size={20} color="#fff" />
+                        <ChevronDown size={20} color="#FEF8EA" />
                       </button>
                     );
                     if (showGreenChevron) {
@@ -942,13 +942,13 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 4,
-                        color: "#fff",
+                        color: "#FEF8EA",
                         fontSize: 14,
                         fontWeight: 500,
                         userSelect: "none",
                       }}
                     >
-                      <Mail size={16} color="#fff" />
+                      <Mail size={16} color="#FEF8EA" />
                       {entry.replyCount}
                     </span>
                   )}
@@ -973,14 +973,14 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               <button
                 className="btn"
                 onClick={cancelDiscardDraft}
-                style={{ background: "transparent", border: "2px solid #fff", color: "#fff" }}
+                style={{ background: "transparent", border: "2px solid #FEF8EA", color: "#FEF8EA" }}
               >
                 Cancel
               </button>
               <button
                 className="btn"
                 onClick={confirmDiscardDraft}
-                style={{ background: "var(--danger)", border: "none", color: "#fff" }}
+                style={{ background: "var(--danger)", border: "none", color: "#FEF8EA" }}
               >
                 Yes, I'm sure
               </button>
@@ -1017,7 +1017,7 @@ function EntryRedDot({ count, onDismiss }: { count: number; onDismiss: () => voi
           padding: "0 5px",
           borderRadius: 999,
           background: "var(--danger)",
-          color: "#fff",
+          color: "#FEF8EA",
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",

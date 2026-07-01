@@ -152,7 +152,7 @@ export default function PublicProfilePage({
                 fontWeight: 600,
                 letterSpacing: 0.5,
                 lineHeight: 1.05,
-                color: "#fff",
+                color: "#FEF8EA",
                 opacity: 0.8,
               }}
             >
@@ -211,7 +211,7 @@ export default function PublicProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {t.body !== t.preview && (
-                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#FEF8EA", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(t.id); }}>
                               {expandedIds.has(t.id) ? "▴ less" : "▾ expand"}
                             </div>
@@ -261,7 +261,7 @@ export default function PublicProfilePage({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                           {(r.body.length > 260 || r.body.split('\n').length > 3) && (
-                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#fff", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
+                            <div className="expand-chip" style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", background: "#FEF8EA", color: "var(--dos-bg)", borderRadius: 999, padding: "7px 14px", whiteSpace: "nowrap", userSelect: "none" }}
                               onClick={(e) => { e.stopPropagation(); toggleExpand(r.id); }}>
                               {expandedIds.has(r.id) ? "▴ less" : "▾ expand"}
                             </div>

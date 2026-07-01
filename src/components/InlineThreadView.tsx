@@ -511,7 +511,7 @@ export default function InlineThreadView({
                 </button>
                 <button
                   className="btn"
-                  style={{ fontSize: 14, background: "#7abd8e", border: "none", color: "#fff" }}
+                  style={{ fontSize: 14, background: "#7abd8e", border: "none", color: "#FEF8EA" }}
                   onClick={handleConfirmDuplicate}
                   disabled={duplicateSubmitting}
                 >
@@ -575,8 +575,8 @@ export default function InlineThreadView({
               // All three carry a 2px canon-green border.
               const savePrivate = !inGroupContext && !thread.isPublic;
               const saveStyle: React.CSSProperties = savePrivate
-                ? { background: "#fff", color: "#7abd8e", border: "2px solid #7abd8e" }
-                : { background: "#7abd8e", color: "#fff", border: "2px solid #7abd8e" };
+                ? { background: "#FEF8EA", color: "#7abd8e", border: "2px solid #7abd8e" }
+                : { background: "#7abd8e", color: "#FEF8EA", border: "2px solid #7abd8e" };
               return (
                 <>
                   {showRetagWarning && (
@@ -717,7 +717,7 @@ export default function InlineThreadView({
                           className="btn"
                           style={{
                             fontSize: 13,
-                            ...(showMoveOptions ? { background: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.8)" } : {})
+                            ...(showMoveOptions ? { background: "rgba(253,248,236,0.25)", borderColor: "rgba(253,248,236,0.8)" } : {})
                           }}
                           onClick={() => setShowMoveOptions(v => !v)}
                         >
@@ -733,10 +733,10 @@ export default function InlineThreadView({
                           }}>
                             <button
                               className="btn"
-                              style={{ fontSize: 13, whiteSpace: "nowrap", background: "#dea838", border: "none", color: "#fff" }}
+                              style={{ fontSize: 13, whiteSpace: "nowrap", background: "#dea838", border: "none", color: "#FEF8EA" }}
                               onClick={handleMakePublic}
                             >
-                              <Globe size={14} color="#fff" /> Public Post
+                              <Globe size={14} color="#FEF8EA" /> Public Post
                             </button>
                             {(userGroups ?? []).map(g => (
                               <button key={g.id} className="btn" style={{ fontSize: 13, whiteSpace: "nowrap" }} onClick={() => handleMoveToGroup(g.id)}>
@@ -759,7 +759,7 @@ export default function InlineThreadView({
                           className="btn"
                           style={{
                             fontSize: 13,
-                            ...(showDuplicateOptions ? { background: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.8)" } : {})
+                            ...(showDuplicateOptions ? { background: "rgba(253,248,236,0.25)", borderColor: "rgba(253,248,236,0.8)" } : {})
                           }}
                           onClick={openDuplicateDropdownForPublic}
                         >
@@ -775,7 +775,7 @@ export default function InlineThreadView({
                             minWidth: 180,
                           }}>
                             {duplicateRoomsLoading && (
-                              <div style={{ fontSize: 13, color: "#fff", padding: "6px 8px", whiteSpace: "nowrap" }}>Loading rooms…</div>
+                              <div style={{ fontSize: 13, color: "#FEF8EA", padding: "6px 8px", whiteSpace: "nowrap" }}>Loading rooms…</div>
                             )}
                             {!duplicateRoomsLoading && duplicateRoomsError && (
                               <button
@@ -787,7 +787,7 @@ export default function InlineThreadView({
                               </button>
                             )}
                             {!duplicateRoomsLoading && !duplicateRoomsError && eligibleDuplicateRooms !== null && eligibleDuplicateRooms.length === 0 && (
-                              <div style={{ fontSize: 13, color: "#fff", padding: "6px 8px", whiteSpace: "nowrap", opacity: 0.85 }}>
+                              <div style={{ fontSize: 13, color: "#FEF8EA", padding: "6px 8px", whiteSpace: "nowrap", opacity: 0.85 }}>
                                 No friend rooms available.
                               </div>
                             )}
@@ -813,7 +813,7 @@ export default function InlineThreadView({
                           className="btn"
                           style={{
                             fontSize: 13,
-                            ...(showDuplicateOptions ? { background: "rgba(255,255,255,0.25)", borderColor: "rgba(255,255,255,0.8)" } : {})
+                            ...(showDuplicateOptions ? { background: "rgba(253,248,236,0.25)", borderColor: "rgba(253,248,236,0.8)" } : {})
                           }}
                           onClick={() => setShowDuplicateOptions(v => !v)}
                         >
@@ -829,10 +829,10 @@ export default function InlineThreadView({
                           }}>
                             <button
                               className="btn"
-                              style={{ fontSize: 13, whiteSpace: "nowrap", background: "#dea838", border: "none", color: "#fff" }}
+                              style={{ fontSize: 13, whiteSpace: "nowrap", background: "#dea838", border: "none", color: "#FEF8EA" }}
                               onClick={() => setPendingDuplicate({ kind: "public" })}
                             >
-                              <Globe size={14} color="#fff" /> Public Post
+                              <Globe size={14} color="#FEF8EA" /> Public Post
                             </button>
                           </div>
                         )}

@@ -68,7 +68,7 @@ export default function ModeToggle({ value, onToggle, disabled = false, hiddenNe
           height: 20,
           borderRadius: "50%",
           background: "var(--danger)",
-          color: "#fff",
+          color: "#FEF8EA",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

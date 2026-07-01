@@ -26,7 +26,7 @@ import TreatedArt from "../TreatedArt";
 // lift to a shared helper.)
 const PROFILE_CARD: React.CSSProperties = {
   background: "transparent",
-  border: "2px solid #fff",
+  border: "2px solid #FEF8EA",
   borderRadius: 0,
   boxShadow: "none",
 };
@@ -617,7 +617,7 @@ function ContextualCTAs({
             gap: 6,
             background: "#adc8d7",
             border: "2px solid #adc8d7",
-            color: "#fff",
+            color: "#FEF8EA",
           }}
         >
           <ArrowRight size={13} /> go to your friend room

@@ -297,7 +297,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
       <Page>
         <Emoji><MonitorPlay size={44} color="var(--icon-color)" /></Emoji>
         <h2 className="title" style={{ marginBottom: 6 }}>You're invited!</h2>
-        <p style={{ fontSize: 15, color: "rgba(255,255,255,0.65)", marginBottom: 28, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 15, color: "rgba(253,248,236,0.65)", marginBottom: 28, lineHeight: 1.5 }}>
           Join the private watch room{" "}
           <strong style={{ color: "var(--fg)" }}>"{invite?.group_name}"</strong>
         </p>
@@ -310,7 +310,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
             <button
               className="btn"
               onClick={() => setShowAuth(true)}
-              style={{ background: "#fff", border: "none", color: "#7abd8e", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
+              style={{ background: "#FEF8EA", border: "none", color: "#7abd8e", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
             >
               Sign in to accept
             </button>
@@ -342,7 +342,7 @@ export default function InviteAcceptPage({ token }: { token: string }) {
               className="btn"
               onClick={handleAccept}
               disabled={status === "accepting" || (needsProgressPick && !showForInvite)}
-              style={{ background: "#fff", border: "none", color: "#7abd8e", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
+              style={{ background: "#FEF8EA", border: "none", color: "#7abd8e", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
             >
               {(status as string) === "accepting" ? "Joining…" : `Join "${invite?.group_name}"`}
             </button>

@@ -284,7 +284,7 @@ export default function ResponseComposer({
             <button
               className="btn"
               onClick={onCancel}
-              style={{ background: "#fff", border: "2px solid #dea838", color: "#dea838" }}
+              style={{ background: "#FEF8EA", border: "2px solid #dea838", color: "#dea838" }}
             >
               Done
             </button>
@@ -327,7 +327,7 @@ export default function ResponseComposer({
         style={{
           width: "100%",
           boxSizing: "border-box",
-          background: "#fff",
+          background: "#FEF8EA",
           color: "#000",
           border: "none",
           borderRadius: 8,
@@ -371,7 +371,7 @@ export default function ResponseComposer({
             style={{
               width: "100%",
               boxSizing: "border-box",
-              background: "#fff",
+              background: "#FEF8EA",
               color: "#000",
               border: "none",
               borderRadius: 8,
@@ -409,7 +409,7 @@ export default function ResponseComposer({
             className="btn"
             onClick={() => handleSubmit(false)}
             disabled={submitting || !body.trim()}
-            style={{ background: "#fff", border: "2px solid #dea838", color: "#dea838" }}
+            style={{ background: "#FEF8EA", border: "2px solid #dea838", color: "#dea838" }}
           >
             {submitting ? "Sending…" : "Send request"}
           </button>
@@ -434,7 +434,7 @@ export default function ResponseComposer({
               className="btn"
               onClick={() => handleSubmit(false)}
               disabled={submitting || !body.trim()}
-              style={{ background: "#fff", border: `2px solid ${accent}`, color: accent }}
+              style={{ background: "#FEF8EA", border: `2px solid ${accent}`, color: accent }}
             >
               {submitting ? "Posting…" : label}
             </button>

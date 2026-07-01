@@ -228,7 +228,7 @@ export default function MobileProgressGate(props: Props) {
   const wrapper: React.CSSProperties = {
     minHeight: "100vh",
     background: "var(--dos-bg, #7abd8e)",
-    color: "#fff",
+    color: "#FEF8EA",
     padding: "24px 20px 48px",
     boxSizing: "border-box",
   };
@@ -283,7 +283,7 @@ export default function MobileProgressGate(props: Props) {
         <button
           onClick={() => navigate(props.mode === "new" ? "/m/rooms" : "/m/rooms")}
           style={{
-            background: "transparent", color: "#fff",
+            background: "transparent", color: "#FEF8EA",
             border: "none",
             fontSize: 14, fontWeight: 600, cursor: "pointer",
             fontFamily: "inherit", opacity: 0.85,
@@ -304,7 +304,7 @@ export default function MobileProgressGate(props: Props) {
 
         {/* ── Show card ── */}
         <div style={{
-          background: "rgba(255,255,255,0.95)",
+          background: "rgba(253,248,236,0.95)",
           color: "var(--dos-bg, #2a4a36)",
           borderRadius: 12,
           padding: "14px 16px",
@@ -343,10 +343,10 @@ export default function MobileProgressGate(props: Props) {
             padding: "14px 16px",
             fontSize: 16,
             fontFamily: "inherit",
-            border: "2px solid rgba(255,255,255,0.4)",
+            border: "2px solid rgba(253,248,236,0.4)",
             borderRadius: 10,
-            background: "rgba(255,255,255,0.08)",
-            color: "#fff",
+            background: "rgba(253,248,236,0.08)",
+            color: "#FEF8EA",
             outline: "none",
             boxSizing: "border-box",
             WebkitAppearance: "none",
@@ -370,7 +370,7 @@ export default function MobileProgressGate(props: Props) {
         {submitError && (
           <div style={{
             marginTop: 16,
-            color: "#fff",
+            color: "#FEF8EA",
             background: "rgba(244,80,40,0.9)",
             padding: "10px 14px",
             borderRadius: 8,
@@ -392,7 +392,7 @@ export default function MobileProgressGate(props: Props) {
             fontSize: 18,
             fontWeight: 800,
             fontFamily: "inherit",
-            background: "#fff",
+            background: "#FEF8EA",
             color: "var(--dos-bg)",
             border: "none",
             borderRadius: 9999,
@@ -410,8 +410,8 @@ export default function MobileProgressGate(props: Props) {
 
 function pillButtonStyle(): React.CSSProperties {
   return {
-    background: "transparent", color: "#fff",
-    border: "2px solid #fff",
+    background: "transparent", color: "#FEF8EA",
+    border: "2px solid #FEF8EA",
     borderRadius: 9999, padding: "10px 24px",
     fontSize: 14, fontWeight: 700, cursor: "pointer",
     fontFamily: "inherit",

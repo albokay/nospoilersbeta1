@@ -199,7 +199,7 @@ export default function MobileInviteAccept({ token }: { token: string }) {
   const wrapper: React.CSSProperties = {
     minHeight: "100vh",
     background: "var(--dos-bg, #7abd8e)",
-    color: "#fff",
+    color: "#FEF8EA",
     padding: "24px 20px",
     boxSizing: "border-box",
     display: "flex",
@@ -220,7 +220,7 @@ export default function MobileInviteAccept({ token }: { token: string }) {
   if (status === "invalid") {
     return (
       <CenteredPage>
-        <Link2 size={44} color="#fff" />
+        <Link2 size={44} color="#FEF8EA" />
         <h1 style={titleStyle}>Invalid invitation</h1>
         <p style={mutedStyle}>
           This invite link doesn&rsquo;t exist, has already been used, or has expired.
@@ -235,7 +235,7 @@ export default function MobileInviteAccept({ token }: { token: string }) {
   if (status === "expired") {
     return (
       <CenteredPage>
-        <Clock size={44} color="#fff" />
+        <Clock size={44} color="#FEF8EA" />
         <h1 style={titleStyle}>Invitation expired</h1>
         <p style={mutedStyle}>
           This invite link expired. Ask the room creator to send a new one.
@@ -250,7 +250,7 @@ export default function MobileInviteAccept({ token }: { token: string }) {
   if (status === "already_accepted") {
     return (
       <CenteredPage>
-        <CircleCheck size={44} color="#fff" />
+        <CircleCheck size={44} color="#FEF8EA" />
         <h1 style={titleStyle}>Already joined</h1>
         <p style={mutedStyle}>
           This invitation has already been accepted — you may already be in the room.
@@ -268,12 +268,12 @@ export default function MobileInviteAccept({ token }: { token: string }) {
   if (status === "wrong_recipient") {
     return (
       <CenteredPage>
-        <AlertTriangle size={44} color="#fff" />
+        <AlertTriangle size={44} color="#FEF8EA" />
         <h1 style={titleStyle}>Wrong email</h1>
         <p style={mutedStyle}>
           This invite was sent to{" "}
           {maskedEmail
-            ? <strong style={{ color: "#fff" }}>{maskedEmail}</strong>
+            ? <strong style={{ color: "#FEF8EA" }}>{maskedEmail}</strong>
             : "a different email"}
           . Sign out and sign in with that address to accept, or ask the inviter to send a new one to the email you&rsquo;re using now.
         </p>
@@ -287,10 +287,10 @@ export default function MobileInviteAccept({ token }: { token: string }) {
   if (status === "done") {
     return (
       <CenteredPage>
-        <PartyPopper size={44} color="#fff" />
+        <PartyPopper size={44} color="#FEF8EA" />
         <h1 style={titleStyle}>You&rsquo;re in!</h1>
         <p style={mutedStyle}>
-          Joining <strong style={{ color: "#fff" }}>&ldquo;{invite?.group_name}&rdquo;</strong>… taking you there now.
+          Joining <strong style={{ color: "#FEF8EA" }}>&ldquo;{invite?.group_name}&rdquo;</strong>… taking you there now.
         </p>
       </CenteredPage>
     );
@@ -299,7 +299,7 @@ export default function MobileInviteAccept({ token }: { token: string }) {
   if (status === "error") {
     return (
       <CenteredPage>
-        <AlertTriangle size={44} color="#fff" />
+        <AlertTriangle size={44} color="#FEF8EA" />
         <h1 style={titleStyle}>Something went wrong</h1>
         <p style={mutedStyle}>
           {errMsg || "Could not accept the invitation. Please try again."}
@@ -325,11 +325,11 @@ export default function MobileInviteAccept({ token }: { token: string }) {
   // outer wrapper differs.
   const inviteContent = (
     <>
-      <MonitorPlay size={44} color="#fff" />
+      <MonitorPlay size={44} color="#FEF8EA" />
       <h1 style={titleStyle}>You&rsquo;re invited!</h1>
       <p style={{ ...mutedStyle, lineHeight: 1.5 }}>
         Join the private watch room{" "}
-        <strong style={{ color: "#fff" }}>&ldquo;{invite?.group_name}&rdquo;</strong>
+        <strong style={{ color: "#FEF8EA" }}>&ldquo;{invite?.group_name}&rdquo;</strong>
       </p>
 
       {!user ? (
@@ -370,10 +370,10 @@ export default function MobileInviteAccept({ token }: { token: string }) {
                   padding: "14px 16px",
                   fontSize: 16,
                   fontFamily: "inherit",
-                  border: "2px solid rgba(255,255,255,0.4)",
+                  border: "2px solid rgba(253,248,236,0.4)",
                   borderRadius: 10,
-                  background: "rgba(255,255,255,0.08)",
-                  color: "#fff",
+                  background: "rgba(253,248,236,0.08)",
+                  color: "#FEF8EA",
                   outline: "none",
                   boxSizing: "border-box",
                   WebkitAppearance: "none",
@@ -427,7 +427,7 @@ function CenteredPage({ children }: { children: React.ReactNode }) {
     <div style={{
       minHeight: "100vh",
       background: "var(--dos-bg, #7abd8e)",
-      color: "#fff",
+      color: "#FEF8EA",
       padding: "32px 24px",
       boxSizing: "border-box",
       display: "flex",
@@ -459,7 +459,7 @@ const mutedStyle: React.CSSProperties = {
 
 function primaryBtnStyle(enabled: boolean = true): React.CSSProperties {
   return {
-    background: enabled ? "#fff" : "rgba(255,255,255,0.4)",
+    background: enabled ? "#FEF8EA" : "rgba(253,248,236,0.4)",
     color: "var(--dos-bg)",
     border: "none",
     borderRadius: 9999,

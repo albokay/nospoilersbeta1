@@ -1121,7 +1121,7 @@ export default function RepliesList({
                     onChange={e => setEditReplyBody(e.target.value)}
                     style={{
                       width: "100%", boxSizing: "border-box",
-                      background: "#fff", color: "#000",
+                      background: "#FEF8EA", color: "#000",
                       border: "none", borderRadius: 8,
                       padding: "8px 10px", fontSize: 14, resize: "vertical",
                       fontFamily: "inherit",
@@ -1151,8 +1151,8 @@ export default function RepliesList({
                           disabled={editReplySubmitting}
                           style={{
                             background: "transparent",
-                            border: "2px solid #fff",
-                            color: "#fff",
+                            border: "2px solid #FEF8EA",
+                            color: "#FEF8EA",
                             borderRadius: 9999,
                             padding: "6px 12px",
                             cursor: "pointer",
@@ -1196,7 +1196,7 @@ export default function RepliesList({
                         className="btn"
                         onClick={() => handleSaveEditReply(r.id)}
                         disabled={editReplySubmitting || !editReplyBody.trim()}
-                        style={{ background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff" }}
+                        style={{ background: "var(--danger)", border: "2px solid var(--danger)", color: "#FEF8EA" }}
                       >
                         {editReplySubmitting ? "Saving…" : "Save"}
                       </button>
@@ -1253,7 +1253,7 @@ export default function RepliesList({
                         fontSize: 13,
                         padding: "3px 12px",
                         background: "#adc8d7",
-                        color: "#fff",
+                        color: "#FEF8EA",
                         border: "2px solid #adc8d7",
                         borderRadius: 9999,
                         cursor: "pointer",

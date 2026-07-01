@@ -46,7 +46,7 @@ function ThreadRedDot({ count, threadId, onDismiss }: { count: number; threadId:
     <div
       style={{
         width: 28, height: 28, borderRadius: "50%",
-        background: "var(--danger)", color: "#fff",
+        background: "var(--danger)", color: "#FEF8EA",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: hovered ? 12 : 11, fontWeight: 800, lineHeight: 1,
         boxShadow: "0 2px 6px rgba(0,0,0,0.30)",
@@ -1947,7 +1947,7 @@ export default function ShowSection({
                       title="Room settings"
                       style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", marginTop: 8, flexShrink: 0 }}
                     >
-                      <Settings size={20} color="#fff" />
+                      <Settings size={20} color="#FEF8EA" />
                     </span>
                   </div>
                 </div>
@@ -1959,8 +1959,8 @@ export default function ShowSection({
                       whiteSpace: "nowrap", fontSize: 13, flexShrink: 0,
                       padding: "3px 12px",
                       background: "transparent",
-                      border: "2px solid #fff",
-                      color: "#fff",
+                      border: "2px solid #FEF8EA",
+                      color: "#FEF8EA",
                     }}
                   >
                     to public conversation <ArrowRight size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} />
@@ -2012,7 +2012,7 @@ export default function ShowSection({
                       textUnderlineOffset: 4,
                     }}
                   >
-                    {!(thread && !thread.isPublic && !activeGroupId) && <Globe size={18} color="#fff" style={{ flexShrink: 0, marginTop: 9 }} />}
+                    {!(thread && !thread.isPublic && !activeGroupId) && <Globe size={18} color="#FEF8EA" style={{ flexShrink: 0, marginTop: 9 }} />}
                     {preventLastWordOrphan(showId === "bb"
                       ? "BREAKING BAD (DEMO)"
                       : String((allShows.find(s => s.id === showId)?.name) || showId).toUpperCase())}
@@ -2055,13 +2055,13 @@ export default function ShowSection({
                           style={{
                             padding: "5px 10px",
                             background: "transparent",
-                            border: "2px solid #fff",
-                            color: "#fff",
+                            border: "2px solid #FEF8EA",
+                            color: "#FEF8EA",
                             display: "inline-flex", alignItems: "center", gap: 6,
                           }}
                         >
-                          <Users size={16} color="#fff" style={{ flexShrink: 0 }} />
-                          <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                          <Users size={16} color="#FEF8EA" style={{ flexShrink: 0 }} />
+                          <ArrowRight size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
                         </button>
                       </Tooltip>
                       {friendRoomsDropdownOpen && !targetRoom && (
@@ -2081,13 +2081,13 @@ export default function ShowSection({
                                 fontSize: 13, whiteSpace: "nowrap",
                                 display: "flex", alignItems: "center", width: "100%",
                                 background: "transparent",
-                                border: "2px solid #fff",
-                                color: "#fff",
+                                border: "2px solid #FEF8EA",
+                                color: "#FEF8EA",
                               }}
                             >
-                              <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+                              <ArrowRight size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
                               <span style={{ flex: 1, textAlign: "center", margin: "0 8px" }}>{g.name}</span>
-                              <Users size={14} color="#fff" style={{ flexShrink: 0 }} />
+                              <Users size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
                             </button>
                           ))}
                         </div>
@@ -2202,7 +2202,7 @@ export default function ShowSection({
                       style={{
                         lineHeight: 1.2, flexShrink: 0, whiteSpace: "nowrap",
                         display: "inline-flex", alignItems: "center", gap: 5,
-                        background: "transparent", border: "2px solid #fff", color: "#fff",
+                        background: "transparent", border: "2px solid #FEF8EA", color: "#FEF8EA",
                       }}
                     >
                       <Plus size={15} /> friend room
@@ -2289,7 +2289,7 @@ export default function ShowSection({
                       style={{
                         width: 20, height: 20, padding: 0,
                         borderRadius: "50%", border: "none",
-                        background: "var(--dos-user)", color: "#fff",
+                        background: "var(--dos-user)", color: "#FEF8EA",
                         fontSize: 12, fontWeight: 800, lineHeight: 1,
                         cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
@@ -2313,7 +2313,7 @@ export default function ShowSection({
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, padding: "8px 16px", marginBottom: 0,
-          background: "#fff", border: "none",
+          background: "#FEF8EA", border: "none",
           borderRadius: 24, fontSize: 13, color: "var(--danger)",
         }}>
           <span>
@@ -2331,7 +2331,7 @@ export default function ShowSection({
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, padding: "10px 16px", marginBottom: 8,
-          background: "#fff", border: "none",
+          background: "#FEF8EA", border: "none",
           borderRadius: 24, fontSize: 13, color: "var(--danger)",
         }}>
           <span>
@@ -2372,7 +2372,7 @@ export default function ShowSection({
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 12, padding: "8px 16px", marginBottom: 0,
-          background: "#fff", border: "none",
+          background: "#FEF8EA", border: "none",
           borderRadius: 24, fontSize: 13, color: "var(--dos-bg)",
         }}>
           <span>
@@ -2387,7 +2387,7 @@ export default function ShowSection({
       {/* ? Help panel */}
       {helpOpen && (
         <div style={{
-          background: "#fff", borderRadius: 20, padding: "8px 12px",
+          background: "#FEF8EA", borderRadius: 20, padding: "8px 12px",
           marginBottom: 10, display: "flex", flexDirection: "column", gap: 4,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -2474,8 +2474,8 @@ export default function ShowSection({
             </div>
           )}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <button className="btn" onClick={resetModal} disabled={createGroupSubmitting} style={{ background: "var(--danger)", border: "none", color: "#fff" }}>Cancel</button>
-            <button className="btn" onClick={handleCreateGroup} disabled={createGroupSubmitting || !newGroupName.trim()} style={{ background: "var(--green)", border: "none", color: "#fff" }}>
+            <button className="btn" onClick={resetModal} disabled={createGroupSubmitting} style={{ background: "var(--danger)", border: "none", color: "#FEF8EA" }}>Cancel</button>
+            <button className="btn" onClick={handleCreateGroup} disabled={createGroupSubmitting || !newGroupName.trim()} style={{ background: "var(--green)", border: "none", color: "#FEF8EA" }}>
               {createGroupSubmitting ? "Creating…" : "Create room"}
             </button>
           </div>
@@ -2529,7 +2529,7 @@ export default function ShowSection({
                     onKeyDown={e => { if (e.key === "Enter") handleRenameGroup(); }}
                     style={{ flex: 1, height: 36 }}
                   />
-                  <button className="btn" onClick={handleRenameGroup} disabled={renameSubmitting || !renameValue.trim()} style={{ background: "var(--green)", border: "none", color: "#fff", whiteSpace: "nowrap" }}>
+                  <button className="btn" onClick={handleRenameGroup} disabled={renameSubmitting || !renameValue.trim()} style={{ background: "var(--green)", border: "none", color: "#FEF8EA", whiteSpace: "nowrap" }}>
                     {renameSubmitting ? "Saving…" : "Rename"}
                   </button>
                 </div>
@@ -2574,14 +2574,14 @@ export default function ShowSection({
                                   className="btn"
                                   onClick={handleSendInvites}
                                   disabled={inviteSubmitting || !anyNonEmpty}
-                                  style={{ background: "var(--dos-user)", border: "none", color: "#fff", whiteSpace: "nowrap", minWidth: 120 }}
+                                  style={{ background: "var(--dos-user)", border: "none", color: "#FEF8EA", whiteSpace: "nowrap", minWidth: 120 }}
                                 >
                                   {sendLabel}
                                 </button>
                               )}
                             </div>
                             {row.status === "success" && (
-                              <div style={{ fontSize: 12, color: "#fff", marginTop: 4 }}>
+                              <div style={{ fontSize: 12, color: "#FEF8EA", marginTop: 4 }}>
                                 ✓ Invite sent.
                               </div>
                             )}
@@ -2602,7 +2602,7 @@ export default function ShowSection({
                           style={{
                             background: "transparent",
                             border: "none",
-                            color: "#fff",
+                            color: "#FEF8EA",
                             opacity: 0.85,
                             cursor: "pointer",
                             padding: 4,
@@ -2622,7 +2622,7 @@ export default function ShowSection({
                   );
                 })()}
                 {inviteSubmitting && (
-                  <div style={{ fontSize: 12, color: "#fff", marginTop: 6 }} aria-live="polite">
+                  <div style={{ fontSize: 12, color: "#FEF8EA", marginTop: 6 }} aria-live="polite">
                     <span className="invite-dot">.</span>
                     <span className="invite-dot">.</span>
                     <span className="invite-dot">.</span>
@@ -2659,12 +2659,12 @@ export default function ShowSection({
                 least one invite has been successfully sent (gives the sender
                 a clean way to dismiss the modal after confirmation appears). */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-              <button className="btn" onClick={initiateLeaveGroup} style={{ background: "var(--danger)", border: "none", color: "#fff", minWidth: 120 }}>Leave room</button>
+              <button className="btn" onClick={initiateLeaveGroup} style={{ background: "var(--danger)", border: "none", color: "#FEF8EA", minWidth: 120 }}>Leave room</button>
               {inviteRows.some(r => r.status === "success") && (
                 <button
                   className="btn"
                   onClick={() => setShowGroupSettings(false)}
-                  style={{ background: "transparent", border: "2px solid #fff", color: "#fff", minWidth: 120 }}
+                  style={{ background: "transparent", border: "2px solid #FEF8EA", color: "#FEF8EA", minWidth: 120 }}
                 >
                   OK
                 </button>
@@ -2684,11 +2684,11 @@ export default function ShowSection({
             </p>
             <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
               <button className="btn" onClick={executeLeaveGroup} disabled={leaveSubmitting}
-                style={{ background: "var(--danger)", border: "none", color: "#fff" }}>
+                style={{ background: "var(--danger)", border: "none", color: "#FEF8EA" }}>
                 {leaveSubmitting ? "Leaving…" : "Leave the room"}
               </button>
               <button className="btn" onClick={() => setShowLeaveModal(null)}
-                style={{ background: "var(--green)", border: "none", color: "#fff" }}>
+                style={{ background: "var(--green)", border: "none", color: "#FEF8EA" }}>
                 I'll stay
               </button>
             </div>
@@ -2706,11 +2706,11 @@ export default function ShowSection({
             </p>
             <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
               <button className="btn" onClick={executeLastMemberLeave} disabled={leaveSubmitting}
-                style={{ background: "var(--danger)", border: "none", color: "#fff" }}>
+                style={{ background: "var(--danger)", border: "none", color: "#FEF8EA" }}>
                 {leaveSubmitting ? "Leaving…" : "Delete and leave"}
               </button>
               <button className="btn" onClick={() => setShowLeaveModal(null)}
-                style={{ background: "var(--green)", border: "none", color: "#fff" }}>
+                style={{ background: "var(--green)", border: "none", color: "#FEF8EA" }}>
                 I'll stay
               </button>
             </div>
@@ -2987,7 +2987,7 @@ export default function ShowSection({
                   position: "relative",
                   paddingTop: 12,
                   paddingBottom: 36,
-                  border: isNew ? "4px solid #355eb8" : isOwn ? "4px solid #fff" : "4px solid var(--dos-border)"
+                  border: isNew ? "4px solid #355eb8" : isOwn ? "4px solid #FEF8EA" : "4px solid var(--dos-border)"
                 }}
                 onClick={() => {
                   markThreadVisited(t.id);
@@ -3067,7 +3067,7 @@ export default function ShowSection({
                     >
                       <span className="newReplyBadge"
                         style={{
-                          background: "#355eb8", color: "#fff", borderRadius: 9999,
+                          background: "#355eb8", color: "#FEF8EA", borderRadius: 9999,
                           padding: "2px 7px", fontWeight: 700,
                         }}>
                         <Mail size={14} color="var(--icon-color)" style={{verticalAlign:"middle"}} /> {displayReplyCount}
@@ -3090,9 +3090,9 @@ export default function ShowSection({
                 <button
                   className="btn"
                   onClick={() => openGroupSettings(activeGroupId)}
-                  style={{ background: "var(--dos-user)", border: "none", color: "#fff", fontSize: 14, padding: "8px 20px" }}
+                  style={{ background: "var(--dos-user)", border: "none", color: "#FEF8EA", fontSize: 14, padding: "8px 20px" }}
                 >
-                  <Users size={14} color="#fff" style={{verticalAlign:"middle"}} /> invite friends
+                  <Users size={14} color="#FEF8EA" style={{verticalAlign:"middle"}} /> invite friends
                 </button>
               </div>
             ) : effectiveProgress?.s === 0 ? (
@@ -3132,8 +3132,8 @@ export default function ShowSection({
         const formReady = !!composeDestination && !!postTitle.trim() && !!postBody.trim();
 
         // Friend room context has distinct styling (persists even when switching to private)
-        const dropdownColor = openedFromGroup ? "#fff" : undefined;
-        const dropdownBorder = openedFromGroup ? "2px solid #fff" : undefined;
+        const dropdownColor = openedFromGroup ? "#FEF8EA" : undefined;
+        const dropdownBorder = openedFromGroup ? "2px solid #FEF8EA" : undefined;
 
         // Sorted rooms list — most-recently-active first, matching the
         // default-destination signal so the chosen default sits at the
@@ -3211,7 +3211,7 @@ export default function ShowSection({
                   : null}
                 pillBg="transparent"
               />
-              <div style={{ fontSize: 13, color: "#fff", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <div style={{ fontSize: 13, color: "#FEF8EA", display: "inline-flex", alignItems: "center", gap: 4 }}>
                 <ArrowLeft size={14} />
                 Are you sure your watch progress is up to date?
               </div>
@@ -3241,7 +3241,7 @@ export default function ShowSection({
                   type="button"
                   onClick={handlePromptBtn}
                   title="Get a writing prompt"
-                  style={{ marginRight: "auto", background: inverseBg, border: "none", color: "#fff", height: 34 }}
+                  style={{ marginRight: "auto", background: inverseBg, border: "none", color: "#FEF8EA", height: 34 }}
                 >
                   <Sparkles size={14} color="currentColor" style={{verticalAlign:"middle"}} /> want a prompt?
                 </button>
@@ -3254,7 +3254,7 @@ export default function ShowSection({
                 style={{
                   background: inverseBg,
                   border: "none",
-                  color: "#fff",
+                  color: "#FEF8EA",
                   whiteSpace: "nowrap",
                   fontSize: 13,
                   minWidth: 130,

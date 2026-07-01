@@ -202,7 +202,7 @@ export default function SIKWComposer({
               disabled={submitting}
               style={{
                 background: CANON_YELLOW,
-                color: "#fff",
+                color: "#FEF8EA",
                 border: `2px solid ${CANON_YELLOW}`,
                 padding: "5px 12px",
                 borderRadius: 9999,
@@ -318,7 +318,7 @@ export default function SIKWComposer({
                 padding: "6px 14px",
                 borderRadius: 9999,
                 border: `2px solid ${CANON_LIGHT}`,
-                background: "#fff",
+                background: "#FEF8EA",
                 height: 30,
                 boxSizing: "border-box",
                 color: CANON_NAVY,
@@ -345,7 +345,7 @@ export default function SIKWComposer({
           disabled={!canSubmit}
           style={{
             background: canSubmit ? CANON_GREEN : "rgba(122,189,142,0.45)",
-            color: "#fff",
+            color: "#FEF8EA",
             border: canSubmit ? `2px solid ${CANON_GREEN}` : "none",
             padding: "8px 18px",
             borderRadius: 9999,

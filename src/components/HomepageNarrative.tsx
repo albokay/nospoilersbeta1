@@ -140,7 +140,7 @@ function Copy({ children, size = 32, delay = 0 }: {
       transition: `opacity 0.8s ease ${delay}s, transform 0.8s ease ${delay}s`,
       textAlign: "center", maxWidth: 560, margin: "0 auto",
     }}>
-      <p style={{ fontSize: size, fontWeight: 800, color: "#fff", lineHeight: 1.25, margin: 0 }}>
+      <p style={{ fontSize: size, fontWeight: 800, color: "#FEF8EA", lineHeight: 1.25, margin: 0 }}>
         {children}
       </p>
     </div>
@@ -265,7 +265,7 @@ function AnimatedLogo() {
         <p style={{
           margin: 0, fontSize: 13, fontWeight: 700,
           letterSpacing: "0.12em", textTransform: "lowercase",
-          color: "#fff", opacity: taglineOpacity, flexShrink: 0,
+          color: "#FEF8EA", opacity: taglineOpacity, flexShrink: 0,
         }}>
           talk. together. whenever.
         </p>

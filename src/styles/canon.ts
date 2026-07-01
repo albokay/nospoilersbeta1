@@ -40,7 +40,7 @@ export type CanonHex = (typeof CANON)[CanonName];
 // Fixed non-canon values. Pure black is allowed as a literal for true-black
 // needs; WHITE is kept ONLY as an escape hatch (e.g. ErrorBoundary before
 // theme injection). RULE: product UI uses CANON.cream for light, never WHITE.
-export const WHITE = '#FFFFFF';
+export const WHITE = '#FEF8EA';
 export const BLACK = '#000000';
 
 // ── AXIS 2: semantic roles → canon color ────────────────────────────────────
@@ -162,7 +162,7 @@ function kebab(s: string): string {
 // 2. Bridge theme.ts: call injectCanonVars() BEFORE injectDOSStyles() in
 //    App's mount effect. Then, inside theme.ts, migrate the --dos-* values to
 //    reference the canon vars, e.g.:
-//        :root{ --dos-bg: var(--role-room-frame-private); --dos-fg: #fff; }
+//        :root{ --dos-bg: var(--role-room-frame-private); --dos-fg: #FEF8EA; }
 //        body.group-context{ --dos-bg: var(--role-room-frame-friend); ... }
 //        body.public-context{ --dos-bg: var(--role-room-frame-public); ... }
 //    At that point BOTH systems read from canon.ts and can't drift.

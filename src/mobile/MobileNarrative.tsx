@@ -46,7 +46,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--dos-bg, #7abd8e)", color: "#fff" }}>
+    <div style={{ minHeight: "100vh", background: "var(--dos-bg, #7abd8e)", color: "#FEF8EA" }}>
       {/* ── Fixed top-right sign-in shortcut ── */}
       {/* z-index 100 keeps it above the parallax narrative's fixed-position */}
       {/* AnimatedLogo (z-index 96 in HomepageNarrative). */}
@@ -58,8 +58,8 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
           right: 14,
           zIndex: 100,
           background: "transparent",
-          color: "#fff",
-          border: "2px solid #fff",
+          color: "#FEF8EA",
+          border: "2px solid #FEF8EA",
           borderRadius: 9999,
           padding: "8px 18px",
           fontSize: 14,
@@ -81,7 +81,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
           maxWidth: 560, textAlign: "center",
           margin: "80px 16px 40px",
           fontSize: 20, fontWeight: 800,
-          color: "#fff", lineHeight: 1.3,
+          color: "#FEF8EA", lineHeight: 1.3,
         }}>
           Watching TV with friends usually<br />
           means spoilers or keeping quiet.<br />
@@ -90,7 +90,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
 
         <p style={{
           fontSize: 20, fontWeight: 800,
-          color: "#fff", margin: "8px 16px 40px", textAlign: "center",
+          color: "#FEF8EA", margin: "8px 16px 40px", textAlign: "center",
         }}>
           Here&rsquo;s how it works:
         </p>
@@ -113,7 +113,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
               flexDirection: "row",
               alignItems: "center",
               gap: 14,
-              background: "rgba(255,255,255,0.92)",
+              background: "rgba(253,248,236,0.92)",
             }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
                 <span style={{ fontSize: 16, fontWeight: 800, color: "var(--dos-bg)", lineHeight: 1 }}>
@@ -164,7 +164,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
                 onClick={() => navigate("/m/auth")}
                 style={{
                   width: "100%", maxWidth: 420,
-                  background: "#fff", color: "var(--dos-bg)", border: "none",
+                  background: "#FEF8EA", color: "var(--dos-bg)", border: "none",
                   borderRadius: 9999, padding: "14px 0",
                   fontSize: 18, fontWeight: 800, cursor: "pointer",
                   letterSpacing: "0.02em",

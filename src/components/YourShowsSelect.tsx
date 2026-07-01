@@ -9,7 +9,7 @@ export default function YourShowsSelect({
     <div style={{ display: "flex", flexDirection: "column", alignItems: compact ? "flex-end" : "stretch", width: compact ? "auto" : "100%", ...wrapperStyle }}>
       <select
         className={compact ? "badge" : "badge listPill"}
-        style={{ background: "#f45028", color: "#fff", border: "2px solid #f45028", textAlign: "center", textAlignLast: "center", ...(compact ? { width: "auto", maxWidth: 144, height: 34, padding: "5px 13px", boxSizing: "border-box" } : { width: "100%", height: "100%", minHeight: 40 }) }}
+        style={{ background: "#f45028", color: "#FEF8EA", border: "2px solid #f45028", textAlign: "center", textAlignLast: "center", ...(compact ? { width: "auto", maxWidth: 144, height: 34, padding: "5px 13px", boxSizing: "border-box" } : { width: "100%", height: "100%", minHeight: 40 }) }}
         value={value}
         onChange={(ev) => onChange(ev.target.value)}
         onMouseEnter={onMouseEnter}

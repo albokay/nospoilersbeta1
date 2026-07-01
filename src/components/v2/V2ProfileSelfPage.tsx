@@ -62,7 +62,7 @@ import { CSS } from "@dnd-kit/utilities";
 // these inline styles override its radius (24) and bg.
 const PROFILE_CARD: React.CSSProperties = {
   background: "transparent",
-  border: "2px solid #fff",
+  border: "2px solid #FEF8EA",
   borderRadius: 0,
   boxShadow: "none",
 };
@@ -71,7 +71,7 @@ const PROFILE_CARD: React.CSSProperties = {
 // against the same transparent + white visual language.
 const PROFILE_ADD_TILE: React.CSSProperties = {
   background: "transparent",
-  border: "2px dashed #fff",
+  border: "2px dashed #FEF8EA",
   borderRadius: 0,
   boxShadow: "none",
 };
@@ -226,7 +226,7 @@ function ShowNameLink({
       direction="above"
       align="left"
       portal
-      tooltipStyle={{ background: "#355eb8", color: "#fff", textWrap: "balance" as React.CSSProperties["textWrap"] }}
+      tooltipStyle={{ background: "#355eb8", color: "#FEF8EA", textWrap: "balance" as React.CSSProperties["textWrap"] }}
     >
       <Tag
         onClick={() => navigate(`/journal`, { state: { activeTab: showId } })}
@@ -334,7 +334,7 @@ function FriendRoomCTA({
     gap: 6,
     background: "#adc8d7",
     border: "2px solid #adc8d7",
-    color: "#fff",
+    color: "#FEF8EA",
   };
 
   if (rooms.length === 1) {
@@ -392,11 +392,11 @@ function FriendRoomCTA({
                 alignItems: "center",
                 width: "100%",
                 background: "#adc8d7",
-                color: "#fff",
+                color: "#FEF8EA",
                 border: "none",
               }}
             >
-              <ArrowRight size={14} color="#fff" style={{ flexShrink: 0 }} />
+              <ArrowRight size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, textAlign: "center", margin: "0 8px", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {g.name}
               </span>
@@ -440,8 +440,8 @@ function ShelfCTAs({
             alignItems: "center",
             gap: 6,
             background: "transparent",
-            border: "2px solid #fff",
-            color: "#fff",
+            border: "2px solid #FEF8EA",
+            color: "#FEF8EA",
           }}
         >
           <ArrowRight size={13} /> go to your public writing
@@ -521,8 +521,8 @@ function BlurbField({
           fontFamily: "Lora, Georgia, serif",
           fontStyle: italic ? "italic" : "normal",
           color: "var(--dos-fg)",
-          background: "rgba(255,255,255,0.18)",
-          border: "2px solid #fff",
+          background: "rgba(253,248,236,0.18)",
+          border: "2px solid #FEF8EA",
           borderRadius: 14,
           padding: 12,
           resize: "vertical",
@@ -1239,7 +1239,7 @@ export default function V2ProfileSelfPage() {
                           style={{
                             width: 22,
                             height: 22,
-                            background: "#fff",
+                            background: "#FEF8EA",
                             border: "none",
                             borderRadius: "50%",
                             color: "#7abd8e",
@@ -1692,7 +1692,7 @@ export default function V2ProfileSelfPage() {
                 </button>
                 <button
                   className="btn"
-                  style={{ fontSize: 14, background: "var(--danger)", border: "2px solid var(--danger)", color: "#fff" }}
+                  style={{ fontSize: 14, background: "var(--danger)", border: "2px solid var(--danger)", color: "#FEF8EA" }}
                   disabled={removeSubmitting}
                   onClick={async () => {
                     if (!user || !profile || !sid) return;
@@ -1961,7 +1961,7 @@ function EditCornerOverlay({
               zIndex: 20,
             }}
           >
-            <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 13, color: "#fff", padding: "0 6px 10px" }}>
+            <div style={{ fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 13, color: "#FEF8EA", padding: "0 6px 10px" }}>
               move to:
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1971,17 +1971,17 @@ function EditCornerOverlay({
                   onClick={() => onMoveToShelf(target)}
                   style={{
                     background: "transparent",
-                    border: "2px solid #fff",
+                    border: "2px solid #FEF8EA",
                     borderRadius: 9999,
                     padding: "8px 14px",
                     textAlign: "center",
                     fontFamily: "Inter, sans-serif",
                     fontSize: 14,
                     fontWeight: 500,
-                    color: "#fff",
+                    color: "#FEF8EA",
                     cursor: "pointer",
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.18)"; }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(253,248,236,0.18)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
                 >
                   {SHELF_LABELS[target]}

@@ -669,7 +669,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                   onClick={handlePromptBtn}
                   style={{
                     background: "var(--green)",
-                    color: "#fff",
+                    color: "#FEF8EA",
                     border: "none",
                     borderRadius: 9999,
                     padding: "9px 18px",
@@ -854,7 +854,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 onClick={doDiscard}
                 style={{
                   background: "var(--danger)",
-                  color: "#fff",
+                  color: "#FEF8EA",
                   border: "none",
                   borderRadius: 9999,
                   padding: "9px 18px",

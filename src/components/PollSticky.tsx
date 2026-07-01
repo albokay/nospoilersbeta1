@@ -18,9 +18,9 @@ import { CANON } from "../styles/canon";
 
 // ── Visual constants ─────────────────────────────────────────────────────
 const STICKY_BG       = CANON.yellow;           // canon yellow
-const TEXT_COLOR      = "#fff";                 // primary text over yellow
-const FADED_TEXT      = "rgba(255,255,255,0.7)";// secondary text over yellow
-const DIVIDER_COLOR   = "rgba(255,255,255,0.6)";
+const TEXT_COLOR      = "#FEF8EA";                 // primary text over yellow
+const FADED_TEXT      = "rgba(253,248,236,0.7)";// secondary text over yellow
+const DIVIDER_COLOR   = "rgba(253,248,236,0.6)";
 const SUBMIT_BG       = CANON.green;            // canon green
 const CANON_NAVY      = CANON.midnight;         // text on white choice rows
 const TILT_DEG        = -4;
@@ -277,7 +277,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
                 key={opt.id}
                 style={optionRowStyle(highlighted, hasVoted)}
               >
-                <CanonRadio checked={highlighted} color="#fff" bgColor={STICKY_BG} />
+                <CanonRadio checked={highlighted} color="#FEF8EA" bgColor={STICKY_BG} />
                 <input
                   type="radio"
                   name={`poll-${poll.id}`}
@@ -295,11 +295,11 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
           })}
 
           {poll.allowWriteIn && !hasVoted && (
-            <div style={{ padding: "8px 11px", borderRadius: 12, background: "#fff" }}>
+            <div style={{ padding: "8px 11px", borderRadius: 12, background: "#FEF8EA" }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CANON_NAVY, marginBottom: customSelected ? 6 : 0, cursor: "pointer" }}>
                 <CanonRadio
                   checked={customSelected}
-                  color="#fff"
+                  color="#FEF8EA"
                   bgColor={STICKY_BG}
                 />
                 <input
@@ -331,7 +331,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
                     height: 26,
                     boxSizing: "border-box",
                     color: CANON_NAVY,
-                    background: "rgba(255,255,255,0.6)",
+                    background: "rgba(253,248,236,0.6)",
                     outline: "none",
                   }}
                 />
@@ -446,7 +446,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
               </div>
               <div
                 style={{
-                  background: "rgba(255,255,255,0.25)",
+                  background: "rgba(253,248,236,0.25)",
                   height: 2,
                   marginBottom: 10,
                   borderRadius: 1,
@@ -454,7 +454,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
               >
                 <div
                   style={{
-                    background: "#fff",
+                    background: "#FEF8EA",
                     height: "100%",
                     width: `${pct}%`,
                     borderRadius: 1,
@@ -529,7 +529,7 @@ function optionRowStyle(_highlighted: boolean, locked: boolean): React.CSSProper
     gap: 8,
     padding: "8px 11px",
     borderRadius: 12,
-    background: "#fff",
+    background: "#FEF8EA",
     border: "none",
     fontSize: 12,
     color: CANON_NAVY,
@@ -542,7 +542,7 @@ function writeInLockedStyle(): React.CSSProperties {
   return {
     padding: "8px 11px",
     borderRadius: 12,
-    background: "#fff",
+    background: "#FEF8EA",
     border: "none",
     fontSize: 12,
     fontStyle: "italic",
@@ -554,7 +554,7 @@ function writeInLockedStyle(): React.CSSProperties {
 function submitButtonStyle(enabled: boolean): React.CSSProperties {
   return {
     background: enabled ? SUBMIT_BG : "rgba(122,189,142,0.45)",
-    color: "#fff",
+    color: "#FEF8EA",
     border: "none",
     padding: "6px 12px",
     borderRadius: 9999,

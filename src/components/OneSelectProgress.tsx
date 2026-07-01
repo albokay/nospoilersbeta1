@@ -160,7 +160,7 @@ export default function OneSelectProgress({
       <>
         <button
           className="btn progress-control"
-          style={{ whiteSpace: "nowrap", background: effectivePillBg, color: "#fff", border: "2px solid #fff", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
+          style={{ whiteSpace: "nowrap", background: effectivePillBg, color: "#FEF8EA", border: "2px solid #FEF8EA", fontSize: 12, padding: "5px 9px", lineHeight: 1.2, fontWeight: 700 }}
           onClick={() => setMobileOpen(true)}
         >
           {compactLabel} ▾
@@ -175,7 +175,7 @@ export default function OneSelectProgress({
               className="badge progress-control"
               value={selectedId}
               onChange={(e) => { onSelect(e); setMobileOpen(false); }}
-              style={{ background: effectivePillBg, color: "#fff", border: "2px solid #fff", width: "100%", height: 40 }}
+              style={{ background: effectivePillBg, color: "#FEF8EA", border: "2px solid #FEF8EA", width: "100%", height: 40 }}
               size={1}
             >
               {showZeroOption && (
@@ -227,7 +227,7 @@ export default function OneSelectProgress({
       onChange={onSelect}
       style={plain
         ? {
-            background: "#fff", color: "#000",
+            background: "#FEF8EA", color: "#000",
             border: "1px solid var(--dos-border)", borderRadius: 6,
             padding: "4px 8px", fontSize: 13, width: "100%",
           }
@@ -235,7 +235,7 @@ export default function OneSelectProgress({
         // reserves right-padding for the overlay ChevronDown rendered below.
         // Keeps the affordance consistent across browsers (Safari in
         // particular hides the native arrow at this font-size + padding).
-        : { background: effectivePillBg, color: "#fff", border: "2px solid #fff", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", paddingRight: 28 }
+        : { background: effectivePillBg, color: "#FEF8EA", border: "2px solid #FEF8EA", fontWeight: 700, fontSize: 12, textAlign: "center", textAlignLast: "center", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", paddingRight: 28 }
       }
     >
       {showZeroOption && (
@@ -264,7 +264,7 @@ export default function OneSelectProgress({
           {selectElement}
           <ChevronDown
             size={14}
-            color="#fff"
+            color="#FEF8EA"
             style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
           />
         </span>

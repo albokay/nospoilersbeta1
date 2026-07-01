@@ -114,7 +114,7 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
   const wrapper: React.CSSProperties = {
     minHeight: "100vh",
     background: "var(--dos-bg, #7abd8e)",
-    color: "#fff",
+    color: "#FEF8EA",
     padding: "20px 20px 48px",
     boxSizing: "border-box",
   };
@@ -137,8 +137,8 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
         <button
           onClick={() => navigate("/m/rooms", { replace: true })}
           style={{
-            background: "transparent", color: "#fff",
-            border: "2px solid #fff",
+            background: "transparent", color: "#FEF8EA",
+            border: "2px solid #FEF8EA",
             borderRadius: 9999, padding: "10px 24px",
             fontSize: 14, fontWeight: 700, cursor: "pointer",
             fontFamily: "inherit",
@@ -189,8 +189,8 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
               flexShrink: 0,
               width: 40, height: 40,
               borderRadius: 9999,
-              background: "rgba(255,255,255,0.12)",
-              color: "#fff",
+              background: "rgba(253,248,236,0.12)",
+              color: "#FEF8EA",
               border: "none",
               cursor: "pointer",
               display: "flex",
@@ -217,7 +217,7 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
             fontSize: 15,
             fontWeight: 800,
             fontFamily: "inherit",
-            background: "#fff",
+            background: "#FEF8EA",
             color: "var(--dos-bg, #2a4a36)",
             border: "none",
             borderRadius: 9999,
@@ -243,7 +243,7 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
             fontSize: 15,
             fontWeight: 800,
             fontFamily: "inherit",
-            background: "#fff",
+            background: "#FEF8EA",
             color: "var(--dos-bg, #2a4a36)",
             border: "none",
             borderRadius: 9999,
@@ -269,8 +269,8 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
         <h2 style={sectionLabelStyle}>Switch rooms</h2>
         {otherRooms.length === 0 ? (
           <div style={{
-            background: "rgba(255,255,255,0.08)",
-            border: "2px dashed rgba(255,255,255,0.3)",
+            background: "rgba(253,248,236,0.08)",
+            border: "2px dashed rgba(253,248,236,0.3)",
             borderRadius: 12,
             padding: "16px",
             fontSize: 13,
@@ -289,7 +289,7 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
                 style={{
                   width: "100%",
                   textAlign: "left",
-                  background: "rgba(255,255,255,0.95)",
+                  background: "rgba(253,248,236,0.95)",
                   color: "var(--dos-bg, #2a4a36)",
                   border: "none",
                   borderRadius: 12,
@@ -363,8 +363,8 @@ export default function MobileRoomMenu({ groupId }: { groupId: string }) {
             fontWeight: 700,
             fontFamily: "inherit",
             background: "transparent",
-            color: "#fff",
-            border: "2px solid rgba(255,255,255,0.4)",
+            color: "#FEF8EA",
+            border: "2px solid rgba(253,248,236,0.4)",
             borderRadius: 9999,
             cursor: "pointer",
             display: "inline-flex",

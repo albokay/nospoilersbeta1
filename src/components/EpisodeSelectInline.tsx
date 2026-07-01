@@ -47,7 +47,7 @@ export default function EpisodeSelectInline({
         if (m) onChange({ s: Number(m[1]), e: Number(m[2]) });
       }}
       style={{
-        background: "#fff", color: "#000",
+        background: "#FEF8EA", color: "#000",
         border: "1px solid var(--dos-border)", borderRadius: 6,
         padding: "4px 8px", fontSize: 13, width: "100%",
         ...style,

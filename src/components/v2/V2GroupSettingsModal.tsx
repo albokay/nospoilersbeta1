@@ -369,7 +369,7 @@ export default function V2GroupSettingsModal({
                 className="btn"
                 onClick={handleRename}
                 disabled={renameSubmitting || !renameValue.trim()}
-                style={{ background: "var(--green)", border: "none", color: "#fff", whiteSpace: "nowrap" }}
+                style={{ background: "var(--green)", border: "none", color: "#FEF8EA", whiteSpace: "nowrap" }}
               >
                 {renameSubmitting ? "Saving…" : "Rename"}
               </button>
@@ -407,7 +407,7 @@ export default function V2GroupSettingsModal({
                           style={{
                             background: "var(--dos-user)",
                             border: "none",
-                            color: "#fff",
+                            color: "#FEF8EA",
                             whiteSpace: "nowrap",
                             minWidth: 120,
                           }}
@@ -417,7 +417,7 @@ export default function V2GroupSettingsModal({
                       )}
                     </div>
                     {row.status === "success" && (
-                      <div style={{ fontSize: 12, color: "#fff", marginTop: 4 }}>
+                      <div style={{ fontSize: 12, color: "#FEF8EA", marginTop: 4 }}>
                         ✓ Invite sent.
                       </div>
                     )}
@@ -438,7 +438,7 @@ export default function V2GroupSettingsModal({
                   style={{
                     background: "transparent",
                     border: "none",
-                    color: "#fff",
+                    color: "#FEF8EA",
                     opacity: 0.85,
                     cursor: "pointer",
                     padding: 4,
@@ -456,7 +456,7 @@ export default function V2GroupSettingsModal({
               )}
             </div>
             {inviteSubmitting && (
-              <div style={{ fontSize: 12, color: "#fff", marginTop: 6 }} aria-live="polite">
+              <div style={{ fontSize: 12, color: "#FEF8EA", marginTop: 6 }} aria-live="polite">
                 <span className="invite-dot">.</span>
                 <span className="invite-dot">.</span>
                 <span className="invite-dot">.</span>
@@ -498,7 +498,7 @@ export default function V2GroupSettingsModal({
           <button
             className="btn"
             onClick={initiateLeaveGroup}
-            style={{ background: "var(--danger)", border: "none", color: "#fff", minWidth: 120 }}
+            style={{ background: "var(--danger)", border: "none", color: "#FEF8EA", minWidth: 120 }}
           >
             Leave room
           </button>
@@ -506,7 +506,7 @@ export default function V2GroupSettingsModal({
             <button
               className="btn"
               onClick={onClose}
-              style={{ background: "transparent", border: "2px solid #fff", color: "#fff", minWidth: 120 }}
+              style={{ background: "transparent", border: "2px solid #FEF8EA", color: "#FEF8EA", minWidth: 120 }}
             >
               OK
             </button>
@@ -527,14 +527,14 @@ export default function V2GroupSettingsModal({
                 className="btn"
                 onClick={executeLeaveGroup}
                 disabled={leaveSubmitting}
-                style={{ background: "var(--danger)", border: "none", color: "#fff" }}
+                style={{ background: "var(--danger)", border: "none", color: "#FEF8EA" }}
               >
                 {leaveSubmitting ? "Leaving…" : "Leave the room"}
               </button>
               <button
                 className="btn"
                 onClick={() => setShowLeaveModal(null)}
-                style={{ background: "var(--green)", border: "none", color: "#fff" }}
+                style={{ background: "var(--green)", border: "none", color: "#FEF8EA" }}
               >
                 I'll stay
               </button>
@@ -556,14 +556,14 @@ export default function V2GroupSettingsModal({
                 className="btn"
                 onClick={executeLastMemberLeave}
                 disabled={leaveSubmitting}
-                style={{ background: "var(--danger)", border: "none", color: "#fff" }}
+                style={{ background: "var(--danger)", border: "none", color: "#FEF8EA" }}
               >
                 {leaveSubmitting ? "Leaving…" : "Delete and leave"}
               </button>
               <button
                 className="btn"
                 onClick={() => setShowLeaveModal(null)}
-                style={{ background: "var(--green)", border: "none", color: "#fff" }}
+                style={{ background: "var(--green)", border: "none", color: "#FEF8EA" }}
               >
                 I'll stay
               </button>

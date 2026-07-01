@@ -11,7 +11,7 @@ import { CANON, ROLE, withAlpha } from "../styles/canon";
 // not brand roles. Do NOT introduce a single canonical "post" color.
 //
 // HARD RULES (from the standardization pass):
-//   1. No pure white. On-frame light text/outline is CANON.cream, never #FFF.
+//   1. No pure white. On-frame light text/outline is CANON.cream, never #FEF8EA.
 //   2. Fill and outline are NEVER different colors. Every button is either
 //      SOLID (background === borderColor) or NO-FILL (transparent, outline
 //      only). This invariant holds through hover too.

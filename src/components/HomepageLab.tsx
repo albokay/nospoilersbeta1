@@ -114,7 +114,7 @@ function Copy({ children, size = 32, delay = 0 }: {
       maxWidth: 560,
       margin: "0 auto",
     }}>
-      <p style={{ fontSize: size, fontWeight: 800, color: "#fff", lineHeight: 1.25, margin: 0 }}>
+      <p style={{ fontSize: size, fontWeight: 800, color: "#FEF8EA", lineHeight: 1.25, margin: 0 }}>
         {children}
       </p>
     </div>
@@ -201,7 +201,7 @@ function RevealUnit() {
         fontWeight: 700,
         letterSpacing: "0.12em",
         textTransform: "lowercase",
-        color: "#fff",
+        color: "#FEF8EA",
         opacity: 0.85,
       }}>
         talk. together. whenever.

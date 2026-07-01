@@ -73,7 +73,7 @@ export default function ZigzagDivider({ fill = "transparent" }: Props) {
       <polyline
         points={ZZ_LINE_POINTS}
         fill="none"
-        stroke="#fff"
+        stroke="#FEF8EA"
         strokeWidth={2}
         strokeLinejoin="miter"
       />
