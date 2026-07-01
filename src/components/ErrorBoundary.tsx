@@ -1,5 +1,6 @@
 import React from "react";
 import SidebarLogo from "./SidebarLogo";
+import { captureError } from "../lib/sentry";
 
 /**
  * Top-level error boundary — the "friendly crash screen" half of the
@@ -42,9 +43,11 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: unknown, info: React.ErrorInfo) {
-    // Local-only for now. When we wire a real reporter (Sentry et al.),
-    // this is the one place to forward the error + componentStack.
     console.error("[Sidebar] Unhandled render error:", error, info?.componentStack);
+    // Forward to Sentry (no-op until VITE_SENTRY_DSN is set). Global handlers
+    // in initSentry() cover async/event-handler errors; this adds the React
+    // component stack for render crashes.
+    captureError(error, info?.componentStack);
   }
 
   render() {

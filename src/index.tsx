@@ -7,7 +7,9 @@ import BetaGate from "./components/BetaGate";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ComposeModalProvider } from "./components/v2/ComposeModal";
 import { startHeaderClickAudit } from "./lib/devHeaderAudit";
+import { initSentry } from "./lib/sentry";
 
+initSentry();
 startHeaderClickAudit();
 
 declare global {
