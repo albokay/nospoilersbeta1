@@ -25,22 +25,22 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
-// Reuses the existing check_rate_limit / check_rate_limit_daily SECURITY DEFINER
-// RPCs (supabase/migrations/20260413_rate_limiting.sql), which key on auth.uid().
-// We call them on a USER-SCOPED client (anon key + the caller's JWT) so auth.uid()
-// resolves to the caller — the service-role admin client has no user context.
-// Fail-OPEN on an unexpected RPC error so a transient DB hiccup never blocks a
-// legitimate invite; the limit still holds in normal operation.
-async function rateOk(client: SupabaseClient, action: string, maxCount: number, windowSeconds: number): Promise<boolean> {
-  const { data, error } = await client.rpc("check_rate_limit", {
-    action_name: action, max_count: maxCount, window_seconds: windowSeconds,
+// Calls the service-role check_rate_limit_for / check_rate_limit_daily_for RPCs
+// (supabase/migrations/20260630_rate_limit_for_service_role.sql) via the admin
+// client, passing the JWT-verified caller id. The auth.uid() variants can't be
+// reached from a user-scoped client in the edge runtime ("Auth session
+// missing!"). Fail-OPEN on an unexpected RPC error so a transient DB hiccup
+// never blocks a legitimate invite; the limit still holds in normal operation.
+async function rateOk(client: SupabaseClient, userId: string, action: string, maxCount: number, windowSeconds: number): Promise<boolean> {
+  const { data, error } = await client.rpc("check_rate_limit_for", {
+    p_user_id: userId, action_name: action, max_count: maxCount, window_seconds: windowSeconds,
   });
   if (error) { console.error("rate_limit check failed:", action, error.message); return true; }
   return data !== false;
 }
-async function dailyOk(client: SupabaseClient, action: string, maxDaily: number): Promise<boolean> {
-  const { data, error } = await client.rpc("check_rate_limit_daily", {
-    action_name: action, max_daily: maxDaily,
+async function dailyOk(client: SupabaseClient, userId: string, action: string, maxDaily: number): Promise<boolean> {
+  const { data, error } = await client.rpc("check_rate_limit_daily_for", {
+    p_user_id: userId, action_name: action, max_daily: maxDaily,
   });
   if (error) { console.error("daily_rate_limit check failed:", action, error.message); return true; }
   return data !== false;
@@ -92,13 +92,6 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await admin.auth.getUser(jwt);
     if (authErr || !user) return jsonError("unauthorized", 401, authErr?.message);
 
-    // User-scoped client for rate-limit RPCs (auth.uid() = caller).
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: `Bearer ${jwt}` } }, auth: { autoRefreshToken: false, persistSession: false } },
-    );
-
     const body = await req.json().catch(() => null);
     if (!body) return jsonError("invalid_body", 400);
     const { token, appUrl } = body as Record<string, string>;
@@ -125,10 +118,10 @@ serve(async (req) => {
     // ── Rate limit ───────────────────────────────────────────────────────────
     // Cap re-sends of this specific invite (3 / 24h) + a global per-user daily
     // email backstop (30 / 24h, shared key across all email-sending functions).
-    if (!(await rateOk(userClient, `grp_invite_send:${token}`, 3, 86400))) {
+    if (!(await rateOk(admin, user.id, `grp_invite_send:${token}`, 3, 86400))) {
       return jsonError("rate_limit", 429, "You've re-sent this invite a few times today. Try again tomorrow.");
     }
-    if (!(await dailyOk(userClient, "email_action", 30))) {
+    if (!(await dailyOk(admin, user.id, "email_action", 30))) {
       return jsonError("rate_limit", 429, "You've sent a lot of emails today. Try again tomorrow.");
     }
 

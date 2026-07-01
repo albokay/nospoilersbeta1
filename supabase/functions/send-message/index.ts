@@ -72,24 +72,24 @@ const PUBLIC_TEMPLATES = new Set(["public_response_request"]);
 type AdminClient = any;
 
 // ── Rate limiting ─────────────────────────────────────────────────────────
-// Reuses the existing check_rate_limit / check_rate_limit_daily SECURITY
-// DEFINER RPCs (supabase/migrations/20260413_rate_limiting.sql), which key on
-// auth.uid(). Called on a USER-SCOPED client (anon key + the caller's JWT) so
-// auth.uid() resolves to the caller — the service-role admin client has no
-// user context. Throttles ONLY the notification email; the underlying action
-// (poll, reply, request) already happened via its own RPC, so a blocked call
-// returns ok with rate_limited:true rather than an error. Fail-OPEN on an
+// Calls the service-role check_rate_limit_for / check_rate_limit_daily_for
+// RPCs (supabase/migrations/20260630_rate_limit_for_service_role.sql) via the
+// admin client, passing the JWT-verified caller id. The auth.uid() variants
+// can't be reached from a user-scoped client in the edge runtime ("Auth
+// session missing!"). Throttles ONLY the notification email; the underlying
+// action (poll, reply, request) already happened via its own RPC, so a blocked
+// call returns ok with rate_limited:true rather than an error. Fail-OPEN on an
 // unexpected RPC error so a transient DB hiccup never blocks a legit message.
-async function rateOk(client: AdminClient, action: string, maxCount: number, windowSeconds: number): Promise<boolean> {
-  const { data, error } = await client.rpc("check_rate_limit", {
-    action_name: action, max_count: maxCount, window_seconds: windowSeconds,
+async function rateOk(client: AdminClient, userId: string, action: string, maxCount: number, windowSeconds: number): Promise<boolean> {
+  const { data, error } = await client.rpc("check_rate_limit_for", {
+    p_user_id: userId, action_name: action, max_count: maxCount, window_seconds: windowSeconds,
   });
   if (error) { console.error("rate_limit check failed:", action, error.message); return true; }
   return data !== false;
 }
-async function dailyOk(client: AdminClient, action: string, maxDaily: number): Promise<boolean> {
-  const { data, error } = await client.rpc("check_rate_limit_daily", {
-    action_name: action, max_daily: maxDaily,
+async function dailyOk(client: AdminClient, userId: string, action: string, maxDaily: number): Promise<boolean> {
+  const { data, error } = await client.rpc("check_rate_limit_daily_for", {
+    p_user_id: userId, action_name: action, max_daily: maxDaily,
   });
   if (error) { console.error("daily_rate_limit check failed:", action, error.message); return true; }
   return data !== false;
@@ -132,12 +132,11 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await admin.auth.getUser(jwt);
     if (authErr || !user) return jsonError("unauthorized", 401, authErr?.message);
 
-    // User-scoped client for rate-limit RPCs (auth.uid() = caller).
-    const userClient: AdminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: `Bearer ${jwt}` } }, auth: { autoRefreshToken: false, persistSession: false } },
-    );
+    // Rate limits run on the service-role client via the *_for RPCs (passing
+    // user.id). `userClient` is threaded through the handlers for that purpose;
+    // it is the same admin client (kept as a distinct name to avoid re-plumbing
+    // every handler signature).
+    const userClient: AdminClient = admin;
 
     // Body parse + template_type validation.
     const body = await req.json().catch(() => null);
@@ -431,8 +430,8 @@ async function handlePollInvite(
 
   // Rate limit: one invite blast per poll per hour + global daily backstop.
   // The poll already exists; a blocked re-blast returns ok quietly.
-  if (!(await rateOk(userClient, `poll_invite:${poll.id}`, 1, 3600))
-      || !(await dailyOk(userClient, "email_action", EMAIL_DAILY_BACKSTOP))) {
+  if (!(await rateOk(userClient, user.id, `poll_invite:${poll.id}`, 1, 3600))
+      || !(await dailyOk(userClient, user.id, "email_action", EMAIL_DAILY_BACKSTOP))) {
     return jsonOk({ sent_count: 0, channel: "email", rate_limited: true });
   }
 
@@ -802,8 +801,8 @@ async function handleSikwAskInvite(
 
   // Rate limit: one ask-invite blast per ask per hour + global daily backstop.
   // The ask already exists; a blocked re-blast returns ok quietly.
-  if (!(await rateOk(userClient, `sikw_invite:${ask.id}`, 1, 3600))
-      || !(await dailyOk(userClient, "email_action", EMAIL_DAILY_BACKSTOP))) {
+  if (!(await rateOk(userClient, user.id, `sikw_invite:${ask.id}`, 1, 3600))
+      || !(await dailyOk(userClient, user.id, "email_action", EMAIL_DAILY_BACKSTOP))) {
     return jsonOk({ sent_count: 0, channel: "email", rate_limited: true });
   }
 
@@ -920,8 +919,8 @@ async function handleSikwReply(
   // Rate limit: at most one reply notification to the asker per ask per 10 min
   // + global daily backstop. The reply is already saved; a blocked notification
   // returns ok quietly.
-  if (!(await rateOk(userClient, `sikw_reply:${ask.id}`, 1, 600))
-      || !(await dailyOk(userClient, "email_action", EMAIL_DAILY_BACKSTOP))) {
+  if (!(await rateOk(userClient, user.id, `sikw_reply:${ask.id}`, 1, 600))
+      || !(await dailyOk(userClient, user.id, "email_action", EMAIL_DAILY_BACKSTOP))) {
     return jsonOk({ channel: "email", rate_limited: true });
   }
 
@@ -1022,8 +1021,8 @@ async function handlePublicResponseRequest(
 
   // Rate limit: one response-request email per recipient (owner) per 24h
   // + global daily backstop. A blocked re-request returns ok quietly.
-  if (!(await rateOk(userClient, `pub_resp:${pending.owner_id}`, 1, 86400))
-      || !(await dailyOk(userClient, "email_action", EMAIL_DAILY_BACKSTOP))) {
+  if (!(await rateOk(userClient, user.id, `pub_resp:${pending.owner_id}`, 1, 86400))
+      || !(await dailyOk(userClient, user.id, "email_action", EMAIL_DAILY_BACKSTOP))) {
     return jsonOk({ channel: "email", rate_limited: true });
   }
 
