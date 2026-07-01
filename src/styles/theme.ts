@@ -3,21 +3,21 @@ export function injectDOSStyles() {
   if (document.getElementById(id)) return;
   const css = `
 :root{
-  --dos-bg:var(--role-room-frame-private,#7abd8e); --dos-fg:#FEF8EA; --dos-blue:rgba(0,0,0,0.18); --dos-cyan:#FEF8EA;
-  --dos-gray:rgba(253,248,236,0.65); --dos-light:#FEF8EA;
-  --dos-accent:#FEF8EA; --danger:var(--canon-red,#f45028); --green:var(--canon-green,#7abd8e); --dos-user:var(--canon-blue,#355eb8); --dos-border:#FEF8EA;
+  --dos-bg:var(--role-room-frame-private,var(--canon-green,#7abd8e)); --dos-fg:var(--canon-cream,#fef8ea); --dos-blue:rgba(0,0,0,0.18); --dos-cyan:var(--canon-cream,#fef8ea);
+  --dos-gray:rgba(253,248,236,0.65); --dos-light:var(--canon-cream,#fef8ea);
+  --dos-accent:var(--canon-cream,#fef8ea); --danger:var(--canon-red,var(--canon-red,#f45028)); --green:var(--canon-green,var(--canon-green,#7abd8e)); --dos-user:var(--canon-blue,var(--canon-blue,#355eb8)); --dos-border:var(--canon-cream,#fef8ea);
   /* Toggle "off" fill (de-selected segments) and "on" text (selected
      segments). In default/public both equal --dos-border (white) and
      --dos-fg (white) respectively, so no special handling is needed there.
      Friend-room overrides both to var(--dos-border) — the only space where
      the toggle uses a non-bg, non-outline accent. */
-  --toggle-off-fill:#FEF8EA;
-  --toggle-on-text:#FEF8EA;
-  --icon-color:#FEF8EA;
+  --toggle-off-fill:var(--canon-cream,#fef8ea);
+  --toggle-on-text:var(--canon-cream,#fef8ea);
+  --icon-color:var(--canon-cream,#fef8ea);
   /* canonical accent blue */
-  --blue-light:var(--canon-sky,#adc8d7);
+  --blue-light:var(--canon-sky,var(--canon-sky,#adc8d7));
   /* progress dropdown (overridden to green in group context) */
-  --progress-bg:var(--canon-sky,#adc8d7); --progress-fg:var(--canon-blue,#355eb8);
+  --progress-bg:var(--canon-sky,var(--canon-sky,#adc8d7)); --progress-fg:var(--canon-blue,var(--canon-blue,#355eb8));
   /* type scale */
   --t1:22px; --t2:17px; --t3:15px; --t4:13px;
   /* Top-header spacer height — used by header.site and .stickybar.
@@ -39,94 +39,94 @@ export function injectDOSStyles() {
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
-  --dos-bg:var(--role-room-frame-friend,#adc8d7); --dos-fg:var(--canon-midnight,#1a3a4a); --dos-cyan:var(--canon-midnight,#1a3a4a);
-  --dos-gray:rgba(26,58,74,0.65); --dos-light:var(--canon-midnight,#1a3a4a);
-  --dos-accent:var(--canon-midnight,#1a3a4a); --dos-border:rgba(26,58,74,0.3);
+  --dos-bg:var(--role-room-frame-friend,var(--canon-sky,#adc8d7)); --dos-fg:var(--canon-midnight,var(--canon-midnight,#1a3a4a)); --dos-cyan:var(--canon-midnight,var(--canon-midnight,#1a3a4a));
+  --dos-gray:rgba(26,58,74,0.65); --dos-light:var(--canon-midnight,var(--canon-midnight,#1a3a4a));
+  --dos-accent:var(--canon-midnight,var(--canon-midnight,#1a3a4a)); --dos-border:rgba(26,58,74,0.3);
   /* Friend-room only: toggles use outline color for both de-selected fill
      and selected text — yields a two-color toggle (transparent + outline). */
   --toggle-off-fill:rgba(26,58,74,0.3);
   --toggle-on-text:rgba(26,58,74,0.3);
   --dos-blue:rgba(26,58,74,0.08);
-  --icon-color:#FEF8EA;
-  --progress-bg:var(--canon-green,#7abd8e); --progress-fg:#FEF8EA;
-  background: linear-gradient(to bottom,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,#adc8d7) 180px) fixed,var(--role-room-frame-friend,#adc8d7);
+  --icon-color:var(--canon-cream,#fef8ea);
+  --progress-bg:var(--canon-green,var(--canon-green,#7abd8e)); --progress-fg:var(--canon-cream,#fef8ea);
+  background: linear-gradient(to bottom,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,var(--canon-sky,#adc8d7)) 180px) fixed,var(--role-room-frame-friend,var(--canon-sky,#adc8d7));
   background-attachment:fixed;
 }
 body.group-context.has-header{
-  background: linear-gradient(to top,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,#adc8d7) 250px) fixed,var(--role-room-frame-friend,#adc8d7);
+  background: linear-gradient(to top,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,var(--canon-sky,#adc8d7)) 250px) fixed,var(--role-room-frame-friend,var(--canon-sky,#adc8d7));
   background-attachment:fixed;
 }
 body.group-context header.site{ background:rgba(173,200,215,0.98); }
 body.group-context .stickybar{ background:rgba(173,200,215,0.98); }
 /* In friend rooms, reply cards should use dark text matching thread entries (not washed-out blue) */
-body.group-context .reply-card{ color:#1a3a4a !important; --dos-accent:#1a3a4a; --dos-cyan:#1a3a4a; --dos-gray:rgba(26,58,74,0.65); border-color:transparent !important; }
+body.group-context .reply-card{ color:var(--canon-midnight,#1a3a4a) !important; --dos-accent:var(--canon-midnight,#1a3a4a); --dos-cyan:var(--canon-midnight,#1a3a4a); --dos-gray:rgba(26,58,74,0.65); border-color:transparent !important; }
 /* In friend rooms (+ the new show room, same palette), entry ticket outlines
    and the star button circle/glyph use a 2px cream outline. */
-body.group-context .threadCard{ border:2px solid #fef8ea !important; }
+body.group-context .threadCard{ border:2px solid var(--canon-cream,#fef8ea) !important; }
 /* TSP demo: instructional "Alborz" guide tickets get a blue outline. */
-body.group-context .threadCard.tsp-guide{ border-color:#355eb8 !important; }
-body.group-context .likeWrap{ color:#fef8ea !important; border-color:#fef8ea !important; }
+body.group-context .threadCard.tsp-guide{ border-color:var(--canon-blue,#355eb8) !important; }
+body.group-context .likeWrap{ color:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-cream,#fef8ea) !important; }
 body.group-context .likeWrap:hover{ background:rgba(254,248,234,0.14) !important; }
 /* In friend rooms, the default .btn:hover border-color (--dos-light = dark
    navy) reads as a black outline against the light-blue bg. Swap to white.
    Reply-cards are already handled by the non-contextual .reply-card rules
    further down (border tracks --dos-bg so only the fill change is visible). */
-body.group-context .btn:hover{ border-color:#FEF8EA !important; }
+body.group-context .btn:hover{ border-color:var(--canon-cream,#fef8ea) !important; }
 
 /* ── Public room context — golden-yellow theme ─────────────────────────────── */
 body.public-context{
-  --dos-bg:var(--role-room-frame-public,#dea838); --dos-fg:#FEF8EA; --dos-cyan:#FEF8EA;
-  --dos-gray:rgba(253,248,236,0.65); --dos-light:#FEF8EA;
-  --dos-accent:#FEF8EA; --dos-border:#FEF8EA;
+  --dos-bg:var(--role-room-frame-public,var(--canon-yellow,#dea838)); --dos-fg:var(--canon-cream,#fef8ea); --dos-cyan:var(--canon-cream,#fef8ea);
+  --dos-gray:rgba(253,248,236,0.65); --dos-light:var(--canon-cream,#fef8ea);
+  --dos-accent:var(--canon-cream,#fef8ea); --dos-border:var(--canon-cream,#fef8ea);
   --dos-blue:rgba(0,0,0,0.14);
-  --progress-bg:var(--canon-green,#7abd8e); --progress-fg:#FEF8EA;
-  background: linear-gradient(to bottom,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,#dea838) 180px) fixed,var(--role-room-frame-public,#dea838);
+  --progress-bg:var(--canon-green,var(--canon-green,#7abd8e)); --progress-fg:var(--canon-cream,#fef8ea);
+  background: linear-gradient(to bottom,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,var(--canon-yellow,#dea838)) 180px) fixed,var(--role-room-frame-public,var(--canon-yellow,#dea838));
   background-attachment:fixed;
 }
 body.public-context.has-header{
-  background: linear-gradient(to top,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,#dea838) 250px) fixed,var(--role-room-frame-public,#dea838);
+  background: linear-gradient(to top,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,var(--canon-yellow,#dea838)) 250px) fixed,var(--role-room-frame-public,var(--canon-yellow,#dea838));
   background-attachment:fixed;
 }
 body.public-context header.site{ background:rgba(222,168,56,0.98); }
 body.public-context .stickybar{ background:rgba(222,168,56,0.98); }
 /* In the yellow public room, reply cards have white bg — swap yellow accents to canon green */
-body.public-context .reply-card .btn:not(.btn-danger){ color:#7abd8e !important; border-color:#7abd8e !important; }
-body.public-context .reply-card .btn:not(.btn-danger):hover{ background:#7abd8e !important; color:#FEF8EA !important; border-color:#7abd8e !important; }
-body.public-context .reply-card .likeWrap{ color:#7abd8e !important; border-color:#7abd8e !important; }
-body.public-context .reply-card .likeWrap:hover{ background:#7abd8e !important; color:#FEF8EA !important; border-color:#7abd8e !important; }
+body.public-context .reply-card .btn:not(.btn-danger){ color:var(--canon-green,#7abd8e) !important; border-color:var(--canon-green,#7abd8e) !important; }
+body.public-context .reply-card .btn:not(.btn-danger):hover{ background:var(--canon-green,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-green,#7abd8e) !important; }
+body.public-context .reply-card .likeWrap{ color:var(--canon-green,#7abd8e) !important; border-color:var(--canon-green,#7abd8e) !important; }
+body.public-context .reply-card .likeWrap:hover{ background:var(--canon-green,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-green,#7abd8e) !important; }
 body.public-context .blockquote-ref .blockquote-author,
-body.public-context .blockquote-ref .blockquote-text{ color:#7abd8e; }
+body.public-context .blockquote-ref .blockquote-text{ color:var(--canon-green,#7abd8e); }
 /* Friend-room quote blocks pick up the same dark-blue-transparent tone as
    the thread action button outlines (rgba(26,58,74,0.3)) — readable on the
    white reply card without overpowering the body copy. */
 body.group-context .blockquote-ref .blockquote-author,
 body.group-context .blockquote-ref .blockquote-text{ color:rgba(26,58,74,0.55); opacity:1; }
-body.public-context .responding-to-label{ color:#7abd8e; }
-body.public-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#FEF8EA !important; }
-body.public-context .progress-control{ border-color:#7abd8e !important; }
-body.group-context .btn.post{ background:#7abd8e !important; border-color:#7abd8e !important; color:#FEF8EA !important; }
-body.group-context .progress-control{ border-color:#7abd8e !important; }
+body.public-context .responding-to-label{ color:var(--canon-green,#7abd8e); }
+body.public-context .btn.post{ background:var(--canon-green,#7abd8e) !important; border-color:var(--canon-green,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; }
+body.public-context .progress-control{ border-color:var(--canon-green,#7abd8e) !important; }
+body.group-context .btn.post{ background:var(--canon-green,#7abd8e) !important; border-color:var(--canon-green,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; }
+body.group-context .progress-control{ border-color:var(--canon-green,#7abd8e) !important; }
 /* Show room private tab sits on a green body, where the green picker outline
    is invisible — give that picker a cream outline. */
-body.group-context .private-progress .progress-control{ border-color:#fef8ea !important; }
+body.group-context .private-progress .progress-control{ border-color:var(--canon-cream,#fef8ea) !important; }
 /* Inside modals (portaled, with [data-modal-root]), the .progress-control
    keeps its white outline regardless of body context. The compose modal's
    in-modal picker sits on the modal's own colored frame and reads against
    white outline. Specificity beats the body-class rules above. */
 body.public-context [data-modal-root] .progress-control,
-body.group-context [data-modal-root] .progress-control{ border-color:#FEF8EA !important; }
-body.public-context .btn.primary{ background:#7abd8e !important; border-color:#7abd8e !important; color:#FEF8EA !important; }
+body.group-context [data-modal-root] .progress-control{ border-color:var(--canon-cream,#fef8ea) !important; }
+body.public-context .btn.primary{ background:var(--canon-green,#7abd8e) !important; border-color:var(--canon-green,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; }
 /* New-reply badge in thread list — green instead of yellow in public context */
-body.public-context .newReplyBadge{ background:#355eb8 !important; }
+body.public-context .newReplyBadge{ background:var(--canon-blue,#355eb8) !important; }
 /* Radio dot in compose destination selector — green instead of yellow in public context */
-body.public-context .radio-dot{ background:#7abd8e !important; }
+body.public-context .radio-dot{ background:var(--canon-green,#7abd8e) !important; }
 /* Retag warning box, move-to dropdown, edit textarea — green bg in public context */
-body.public-context .retag-warning{ background:#7abd8e !important; }
-body.public-context .move-to-dropdown{ background:#7abd8e !important; }
-body.public-context .edit-textarea{ background:#7abd8e !important; }
+body.public-context .retag-warning{ background:var(--canon-green,#7abd8e) !important; }
+body.public-context .move-to-dropdown{ background:var(--canon-green,#7abd8e) !important; }
+body.public-context .edit-textarea{ background:var(--canon-green,#7abd8e) !important; }
 /* compose-submit color now driven by inline styles in the modal */
 /* Expand/collapse chip — green text instead of yellow in public context */
-body.public-context .expand-chip{ color:#7abd8e !important; }
+body.public-context .expand-chip{ color:var(--canon-green,#7abd8e) !important; }
 
 .brandLink{ cursor:pointer; }
 .brandLink:focus-visible{ outline:2px dashed var(--dos-cyan); outline-offset:2px; }
@@ -274,18 +274,18 @@ hr{ display:none; }
 /* Consistent close-X button: circle, white outline, white X, transparent fill */
 .close-x{
   width:28px; height:28px; padding:0; background:transparent;
-  border:2px solid #FEF8EA; border-radius:50%; color:#FEF8EA;
+  border:2px solid var(--canon-cream,#fef8ea); border-radius:50%; color:var(--canon-cream,#fef8ea);
   display:inline-flex; align-items:center; justify-content:center;
   cursor:pointer; flex-shrink:0; line-height:1;
 }
 .close-x:hover{ background:rgba(253,248,236,0.15); }
 .btn.primary{ border-color:var(--dos-cyan); color:var(--dos-cyan); }
-.btn:hover{ background:var(--dos-blue); color:#FEF8EA; border-color:var(--dos-light); }
+.btn:hover{ background:var(--dos-blue); color:var(--canon-cream,#fef8ea); border-color:var(--dos-light); }
 .btn-danger{ border-color:var(--danger); color:var(--danger); }
-.btn-danger:hover{ background:var(--danger); color:#FEF8EA; border-color:var(--danger); }
+.btn-danger:hover{ background:var(--danger); color:var(--canon-cream,#fef8ea); border-color:var(--danger); }
 /* Standardized write/post button: canon-green fill, white outline, white text */
-.btn.post{ background: #7abd8e; color: #FEF8EA; border-color: #FEF8EA; }
-.btn.post:hover{ background: #6aad7e; border-color: #FEF8EA; color: #FEF8EA; }
+.btn.post{ background: var(--canon-green,#7abd8e); color: var(--canon-cream,#fef8ea); border-color: var(--canon-cream,#fef8ea); }
+.btn.post:hover{ background: #6aad7e; border-color: var(--canon-cream,#fef8ea); color: var(--canon-cream,#fef8ea); }
 /* Fix dark inputs/textareas */
 select {
   color: var(--dos-fg);
@@ -299,14 +299,14 @@ select {
   font-family: inherit;
   font-weight: 500;
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23ffffff' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23FEF8EA' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
 }
-input, textarea { color: #000; background: #FEF8EA; }
+input, textarea { color: #000; background: var(--canon-cream,#fef8ea); }
 input::placeholder, textarea::placeholder { color: #aaa; }
 /* Ensure compose/reply typing fields stay white even when .badge or .card class is present */
-input.badge, textarea.card, textarea { background: #FEF8EA !important; color: #000 !important; }
+input.badge, textarea.card, textarea { background: var(--canon-cream,#fef8ea) !important; color: #000 !important; }
 input.badge::placeholder, textarea::placeholder { color: #aaa !important; }
 .h40{ height:40px; display:inline-flex; align-items:center; }
 
@@ -378,9 +378,9 @@ header.site{
 .splashSearchWrap{
   position:relative; display:flex; align-items:center;
   width:288px; max-width:90vw; margin:20px auto;
-  height:40px; border:2px solid #adc8d7; border-radius:9999px;
+  height:40px; border:2px solid var(--canon-sky,#adc8d7); border-radius:9999px;
   padding:0 16px;
-  background:#fef8ea; border-color:#fef8ea; color:#c39431;
+  background:var(--canon-cream,#fef8ea); border-color:var(--canon-cream,#fef8ea); color:#c39431;
 }
 .splashSearch{
   background:transparent; border:none !important; border-radius:0 !important; outline:none;
@@ -388,7 +388,7 @@ header.site{
   text-align:center; padding:0 36px;
   font-size:16px; font-weight:600; letter-spacing:0.01em; color:inherit;
 }
-.splashSearch::placeholder{ color:#f45028; opacity:1; }
+.splashSearch::placeholder{ color:var(--canon-red,#f45028); opacity:1; }
 .splashSearchIcon{ font-size:18px; opacity:.85; flex-shrink:0; line-height:1; position:relative; z-index:1; }
 .dropdownPanel{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
@@ -438,11 +438,11 @@ header.site{
    so the OUTLINE oscillates instead of an overlay fill. Ends faded to
    transparent so the card's default border bleeds back through. */
 @keyframes flash-border-blue{
-  0%   { border-color:#355eb8; }
+  0%   { border-color:var(--canon-blue,#355eb8); }
   20%  { border-color:rgba(53,94,184,0.15); }
-  40%  { border-color:#355eb8; }
+  40%  { border-color:var(--canon-blue,#355eb8); }
   60%  { border-color:rgba(53,94,184,0.15); }
-  80%  { border-color:#355eb8; }
+  80%  { border-color:var(--canon-blue,#355eb8); }
   100% { border-color:rgba(53,94,184,0); }
 }
 /* Map-cell-click attention pulse that leaves the outline alone — a midnight-
@@ -531,13 +531,13 @@ header.site{
   background:rgba(0,0,0,0.22);
   border:2px solid rgba(253,248,236,0.85); border-bottom:none;
   border-radius:8px 8px 0 0;
-  color:#FEF8EA; font-size:var(--t4); font-weight:500;
+  color:var(--canon-cream,#fef8ea); font-size:var(--t4); font-weight:500;
   cursor:pointer; white-space:nowrap; position:relative;
 }
 .diaryTab.active{
   padding:8px 24px;
   background:var(--dos-bg);
-  border-color:#FEF8EA;
+  border-color:var(--canon-cream,#fef8ea);
   border-bottom:2px solid var(--dos-bg);
   font-size:var(--t3); font-weight:800;
   text-decoration:none;
@@ -547,7 +547,7 @@ header.site{
 .diaryCardWrap{
   position:relative; z-index:1;
 }
-.diaryCardWrap > .card{ border:2px solid #FEF8EA; border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
+.diaryCardWrap > .card{ border:2px solid var(--canon-cream,#fef8ea); border-radius:0; padding:0; box-shadow:none; background:var(--dos-bg); }
 .diaryCardWrap .threadCard{ border-radius:0; }
 .diaryCardWrap .threadCard:last-child{ margin-bottom:0; }
 
@@ -588,7 +588,7 @@ header.site{
 .avatar{
   width:24px; height:24px; border:none; border-radius:50%;
   display:inline-grid; place-items:center; font-size:12px; line-height:1;
-  background:#FEF8EA; color:var(--dos-user); font-weight:700;
+  background:var(--canon-cream,#fef8ea); color:var(--dos-user); font-weight:700;
 }
 @media(max-width:600px){
   .profileChipLabel{ display:none; }
@@ -612,7 +612,7 @@ header.site{
   /* Flush first tab with the card's left border line */
   .diaryTabRow{ padding-left:0; }
   /* Keep border, zero padding — action bar + scroll area handle their own padding */
-  .diaryCardWrap > .card{ border:2px solid #FEF8EA !important; padding:0 !important; }
+  .diaryCardWrap > .card{ border:2px solid var(--canon-cream,#fef8ea) !important; padding:0 !important; }
   .profileActionBar{ padding:10px 16px; }
   .diaryScrollArea{ padding:8px 16px 24px 16px; }
   /* Entry cards: remove the desktop left-margin offset so they're centred in the box */
@@ -659,11 +659,11 @@ header.site{
 .scrollWin::-webkit-scrollbar-thumb:hover{ background:rgba(253,248,236,0.6); }
 
 /* Reply cards: white bg, yellow text & buttons */
-.reply-card{ background:#FEF8EA !important; }
+.reply-card{ background:var(--canon-cream,#fef8ea) !important; }
 .reply-card .btn:not(.btn-danger){ color:var(--dos-bg) !important; border-color:var(--dos-bg) !important; background:transparent !important; }
-.reply-card .btn:not(.btn-danger):hover{ background:var(--dos-bg) !important; color:#FEF8EA !important; border-color:var(--dos-bg) !important; }
+.reply-card .btn:not(.btn-danger):hover{ background:var(--dos-bg) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--dos-bg) !important; }
 .reply-card .likeWrap{ color:var(--dos-bg) !important; border-color:var(--dos-bg) !important; background:transparent !important; }
-.reply-card .likeWrap:hover{ background:var(--dos-bg) !important; color:#FEF8EA !important; border-color:var(--dos-bg) !important; }
+.reply-card .likeWrap:hover{ background:var(--dos-bg) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--dos-bg) !important; }
 
 /* bottom-right replies badge */
 .replyCount{
@@ -679,7 +679,7 @@ header.site{
 .frontAccent p,
 .frontAccent a,
 .frontAccent b {
-  color: var(--danger, #f45028) !important;
+  color: var(--danger, var(--canon-red,#f45028)) !important;
 }
 .frontAccent .muted {
   opacity: 1 !important; /* neutralize dimming if present */
@@ -745,7 +745,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* Shared citation superscript button — used inline in body, in headers, and in thread heading */
 .cite-sup-btn {
-  color: #7abd8e;
+  color: var(--canon-green,#7abd8e);
   font-weight: 700;
   background: none;
   border: none;
@@ -766,7 +766,7 @@ body { -webkit-font-smoothing: antialiased; }
 }
 
 /* On the original thread entry (yellow bg) sups and underlines must be white */
-.thread-entry-body .cite-sup-btn { color: #FEF8EA; }
+.thread-entry-body .cite-sup-btn { color: var(--canon-cream,#fef8ea); }
 .thread-entry-body .quoted-passage {
   text-decoration-color: rgba(253,248,236,0.55);
 }
@@ -778,7 +778,7 @@ body { -webkit-font-smoothing: antialiased; }
    Button: .btn with color #000 / borderColor #000.
    ──────────────────────────────────────────────────────────────────────────── */
 .explanation-card {
-  background: #adc8d7 !important;
+  background: var(--canon-sky,#adc8d7) !important;
   border: none !important;
   color: #000 !important;
 }
@@ -788,7 +788,7 @@ body { -webkit-font-smoothing: antialiased; }
 }
 .explanation-card .btn:hover {
   background: rgba(0,0,0,0.08) !important;
-  color: #FEF8EA !important;
+  color: var(--canon-cream,#fef8ea) !important;
   border-color: #000 !important;
 }
 
@@ -869,7 +869,7 @@ body { -webkit-font-smoothing: antialiased; }
   font-weight: inherit;
   line-height: 1.3;
 }
-.insert-quote-main:hover { background: var(--dos-blue); color:#FEF8EA; }
+.insert-quote-main:hover { background: var(--dos-blue); color:var(--canon-cream,#fef8ea); }
 .insert-quote-cancel {
   background: transparent;
   border: none;
@@ -943,7 +943,7 @@ body.public-context .prompt-ref { color: #8a6420; }
 
 /* ── Prompt card (the floating suggestion card) ─────────────────────────── */
 .prompt-card {
-  background: #adc8d7;
+  background: var(--canon-sky,#adc8d7);
   border: none;
   border-radius: 16px;
   padding: 16px 18px 14px;
@@ -968,9 +968,9 @@ body.public-context .prompt-ref { color: #8a6420; }
   background: rgba(0,0,0,0.08);
 }
 .prompt-card-btn--use {
-  background: #355eb8;
-  color: #FEF8EA;
-  border-color: #355eb8;
+  background: var(--canon-blue,#355eb8);
+  color: var(--canon-cream,#fef8ea);
+  border-color: var(--canon-blue,#355eb8);
 }
 .prompt-card-btn--use:hover {
   background: #1a44a8;
@@ -980,14 +980,14 @@ body.public-context .prompt-ref { color: #8a6420; }
 /* ── Prompt trigger button (inside compose / response area) ─────────────── */
 .prompt-btn {
   background: var(--dos-bg);
-  border: 2px solid #FEF8EA;
+  border: 2px solid var(--canon-cream,#fef8ea);
   padding: 5px 10px;
   font-size: 13px;
   white-space: nowrap;
   font-weight: 400;
   letter-spacing: 0;
   cursor: pointer;
-  color: #FEF8EA;
+  color: var(--canon-cream,#fef8ea);
   opacity: 1;
   font-family: "Inter", sans-serif;
   border-radius: 9999px;
