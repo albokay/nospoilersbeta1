@@ -39,6 +39,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
     if (mode === "signup") {
       if (!username.trim()) { setError("Please choose a username."); setLoading(false); return; }
       if (username.trim().length < 3) { setError("Username must be at least 3 characters."); setLoading(false); return; }
+      if (password.length < 8) { setError("Password must be at least 8 characters."); setLoading(false); return; }
       const redirect = signupRedirectTo ?? (typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined);
       const res = await signUp(email.trim(), password, username.trim(), redirect ? { emailRedirectTo: redirect } : undefined);
       setLoading(false);

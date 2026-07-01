@@ -34,7 +34,7 @@ const COPY = {
 
 type Phase = "waiting-for-recovery" | "ready" | "submitting" | "success" | "no-token";
 
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH = 8;
 // Grace period for the recovery session to materialize. supabase-js parses
 // the URL hash on the supabase client's own init, which can fire BEFORE
 // this component's subscription is in place — meaning we'd miss the
