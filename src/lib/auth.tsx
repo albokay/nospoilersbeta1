@@ -174,21 +174,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
-    // Try the normal (global-scope) signOut first — that invalidates the
-    // refresh token server-side, which is what we want for security.
-    // Swallow any error: when the JWT references a deleted auth.users row
-    // (dangling-token case after a beta-prep SQL reset), the server rejects
-    // the logout with 401 and supabase-js surfaces it without clearing
-    // local state. The user then sees an unresponsive Sign-out button.
+    // Clear the in-memory auth state FIRST, synchronously, so the UI flips to
+    // signed-out immediately — before any network call. This is what makes
+    // sign-out bulletproof: a dead / banned / dangling token (e.g. a session
+    // for an account that was deleted, or deleted on another device) used to
+    // leave the app stuck on an authed screen because the network signOut
+    // errored and onAuthStateChange never fired a SIGNED_OUT. Nulling state
+    // here means logout always takes effect regardless of the token's status.
+    setUser(null);
+    setProfile(null);
+    // Best-effort server-side revocation of the refresh token (global scope).
+    // Swallow any error (a deleted/banned user's logout can 401) — the local
+    // clear below is what guarantees the tokens leave localStorage.
     try {
       await supabase.auth.signOut();
     } catch {
       // intentionally empty — fall through to local clear
     }
-    // Belt-and-suspenders: local-scope signOut never hits the network and
-    // always clears client-side tokens from localStorage, so
-    // onAuthStateChange fires with a null session and the UI updates
-    // regardless of whether the global logout succeeded.
+    // Local-scope signOut never hits the network and always clears client-side
+    // tokens from localStorage.
     try {
       await supabase.auth.signOut({ scope: "local" });
     } catch {
