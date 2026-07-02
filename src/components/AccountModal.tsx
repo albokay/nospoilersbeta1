@@ -37,6 +37,16 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
     // /dashboard; a full reload re-initializes with no session -> narrative
     // homepage, signalling the account is truly gone.
     try { await supabase.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
+    // Belt-and-suspenders: the anonymize model keeps a still-valid access token
+    // (the ban only blocks NEW logins) until it expires. If signOut didn't
+    // clear storage, the hard reload below would restore that session and show
+    // the now-"deleted_…" profile. Force-remove any persisted Supabase auth
+    // token so "/" loads fully signed-out → the narrative homepage.
+    try {
+      for (const k of Object.keys(localStorage)) {
+        if (k.startsWith("sb-") && k.includes("-auth-token")) localStorage.removeItem(k);
+      }
+    } catch { /* ignore */ }
     window.location.replace("/");
   }
 
