@@ -20,6 +20,7 @@
  *   • clicking a show into its room                           → CP4
  */
 import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "react";
+import { CANON } from "../styles/canon";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
@@ -91,14 +92,14 @@ const TSP_DEMO_ENABLED = true;
 
 // ── §16 palette (authoritative) ──────────────────────────────────────────────
 const C = {
-  green:    "#7ABD8E",
-  sky:      "#ADC8D7",
-  blue:     "#355EB8",
-  yellow:   "#DEA838",
-  red:      "#F45028",
-  cream:    "#FEF8EA",
-  midnight: "#1A3A4A",
-  greyblue: "#8DAABA",
+  green:    CANON.personal,
+  sky:      CANON.friend,
+  blue:     CANON.identity,
+  yellow:   CANON.accent,
+  red:      CANON.alert,
+  cream:    CANON.cream,
+  midnight: CANON.dark,
+  greyblue: CANON.business,
 };
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
@@ -947,14 +948,14 @@ export default function DashboardPage() {
             {inGroup ? "Add more friends to this group?" : "Invite new friends?"}
           </button>
           <button style={topCircleBtn(inGroup)} title="account" onClick={() => setShowAccount(true)}>
-            <UserCog size={18} color={inGroup ? C.midnight : "#FEF8EA"} />
+            <UserCog size={18} color={inGroup ? C.midnight : CANON.cream} />
           </button>
           <button style={topCircleBtn(inGroup)} title="sign out" onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}>
-            <LogOut size={18} color={inGroup ? C.midnight : "#FEF8EA"} />
+            <LogOut size={18} color={inGroup ? C.midnight : CANON.cream} />
           </button>
           {profile?.is_admin && (
             <button style={topCircleBtn(inGroup)} title="admin" onClick={() => navigate("/?admin")}>
-              <Settings size={18} color={inGroup ? C.midnight : "#FEF8EA"} />
+              <Settings size={18} color={inGroup ? C.midnight : CANON.cream} />
             </button>
           )}
         </div>
@@ -1169,7 +1170,7 @@ export default function DashboardPage() {
       {inviteOpen && (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setInviteOpen(false); }}>
           <div style={{ ...searchCard, background: C.sky, position: "relative" }}>
-            <button style={modalClose} onClick={() => setInviteOpen(false)}><X size={18} color="#FEF8EA" /></button>
+            <button style={modalClose} onClick={() => setInviteOpen(false)}><X size={18} color={CANON.cream} /></button>
             {!inviteLinks && (
               <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
                 {inviteTargetGroupId ? <>Connect more friends<br />to this group:</> : <>Email friends to<br />start a watch group:</>}
@@ -1260,7 +1261,7 @@ export default function DashboardPage() {
            <div style={trailerCenterColumn} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
             {/* solo + watchq are wider to fit the "Yes" + "just confirm my progress" row. */}
             <div style={{ ...yellowCard, ...(clicked.mode === "watchq" || clicked.mode === "solo" ? { width: "min(460px, 92vw)" } : {}) }}>
-              <button style={modalClose} onClick={() => setClicked(null)}><X size={16} color="#FEF8EA" /></button>
+              <button style={modalClose} onClick={() => setClicked(null)}><X size={16} color={CANON.cream} /></button>
 
               {clicked.mode === "solo" && (
                 <>
@@ -1354,14 +1355,14 @@ export default function DashboardPage() {
       {invitePrompt && (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) { setInvitePrompt(null); setAcceptError(null); } }}>
           <div style={yellowCard}>
-            <button style={modalClose} onClick={() => { setInvitePrompt(null); setAcceptError(null); }}><X size={16} color="#FEF8EA" /></button>
+            <button style={modalClose} onClick={() => { setInvitePrompt(null); setAcceptError(null); }}><X size={16} color={CANON.cream} /></button>
             <div style={yellowTitle}>Join a group with {inviteNames(invitePrompt)}?</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
               <button style={startBtn} onClick={() => acceptInvite(invitePrompt)}>Yes</button>
-              <button style={{ ...startBtn, background: "transparent", color: "#FEF8EA", border: "2px solid #FEF8EA" }} onClick={() => declineInvite(invitePrompt)}>no</button>
+              <button style={{ ...startBtn, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }} onClick={() => declineInvite(invitePrompt)}>no</button>
             </div>
             {acceptError && (
-              <div style={{ marginTop: 14, textAlign: "center", color: "#FEF8EA", fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{acceptError}</div>
+              <div style={{ marginTop: 14, textAlign: "center", color: CANON.cream, fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{acceptError}</div>
             )}
           </div>
         </div>
@@ -1380,7 +1381,7 @@ export default function DashboardPage() {
             }}
           >
             <div style={yellowCard}>
-              <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color="#FEF8EA" /></button>
+              <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
               <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight }} />
               <button style={{ ...startBtn, marginTop: 12 }} onClick={() => doRename(optionsFor)}>confirm name</button>
@@ -1389,7 +1390,7 @@ export default function DashboardPage() {
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this group?</div>
               <button style={dangerBtn} onClick={() => doLeave(optionsFor)}>yes, leave</button>
               <div style={yellowDivider} />
-              <div style={{ color: "#FEF8EA", fontSize: 12, opacity: 0.9 }}>You can join again if someone sends you another invite.</div>
+              <div style={{ color: CANON.cream, fontSize: 12, opacity: 0.9 }}>You can join again if someone sends you another invite.</div>
             </div>
           </div>
         </div>
@@ -1411,7 +1412,7 @@ export default function DashboardPage() {
                 const mine = m.authorId === selfUserId;
                 return (
                   <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
-                    {!mine && <div style={{ fontSize: 11, color: "#FEF8EA", opacity: 0.85, marginBottom: 3 }}>{m.username}</div>}
+                    {!mine && <div style={{ fontSize: 11, color: CANON.cream, opacity: 0.85, marginBottom: 3 }}>{m.username}</div>}
                     <div style={mine ? chatBubbleMine : chatBubbleOther}>{linkifyText(m.body)}</div>
                   </div>
                 );
@@ -1425,7 +1426,7 @@ export default function DashboardPage() {
                 placeholder="message…"
                 style={chatInputBox}
               />
-              <button style={chatSend} onClick={sendChat}><ArrowUp size={18} color="#FEF8EA" /></button>
+              <button style={chatSend} onClick={sendChat}><ArrowUp size={18} color={CANON.cream} /></button>
             </div>
           </div>
         );
@@ -1435,10 +1436,10 @@ export default function DashboardPage() {
       {removeConfirm && (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setRemoveConfirm(null); }}>
           <div style={{ background: C.sky, borderRadius: 15, padding: "26px 30px", width: "min(340px, 90vw)", position: "relative" }}>
-            <button style={modalClose} onClick={() => setRemoveConfirm(null)}><X size={16} color="#FEF8EA" /></button>
+            <button style={modalClose} onClick={() => setRemoveConfirm(null)}><X size={16} color={CANON.cream} /></button>
             <div style={{ color: C.red, fontWeight: 700, fontSize: 15, marginBottom: 12, letterSpacing: -0.3 }}>Remove this show from your pool?</div>
-            <div style={{ color: "#FEF8EA", fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>This will opt you out of the show across all your groups and you will leave any friend rooms for the show.</div>
-            <div style={{ color: "#FEF8EA", fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>BUT, your progress will be saved and restored if you search for and add the show back to your show pool.</div>
+            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>This will opt you out of the show across all your groups and you will leave any friend rooms for the show.</div>
+            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>BUT, your progress will be saved and restored if you search for and add the show back to your show pool.</div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={{ border: "none", background: "transparent", color: C.midnight, fontWeight: 700, fontSize: 13, cursor: "pointer" }} onClick={() => setRemoveConfirm(null)}>cancel</button>
               <button style={dangerBtn} onClick={() => doRemoveFromPool(removeConfirm.id)}>remove</button>
@@ -1456,7 +1457,7 @@ export default function DashboardPage() {
         return (
           <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setPillModal(null); }}>
             <div style={{ ...yellowCard, ...(isWatching ? { width: "min(460px, 92vw)" } : {}) }}>
-              <button style={modalClose} onClick={() => setPillModal(null)}><X size={16} color="#FEF8EA" /></button>
+              <button style={modalClose} onClick={() => setPillModal(null)}><X size={16} color={CANON.cream} /></button>
 
               {!isWatching ? (
                 <>
@@ -1537,7 +1538,7 @@ function CopyRow({ email, link, error }: { email: string; link?: string; error?:
           <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.blue, wordBreak: "break-all", flex: 1, textDecoration: "none" }}>{link}</a>
           <button
             onClick={() => { try { navigator.clipboard?.writeText(link); } catch { /* ignore */ } setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-            style={{ border: "none", background: C.blue, color: "#FEF8EA", fontSize: 11, fontWeight: 700, padding: "6px 14px", borderRadius: 65, cursor: "pointer", whiteSpace: "nowrap" }}
+            style={{ border: "none", background: C.blue, color: CANON.cream, fontSize: 11, fontWeight: 700, padding: "6px 14px", borderRadius: 65, cursor: "pointer", whiteSpace: "nowrap" }}
           >{copied ? "copied!" : "copy"}</button>
         </div>
       ) : (
@@ -1584,8 +1585,8 @@ function GroupPill({ pill, name, onClick }: { pill: PillData; name: string; onCl
     borderRadius: 65, fontFamily: '"Inter", sans-serif', fontWeight: 700,
     fontSize: 14, letterSpacing: -1, width: "100%", boxSizing: "border-box",
     background: isSelfWatching || isGreen ? C.green : isCream ? C.cream : "transparent",
-    border: isSelfWatching ? `2px solid ${C.green}` : (isCream || isGreen ? "2px solid transparent" : "2px solid #FEF8EA"),
-    color: isSelfWatching || isGreen ? "#FEF8EA" : isCream ? C.green : "#FEF8EA",
+    border: isSelfWatching ? `2px solid ${C.green}` : (isCream || isGreen ? "2px solid transparent" : "2px solid var(--canon-cream,#fef8ea)"),
+    color: isSelfWatching || isGreen ? CANON.cream : isCream ? C.green : CANON.cream,
     cursor: "pointer", textAlign: "left",
   };
   return (
@@ -1625,7 +1626,7 @@ function PillRightSide({ right }: { right: PillData["right"] }) {
 function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pending" | "invited" }) {
   // accepted = cream/green · pending (invite sent) = yellow/cream · invited-to-you = red/green
   const bg = state === "accepted" ? C.cream : state === "pending" ? C.yellow : C.red;
-  const fg = state === "accepted" ? C.green : state === "pending" ? "#FEF8EA" : C.cream;
+  const fg = state === "accepted" ? C.green : state === "pending" ? CANON.cream : C.cream;
   return <span style={{ ...avatarCircle, background: bg, color: fg }}>{(letter ?? "?").toUpperCase()}</span>;
 }
 
@@ -1741,7 +1742,7 @@ function GroupClusters({
       <div style={groupHeadingRow}>
         <h1 style={groupHeadingTitle}>{active.group.name || groupAutoName(active.group, others)}</h1>
         {names && <span style={groupHeadingMembers}><span style={{ color: C.greyblue }}>with</span> {names}</span>}
-        <button style={headingIconBtn} title="group options" onClick={(e) => onGearClick(active.group.id, e.currentTarget.getBoundingClientRect())}><Settings size={22} color="#FEF8EA" /></button>
+        <button style={headingIconBtn} title="group options" onClick={(e) => onGearClick(active.group.id, e.currentTarget.getBoundingClientRect())}><Settings size={22} color={CANON.cream} /></button>
       </div>
     );
   }
@@ -1848,7 +1849,7 @@ const searchPill: React.CSSProperties = {
   padding: "16px 56px", borderRadius: 65, cursor: "pointer",
 };
 const invitePill: React.CSSProperties = {
-  border: "none", background: C.blue, color: "#FEF8EA", fontWeight: 700, fontSize: 14,
+  border: "none", background: C.blue, color: CANON.cream, fontWeight: 700, fontSize: 14,
   padding: "18px 64px", borderRadius: 65, cursor: "pointer", boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
 };
 const topBar: React.CSSProperties = {
@@ -1856,7 +1857,7 @@ const topBar: React.CSSProperties = {
 };
 const topCircleBtn = (inGroup: boolean): React.CSSProperties => ({
   width: 44, height: 44, borderRadius: "50%", background: "transparent",
-  border: `2px solid ${inGroup ? C.midnight : "#FEF8EA"}`, cursor: "pointer",
+  border: `2px solid ${inGroup ? C.midnight : CANON.cream}`, cursor: "pointer",
   display: "inline-flex", alignItems: "center", justifyContent: "center",
 });
 const clustersRow: React.CSSProperties = {
@@ -1905,7 +1906,7 @@ const notifDotCluster: React.CSSProperties = {
   background: C.blue, verticalAlign: "middle", marginRight: 8,
 };
 const tipBubble: React.CSSProperties = {
-  position: "fixed", background: C.green, color: "#FEF8EA", padding: "7px 12px", borderRadius: 12,
+  position: "fixed", background: C.green, color: CANON.cream, padding: "7px 12px", borderRadius: 12,
   fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 600, lineHeight: 1.3,
   whiteSpace: "nowrap", pointerEvents: "none", zIndex: 9999, boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
 };
@@ -1915,7 +1916,7 @@ const tipDivider: React.CSSProperties = {
 };
 const clusterName: React.CSSProperties = {
   marginTop: 8, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: -1,
-  color: "#FEF8EA", maxWidth: 120, lineHeight: 1.25, marginLeft: "auto", marginRight: "auto",
+  color: CANON.cream, maxWidth: 120, lineHeight: 1.25, marginLeft: "auto", marginRight: "auto",
 };
 const clusterIcon: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0 };
 const groupHeadingRow: React.CSSProperties = {
@@ -1926,10 +1927,10 @@ const headingIconBtn: React.CSSProperties = {
   border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0, display: "inline-flex", alignItems: "center",
 };
 const groupHeadingTitle: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: "#FEF8EA", margin: 0,
+  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: CANON.cream, margin: 0,
 };
 const groupHeadingMembers: React.CSSProperties = {
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: "#FEF8EA",
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: CANON.cream,
 };
 const backTab: React.CSSProperties = {
   // ~50% larger tab; padding/radius on the 8px grid (spec §16). Icon unchanged.
@@ -1944,7 +1945,7 @@ const chatTab: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
 const countCircle: React.CSSProperties = {
-  minWidth: 22, height: 22, padding: "0 6px", borderRadius: 11, background: C.green, color: "#FEF8EA",
+  minWidth: 22, height: 22, padding: "0 6px", borderRadius: 11, background: C.green, color: CANON.cream,
   fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center",
 };
 const chatPanel: React.CSSProperties = {
@@ -1965,7 +1966,7 @@ const chatBubbleMine: React.CSSProperties = {
 const chatInputRow: React.CSSProperties = { display: "flex", gap: 8, alignItems: "center", padding: "14px 16px", background: C.cream };
 const chatInputBox: React.CSSProperties = {
   flex: 1, border: "none", borderRadius: 65, padding: "12px 18px", fontFamily: '"Inter", sans-serif',
-  fontSize: 13, color: C.midnight, background: "#FEF8EA", outline: "none",
+  fontSize: 13, color: C.midnight, background: CANON.cream, outline: "none",
 };
 const chatSend: React.CSSProperties = {
   border: "none", background: C.blue, borderRadius: "50%", width: 38, height: 38, display: "inline-flex",
@@ -2005,14 +2006,14 @@ const yellowCard: React.CSSProperties = {
   position: "relative", textAlign: "center",
 };
 const yellowTitle: React.CSSProperties = {
-  color: "#FEF8EA", fontSize: 15, fontWeight: 600, letterSpacing: -0.5,
+  color: CANON.cream, fontSize: 15, fontWeight: 600, letterSpacing: -0.5,
 };
 const yellowDivider: React.CSSProperties = {
   height: 1, background: "rgba(253,248,236,0.5)", margin: "20px 0 14px",
 };
 // Button-outline rule: solid fill = no contrasting outline; outlined = transparent fill.
 const startBtn: React.CSSProperties = {
-  border: "none", background: C.blue, color: "#FEF8EA", fontWeight: 700, fontSize: 14,
+  border: "none", background: C.blue, color: CANON.cream, fontWeight: 700, fontSize: 14,
   padding: "11px 38px", borderRadius: 65, cursor: "pointer",
 };
 const dangerBtn: React.CSSProperties = {

@@ -208,11 +208,11 @@ const page: React.CSSProperties = {
 const card: React.CSSProperties = {
   background: C.yellow, borderRadius: 15, padding: "32px 36px", width: "min(420px, 90vw)", textAlign: "center",
 };
-const title: React.CSSProperties = { fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: -1, color: "#FEF8EA", margin: "0 0 8px" };
+const title: React.CSSProperties = { fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: -1, color: CANON.cream, margin: "0 0 8px" };
 const muted: React.CSSProperties = { color: C.midnight, fontSize: 13, margin: "8px 0 0" };
-const yes: React.CSSProperties = { border: "none", background: C.blue, color: "#FEF8EA", fontWeight: 700, fontSize: 14, padding: "11px 38px", borderRadius: 65, cursor: "pointer" };
-const no: React.CSSProperties = { border: "2px solid #FEF8EA", background: "transparent", color: "#FEF8EA", fontWeight: 700, fontSize: 14, padding: "10px 30px", borderRadius: 65, cursor: "pointer" };
-const ghost: React.CSSProperties = { border: "2px solid #FEF8EA", background: "transparent", color: "#FEF8EA", fontWeight: 700, fontSize: 14, padding: "10px 28px", borderRadius: 65, cursor: "pointer", marginTop: 14 };
+const yes: React.CSSProperties = { border: "none", background: C.blue, color: CANON.cream, fontWeight: 700, fontSize: 14, padding: "11px 38px", borderRadius: 65, cursor: "pointer" };
+const no: React.CSSProperties = { border: "2px solid var(--canon-cream,#fef8ea)", background: "transparent", color: CANON.cream, fontWeight: 700, fontSize: 14, padding: "10px 30px", borderRadius: 65, cursor: "pointer" };
+const ghost: React.CSSProperties = { border: "2px solid var(--canon-cream,#fef8ea)", background: "transparent", color: CANON.cream, fontWeight: 700, fontSize: 14, padding: "10px 28px", borderRadius: 65, cursor: "pointer", marginTop: 14 };
 const listBlock: React.CSSProperties = { marginTop: 16, textAlign: "left" };
 const listLabel: React.CSSProperties = { color: C.midnight, fontSize: 12, fontWeight: 700, marginBottom: 8 };
 const chipRow: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-start" };

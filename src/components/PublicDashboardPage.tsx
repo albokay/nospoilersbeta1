@@ -195,7 +195,7 @@ const topBar: React.CSSProperties = {
 };
 const contentWrap: React.CSSProperties = { maxWidth: 1040, margin: "0 auto", padding: "8px 64px 80px" };
 const heading: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: "#FEF8EA",
+  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: CANON.cream,
   textAlign: "center", margin: "8px 0 40px",
 };
 const shelfHeader: React.CSSProperties = {
@@ -244,6 +244,6 @@ const pillWant: React.CSSProperties = { background: C.cream, border: `2px solid 
 const pillName: React.CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 const pillProg: React.CSSProperties = { fontWeight: 500, opacity: 0.8 };
 const signInPill: React.CSSProperties = {
-  border: "none", background: C.blue, color: "#FEF8EA", fontWeight: 800, fontSize: 14,
+  border: "none", background: C.blue, color: CANON.cream, fontWeight: 800, fontSize: 14,
   letterSpacing: 0.5, padding: "14px 40px", borderRadius: 65, cursor: "pointer",
 };

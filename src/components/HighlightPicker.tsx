@@ -162,7 +162,7 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
             borderRadius: 12,
             background: CANON_LIGHT,
             fontSize: 13,
-            color: "#FEF8EA",
+            color: CANON.cream,
             cursor: "pointer",
           }}
         >
@@ -179,7 +179,7 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
               alignItems: "center",
               gap: 8,
               fontSize: 13,
-              color: "#FEF8EA",
+              color: CANON.cream,
               marginBottom: selected === "note" ? 6 : 0,
               cursor: "pointer",
             }}
@@ -219,7 +219,7 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
           disabled={!canSubmit}
           style={{
             background: canSubmit ? color : "rgba(150,150,150,0.35)",
-            color: "#FEF8EA",
+            color: CANON.cream,
             border: canSubmit ? `2px solid ${color}` : "none",
             padding: "6px 16px",
             borderRadius: 9999,

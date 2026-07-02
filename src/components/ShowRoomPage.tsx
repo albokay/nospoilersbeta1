@@ -635,7 +635,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {composeOpen && createPortal(
         <div style={composeBackdrop}>
           <div style={composeCardOuter}>
-            <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={16} color="#f45028" /></button>
+            <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={16} color={CANON.alert} /></button>
             <ComposeForm
               ref={composeFormRef}
               showId={show?.id}
@@ -718,7 +718,7 @@ const backTab: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
 const writeBtn: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: "#FEF8EA",
+  display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: CANON.cream,
   fontWeight: 700, fontSize: 14, padding: "12px 24px", borderRadius: 65, cursor: "pointer",
 };
 const sortSelect: React.CSSProperties = {
@@ -737,7 +737,7 @@ const composeCardOuter: React.CSSProperties = {
   borderRadius: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.25)", overflow: "auto",
 };
 const composeCloseX: React.CSSProperties = {
-  position: "absolute", top: 20, right: 24, background: "transparent", border: "2px solid #f45028",
-  color: "#f45028", borderRadius: "50%", width: 34, height: 34, padding: 0,
+  position: "absolute", top: 20, right: 24, background: "transparent", border: "2px solid var(--canon-alert,#f45028)",
+  color: CANON.alert, borderRadius: "50%", width: 34, height: 34, padding: 0,
   display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: "pointer", zIndex: 10,
 };

@@ -115,7 +115,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
   return (
     <Modal onClose={onClose} width="min(360px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: "none" }}>
       <style>{`
-        .poll-composer-input::placeholder { color: #FEF8EA; opacity: 0.95; }
+        .poll-composer-input::placeholder { color: var(--canon-cream,#fef8ea); opacity: 0.95; }
       `}</style>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
         <div style={{ fontSize: 18, fontWeight: 600, color: CANON_NAVY, fontFamily: '"Lora", Georgia, serif' }}>Open a poll</div>
@@ -151,7 +151,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
               disabled={submitting}
               style={{
                 background: CANON_YELLOW,
-                color: "#FEF8EA",
+                color: CANON.cream,
                 border: `2px solid ${CANON_YELLOW}`,
                 padding: "5px 12px",
                 borderRadius: 9999,
@@ -298,7 +298,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
           <CanonRadio
             checked={allowWriteIn}
             bgColor={CANON_LIGHT}
-            color="#FEF8EA"
+            color={CANON.cream}
             size={20}
             dotSize={10}
           />
@@ -313,7 +313,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
           style={{
             flex: 1,
             padding: "8px 14px",
-            background: "#FEF8EA",
+            background: CANON.cream,
             borderRadius: 9999,
             fontSize: 13,
             color: CANON_NAVY,
@@ -341,9 +341,9 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
                   padding: "7px 0",
                   borderRadius: 9999,
                   border: selected ? `2px solid ${CANON_GREEN}` : "none",
-                  background: selected ? CANON_GREEN : "#FEF8EA",
+                  background: selected ? CANON_GREEN : CANON.cream,
                   fontSize: 12,
-                  color: selected ? "#FEF8EA" : CANON_NAVY,
+                  color: selected ? CANON.cream : CANON_NAVY,
                   fontWeight: 500,
                   cursor: "pointer",
                 }}
@@ -366,7 +366,7 @@ export default function PollComposer({ groupId, onClose, onOpened }: Props) {
           disabled={!canSubmit}
           style={{
             background: canSubmit ? CANON_GREEN : "rgba(122,189,142,0.45)",
-            color: "#FEF8EA",
+            color: CANON.cream,
             border: canSubmit ? `2px solid ${CANON_GREEN}` : "none",
             padding: "8px 18px",
             borderRadius: 9999,

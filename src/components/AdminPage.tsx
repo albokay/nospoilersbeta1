@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { CANON } from "../styles/canon";
 import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import type { Show, FeedbackRow, PromptRow, AdminUserOverviewRow, AdminUserActivityRow } from "../lib/db";
 import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback, fetchAllPrompts, togglePromptActive, deletePrompt, updatePrompt, createPrompt, fetchAdminUserOverview, fetchAdminUserActivity } from "../lib/db";
@@ -314,7 +315,7 @@ export default function AdminPage({
     <button
       type="button"
       onClick={() => selectAll(items, list, setList)}
-      style={{ fontSize: 10, cursor: "pointer", background: "none", border: "none", color: "#355eb8", padding: 0, textDecoration: "underline", marginLeft: 8, fontFamily: "inherit" }}
+      style={{ fontSize: 10, cursor: "pointer", background: "none", border: "none", color: CANON.identity, padding: 0, textDecoration: "underline", marginLeft: 8, fontFamily: "inherit" }}
     >
       {items.every(item => list.includes(item)) ? "deselect all" : "select all"}
     </button>
@@ -551,7 +552,7 @@ export default function AdminPage({
             <table style={{
               width: "100%", borderCollapse: "collapse",
               fontSize: 13, fontFamily: "monospace",
-              background: "#FEF8EA", color: "#000",
+              background: CANON.cream, color: "#000",
             }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid #999", textAlign: "left" }}>
@@ -569,7 +570,7 @@ export default function AdminPage({
                   return (
                     <tr key={row.id} style={{
                       borderBottom: "1px solid #ddd",
-                      background: row.status === "done" ? "#7abd8e" : row.status === "will-do" ? "#adc8d7" : isNew ? "#fffbe6" : i % 2 === 0 ? "#FEF8EA" : "#f9f9f9",
+                      background: row.status === "done" ? CANON.personal : row.status === "will-do" ? CANON.friend : isNew ? "#fffbe6" : i % 2 === 0 ? CANON.cream : "#f9f9f9",
                       verticalAlign: "top",
                     }}>
                       <td style={{ padding: "6px 10px", whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 11 }}>
@@ -730,7 +731,7 @@ export default function AdminPage({
               <button
                 onClick={handleCreatePrompt}
                 disabled={newSaving || !newText.trim()}
-                style={{ fontSize: 12, cursor: "pointer", background: "#355eb8", color: "#FEF8EA", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
+                style={{ fontSize: 12, cursor: "pointer", background: CANON.identity, color: CANON.cream, border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
               >
                 {newSaving ? "Adding…" : "Add prompt"}
               </button>
@@ -783,9 +784,9 @@ export default function AdminPage({
             <table style={{
               width: "100%", borderCollapse: "collapse",
               fontSize: 12, fontFamily: "monospace",
-              background: "#FEF8EA", color: "#000",
+              background: CANON.cream, color: "#000",
             }}>
-              <thead style={{ position: "sticky", top: 0, background: "#FEF8EA", zIndex: 1 }}>
+              <thead style={{ position: "sticky", top: 0, background: CANON.cream, zIndex: 1 }}>
                 <tr style={{ borderBottom: "2px solid #999", textAlign: "left" }}>
                   <th style={{ padding: "5px 8px", fontWeight: 700 }}>ID</th>
                   <th style={{ padding: "5px 8px", fontWeight: 700 }}>text</th>
@@ -803,7 +804,7 @@ export default function AdminPage({
                     <tr
                       style={{
                         borderBottom: editingId === p.id ? "none" : "1px solid #eee",
-                        background: isAddressed ? "#e8e8e8" : !p.is_active ? "#fafafa" : i % 2 === 0 ? "#FEF8EA" : "#f9f9f9",
+                        background: isAddressed ? "#e8e8e8" : !p.is_active ? "#fafafa" : i % 2 === 0 ? CANON.cream : "#f9f9f9",
                         opacity: isAddressed ? 0.5 : p.is_active ? 1 : 0.55,
                         verticalAlign: "top",
                       }}
@@ -839,7 +840,7 @@ export default function AdminPage({
                         <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <button
                             onClick={() => editingId === p.id ? closeEdit() : openEdit(p)}
-                            style={{ fontSize: 11, cursor: "pointer", color: "#355eb8", background: "none", border: "none", padding: 0, textDecoration: "underline" }}
+                            style={{ fontSize: 11, cursor: "pointer", color: CANON.identity, background: "none", border: "none", padding: 0, textDecoration: "underline" }}
                           >
                             {editingId === p.id ? "cancel" : "edit"}
                           </button>
@@ -873,7 +874,7 @@ export default function AdminPage({
                           <button
                             onClick={() => handleSaveEdit(p.id)}
                             disabled={editSaving}
-                            style={{ position: "absolute", top: 12, right: 16, fontSize: 12, cursor: "pointer", background: "#355eb8", color: "#FEF8EA", border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
+                            style={{ position: "absolute", top: 12, right: 16, fontSize: 12, cursor: "pointer", background: CANON.identity, color: CANON.cream, border: "none", borderRadius: 4, padding: "5px 14px", fontWeight: 600 }}
                           >
                             {editSaving ? "Saving…" : "Save changes"}
                           </button>
@@ -988,7 +989,7 @@ export default function AdminPage({
               <table style={{
                 width: "100%", borderCollapse: "collapse",
                 fontSize: 12, fontFamily: "monospace",
-                background: "#FEF8EA", color: "#000",
+                background: CANON.cream, color: "#000",
               }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #999", textAlign: "left", background: "#f5f5f5" }}>
@@ -1029,7 +1030,7 @@ export default function AdminPage({
                       onClick={() => openDrilldown(row)}
                       style={{
                         borderBottom: "1px solid #eee",
-                        background: i % 2 === 0 ? "#FEF8EA" : "#f9f9f9",
+                        background: i % 2 === 0 ? CANON.cream : "#f9f9f9",
                         cursor: "pointer",
                       }}
                     >
@@ -1069,7 +1070,7 @@ export default function AdminPage({
             onClick={e => e.stopPropagation()}
             className="card"
             style={{
-              background: "#FEF8EA", color: "#000", border: "none",
+              background: CANON.cream, color: "#000", border: "none",
               borderRadius: 10, padding: "20px 24px",
               maxWidth: 800, width: "92vw", maxHeight: "85vh", overflowY: "auto",
               fontFamily: "monospace",
@@ -1112,7 +1113,7 @@ export default function AdminPage({
                     <div
                       key={`${r.kind}-${r.replyId ?? r.threadId}-${i}`}
                       style={{
-                        background: r.isDeleted ? "#fafafa" : "#FEF8EA",
+                        background: r.isDeleted ? "#fafafa" : CANON.cream,
                         border: "1px solid #e5e5e5",
                         borderRadius: 4,
                         padding: "8px 10px",

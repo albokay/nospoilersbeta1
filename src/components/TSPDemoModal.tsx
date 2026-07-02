@@ -171,7 +171,7 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             style={{
               background: reachedE6 ? C.green : "transparent",
-              color: reachedE6 ? "#FEF8EA" : INK_SOFT,
+              color: reachedE6 ? CANON.cream : INK_SOFT,
               border: reachedE6 ? `2px solid ${C.green}` : `2px solid ${RULE}`,
               borderRadius: 999, padding: "11px 22px", fontWeight: 700, fontSize: 14,
               cursor: "pointer", fontFamily: '"Inter", sans-serif',

@@ -126,19 +126,19 @@ export default function AskTheRoomPicker({
       </div>
 
       <button onClick={onSelectPoll} style={cardButtonStyle}>
-        <ChartBar size={20} color="#FEF8EA" strokeWidth={1.8} style={{ flexShrink: 0 }} />
-        <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#FEF8EA" }}>
+        <ChartBar size={20} color={CANON.cream} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+        <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: CANON.cream }}>
           Start a poll
         </div>
-        <ArrowRight size={14} color="#FEF8EA" />
+        <ArrowRight size={14} color={CANON.cream} />
       </button>
 
       <button onClick={onSelectSikw} style={{ ...cardButtonStyle, marginTop: 8 }}>
-        <MessageCircleQuestionMark size={20} color="#FEF8EA" strokeWidth={1.8} style={{ flexShrink: 0 }} />
-        <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#FEF8EA" }}>
+        <MessageCircleQuestionMark size={20} color={CANON.cream} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+        <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: CANON.cream }}>
           Should I keep watching?
         </div>
-        <ArrowRight size={14} color="#FEF8EA" />
+        <ArrowRight size={14} color={CANON.cream} />
       </button>
     </div>
   );
