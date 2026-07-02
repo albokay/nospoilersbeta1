@@ -143,7 +143,14 @@ export default function App() {
   // When /m is ready, flip this to route non-admins into /m instead.
   const { user: mobileGateUser, profile: mobileGateProfile, loading: mobileGateAuthLoading } = useAuth();
   const isAdmin = !!mobileGateProfile?.is_admin;
-  if (onMobile && !isAdmin) {
+  // /m/auth is the ONE exemption: with no session there's no profile, so
+  // isAdmin is false and the gate would block the admin from ever signing in
+  // on a phone. Letting only the auth screen through solves the bootstrap:
+  // admin signs in there → profile resolves → full bypass. A non-admin who
+  // finds /m/auth can sign in but lands right back on the lockout for every
+  // other path, so the site stays sealed to testers.
+  const isMobileAuthPath = pathParts[0] === "m" && pathParts[1] === "auth";
+  if (onMobile && !isAdmin && !isMobileAuthPath) {
     if (mobileGateAuthLoading) return null;
     if (mobileGateUser && !mobileGateProfile) return null;
     return <MobileLockout />;
