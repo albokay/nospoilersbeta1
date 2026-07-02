@@ -37,7 +37,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
 }
 
 const RATE_LIMIT_PER_DAY = 10;
-const FROM_ADDRESS       = "Sidebar <invites@sidebar.watch>";
+const FROM_ADDRESS       = '"Sidebar (no reply)" <invites@sidebar.watch>';
 
 // Escape user-controlled values before interpolating into email HTML, so a
 // crafted inviter name / room name (or an edited show title) can't inject
@@ -166,7 +166,7 @@ serve(async (req) => {
 
     // ── Create the invitation row ────────────────────────────────────────────
     const token     = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const { error: invErr } = await admin
       .from("invitations")
@@ -217,7 +217,7 @@ serve(async (req) => {
     Accept invitation →
   </a>
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
-    This link expires in 48 hours and can only be used once.<br>
+    This link expires in a week and can only be used once.<br>
     New to Sidebar? You'll be able to create an account when you accept.<br>
     If you weren't expecting this, you can safely ignore it.
   </p>
@@ -225,7 +225,7 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    const text = `${sender} has started a friend room on Sidebar to discuss ${showLabel}. They want you to join!\n\nSidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress. Your friend room is called "${groupName}."\n\ntalk. together. whenever.\n\nAccept here: ${inviteUrl}\n\nThis link expires in 48 hours and can only be used once.\nNew to Sidebar? You'll be able to create an account when you accept.\nIf you weren't expecting this, you can safely ignore it.`;
+    const text = `${sender} has started a friend room on Sidebar to discuss ${showLabel}. They want you to join!\n\nSidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress. Your friend room is called "${groupName}."\n\ntalk. together. whenever.\n\nAccept here: ${inviteUrl}\n\nThis link expires in a week and can only be used once.\nNew to Sidebar? You'll be able to create an account when you accept.\nIf you weren't expecting this, you can safely ignore it.`;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",

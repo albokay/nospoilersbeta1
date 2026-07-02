@@ -55,7 +55,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
   };
 }
 
-const FROM_ADDRESS = "Sidebar <invites@sidebar.watch>";
+const FROM_ADDRESS = '"Sidebar (no reply)" <invites@sidebar.watch>';
 
 // Escape user-controlled values before interpolating into email HTML, so a
 // crafted username / group name can't inject markup into the email body.
@@ -176,7 +176,7 @@ serve(async (req) => {
     Join the group →
   </a>
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
-    This link expires in 48 hours and can only be used once.<br>
+    This link expires in a week and can only be used once.<br>
     New to Sidebar? You'll be able to create an account when you join.<br>
     If you weren't expecting this, you can safely ignore it.
   </p>
@@ -184,7 +184,7 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    const text = `@${inviterName} wants to watch shows with you on Sidebar.\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — filtered by each person's watch progress. They've invited you to their watch group${groupLabel ? ` "${groupLabel}"` : ""}.\n\ntalk. together. whenever.\n\nJoin here: ${inviteUrl}\n\nThis link expires in 48 hours and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
+    const text = `@${inviterName} wants to watch shows with you on Sidebar.\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — filtered by each person's watch progress. They've invited you to their watch group${groupLabel ? ` "${groupLabel}"` : ""}.\n\ntalk. together. whenever.\n\nJoin here: ${inviteUrl}\n\nThis link expires in a week and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",
