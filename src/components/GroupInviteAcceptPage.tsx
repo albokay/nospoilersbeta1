@@ -191,9 +191,14 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
           </>
         )}
         {status === "expired" && <p style={title}>This invitation has expired.</p>}
-        {status === "invalid" && <p style={title}>This invitation link isn't valid.</p>}
+        {status === "invalid" && (
+          <>
+            <p style={title}>This invitation link isn't valid.</p>
+            <p style={muted}>This link is no longer active. The invite may have been canceled, or the link is incomplete — ask your friend to send you a new one.</p>
+          </>
+        )}
         {status === "error" && <p style={title}>Something went wrong. Try the link again.</p>}
-        {detail && (status === "invalid" || status === "error" || status === "expired" || status === "already") && (
+        {detail && (status === "error" || status === "expired" || status === "already") && (
           <p style={{ ...muted, fontSize: 11, wordBreak: "break-all", opacity: 0.7 }}>{detail}</p>
         )}
       </div>

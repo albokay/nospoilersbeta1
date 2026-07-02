@@ -121,6 +121,26 @@ export const visibleRepliesCount = (
  * ShowSection still has a local copy; consolidate when that file gets
  * touched next.
  */
+/**
+ * Partially mask an email for display — keeps the first + last char of the
+ * local part and of the domain name, x-ing out the middle, and keeps the TLD.
+ *   "alkamalizad@yahoo.com" → "axxxxxxxxxd@yxxxo.com"
+ * Segments of 2 chars or fewer are left as-is (nothing meaningful to mask).
+ */
+const maskSeg = (s: string): string =>
+  s.length <= 2 ? s : s[0] + "x".repeat(s.length - 2) + s[s.length - 1];
+
+export const maskEmailEnds = (email: string): string => {
+  const at = email.indexOf("@");
+  if (at < 1) return email; // not an email-shaped string — leave untouched
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const dot = domain.indexOf(".");
+  const name = dot > 0 ? domain.slice(0, dot) : domain;
+  const tld = dot > 0 ? domain.slice(dot) : "";
+  return `${maskSeg(local)}@${maskSeg(name)}${tld}`;
+};
+
 export const preventLastWordOrphan = (s: string): string => {
   const lastSpace = s.lastIndexOf(" ");
   if (lastSpace === -1) return s;

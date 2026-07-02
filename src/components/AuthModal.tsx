@@ -4,6 +4,7 @@ import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
+import { maskEmailEnds } from "../lib/utils";
 
 type Mode = "signin" | "signup" | "recovery";
 
@@ -90,7 +91,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
           <button className="close-x" onClick={onClose}><X size={14} /></button>
         </div>
         <p style={{ fontSize: 14, lineHeight: 1.5, margin: "0 0 12px" }}>
-          We sent a confirmation link to <strong>{email.trim()}</strong>. Click it to finish setting up your account — it'll sign you in automatically.
+          We sent a confirmation link to <strong>{maskEmailEnds(email.trim())}</strong>. Click it to finish setting up your account — it'll sign you in automatically.
         </p>
         <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>
           It can take a minute to arrive. If you don't see it, check your spam folder.
@@ -114,7 +115,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
         {recoverySent ? (
           <>
             <p style={{ margin: "0 0 14px", fontSize: 14, lineHeight: 1.5 }}>
-              We've sent a recovery link to <strong>{email.trim()}</strong>. Click the link in your email to set a new password.
+              We've sent a recovery link to <strong>{maskEmailEnds(email.trim())}</strong>. Click the link in your email to set a new password.
             </p>
             <p style={{ margin: "0 0 18px", fontSize: 13, lineHeight: 1.5 }} className="muted">
               The link expires in about an hour. If you don't see it, check spam.

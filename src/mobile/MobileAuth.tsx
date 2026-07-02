@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import LoadingDots from "../components/LoadingDots";
+import { maskEmailEnds } from "../lib/utils";
 
 type Mode = "signin" | "signup";
 
@@ -107,7 +108,7 @@ export default function MobileAuth() {
         <div style={{ width: "100%", maxWidth: 420 }}>
           <h1 style={{ fontSize: 26, fontWeight: 800, margin: "0 0 14px" }}>Check your email</h1>
           <p style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.95, margin: "0 0 12px" }}>
-            We sent a confirmation link to <strong>{email.trim()}</strong>. Tap it to finish setting up your account — it'll sign you in automatically.
+            We sent a confirmation link to <strong>{maskEmailEnds(email.trim())}</strong>. Tap it to finish setting up your account — it'll sign you in automatically.
           </p>
           <p style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.8, margin: 0 }}>
             It can take a minute to arrive. If you don't see it, check your spam folder.

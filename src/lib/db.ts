@@ -10,14 +10,14 @@ import { canView, type ViewerProgress } from "./utils";
 
 // ── Rate-limit helpers ──────────────────────────────────────────────────────
 
-async function checkRateLimit(action: string, maxCount: number, windowSeconds: number = 60): Promise<void> {
+async function checkRateLimit(action: string, maxCount: number, windowSeconds: number = 60, limitMessage: string = 'Rate limit exceeded. Please wait before trying again.'): Promise<void> {
   const { data, error } = await supabase.rpc('check_rate_limit', {
     action_name: action,
     max_count: maxCount,
     window_seconds: windowSeconds,
   });
   if (error) throw error;
-  if (data === false) throw new Error('Rate limit exceeded. Please wait before trying again.');
+  if (data === false) throw new Error(limitMessage);
 }
 
 async function checkRateLimitDaily(action: string, maxDaily: number): Promise<void> {
@@ -2676,7 +2676,7 @@ export async function fetchGroupPendingInvites(groupId: string): Promise<string[
 
 /** Create (or reuse) a people-group invite for an email. Returns the token. */
 export async function createPeopleGroupInvite(groupId: string, email: string): Promise<string> {
-  await checkRateLimit('send_invite', 6, 60);
+  await checkRateLimit('send_invite', 6, 60, 'Too many invite requests sent. Please wait before trying again.');
   const { data, error } = await supabase.rpc("create_people_group_invitation", {
     p_group_id: groupId, p_email: email,
   });
@@ -3376,7 +3376,7 @@ export async function sendInvite(data: {
   inviteeEmail: string;
   inviterName: string;
 }): Promise<SendInviteResult> {
-  await checkRateLimit('send_invite', 6, 60);
+  await checkRateLimit('send_invite', 6, 60, 'Too many invite requests sent. Please wait before trying again.');
   await checkRateLimitDaily('send_invite', 10);
   const { data: result, error } = await supabase.functions.invoke("send-invite", {
     body: { ...data, appUrl: window.location.origin },
