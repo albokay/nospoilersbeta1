@@ -1,53 +1,57 @@
 import { CANON } from "../styles/canon";
-import React from "react";
+import React, { useState, Suspense, lazy } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { DoorOpen, UserPlus, ClipboardList, MessageSquareText, Blend, ShieldCheck } from "lucide-react";
 import HomepageNarrative from "../components/HomepageNarrative";
+import { preventLastWordOrphan } from "../lib/utils";
+import {
+  HERO_LINES,
+  HERO_EMPHASIS,
+  HOW_IT_WORKS_TITLE,
+  HOW_IT_WORKS_STEPS,
+  CTA_JOIN_LABEL,
+  CTA_DETAILS_LABEL,
+  BETA_PILL_CLOSED,
+  BETA_PILL_OPEN,
+  BETA_LETTER_PARAGRAPHS,
+} from "../lib/homepageCopy";
 
-// S1 — Mobile homepage narrative scroll for signed-out users.
+const HowItWorksV2 = lazy(() => import("../components/HowItWorksV2"));
+
+// Mobile homepage narrative scroll for signed-out users (CP1 of the mobile
+// rebuild). The desktop homepage is the source of truth; this surface renders
+// the SAME live content in the mobile idiom:
 //
-// Reuses the existing <HomepageNarrative /> for the parallax bubble pitch
-// (already responsive via vw units). Below it, mirrors the desktop hero
-// headline + 6-step feature grid + sign-in CTA — minus the "Want more
-// details?" button (dropped per spec) and plus a mobile-only callout
-// ("full experience is on desktop") right before the CTA.
+// - Parallax bubble pitch: reuses <HomepageNarrative /> directly (already
+//   responsive via vw units), headerHeight=0.
+// - Hero + how-it-works steps + CTA labels + beta-tester letter: words come
+//   from src/lib/homepageCopy.ts — the shared copy source both surfaces read —
+//   so mobile can never drift from desktop again (the previous mobile build
+//   carried a hand-copied duplicate that went stale).
+// - "Want more details?" opens HowItWorksV2 as a FULL-SCREEN scrollable
+//   surface (mobile idiom) instead of desktop's centered overlay card. Its
+//   internals are still desktop-proportioned — flagged for a follow-up pass.
+// - "Join / sign in" routes to /m/auth (full-screen mobile auth), the mobile
+//   idiom for desktop's auth modal.
 //
-// Sign-in CTA routes to /m/auth (full-screen mobile auth, S2). Existing
-// auth flow is unchanged; only the UI is mobile-friendly.
-//
-// hideBottom: drops the "desktop-only" callout + the "Join / sign in"
-// CTA. Used by MobileInviteAccept to wrap the narrative pitch with its
-// own invite-specific accept flow at the bottom (per spec: invitees see
-// "a version of the homepage narrative scroll, with an 'accept invite'
-// button and flow at the bottom"). Default behavior — `hideBottom`
-// omitted — is the standard signed-out homepage.
-export default function MobileNarrative({ hideBottom = false }: { hideBottom?: boolean }) {
+// The old mobile-only red callout ("full experience is on desktop") is gone —
+// mobile is becoming the full app, and the spec forbids copy desktop lacks.
+export default function MobileNarrative() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [betaOpen, setBetaOpen] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
-  // The fixed top-right "Sign in" button routes to /m/auth, with returnTo
-  // preserved when the narrative is wrapped inside the invite-accept flow.
-  // Without the dynamic returnTo, an invitee tapping the top-right button
-  // would lose the invite context (auth success → /m/rooms instead of
-  // back to /m/invite/:token where they can hit Join). The bottom invite
-  // CTA remains the primary entry point on the invite path; the top-right
-  // button is a redundant shortcut that still works correctly.
+  // Preserve invite context on the auth shortcut: /m/invite/:token currently
+  // falls through to this narrative (the mobile invite flow is rebuilt in
+  // CP7), and MobileAuth validates returnTo to /m/* paths. Harmless when not
+  // on an invite path.
   const onInvitePath = location.pathname.startsWith("/m/invite/");
   const signInTarget = onInvitePath
     ? `/m/auth?returnTo=${encodeURIComponent(location.pathname)}`
     : "/m/auth";
 
-  const items: { Icon: React.ElementType; text: React.ReactNode }[] = [
-    { Icon: DoorOpen,          text: "Find the show you\u2019re watching and create a room." },
-    { Icon: UserPlus,          text: "Invite friends you love talking to." },
-    { Icon: ClipboardList,     text: "Everyone logs their watch progress every time they sign in. Sidebar tags all writing to each user\u2019s logged progress." },
-    { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers \u2014 as if your friends have watched just as far as you have." },
-    { Icon: Blend,             text: (<>Sidebar filters everything according to<br />everyone&rsquo;s unique watch progress.</>) },
-    { Icon: ShieldCheck,       text: "Nothing you read is ever ahead of where you are." },
-  ];
-
   return (
-    <div style={{ minHeight: "100vh", background: "var(--dos-bg, var(--canon-personal,#7abd8e))", color: CANON.cream }}>
+    <div style={{ minHeight: "100dvh", background: "var(--dos-bg, var(--canon-personal,#7abd8e))", color: CANON.cream }}>
       {/* ── Fixed top-right sign-in shortcut ── */}
       {/* z-index 100 keeps it above the parallax narrative's fixed-position */}
       {/* AnimatedLogo (z-index 96 in HomepageNarrative). */}
@@ -55,7 +59,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
         onClick={() => navigate(signInTarget)}
         style={{
           position: "fixed",
-          top: 14,
+          top: "calc(env(safe-area-inset-top, 0px) + 14px)",
           right: 14,
           zIndex: 100,
           background: "transparent",
@@ -63,6 +67,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
           border: "2px solid var(--canon-cream,#fef8ea)",
           borderRadius: 9999,
           padding: "8px 18px",
+          minHeight: 44,
           fontSize: 14,
           fontWeight: 700,
           cursor: "pointer",
@@ -76,7 +81,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
       {/* ── Parallax narrative scroll (reused from desktop, headerHeight=0) ── */}
       <HomepageNarrative headerHeight={0} />
 
-      {/* ── Hero headline ── */}
+      {/* ── Hero headline (shared copy; desktop's isMobile line-break shape) ── */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 0, paddingBottom: 24 }}>
         <p style={{
           maxWidth: 560, textAlign: "center",
@@ -84,19 +89,20 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
           fontSize: 20, fontWeight: 800,
           color: CANON.cream, lineHeight: 1.3,
         }}>
-          Watching TV with friends usually<br />
-          means spoilers or keeping quiet.<br />
-          <em>Not on Sidebar.</em>
+          {HERO_LINES[0]}<br />
+          {HERO_LINES[1]}<br />
+          <em>{HERO_EMPHASIS}</em>
         </p>
 
         <p style={{
           fontSize: 20, fontWeight: 800,
           color: CANON.cream, margin: "8px 16px 40px", textAlign: "center",
         }}>
-          Here&rsquo;s how it works:
+          {HOW_IT_WORKS_TITLE}
         </p>
 
-        {/* ── 6-item feature grid (mobile single-column) ── */}
+        {/* ── 6-step grid (single column; same card treatment as desktop's
+               narrow branch: row layout, orphan-protected full-width text) ── */}
         <div style={{
           display: "grid",
           gridTemplateColumns: "1fr",
@@ -106,7 +112,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
           padding: 0,
           boxSizing: "border-box",
         }}>
-          {items.map(({ Icon, text }, idx) => (
+          {HOW_IT_WORKS_STEPS.map(({ Icon, text }, idx) => (
             <div key={idx} style={{
               borderRadius: 16,
               padding: "12px 14px",
@@ -129,56 +135,120 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
                 fontWeight: 600,
                 lineHeight: 1.4,
                 textAlign: "left",
-                textWrap: "balance" as React.CSSProperties["textWrap"],
-              }}>{text}</span>
+              }}>{preventLastWordOrphan(text)}</span>
             </div>
           ))}
         </div>
 
-        {!hideBottom && (
-          <>
-            {/* ── Mobile-only callout ── */}
-            {/* Canon-red border + text per refocus polish — the line
-                is informational but worth flagging visibly so users
-                don't expect the desktop feature surface here. */}
-            <div style={{
-              marginTop: 32,
-              width: "min(288px, 90vw)",
-              padding: "14px 16px",
-              borderRadius: 12,
-              border: "2px solid var(--canon-alert,#f45028)",
+        {/* ── CTAs: join + details (desktop parity, mobile targets) ── */}
+        <div style={{ marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "min(288px, 90vw)" }}>
+          <button
+            onClick={() => navigate(signInTarget)}
+            style={{
+              width: "100%", maxWidth: 420,
+              background: CANON.cream, color: "var(--dos-bg)", border: "none",
+              borderRadius: 9999, padding: "14px 0",
+              fontSize: 18, fontWeight: 800, cursor: "pointer",
+              letterSpacing: "0.02em",
+            }}
+          >
+            {CTA_JOIN_LABEL}
+          </button>
+          <button
+            onClick={() => setShowDetails(true)}
+            style={{
+              width: "100%", maxWidth: 420,
+              background: "transparent", color: CANON.cream,
+              border: "2px solid var(--canon-cream,#fef8ea)",
+              borderRadius: 9999, padding: "12px 0",
+              fontSize: 18, fontWeight: 800, cursor: "pointer",
+              letterSpacing: "0.02em",
+            }}
+          >
+            {CTA_DETAILS_LABEL}
+          </button>
+        </div>
+
+        {/* ── Beta-tester pill + letter (desktop parity, shared copy) ── */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 48, paddingBottom: 96, width: "100%" }}>
+          <button
+            onClick={() => setBetaOpen(o => !o)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              borderRadius: 999,
+              boxShadow: "0 0 0 2px var(--canon-cream,#fef8ea)",
+              border: "none",
+              overflow: "hidden",
               background: "transparent",
-              color: CANON.alert,
-              fontSize: 13,
-              fontWeight: 600,
-              lineHeight: 1.5,
-              textAlign: "center",
-              textWrap: "balance" as React.CSSProperties["textWrap"],
+              padding: 0,
+              cursor: "pointer",
+              gap: 0,
+              minHeight: 44,
+            }}
+          >
+            <span style={{
+              padding: "4px 12px",
+              fontSize: 12,
+              fontWeight: !betaOpen ? 700 : 400,
+              background: !betaOpen ? "var(--dos-border)" : "transparent",
+              color: !betaOpen ? "var(--dos-bg)" : "transparent",
+              whiteSpace: "nowrap",
             }}>
-              Sidebar&rsquo;s full experience is on desktop &mdash;<br />
-              mobile is for your friend rooms only.
-            </div>
+              {BETA_PILL_CLOSED}
+            </span>
+            <span style={{
+              padding: "4px 12px",
+              fontSize: 12,
+              fontWeight: betaOpen ? 700 : 400,
+              background: betaOpen ? "var(--dos-border)" : "transparent",
+              color: betaOpen ? "var(--dos-bg)" : "transparent",
+              whiteSpace: "nowrap",
+            }}>
+              {BETA_PILL_OPEN}
+            </span>
+          </button>
 
-            {/* ── CTA: sign in / create account (single button — auth screen toggles modes) ── */}
-            <div style={{ marginTop: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "min(288px, 90vw)" }}>
-              <button
-                onClick={() => navigate("/m/auth")}
-                style={{
-                  width: "100%", maxWidth: 420,
-                  background: CANON.cream, color: "var(--dos-bg)", border: "none",
-                  borderRadius: 9999, padding: "14px 0",
-                  fontSize: 18, fontWeight: 800, cursor: "pointer",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                Join / sign in
-              </button>
+          {betaOpen && (
+            <div style={{ maxWidth: 690, width: "100%", padding: "0 16px", marginTop: 28, marginBottom: 60, boxSizing: "border-box" }}>
+              <div style={{
+                background: CANON.cream,
+                borderRadius: 12,
+                padding: "20px 24px",
+                color: "var(--dos-bg)",
+                fontSize: 15,
+                lineHeight: 1.6,
+                fontWeight: 700,
+              }}>
+                {BETA_LETTER_PARAGRAPHS.map((p, i) => (
+                  <React.Fragment key={i}>
+                    {p}
+                    {i < BETA_LETTER_PARAGRAPHS.length - 1 && <><br /><br /></>}
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
-
-            <div style={{ height: 64 }} />
-          </>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* ── "Want more details?" — full-screen scrollable surface (mobile
+             idiom for desktop's centered overlay card) ── */}
+      {showDetails && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 2000,
+          background: CANON.personal,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+        }}>
+          <Suspense fallback={null}>
+            <HowItWorksV2
+              onClose={() => setShowDetails(false)}
+              onSignup={() => { setShowDetails(false); navigate(signInTarget); }}
+            />
+          </Suspense>
+        </div>
+      )}
     </div>
   );
 }

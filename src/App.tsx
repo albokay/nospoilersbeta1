@@ -6,6 +6,7 @@ import { injectDOSStyles } from "./styles/theme";
 import { injectCanonVars, CANON } from "./styles/canon";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
 import { canView, preventLastWordOrphan } from "./lib/utils";
+import { HERO_LINES, HERO_EMPHASIS, HOW_IT_WORKS_TITLE, HOW_IT_WORKS_STEPS, CTA_JOIN_LABEL, CTA_DETAILS_LABEL, BETA_PILL_CLOSED, BETA_PILL_OPEN, BETA_LETTER_PARAGRAPHS } from "./lib/homepageCopy";
 import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount, fetchAllFriendGroupsWithActivity, fetchUndismissedPingCountsByShow, markTabCreated } from "./lib/db";
 import { getCachedProgress, setCachedProgress } from "./lib/journalCache";
 import { supabase } from "./lib/supabaseClient";
@@ -28,7 +29,7 @@ import SidebarLogo from "./components/SidebarLogo";
 // V3JournalPage + ProfilePage + ShowSection stay eager — they're the
 // primary destinations for every signed-in user.
 const AdminPage = lazy(() => import("./components/AdminPage"));
-import { Tv, EyeClosed, UsersRound, ListCheck, ListChecks, Road, Eye, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowRight, ArrowDown, MessageSquareText, ShieldCheck, LogOut, UserPen } from "lucide-react";
+import { Tv, EyeClosed, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowRight, ArrowDown, LogOut, UserPen } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -1311,15 +1312,15 @@ function AppShell() {
               }}>
                 {isMobile ? (
                   <>
-                    Watching TV with friends usually<br />
-                    means spoilers or keeping quiet.<br />
-                    <em>Not on Sidebar.</em>
+                    {HERO_LINES[0]}<br />
+                    {HERO_LINES[1]}<br />
+                    <em>{HERO_EMPHASIS}</em>
                   </>
                 ) : (
                   <>
-                    <span style={{ whiteSpace: "nowrap" }}>Watching TV with friends usually</span><br />
-                    <span style={{ whiteSpace: "nowrap" }}>means spoilers or keeping quiet.</span><br />
-                    <em>Not on Sidebar.</em>
+                    <span style={{ whiteSpace: "nowrap" }}>{HERO_LINES[0]}</span><br />
+                    <span style={{ whiteSpace: "nowrap" }}>{HERO_LINES[1]}</span><br />
+                    <em>{HERO_EMPHASIS}</em>
                   </>
                 )}
               </p>
@@ -1329,19 +1330,14 @@ function AppShell() {
                 fontSize: isMobile ? 20 : 26, fontWeight: 800,
                 color: CANON.cream, margin: "8px 16px 40px", textAlign: "center",
               }}>
-                Here&rsquo;s how it works:
+                {HOW_IT_WORKS_TITLE}
               </p>
 
               {/* Feature grid — 6 steps, all white-filled with green text/icons */}
               {(() => {
-                const items: { Icon: React.ElementType; text: string }[] = [
-                  { Icon: UsersRound,        text: "Start a group with the friends you love talking to." },
-                  { Icon: ListChecks,        text: "Each friend lists what they\u2019re watching or wants to watch." },
-                  { Icon: Road,              text: "Decide what you want to watch together. Or binge ahead\u2026 your writing will become breadcrumbs for your friends as they catch up." },
-                  { Icon: Eye,               text: "Everyone logs how far they\u2019ve watched, and keeps it current as they go." },
-                  { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers. Write as if everyone\u2019s caught up to exactly where you are." },
-                  { Icon: ShieldCheck,       text: "Sidebar filters every room to each person\u2019s progress. Nothing you read is ever ahead of where you are." },
-                ];
+                // Copy + icons come from the shared homepageCopy.ts source so
+                // the mobile narrative renders the identical words.
+                const items = HOW_IT_WORKS_STEPS;
                 return (
                   <div style={{
                     display: "grid",
@@ -1396,7 +1392,7 @@ function AppShell() {
                       letterSpacing: "0.02em",
                     }}
                   >
-                    Join / sign in
+                    {CTA_JOIN_LABEL}
                   </button>
                   <button
                     onClick={() => setShowHowItWorks(true)}
@@ -1409,7 +1405,7 @@ function AppShell() {
                       letterSpacing: "0.02em",
                     }}
                   >
-                    Want more details?
+                    {CTA_DETAILS_LABEL}
                   </button>
                 </div>
               )}
@@ -1443,7 +1439,7 @@ function AppShell() {
                   color: !betaOpen ? "var(--dos-bg)" : "transparent",
                   whiteSpace: "nowrap",
                 }}>
-                  *click here beta tester!
+                  {BETA_PILL_CLOSED}
                 </span>
                 <span style={{
                   padding: "4px 12px",
@@ -1453,7 +1449,7 @@ function AppShell() {
                   color: betaOpen ? "var(--dos-bg)" : "transparent",
                   whiteSpace: "nowrap",
                 }}>
-                  Hello!
+                  {BETA_PILL_OPEN}
                 </span>
               </button>
 
@@ -1468,13 +1464,15 @@ function AppShell() {
                     lineHeight: 1.6,
                     fontWeight: 700,
                   }}>
-                    Thank you for your time and mind.<br /><br />
-                    I&rsquo;m making this site because I love stories and I love thinking and talking about them. If you&rsquo;re reading this right now, you&rsquo;re probably the same way. That&rsquo;s the whole point here: to make it easier to have ongoing conversations about the TV shows we love (or love to hate) with our friends.<br /><br />
-                    Sidebar is built around the handful of people you actually want to talk to. And because everyone&rsquo;s writing is tied to their own progress, it doesn&rsquo;t matter whether you&rsquo;re all watching in step, one of you is racing ahead, or someone&rsquo;s a whole season behind. If you&rsquo;re ahead, you write letters from the future, waiting to be opened when your friends unlock your writing episode by episode. If you&rsquo;re behind, you have gifts waiting for you at each episode. Nobody gets spoiled, and nobody has to stay quiet.<br /><br />
-                    I think the mechanics will inspire you to slow down and think more deeply about what you&rsquo;re watching. More time to sit with a show, more reason to feel close to your friends through it. But that&rsquo;s just me. It might inspire your watching in some way I&rsquo;d never expect, and I&rsquo;m eager to find out about that.<br /><br />
-                    Use the &lsquo;feedback&rsquo; tab on the left to send your thoughts as they come. Your gut reactions are as important as your more considered thoughts.<br /><br />
-                    Excited to see how you use the site.<br /><br />
-                    &mdash; Alborz
+                    {/* Letter copy lives in homepageCopy.ts (shared with the
+                        mobile narrative). Paragraphs joined by <br/><br/> —
+                        same DOM shape as the previous inline text. */}
+                    {BETA_LETTER_PARAGRAPHS.map((p, i) => (
+                      <React.Fragment key={i}>
+                        {p}
+                        {i < BETA_LETTER_PARAGRAPHS.length - 1 && <><br /><br /></>}
+                      </React.Fragment>
+                    ))}
                   </div>
                 </div>
               )}
