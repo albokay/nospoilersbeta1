@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { X, LogOut, MessageCircle } from "lucide-react";
 import { CANON } from "../styles/canon";
@@ -6,10 +6,10 @@ import { useAuth } from "../lib/auth";
 import SidebarLogo from "../components/SidebarLogo";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
+import MobileSearchSheet from "./MobileSearchSheet";
 import {
   fetchShows,
   refreshStaleShows,
-  createShow,
   fetchProgress,
   upsertRewatchStatus,
   fetchPeopleGroupsForUser,
@@ -31,7 +31,6 @@ import {
   type RoomVisibility,
   type GroupChatActivity,
 } from "../lib/db";
-import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 
 /**
@@ -111,13 +110,6 @@ export default function MobileDashboard() {
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [pickShow, setPickShow] = useState<Show | null>(null);
-  const [pickProgress, setPickProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
-  const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
-  const [tvLoading, setTvLoading] = useState(false);
-  const [creatingShow, setCreatingShow] = useState(false);
-  const tvDebounceRef = useRef<number | null>(null);
 
   // ── Loads (same calls + tolerance as desktop DashboardPage) ──────────────
   const loadRail = useCallback(async (uid: string): Promise<RailGroup[]> => {
@@ -217,73 +209,9 @@ export default function MobileDashboard() {
     return s;
   }, [chatActivity]);
 
-  // ── Search (catalog + TVMaze, same logic as desktop) ─────────────────────
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return shows
-      .filter((s) => !s.isHidden && s.name.toLowerCase().includes(q))
-      .map((s) => ({ show: s, inPool: !!progress[s.id] && !outOfPool.has(s.id) }))
-      .slice(0, 8);
-  }, [query, shows, progress, outOfPool]);
-
-  useEffect(() => {
-    if (!searchOpen) { setTvResults([]); return; }
-    const q = query.trim();
-    if (q.length < 2) { setTvResults([]); setTvLoading(false); return; }
-    if (tvDebounceRef.current) window.clearTimeout(tvDebounceRef.current);
-    let cancelled = false;
-    setTvLoading(true);
-    tvDebounceRef.current = window.setTimeout(async () => {
-      try {
-        const r = await tvmazeSearch(q);
-        if (!cancelled) setTvResults(r);
-      } catch { if (!cancelled) setTvResults([]); }
-      finally { if (!cancelled) setTvLoading(false); }
-    }, 320);
-    return () => { cancelled = true; if (tvDebounceRef.current) window.clearTimeout(tvDebounceRef.current); };
-  }, [query, searchOpen]);
-
-  const tvToAdd = useMemo(() => {
-    const known = new Set(shows.map((s) => s.id));
-    const seen = new Set<string>();
-    const out: { tv: TVmazeShow; id: string }[] = [];
-    for (const tv of tvResults) {
-      const id = slugify(tv.name);
-      if (known.has(id) || seen.has(id)) continue;
-      seen.add(id);
-      out.push({ tv, id });
-      if (out.length >= 8) break;
-    }
-    return out;
-  }, [tvResults, shows]);
-
-  // ── Actions (same DB calls as desktop) ────────────────────────────────────
-  function openSearch() { setSearchOpen(true); setQuery(""); setTvResults([]); }
-  function closeSearch() { setSearchOpen(false); setQuery(""); setPickShow(null); setTvResults([]); }
-
-  async function addFromTvmaze(tv: TVmazeShow) {
-    if (creatingShow) return;
-    setCreatingShow(true);
-    try {
-      const seasons = await tvmazeEpisodes(tv.id);
-      const show = await createShow({
-        id: slugify(tv.name),
-        name: tv.name,
-        seasons,
-        tvmazeId: String(tv.id),
-        status: tv.status,
-      });
-      setShows((prev) => (prev.some((s) => s.id === show.id) ? prev : [...prev, show]));
-      setTvResults([]);
-      setPickShow(show);
-      setPickProgress({ s: 0, e: 0 });
-    } catch (e) {
-      console.error("[m-dashboard] add show from TVMaze failed", e);
-    } finally {
-      setCreatingShow(false);
-    }
-  }
+  // ── Actions (same DB calls as desktop; search UI lives in MobileSearchSheet) ──
+  function openSearch() { setSearchOpen(true); }
+  function closeSearch() { setSearchOpen(false); }
 
   async function addShow(show: Show, val: { s: number; e: number }) {
     if (!user) return;
@@ -598,71 +526,17 @@ export default function MobileDashboard() {
         </div>
       )}
 
-      {/* ── Search (full-screen; desktop's cream overlay card) ── */}
+      {/* ── Search (shared full-screen sheet) ── */}
       {searchOpen && (
-        <div style={{ ...sheet, background: C.cream }}>
-          <button style={sheetClose} onClick={closeSearch}><X size={20} color={C.green} /></button>
-          {!pickShow ? (
-            <div style={sheetInner}>
-              <input
-                autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
-                placeholder="find your show" style={searchInput} className="m-search"
-              />
-              {results.length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  {results.map(({ show: s, inPool }) => (
-                    inPool ? (
-                      <div key={s.id} style={{ ...resultRow, cursor: "default", opacity: 0.55 }}>You&rsquo;ve already added <i>{s.name}</i> to your watch pool.</div>
-                    ) : (
-                      <button key={s.id} style={resultRow} onClick={() => { if (outOfPool.has(s.id)) { restoreShow(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}>
-                        {s.name}{outOfPool.has(s.id) ? " · restore" : ""}
-                      </button>
-                    )
-                  ))}
-                </div>
-              )}
-              {tvToAdd.length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  {results.length > 0 && (
-                    <div style={{ padding: "4px 16px 6px", fontSize: 11, fontWeight: 700, color: C.midnight, opacity: 0.6 }}>Not in the list? Add it:</div>
-                  )}
-                  {tvToAdd.map(({ tv, id }) => (
-                    <button key={id} style={resultRow} disabled={creatingShow} onClick={() => addFromTvmaze(tv)}>
-                      {tv.name}{networkLabel(tv) ? ` · ${networkLabel(tv)}` : ""}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {query.trim().length >= 2 && results.length === 0 && tvToAdd.length === 0 && (
-                <div style={{ padding: "12px 16px", fontSize: 13, color: C.midnight, opacity: 0.6 }}>
-                  {creatingShow ? "adding…" : tvLoading ? "searching…" : "No shows found."}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ ...sheetInner, textAlign: "center" }}>
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.green }}>
-                {pickShow.name}
-              </div>
-              <div style={{ marginTop: 24, color: C.green, fontWeight: 600, fontSize: 13, letterSpacing: -1 }}>
-                How much have you watched?
-              </div>
-              <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
-                <OneSelectProgress
-                  show={pickShow}
-                  value={{ s: 0, e: 0 }}
-                  allowZero
-                  requireConfirm={false}
-                  onChangeSelected={(v) => setPickProgress(v)}
-                  onConfirm={() => {}}
-                />
-              </div>
-              <button style={{ ...startBtn, marginTop: 24, padding: "14px 40px" }} onClick={() => addShow(pickShow, pickProgress)}>
-                add to my shows
-              </button>
-            </div>
-          )}
-        </div>
+        <MobileSearchSheet
+          shows={shows}
+          progress={progress}
+          outOfPool={outOfPool}
+          onClose={closeSearch}
+          onAdd={addShow}
+          onRestore={restoreShow}
+          onCatalogAdd={(show) => setShows((prev) => (prev.some((s) => s.id === show.id) ? prev : [...prev, show]))}
+        />
       )}
     </div>
   );
@@ -778,14 +652,4 @@ const startBtn: React.CSSProperties = {
 const dangerBtn: React.CSSProperties = {
   border: `2px solid ${C.red}`, background: "transparent", color: C.red, fontWeight: 700, fontSize: 14,
   padding: "10px 32px", borderRadius: 65, cursor: "pointer", minHeight: 44,
-};
-const searchInput: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", border: `2px solid ${C.green}`, borderRadius: 65,
-  padding: "14px 24px", fontFamily: '"Inter", sans-serif', fontSize: 16, color: C.green,
-  background: "transparent", outline: "none",
-};
-const resultRow: React.CSSProperties = {
-  display: "block", width: "100%", textAlign: "left", border: "none", background: "transparent",
-  padding: "14px 16px", borderRadius: 12, cursor: "pointer", fontFamily: '"Inter", sans-serif',
-  fontSize: 15, fontWeight: 600, color: C.green, minHeight: 44, boxSizing: "border-box",
 };
