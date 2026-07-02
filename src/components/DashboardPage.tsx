@@ -21,6 +21,7 @@
  */
 import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "react";
 import { CANON } from "../styles/canon";
+import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
@@ -1213,7 +1214,7 @@ export default function DashboardPage() {
               <>
                 {inviteLinks.some((r) => r.error) ? (
                   <div style={{ color: C.red, fontSize: 14, fontWeight: 700, textAlign: "center", margin: "8px 0 16px" }}>
-                    {inviteLinks.filter((r) => r.error).map((r, i) => <div key={i}>{r.error}</div>)}
+                    {inviteLinks.filter((r) => r.error).map((r, i) => <div key={i}>{preventLastWordOrphan(r.error ?? "")}</div>)}
                   </div>
                 ) : (
                   <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>

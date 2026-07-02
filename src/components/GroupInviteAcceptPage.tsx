@@ -17,6 +17,7 @@ import SidebarLogo from "./SidebarLogo";
 import AuthModal from "./AuthModal";
 import PublicDashboardPage from "./PublicDashboardPage";
 import { CANON } from "../styles/canon";
+import { preventLastWordOrphan } from "../lib/utils";
 
 // After an invite sign-up, route the new account to /dashboard (where the
 // guided tour auto-fires) instead of the old onboarding. App's post-login
@@ -180,8 +181,8 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
         {status === "done" && <p style={title}>You're in! Taking you to your dashboard…</p>}
         {status === "wrong" && (
           <>
-            <p style={title}>This invite was sent to a different email.</p>
-            <p style={muted}>It's addressed to {masked}. Sign in with that email to join.</p>
+            <p style={title}>{preventLastWordOrphan("This invite was sent to a different email.")}</p>
+            <p style={muted}>It's addressed to {masked}. {preventLastWordOrphan("Sign in with that email to join.")}</p>
           </>
         )}
         {status === "already" && (
@@ -193,8 +194,8 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
         {status === "expired" && <p style={title}>This invitation has expired.</p>}
         {status === "invalid" && (
           <>
-            <p style={title}>This invitation link isn't valid.</p>
-            <p style={muted}>This link is no longer active. The invite may have been canceled, or the link is incomplete — ask your friend to send you a new one.</p>
+            <p style={title}>{preventLastWordOrphan("This invitation link isn't valid.")}</p>
+            <p style={muted}>{preventLastWordOrphan("This link is no longer active. The invite may have been canceled, or the link is incomplete — ask your friend to send you a new one.")}</p>
           </>
         )}
         {status === "error" && <p style={title}>Something went wrong. Try the link again.</p>}
