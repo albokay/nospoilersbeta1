@@ -24,10 +24,10 @@
 // these. Casing normalized to uppercase (drift like #fef8ea vs #FEF8EA ends
 // here). To retune a color while honing the design, change it ONCE, here.
 export const CANON = {
-  personal: '#7ABD8E', // personal/private journal frame; "post" action; on-light emphasis
-  friend:   '#ADC8D7', // friend-room frame; info surfaces; dice face
+  personal: '#62C87A', // personal/private journal frame; "post" action; on-light emphasis
+  friend:   '#857B7B', // friend-room frame; info surfaces; dice face
   identity: '#355EB8', // identity (you), usernames, sticky text on cream
-  accent:   '#DEA838', // accent — public-room / poll surfaces
+  accent:   '#ED7A48', // accent — public-room / poll surfaces
   alert:    '#F45028', // alert — danger / destructive / errors
   cream:    '#FEF8EA', // sticky paper; search field; ticket outlines; light text on frames
   dark:     '#1A3A4A', // dark text in friend room; text on light surfaces
