@@ -9,13 +9,13 @@ type Mode = "signin" | "signup";
 
 // Sanitize a returnTo query parameter — only allow paths inside /m/* so a
 // crafted invite URL can't bounce the user to an external origin or to a
-// desktop route after auth. Falls back to /m/rooms on any anomaly.
+// desktop route after auth. Falls back to /m/dashboard on any anomaly.
 function safeReturnTo(raw: string | null): string {
-  if (!raw) return "/m/rooms";
-  if (!raw.startsWith("/m/")) return "/m/rooms";
+  if (!raw) return "/m/dashboard";
+  if (!raw.startsWith("/m/")) return "/m/dashboard";
   // Defense: reject protocol-relative URLs and backslash variants. Both
   // are well-known open-redirect smuggling patterns.
-  if (raw.includes("//") || raw.includes("\\")) return "/m/rooms";
+  if (raw.includes("//") || raw.includes("\\")) return "/m/dashboard";
   return raw;
 }
 
@@ -24,7 +24,7 @@ function safeReturnTo(raw: string | null): string {
 // is rebuilt for mobile: full-viewport layout, large touch targets,
 // 16px font on inputs to avoid iOS focus-zoom.
 //
-// On success: navigate to ?returnTo or /m/rooms (default), with replace
+// On success: navigate to ?returnTo or /m/dashboard (default), with replace
 // so back-button doesn't return to the auth screen. returnTo is used by
 // the invite-accept flow so a signed-out invitee can sign in / create an
 // account and return to the invite-accept page to finish joining the
