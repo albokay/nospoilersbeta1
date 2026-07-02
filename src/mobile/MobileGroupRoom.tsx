@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { X, ArrowLeft, Settings, MessageCircle, Pencil } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
+import { supabase } from "../lib/supabaseClient";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
 import TrailerCard from "../components/TrailerCard";
@@ -184,6 +185,40 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, groupId, refreshGroup]);
+
+  // Live chat dot while you're on the shows side: a filtered, per-group
+  // realtime listen that flips the toggle's new-message dot the instant
+  // another member posts (desktop parity — same member-gated-RLS auth note
+  // as the chat socket itself).
+  useEffect(() => {
+    if (authLoading || !user) return;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) supabase.realtime.setAuth(session.access_token);
+      } catch { /* tolerate */ }
+      if (cancelled) return;
+      channel = supabase
+        .channel(`m-group-chat-dot-${groupId}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${groupId}` },
+          (payload) => {
+            const r = payload.new as any;
+            if (!r || r.author_id === selfUserId) return;
+            setChatNew(true);
+          },
+        )
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            console.warn("[m-group] chat-dot realtime status:", status);
+          }
+        });
+    })();
+    return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
+  }, [groupId, user, authLoading, selfUserId]);
 
   const showsById = useMemo(() => {
     const m: Record<string, Show> = {};

@@ -5,6 +5,7 @@ import MobileNarrative from "./MobileNarrative";
 import MobileAuth from "./MobileAuth";
 import MobileDashboard from "./MobileDashboard";
 import MobileGroupRoom from "./MobileGroupRoom";
+import MobileGroupChat from "./MobileGroupChat";
 import MobileStub from "./MobileStub";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
@@ -67,8 +68,7 @@ export default function MobileApp() {
   if (subParts[0] === "auth") return <MobileAuth />;
   if (subParts[0] === "dashboard") return <MobileDashboard />;
   if (subParts[0] === "group" && subParts[1] && subParts[2] === "chat") {
-    // CP5 builds the chat surface; back lands in the group room.
-    return <MobileStub label="This group's chat" backTo={`/m/group/${subParts[1]}`} />;
+    return <MobileGroupChat groupId={subParts[1]} />;
   }
   if (subParts[0] === "group" && subParts[1]) return <MobileGroupRoom groupId={subParts[1]} />;
   // Show rooms (friend + private) are rebuilt in CP6.
