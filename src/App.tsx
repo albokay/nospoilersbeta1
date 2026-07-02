@@ -5,7 +5,7 @@ import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { injectDOSStyles } from "./styles/theme";
 import { injectCanonVars, CANON } from "./styles/canon";
 import { seedShows, seedThreads, repliesByThread } from "./lib/mockData";
-import { canView } from "./lib/utils";
+import { canView, preventLastWordOrphan } from "./lib/utils";
 import { fetchProgress, upsertProgress, upsertRewatchStatus, clearRewatchMode, fetchShows, fetchRepliesToUserThreads, fetchLikedThreads, fetchLikedReplies, fetchUnreadFeedbackCount, fetchAllFriendGroupsWithActivity, fetchUndismissedPingCountsByShow, markTabCreated } from "./lib/db";
 import { getCachedProgress, setCachedProgress } from "./lib/journalCache";
 import { supabase } from "./lib/supabaseClient";
@@ -1329,7 +1329,7 @@ function AppShell() {
 
               {/* Feature grid — 6 steps, all white-filled with green text/icons */}
               {(() => {
-                const items: { Icon: React.ElementType; text: React.ReactNode }[] = [
+                const items: { Icon: React.ElementType; text: string }[] = [
                   { Icon: UsersRound,        text: "Start a group with the friends you love talking to." },
                   { Icon: ListChecks,        text: "Each friend lists what they\u2019re watching or wants to watch." },
                   { Icon: Road,              text: "Decide what you want to watch together. Or binge ahead\u2026 your writing will become breadcrumbs for your friends as they catch up." },
@@ -1371,7 +1371,7 @@ function AppShell() {
                           fontWeight: 600,
                           lineHeight: 1.4,
                           textAlign: isMobile ? "left" : "center",
-                        }}>{text}</span>
+                        }}>{preventLastWordOrphan(text)}</span>
                       </div>
                     ))}
                   </div>
