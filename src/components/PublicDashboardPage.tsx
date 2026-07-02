@@ -245,5 +245,6 @@ const pillName: React.CSSProperties = { whiteSpace: "nowrap", overflow: "hidden"
 const pillProg: React.CSSProperties = { fontWeight: 500, opacity: 0.8 };
 const signInPill: React.CSSProperties = {
   border: "none", background: C.blue, color: CANON.cream, fontWeight: 800, fontSize: 14,
-  letterSpacing: 0.5, padding: "14px 40px", borderRadius: 65, cursor: "pointer",
+  letterSpacing: 0.5, padding: "20px 72px", borderRadius: 65, cursor: "pointer",
+  boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
 };

@@ -50,7 +50,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
       )}
 
       {phase === "main" && (
-        <div style={{ borderTop: `1px solid ${C.greyblue}`, paddingTop: 16 }}>
+        <div style={{ borderTop: `1px solid ${C.cream}`, paddingTop: 16 }}>
           <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: C.red }}>Delete account</p>
           <p style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55, color: C.midnight }}>
             Permanently deletes your account and personal info, and erases your private notes.
@@ -62,7 +62,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
       )}
 
       {phase === "confirm" && (
-        <div style={{ borderTop: `1px solid ${C.greyblue}`, paddingTop: 16 }}>
+        <div style={{ borderTop: `1px solid ${C.cream}`, paddingTop: 16 }}>
           <p style={{ margin: "0 0 12px", fontSize: 14, color: C.midnight, lineHeight: 1.5 }}>
             This is permanent. Type <strong>DELETE</strong> to confirm.
           </p>
