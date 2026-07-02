@@ -8,8 +8,8 @@ import { CANON } from "../styles/canon";
 
 // Canon palette
 const CREAM        = CANON.cream;
-const CANON_LIGHT  = CANON.sky;
-const CANON_NAVY   = CANON.midnight;
+const CANON_LIGHT  = CANON.friend;
+const CANON_NAVY   = CANON.dark;
 const TEXT_MUTED   = "#5f5e5a";
 
 interface Props {

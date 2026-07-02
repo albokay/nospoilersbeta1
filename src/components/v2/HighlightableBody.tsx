@@ -9,8 +9,8 @@ import { CANON } from "../../styles/canon";
 const PROMPT_TOKEN_RE = /\[PROMPT:([\s\S]*?)\]/g;
 
 // Canon palette.
-const CANON_YELLOW = CANON.yellow;
-const CANON_NAVY   = CANON.midnight;
+const CANON_YELLOW = CANON.accent;
+const CANON_NAVY   = CANON.dark;
 const CREAM        = CANON.cream;
 
 // Default highlight fill — used for entry bodies. Reply bodies pass a

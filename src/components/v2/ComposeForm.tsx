@@ -28,7 +28,7 @@ import { CANON } from "../../styles/canon";
 // its own top-right ("× not now") rather than the standard you-pill cluster.
 const CREAM_BG = CANON.cream;
 const PAPER_BG = "#fdfbf3";
-const INK = CANON.midnight; // midnightblue — filled-in title + body text
+const INK = CANON.dark; // midnightblue — filled-in title + body text
 const INK_SOFT = "#5a4d3a";
 const INK_FAINT = "#8a7860";
 const RULE = "rgba(43, 36, 24, 0.32)";

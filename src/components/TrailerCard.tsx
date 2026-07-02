@@ -11,7 +11,7 @@ import { getTrailerKeyCached } from "../lib/trailers";
 import { CANON } from "../styles/canon";
 
 // Canon palette (see memory canon_palette) — routed to src/styles/canon.ts.
-const YELLOW = CANON.yellow;
+const YELLOW = CANON.accent;
 const CREAM = CANON.cream;
 
 export default function TrailerCard({

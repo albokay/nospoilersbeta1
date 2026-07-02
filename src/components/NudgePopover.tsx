@@ -10,11 +10,11 @@ import { CANON } from "../styles/canon";
 
 // Canon palette
 const CREAM       = CANON.cream;
-const CANON_BLUE  = CANON.blue;
-const CANON_GREEN = CANON.green;
-const CANON_LIGHT = CANON.sky;
-const CANON_RED   = CANON.red;
-const CANON_NAVY  = CANON.midnight;
+const CANON_BLUE  = CANON.identity;
+const CANON_GREEN = CANON.personal;
+const CANON_LIGHT = CANON.friend;
+const CANON_RED   = CANON.alert;
+const CANON_NAVY  = CANON.dark;
 const TEXT_MUTED  = "#5f5e5a";
 
 // ── Direction is FRIEND-relative (matches the right-sticky's framing) ─────

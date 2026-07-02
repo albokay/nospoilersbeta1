@@ -30,9 +30,9 @@ export const RATING_LABELS: Record<number, string> = {
 };
 
 // ── Canon palette ────────────────────────────────────────────────────────
-const MIDNIGHT = CANON.midnight; // midnightblue
+const MIDNIGHT = CANON.dark; // midnightblue
 const CREAM    = CANON.cream;
-const SKY      = CANON.sky;
+const SKY      = CANON.friend;
 const INTER    = "Inter, sans-serif";
 
 const COMMIT_DELAY_MS = 150;

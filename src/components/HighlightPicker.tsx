@@ -17,9 +17,9 @@ import { CANON } from "../styles/canon";
 // The picker itself stays simple: pick → OK → onConfirm → parent unmounts.
 
 const CREAM        = CANON.cream;
-const CANON_LIGHT  = CANON.sky;
-const CANON_NAVY   = CANON.midnight;
-const CANON_YELLOW = CANON.yellow;
+const CANON_LIGHT  = CANON.friend;
+const CANON_NAVY   = CANON.dark;
+const CANON_YELLOW = CANON.accent;
 const TEXT_MUTED   = "#5f5e5a";
 
 const POPOVER_WIDTH    = 280;

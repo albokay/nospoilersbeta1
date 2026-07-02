@@ -67,7 +67,7 @@ export default function OneSelectProgress({
   // no green pill styling). Matches the other in-modal EpisodeSelectInline
   // pickers so modals have a consistent dropdown flavor.
   plain?: boolean;
-  // Override the default pill bg color (var(--canon-green,#7abd8e) canon-green). Used by
+  // Override the default pill bg color (var(--canon-personal,#7abd8e) canon-green). Used by
   // ProfilePage's filter-as-destination theming pass: when the diary
   // surface flips per filter, the picker bg should track it so the
   // picker reads as a ghost on the new surface (canon-light-blue on
@@ -79,7 +79,7 @@ export default function OneSelectProgress({
   // return to it. Off for every live caller (zero stays monotonic in real rooms).
   forceZeroOption?: boolean;
 }) {
-  const effectivePillBg = pillBg ?? CANON.green;
+  const effectivePillBg = pillBg ?? CANON.personal;
   const opts = buildProgressOptions(show);
   const curS = value?.s ?? 1;
   const curE = value?.e ?? 1;
@@ -195,7 +195,7 @@ export default function OneSelectProgress({
           </Modal>
         )}
         {requireConfirm && confirmOpen && (
-          <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: CANON.red } : undefined}>
+          <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: CANON.alert } : undefined}>
             <div style={{ marginBottom: 12 }}>
               <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
             </div>
@@ -272,7 +272,7 @@ export default function OneSelectProgress({
       )}
 
       {requireConfirm && confirmOpen && (
-        <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: CANON.red } : undefined}>
+        <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: CANON.alert } : undefined}>
           <div style={{ marginBottom: 12 }}>
             <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
           </div>

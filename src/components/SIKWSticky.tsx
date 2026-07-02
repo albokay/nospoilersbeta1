@@ -23,12 +23,12 @@ import { CANON } from "../styles/canon";
 // (PollSticky + SIKWSticky) mount independently and only one type
 // surfaces at a time given the per-asker enforcement.
 
-const STICKY_BG       = CANON.yellow;           // canon yellow
+const STICKY_BG       = CANON.accent;           // canon yellow
 const TEXT_COLOR      = "#FEF8EA";                 // primary text over yellow
 const FADED_TEXT      = "rgba(253,248,236,0.7)";// secondary text over yellow
 const DIVIDER_COLOR   = "rgba(253,248,236,0.6)";
-const SUBMIT_BG       = CANON.green;            // canon green
-const CANON_NAVY      = CANON.midnight;         // text on white choice rows
+const SUBMIT_BG       = CANON.personal;            // canon green
+const CANON_NAVY      = CANON.dark;         // text on white choice rows
 const TILT_DEG        = -8;
 const MIN_VIEWPORT_PX = 1160;
 const STICKY_WIDTH    = 280;

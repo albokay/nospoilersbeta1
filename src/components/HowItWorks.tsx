@@ -79,12 +79,12 @@ const panels: Panel[] = [
 
 // ── Colors ──────────────────────────────────────────────────────────────────
 
-const PAGE_BG = CANON.green;
+const PAGE_BG = CANON.personal;
 const BOX_BG = "rgba(253,248,236,0.92)";
-const YOU_THEME = CANON.blue;   // was #375eb8 — collapsed to canon blue
-const FRIEND_THEME = CANON.yellow;
-const YOU_COLOR = CANON.blue;   // was #375eb8 — collapsed to canon blue
-const FRIEND_COLOR = CANON.yellow;
+const YOU_THEME = CANON.identity;   // was #375eb8 — collapsed to canon blue
+const FRIEND_THEME = CANON.accent;
+const YOU_COLOR = CANON.identity;   // was #375eb8 — collapsed to canon blue
+const FRIEND_COLOR = CANON.accent;
 
 // ── Animation timing ────────────────────────────────────────────────────────
 

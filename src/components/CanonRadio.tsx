@@ -25,7 +25,7 @@ interface Props {
 
 export default function CanonRadio({
   checked,
-  color = CANON.green,
+  color = CANON.personal,
   bgColor = CANON.cream,
   size = 14,
   dotSize = 7,

@@ -59,7 +59,7 @@ function styleFor(variant: ButtonVariant, tone?: string): React.CSSProperties {
   switch (variant) {
     case "solid": {
       const fill = tone ?? CANON.cream;
-      const text = fill === CANON.cream ? CANON.midnight : CANON.cream;
+      const text = fill === CANON.cream ? CANON.dark : CANON.cream;
       return { ...base, background: fill, color: text, borderColor: fill };
     }
     case "dangerSolid":
@@ -95,12 +95,12 @@ export default function Button({
       const hot = withAlpha(toneColor ?? CANON.cream, 0.86);
       resolved.background = hot; resolved.borderColor = hot;
     } else if (variant === "dangerSolid") {
-      const hot = withAlpha(CANON.red, 0.9);
+      const hot = withAlpha(CANON.alert, 0.9);
       resolved.background = hot; resolved.borderColor = hot;
     } else if (variant === "danger") {
       resolved.background = ROLE.danger; resolved.color = CANON.cream; resolved.borderColor = ROLE.danger;
     } else {
-      resolved.background = withAlpha(CANON.midnight, 0.08); // faint wash, outline untouched
+      resolved.background = withAlpha(CANON.dark, 0.08); // faint wash, outline untouched
     }
   }
 

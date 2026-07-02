@@ -8,10 +8,10 @@ import type { FriendGroupMember } from "../types";
 import { CANON } from "../styles/canon";
 
 // ── Visual constants (canon palette + post-it accent green) ───────────────
-const POST_IT_BG    = CANON.green;  // canon green (write-button green inside friend rooms)
+const POST_IT_BG    = CANON.personal;  // canon green (write-button green inside friend rooms)
 const HANDLE_COLOR  = CANON.cream;  // canon cream — handles + neutral copy (was #fffaf0)
-const AHEAD_COLOR   = CANON.red;    // canon red — "[N] episodes ahead"
-const BEHIND_COLOR  = CANON.blue;   // canon dark blue — "[N] episodes behind"
+const AHEAD_COLOR   = CANON.alert;    // canon red — "[N] episodes ahead"
+const BEHIND_COLOR  = CANON.identity;   // canon dark blue — "[N] episodes behind"
 const TILT_DEG      = 8;           // clockwise tilt (was 10; nudged down by request)
 const MIN_VIEWPORT_PX = 1160;     // hide on narrow viewports (mobile separate spec)
 const SCROLL_THRESHOLD_LINES = 20; // internal scroll if more than this many lines

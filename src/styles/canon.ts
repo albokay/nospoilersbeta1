@@ -12,7 +12,7 @@
 //
 //   AXIS 2 · Re-ROLE a color  →  only that usage changes, everywhere it's used.
 //            Edit ROLE below. e.g. make friend-room accents blue instead of
-//            midnight: roomAccentFriend: CANON.blue.
+//            midnight: roomAccentFriend: CANON.identity.
 //
 // Because inline styles (TSX) and CSS (theme.ts) both ultimately read these
 // same values — TSX via imports, CSS via the generated custom properties —
@@ -24,14 +24,14 @@
 // these. Casing normalized to uppercase (drift like #fef8ea vs #FEF8EA ends
 // here). To retune a color while honing the design, change it ONCE, here.
 export const CANON = {
-  green:    '#7ABD8E', // private journal frame; "post" action; on-white emphasis
-  sky:      '#ADC8D7', // friend-room frame; info surfaces; dice face
-  blue:     '#355EB8', // identity (you), usernames, sticky text on cream
-  yellow:   '#DEA838', // public-room frame; poll sticky
-  red:      '#F45028', // danger / destructive / errors
-  cream:    '#FEF8EA', // sticky paper; search field; entry-ticket outlines
-  midnight: '#1A3A4A', // text in friend room; text on light surfaces
-  greyblue: '#8DAABA', // friend-room map lines; dividers; hairlines ONLY
+  personal: '#7ABD8E', // personal/private journal frame; "post" action; on-light emphasis
+  friend:   '#ADC8D7', // friend-room frame; info surfaces; dice face
+  identity: '#355EB8', // identity (you), usernames, sticky text on cream
+  accent:   '#DEA838', // accent — public-room / poll surfaces
+  alert:    '#F45028', // alert — danger / destructive / errors
+  cream:    '#FEF8EA', // sticky paper; search field; ticket outlines; light text on frames
+  dark:     '#1A3A4A', // dark text in friend room; text on light surfaces
+  business: '#8DAABA', // map lines; dividers; hairlines ONLY
 } as const;
 
 export type CanonName = keyof typeof CANON;
@@ -55,34 +55,34 @@ export const BLACK = '#000000';
 // !important overrides currently in theme.ts.
 export const ROLE = {
   // Room frames (page background, header, sticky bars)
-  roomFramePrivate: CANON.green,
-  roomFrameFriend:  CANON.sky,
-  roomFramePublic:  CANON.yellow,
+  roomFramePrivate: CANON.personal,
+  roomFrameFriend:  CANON.friend,
+  roomFramePublic:  CANON.accent,
 
   // Room content accents (text/outlines/emphasis on WHITE cards in that room)
   //   NOTE: green & yellow both FAIL contrast as body text on white (~2.2:1).
   //   These roles are safe for OUTLINES / ICONS / LARGE emphasis only.
   //   For body copy on white, use textOnLight (midnight). See CONTRAST_AUDIT.md.
-  roomAccentPrivate: CANON.green,
-  roomAccentFriend:  CANON.midnight, // friend rooms already use midnight — passes
-  roomAccentPublic:  CANON.green,
+  roomAccentPrivate: CANON.personal,
+  roomAccentFriend:  CANON.dark, // friend rooms already use midnight — passes
+  roomAccentPublic:  CANON.personal,
 
   // Identity & status (stable across all rooms — never re-framed)
-  identityUser: CANON.blue,   // profile chip, @usernames
-  danger:       CANON.red,    // destructive actions, errors
-  postAction:   CANON.green,  // legacy alias for the "write/post" tint; no longer a single canonical button color — preserve each publish button's real color instead
+  identityUser: CANON.identity,   // profile chip, @usernames
+  danger:       CANON.alert,    // destructive actions, errors
+  postAction:   CANON.personal,  // legacy alias for the "write/post" tint; no longer a single canonical button color — preserve each publish button's real color instead
 
   // Text colors
   //   RULE: no pure white anywhere. On-frame light text is CREAM.
   textOnDarkFrame:  CANON.cream,    // cream text on green/yellow/blue/red frames
-  textOnLight:      CANON.midnight, // text on cream/sky/white surfaces
-  stickyText:       CANON.blue,     // primary text on cream sticky paper
+  textOnLight:      CANON.dark, // text on cream/sky/white surfaces
+  stickyText:       CANON.identity,     // primary text on cream sticky paper
 
   // Surfaces & structure
   stickyPaper:  CANON.cream,
   searchField:  CANON.cream,
-  infoSurface:  CANON.sky,      // explanation cards
-  mapLines:     CANON.greyblue, // hairlines, dividers, map grid — NON-TEXT only
+  infoSurface:  CANON.friend,      // explanation cards
+  mapLines:     CANON.business, // hairlines, dividers, map grid — NON-TEXT only
   ticketOutline: CANON.cream,   // entry-ticket borders in friend/show rooms
 } as const;
 
@@ -107,7 +107,7 @@ export function frameGradient(room: keyof typeof FRAME_GRADIENT_TOP, frame: stri
 // The app uses lots of rgba(...) tints (hover overlays, faded text, shadows).
 // Derive them from canon colors instead of hand-writing rgba literals, so an
 // AXIS-1 swap flows through to the tints too.
-//   withAlpha(CANON.midnight, 0.65)  →  'rgba(26,58,74,0.65)'
+//   withAlpha(CANON.dark, 0.65)  →  'rgba(26,58,74,0.65)'
 export function withAlpha(hex: string, alpha: number): string {
   const h = hex.replace('#', '');
   const r = parseInt(h.slice(0, 2), 16);
@@ -120,7 +120,7 @@ export function withAlpha(hex: string, alpha: number): string {
 // Emits :root custom properties for BOTH axes so CSS-land (theme.ts's injected
 // stylesheet, or a real .css file) reads the exact same values as TSX-land.
 // Call once at app start (see migration note). After this runs you can write
-// `background: var(--canon-green)` or `color: var(--role-identity-user)` in any
+// `background: var(--canon-personal)` or `color: var(--role-identity-user)` in any
 // CSS, and an AXIS-1/AXIS-2 edit here updates that CSS with no other changes.
 export function canonCssVars(): string {
   const lines: string[] = [':root{'];
@@ -157,7 +157,7 @@ function kebab(s: string): string {
 // ----------------------------------------------------------------------------
 // 1. New components: replace local `const CREAM = '#fef8ea'` blocks with
 //        import { CANON, ROLE, withAlpha } from '../styles/canon';
-//    then use CANON.cream / ROLE.stickyText / withAlpha(CANON.midnight,0.5).
+//    then use CANON.cream / ROLE.stickyText / withAlpha(CANON.dark,0.5).
 //
 // 2. Bridge theme.ts: call injectCanonVars() BEFORE injectDOSStyles() in
 //    App's mount effect. Then, inside theme.ts, migrate the --dos-* values to

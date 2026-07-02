@@ -8,12 +8,12 @@ import { CANON } from "../styles/canon";
 
 // Canon palette
 const CREAM        = CANON.cream;
-const CANON_BLUE   = CANON.blue;
-const CANON_GREEN  = CANON.green;
-const CANON_YELLOW = CANON.yellow;
-const CANON_RED    = CANON.red;
-const CANON_NAVY   = CANON.midnight;
-const CANON_LIGHT  = CANON.sky;
+const CANON_BLUE   = CANON.identity;
+const CANON_GREEN  = CANON.personal;
+const CANON_YELLOW = CANON.accent;
+const CANON_RED    = CANON.alert;
+const CANON_NAVY   = CANON.dark;
+const CANON_LIGHT  = CANON.friend;
 const TEXT_MUTED   = "#5f5e5a";
 
 const QUESTION_MAX = 100;

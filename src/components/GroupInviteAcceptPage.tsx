@@ -24,7 +24,7 @@ import { CANON } from "../styles/canon";
 // the general sign-up path is untouched.
 const POST_SIGNUP_DEST_KEY = "ns_post_signup_dest";
 
-const C = { green: CANON.green, blue: CANON.blue, yellow: CANON.yellow, red: CANON.red, cream: CANON.cream, midnight: CANON.midnight };
+const C = { green: CANON.personal, blue: CANON.identity, yellow: CANON.accent, red: CANON.alert, cream: CANON.cream, midnight: CANON.dark };
 const LORA = '"Lora", Georgia, serif';
 
 type Status = "loading" | "ready" | "invalid" | "expired" | "already" | "wrong" | "joining" | "done" | "error";

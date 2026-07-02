@@ -24,11 +24,11 @@ import Avatar from "boring-avatars";
  * theme.ts, update this array in the same commit.
  */
 const CANON_PALETTE = [
-  CANON.yellow, // canon yellow  (theme.ts:74 — public-context --dos-bg)
-  CANON.green, // canon green   (theme.ts:8 — --green)
-  CANON.blue, // canon dark blue (theme.ts:8 — --dos-user)
-  CANON.sky, // canon light blue (theme.ts:18 — --blue-light)
-  CANON.red, // canon red     (theme.ts:8 — --danger)
+  CANON.accent, // canon yellow  (theme.ts:74 — public-context --dos-bg)
+  CANON.personal, // canon green   (theme.ts:8 — --green)
+  CANON.identity, // canon dark blue (theme.ts:8 — --dos-user)
+  CANON.friend, // canon light blue (theme.ts:18 — --blue-light)
+  CANON.alert, // canon red     (theme.ts:8 — --danger)
 ];
 
 type SidebarAvatarProps = {

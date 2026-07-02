@@ -3,9 +3,9 @@ export function injectDOSStyles() {
   if (document.getElementById(id)) return;
   const css = `
 :root{
-  --dos-bg:var(--role-room-frame-private,var(--canon-green,#7abd8e)); --dos-fg:var(--canon-cream,#fef8ea); --dos-blue:rgba(0,0,0,0.18); --dos-cyan:var(--canon-cream,#fef8ea);
+  --dos-bg:var(--role-room-frame-private,var(--canon-personal,#7abd8e)); --dos-fg:var(--canon-cream,#fef8ea); --dos-blue:rgba(0,0,0,0.18); --dos-cyan:var(--canon-cream,#fef8ea);
   --dos-gray:rgba(253,248,236,0.65); --dos-light:var(--canon-cream,#fef8ea);
-  --dos-accent:var(--canon-cream,#fef8ea); --danger:var(--canon-red,var(--canon-red,#f45028)); --green:var(--canon-green,var(--canon-green,#7abd8e)); --dos-user:var(--canon-blue,var(--canon-blue,#355eb8)); --dos-border:var(--canon-cream,#fef8ea);
+  --dos-accent:var(--canon-cream,#fef8ea); --danger:var(--canon-alert,var(--canon-alert,#f45028)); --green:var(--canon-personal,var(--canon-personal,#7abd8e)); --dos-user:var(--canon-identity,var(--canon-identity,#355eb8)); --dos-border:var(--canon-cream,#fef8ea);
   /* Toggle "off" fill (de-selected segments) and "on" text (selected
      segments). In default/public both equal --dos-border (white) and
      --dos-fg (white) respectively, so no special handling is needed there.
@@ -15,9 +15,9 @@ export function injectDOSStyles() {
   --toggle-on-text:var(--canon-cream,#fef8ea);
   --icon-color:var(--canon-cream,#fef8ea);
   /* canonical accent blue */
-  --blue-light:var(--canon-sky,var(--canon-sky,#adc8d7));
+  --blue-light:var(--canon-friend,var(--canon-friend,#adc8d7));
   /* progress dropdown (overridden to green in group context) */
-  --progress-bg:var(--canon-sky,var(--canon-sky,#adc8d7)); --progress-fg:var(--canon-blue,var(--canon-blue,#355eb8));
+  --progress-bg:var(--canon-friend,var(--canon-friend,#adc8d7)); --progress-fg:var(--canon-identity,var(--canon-identity,#355eb8));
   /* type scale */
   --t1:22px; --t2:17px; --t3:15px; --t4:13px;
   /* Top-header spacer height — used by header.site and .stickybar.
@@ -39,32 +39,32 @@ export function injectDOSStyles() {
 
 /* ── Friend room context — light-blue theme ─────────────────────────────── */
 body.group-context{
-  --dos-bg:var(--role-room-frame-friend,var(--canon-sky,#adc8d7)); --dos-fg:var(--canon-midnight,var(--canon-midnight,#1a3a4a)); --dos-cyan:var(--canon-midnight,var(--canon-midnight,#1a3a4a));
-  --dos-gray:rgba(26,58,74,0.65); --dos-light:var(--canon-midnight,var(--canon-midnight,#1a3a4a));
-  --dos-accent:var(--canon-midnight,var(--canon-midnight,#1a3a4a)); --dos-border:rgba(26,58,74,0.3);
+  --dos-bg:var(--role-room-frame-friend,var(--canon-friend,#adc8d7)); --dos-fg:var(--canon-dark,var(--canon-dark,#1a3a4a)); --dos-cyan:var(--canon-dark,var(--canon-dark,#1a3a4a));
+  --dos-gray:rgba(26,58,74,0.65); --dos-light:var(--canon-dark,var(--canon-dark,#1a3a4a));
+  --dos-accent:var(--canon-dark,var(--canon-dark,#1a3a4a)); --dos-border:rgba(26,58,74,0.3);
   /* Friend-room only: toggles use outline color for both de-selected fill
      and selected text — yields a two-color toggle (transparent + outline). */
   --toggle-off-fill:rgba(26,58,74,0.3);
   --toggle-on-text:rgba(26,58,74,0.3);
   --dos-blue:rgba(26,58,74,0.08);
   --icon-color:var(--canon-cream,#fef8ea);
-  --progress-bg:var(--canon-green,var(--canon-green,#7abd8e)); --progress-fg:var(--canon-cream,#fef8ea);
-  background: linear-gradient(to bottom,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,var(--canon-sky,#adc8d7)) 180px) fixed,var(--role-room-frame-friend,var(--canon-sky,#adc8d7));
+  --progress-bg:var(--canon-personal,var(--canon-personal,#7abd8e)); --progress-fg:var(--canon-cream,#fef8ea);
+  background: linear-gradient(to bottom,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,var(--canon-friend,#adc8d7)) 180px) fixed,var(--role-room-frame-friend,var(--canon-friend,#adc8d7));
   background-attachment:fixed;
 }
 body.group-context.has-header{
-  background: linear-gradient(to top,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,var(--canon-sky,#adc8d7)) 250px) fixed,var(--role-room-frame-friend,var(--canon-sky,#adc8d7));
+  background: linear-gradient(to top,var(--frame-top-friend,#c8dde8) 0px,var(--role-room-frame-friend,var(--canon-friend,#adc8d7)) 250px) fixed,var(--role-room-frame-friend,var(--canon-friend,#adc8d7));
   background-attachment:fixed;
 }
 body.group-context header.site{ background:rgba(173,200,215,0.98); }
 body.group-context .stickybar{ background:rgba(173,200,215,0.98); }
 /* In friend rooms, reply cards should use dark text matching thread entries (not washed-out blue) */
-body.group-context .reply-card{ color:var(--canon-midnight,#1a3a4a) !important; --dos-accent:var(--canon-midnight,#1a3a4a); --dos-cyan:var(--canon-midnight,#1a3a4a); --dos-gray:rgba(26,58,74,0.65); border-color:transparent !important; }
+body.group-context .reply-card{ color:var(--canon-dark,#1a3a4a) !important; --dos-accent:var(--canon-dark,#1a3a4a); --dos-cyan:var(--canon-dark,#1a3a4a); --dos-gray:rgba(26,58,74,0.65); border-color:transparent !important; }
 /* In friend rooms (+ the new show room, same palette), entry ticket outlines
    and the star button circle/glyph use a 2px cream outline. */
 body.group-context .threadCard{ border:2px solid var(--canon-cream,#fef8ea) !important; }
 /* TSP demo: instructional "Alborz" guide tickets get a blue outline. */
-body.group-context .threadCard.tsp-guide{ border-color:var(--canon-blue,#355eb8) !important; }
+body.group-context .threadCard.tsp-guide{ border-color:var(--canon-identity,#355eb8) !important; }
 body.group-context .likeWrap{ color:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-cream,#fef8ea) !important; }
 body.group-context .likeWrap:hover{ background:rgba(254,248,234,0.14) !important; }
 /* In friend rooms, the default .btn:hover border-color (--dos-light = dark
@@ -75,37 +75,37 @@ body.group-context .btn:hover{ border-color:var(--canon-cream,#fef8ea) !importan
 
 /* ── Public room context — golden-yellow theme ─────────────────────────────── */
 body.public-context{
-  --dos-bg:var(--role-room-frame-public,var(--canon-yellow,#dea838)); --dos-fg:var(--canon-cream,#fef8ea); --dos-cyan:var(--canon-cream,#fef8ea);
+  --dos-bg:var(--role-room-frame-public,var(--canon-accent,#dea838)); --dos-fg:var(--canon-cream,#fef8ea); --dos-cyan:var(--canon-cream,#fef8ea);
   --dos-gray:rgba(253,248,236,0.65); --dos-light:var(--canon-cream,#fef8ea);
   --dos-accent:var(--canon-cream,#fef8ea); --dos-border:var(--canon-cream,#fef8ea);
   --dos-blue:rgba(0,0,0,0.14);
-  --progress-bg:var(--canon-green,var(--canon-green,#7abd8e)); --progress-fg:var(--canon-cream,#fef8ea);
-  background: linear-gradient(to bottom,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,var(--canon-yellow,#dea838)) 180px) fixed,var(--role-room-frame-public,var(--canon-yellow,#dea838));
+  --progress-bg:var(--canon-personal,var(--canon-personal,#7abd8e)); --progress-fg:var(--canon-cream,#fef8ea);
+  background: linear-gradient(to bottom,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,var(--canon-accent,#dea838)) 180px) fixed,var(--role-room-frame-public,var(--canon-accent,#dea838));
   background-attachment:fixed;
 }
 body.public-context.has-header{
-  background: linear-gradient(to top,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,var(--canon-yellow,#dea838)) 250px) fixed,var(--role-room-frame-public,var(--canon-yellow,#dea838));
+  background: linear-gradient(to top,var(--frame-top-public,#f0cc60) 0px,var(--role-room-frame-public,var(--canon-accent,#dea838)) 250px) fixed,var(--role-room-frame-public,var(--canon-accent,#dea838));
   background-attachment:fixed;
 }
 body.public-context header.site{ background:rgba(222,168,56,0.98); }
 body.public-context .stickybar{ background:rgba(222,168,56,0.98); }
 /* In the yellow public room, reply cards have white bg — swap yellow accents to canon green */
-body.public-context .reply-card .btn:not(.btn-danger){ color:var(--canon-green,#7abd8e) !important; border-color:var(--canon-green,#7abd8e) !important; }
-body.public-context .reply-card .btn:not(.btn-danger):hover{ background:var(--canon-green,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-green,#7abd8e) !important; }
-body.public-context .reply-card .likeWrap{ color:var(--canon-green,#7abd8e) !important; border-color:var(--canon-green,#7abd8e) !important; }
-body.public-context .reply-card .likeWrap:hover{ background:var(--canon-green,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-green,#7abd8e) !important; }
+body.public-context .reply-card .btn:not(.btn-danger){ color:var(--canon-personal,#7abd8e) !important; border-color:var(--canon-personal,#7abd8e) !important; }
+body.public-context .reply-card .btn:not(.btn-danger):hover{ background:var(--canon-personal,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-personal,#7abd8e) !important; }
+body.public-context .reply-card .likeWrap{ color:var(--canon-personal,#7abd8e) !important; border-color:var(--canon-personal,#7abd8e) !important; }
+body.public-context .reply-card .likeWrap:hover{ background:var(--canon-personal,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-personal,#7abd8e) !important; }
 body.public-context .blockquote-ref .blockquote-author,
-body.public-context .blockquote-ref .blockquote-text{ color:var(--canon-green,#7abd8e); }
+body.public-context .blockquote-ref .blockquote-text{ color:var(--canon-personal,#7abd8e); }
 /* Friend-room quote blocks pick up the same dark-blue-transparent tone as
    the thread action button outlines (rgba(26,58,74,0.3)) — readable on the
    white reply card without overpowering the body copy. */
 body.group-context .blockquote-ref .blockquote-author,
 body.group-context .blockquote-ref .blockquote-text{ color:rgba(26,58,74,0.55); opacity:1; }
-body.public-context .responding-to-label{ color:var(--canon-green,#7abd8e); }
-body.public-context .btn.post{ background:var(--canon-green,#7abd8e) !important; border-color:var(--canon-green,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; }
-body.public-context .progress-control{ border-color:var(--canon-green,#7abd8e) !important; }
-body.group-context .btn.post{ background:var(--canon-green,#7abd8e) !important; border-color:var(--canon-green,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; }
-body.group-context .progress-control{ border-color:var(--canon-green,#7abd8e) !important; }
+body.public-context .responding-to-label{ color:var(--canon-personal,#7abd8e); }
+body.public-context .btn.post{ background:var(--canon-personal,#7abd8e) !important; border-color:var(--canon-personal,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; }
+body.public-context .progress-control{ border-color:var(--canon-personal,#7abd8e) !important; }
+body.group-context .btn.post{ background:var(--canon-personal,#7abd8e) !important; border-color:var(--canon-personal,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; }
+body.group-context .progress-control{ border-color:var(--canon-personal,#7abd8e) !important; }
 /* Show room private tab sits on a green body, where the green picker outline
    is invisible — give that picker a cream outline. */
 body.group-context .private-progress .progress-control{ border-color:var(--canon-cream,#fef8ea) !important; }
@@ -115,18 +115,18 @@ body.group-context .private-progress .progress-control{ border-color:var(--canon
    white outline. Specificity beats the body-class rules above. */
 body.public-context [data-modal-root] .progress-control,
 body.group-context [data-modal-root] .progress-control{ border-color:var(--canon-cream,#fef8ea) !important; }
-body.public-context .btn.primary{ background:var(--canon-green,#7abd8e) !important; border-color:var(--canon-green,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; }
+body.public-context .btn.primary{ background:var(--canon-personal,#7abd8e) !important; border-color:var(--canon-personal,#7abd8e) !important; color:var(--canon-cream,#fef8ea) !important; }
 /* New-reply badge in thread list — green instead of yellow in public context */
-body.public-context .newReplyBadge{ background:var(--canon-blue,#355eb8) !important; }
+body.public-context .newReplyBadge{ background:var(--canon-identity,#355eb8) !important; }
 /* Radio dot in compose destination selector — green instead of yellow in public context */
-body.public-context .radio-dot{ background:var(--canon-green,#7abd8e) !important; }
+body.public-context .radio-dot{ background:var(--canon-personal,#7abd8e) !important; }
 /* Retag warning box, move-to dropdown, edit textarea — green bg in public context */
-body.public-context .retag-warning{ background:var(--canon-green,#7abd8e) !important; }
-body.public-context .move-to-dropdown{ background:var(--canon-green,#7abd8e) !important; }
-body.public-context .edit-textarea{ background:var(--canon-green,#7abd8e) !important; }
+body.public-context .retag-warning{ background:var(--canon-personal,#7abd8e) !important; }
+body.public-context .move-to-dropdown{ background:var(--canon-personal,#7abd8e) !important; }
+body.public-context .edit-textarea{ background:var(--canon-personal,#7abd8e) !important; }
 /* compose-submit color now driven by inline styles in the modal */
 /* Expand/collapse chip — green text instead of yellow in public context */
-body.public-context .expand-chip{ color:var(--canon-green,#7abd8e) !important; }
+body.public-context .expand-chip{ color:var(--canon-personal,#7abd8e) !important; }
 
 .brandLink{ cursor:pointer; }
 .brandLink:focus-visible{ outline:2px dashed var(--dos-cyan); outline-offset:2px; }
@@ -284,7 +284,7 @@ hr{ display:none; }
 .btn-danger{ border-color:var(--danger); color:var(--danger); }
 .btn-danger:hover{ background:var(--danger); color:var(--canon-cream,#fef8ea); border-color:var(--danger); }
 /* Standardized write/post button: canon-green fill, white outline, white text */
-.btn.post{ background: var(--canon-green,#7abd8e); color: var(--canon-cream,#fef8ea); border-color: var(--canon-cream,#fef8ea); }
+.btn.post{ background: var(--canon-personal,#7abd8e); color: var(--canon-cream,#fef8ea); border-color: var(--canon-cream,#fef8ea); }
 .btn.post:hover{ background: #6aad7e; border-color: var(--canon-cream,#fef8ea); color: var(--canon-cream,#fef8ea); }
 /* Fix dark inputs/textareas */
 select {
@@ -378,7 +378,7 @@ header.site{
 .splashSearchWrap{
   position:relative; display:flex; align-items:center;
   width:288px; max-width:90vw; margin:20px auto;
-  height:40px; border:2px solid var(--canon-sky,#adc8d7); border-radius:9999px;
+  height:40px; border:2px solid var(--canon-friend,#adc8d7); border-radius:9999px;
   padding:0 16px;
   background:var(--canon-cream,#fef8ea); border-color:var(--canon-cream,#fef8ea); color:#c39431;
 }
@@ -388,7 +388,7 @@ header.site{
   text-align:center; padding:0 36px;
   font-size:16px; font-weight:600; letter-spacing:0.01em; color:inherit;
 }
-.splashSearch::placeholder{ color:var(--canon-red,#f45028); opacity:1; }
+.splashSearch::placeholder{ color:var(--canon-alert,#f45028); opacity:1; }
 .splashSearchIcon{ font-size:18px; opacity:.85; flex-shrink:0; line-height:1; position:relative; z-index:1; }
 .dropdownPanel{
   position:absolute; top:calc(100% + 8px); width:288px; max-width:90vw; z-index:9999;
@@ -438,11 +438,11 @@ header.site{
    so the OUTLINE oscillates instead of an overlay fill. Ends faded to
    transparent so the card's default border bleeds back through. */
 @keyframes flash-border-blue{
-  0%   { border-color:var(--canon-blue,#355eb8); }
+  0%   { border-color:var(--canon-identity,#355eb8); }
   20%  { border-color:rgba(53,94,184,0.15); }
-  40%  { border-color:var(--canon-blue,#355eb8); }
+  40%  { border-color:var(--canon-identity,#355eb8); }
   60%  { border-color:rgba(53,94,184,0.15); }
-  80%  { border-color:var(--canon-blue,#355eb8); }
+  80%  { border-color:var(--canon-identity,#355eb8); }
   100% { border-color:rgba(53,94,184,0); }
 }
 /* Map-cell-click attention pulse that leaves the outline alone — a midnight-
@@ -679,7 +679,7 @@ header.site{
 .frontAccent p,
 .frontAccent a,
 .frontAccent b {
-  color: var(--danger, var(--canon-red,#f45028)) !important;
+  color: var(--danger, var(--canon-alert,#f45028)) !important;
 }
 .frontAccent .muted {
   opacity: 1 !important; /* neutralize dimming if present */
@@ -745,7 +745,7 @@ body { -webkit-font-smoothing: antialiased; }
 
 /* Shared citation superscript button — used inline in body, in headers, and in thread heading */
 .cite-sup-btn {
-  color: var(--canon-green,#7abd8e);
+  color: var(--canon-personal,#7abd8e);
   font-weight: 700;
   background: none;
   border: none;
@@ -778,7 +778,7 @@ body { -webkit-font-smoothing: antialiased; }
    Button: .btn with color #000 / borderColor #000.
    ──────────────────────────────────────────────────────────────────────────── */
 .explanation-card {
-  background: var(--canon-sky,#adc8d7) !important;
+  background: var(--canon-friend,#adc8d7) !important;
   border: none !important;
   color: #000 !important;
 }
@@ -943,7 +943,7 @@ body.public-context .prompt-ref { color: #8a6420; }
 
 /* ── Prompt card (the floating suggestion card) ─────────────────────────── */
 .prompt-card {
-  background: var(--canon-sky,#adc8d7);
+  background: var(--canon-friend,#adc8d7);
   border: none;
   border-radius: 16px;
   padding: 16px 18px 14px;
@@ -968,9 +968,9 @@ body.public-context .prompt-ref { color: #8a6420; }
   background: rgba(0,0,0,0.08);
 }
 .prompt-card-btn--use {
-  background: var(--canon-blue,#355eb8);
+  background: var(--canon-identity,#355eb8);
   color: var(--canon-cream,#fef8ea);
-  border-color: var(--canon-blue,#355eb8);
+  border-color: var(--canon-identity,#355eb8);
 }
 .prompt-card-btn--use:hover {
   background: #1a44a8;

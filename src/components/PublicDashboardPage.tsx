@@ -18,7 +18,7 @@ import type { ProgressEntry } from "../types";
 import SidebarLogo from "./SidebarLogo";
 import { CANON } from "../styles/canon";
 
-const C = { green: CANON.green, sky: CANON.sky, blue: CANON.blue, yellow: CANON.yellow, cream: CANON.cream, midnight: CANON.midnight };
+const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark };
 const LORA = '"Lora", Georgia, serif';
 
 // `invite` turns the page into the email-invite arrival screen: no back arrow,

@@ -62,10 +62,10 @@ const panelCaptions: React.ReactNode[] = [
 
 // ── Colors & dimensions ───────────────────────────────────────────────────
 
-const PAGE_BG = CANON.green;
+const PAGE_BG = CANON.personal;
 const BOX_BG = "rgba(253,248,236,0.92)";
-const GREEN = CANON.green;
-const RED = CANON.red;
+const GREEN = CANON.personal;
+const RED = CANON.alert;
 const BORDER_W = 3;
 const PILL_W = 170;
 const PILL_H = 34;

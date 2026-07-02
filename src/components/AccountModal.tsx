@@ -10,7 +10,7 @@ import { CANON } from "../styles/canon";
 // flow (ANONYMIZE model): personal info + private notes are erased, shared-room
 // posts are kept but shown as "[deleted]". Two-step, type-to-confirm guard
 // because the action is permanent and irreversible.
-const C = { red: CANON.red, cream: CANON.cream, midnight: CANON.midnight, greyblue: CANON.greyblue };
+const C = { red: CANON.alert, cream: CANON.cream, midnight: CANON.dark, greyblue: CANON.business };
 
 export default function AccountModal({ onClose }: { onClose: () => void }) {
   const { profile } = useAuth() as any;
