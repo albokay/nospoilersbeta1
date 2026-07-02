@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { CANON } from "../styles/canon";
 import { createPortal } from "react-dom";
 
 type Direction = "above" | "below" | "right" | "left";
@@ -112,7 +113,7 @@ export default function Tooltip({
           <div style={{
             ...(useAbsolute ? getAbsoluteStyle() : getFixedStyle()),
             background: "var(--dos-bg)",
-            color: "#FEF8EA",
+            color: CANON.cream,
             borderRadius: 18,
             padding: "9px 14px",
             fontSize: 13,

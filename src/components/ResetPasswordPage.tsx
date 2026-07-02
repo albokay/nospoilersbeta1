@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { CANON } from "../styles/canon";
 import { supabase } from "../lib/supabaseClient";
 import LoadingDots from "./LoadingDots";
 
@@ -186,7 +187,7 @@ function FormView({
   const waiting = phase === "waiting-for-recovery";
   return (
     <>
-      <h1 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 700, color: "#FEF8EA" }}>
+      <h1 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 700, color: CANON.cream }}>
         {COPY.heading}
       </h1>
       <p style={{ margin: "0 0 22px", fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, lineHeight: 1.5, color: "rgba(253,248,236,0.75)" }}>
@@ -249,7 +250,7 @@ function FormView({
 function SuccessView() {
   return (
     <div style={{ textAlign: "center" }}>
-      <h1 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 700, color: "#FEF8EA" }}>
+      <h1 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 700, color: CANON.cream }}>
         {COPY.successHeading}
       </h1>
       <p style={{ margin: 0, fontFamily: "Lora, Georgia, serif", fontStyle: "italic", fontSize: 14, color: "rgba(253,248,236,0.75)" }}>
@@ -271,7 +272,7 @@ function NoTokenView() {
           style={{
             display: "inline-block",
             background: "var(--dos-user)",
-            color: "#FEF8EA",
+            color: CANON.cream,
             fontSize: 14,
             fontWeight: 600,
             textDecoration: "none",

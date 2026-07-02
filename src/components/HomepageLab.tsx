@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
+import { CANON } from "../styles/canon";
 import SidebarLogo from "./SidebarLogo";
 
-const GREEN = "#7abd8e";
+const GREEN = CANON.personal;
 const BUBBLE_MAX = 560;
 
 // ── Scroll-reveal ─────────────────────────────────────────────────────────────
@@ -114,7 +115,7 @@ function Copy({ children, size = 32, delay = 0 }: {
       maxWidth: 560,
       margin: "0 auto",
     }}>
-      <p style={{ fontSize: size, fontWeight: 800, color: "#FEF8EA", lineHeight: 1.25, margin: 0 }}>
+      <p style={{ fontSize: size, fontWeight: 800, color: CANON.cream, lineHeight: 1.25, margin: 0 }}>
         {children}
       </p>
     </div>
@@ -201,7 +202,7 @@ function RevealUnit() {
         fontWeight: 700,
         letterSpacing: "0.12em",
         textTransform: "lowercase",
-        color: "#FEF8EA",
+        color: CANON.cream,
         opacity: 0.85,
       }}>
         talk. together. whenever.

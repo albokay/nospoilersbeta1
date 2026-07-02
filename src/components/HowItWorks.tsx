@@ -161,7 +161,7 @@ function Pill({
         animation: `${animName} ${animDur}s ease forwards`,
         animationDelay: `${animDelay}s`,
         ...(isVisible
-          ? { background: color, color: "#FEF8EA", border: "2px solid transparent" }
+          ? { background: color, color: CANON.cream, border: "2px solid transparent" }
           : { background: "transparent", color: color, border: `2px dashed ${color}` }),
       }}
     >
@@ -278,7 +278,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
         minHeight: onClose ? undefined : "100vh",
         background: PAGE_BG,
         fontFamily: '"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
-        color: "#FEF8EA",
+        color: CANON.cream,
         padding: "32px 16px 80px",
         display: "flex",
         flexDirection: "column",
@@ -297,7 +297,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
 
       {/* Title */}
       {!isJoinStep && (
-        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 24, textAlign: "center", color: "#FEF8EA" }}>
+        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 24, textAlign: "center", color: CANON.cream }}>
           How does the no-spoiler mechanic work?
         </div>
       )}
@@ -319,7 +319,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
             <button
               onClick={handleSignup}
               style={{
-                background: "#FEF8EA",
+                background: CANON.cream,
                 color: PAGE_BG,
                 border: "none",
                 borderRadius: 9999,
@@ -353,7 +353,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
         }}
       >
         {!isJoinStep && (
-          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.55, textAlign: "center", color: "#FEF8EA", opacity: 0.9 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.55, textAlign: "center", color: CANON.cream, opacity: 0.9 }}>
             {panels[step].caption}
           </div>
         )}
@@ -366,14 +366,14 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
           disabled={step === 0}
           style={{
             background: "transparent",
-            border: "2px solid #FEF8EA",
+            border: "2px solid var(--canon-cream,#fef8ea)",
             borderRadius: 9999,
             padding: "8px 18px",
             cursor: step === 0 ? "default" : "pointer",
             opacity: step === 0 ? 0.3 : 1,
             fontSize: 14,
             fontWeight: 600,
-            color: "#FEF8EA",
+            color: CANON.cream,
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
@@ -391,7 +391,7 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
                 width: 10,
                 height: 10,
                 borderRadius: "50%",
-                background: i === step ? "#FEF8EA" : "rgba(253,248,236,0.35)",
+                background: i === step ? CANON.cream : "rgba(253,248,236,0.35)",
                 cursor: "pointer",
               }}
             />
@@ -406,13 +406,13 @@ export default function HowItWorks({ onClose, onSignup }: { onClose?: () => void
             onClick={() => setStep(s => s + 1)}
             style={{
               background: isLastPanel ? "rgba(253,248,236,0.92)" : "transparent",
-              border: "2px solid #FEF8EA",
+              border: "2px solid var(--canon-cream,#fef8ea)",
               borderRadius: 9999,
               padding: "8px 18px",
               cursor: "pointer",
               fontSize: 14,
               fontWeight: 600,
-              color: isLastPanel ? PAGE_BG : "#FEF8EA",
+              color: isLastPanel ? PAGE_BG : CANON.cream,
               display: "inline-flex",
               alignItems: "center",
               gap: 6,

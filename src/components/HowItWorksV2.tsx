@@ -140,7 +140,7 @@ function basePillStyle(type: PillType, align: PillAlign, slotIndex: number): Rea
     boxSizing: "border-box",
     borderWidth: BORDER_W,
     ...(isYourPost
-      ? { background: GREEN, color: "#FEF8EA", borderStyle: "solid" as const, borderColor: "transparent" }
+      ? { background: GREEN, color: CANON.cream, borderStyle: "solid" as const, borderColor: "transparent" }
       : { background: "transparent", color, borderStyle: "dashed" as const, borderColor: color }),
   };
 }
@@ -353,7 +353,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
         minHeight: onClose ? undefined : "100vh",
         background: PAGE_BG,
         fontFamily: '"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
-        color: "#FEF8EA",
+        color: CANON.cream,
         padding: "24px 16px 40px",
         display: "flex",
         flexDirection: "column",
@@ -396,7 +396,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
             <button
               onClick={handleSignup}
               style={{
-                background: "#FEF8EA",
+                background: CANON.cream,
                 color: PAGE_BG,
                 border: "none",
                 borderRadius: 9999,
@@ -428,7 +428,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                     fontSize: 24,
                     fontWeight: 900,
                     lineHeight: 1.2,
-                    color: "#FEF8EA",
+                    color: CANON.cream,
                     marginBottom: 32,
                     whiteSpace: "pre-line",
                   }}
@@ -441,7 +441,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                   fontSize: 15,
                   fontWeight: 700,
                   lineHeight: 1.6,
-                  color: "#FEF8EA",
+                  color: CANON.cream,
                   whiteSpace: "pre-line",
                 }}
               >
@@ -467,12 +467,12 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
             style={{
               width: 36, height: 36,
               background: "transparent",
-              border: "2px solid #FEF8EA",
+              border: "2px solid var(--canon-cream,#fef8ea)",
               borderRadius: "50%",
               padding: 0,
               cursor: step === 0 ? "default" : "pointer",
               opacity: step === 0 ? 0.3 : 1,
-              color: "#FEF8EA",
+              color: CANON.cream,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -491,7 +491,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                 width: 10,
                 height: 10,
                 borderRadius: "50%",
-                background: i === step ? "#FEF8EA" : "rgba(253,248,236,0.35)",
+                background: i === step ? CANON.cream : "rgba(253,248,236,0.35)",
                 cursor: "pointer",
               }}
             />
@@ -509,7 +509,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                 top: "50%",
                 transform: "translateY(-50%)",
                 background: "rgba(253,248,236,0.92)",
-                border: "2px solid #FEF8EA",
+                border: "2px solid var(--canon-cream,#fef8ea)",
                 borderRadius: 9999,
                 padding: "8px 18px",
                 cursor: "pointer",
@@ -527,11 +527,11 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
               style={{
                 width: 36, height: 36,
                 background: "transparent",
-                border: "2px solid #FEF8EA",
+                border: "2px solid var(--canon-cream,#fef8ea)",
                 borderRadius: "50%",
                 padding: 0,
                 cursor: "pointer",
-                color: "#FEF8EA",
+                color: CANON.cream,
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",

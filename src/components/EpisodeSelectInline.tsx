@@ -1,4 +1,5 @@
 import React from "react";
+import { CANON } from "../styles/canon";
 
 // Inline season/episode <select>. Extracted verbatim from SearchShows.tsx
 // (2026-06-08, onboarding arc) so the new first-login OnboardingModal and the
@@ -47,7 +48,7 @@ export default function EpisodeSelectInline({
         if (m) onChange({ s: Number(m[1]), e: Number(m[2]) });
       }}
       style={{
-        background: "#FEF8EA", color: "#000",
+        background: CANON.cream, color: "#000",
         border: "1px solid var(--dos-border)", borderRadius: 6,
         padding: "4px 8px", fontSize: 13, width: "100%",
         ...style,

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { CANON } from "../styles/canon";
 import { createPortal } from "react-dom";
 import { Search } from "lucide-react";
 import type { Show } from "../lib/db";
@@ -371,8 +372,8 @@ export default function SearchShows({
                 {(["first", "rewatch"] as const).map(choice => {
                   const row = (
                     <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 14 }} onClick={() => setWatchChoice(choice)}>
-                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: "#FEF8EA", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {watchChoice === choice && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: "#7abd8e" }} />}
+                      <div style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: "none", background: CANON.cream, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {watchChoice === choice && <div className="radio-dot" style={{ width: 10, height: 10, borderRadius: "50%", background: CANON.personal }} />}
                       </div>
                       {choice === "first" ? "First time" : "Rewatching"}
                     </div>
@@ -462,7 +463,7 @@ export default function SearchShows({
               {(() => {
                 const submitDisabled = !canSubmit || !roomName.trim();
                 return (
-                  <button className="btn post" onClick={handleCreateRoom} disabled={submitDisabled} style={{ width: "100%", background: "#dea838", borderColor: "#dea838", color: "#FEF8EA", opacity: submitDisabled ? 0.4 : 1 }}>
+                  <button className="btn post" onClick={handleCreateRoom} disabled={submitDisabled} style={{ width: "100%", background: CANON.accent, borderColor: CANON.accent, color: CANON.cream, opacity: submitDisabled ? 0.4 : 1 }}>
                     {creating ? "Creating…" : "Create room"}
                   </button>
                 );

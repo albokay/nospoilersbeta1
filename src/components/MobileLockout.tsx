@@ -1,4 +1,5 @@
 import React from "react";
+import { CANON } from "../styles/canon";
 import SidebarLogo from "./SidebarLogo";
 
 /**
@@ -27,7 +28,7 @@ export default function MobileLockout() {
         <p style={{
           margin: 0, fontSize: 13, fontWeight: 700,
           letterSpacing: "0.12em", textTransform: "lowercase",
-          color: "#FEF8EA",
+          color: CANON.cream,
         }}>
           talk. together. whenever.
         </p>
@@ -36,7 +37,7 @@ export default function MobileLockout() {
         margin: 0,
         maxWidth: 320,
         fontSize: 16, fontWeight: 600, lineHeight: 1.5,
-        color: "#FEF8EA", textAlign: "center",
+        color: CANON.cream, textAlign: "center",
       }}>
         Sidebar isn&rsquo;t ready for your phone yet. Please sign up / sign in on your desktop.
       </p>

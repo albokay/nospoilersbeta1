@@ -1,22 +1,23 @@
 import React, { useEffect, useState } from "react";
+import { CANON } from "../styles/canon";
 
 const BLOCK = 52;
 
 const BLOCKS = [
-  { id: "green",     color: "#dea838", z: 1, blend: "color-burn" },
-  { id: "white",     color: "#FEF8EA", z: 2, blend: "color-burn" },
-  { id: "lightBlue", color: "#adc8d7", z: 3, blend: "color-burn" },
-  { id: "orange",    color: "#f45028", z: 4, blend: "multiply"   },
-  { id: "blue",      color: "#355eb8", z: 5, blend: "color-burn" },
+  { id: "green",     color: CANON.accent, z: 1, blend: "color-burn" },
+  { id: "white",     color: CANON.cream, z: 2, blend: "color-burn" },
+  { id: "lightBlue", color: CANON.friend, z: 3, blend: "color-burn" },
+  { id: "orange",    color: CANON.alert, z: 4, blend: "multiply"   },
+  { id: "blue",      color: CANON.identity, z: 5, blend: "color-burn" },
 ] as const;
 
 // Context background colors set by body classes (see theme.ts).
 // When a block matches the current context bg, it disappears against its
 // surroundings — render that block 10% darker so it stays visible.
 const CONTEXT_BG: Record<string, string> = {
-  "group-context":  "#adc8d7", // matches the lightBlue block
-  "public-context": "#dea838", // matches the green block (canon yellow)
-  // default (private/home) bg is #7abd8e — doesn't match any block, so no darkening.
+  "group-context":  CANON.friend, // matches the lightBlue block
+  "public-context": CANON.accent, // matches the green block (canon yellow)
+  // default (private/home) bg is var(--canon-personal,#7abd8e) — doesn't match any block, so no darkening.
 };
 
 function darken10(hex: string): string {
@@ -217,7 +218,7 @@ export default function SidebarLogo({
             // doesn't vanish against the page.
             const blockBg =
               block.id === "lightBlue"
-                ? (bg === "sky" ? "#7abd8e" : block.color) // sky cell: green on sky bg, sky on green bg
+                ? (bg === "sky" ? CANON.personal : block.color) // sky cell: green on sky bg, sky on green bg
                 : contextBg && contextBg.toLowerCase() === block.color.toLowerCase()
                   ? darken10(block.color)
                   : block.color;

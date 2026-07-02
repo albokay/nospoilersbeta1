@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { CANON } from "../styles/canon";
 import { useNavigate } from "react-router-dom";
 import { CircleCheck, AlertTriangle, MessageSquare } from "lucide-react";
 import { useAuth } from "../lib/auth";
@@ -70,7 +71,7 @@ export default function AllowResponsePage({ id }: { id: string }) {
           <button
             className="btn"
             onClick={() => setShowAuth(true)}
-            style={{ background: "#FEF8EA", border: "none", color: "#dea838", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
+            style={{ background: CANON.cream, border: "none", color: CANON.accent, padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
           >
             Sign in
           </button>
@@ -134,7 +135,7 @@ export default function AllowResponsePage({ id }: { id: string }) {
         <p style={{
           fontSize: 14, fontStyle: "italic", color: "rgba(253,248,236,0.8)",
           maxWidth: 460, marginBottom: 16, padding: "12px 16px",
-          background: "rgba(253,248,236,0.06)", borderLeft: "3px solid #dea838", borderRadius: 4, textAlign: "left",
+          background: "rgba(253,248,236,0.06)", borderLeft: "3px solid var(--canon-accent,#dea838)", borderRadius: 4, textAlign: "left",
         }}>
           "{info.message}"
         </p>
@@ -166,7 +167,7 @@ export default function AllowResponsePage({ id }: { id: string }) {
         className="btn"
         onClick={handleApprove}
         disabled={status === "approving"}
-        style={{ background: "#FEF8EA", border: "none", color: "#dea838", padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
+        style={{ background: CANON.cream, border: "none", color: CANON.accent, padding: "10px 28px", fontSize: 15, fontWeight: 700 }}
       >
         {status === "approving" ? "Allowing…" : `Allow @${info?.requesterUsername}`}
       </button>

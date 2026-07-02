@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import { insertReply, fetchPrompts, logThreadPrompt } from "../lib/db";
 import type { PromptRow } from "../lib/db";
@@ -284,7 +285,7 @@ export default function ResponseComposer({
             <button
               className="btn"
               onClick={onCancel}
-              style={{ background: "#FEF8EA", border: "2px solid #dea838", color: "#dea838" }}
+              style={{ background: CANON.cream, border: "2px solid var(--canon-accent,#dea838)", color: CANON.accent }}
             >
               Done
             </button>
@@ -327,7 +328,7 @@ export default function ResponseComposer({
         style={{
           width: "100%",
           boxSizing: "border-box",
-          background: "#FEF8EA",
+          background: CANON.cream,
           color: "#000",
           border: "none",
           borderRadius: 8,
@@ -371,7 +372,7 @@ export default function ResponseComposer({
             style={{
               width: "100%",
               boxSizing: "border-box",
-              background: "#FEF8EA",
+              background: CANON.cream,
               color: "#000",
               border: "none",
               borderRadius: 8,
@@ -409,7 +410,7 @@ export default function ResponseComposer({
             className="btn"
             onClick={() => handleSubmit(false)}
             disabled={submitting || !body.trim()}
-            style={{ background: "#FEF8EA", border: "2px solid #dea838", color: "#dea838" }}
+            style={{ background: CANON.cream, border: "2px solid var(--canon-accent,#dea838)", color: CANON.accent }}
           >
             {submitting ? "Sending…" : "Send request"}
           </button>
@@ -417,13 +418,13 @@ export default function ResponseComposer({
           // Three-way context resolves from (inGroupContext, threadIsPublic).
           // Each context gets a white-fill submit button with its canon
           // accent color as text + border, and a context-specific label.
-          // Canon palette: #dea838 yellow (public), #7abd8e green
-          // (private / default), #1a3a4a navy (friend room).
+          // Canon palette: var(--canon-accent,#dea838) yellow (public), var(--canon-personal,#7abd8e) green
+          // (private / default), var(--canon-dark,#1a3a4a) navy (friend room).
           const accent = inGroupContext
-            ? "#1a3a4a"
+            ? CANON.dark
             : threadIsPublic
-              ? "#dea838"
-              : "#7abd8e";
+              ? CANON.accent
+              : CANON.personal;
           const label = inGroupContext
             ? "Send to the room"
             : threadIsPublic
@@ -434,7 +435,7 @@ export default function ResponseComposer({
               className="btn"
               onClick={() => handleSubmit(false)}
               disabled={submitting || !body.trim()}
-              style={{ background: "#FEF8EA", border: `2px solid ${accent}`, color: accent }}
+              style={{ background: CANON.cream, border: `2px solid ${accent}`, color: accent }}
             >
               {submitting ? "Posting…" : label}
             </button>

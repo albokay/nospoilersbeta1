@@ -101,7 +101,7 @@ export default function StickyNote({
   if (!ignoreViewportGate && !wide) return null;
 
   const paper = tone === "yellow" ? CANON.accent : CANON.cream;
-  const text = textColor ?? (tone === "yellow" ? "#FEF8EA" : CANON.identity);
+  const text = textColor ?? (tone === "yellow" ? CANON.cream : CANON.identity);
   const xColor = dismissColor ?? (text.startsWith("#") ? withAlpha(text, 0.5) : text);
 
   const rise = entered ? 0 : STICKY.ENTRY_RISE_PX;

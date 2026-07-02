@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { CANON } from "../styles/canon";
 import { X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useLocation } from "react-router-dom";
@@ -89,7 +90,7 @@ export default function FeedbackWidget({
             transform: "translateY(-50%)",
             writingMode: "vertical-rl" as React.CSSProperties["writingMode"],
             zIndex: 10000,
-            background: "#f45028", color: "#FEF8EA",
+            background: CANON.alert, color: CANON.cream,
             padding: "14px 9px",
             cursor: "pointer", fontWeight: 700, fontSize: 13,
             letterSpacing: 0.4, borderRadius: "0 8px 8px 0",
@@ -172,7 +173,7 @@ export default function FeedbackWidget({
               rows={6}
               style={{
                 width: "100%", boxSizing: "border-box",
-                background: "#FEF8EA", color: "#000",
+                background: CANON.cream, color: "#000",
                 border: "2px solid var(--dos-border)", borderRadius: 8,
                 padding: "10px 12px", fontSize: 14,
                 resize: "vertical", lineHeight: 1.5,

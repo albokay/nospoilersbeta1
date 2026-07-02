@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { CANON } from "../styles/canon";
 import { supabase } from "../lib/supabaseClient";
 
 // Bump this key whenever the beta password rotates — every already-unlocked
@@ -94,7 +95,7 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
           style={{ padding: "10px 14px", fontSize: 15, border: "1px solid #ccc", borderRadius: 6, outline: "none" }}
         />
         {error && <div style={{ fontSize: 13, color: "#c00" }}>incorrect password</div>}
-        <button type="submit" disabled={loading} style={{ padding: "10px 14px", fontSize: 15, background: "#222", color: "#FEF8EA", border: "none", borderRadius: 6, cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
+        <button type="submit" disabled={loading} style={{ padding: "10px 14px", fontSize: 15, background: "#222", color: CANON.cream, border: "none", borderRadius: 6, cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
           {loading ? "checking…" : "enter"}
         </button>
       </form>

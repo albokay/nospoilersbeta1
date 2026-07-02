@@ -1,4 +1,5 @@
 import React from "react";
+import { CANON } from "../styles/canon";
 import SidebarLogo from "./SidebarLogo";
 import { captureError } from "../lib/sentry";
 
@@ -69,8 +70,8 @@ function ErrorScreen() {
         gap: 20,
         padding: "32px 24px",
         textAlign: "center",
-        background: "#7abd8e", // canon green (--dos-bg default surface)
-        color: "#FEF8EA",
+        background: CANON.personal, // canon green (--dos-bg default surface)
+        color: CANON.cream,
         fontFamily:
           "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
       }}
@@ -92,8 +93,8 @@ function ErrorScreen() {
           onClick={() => window.location.reload()}
           style={{
             background: "transparent",
-            color: "#FEF8EA",
-            border: "2px solid #FEF8EA",
+            color: CANON.cream,
+            border: "2px solid var(--canon-cream,#fef8ea)",
             borderRadius: 24,
             padding: "10px 22px",
             fontSize: 15,

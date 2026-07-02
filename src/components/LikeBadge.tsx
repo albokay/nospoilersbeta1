@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { CANON } from "../styles/canon";
 import { Star } from "lucide-react";
 import Modal from "./Modal";
 
@@ -78,7 +79,7 @@ export default function LikeBadge({
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#FEF8EA",
+          color: CANON.cream,
         }}
       >
         <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>
