@@ -14,13 +14,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, SquarePen, X } from "lucide-react";
+import { ArrowLeft, Settings, SquarePen, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen,
-  fetchHighlights, fetchPeopleGroupsForUser,
+  fetchHighlights, fetchPeopleGroupsForUser, fetchRoomDigestOptOut, setRoomDigestOptOut,
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
@@ -66,6 +66,32 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const [show, setShow] = useState<Show | null>(null);
   const [parentGroupId, setParentGroupId] = useState<string | null>(null);
   const [groupName, setGroupName] = useState<string | null>(null); // "[show] with [group]" header
+  // Email-digest subscription for THIS room + viewer. Lazy — fetched only when
+  // the gear modal opens (no extra room-load egress). null = loading/unknown.
+  // digestOptOut=true → unsubscribed. Backed by get/set_room_digest_opt_out.
+  const [digestModalOpen, setDigestModalOpen] = useState(false);
+  const [digestOptOut, setDigestOptOut] = useState<boolean | null>(null);
+  const [digestBusy, setDigestBusy] = useState(false);
+  async function openDigestModal() {
+    if (!roomId) return;
+    setDigestOptOut(null);
+    setDigestModalOpen(true);
+    try { setDigestOptOut(await fetchRoomDigestOptOut(roomId)); }
+    catch { /* leave null → modal shows Loading; user can close + retry */ }
+  }
+  async function applyDigest(nextOptOut: boolean) {
+    if (!roomId || digestBusy) return;
+    setDigestBusy(true);
+    try {
+      await setRoomDigestOptOut(roomId, nextOptOut);
+      setDigestOptOut(nextOptOut);
+      setDigestModalOpen(false);
+    } catch {
+      alert("Couldn't update your email setting. Please try again.");
+    } finally {
+      setDigestBusy(false);
+    }
+  }
   const [progressForShow, setProgressForShow] = useState<ProgressEntry | null>(null);
   const [feedEntries, setFeedEntries] = useState<V2RoomFeedEntry[]>([]);
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
@@ -490,11 +516,21 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           title="Home"
         ><SidebarLogo scale={0.45} blocksOpacity={1} /></div>
 
-        <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)" }}>
+        <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap" }}>
           <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: C.cream, margin: 0 }}>
             {show?.name ?? "Show"}
             {groupName && <span style={{ color: C.blue }}> with {groupName}</span>}
           </h1>
+          {!privateOnly && roomId && (
+            <button
+              onClick={openDigestModal}
+              aria-label="Email updates for this room"
+              title="Email updates for this room"
+              style={{ background: "transparent", border: "none", cursor: "pointer", color: C.cream, display: "inline-flex", alignItems: "center", padding: 4, opacity: 0.85 }}
+            >
+              <Settings size={22} />
+            </button>
+          )}
         </div>
 
         <div style={{ position: "absolute", left: 160, bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
@@ -680,6 +716,33 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           {show && <SIKWSticky groupId={roomId} currentUserId={user.id} seasons={show.seasons} />}
         </>
       )}
+
+      {/* Email-digest subscription gear modal (friend room only). Mirrors the
+          dashboard "Leave this group?" modal. Backend: get/set_room_digest_opt_out. */}
+      {digestModalOpen && roomId && (
+        <div style={digestOverlay} onClick={() => { if (!digestBusy) setDigestModalOpen(false); }}>
+          <div style={digestCard} onClick={(e) => e.stopPropagation()}>
+            <button style={digestClose} onClick={() => setDigestModalOpen(false)} aria-label="Close"><X size={16} color={C.cream} /></button>
+            {digestOptOut === null ? (
+              <div style={{ color: C.cream, fontSize: 15, padding: "6px 0" }}>Loading…</div>
+            ) : digestOptOut ? (
+              <>
+                <div style={digestTitle}>Resubscribe to email updates for this room?</div>
+                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(false)}>resubscribe</button>
+                <div style={digestDivider} />
+                <div style={digestSub}>You'll get the daily digest again when this room has new activity you haven't seen.</div>
+              </>
+            ) : (
+              <>
+                <div style={digestTitle}>Unsubscribe from email updates for this room?</div>
+                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(true)}>unsubscribe</button>
+                <div style={digestDivider} />
+                <div style={digestSub}>You'll stop getting the daily digest for this room. You can resubscribe here anytime.</div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -741,3 +804,25 @@ const composeCloseX: React.CSSProperties = {
   color: CANON.alert, borderRadius: "50%", width: 34, height: 34, padding: 0,
   display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: "pointer", zIndex: 10,
 };
+// Digest gear modal — mirrors the dashboard "Leave this group?" look (accent
+// card, cream title, alert-outline action button).
+const digestOverlay: React.CSSProperties = {
+  position: "fixed", inset: 0, background: "rgba(26,58,74,0.25)", display: "flex",
+  alignItems: "center", justifyContent: "center", zIndex: 1000,
+};
+const digestCard: React.CSSProperties = {
+  background: C.yellow, borderRadius: 15, padding: "28px 32px", width: "min(360px, 88vw)",
+  position: "relative", textAlign: "center",
+};
+const digestClose: React.CSSProperties = {
+  position: "absolute", top: 16, right: 16, border: "none", background: "transparent", cursor: "pointer",
+};
+const digestTitle: React.CSSProperties = {
+  color: CANON.cream, fontSize: 15, fontWeight: 600, letterSpacing: -0.5, marginBottom: 16,
+};
+const alertBtn: React.CSSProperties = {
+  border: `2px solid ${CANON.alert}`, background: "transparent", color: CANON.alert,
+  fontWeight: 700, fontSize: 14, padding: "10px 32px", borderRadius: 9999, cursor: "pointer",
+};
+const digestDivider: React.CSSProperties = { height: 1, background: "rgba(253,248,236,0.5)", margin: "20px 0 14px" };
+const digestSub: React.CSSProperties = { color: CANON.cream, fontSize: 12, opacity: 0.9, lineHeight: 1.45 };
