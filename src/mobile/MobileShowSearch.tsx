@@ -1,3 +1,4 @@
+import { CANON } from "../styles/canon";
 import React, { useEffect, useRef, useState } from "react";
 import { Search, Tv } from "lucide-react";
 import LoadingDots from "../components/LoadingDots";
@@ -99,7 +100,7 @@ export default function MobileShowSearch({
             border: "2px solid rgba(253,248,236,0.4)",
             borderRadius: 10,
             background: "rgba(253,248,236,0.08)",
-            color: "#FEF8EA",
+            color: CANON.cream,
             outline: "none",
             boxSizing: "border-box",
             WebkitAppearance: "none",

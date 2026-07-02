@@ -1,3 +1,4 @@
+import { CANON } from "../styles/canon";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, LogOut } from "lucide-react";
@@ -111,8 +112,8 @@ export default function MobileRooms() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "var(--dos-bg, #7abd8e)",
-      color: "#FEF8EA",
+      background: "var(--dos-bg, var(--canon-personal,#7abd8e))",
+      color: CANON.cream,
       padding: "24px 20px 48px",
       boxSizing: "border-box",
     }}>
@@ -137,7 +138,7 @@ export default function MobileRooms() {
             onClick={async () => { await signOut(); navigate("/m"); }}
             style={{
               background: "transparent",
-              color: "#FEF8EA",
+              color: CANON.cream,
               border: "none",
               fontSize: 13,
               fontWeight: 600,
@@ -241,7 +242,7 @@ export default function MobileRooms() {
                       style={{
                         width: 10, height: 10,
                         borderRadius: 999,
-                        background: "#dea838",
+                        background: CANON.accent,
                         flexShrink: 0,
                         opacity: 1,
                       }}

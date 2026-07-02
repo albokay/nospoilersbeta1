@@ -1,3 +1,4 @@
+import { CANON } from "../styles/canon";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, CheckCircle2 } from "lucide-react";
@@ -119,8 +120,8 @@ export default function MobileInvite({ groupId }: { groupId: string }) {
 
   const wrapper: React.CSSProperties = {
     minHeight: "100vh",
-    background: "var(--dos-bg, #7abd8e)",
-    color: "#FEF8EA",
+    background: "var(--dos-bg, var(--canon-personal,#7abd8e))",
+    color: CANON.cream,
     padding: "16px 20px 32px",
     boxSizing: "border-box",
   };
@@ -143,8 +144,8 @@ export default function MobileInvite({ groupId }: { groupId: string }) {
         <button
           onClick={() => navigate("/m/rooms", { replace: true })}
           style={{
-            background: "transparent", color: "#FEF8EA",
-            border: "2px solid #FEF8EA",
+            background: "transparent", color: CANON.cream,
+            border: "2px solid var(--canon-cream,#fef8ea)",
             borderRadius: 9999, padding: "10px 24px",
             fontSize: 14, fontWeight: 700, cursor: "pointer",
             fontFamily: "inherit",
@@ -170,7 +171,7 @@ export default function MobileInvite({ groupId }: { groupId: string }) {
             onClick={() => navigate(`/m/rooms/${groupId}`)}
             disabled={submitting}
             style={{
-              background: "transparent", color: "#FEF8EA",
+              background: "transparent", color: CANON.cream,
               border: "none",
               fontSize: 15, fontWeight: 600, cursor: submitting ? "default" : "pointer",
               fontFamily: "inherit", opacity: submitting ? 0.55 : 0.85,
@@ -222,8 +223,8 @@ export default function MobileInvite({ groupId }: { groupId: string }) {
                 fontWeight: 800,
                 fontFamily: "inherit",
                 background: "transparent",
-                color: "#FEF8EA",
-                border: "2px solid #FEF8EA",
+                color: CANON.cream,
+                border: "2px solid var(--canon-cream,#fef8ea)",
                 borderRadius: 9999,
                 cursor: "pointer",
                 marginBottom: 10,
@@ -239,7 +240,7 @@ export default function MobileInvite({ groupId }: { groupId: string }) {
                 fontSize: 16,
                 fontWeight: 800,
                 fontFamily: "inherit",
-                background: "#FEF8EA",
+                background: CANON.cream,
                 color: "var(--dos-bg)",
                 border: "none",
                 borderRadius: 9999,
@@ -291,7 +292,7 @@ export default function MobileInvite({ groupId }: { groupId: string }) {
                   border: "2px solid rgba(253,248,236,0.4)",
                   borderRadius: 10,
                   background: "rgba(253,248,236,0.08)",
-                  color: "#FEF8EA",
+                  color: CANON.cream,
                   outline: "none",
                   boxSizing: "border-box",
                   WebkitAppearance: "none",
@@ -302,7 +303,7 @@ export default function MobileInvite({ groupId }: { groupId: string }) {
             {submitError && (
               <div style={{
                 marginBottom: 12,
-                color: "#FEF8EA",
+                color: CANON.cream,
                 background: "rgba(244,80,40,0.9)",
                 padding: "10px 14px",
                 borderRadius: 8,
@@ -322,7 +323,7 @@ export default function MobileInvite({ groupId }: { groupId: string }) {
                 fontSize: 18,
                 fontWeight: 800,
                 fontFamily: "inherit",
-                background: canSubmit ? "#FEF8EA" : "rgba(253,248,236,0.4)",
+                background: canSubmit ? CANON.cream : "rgba(253,248,236,0.4)",
                 color: "var(--dos-bg)",
                 border: "none",
                 borderRadius: 9999,

@@ -1,3 +1,4 @@
+import { CANON } from "../styles/canon";
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { DoorOpen, UserPlus, ClipboardList, MessageSquareText, Blend, ShieldCheck } from "lucide-react";
@@ -46,7 +47,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--dos-bg, #7abd8e)", color: "#FEF8EA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--dos-bg, var(--canon-personal,#7abd8e))", color: CANON.cream }}>
       {/* ── Fixed top-right sign-in shortcut ── */}
       {/* z-index 100 keeps it above the parallax narrative's fixed-position */}
       {/* AnimatedLogo (z-index 96 in HomepageNarrative). */}
@@ -58,8 +59,8 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
           right: 14,
           zIndex: 100,
           background: "transparent",
-          color: "#FEF8EA",
-          border: "2px solid #FEF8EA",
+          color: CANON.cream,
+          border: "2px solid var(--canon-cream,#fef8ea)",
           borderRadius: 9999,
           padding: "8px 18px",
           fontSize: 14,
@@ -81,7 +82,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
           maxWidth: 560, textAlign: "center",
           margin: "80px 16px 40px",
           fontSize: 20, fontWeight: 800,
-          color: "#FEF8EA", lineHeight: 1.3,
+          color: CANON.cream, lineHeight: 1.3,
         }}>
           Watching TV with friends usually<br />
           means spoilers or keeping quiet.<br />
@@ -90,7 +91,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
 
         <p style={{
           fontSize: 20, fontWeight: 800,
-          color: "#FEF8EA", margin: "8px 16px 40px", textAlign: "center",
+          color: CANON.cream, margin: "8px 16px 40px", textAlign: "center",
         }}>
           Here&rsquo;s how it works:
         </p>
@@ -145,9 +146,9 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
               width: "min(288px, 90vw)",
               padding: "14px 16px",
               borderRadius: 12,
-              border: "2px solid #f45028",
+              border: "2px solid var(--canon-alert,#f45028)",
               background: "transparent",
-              color: "#f45028",
+              color: CANON.alert,
               fontSize: 13,
               fontWeight: 600,
               lineHeight: 1.5,
@@ -164,7 +165,7 @@ export default function MobileNarrative({ hideBottom = false }: { hideBottom?: b
                 onClick={() => navigate("/m/auth")}
                 style={{
                   width: "100%", maxWidth: 420,
-                  background: "#FEF8EA", color: "var(--dos-bg)", border: "none",
+                  background: CANON.cream, color: "var(--dos-bg)", border: "none",
                   borderRadius: 9999, padding: "14px 0",
                   fontSize: 18, fontWeight: 800, cursor: "pointer",
                   letterSpacing: "0.02em",

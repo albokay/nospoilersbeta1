@@ -1,3 +1,4 @@
+import { CANON } from "../styles/canon";
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
@@ -82,7 +83,7 @@ export default function MobileAuth() {
     border: "2px solid rgba(253,248,236,0.4)",
     borderRadius: 10,
     background: "rgba(253,248,236,0.08)",
-    color: "#FEF8EA",
+    color: CANON.cream,
     outline: "none",
     boxSizing: "border-box",
     WebkitAppearance: "none",
@@ -93,8 +94,8 @@ export default function MobileAuth() {
     return (
       <div style={{
         minHeight: "100vh",
-        background: "var(--dos-bg, #7abd8e)",
-        color: "#FEF8EA",
+        background: "var(--dos-bg, var(--canon-personal,#7abd8e))",
+        color: CANON.cream,
         padding: "32px 20px",
         boxSizing: "border-box",
         display: "flex",
@@ -119,8 +120,8 @@ export default function MobileAuth() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "var(--dos-bg, #7abd8e)",
-      color: "#FEF8EA",
+      background: "var(--dos-bg, var(--canon-personal,#7abd8e))",
+      color: CANON.cream,
       padding: "32px 20px",
       boxSizing: "border-box",
       display: "flex",
@@ -175,7 +176,7 @@ export default function MobileAuth() {
 
           {error && (
             <div style={{
-              color: "#FEF8EA",
+              color: CANON.cream,
               background: "rgba(244,80,40,0.9)",
               padding: "10px 14px",
               borderRadius: 8,
@@ -197,7 +198,7 @@ export default function MobileAuth() {
               fontSize: 18,
               fontWeight: 800,
               fontFamily: "inherit",
-              background: "#FEF8EA",
+              background: CANON.cream,
               color: "var(--dos-bg)",
               border: "none",
               borderRadius: 9999,
@@ -223,7 +224,7 @@ export default function MobileAuth() {
               <button
                 type="button"
                 onClick={() => { setMode("signup"); setError(null); }}
-                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: "#FEF8EA", fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
+                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
               >
                 Create one
               </button>
@@ -233,7 +234,7 @@ export default function MobileAuth() {
               <button
                 type="button"
                 onClick={() => { setMode("signin"); setError(null); }}
-                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: "#FEF8EA", fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
+                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
               >
                 Sign in
               </button>
@@ -254,7 +255,7 @@ export default function MobileAuth() {
             }}
             style={{
               background: "transparent",
-              color: "#FEF8EA",
+              color: CANON.cream,
               border: "none",
               fontSize: 14,
               fontWeight: 600,

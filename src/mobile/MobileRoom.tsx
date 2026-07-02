@@ -1,3 +1,4 @@
+import { CANON } from "../styles/canon";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Users, MessageSquareText, Plus, UserPlus, ChevronDown } from "lucide-react";
@@ -214,8 +215,8 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
 
   const wrapper: React.CSSProperties = {
     minHeight: "100vh",
-    background: "var(--dos-bg, #7abd8e)",
-    color: "#FEF8EA",
+    background: "var(--dos-bg, var(--canon-personal,#7abd8e))",
+    color: CANON.cream,
     padding: "24px 20px 48px",
     boxSizing: "border-box",
   };
@@ -239,8 +240,8 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
         <button
           onClick={() => navigate("/m/rooms", { replace: true })}
           style={{
-            background: "transparent", color: "#FEF8EA",
-            border: "2px solid #FEF8EA",
+            background: "transparent", color: CANON.cream,
+            border: "2px solid var(--canon-cream,#fef8ea)",
             borderRadius: 9999, padding: "10px 24px",
             fontSize: 14, fontWeight: 700, cursor: "pointer",
             fontFamily: "inherit",
@@ -273,7 +274,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
         <button
           onClick={() => navigate("/m/rooms")}
           style={{
-            background: "transparent", color: "#FEF8EA",
+            background: "transparent", color: CANON.cream,
             border: "none",
             fontSize: 14, fontWeight: 600, cursor: "pointer",
             fontFamily: "inherit", opacity: 0.85,
@@ -290,7 +291,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
             aria-label="Open room menu"
             style={{
               background: "transparent",
-              color: "#FEF8EA",
+              color: CANON.cream,
               border: "none",
               padding: 0,
               margin: "0 0 4px",
@@ -338,7 +339,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
               fontSize: 15,
               fontWeight: 800,
               fontFamily: "inherit",
-              background: "#FEF8EA",
+              background: CANON.cream,
               color: "var(--dos-bg, #2a4a36)",
               border: "none",
               borderRadius: 9999,
@@ -412,7 +413,7 @@ export default function MobileRoom({ groupId }: { groupId: string }) {
           width: 56,
           height: 56,
           borderRadius: 9999,
-          background: "#FEF8EA",
+          background: CANON.cream,
           color: "var(--dos-bg, #2a4a36)",
           border: "none",
           boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
@@ -513,7 +514,7 @@ function ThreadCard({ thread, replyCount, hasNewActivity, onTap }: { thread: Thr
               style={{
                 width: 10, height: 10,
                 borderRadius: 999,
-                background: "#dea838",
+                background: CANON.accent,
                 opacity: 1,
               }}
             />

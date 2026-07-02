@@ -1,3 +1,4 @@
+import { CANON } from "../styles/canon";
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Plus, MoreVertical, Pencil, Trash2 } from "lucide-react";
@@ -234,8 +235,8 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
 
   const wrapper: React.CSSProperties = {
     minHeight: "100vh",
-    background: "var(--dos-bg, #7abd8e)",
-    color: "#FEF8EA",
+    background: "var(--dos-bg, var(--canon-personal,#7abd8e))",
+    color: CANON.cream,
     padding: "24px 20px 48px",
     boxSizing: "border-box",
   };
@@ -279,7 +280,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
         <button
           onClick={() => navigate(`/m/rooms/${groupId}`)}
           style={{
-            background: "transparent", color: "#FEF8EA",
+            background: "transparent", color: CANON.cream,
             border: "none",
             fontSize: 14, fontWeight: 600, cursor: "pointer",
             fontFamily: "inherit", opacity: 0.85,
@@ -410,7 +411,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
           width: 56,
           height: 56,
           borderRadius: 9999,
-          background: "#FEF8EA",
+          background: CANON.cream,
           color: "var(--dos-bg, #2a4a36)",
           border: "none",
           boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
@@ -447,7 +448,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
             right: 16,
             bottom: 24,
             zIndex: 101,
-            background: "#FEF8EA",
+            background: CANON.cream,
             color: "var(--dos-bg, #2a4a36)",
             borderRadius: 14,
             padding: 6,
@@ -517,7 +518,7 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
             right: 16,
             transform: "translateY(-50%)",
             zIndex: 111,
-            background: "#FEF8EA",
+            background: CANON.cream,
             color: "var(--dos-bg, #2a4a36)",
             borderRadius: 14,
             padding: "20px 18px",
@@ -535,8 +536,8 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
             </p>
             {deleteError && (
               <div style={{
-                color: "#FEF8EA",
-                background: "#f45028",
+                color: CANON.cream,
+                background: CANON.alert,
                 padding: "8px 12px",
                 borderRadius: 8,
                 fontSize: 13,
@@ -600,8 +601,8 @@ export default function MobileThread({ groupId, threadId }: { groupId: string; t
                 }}
                 disabled={deleting}
                 style={{
-                  background: "#f45028",
-                  color: "#FEF8EA",
+                  background: CANON.alert,
+                  color: CANON.cream,
                   border: "none",
                   borderRadius: 9999,
                   padding: "9px 18px",
@@ -643,7 +644,7 @@ function sheetItemStyle(opts?: { danger?: boolean; subtle?: boolean }): React.CS
   return {
     width: "100%",
     background: "transparent",
-    color: danger ? "#f45028" : "var(--dos-bg, #2a4a36)",
+    color: danger ? CANON.alert : "var(--dos-bg, #2a4a36)",
     border: "none",
     borderRadius: 10,
     padding: "14px 16px",
@@ -695,8 +696,8 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
   return (
     <div style={{
       background: "transparent",
-      border: "2px solid #FEF8EA",
-      color: "#FEF8EA",
+      border: "2px solid var(--canon-cream,#fef8ea)",
+      color: CANON.cream,
       borderRadius: 10,
       padding: "12px 14px",
     }}>
@@ -715,7 +716,7 @@ function ReplyCard({ reply, isAuthor, onKebab }: { reply: Reply; isAuthor: boole
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontVariantNumeric: "tabular-nums" }}>{tag}</span>
           {isAuthor && (
-            <button onClick={onKebab} aria-label="More actions" style={{ ...kebabButtonStyle, color: "#FEF8EA" }}>
+            <button onClick={onKebab} aria-label="More actions" style={{ ...kebabButtonStyle, color: CANON.cream }}>
               <MoreVertical size={16} strokeWidth={2.2} />
             </button>
           )}
@@ -760,8 +761,8 @@ function formatRelativeShort(ts: number): string {
 
 function pillButtonStyle(): React.CSSProperties {
   return {
-    background: "transparent", color: "#FEF8EA",
-    border: "2px solid #FEF8EA",
+    background: "transparent", color: CANON.cream,
+    border: "2px solid var(--canon-cream,#fef8ea)",
     borderRadius: 9999, padding: "10px 24px",
     fontSize: 14, fontWeight: 700, cursor: "pointer",
     fontFamily: "inherit",
