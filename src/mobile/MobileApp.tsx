@@ -4,6 +4,7 @@ import { useAuth } from "../lib/auth";
 import MobileNarrative from "./MobileNarrative";
 import MobileAuth from "./MobileAuth";
 import MobileDashboard from "./MobileDashboard";
+import MobileStub from "./MobileStub";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Only admins can reach /m while the mobile rebuild is
@@ -25,7 +26,9 @@ import MobileDashboard from "./MobileDashboard";
 //                   | redirect to /m/dashboard (signed in)
 //   /m/auth       → full-screen sign-in / create-account
 //                   (?returnTo= supported, validated to /m/* paths)
-//   /m/dashboard  → signed-in home (CP0 placeholder; real dashboard = CP3)
+//   /m/dashboard  → signed-in home (CP3: groups + shelves + search + sheets)
+//   /m/group/:id  → group room (CP4 — stub until built)
+//   /m/show-room/*→ show room (CP6 — stub until built)
 //   anything else → narrative (unknown/retired paths fall through)
 //
 // Auto-redirect rule: signed-in users on bare /m get bounced to /m/dashboard
@@ -62,5 +65,8 @@ export default function MobileApp() {
 
   if (subParts[0] === "auth") return <MobileAuth />;
   if (subParts[0] === "dashboard") return <MobileDashboard />;
+  // Drill-down destinations still being rebuilt (CP4 group room, CP6 rooms).
+  if (subParts[0] === "group" && subParts[1]) return <MobileStub label="This group's room" />;
+  if (subParts[0] === "show-room" && subParts[1]) return <MobileStub label="This show's room" />;
   return <MobileNarrative />;
 }
