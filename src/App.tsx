@@ -28,7 +28,7 @@ import SidebarLogo from "./components/SidebarLogo";
 // V3JournalPage + ProfilePage + ShowSection stay eager — they're the
 // primary destinations for every signed-in user.
 const AdminPage = lazy(() => import("./components/AdminPage"));
-import { Tv, EyeClosed, UsersRound, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowRight, ArrowDown, DoorOpen, UserPlus, ClipboardList, MessageSquareText, Blend, ShieldCheck, LogOut, UserPen } from "lucide-react";
+import { Tv, EyeClosed, UsersRound, ListCheck, ListChecks, Road, Eye, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowRight, ArrowDown, MessageSquareText, ShieldCheck, LogOut, UserPen } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
@@ -1330,12 +1330,12 @@ function AppShell() {
               {/* Feature grid — 6 steps, all white-filled with green text/icons */}
               {(() => {
                 const items: { Icon: React.ElementType; text: React.ReactNode }[] = [
-                  { Icon: DoorOpen,          text: "Find the show you\u2019re watching and create a room." },
-                  { Icon: UserPlus,          text: "Invite friends you love talking to." },
-                  { Icon: ClipboardList,     text: "Everyone logs their watch progress every time they sign in. Sidebar tags all writing to each user\u2019s logged progress." },
-                  { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers \u2014 as if your friends have watched just as far as you have." },
-                  { Icon: Blend,             text: (<>Sidebar filters everything according to<br />everyone&rsquo;s unique watch progress.</>) },
-                  { Icon: ShieldCheck,       text: "Nothing you read is ever ahead of where you are." },
+                  { Icon: UsersRound,        text: "Start a group with the friends you love talking to." },
+                  { Icon: ListChecks,        text: "Each friend lists what they\u2019re watching or wants to watch." },
+                  { Icon: Road,              text: "Decide what you want to watch together. Or binge ahead\u2026 your writing will become breadcrumbs for your friends as they catch up." },
+                  { Icon: Eye,               text: "Everyone logs how far they\u2019ve watched, and keeps it current as they go." },
+                  { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers. Write as if everyone\u2019s caught up to exactly where you are." },
+                  { Icon: ShieldCheck,       text: "Sidebar filters every room to each person\u2019s progress. Nothing you read is ever ahead of where you are." },
                 ];
                 return (
                   <div style={{
@@ -1465,9 +1465,10 @@ function AppShell() {
                     fontWeight: 700,
                   }}>
                     Thank you for your time and mind.<br /><br />
-                    I&rsquo;m making this site because I love stories and I love thinking about them. If you&rsquo;re reading this right now, you&rsquo;re probably the same way and I probably love talking to you about said stories. That&rsquo;s the whole point here: to make it easier to have ongoing conversations about the TV shows we love (or love to hate).<br /><br />
-                    Hopefully everything on this beta version works, even if not in its final form. There are some features that might not make sense in this early stage (like public conversations and rewatch-mode), but I wanted to include them so you have an idea of where things could head. Use the &lsquo;feedback&rsquo; tab on the right to send your thoughts &mdash; large or small. Don&rsquo;t overthink it. Your gut reactions are as important as your more considered thoughts. Just fire messages off as they occur to you.<br /><br />
-                    You&rsquo;ll find a pretend show called &ldquo;The Sidebar Protocol&rdquo; already in your journal when you sign in. It&rsquo;s there to help you see how the site works. Poke around &mdash; you can&rsquo;t break anything, and anything you post can be reset or deleted if you want a clean slate.<br /><br />
+                    I&rsquo;m making this site because I love stories and I love thinking and talking about them. If you&rsquo;re reading this right now, you&rsquo;re probably the same way. That&rsquo;s the whole point here: to make it easier to have ongoing conversations about the TV shows we love (or love to hate) with our friends.<br /><br />
+                    Sidebar is built around the handful of people you actually want to talk to. And because everyone&rsquo;s writing is tied to their own progress, it doesn&rsquo;t matter whether you&rsquo;re all watching in step, one of you is racing ahead, or someone&rsquo;s a whole season behind. If you&rsquo;re ahead, you write letters from the future, waiting to be opened when your friends unlock your writing episode by episode. If you&rsquo;re behind, you have gifts waiting for you at each episode. Nobody gets spoiled, and nobody has to stay quiet.<br /><br />
+                    I think the mechanics will inspire you to slow down and think more deeply about what you&rsquo;re watching. More time to sit with a show, more reason to feel close to your friends through it. But that&rsquo;s just me. It might inspire your watching in some way I&rsquo;d never expect, and I&rsquo;m eager to find out about that.<br /><br />
+                    Use the &lsquo;feedback&rsquo; tab on the left to send your thoughts as they come. Your gut reactions are as important as your more considered thoughts.<br /><br />
                     Excited to see how you use the site.<br /><br />
                     &mdash; Alborz
                   </div>
