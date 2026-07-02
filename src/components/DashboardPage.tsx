@@ -1603,7 +1603,7 @@ function GroupPill({ pill, name, onClick }: { pill: PillData; name: string; onCl
 function PillRightSide({ right }: { right: PillData["right"] }) {
   if (right.kind === "none") return null;
   if (right.kind === "progress") {
-    return <span style={{ fontWeight: 500, opacity: 0.85, fontSize: 13 }}>s{right.s} e{right.e}</span>;
+    return <span style={{ fontWeight: 500, fontSize: 13 }}>s{right.s} e{right.e}</span>;
   }
   const up = right.dir === "up";
   // Lucide triangle, solid fill, no outline: cream for ahead, red for behind
@@ -1875,7 +1875,10 @@ const avatarCircle: React.CSSProperties = {
 };
 const optInRow: React.CSSProperties = {
   // Right-anchored: avatars fill from the button's right edge toward center.
-  position: "absolute", right: 40, bottom: 0, transform: "translateY(50%)",
+  // Lowered 8px (translateY 50% + 8) so the pen badges clear the s/e label;
+  // .group-pill-wrap adds a matching 8px of row spacing below so the avatars
+  // don't crowd the next row.
+  position: "absolute", right: 40, bottom: 0, transform: "translateY(calc(50% + 8px))",
   display: "flex", gap: 6, pointerEvents: "none", zIndex: 5,
 };
 const optInAvatar: React.CSSProperties = {
@@ -2032,7 +2035,7 @@ function DashboardStyles() {
         letter-spacing: -1px; width: 100%; box-sizing: border-box; text-align: left;
       }
       .dash-pill--watching { background: transparent; border: 2px solid ${C.cream}; color: ${C.cream}; }
-      .dash-pill--watching .dash-pill__prog { font-weight: 500; opacity: 0.8; }
+      .dash-pill--watching .dash-pill__prog { font-weight: 500; }
       .dash-pill--want { background: ${C.cream}; border: 2px solid ${C.cream}; color: ${C.green}; }
       .dash-pill__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .dash-result {
@@ -2051,7 +2054,7 @@ function DashboardStyles() {
         box-shadow: 0 2px 6px rgba(0,0,0,0.18);
       }
       .dash-pill-wrap:hover .dash-pill-x { opacity: 1; }
-      .group-pill-wrap { position: relative; }
+      .group-pill-wrap { position: relative; margin-bottom: 8px; }
     `}</style>
   );
 }
