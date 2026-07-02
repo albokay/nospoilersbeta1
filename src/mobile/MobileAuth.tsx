@@ -2,10 +2,11 @@ import { CANON } from "../styles/canon";
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { supabase } from "../lib/supabaseClient";
 import LoadingDots from "../components/LoadingDots";
 import { maskEmailEnds } from "../lib/utils";
 
-type Mode = "signin" | "signup";
+type Mode = "signin" | "signup" | "recovery";
 
 // Sanitize a returnTo query parameter — only allow paths inside /m/* so a
 // crafted invite URL can't bounce the user to an external origin or to a
@@ -40,7 +41,12 @@ export default function MobileAuth() {
   const { signIn, signUp } = useAuth();
   const returnTo = safeReturnTo(new URLSearchParams(location.search).get("returnTo"));
 
-  const [mode, setMode] = useState<Mode>("signin");
+  // ?mode=signup opens in create-account mode — the mobile idiom for
+  // desktop's AuthModal initialMode="signup" (used by the homepage
+  // "Join / sign in" CTA and HowItWorksV2's Join button).
+  const [mode, setMode] = useState<Mode>(() =>
+    new URLSearchParams(location.search).get("mode") === "signup" ? "signup" : "signin"
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -50,11 +56,38 @@ export default function MobileAuth() {
   // session until the emailed link is clicked. Show a confirm screen instead
   // of navigating into the app.
   const [confirmSent, setConfirmSent] = useState(false);
+  // Recovery: shows the "check your email" confirmation after a successful
+  // resetPasswordForEmail call. Stays in recovery mode so the user can
+  // re-send without re-entering their email. (Mirrors AuthModal.)
+  const [recoverySent, setRecoverySent] = useState(false);
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setRecoverySent(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    if (mode === "recovery") {
+      // Same call + redirect as AuthModal: the emailed link lands on
+      // /reset-password (top-level route, exempt from AppShell chrome).
+      const { error: rpcError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      setLoading(false);
+      if (rpcError) {
+        // Supabase responds 200 even for non-existing emails (enumeration
+        // safety), so a real error here is unusual (rate limit, network).
+        setError(rpcError.message || "Couldn't send recovery email. Try again.");
+        return;
+      }
+      setRecoverySent(true);
+      return;
+    }
 
     if (mode === "signup") {
       if (!username.trim()) { setError("Please choose a username."); setLoading(false); return; }
@@ -90,11 +123,118 @@ export default function MobileAuth() {
     WebkitAppearance: "none",
   };
 
+  // ── RECOVERY MODE — separate render path, mirrors AuthModal's. ──────────
+  if (mode === "recovery") {
+    return (
+      <div style={{
+        minHeight: "100dvh",
+        background: "var(--dos-bg, var(--canon-personal,#7abd8e))",
+        color: CANON.cream,
+        padding: "32px 20px",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+      }}>
+        <div style={{ width: "100%", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", flex: 1 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: "16px 0 6px", textAlign: "center" }}>
+            Reset your password
+          </h1>
+
+          {recoverySent ? (
+            <>
+              <p style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.95, margin: "22px 0 12px", textAlign: "center" }}>
+                We've sent a recovery link to <strong>{maskEmailEnds(email.trim())}</strong>. Tap the link in your email to set a new password.
+              </p>
+              <p style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.8, margin: "0 0 24px", textAlign: "center" }}>
+                The link expires in about an hour. If you don't see it, check spam.
+              </p>
+              <button
+                type="button"
+                onClick={() => { setRecoverySent(false); setError(null); }}
+                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit", padding: "10px 0" }}
+              >
+                Send again
+              </button>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: 14, opacity: 0.85, margin: "0 0 28px", textAlign: "center", lineHeight: 1.5 }}>
+                Enter the email you signed up with. We'll send you a link to set a new password.
+              </p>
+              <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <input
+                  placeholder="Email"
+                  type="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  autoFocus
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  className="m-input"
+                  style={inputStyle}
+                />
+
+                {error && (
+                  <div style={{
+                    color: CANON.cream,
+                    background: "rgba(244,80,40,0.9)",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    marginTop: 4,
+                  }}>
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    marginTop: 8,
+                    width: "100%",
+                    padding: "16px 0",
+                    fontSize: 18,
+                    fontWeight: 800,
+                    fontFamily: "inherit",
+                    background: CANON.cream,
+                    color: "var(--dos-bg)",
+                    border: "none",
+                    borderRadius: 9999,
+                    cursor: loading ? "default" : "pointer",
+                    opacity: loading ? 0.85 : 1,
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  {loading ? <LoadingDots /> : "Send recovery email"}
+                </button>
+              </form>
+            </>
+          )}
+
+          <div style={{ marginTop: 20, textAlign: "center", fontSize: 14 }}>
+            Remembered it?{" "}
+            <button
+              type="button"
+              onClick={() => switchMode("signin")}
+              style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
+            >
+              Back to sign in
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── CONFIRM-EMAIL SENT — shown after sign-up when "Confirm email" is on. ──
   if (confirmSent) {
     return (
       <div style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: "var(--dos-bg, var(--canon-personal,#7abd8e))",
         color: CANON.cream,
         padding: "32px 20px",
@@ -120,7 +260,7 @@ export default function MobileAuth() {
 
   return (
     <div style={{
-      minHeight: "100vh",
+      minHeight: "100dvh",
       background: "var(--dos-bg, var(--canon-personal,#7abd8e))",
       color: CANON.cream,
       padding: "32px 20px",
@@ -216,6 +356,18 @@ export default function MobileAuth() {
           <p style={{ marginTop: 14, fontSize: 12, lineHeight: 1.5, opacity: 0.8, textAlign: "center" }}>
             Sidebar only uses your email to sign you in, send your friend invites, and send an occasional digest (only if your rooms have new activity you haven't seen) — emails are never shared or sold.
           </p>
+        )}
+
+        {mode === "signin" && (
+          <div style={{ marginTop: 16, textAlign: "center", fontSize: 14 }}>
+            <button
+              type="button"
+              onClick={() => switchMode("recovery")}
+              style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit", opacity: 0.9 }}
+            >
+              Forgot password?
+            </button>
+          </div>
         )}
 
         {/* ── Mode toggle ── */}

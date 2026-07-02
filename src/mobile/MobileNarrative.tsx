@@ -49,6 +49,11 @@ export default function MobileNarrative() {
   const signInTarget = onInvitePath
     ? `/m/auth?returnTo=${encodeURIComponent(location.pathname)}`
     : "/m/auth";
+  // Join CTAs open the auth screen in create-account mode — desktop parity
+  // (the homepage "Join / sign in" opens AuthModal with initialMode="signup").
+  const joinTarget = onInvitePath
+    ? `/m/auth?mode=signup&returnTo=${encodeURIComponent(location.pathname)}`
+    : "/m/auth?mode=signup";
 
   return (
     <div style={{ minHeight: "100dvh", background: "var(--dos-bg, var(--canon-personal,#7abd8e))", color: CANON.cream }}>
@@ -143,7 +148,7 @@ export default function MobileNarrative() {
         {/* ── CTAs: join + details (desktop parity, mobile targets) ── */}
         <div style={{ marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "min(288px, 90vw)" }}>
           <button
-            onClick={() => navigate(signInTarget)}
+            onClick={() => navigate(joinTarget)}
             style={{
               width: "100%", maxWidth: 420,
               background: CANON.cream, color: "var(--dos-bg)", border: "none",
@@ -244,7 +249,7 @@ export default function MobileNarrative() {
           <Suspense fallback={null}>
             <HowItWorksV2
               onClose={() => setShowDetails(false)}
-              onSignup={() => { setShowDetails(false); navigate(signInTarget); }}
+              onSignup={() => { setShowDetails(false); navigate(joinTarget); }}
             />
           </Suspense>
         </div>
