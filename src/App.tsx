@@ -144,14 +144,26 @@ export default function App() {
   // When /m is ready, flip this to route non-admins into /m instead.
   const { user: mobileGateUser, profile: mobileGateProfile, loading: mobileGateAuthLoading } = useAuth();
   const isAdmin = !!mobileGateProfile?.is_admin;
-  // /m/auth is the ONE exemption: with no session there's no profile, so
+  // Sticky device unlock: the admin bypass needs a live session, which makes
+  // SIGNED-OUT mobile surfaces (e.g. the /m homepage) unviewable on a real
+  // phone — you'd hit the lockout the moment you sign out. So the first time
+  // an admin session is seen in this browser, mark the device; from then on
+  // this device skips the lockout even when signed out. Testers' devices
+  // never get the mark. Cleared only by clearing browser data.
+  useEffect(() => {
+    if (isAdmin) { try { localStorage.setItem("ns_admin_device", "1"); } catch { /* private mode */ } }
+  }, [isAdmin]);
+  let deviceUnlocked = false;
+  try { deviceUnlocked = localStorage.getItem("ns_admin_device") === "1"; } catch { /* private mode */ }
+  // /m/auth is the ONE path exemption: with no session there's no profile, so
   // isAdmin is false and the gate would block the admin from ever signing in
-  // on a phone. Letting only the auth screen through solves the bootstrap:
-  // admin signs in there → profile resolves → full bypass. A non-admin who
-  // finds /m/auth can sign in but lands right back on the lockout for every
-  // other path, so the site stays sealed to testers.
+  // on a phone in the first place. Letting only the auth screen through
+  // solves the bootstrap: admin signs in there → profile resolves → bypass
+  // (+ the device mark above). A non-admin who finds /m/auth can sign in but
+  // lands right back on the lockout for every other path, so the site stays
+  // sealed to testers.
   const isMobileAuthPath = pathParts[0] === "m" && pathParts[1] === "auth";
-  if (onMobile && !isAdmin && !isMobileAuthPath) {
+  if (onMobile && !isAdmin && !deviceUnlocked && !isMobileAuthPath) {
     if (mobileGateAuthLoading) return null;
     if (mobileGateUser && !mobileGateProfile) return null;
     return <MobileLockout />;
