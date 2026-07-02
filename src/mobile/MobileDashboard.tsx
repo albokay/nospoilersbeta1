@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { X, LogOut, MessageCircle } from "lucide-react";
+import { X, LogOut } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import SidebarLogo from "../components/SidebarLogo";
@@ -320,8 +320,10 @@ export default function MobileDashboard() {
         <div style={groupsWrap}>
           {railGroups.map(({ group, members, pendingHandles }) => {
             const others = members.filter((m) => m.userId !== selfUserId);
-            const writingNew = writingNewByGroup.has(group.id);
-            const chatNew = chatNewByGroup.has(group.id);
+            // ONE dot per group row: new visible writing OR new chat (the
+            // split shows up inside the group — show-row dots vs the chat
+            // toggle's dot). Per Alborz 2026-07-02: no separate chat icon here.
+            const anyNew = writingNewByGroup.has(group.id) || chatNewByGroup.has(group.id);
             return (
               <button key={group.id} style={groupRow} onClick={() => navigate(`/m/group/${group.id}`)}>
                 <span style={avatarStrip}>
@@ -337,15 +339,7 @@ export default function MobileDashboard() {
                   ))}
                 </span>
                 <span style={groupRowName}>{groupAutoName(group, others)}</span>
-                <span style={rowIndicators}>
-                  {writingNew && <span style={writingDot} />}
-                  {chatNew && (
-                    <span style={{ position: "relative", display: "inline-flex" }}>
-                      <MessageCircle size={20} color={C.cream} />
-                      <span style={chatDot} />
-                    </span>
-                  )}
-                </span>
+                {anyNew && <span style={writingDot} />}
               </button>
             );
           })}
@@ -579,12 +573,8 @@ const groupRowName: React.CSSProperties = {
   flex: 1, marginLeft: 8, fontWeight: 700, fontSize: 15, letterSpacing: -0.5,
   color: C.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
 };
-const rowIndicators: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 10, flexShrink: 0 };
 const writingDot: React.CSSProperties = {
-  width: 14, height: 14, borderRadius: "50%", background: C.blue, display: "inline-block",
-};
-const chatDot: React.CSSProperties = {
-  position: "absolute", top: -4, right: -4, width: 12, height: 12, borderRadius: "50%", background: C.blue,
+  width: 14, height: 14, borderRadius: "50%", background: C.blue, display: "inline-block", flexShrink: 0,
 };
 const heroWrap: React.CSSProperties = {
   display: "flex", flexDirection: "column", alignItems: "center",
