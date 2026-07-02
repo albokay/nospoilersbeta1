@@ -288,7 +288,7 @@ export default function HighlightableBody({
    *  ran linkify via annotateTextWithSups + linkifyNodes). */
   linkify?: boolean;
   /** Highlight fill color. Default canon-yellow (entries). Reply bodies
-   *  pass canon-light-blue (`#adc8d7`) to distinguish reaction context. */
+   *  pass canon-light-blue (`var(--canon-friend,#adc8d7)`) to distinguish reaction context. */
   color?: string;
 }) {
   const tokens = tokenizeBody(body, bodyStart);

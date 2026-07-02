@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { CANON } from "../../styles/canon";
 import { ChevronUp, MessageSquare } from "lucide-react";
 import Modal from "../Modal";
 import RepliesList from "../RepliesList";
@@ -527,7 +528,7 @@ export default function V2InlineThread({
       style={{
         background: "transparent",
         border: "none",
-        color: "#FEF8EA",
+        color: CANON.cream,
         cursor: "pointer",
         fontSize: 13,
         padding: "4px 8px",
@@ -537,7 +538,7 @@ export default function V2InlineThread({
         fontFamily: "inherit",
       }}
     >
-      <ChevronUp size={13} color="#FEF8EA" /> collapse
+      <ChevronUp size={13} color={CANON.cream} /> collapse
     </button>
   );
 
@@ -545,7 +546,7 @@ export default function V2InlineThread({
     <>
       {/* Body — gravestone if tombstone; edit form if editing; plain body otherwise */}
       {isTombstone ? (
-        <div style={{ marginTop: 8, fontStyle: "italic", color: "#1a3a4a", opacity: 0.35 }}>
+        <div style={{ marginTop: 8, fontStyle: "italic", color: CANON.dark, opacity: 0.35 }}>
           @{thread.author} deleted their entry.
         </div>
       ) : editing ? (
@@ -575,7 +576,7 @@ export default function V2InlineThread({
               className="btn"
               onClick={handleSaveEdit}
               disabled={editSubmitting || !editTitle.trim() || !editBody.trim()}
-              style={{ background: "#7abd8e", color: "#FEF8EA", border: "2px solid #7abd8e" }}
+              style={{ background: CANON.personal, color: CANON.cream, border: "2px solid var(--canon-personal,#7abd8e)" }}
             >
               {editSubmitting ? "Saving…" : "Save"}
             </button>
@@ -590,12 +591,12 @@ export default function V2InlineThread({
             <Modal
               onClose={() => { if (!editSubmitting) setShowRetagWarning(false); }}
               width="min(420px, 90vw)"
-              cardStyle={{ background: "#FEF8EA", textAlign: "center", padding: "28px 32px" }}
+              cardStyle={{ background: CANON.cream, textAlign: "center", padding: "28px 32px" }}
             >
-              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: "#1a3a4a", marginBottom: 10 }}>
+              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.dark, marginBottom: 10 }}>
                 Heads up — this post will be retagged
               </div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: "#1a3a4a", lineHeight: 1.5, marginBottom: 20 }}>
+              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.dark, lineHeight: 1.5, marginBottom: 20 }}>
                 Your progress has moved to{" "}
                 <strong>S{String(editTagS).padStart(2, "0")} E{String(editTagE).padStart(2, "0")}</strong>.
                 {" "}Saving will retag this post to your current progress — readers below that point who could see it before will no longer see it.
@@ -604,14 +605,14 @@ export default function V2InlineThread({
                 <button
                   onClick={() => setShowRetagWarning(false)}
                   disabled={editSubmitting}
-                  style={{ border: "2px solid #1a3a4a", background: "transparent", color: "#1a3a4a", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "9px 22px", borderRadius: 65, cursor: "pointer" }}
+                  style={{ border: "2px solid var(--canon-dark,#1a3a4a)", background: "transparent", color: CANON.dark, fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "9px 22px", borderRadius: 65, cursor: "pointer" }}
                 >
                   Go back
                 </button>
                 <button
                   onClick={handleSaveEdit}
                   disabled={editSubmitting}
-                  style={{ border: "none", background: "#355EB8", color: "#FEF8EA", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "11px 24px", borderRadius: 65, cursor: "pointer" }}
+                  style={{ border: "none", background: CANON.identity, color: CANON.cream, fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "11px 24px", borderRadius: 65, cursor: "pointer" }}
                 >
                   {editSubmitting ? "Saving…" : "Save & retag"}
                 </button>
@@ -633,7 +634,7 @@ export default function V2InlineThread({
       {/* Inline error for highlight create / delete failures (overlap /
           rate limit / network). Self-clears on next successful action. */}
       {highlightError && !isTombstone && !editing && (
-        <div style={{ fontSize: 12, color: "#f45028", marginTop: 6, fontStyle: "italic" }}>
+        <div style={{ fontSize: 12, color: CANON.alert, marginTop: 6, fontStyle: "italic" }}>
           {highlightError}
         </div>
       )}
@@ -696,9 +697,9 @@ export default function V2InlineThread({
               style={{
                 fontSize: 13,
                 padding: "3px 12px",
-                background: "#dea838",
-                color: "#FEF8EA",
-                border: "2px solid #dea838",
+                background: CANON.accent,
+                color: CANON.cream,
+                border: "2px solid var(--canon-accent,#dea838)",
               }}
             >
               Highlight…
@@ -727,7 +728,7 @@ export default function V2InlineThread({
 
       {/* Reply count indicator — under entry, above replies. */}
       {replyCount > 0 && (
-        <div className="muted" style={{ fontSize: 14, marginTop: 16, color: "#1a3a4a", opacity: 0.7 }}>
+        <div className="muted" style={{ fontSize: 14, marginTop: 16, color: CANON.dark, opacity: 0.7 }}>
           {replyCount} {replyCount === 1 ? "response" : "responses"}
         </div>
       )}
@@ -896,14 +897,14 @@ export default function V2InlineThread({
                 className="btn"
                 onClick={handleDelete}
                 disabled={deleteSubmitting}
-                style={{ background: "var(--danger)", border: "none", color: "#FEF8EA" }}
+                style={{ background: "var(--danger)", border: "none", color: CANON.cream }}
               >
                 {deleteSubmitting ? "Deleting…" : "Delete"}
               </button>
               <button
                 className="btn"
                 onClick={cancelDelete}
-                style={{ background: "transparent", border: "2px solid #FEF8EA", color: "#FEF8EA" }}
+                style={{ background: "transparent", border: "2px solid var(--canon-cream,#fef8ea)", color: CANON.cream }}
               >
                 Cancel
               </button>

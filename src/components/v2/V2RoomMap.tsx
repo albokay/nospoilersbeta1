@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { CANON } from "../../styles/canon";
 import { createPortal } from "react-dom";
 import { CircleCheck, DoorClosed, DoorOpen, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
@@ -615,7 +616,7 @@ export default function V2RoomMap({
                     border: "none",
                     padding: 0,
                     cursor: "pointer",
-                    color: "#FEF8EA",
+                    color: CANON.cream,
                     display: "inline-flex",
                     alignItems: "center",
                   }}
@@ -749,7 +750,7 @@ export default function V2RoomMap({
                           alignItems: "center",
                           justifyContent: "center",
                           cursor: committing ? "wait" : "pointer",
-                          color: "#f45028",
+                          color: CANON.alert,
                           zIndex: 3,
                         }}
                       >
@@ -765,7 +766,7 @@ export default function V2RoomMap({
                           width: 240,
                           fontFamily: "Inter, sans-serif",
                           fontSize: 11,
-                          color: "#f45028",
+                          color: CANON.alert,
                           textAlign: "center",
                           lineHeight: 1.3,
                           zIndex: 3,
@@ -810,9 +811,9 @@ export default function V2RoomMap({
                     textOverflow: "ellipsis",
                     fontSize: 13,
                     fontWeight: 400,
-                    color: isSelfCol ? "#355eb8" : "#FEF8EA",
+                    color: isSelfCol ? CANON.identity : CANON.cream,
                     fontStyle: isClickable ? "italic" : undefined,
-                    borderBottom: isClickable ? "1px dotted #FEF8EA" : undefined,
+                    borderBottom: isClickable ? "1px dotted var(--canon-cream,#fef8ea)" : undefined,
                     cursor: (isClickable || isSelfCol) ? "pointer" : undefined,
                   };
                   const usernameDiv = (
@@ -896,7 +897,7 @@ export default function V2RoomMap({
               scrolling up disappear behind the username row's bg (which
               has solid var(--dos-bg) above this line); the line itself is
               the visible chrome boundary. */}
-          <div aria-hidden style={{ height: 2, background: "#FEF8EA" }} />
+          <div aria-hidden style={{ height: 2, background: CANON.cream }} />
         </div>
 
         {/* ── 12px breathing spacer between sticky header and body rows.
@@ -976,7 +977,7 @@ export default function V2RoomMap({
                     style={{
                       fontSize: 14,
                       whiteSpace: "nowrap",
-                      color: "#FEF8EA",
+                      color: CANON.cream,
                     }}
                   >
                     Season {row.season}
@@ -995,7 +996,7 @@ export default function V2RoomMap({
                   justifyContent: "flex-end",
                   paddingRight: 4,
                   fontSize: 12,
-                  color: "#FEF8EA",
+                  color: CANON.cream,
                 }}
               >
                 e{row.episode}
@@ -1169,7 +1170,7 @@ export default function V2RoomMap({
                 let entryLine: React.ReactNode = null;
                 if (entry) {
                   const titlePart = aboveViewer ? (
-                    <span style={{ fontStyle: "italic", color: "#f45028" }}>
+                    <span style={{ fontStyle: "italic", color: CANON.alert }}>
                       (title revealed once you catch up)
                     </span>
                   ) : (
@@ -1211,7 +1212,7 @@ export default function V2RoomMap({
                       display: "block",
                       marginTop: 6,
                       fontSize: 11,
-                      color: "#f45028",
+                      color: CANON.alert,
                       whiteSpace: "nowrap",
                     }}>
                       Click to change this episode's rating.
@@ -1242,7 +1243,7 @@ export default function V2RoomMap({
                       display: "block",
                       marginTop: 6,
                       fontSize: 11,
-                      color: "#f45028",
+                      color: CANON.alert,
                       whiteSpace: "nowrap",
                     }}>
                       {text}
@@ -1315,7 +1316,7 @@ export default function V2RoomMap({
                       // fill with a contrasting outline color.
                       const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer);
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
-                        ? { border: "2px solid #FEF8EA" }
+                        ? { border: "2px solid var(--canon-cream,#fef8ea)" }
                         : {};
 
                       // Receding back layers (multi-entry cells only). Each
@@ -1407,8 +1408,8 @@ export default function V2RoomMap({
                           width="auto"
                           portal
                           tooltipStyle={{
-                            background: "#FEF8EA",
-                            color: "#1a3a4a",
+                            background: CANON.cream,
+                            color: CANON.dark,
                             textAlign: "left",
                             lineHeight: 1.25,
                           }}
@@ -1445,8 +1446,8 @@ export default function V2RoomMap({
                         // still resolves to the cell-relative position.
                         style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0 }}
                         tooltipStyle={{
-                          background: "#FEF8EA",
-                          color: "#f45028",
+                          background: CANON.cream,
+                          color: CANON.alert,
                           fontSize: 11,
                           fontWeight: 500,
                           textAlign: "left",
@@ -1501,7 +1502,7 @@ export default function V2RoomMap({
                             height: 10,
                             // Canon greyblue — flat, no opacity, so the line +
                             // dot don't darken where they overlap.
-                            background: "#8DAABA",
+                            background: CANON.business,
                           }}
                         />
                         <Tooltip
@@ -1518,7 +1519,7 @@ export default function V2RoomMap({
                               width: 8,
                               height: 8,
                               borderRadius: "50%",
-                              background: "#8DAABA",
+                              background: CANON.business,
                             }}
                           />
                         </Tooltip>
@@ -1631,7 +1632,7 @@ function MapCellDot({
   // Yellow inherits green's "non-interactive, no count, no dismiss" shape —
   // it's an attention signal that clears on entry expand, not on a manual
   // X-click. Color is canon-yellow.
-  const bg = isRed ? "var(--danger)" : kind === "yellow" ? "#dea838" : "var(--green)";
+  const bg = isRed ? "var(--danger)" : kind === "yellow" ? CANON.accent : "var(--green)";
   return (
     <div
       style={{
@@ -1642,7 +1643,7 @@ function MapCellDot({
         height: 16,
         borderRadius: "50%",
         background: bg,
-        color: "#FEF8EA",
+        color: CANON.cream,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -1683,23 +1684,23 @@ function MapCellDot({
 function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, editMode: boolean, aboveViewer: boolean = false): React.CSSProperties {
   if (editMode && isSelf && isReached) {
     return {
-      background: "#f45028",
-      border: "2px solid #f45028",
+      background: CANON.alert,
+      border: "2px solid var(--canon-alert,#f45028)",
       borderRadius: CELL_RADIUS,
     };
   }
-  const filledBg = isSelf ? "#355eb8" : "#7abd8e";
-  const outlineColor = isSelf ? "#355eb8" : "var(--dos-border)";
+  const filledBg = isSelf ? CANON.identity : CANON.personal;
+  const outlineColor = isSelf ? CANON.identity : "var(--dos-border)";
   // Hidden-entry cell: the member authored at (s, e) but the viewer
   // hasn't reached it yet — the entry is invisible to them. OPAQUE canon
-  // greyblue fill (#8DAABA, flat — no opacity) so a multi-entry stack's
+  // greyblue fill (var(--canon-business,#8daaba), flat — no opacity) so a multi-entry stack's
   // TOP cell stays fully opaque instead of letting the offset receding
   // back layers bleed through (which read as transparency). The back
   // layers themselves still recede via their own opacity:0.3. NO border
   // (keep the fill flat). Notification dots still render on top.
   if (isReached && hasEntry && aboveViewer) {
     return {
-      background: "#8DAABA",
+      background: CANON.business,
       borderRadius: CELL_RADIUS,
     };
   }
@@ -1720,7 +1721,7 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   }
   return {
     background: "transparent",
-    border: "2px dashed #FEF8EA",
+    border: "2px dashed var(--canon-cream,#fef8ea)",
     borderRadius: "50%",
     opacity: 0.5,
   };

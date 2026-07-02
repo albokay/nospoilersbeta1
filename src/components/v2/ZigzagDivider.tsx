@@ -1,4 +1,5 @@
 import React from "react";
+import { CANON } from "../../styles/canon";
 
 // Shared zigzag (sawtooth) divider. Drawn as a SINGLE continuous polyline
 // + fill polygon spanning a wide canvas (clipped by the SVG box to whatever
@@ -73,7 +74,7 @@ export default function ZigzagDivider({ fill = "transparent" }: Props) {
       <polyline
         points={ZZ_LINE_POINTS}
         fill="none"
-        stroke="#FEF8EA"
+        stroke={CANON.cream}
         strokeWidth={2}
         strokeLinejoin="miter"
       />

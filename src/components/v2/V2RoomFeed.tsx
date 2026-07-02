@@ -8,6 +8,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
+import { CANON } from "../../styles/canon";
 import { ChevronDown, ChevronUp, Mail, Users, Sparkles, Flag } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
@@ -34,7 +35,7 @@ import type { ProgressEntry, Thread, Reply } from "../../types";
 // External scroll-and-highlight (used by the map's cell-click): callers
 // pass a ref and invoke `scrollToEntry(threadId)`. The component scrolls
 // the ticket into view and flips the ticket's outer border to canon blue
-// (`#355eb8`) for ~1.5s — the same visual signal `ShowSection.tsx` uses
+// (`var(--canon-identity,#355eb8)`) for ~1.5s — the same visual signal `ShowSection.tsx` uses
 // for newly-visible threads after a progress bump (its `isNew` branch on
 // the card border). No keyframe animation; just a snap on/off of the
 // border color, matching the live treatment exactly.
@@ -207,7 +208,7 @@ function keepTailTogether(text: string, n = 3): string {
 // (V2InlineThread, which normally carries it, isn't mounted in demo mode).
 // Matches the live friend-room collapse button exactly.
 const demoCollapseBtn: React.CSSProperties = {
-  background: "transparent", border: "none", color: "#FEF8EA", cursor: "pointer",
+  background: "transparent", border: "none", color: CANON.cream, cursor: "pointer",
   fontSize: 13, padding: "4px 8px", display: "inline-flex", alignItems: "center",
   gap: 5, fontFamily: "inherit",
 };
@@ -627,7 +628,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 // (Guide-ticket yellow outline is applied via the .tsp-guide
                 // class, since group-context forces the ticket border !important.)
                 border: isNew
-                  ? "4px solid #FEF8EA"
+                  ? "4px solid var(--canon-cream,#fef8ea)"
                   : "4px solid var(--dos-border)",
                 animation: isHighlighted
                   ? "flash-glow 1.2s ease forwards"
@@ -658,7 +659,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     margin: 0, fontSize: 22,
                     // TSP demo: guide titles render blue. (Wrapping is handled by
                     // keepTailTogether on the title text, not text-wrap.)
-                    ...(entry.isInstructional ? { color: "#355eb8" } : null),
+                    ...(entry.isInstructional ? { color: CANON.identity } : null),
                   }}
                 >
                   {resolvedEntryIcon && (
@@ -670,7 +671,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     // TSP demo: cream flag leads an instructional "Alborz" entry
                     // title (flag-driven, never literal title text).
                     <span style={{ marginRight: 6, display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
-                      <Flag size={18} color="#fef8ea" />
+                      <Flag size={18} color={CANON.cream} />
                     </span>
                   )}
                   {entry.isDeleted ? "(deleted entry)" : demoMode ? keepTailTogether(entry.title) : entry.title}
@@ -680,7 +681,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     // elsewhere). Same size / weight / family as the title
                     // (inherits from the h2 .title class) but white — the
                     // tag reads as title-level chrome, not body text.
-                    <span style={{ color: "#FEF8EA", whiteSpace: "nowrap", marginLeft: 8 }}>
+                    <span style={{ color: CANON.cream, whiteSpace: "nowrap", marginLeft: 8 }}>
                       {" • "}
                       <EpisodeTag
                         season={entry.s}
@@ -746,7 +747,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   // TSP demo: sparkles REPLACES the standard profile avatar for
                   // Alborz (no SidebarAvatar, not clickable).
                   <span className="username" style={{ display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" }}>
-                    <Sparkles size={16} color="#fef8ea" fill="#fef8ea" />
+                    <Sparkles size={16} color={CANON.cream} fill={CANON.cream} />
                     <b>{entry.authorUsername}</b>
                   </span>
                 ) : (
@@ -789,7 +790,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                             <div key={r.id} style={{ border: "2px solid var(--dos-border)", borderRadius: 16, padding: "10px 14px" }}>
                               <div className="muted" style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                                 <Username name={r.author} userId={r.author} onClickProfile={() => {}} bold />
-                                <span style={{ color: "#FEF8EA", whiteSpace: "nowrap" }}>
+                                <span style={{ color: CANON.cream, whiteSpace: "nowrap" }}>
                                   {" • "}<EpisodeTag season={r.season} episode={r.episode} naturalNumbers parens={false} />
                                 </span>
                               </div>
@@ -801,7 +802,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     )}
                     <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>
                       <button style={demoCollapseBtn} onClick={() => handleCollapseTop(entry.threadId)}>
-                        <ChevronUp size={13} color="#FEF8EA" /> collapse
+                        <ChevronUp size={13} color={CANON.cream} /> collapse
                       </button>
                     </div>
                   </div>
@@ -845,7 +846,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     />
                   </div>
                 ) : entry.isDeleted ? (
-                  <div style={{ fontStyle: "italic", color: "#1a3a4a", opacity: 0.35 }}>
+                  <div style={{ fontStyle: "italic", color: CANON.dark, opacity: 0.35 }}>
                     @{entry.authorUsername} deleted their entry.
                   </div>
                 ) : (
@@ -885,9 +886,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                         style={
                           showGreenChevron
                             ? {
-                                background: "#7abd8e",
+                                background: CANON.personal,
                                 border: "none",
-                                color: "#FEF8EA",
+                                color: CANON.cream,
                                 cursor: "pointer",
                                 width: 32,
                                 height: 32,
@@ -901,7 +902,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                             : {
                                 background: "transparent",
                                 border: "none",
-                                color: "#FEF8EA",
+                                color: CANON.cream,
                                 cursor: "pointer",
                                 padding: 4,
                                 display: "inline-flex",
@@ -910,7 +911,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                               }
                         }
                       >
-                        <ChevronDown size={20} color="#FEF8EA" />
+                        <ChevronDown size={20} color={CANON.cream} />
                       </button>
                     );
                     if (showGreenChevron) {
@@ -942,13 +943,13 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 4,
-                        color: "#FEF8EA",
+                        color: CANON.cream,
                         fontSize: 14,
                         fontWeight: 500,
                         userSelect: "none",
                       }}
                     >
-                      <Mail size={16} color="#FEF8EA" />
+                      <Mail size={16} color={CANON.cream} />
                       {entry.replyCount}
                     </span>
                   )}
@@ -973,14 +974,14 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               <button
                 className="btn"
                 onClick={cancelDiscardDraft}
-                style={{ background: "transparent", border: "2px solid #FEF8EA", color: "#FEF8EA" }}
+                style={{ background: "transparent", border: "2px solid var(--canon-cream,#fef8ea)", color: CANON.cream }}
               >
                 Cancel
               </button>
               <button
                 className="btn"
                 onClick={confirmDiscardDraft}
-                style={{ background: "var(--danger)", border: "none", color: "#FEF8EA" }}
+                style={{ background: "var(--danger)", border: "none", color: CANON.cream }}
               >
                 Yes, I'm sure
               </button>
@@ -1017,7 +1018,7 @@ function EntryRedDot({ count, onDismiss }: { count: number; onDismiss: () => voi
           padding: "0 5px",
           borderRadius: 999,
           background: "var(--danger)",
-          color: "#FEF8EA",
+          color: CANON.cream,
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",

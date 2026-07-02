@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { CANON } from "../../styles/canon";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 import { LogOut, BookOpen, BookMarked, ArrowLeft, ArrowRight, UserPen } from "lucide-react";
@@ -89,7 +90,7 @@ export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = f
     <div style={{ minHeight: "100vh", position: "relative" }}>
       {/* Compose-palette bg paint — kept inline so we don't grow theme.ts */}
       {palette === "compose" && (
-        <style>{`body.v2-compose-context{background:#fef8ea !important}`}</style>
+        <style>{`body.v2-compose-context{background:var(--canon-cream,#fef8ea) !important}`}</style>
       )}
 
       {/* Unified fixed chrome — uses AppShell's CSS classes so positioning
@@ -172,14 +173,14 @@ export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = f
             >
               {onProfileFamily ? (
                 <>
-                  <BookOpen size={16} color="#FEF8EA" style={{ flexShrink: 0 }} />
-                  <span className="profileChipLabel" style={{ fontWeight: 700, color: "#FEF8EA", display: "inline-flex", alignItems: "center", gap: 6 }}>you are <SidebarAvatar userId={user.id} username={profile.username} size={18} />{profile.username}</span>
+                  <BookOpen size={16} color={CANON.cream} style={{ flexShrink: 0 }} />
+                  <span className="profileChipLabel" style={{ fontWeight: 700, color: CANON.cream, display: "inline-flex", alignItems: "center", gap: 6 }}>you are <SidebarAvatar userId={user.id} username={profile.username} size={18} />{profile.username}</span>
                 </>
               ) : (
                 <>
-                  <BookMarked size={16} color="#FEF8EA" style={{ flexShrink: 0 }} />
-                  <ArrowLeft size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
-                  <span className="profileChipLabel" style={{ fontWeight: 700, color: "#FEF8EA" }}>go to your journal</span>
+                  <BookMarked size={16} color={CANON.cream} style={{ flexShrink: 0 }} />
+                  <ArrowLeft size={14} color={CANON.cream} style={{ flexShrink: 0 }} />
+                  <span className="profileChipLabel" style={{ fontWeight: 700, color: CANON.cream }}>go to your journal</span>
                 </>
               )}
             </button>
@@ -196,13 +197,13 @@ export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = f
                 // pill always reads cleanly. box-sizing:border-box keeps the
                 // 34px height including the 2px border.
                 style={{
-                  background: "#dea838",
-                  border: `2px solid ${palette === "profile" ? "#FEF8EA" : "#dea838"}`,
+                  background: CANON.accent,
+                  border: `2px solid ${palette === "profile" ? CANON.cream : CANON.accent}`,
                 }}
               >
-                <span className="profileChipLabel" style={{ fontWeight: 700, color: "#FEF8EA" }}>go to your profile</span>
-                <ArrowRight size={14} color="#FEF8EA" style={{ flexShrink: 0 }} />
-                <UserPen size={16} color="#FEF8EA" style={{ flexShrink: 0 }} />
+                <span className="profileChipLabel" style={{ fontWeight: 700, color: CANON.cream }}>go to your profile</span>
+                <ArrowRight size={14} color={CANON.cream} style={{ flexShrink: 0 }} />
+                <UserPen size={16} color={CANON.cream} style={{ flexShrink: 0 }} />
               </button>
             )}
           </span>
@@ -276,9 +277,9 @@ export default function V2Layout({ palette, pairedHeader, pairedHeaderHidden = f
                   fontFamily: "Lora, Georgia, serif",
                   fontStyle: "italic",
                   fontSize: 16,
-                  color: "#FEF8EA",
+                  color: CANON.cream,
                   background: "transparent",
-                  border: "2px solid #FEF8EA",
+                  border: "2px solid var(--canon-cream,#fef8ea)",
                   borderRadius: 9999,
                   padding: "6px 14px",
                   textDecoration: "none",

@@ -467,13 +467,13 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           background-repeat: repeat !important;
           color: ${INK} !important;
         }
-        .v2-compose-paper-input::placeholder { color: #dea838 !important; opacity: 1 !important; font-style: italic; font-family: 'Lora', Georgia, serif; }
+        .v2-compose-paper-input::placeholder { color: var(--canon-accent,#dea838) !important; opacity: 1 !important; font-style: italic; font-family: 'Lora', Georgia, serif; }
         .v2-compose-title-input {
           background-color: transparent !important;
           background-image: none !important;
           color: ${INK} !important;
         }
-        .v2-compose-title-input::placeholder { color: #dea838 !important; opacity: 1 !important; font-weight: 500; }
+        .v2-compose-title-input::placeholder { color: var(--canon-accent,#dea838) !important; opacity: 1 !important; font-weight: 500; }
       `}</style>
 
       {/* TOP-RIGHT: × not now (duplicate of action-row cancel).
@@ -509,7 +509,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               fontFamily: "Inter, sans-serif",
               fontSize: 13,
               fontWeight: 400,
-              color: "#355eb8",
+              color: CANON.identity,
               marginBottom: 4,
             }}
           >
@@ -521,7 +521,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               fontWeight: 700,
               fontSize: 36,
               letterSpacing: "0.02em",
-              color: "#355eb8",
+              color: CANON.identity,
               textTransform: "uppercase",
               margin: 0,
               marginBottom: 10,
@@ -599,7 +599,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         <div
           style={{
             background: "#fff",
-            border: `2px solid #355eb8`,
+            border: `2px solid var(--canon-identity,#355eb8)`,
             borderRadius: 0,
             padding: "20px 40px",
             marginBottom: 16,
@@ -669,7 +669,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                   onClick={handlePromptBtn}
                   style={{
                     background: "var(--green)",
-                    color: "#FEF8EA",
+                    color: CANON.cream,
                     border: "none",
                     borderRadius: 9999,
                     padding: "9px 18px",
@@ -746,8 +746,8 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               disabled={submitting}
               style={{
                 background: "transparent",
-                border: `2px solid #f45028`,
-                color: "#f45028",
+                border: `2px solid var(--canon-alert,#f45028)`,
+                color: CANON.alert,
                 borderRadius: 9999,
                 padding: "10px 20px",
                 fontFamily: "Inter, sans-serif",
@@ -827,10 +827,10 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               color: INK,
             }}
           >
-            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 17, color: "#1a3a4a", marginBottom: 10 }}>
+            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 17, color: CANON.dark, marginBottom: 10 }}>
               Are you sure?
             </div>
-            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: "#1a3a4a", marginBottom: 24 }}>
+            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.dark, marginBottom: 24 }}>
               You will lose what you've written.
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
@@ -838,8 +838,8 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 onClick={() => setDiscardOpen(false)}
                 style={{
                   background: "transparent",
-                  border: `2px solid #f45028`,
-                  color: "#f45028",
+                  border: `2px solid var(--canon-alert,#f45028)`,
+                  color: CANON.alert,
                   borderRadius: 9999,
                   padding: "9px 18px",
                   fontFamily: "Inter, sans-serif",
@@ -854,7 +854,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 onClick={doDiscard}
                 style={{
                   background: "var(--danger)",
-                  color: "#FEF8EA",
+                  color: CANON.cream,
                   border: "none",
                   borderRadius: 9999,
                   padding: "9px 18px",
