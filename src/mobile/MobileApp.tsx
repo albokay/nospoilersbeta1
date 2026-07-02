@@ -6,7 +6,7 @@ import MobileAuth from "./MobileAuth";
 import MobileDashboard from "./MobileDashboard";
 import MobileGroupRoom from "./MobileGroupRoom";
 import MobileGroupChat from "./MobileGroupChat";
-import MobileStub from "./MobileStub";
+import MobileShowRoom from "./MobileShowRoom";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Only admins can reach /m while the mobile rebuild is
@@ -28,10 +28,12 @@ import MobileStub from "./MobileStub";
 //                   | redirect to /m/dashboard (signed in)
 //   /m/auth       → full-screen sign-in / create-account
 //                   (?returnTo= supported, validated to /m/* paths)
-//   /m/dashboard  → signed-in home (CP3: groups + shelves + search + sheets)
-//   /m/group/:id  → group room (CP4 — stub until built)
-//   /m/show-room/*→ show room (CP6 — stub until built)
-//   anything else → narrative (unknown/retired paths fall through)
+//   /m/dashboard              → signed-in home (CP3)
+//   /m/group/:id              → group room (CP4)
+//   /m/group/:id/chat         → group chat (CP5)
+//   /m/show-room/private/:sid → private-only standalone writing (CP6)
+//   /m/show-room/:roomId      → show room, ?entry= deep-links (CP6)
+//   anything else             → narrative (unknown/retired paths fall through)
 //
 // Auto-redirect rule: signed-in users on bare /m get bounced to /m/dashboard
 // so they don't have to scroll past the narrative pitch every time. Mirrors
@@ -71,7 +73,10 @@ export default function MobileApp() {
     return <MobileGroupChat groupId={subParts[1]} />;
   }
   if (subParts[0] === "group" && subParts[1]) return <MobileGroupRoom groupId={subParts[1]} />;
-  // Show rooms (friend + private) are rebuilt in CP6.
-  if (subParts[0] === "show-room" && subParts[1]) return <MobileStub label="This show's room" />;
+  // Dashboard "write by yourself" — private-only standalone (no group).
+  if (subParts[0] === "show-room" && subParts[1] === "private" && subParts[2]) {
+    return <MobileShowRoom privateShowId={subParts[2]} />;
+  }
+  if (subParts[0] === "show-room" && subParts[1]) return <MobileShowRoom roomId={subParts[1]} />;
   return <MobileNarrative />;
 }
