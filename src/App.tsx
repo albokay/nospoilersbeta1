@@ -1371,7 +1371,6 @@ function AppShell() {
                           fontWeight: 600,
                           lineHeight: 1.4,
                           textAlign: isMobile ? "left" : "center",
-                          textWrap: "balance" as React.CSSProperties["textWrap"],
                         }}>{text}</span>
                       </div>
                     ))}
