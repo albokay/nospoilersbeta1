@@ -45,6 +45,9 @@ export const BETA_PILL_CLOSED_MOBILE = "*tap here beta tester!";
 export const BETA_PILL_OPEN = "Hello!";
 
 // Rendered as paragraphs separated by blank lines on both surfaces.
+// The feedback paragraph (index 4) differs by surface: desktop points at
+// the left-edge tab; mobile (see BETA_LETTER_PARAGRAPHS_MOBILE below)
+// points at the dashboard's feedback button.
 export const BETA_LETTER_PARAGRAPHS: string[] = [
   "Thank you for your time and mind.",
   "I’m making this site because I love stories and I love thinking and talking about them. If you’re reading this right now, you’re probably the same way. That’s the whole point here: to make it easier to have ongoing conversations about the TV shows we love (or love to hate) with our friends.",
@@ -54,3 +57,12 @@ export const BETA_LETTER_PARAGRAPHS: string[] = [
   "Excited to see how you use the site.",
   "— Alborz",
 ];
+
+// Mobile letter: identical except the feedback paragraph — mobile has no
+// left-edge tab; the button lives at the top of the dashboard (Alborz
+// wording, 2026-07-03).
+export const BETA_LETTER_PARAGRAPHS_MOBILE: string[] = BETA_LETTER_PARAGRAPHS.map((p, i) =>
+  i === 4
+    ? "Once you create an account, you’ll have a feedback button at the top of your dashboard to send your thoughts as they come. Your gut reactions are as important as your more considered thoughts."
+    : p,
+);

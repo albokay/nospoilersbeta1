@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { X, LogOut, UserCog } from "lucide-react";
+import { X, LogOut, UserCog, MessageCircleWarning } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import AccountModal from "../components/AccountModal";
+import MobileFeedbackSheet from "./MobileFeedbackSheet";
 import SidebarLogo from "../components/SidebarLogo";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
@@ -120,6 +121,7 @@ export default function MobileDashboard() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // ── Loads (same calls + tolerance as desktop DashboardPage) ──────────────
   const loadRail = useCallback(async (uid: string): Promise<RailGroup[]> => {
@@ -367,6 +369,9 @@ export default function MobileDashboard() {
           <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button style={topCircleBtn} title="feedback" onClick={() => setFeedbackOpen(true)}>
+            <MessageCircleWarning size={18} color={C.cream} />
+          </button>
           <button style={topCircleBtn} title="account" onClick={() => setShowAccount(true)}>
             <UserCog size={18} color={C.cream} />
           </button>
@@ -381,6 +386,7 @@ export default function MobileDashboard() {
       </div>
 
       {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
+      {feedbackOpen && <MobileFeedbackSheet onClose={() => setFeedbackOpen(false)} />}
 
       {/* ── Groups (top — social first per spec) ── */}
       {(railGroups.length > 0 || pendingInvites.length > 0) && (

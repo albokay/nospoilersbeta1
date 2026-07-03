@@ -12,7 +12,7 @@ import {
   CTA_DETAILS_LABEL,
   BETA_PILL_CLOSED_MOBILE,
   BETA_PILL_OPEN,
-  BETA_LETTER_PARAGRAPHS,
+  BETA_LETTER_PARAGRAPHS_MOBILE,
 } from "../lib/homepageCopy";
 
 const MobileHowItWorks = lazy(() => import("./MobileHowItWorks"));
@@ -231,10 +231,10 @@ export default function MobileNarrative() {
                 lineHeight: 1.6,
                 fontWeight: 700,
               }}>
-                {BETA_LETTER_PARAGRAPHS.map((p, i) => (
+                {BETA_LETTER_PARAGRAPHS_MOBILE.map((p, i) => (
                   <React.Fragment key={i}>
                     {p}
-                    {i < BETA_LETTER_PARAGRAPHS.length - 1 && <><br /><br /></>}
+                    {i < BETA_LETTER_PARAGRAPHS_MOBILE.length - 1 && <><br /><br /></>}
                   </React.Fragment>
                 ))}
               </div>
