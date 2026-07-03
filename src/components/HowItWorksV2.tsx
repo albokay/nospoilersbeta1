@@ -60,6 +60,31 @@ export const panelCaptions: React.ReactNode[] = [
   </>,
 ];
 
+// Mobile-scroll caption variants (Alborz 2026-07-03): the trailing colons
+// lead into the diagram that sits BELOW each caption in the vertical scroll
+// (MobileHowItWorks); "But in reality..." moves from panel 1's cliffhanger to
+// panel 2's opener, which reads better without the pager transition. Kept
+// beside panelCaptions so a future rewording updates both sets together.
+// Panel 3 is shared verbatim. Desktop rendering is untouched.
+export const panelCaptionsMobile: React.ReactNode[] = [
+  <>
+    Your friends have been watching a new show and invite you to their Sidebar room.
+    {"\n\n"}
+    You watch the first episode, log your watch progress, and write a post about your first impressions. There are a handful of posts to read in the room {"\u2014"} these were all written when your friends were also on episode 1:
+  </>,
+  <>
+    But in reality, there is a lot more activity in the room because the show has 4 episodes available. For now, you can{"\u2019"}t see anything written from beyond episode 1.
+    {"\n\n"}
+    Your friends have been updating their watch progress and writing. Soon enough, your post gets replies {"\u2014"} even though you can{"\u2019"}t see them yet:
+  </>,
+  panelCaptions[2],
+  <>
+    No one ever writes {"\u201c"}I can{"\u2019"}t wait for you to watch{"\u2026\u201d"} or censors their excitement in any way. You all write as if you{"\u2019"}re watching together. The site makes that experience real.
+    {"\n\n"}
+    When you catch up, you{"\u2019"}ll be able to read everything:
+  </>,
+];
+
 // ── Colors & dimensions ───────────────────────────────────────────────────
 
 const PAGE_BG = CANON.personal;

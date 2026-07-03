@@ -284,9 +284,13 @@ export default function MobileAuth() {
         <h1 style={{ fontSize: 26, fontWeight: 800, margin: "16px 0 6px", textAlign: "center" }}>
           {mode === "signin" ? "Sign in" : "Create account"}
         </h1>
-        <p style={{ fontSize: 14, opacity: 0.85, margin: "0 0 28px", textAlign: "center" }}>
-          {mode === "signin" ? "Welcome back." : "Pick a username your friends will recognize."}
-        </p>
+        {mode === "signin" ? (
+          <p style={{ fontSize: 14, opacity: 0.85, margin: "0 0 28px", textAlign: "center" }}>
+            Welcome back.
+          </p>
+        ) : (
+          <div style={{ height: 28 }} />
+        )}
 
         {/* ── Form ── */}
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>

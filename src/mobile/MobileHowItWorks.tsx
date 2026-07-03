@@ -5,7 +5,7 @@ import { CANON } from "../styles/canon";
 import {
   panelSlots,
   panelTitles,
-  panelCaptions,
+  panelCaptionsMobile,
   pillLabel,
   basePillStyle,
   SLOT_H,
@@ -40,9 +40,10 @@ export default function MobileHowItWorks({ onClose, onSignup }: { onClose: () =>
           // 12-slot height; on a scroll that reads as dead space).
           const lastIdx = slots.reduce((acc, s, idx) => (s ? idx : acc), 0);
           return (
-            <section key={i} style={{ marginBottom: 40 }}>
+            <section key={i} style={{ marginBottom: 32 }}>
               {panelTitles[i] && <div style={titleStyle}>{panelTitles[i]}</div>}
-              <div style={captionStyle}>{panelCaptions[i]}</div>
+              <div style={sectionNumber}>{i + 1}.</div>
+              <div style={captionStyle}>{panelCaptionsMobile[i]}</div>
               <div style={card}>
                 <div style={{ position: "relative", height: (lastIdx + 1) * SLOT_H }}>
                   {slots.map((slot, si) => slot && (
@@ -52,6 +53,7 @@ export default function MobileHowItWorks({ onClose, onSignup }: { onClose: () =>
                   ))}
                 </div>
               </div>
+              <div style={divider} />
             </section>
           );
         })}
@@ -88,6 +90,14 @@ const titleStyle: React.CSSProperties = {
 const captionStyle: React.CSSProperties = {
   fontSize: 15, fontWeight: 700, lineHeight: 1.6, color: CANON.cream,
   whiteSpace: "pre-line", marginBottom: 16,
+};
+const sectionNumber: React.CSSProperties = {
+  fontSize: 22, fontWeight: 900, color: CANON.cream, marginBottom: 8,
+};
+// Post-illustration divider — narrower than the diagram card, centered.
+const divider: React.CSSProperties = {
+  height: 2, width: "56%", margin: "32px auto 0",
+  background: "rgba(253,248,236,0.5)", borderRadius: 2,
 };
 const card: React.CSSProperties = {
   borderRadius: 16, background: BOX_BG, padding: "20px 16px", overflow: "hidden",
