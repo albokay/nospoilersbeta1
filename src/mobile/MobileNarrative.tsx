@@ -15,7 +15,7 @@ import {
   BETA_LETTER_PARAGRAPHS,
 } from "../lib/homepageCopy";
 
-const HowItWorksV2 = lazy(() => import("../components/HowItWorksV2"));
+const MobileHowItWorks = lazy(() => import("./MobileHowItWorks"));
 
 // Mobile homepage narrative scroll for signed-out users (CP1 of the mobile
 // rebuild). The desktop homepage is the source of truth; this surface renders
@@ -243,22 +243,16 @@ export default function MobileNarrative() {
         </div>
       </div>
 
-      {/* ── "Want more details?" — full-screen scrollable surface (mobile
-             idiom for desktop's centered overlay card) ── */}
+      {/* ── "Want more details?" — mobile walkthrough: the desktop panels'
+             captions + end-state diagrams as one vertical scroll (its own
+             full-screen sheet; see MobileHowItWorks). ── */}
       {showDetails && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 2000,
-          background: CANON.personal,
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
-        }}>
-          <Suspense fallback={null}>
-            <HowItWorksV2
-              onClose={() => setShowDetails(false)}
-              onSignup={() => { setShowDetails(false); navigate(joinTarget); }}
-            />
-          </Suspense>
-        </div>
+        <Suspense fallback={null}>
+          <MobileHowItWorks
+            onClose={() => setShowDetails(false)}
+            onSignup={() => { setShowDetails(false); navigate(joinTarget); }}
+          />
+        </Suspense>
       )}
     </div>
   );

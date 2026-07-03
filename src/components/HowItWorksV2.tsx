@@ -14,7 +14,7 @@ const S = (type: PillType, align: PillAlign): SlotDef => ({ type, align });
 
 // ── 12-slot panel end-states (YOUR POST always at slot 2) ─────────────────
 
-const panelSlots: (SlotDef | null)[][] = [
+export const panelSlots: (SlotDef | null)[][] = [
   // Panel 1: 5 pills at slots 2-6
   [null, null, S("your-post","left"), S("post","left"), S("reply","right"), S("reply","right"), S("post","left"), null, null, null, null, null],
   // Panel 2 (invisible pills pre-aligned to their panel 3 positions)
@@ -30,14 +30,14 @@ const panel2SlideMap: Record<number, number> = { 6: 3, 7: 4, 9: 5, 11: 6 };
 
 // ── Captions & titles ─────────────────────────────────────────────────────
 
-const panelTitles: (string | undefined)[] = [
+export const panelTitles: (string | undefined)[] = [
   "HOW DO THE NO\u2011SPOILER\nMECHANICS WORK?",
   undefined,
   undefined,
   undefined,
 ];
 
-const panelCaptions: React.ReactNode[] = [
+export const panelCaptions: React.ReactNode[] = [
   <>
     Your friends have been watching a new show and invite you to their Sidebar room.
     {"\n\n"}
@@ -63,15 +63,15 @@ const panelCaptions: React.ReactNode[] = [
 // ── Colors & dimensions ───────────────────────────────────────────────────
 
 const PAGE_BG = CANON.personal;
-const BOX_BG = "rgba(253,248,236,0.92)";
+export const BOX_BG = "rgba(253,248,236,0.92)";
 const GREEN = CANON.personal;
 const RED = CANON.alert;
 const BORDER_W = 3;
 const PILL_W = 170;
 const PILL_H = 34;
 const INDENT = 16;
-const SLOT_H = 40;
-const NUM_SLOTS = 12;
+export const SLOT_H = 40;
+export const NUM_SLOTS = 12;
 
 // ── Animation timing ──────────────────────────────────────────────────────
 
@@ -108,7 +108,7 @@ function injectKeyframes() {
 
 // ── Pill helpers ──────────────────────────────────────────────────────────
 
-function pillLabel(type: PillType) {
+export function pillLabel(type: PillType) {
   switch (type) {
     case "your-post": return "YOUR POST";
     case "post": return "POST";
@@ -117,7 +117,7 @@ function pillLabel(type: PillType) {
   }
 }
 
-function basePillStyle(type: PillType, align: PillAlign, slotIndex: number): React.CSSProperties {
+export function basePillStyle(type: PillType, align: PillAlign, slotIndex: number): React.CSSProperties {
   const isInvisible = type === "invisible";
   const isYourPost = type === "your-post";
   const color = isInvisible ? RED : GREEN;
