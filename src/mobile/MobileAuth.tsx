@@ -1,5 +1,6 @@
 import { CANON } from "../styles/canon";
 import React, { useState } from "react";
+import { X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
@@ -274,6 +275,27 @@ export default function MobileAuth() {
       display: "flex",
       flexDirection: "column",
     }}>
+      {/* ── Top-right × — same exit as the bottom "← Back" (returnTo-aware
+             so an invitee's context is preserved; else the homepage). ── */}
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={() => {
+          const back = new URLSearchParams(location.search).get("returnTo");
+          navigate(back && back.startsWith("/m/") && !back.includes("//") ? back : "/m");
+        }}
+        style={{
+          position: "fixed",
+          top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+          right: 12,
+          width: 44, height: 44,
+          border: "none", background: "transparent", cursor: "pointer",
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          zIndex: 10,
+        }}
+      >
+        <X size={20} color={CANON.cream} />
+      </button>
       <div style={{ width: "100%", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", flex: 1 }}>
         {/* ── Header ── */}
         {hint && (
