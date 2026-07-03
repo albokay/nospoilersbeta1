@@ -281,7 +281,9 @@ export default function App() {
   }
   // Public read-only view of a user's show pool (restructure; reached from the
   // show room's member-name clicks). Distinct from the live /u/:username profile.
+  // Mobile viewport forks to the /m pool (same pattern as /show-room above).
   if (pathParts[0] === "pool" && pathParts[1]) {
+    if (onMobile) return <Navigate to={`/m/pool/${pathParts[1]}`} replace />;
     return <Suspense fallback={<RouteFallback />}><PublicDashboardPage username={decodeURIComponent(pathParts[1])} /></Suspense>;
   }
   // Dashboard "write by yourself" — private-only standalone for a show (no group).

@@ -545,6 +545,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               onEntryCollapsed={handleEntryCollapsed}
               onThreadEdited={handleThreadEdited}
               onThreadDeleted={handleThreadDeleted}
+              onClickProfile={(username) => navigate(`/m/pool/${encodeURIComponent(username)}`)}
               isNewMap={isNewMap}
               cellSignals={cellSignals}
               engagedThreadIds={engagedSet}

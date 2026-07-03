@@ -8,6 +8,7 @@ import MobileGroupRoom from "./MobileGroupRoom";
 import MobileGroupChat from "./MobileGroupChat";
 import MobileShowRoom from "./MobileShowRoom";
 import MobileGroupInviteAccept from "./MobileGroupInviteAccept";
+import MobilePool from "./MobilePool";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Only admins can reach /m while the mobile rebuild is
@@ -80,5 +81,7 @@ export default function MobileApp() {
     return <MobileShowRoom privateShowId={subParts[2]} />;
   }
   if (subParts[0] === "show-room" && subParts[1]) return <MobileShowRoom roomId={subParts[1]} />;
+  // Read-only view of a person's watch pool (byline taps in show rooms).
+  if (subParts[0] === "pool" && subParts[1]) return <MobilePool username={decodeURIComponent(subParts[1])} />;
   return <MobileNarrative />;
 }
