@@ -280,11 +280,17 @@ export default function App() {
     return <Suspense fallback={<RouteFallback />}><PublicDashboardPage username={decodeURIComponent(pathParts[1])} /></Suspense>;
   }
   // Dashboard "write by yourself" — private-only standalone for a show (no group).
+  // Mobile viewport forks to the /m room (query preserved) — same pattern as
+  // the /invite redirect above. Digest emails link the DESKTOP /show-room
+  // URL, so without this fork a phone tap opened the desktop room; the
+  // lockout gate sits above this, so locked visitors never reach the fork.
   if (pathParts[0] === "show-room" && pathParts[1] === "private" && pathParts[2]) {
+    if (onMobile) return <Navigate to={`/m/show-room/private/${pathParts[2]}${location.search}`} replace />;
     return <Suspense fallback={<RouteFallback />}><ShowRoomPage privateShowId={pathParts[2]} /></Suspense>;
   }
   // Restructure (group × show) room — two tabs (separate from legacy /room/:id).
   if (pathParts[0] === "show-room" && pathParts[1]) {
+    if (onMobile) return <Navigate to={`/m/show-room/${pathParts[1]}${location.search}`} replace />;
     return <Suspense fallback={<RouteFallback />}><ShowRoomPage roomId={pathParts[1]} /></Suspense>;
   }
   // CP7: the old journal home is retired → dashboard (desktop). Signed-out

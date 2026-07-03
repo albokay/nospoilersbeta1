@@ -432,8 +432,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <button style={rosterHead} onClick={() => setRosterOpen((o) => !o)}>
               <span style={{ display: "inline-flex" }}>
                 {rosterRows.slice(0, 6).map((m) => (
-                  // Departed member: fully opaque alert fill (not faded).
-                  <span key={m.userId} style={{ ...rosterAvatar, ...(m.isDeparted ? { background: C.red, color: C.cream } : {}) }}>
+                  // Departed member: opaque accent fill. Viewer: green + cream.
+                  <span key={m.userId} style={{ ...rosterAvatar, ...(m.isDeparted ? { background: C.yellow, color: C.cream } : m.userId === user?.id ? { background: C.green, color: C.cream } : {}) }}>
                     {(m.username[0] ?? "?").toUpperCase()}
                   </span>
                 ))}
@@ -450,7 +450,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                   const p = m.progress;
                   return (
                     <div key={m.userId} style={rosterRow}>
-                      <span style={{ ...rosterAvatar, marginRight: 10, ...(m.isDeparted ? { background: C.red, color: C.cream } : {}) }}>
+                      <span style={{ ...rosterAvatar, marginRight: 10, ...(m.isDeparted ? { background: C.yellow, color: C.cream } : isSelf ? { background: C.green, color: C.cream } : {}) }}>
                         {(m.username[0] ?? "?").toUpperCase()}
                       </span>
                       <span style={{ flex: 1, fontWeight: isSelf ? 700 : 600, fontSize: 14, color: C.midnight, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -468,12 +468,14 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         )}
 
         {/* ── Toolbar: write · sort/filter · progress picker ── */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 20 }}>
-          <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
-          {/* Sort/filter + progress live in one right-anchored group so both
-              align to the screen's right edge (also when the row wraps). */}
-          <div style={{ marginLeft: "auto", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
-            {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
+        {/* Toolbar — two fixed rows so nothing wraps to a third:
+            row 1: write (left) · row 2: order dropdown (left) + progress (right). */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+          <div>
+            <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            {tab === "friend" && !privateOnly && feedEntries.length > 0 ? (
               <select
                 value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
                 onChange={(e) => {
@@ -494,7 +496,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                   </optgroup>
                 )}
               </select>
-            )}
+            ) : <span />}
             {show && progressForShow && (
               <div className={tab === "private" ? "private-progress" : undefined}>
                 <OneSelectProgress
