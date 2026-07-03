@@ -7,6 +7,7 @@ import MobileDashboard from "./MobileDashboard";
 import MobileGroupRoom from "./MobileGroupRoom";
 import MobileGroupChat from "./MobileGroupChat";
 import MobileShowRoom from "./MobileShowRoom";
+import MobileGroupInviteAccept from "./MobileGroupInviteAccept";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Only admins can reach /m while the mobile rebuild is
@@ -68,6 +69,7 @@ export default function MobileApp() {
   }, [user, authLoading, subPath, navigate]);
 
   if (subParts[0] === "auth") return <MobileAuth />;
+  if (subParts[0] === "group-invite" && subParts[1]) return <MobileGroupInviteAccept token={subParts[1]} />;
   if (subParts[0] === "dashboard") return <MobileDashboard />;
   if (subParts[0] === "group" && subParts[1] && subParts[2] === "chat") {
     return <MobileGroupChat groupId={subParts[1]} />;

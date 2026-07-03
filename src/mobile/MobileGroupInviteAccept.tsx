@@ -1,0 +1,260 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../lib/auth";
+import { CANON } from "../styles/canon";
+import SidebarLogo from "../components/SidebarLogo";
+import { preventLastWordOrphan } from "../lib/utils";
+import {
+  getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite,
+  fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser,
+  type GroupInviteInfo, type Show,
+} from "../lib/db";
+import type { ProgressEntry } from "../types";
+
+/**
+ * MobileGroupInviteAccept (CP7b) — the invite email opened on a phone.
+ * Mobile re-expression of the desktop GroupInviteAcceptPage, as a linear
+ * full-screen flow (per spec):
+ *
+ *   logged-out → welcome: the inviter's watch pool ("@X wants to watch…" /
+ *   "…is already watching…", same copy + data calls as the desktop invite
+ *   arrival) + JOIN IN → /m/auth prefilled from the invite (mode by
+ *   inviteeHasAccount, email locked, hint line, returnTo back HERE so both
+ *   the sign-in path and the email-confirmation link land on the join
+ *   confirm — the mobile idiom of desktop's postSignin/entering phases).
+ *
+ *   signed-in → "Join a group with @X?" Yes/no (Yes joins → /m/dashboard;
+ *   no fully DECLINES the invite, same as desktop). Wrong-recipient /
+ *   already-used / expired / invalid states carry desktop copy.
+ */
+
+const C = { green: CANON.personal, blue: CANON.identity, yellow: CANON.accent, red: CANON.alert, cream: CANON.cream, midnight: CANON.dark };
+const LORA = '"Lora", Georgia, serif';
+
+type Status = "loading" | "ready" | "invalid" | "expired" | "already" | "wrong" | "joining" | "done" | "error";
+
+export default function MobileGroupInviteAccept({ token }: { token: string }) {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<Status>("loading");
+  const [info, setInfo] = useState<GroupInviteInfo | null>(null);
+  const [masked, setMasked] = useState<string | undefined>();
+  const [detail, setDetail] = useState<string>("");
+
+  // Inviter's public pool for the logged-out welcome (same calls as the
+  // desktop arrival's PublicDashboardPage).
+  const [poolShows, setPoolShows] = useState<Show[]>([]);
+  const [poolProgress, setPoolProgress] = useState<Record<string, ProgressEntry>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await getPeopleGroupInvite(token);
+      if (cancelled) return;
+      if (!res.ok) {
+        console.error("[m-group-invite] lookup failed", { token, error: res.error });
+        setDetail(`token=${token} · ${res.error}`);
+        setStatus(res.error === "expired" ? "expired" : res.error === "already_accepted" ? "already" : "invalid");
+        return;
+      }
+      setInfo(res.info);
+      setStatus("ready");
+      // Load the inviter's pool for the welcome shelves (tolerant).
+      try {
+        const prof = await fetchPublicProfileByUsername(res.info.inviterName);
+        if (!prof || cancelled) return;
+        const [allShows, prog] = await Promise.all([fetchShows(), fetchPublicProgressForUser(prof.id)]);
+        if (cancelled) return;
+        setPoolShows(allShows);
+        setPoolProgress(prog);
+      } catch { /* welcome degrades to headings + JOIN IN */ }
+    })();
+    return () => { cancelled = true; };
+  }, [token]);
+
+  const showsById = useMemo(() => {
+    const m: Record<string, Show> = {};
+    for (const s of poolShows) m[s.id] = s;
+    return m;
+  }, [poolShows]);
+
+  const { watching, notStarted } = useMemo(() => {
+    const w: { show: Show; entry: ProgressEntry }[] = [];
+    const n: { show: Show; entry: ProgressEntry }[] = [];
+    for (const [showId, entry] of Object.entries(poolProgress)) {
+      const show = showsById[showId];
+      if (!show || show.isHidden) continue;
+      if (entry.stoppedWatching) continue;
+      const started = (entry.s ?? 0) > 0 || (entry.e ?? 0) > 0;
+      (started ? w : n).push({ show, entry });
+    }
+    const byName = (a: { show: Show }, b: { show: Show }) => a.show.name.localeCompare(b.show.name);
+    return { watching: w.sort(byName), notStarted: n.sort(byName) };
+  }, [poolProgress, showsById]);
+
+  async function join() {
+    setStatus("joining");
+    const res = await acceptPeopleGroupInvite(token);
+    if (res.ok) { setStatus("done"); setTimeout(() => navigate("/m/dashboard", { replace: true }), 900); return; }
+    if (res.error === "wrong_recipient") { setMasked(res.maskedEmail); setStatus("wrong"); return; }
+    if (res.error === "already_accepted") { setStatus("already"); return; }
+    if (res.error === "expired") { setStatus("expired"); return; }
+    setStatus("error");
+  }
+
+  // "no" fully declines (deletes the invite) and lands on a clean dashboard.
+  async function declineAndLeave() {
+    try { await declinePeopleGroupInvite(token); } catch { /* tolerant */ }
+    navigate("/m/dashboard");
+  }
+
+  function goAuth() {
+    if (!info) return;
+    const q = new URLSearchParams();
+    q.set("mode", info.inviteeHasAccount ? "signin" : "signup");
+    q.set("returnTo", `/m/group-invite/${token}`);
+    if (info.inviteeEmail) { q.set("email", info.inviteeEmail); q.set("lock", "1"); }
+    const inviterLabel = info.inviterDisplayName
+      ? `${info.inviterDisplayName} (@${info.inviterName})`
+      : `@${info.inviterName}`;
+    q.set("hint", info.inviteeHasAccount
+      ? `Sign in to watch shows with ${inviterLabel} on Sidebar.`
+      : `Create your account to watch shows with ${inviterLabel} on Sidebar.`);
+    navigate(`/m/auth?${q.toString()}`);
+  }
+
+  const others = info ? info.memberNames.filter((n) => n) : [];
+  const names = others.length
+    ? others.map((n) => `@${n}`).reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
+    : `@${info?.inviterName ?? "someone"}`;
+
+  // ── Logged-out welcome: inviter's pool + JOIN IN (single column) ──────────
+  if (status === "ready" && info && !user && !authLoading) {
+    return (
+      <div style={welcomePage}>
+        <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 12px) 16px 8px" }}>
+          <SidebarLogo scale={0.5} blocksOpacity={1} />
+        </div>
+        <div style={{ padding: "8px 16px 48px" }}>
+          {notStarted.length > 0 && (
+            <>
+              <h2 style={inviteHeading}><span style={{ color: C.cream }}>@{info.inviterName}</span> wants to watch these shows:</h2>
+              <div style={shelfCol}>
+                {notStarted.map(({ show }) => (
+                  <div key={show.id} style={{ ...pill, background: C.cream, color: C.green }}><span style={pillName}>{show.name}</span></div>
+                ))}
+              </div>
+            </>
+          )}
+          {watching.length > 0 && (
+            <>
+              <h2 style={{ ...inviteHeading, marginTop: notStarted.length ? 40 : 0 }}>
+                {notStarted.length > 0
+                  ? "and is already watching these:"
+                  : <><span style={{ color: C.cream }}>@{info.inviterName}</span> is watching these shows:</>}
+              </h2>
+              <div style={shelfCol}>
+                {watching.map(({ show, entry }) => (
+                  <div key={show.id} style={{ ...pill, background: "transparent", border: `2px solid ${C.cream}`, color: C.cream }}>
+                    <span style={pillName}>{show.name}</span>
+                    <span style={{ fontWeight: 500 }}>s{entry.s} e{entry.e}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          <div style={{ textAlign: "center", marginTop: 56 }}>
+            <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, margin: "0 0 4px" }}>Want to watch something with them?</h2>
+            <div style={{ color: C.cream, fontSize: 15, marginBottom: 24 }}>(or propose something else?)</div>
+            <button style={joinPill} onClick={goAuth}>JOIN IN</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Everything else: centered card states (desktop copy) ──────────────────
+  return (
+    <div style={page}>
+      <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 16 }}>
+        <SidebarLogo scale={0.5} blocksOpacity={1} />
+      </div>
+      <div style={card}>
+        {status === "loading" && <p style={muted}>Loading…</p>}
+
+        {status === "ready" && user && (
+          <>
+            <p style={title}>Join a group with {names}?</p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
+              <button style={yes} onClick={join}>Yes</button>
+              <button style={no} onClick={declineAndLeave}>no</button>
+            </div>
+          </>
+        )}
+        {/* Session still resolving after returning from /m/auth. */}
+        {status === "ready" && !user && authLoading && <p style={muted}>Signing you in…</p>}
+
+        {status === "joining" && <p style={muted}>Joining…</p>}
+        {status === "done" && <p style={title}>You're in! Taking you to your dashboard…</p>}
+        {status === "wrong" && (
+          <>
+            <p style={title}>{preventLastWordOrphan("This invite was sent to a different email.")}</p>
+            <p style={muted}>It's addressed to {masked}. {preventLastWordOrphan("Sign in with that email to join.")}</p>
+          </>
+        )}
+        {status === "already" && (
+          <>
+            <p style={title}>This invite was already used.</p>
+            <button style={ghost} onClick={() => navigate("/m/dashboard")}>Go to dashboard</button>
+          </>
+        )}
+        {status === "expired" && <p style={title}>This invitation has expired.</p>}
+        {status === "invalid" && (
+          <>
+            <p style={title}>{preventLastWordOrphan("This invitation link isn't valid.")}</p>
+            <p style={muted}>{preventLastWordOrphan("This link is no longer active. The invite may have been canceled, or the link is incomplete — ask your friend to send you a new one.")}</p>
+          </>
+        )}
+        {status === "error" && <p style={title}>Something went wrong. Try the link again.</p>}
+        {detail && (status === "error" || status === "expired" || status === "already") && (
+          <p style={{ ...muted, fontSize: 11, wordBreak: "break-all", opacity: 0.7 }}>{detail}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const welcomePage: React.CSSProperties = {
+  minHeight: "100dvh", boxSizing: "border-box", background: C.green,
+  fontFamily: '"Inter", system-ui, sans-serif',
+  paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
+};
+const page: React.CSSProperties = {
+  position: "fixed", inset: 0, background: C.green, fontFamily: '"Inter", system-ui, sans-serif',
+  display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+};
+const card: React.CSSProperties = {
+  background: C.yellow, borderRadius: 15, padding: "32px 28px", width: "min(420px, 92vw)", textAlign: "center",
+};
+const title: React.CSSProperties = { fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: -1, color: C.cream, margin: "0 0 8px" };
+const muted: React.CSSProperties = { color: C.midnight, fontSize: 13, margin: "8px 0 0" };
+const yes: React.CSSProperties = { border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14, padding: "11px 38px", borderRadius: 65, cursor: "pointer", minHeight: 44 };
+const no: React.CSSProperties = { border: `2px solid ${C.cream}`, background: "transparent", color: C.cream, fontWeight: 700, fontSize: 14, padding: "10px 30px", borderRadius: 65, cursor: "pointer", minHeight: 44 };
+const ghost: React.CSSProperties = { border: `2px solid ${C.cream}`, background: "transparent", color: C.cream, fontWeight: 700, fontSize: 14, padding: "10px 28px", borderRadius: 65, cursor: "pointer", marginTop: 14, minHeight: 44 };
+const inviteHeading: React.CSSProperties = {
+  fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: 0, color: C.blue,
+  textAlign: "center", margin: "16px 0 16px",
+};
+const shelfCol: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 12 };
+const pill: React.CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "space-between",
+  gap: 12, padding: "14px 24px", borderRadius: 65,
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
+  letterSpacing: -1, width: "100%", boxSizing: "border-box", minHeight: 48,
+};
+const pillName: React.CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+const joinPill: React.CSSProperties = {
+  border: "none", background: C.blue, color: C.cream, fontWeight: 800, fontSize: 20,
+  padding: "18px 72px", borderRadius: 65, cursor: "pointer", minHeight: 56,
+  boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
+};

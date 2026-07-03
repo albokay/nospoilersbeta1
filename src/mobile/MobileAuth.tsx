@@ -47,7 +47,13 @@ export default function MobileAuth() {
   const [mode, setMode] = useState<Mode>(() =>
     new URLSearchParams(location.search).get("mode") === "signup" ? "signup" : "signin"
   );
-  const [email, setEmail] = useState("");
+  // Invite-arrival support (mobile idiom of AuthModal's initialEmail /
+  // lockEmail / hint props): ?email= prefills, ?lock=1 pins it to the
+  // invited address, ?hint= renders a context line above the title.
+  const params = new URLSearchParams(location.search);
+  const lockEmail = params.get("lock") === "1";
+  const hint = params.get("hint");
+  const [email, setEmail] = useState(() => new URLSearchParams(location.search).get("email") ?? "");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -270,6 +276,11 @@ export default function MobileAuth() {
     }}>
       <div style={{ width: "100%", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", flex: 1 }}>
         {/* ── Header ── */}
+        {hint && (
+          <p style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.5, opacity: 0.95, margin: "12px 0 0", textAlign: "center" }}>
+            {hint}
+          </p>
+        )}
         <h1 style={{ fontSize: 26, fontWeight: 800, margin: "16px 0 6px", textAlign: "center" }}>
           {mode === "signin" ? "Sign in" : "Create account"}
         </h1>
@@ -298,12 +309,13 @@ export default function MobileAuth() {
             inputMode="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            autoFocus={mode === "signin"}
+            readOnly={lockEmail}
+            autoFocus={mode === "signin" && !lockEmail}
             autoComplete="email"
             autoCapitalize="none"
             autoCorrect="off"
             className="m-input"
-            style={inputStyle}
+            style={{ ...inputStyle, ...(lockEmail ? { opacity: 0.7 } : null) }}
           />
           <input
             placeholder="Password"

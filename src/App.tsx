@@ -271,7 +271,12 @@ export default function App() {
     return <Suspense fallback={<RouteFallback />}><DashboardPage /></Suspense>;
   }
   // Restructure people-group invite accept (separate from /invite/:token).
+  // Mobile viewport forks to the /m arrival — invite emails link the DESKTOP
+  // URL, so this is what lands a phone tap in the mobile flow (same pattern
+  // as /show-room above; the lockout gate still fires first for non-unlocked
+  // visitors while the rebuild is in progress).
   if (pathParts[0] === "group-invite" && pathParts[1]) {
+    if (onMobile) return <Navigate to={`/m/group-invite/${pathParts[1]}`} replace />;
     return <Suspense fallback={<RouteFallback />}><GroupInviteAcceptPage token={pathParts[1]} /></Suspense>;
   }
   // Public read-only view of a user's show pool (restructure; reached from the
