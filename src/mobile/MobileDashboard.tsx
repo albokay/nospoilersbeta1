@@ -555,7 +555,7 @@ export default function MobileDashboard() {
               {/* Desktop's hover × (title "remove from pool") — a visible
                   button here, since hover doesn't exist on mobile. */}
               <div style={sheetDivider} />
-              <div style={{ textAlign: "center" }}>
+              <div style={{ display: "flex", justifyContent: "center" }}>
                 <button style={dangerBtn} onClick={() => setRemoveConfirm({ id: showSheet.showId, name: showSheet.name })}>
                   remove from pool
                 </button>

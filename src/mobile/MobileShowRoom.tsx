@@ -533,7 +533,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               </div>
             )}
           </div>
-          <div>
+          <div style={{ textAlign: "center" }}>
             <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
           </div>
         </div>

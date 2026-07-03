@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
+import { X } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import { insertFeedback } from "../lib/db";
@@ -61,10 +62,16 @@ export default function MobileFeedbackSheet({ onClose }: { onClose: () => void }
   };
 
   return (
-    <div style={dim} onClick={(e) => { if (e.target === e.currentTarget && phase !== "sending") onClose(); }}>
+    // pointerdown (not click) so the FIRST tap outside closes the sheet even
+    // when the keyboard is up — iOS consumes the click that dismisses the
+    // keyboard, which is why tap-outside used to need a scroll-to-top first.
+    <div style={dim} onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={sheet}>
+        <button style={closeX} aria-label="Close" onClick={onClose}>
+          <X size={18} color={C.midnight} />
+        </button>
         <div style={{ fontWeight: 700, fontSize: 16, color: C.midnight, marginBottom: 10 }}>
-          Send me your feedback.
+          Send Sidebar feedback.
         </div>
         <div style={{ fontSize: 13, lineHeight: 1.5, color: C.midnight, opacity: 0.8, marginBottom: 14 }}>
           {PROMPT_LINES.join(" ")}
@@ -102,9 +109,15 @@ const dim: React.CSSProperties = {
   display: "flex", alignItems: "flex-end", justifyContent: "center",
 };
 const sheet: React.CSSProperties = {
+  position: "relative",
   width: "100%", boxSizing: "border-box", background: C.cream,
   borderTopLeftRadius: 24, borderTopRightRadius: 24,
   padding: "24px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)",
+};
+const closeX: React.CSSProperties = {
+  position: "absolute", top: 8, right: 8,
+  width: 44, height: 44, border: "none", background: "transparent", cursor: "pointer",
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
 };
 const textarea: React.CSSProperties = {
   width: "100%", boxSizing: "border-box", minHeight: 120, resize: "vertical",

@@ -49,6 +49,22 @@ export default class ErrorBoundary extends React.Component<Props, State> {
     // in initSentry() cover async/event-handler errors; this adds the React
     // component stack for render crashes.
     captureError(error, info?.componentStack);
+    // Auto-recover: reload ONCE per 60s window before settling on the crash
+    // screen — many render crashes are transient (stale chunk after a deploy,
+    // one-off state corruption) and a reload fixes them invisibly. The
+    // sessionStorage stamp is the crash-loop guard: a second error inside
+    // the window falls through to the screen. Sentry already got the report
+    // above, so the reload loses nothing. (The fallback may flash for a
+    // frame before the reload lands — React commits it before this hook
+    // runs; acceptable.)
+    try {
+      const KEY = "ns_err_reload_at";
+      const last = parseInt(sessionStorage.getItem(KEY) || "0", 10);
+      if (Date.now() - last > 60_000) {
+        sessionStorage.setItem(KEY, String(Date.now()));
+        window.location.reload();
+      }
+    } catch { /* storage unavailable → just show the screen */ }
   }
 
   render() {

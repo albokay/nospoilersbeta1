@@ -1361,6 +1361,14 @@ export default function V2RoomMap({
                           style={{
                             width: CELL,
                             height: CELL,
+                            // Center the dice in the CONTENT box. Bordered
+                            // cells are a snug 28-in-28 fit (no shift), but
+                            // the hidden-entry state has NO border — its
+                            // 32px content box left the 28px dice sitting
+                            // ~4px up-and-left without this.
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             cursor: clickAction ? "pointer" : "default",
                             // Transform is applied ONLY during the bounce
                             // (phase 'up' = instant pop; phase 'down' =

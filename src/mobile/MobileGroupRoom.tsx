@@ -128,7 +128,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [loading, setLoading] = useState(true);
 
   // Sheets
-  const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq" } | null>(null);
+  const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
   const [declaredProgress, setDeclaredProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
   const [searchOpen, setSearchOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -294,11 +294,16 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // ── Actions (same DB calls as desktop) ─────────────────────────────────────
   function onRowClick(pill: PillData, name: string) {
     if (pill.inRoom) { goToRoom(pill.showId); return; }
-    const selfHasShow = !!progress[pill.showId];
+    // OUT-OF-POOL shows don't count as yours — removing a show from your
+    // personal dashboard cancels your votes (server-side), so the next tap
+    // must offer the vote question again, not the solo sheet (2026-07-03).
+    const selfHasShow = !!progress[pill.showId] && !outOfPool.has(pill.showId);
     const mode = selfHasShow ? "solo" : pill.shelf === "notStarted" ? "vote" : "watchq";
     const cur = progress[pill.showId];
-    setDeclaredProgress(cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 });
-    setClicked({ showId: pill.showId, name, mode });
+    setDeclaredProgress(selfHasShow && cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 });
+    // Haven't-started shows keep the vote toggle in the solo sheet (desktop
+    // parity) — toggling to "no" is the per-group un-vote path.
+    setClicked({ showId: pill.showId, name, mode, voteToggle: pill.shelf === "notStarted" });
   }
 
   async function doVote(showId: string, voted: boolean) {
@@ -502,6 +507,18 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
               {clicked.mode === "solo" && (
                 <>
+                  {/* Haven't-started shows keep the vote question above the
+                      progress/room actions (desktop parity, 2026-07-03):
+                      toggling to "no" un-votes in THIS group only. */}
+                  {clicked.voteToggle && (
+                    <>
+                      <div style={sheetTitle}>Do you want to watch <b>{clicked.name}</b>?</div>
+                      <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                        <YesNoToggle value={selfVoted} onChange={(v) => doVote(clicked.showId, v)} />
+                      </div>
+                      <div style={sheetDivider} />
+                    </>
+                  )}
                   <div style={sheetTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
                   <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                     <OneSelectProgress
@@ -594,10 +611,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           <div style={{ ...bottomSheet, background: C.yellow }}>
             <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Rename group:</div>
             <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={renameInput} className="m-input" />
-            <button style={{ ...startBtn, marginTop: 12 }} onClick={doRename}>confirm name</button>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <button style={{ ...startBtn, marginTop: 12 }} onClick={doRename}>confirm name</button>
+            </div>
             <div style={sheetDivider} />
             <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Leave this group?</div>
-            <button style={dangerBtn} onClick={doLeave}>yes, leave</button>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <button style={dangerBtn} onClick={doLeave}>yes, leave</button>
+            </div>
             <div style={{ color: C.cream, fontSize: 12, opacity: 0.9, marginTop: 14 }}>You can join again if someone sends you another invite.</div>
           </div>
         </div>

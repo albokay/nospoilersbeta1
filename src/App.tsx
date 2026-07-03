@@ -1285,13 +1285,21 @@ function AppShell() {
                   className="btn"
                   onClick={() => { setAuthInitialMode("signin"); setShowAuthModal(true); }}
                   // Accent fill + cream text (matches the mobile homepage's
-                  // Sign in — approved for both surfaces 2026-07-02).
+                  // Sign in — approved for both surfaces 2026-07-02), sized
+                  // in the spirit of the dashboard show buttons (rounded-65
+                  // pill, Inter 700 14, tight tracking) per 2026-07-03 note.
                   style={{
                     position: "fixed", top: 16, right: 16, zIndex: 200,
                     flexShrink: 0,
                     background: "var(--canon-accent,#dea838)",
                     color: "var(--canon-cream,#fef8ea)",
                     border: "none",
+                    borderRadius: 65,
+                    padding: "14px 28px",
+                    height: "auto",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    letterSpacing: -1,
                   }}
                 >
                   Sign in

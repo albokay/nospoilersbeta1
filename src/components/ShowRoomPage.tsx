@@ -31,6 +31,7 @@ import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import OneSelectProgress from "./OneSelectProgress";
 import RatingCaptureModal from "./RatingCaptureModal";
 import SidebarLogo from "./SidebarLogo";
+import FeedbackWidget from "./FeedbackWidget";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
 import SIKWSticky from "./SIKWSticky";
@@ -743,6 +744,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           </div>
         </div>
       )}
+
+      {/* Feedback tab — left-edge widget on every live desktop surface
+          (2026-07-03). Sits at 85% height; the back tab lives at 18%. */}
+      <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} />
     </div>
   );
 }

@@ -28,6 +28,7 @@ import { supabase } from "../lib/supabaseClient";
 import { X, Settings, Pencil, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, UserCog } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import AccountModal from "./AccountModal";
+import FeedbackWidget from "./FeedbackWidget";
 import {
   fetchShows,
   refreshStaleShows,
@@ -170,7 +171,7 @@ export default function DashboardPage() {
   const [inviteTargetGroupId, setInviteTargetGroupId] = useState<string | null>(null);
 
   // §9 click-model popover (group context). mode captured at click time.
-  const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq" } | null>(null);
+  const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
   const [declaredProgress, setDeclaredProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
 
   // CP5b: pending invites (rail "*you're invited"), group options (gear).
@@ -671,13 +672,19 @@ export default function DashboardPage() {
     if (pill.inRoom) { goToRoom(pill.showId); return; }
     // Resolve the dropdown mode: your own show (you have it) → solo; else a
     // want-only show → vote; else (others watching / written) → "also watching?".
-    const selfHasShow = !!progress[pill.showId];
+    // OUT-OF-POOL shows don't count as yours — removing a show from your
+    // personal dashboard cancels your votes (server-side), so the next click
+    // must offer the vote question again, not the solo modal (2026-07-03).
+    const selfHasShow = !!progress[pill.showId] && !outOfPool.has(pill.showId);
     const mode = selfHasShow ? "solo" : pill.shelf === "notStarted" ? "vote" : "watchq";
     // Default the picker to your current progress (solo) so a button press
     // without touching the dropdown can't reset it; 0 for vote/watchq.
     const cur = progress[pill.showId];
-    setDeclaredProgress(cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 });
-    setClicked({ showId: pill.showId, name, mode });
+    setDeclaredProgress(selfHasShow && cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 });
+    // Haven't-started shows keep the vote toggle visible in the solo modal
+    // (voting is a want-to-watch concept), so a "yes" can be taken back by
+    // toggling — the second un-vote path besides remove-from-pool.
+    setClicked({ showId: pill.showId, name, mode, voteToggle: pill.shelf === "notStarted" });
   }
 
   async function doVote(showId: string, voted: boolean) {
@@ -1285,6 +1292,19 @@ export default function DashboardPage() {
 
               {clicked.mode === "solo" && (
                 <>
+                  {/* Haven't-started shows keep the vote question above the
+                      progress/room actions — toggling to "no" un-votes in
+                      THIS group (the show stays on your personal dashboard;
+                      remove-from-pool is the global un-vote). 2026-07-03. */}
+                  {clicked.voteToggle && (
+                    <>
+                      <div style={yellowTitle}>Do you want to watch <b>{clicked.name}</b>?</div>
+                      <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                        <YesNoToggle value={selfVoted} onChange={(v) => doVote(clicked.showId, v)} />
+                      </div>
+                      <div style={yellowDivider} />
+                    </>
+                  )}
                   <div style={yellowTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
                   <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                     <OneSelectProgress
@@ -1535,6 +1555,10 @@ export default function DashboardPage() {
 
       {/* TSP onboarding demo — over the empty dashboard (spec §9). */}
       {showTspDemo && <TSPDemoModal onClose={closeTspDemo} />}
+
+      {/* Feedback tab — same left-edge widget the homepage has, so feedback
+          is reachable from every live desktop surface (2026-07-03). */}
+      <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} />
     </div>
   );
 }

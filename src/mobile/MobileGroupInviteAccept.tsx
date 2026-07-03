@@ -242,7 +242,8 @@ const yes: React.CSSProperties = { border: "none", background: C.blue, color: C.
 const no: React.CSSProperties = { border: `2px solid ${C.cream}`, background: "transparent", color: C.cream, fontWeight: 700, fontSize: 14, padding: "10px 30px", borderRadius: 65, cursor: "pointer", minHeight: 44 };
 const ghost: React.CSSProperties = { border: `2px solid ${C.cream}`, background: "transparent", color: C.cream, fontWeight: 700, fontSize: 14, padding: "10px 28px", borderRadius: 65, cursor: "pointer", marginTop: 14, minHeight: 44 };
 const inviteHeading: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: 0, color: C.blue,
+  // All-cream (was identity blue) per 2026-07-03 QA note.
+  fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: 0, color: C.cream,
   textAlign: "center", margin: "16px 0 16px",
 };
 const shelfCol: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 12 };

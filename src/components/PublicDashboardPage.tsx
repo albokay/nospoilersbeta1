@@ -16,6 +16,7 @@ import {
 } from "../lib/db";
 import type { ProgressEntry } from "../types";
 import SidebarLogo from "./SidebarLogo";
+import FeedbackWidget from "./FeedbackWidget";
 import { CANON } from "../styles/canon";
 
 const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark };
@@ -178,6 +179,11 @@ export default function PublicDashboardPage({ username, invite }: { username: st
           )}
         </div>
       )}
+
+      {/* Feedback tab — left-edge widget on every live desktop surface
+          (2026-07-03). Supports anon submissions, so the signed-out invite
+          arrival gets it too. */}
+      <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} />
     </div>
   );
 }
