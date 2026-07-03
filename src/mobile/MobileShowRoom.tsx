@@ -402,6 +402,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
   return (
     <div ref={pageRef} style={{ ...page, background: bodyBg }}>
+      {/* Fit the reused OneSelectProgress pill to the phone: the select sizes
+          to its widest option label ("you've watched: S02 E08"), which pushed
+          it offscreen. Cap it at the cell's width — the browser truncates the
+          selected label; the opened option list is unaffected. Scoped to this
+          page's cell class so desktop is untouched. */}
+      <style>{`
+        .m-progress-cell { min-width: 0; flex: 0 1 auto; }
+        .m-progress-cell > span { max-width: 100%; }
+        .m-progress-cell select { max-width: 100%; text-overflow: ellipsis; }
+      `}</style>
       {/* ── Header: back · show name (+ with group) · digest gear ── */}
       <div style={{ background: tab === "friend" ? C.green : C.sky }}>
         <div style={topBar}>
@@ -498,7 +508,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               </select>
             ) : <span />}
             {show && progressForShow && (
-              <div className={tab === "private" ? "private-progress" : undefined}>
+              <div className={`m-progress-cell${tab === "private" ? " private-progress" : ""}`}>
                 <OneSelectProgress
                   show={show}
                   value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
@@ -689,6 +699,8 @@ const sortSelect: React.CSSProperties = {
   background: "transparent", border: `2px solid ${C.cream}`, color: C.cream,
   borderRadius: 65, padding: "8px 18px", fontSize: 12, fontWeight: 700, minHeight: 44,
   fontFamily: '"Inter", system-ui, sans-serif', cursor: "pointer", outline: "none",
+  // Shares a row with the progress pill — cap width so the pair always fits.
+  maxWidth: "42vw", textOverflow: "ellipsis",
 };
 const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 };
 const composeShell: React.CSSProperties = {
