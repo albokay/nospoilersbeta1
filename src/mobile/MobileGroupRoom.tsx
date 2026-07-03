@@ -716,7 +716,7 @@ const optInAvatar: React.CSSProperties = {
   width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.cream}`, background: C.sky,
   color: C.blue, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
   display: "inline-flex", alignItems: "center", justifyContent: "center",
-  marginLeft: -6,
+  marginLeft: -2, // spread so writer pen badges don't crowd the next avatar
 };
 const writerPencilBadge: React.CSSProperties = {
   position: "absolute", top: -5, right: -5, display: "inline-flex",

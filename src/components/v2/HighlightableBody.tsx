@@ -160,6 +160,25 @@ function HighlightSpan({
   // wraps across multiple lines).
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const spanRef = useRef<HTMLSpanElement>(null);
+  const bubbleRef = useRef<HTMLSpanElement>(null);
+
+  // Tap-anywhere-else dismissal. On touch devices a tap fires mouseenter
+  // (opening the bubble) but mouseleave never reliably follows, so the ×
+  // was the only way out. A pointerdown outside the span/bubble closes it.
+  // On desktop this is a no-op in practice — moving the mouse to click
+  // elsewhere already triggers the mouseleave close timer.
+  useEffect(() => {
+    if (!hovered) return;
+    const onDocPointerDown = (ev: PointerEvent) => {
+      const t = ev.target as Node;
+      if (spanRef.current?.contains(t) || bubbleRef.current?.contains(t)) return;
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+      setHovered(false);
+    };
+    document.addEventListener("pointerdown", onDocPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onDocPointerDown, true);
+  }, [hovered]);
 
   // Grace period so the cursor can travel from the highlighted span into
   // the (portaled) tooltip without it closing en route. 500ms is generous
@@ -191,6 +210,7 @@ function HighlightSpan({
 
   return (
     <span
+      ref={spanRef}
       onMouseEnter={enterSpan}
       onMouseLeave={leave}
       style={{ background: color, padding: "2px 2px", borderRadius: 3 }}
@@ -198,6 +218,7 @@ function HighlightSpan({
       {children}
       {hovered && anchor && createPortal(
         <span
+          ref={bubbleRef}
           onMouseEnter={enterTooltip}
           onMouseLeave={leave}
           style={{

@@ -82,6 +82,11 @@ export type V2InlineThreadProps = {
   /** Fires after a reply is published from this thread's composer, so the
    *  parent feed can bump the entry's reply count without a refetch. */
   onReplyAdded?: (threadId: string) => void;
+  /** Mobile rebuild (/m) idiom: hides the selection-based Highlight…/Quote…
+   *  buttons (OS text selection doesn't cooperate on touch) — existing
+   *  highlights still render. Forwarded to RepliesList (reply affordances).
+   *  Default false — desktop rendering unchanged. */
+  mobileIdiom?: boolean;
 };
 
 export default function V2InlineThread({
@@ -100,6 +105,7 @@ export default function V2InlineThread({
   focusReplyId,
   publicRoomGate,
   onReplyAdded,
+  mobileIdiom = false,
 }: V2InlineThreadProps) {
   const { profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
@@ -689,7 +695,7 @@ export default function V2InlineThread({
               </button>
             </>
           )}
-          {groupId && (
+          {groupId && !mobileIdiom && (
             <button
               ref={highlightBtnRef}
               className="btn"
@@ -705,13 +711,15 @@ export default function V2InlineThread({
               Highlight…
             </button>
           )}
-          <button
-            className="btn"
-            onClick={handleQuoteThread}
-            style={{ fontSize: 13, padding: "3px 12px" }}
-          >
-            Quote…
-          </button>
+          {!mobileIdiom && (
+            <button
+              className="btn"
+              onClick={handleQuoteThread}
+              style={{ fontSize: 13, padding: "3px 12px" }}
+            >
+              Quote…
+            </button>
+          )}
         </div>
       )}
 
@@ -755,6 +763,7 @@ export default function V2InlineThread({
           compactBorders
           showAheadStubs
           enableHighlights
+          mobileIdiom={mobileIdiom}
           onClickProfile={onClickProfile}
           focusReplyId={focusReplyId ?? null}
         />

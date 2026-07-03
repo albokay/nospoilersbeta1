@@ -338,6 +338,7 @@ export default function RepliesList({
   orderMode = "episode",
   hideRespondButtons = false,
   enableHighlights = false,
+  mobileIdiom = false,
 }: {
   thread: Thread;
   progressForShow?: ViewerProgress;
@@ -388,6 +389,11 @@ export default function RepliesList({
   // picker. V1 callers leave undefined → no Highlight button anywhere,
   // matching the V1 entry surface that also doesn't expose highlights.
   enableHighlights?: boolean;
+  /** Mobile rebuild (/m) idiom: hides the selection-based Highlight…/Quote…
+   *  affordances (OS text selection doesn't play well with them on touch)
+   *  and the reply star, and makes the edit-Save button cream-outlined for
+   *  visibility. Default false — desktop rendering unchanged. */
+  mobileIdiom?: boolean;
 }) {
   const { user, profile } = useAuth();
   const { scrollTo: scrollHighlight } = useScrollHighlight();
@@ -1196,7 +1202,8 @@ export default function RepliesList({
                         className="btn"
                         onClick={() => handleSaveEditReply(r.id)}
                         disabled={editReplySubmitting || !editReplyBody.trim()}
-                        style={{ background: "var(--danger)", border: "2px solid var(--danger)", color: "#FEF8EA" }}
+                        // Mobile: cream outline so Save reads clearly against the card.
+                        style={{ background: "var(--danger)", border: mobileIdiom ? "2px solid var(--canon-cream,#FEF8EA)" : "2px solid var(--danger)", color: "#FEF8EA" }}
                       >
                         {editReplySubmitting ? "Saving…" : "Save"}
                       </button>
@@ -1232,20 +1239,22 @@ export default function RepliesList({
 
               {!isCurrentlyEditing && (
                 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-                  <LikeBadge
-                    count={likeCt}
-                    userLiked={userLiked}
-                    onClick={() => handleLikeReply(r.id)}
-                    title="this post!"
-                    inReply
-                  />
+                  {!mobileIdiom && (
+                    <LikeBadge
+                      count={likeCt}
+                      userLiked={userLiked}
+                      onClick={() => handleLikeReply(r.id)}
+                      title="this post!"
+                      inReply
+                    />
+                  )}
                   {isReplyOwn && (
                     <>
                       <button className="btn" style={{ fontSize: 13 }} onClick={() => handleStartEditReply(r)}>Edit</button>
                       <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={() => setDeleteConfirmId(r.id)}>Delete</button>
                     </>
                   )}
-                  {highlightsEnabled && (
+                  {highlightsEnabled && !mobileIdiom && (
                     <button
                       ref={el => { highlightBtnRefs.current[r.id] = el; }}
                       onClick={() => handleHighlightClickReply(r.id)}
@@ -1264,16 +1273,18 @@ export default function RepliesList({
                       Highlight…
                     </button>
                   )}
-                  <div style={{ position: "relative", display: "inline-block" }}>
-                    <button
-                      className="btn"
-                      style={{ fontSize: 13 }}
-                      onClick={() => handleQuote(r)}
-                      title="Quote this response"
-                    >
-                      Quote…
-                    </button>
-                  </div>
+                  {!mobileIdiom && (
+                    <div style={{ position: "relative", display: "inline-block" }}>
+                      <button
+                        className="btn"
+                        style={{ fontSize: 13 }}
+                        onClick={() => handleQuote(r)}
+                        title="Quote this response"
+                      >
+                        Quote…
+                      </button>
+                    </div>
+                  )}
                   {!hideRespondButtons && (
                     <button
                       className="btn"

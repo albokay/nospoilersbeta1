@@ -88,6 +88,12 @@ type ComposeFormProps = {
    *  top-right corner. Default false (standalone page renders both the
    *  fixed top-right × AND the action-row "× not now"). */
   hideTopRightClose?: boolean;
+  /** Mobile rebuild (/m) idiom: the paper sheds its blue bounding box and
+   *  bleeds edge-to-edge, and the action buttons render in-flow directly
+   *  under the paper instead of the sticky bottom-right footer (which
+   *  overlapped the writing field on phones). Default false — desktop
+   *  rendering unchanged. */
+  mobileIdiom?: boolean;
   /** Restructure show room: when set, the destination choice is limited to
    *  THIS friend room ("this friend room") + "keep it private" — no "everyone"
    *  (public) and no other groups. Live compose leaves this undefined and is
@@ -114,7 +120,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination },
+  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, mobileIdiom = false },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -501,7 +507,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         </div>
       )}
 
-      <main style={{ maxWidth: 720, margin: "0 auto", padding: "64px 48px 180px" }}>
+      <main style={{ maxWidth: 720, margin: "0 auto", padding: mobileIdiom ? "56px 16px 24px" : "64px 48px 180px" }}>
         {/* === CONTEXT === */}
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div
@@ -599,10 +605,13 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         <div
           style={{
             background: "#fff",
-            border: `2px solid var(--canon-identity,#355eb8)`,
+            // Mobile: no bounding box — the paper bleeds past the gutters to
+            // the screen edges (negative margin against main's 16px padding)
+            // so the writing field gets the full width.
+            border: mobileIdiom ? "none" : `2px solid var(--canon-identity,#355eb8)`,
             borderRadius: 0,
-            padding: "20px 40px",
-            marginBottom: 16,
+            padding: mobileIdiom ? "20px 16px" : "20px 40px",
+            margin: mobileIdiom ? "0 -16px 16px" : "0 0 16px",
             display: "flex",
             flexDirection: "column",
           }}
@@ -713,16 +722,20 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           the inner column re-enables pointer events on the actual UI. */}
       <div
         style={{
-          position: "sticky",
+          // Mobile: in-flow directly under the writing field (the sticky
+          // footer overlapped the textarea on phones); desktop keeps the
+          // sticky bottom-right anchor.
+          position: mobileIdiom ? "static" : "sticky",
           bottom: 0,
           left: 0,
           right: 0,
           width: "100%",
-          padding: "0 24px 24px",
+          padding: mobileIdiom ? "0 16px calc(env(safe-area-inset-bottom, 0px) + 32px)" : "0 24px 24px",
           display: "flex",
           justifyContent: "flex-end",
           pointerEvents: "none",
           zIndex: 5,
+          boxSizing: "border-box",
         }}
       >
         <div

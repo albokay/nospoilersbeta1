@@ -79,6 +79,10 @@ export type V2RoomFeedHandle = {
 
 export type V2RoomFeedProps = {
   entries: V2RoomFeedEntry[];
+  /** Mobile rebuild (/m) idiom: hides the title-row star and (via
+   *  V2InlineThread → RepliesList) the selection-based Highlight…/Quote…
+   *  affordances + reply stars. Default false — desktop rendering unchanged. */
+  mobileIdiom?: boolean;
   /** Episode-tag sort direction. Default "asc". */
   sortOrder?: "asc" | "desc";
   /** When true, render entries in the order provided (no internal episode
@@ -216,6 +220,7 @@ const demoCollapseBtn: React.CSSProperties = {
 const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2RoomFeed(
   {
     entries,
+    mobileIdiom = false,
     sortOrder = "asc",
     groupId,
     viewerProgress,
@@ -704,9 +709,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     in V2RoomFeed so the star doesn't move between collapsed
                     and expanded — V2InlineThread reports the caller's
                     likedByMe via onThreadLikeStateChange after its fetch. */}
-                {!entry.isDeleted && !entry.isInstructional && (
+                {!entry.isDeleted && !entry.isInstructional && !mobileIdiom && (
                   // TSP demo: guide entries have no star (the flag leads the
-                  // title instead).
+                  // title instead). Mobile: starring is dropped entirely.
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     {isExpanded && expandedLikeState ? (
                       <LikeBadge
@@ -815,6 +820,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     <V2InlineThread
                       thread={entry.thread}
                       groupId={groupId}
+                      mobileIdiom={mobileIdiom}
                       viewerProgress={viewerProgress}
                       userId={userId}
                       replyCount={entry.replyCount}

@@ -48,7 +48,7 @@ import { CANON } from "../styles/canon";
  *     read-only pool page has no mobile surface yet (CP8 decision).
  */
 
-const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark, greyblue: CANON.business };
+const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, red: CANON.alert, cream: CANON.cream, midnight: CANON.dark, greyblue: CANON.business };
 const LORA = '"Lora", Georgia, serif';
 type Tab = "friend" | "private";
 
@@ -432,7 +432,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <button style={rosterHead} onClick={() => setRosterOpen((o) => !o)}>
               <span style={{ display: "inline-flex" }}>
                 {rosterRows.slice(0, 6).map((m) => (
-                  <span key={m.userId} style={{ ...rosterAvatar, opacity: m.isDeparted ? 0.5 : 1 }}>
+                  // Departed member: fully opaque alert fill (not faded).
+                  <span key={m.userId} style={{ ...rosterAvatar, ...(m.isDeparted ? { background: C.red, color: C.cream } : {}) }}>
                     {(m.username[0] ?? "?").toUpperCase()}
                   </span>
                 ))}
@@ -449,11 +450,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                   const p = m.progress;
                   return (
                     <div key={m.userId} style={rosterRow}>
-                      <span style={{ ...rosterAvatar, marginRight: 10, opacity: m.isDeparted ? 0.5 : 1 }}>
+                      <span style={{ ...rosterAvatar, marginRight: 10, ...(m.isDeparted ? { background: C.red, color: C.cream } : {}) }}>
                         {(m.username[0] ?? "?").toUpperCase()}
                       </span>
                       <span style={{ flex: 1, fontWeight: isSelf ? 700 : 600, fontSize: 14, color: C.midnight, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        @{m.username}{isSelf ? " (you)" : ""}{m.isDeparted ? " (left)" : ""}
+                        @{m.username}{isSelf ? " (you)" : ""}{m.isDeparted ? " (left show)" : ""}
                       </span>
                       <span style={{ fontWeight: 600, fontSize: 13, color: C.midnight, opacity: 0.8, flexShrink: 0 }}>
                         s{p?.s ?? 0} e{p?.e ?? 0}
@@ -469,40 +470,44 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         {/* ── Toolbar: write · sort/filter · progress picker ── */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 20 }}>
           <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
-          {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
-            <select
-              value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v.startsWith("sort:")) { setSortOrder(v.slice(5) as "asc" | "desc"); setUserFilter(null); }
-                else if (v.startsWith("user:")) setUserFilter(v.slice(5));
-              }}
-              style={sortSelect}
-            >
-              <optgroup label="Sort">
-                <option value="sort:desc">episode order</option>
-              </optgroup>
-              {mapMembers.length > 0 && (
-                <optgroup label="Filter by member">
-                  {mapMembers.map((m) => (
-                    <option key={m.userId} value={`user:${m.userId}`}>only @{m.username}{m.isDeparted ? " (left)" : ""}</option>
-                  ))}
+          {/* Sort/filter + progress live in one right-anchored group so both
+              align to the screen's right edge (also when the row wraps). */}
+          <div style={{ marginLeft: "auto", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
+            {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
+              <select
+                value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v.startsWith("sort:")) { setSortOrder(v.slice(5) as "asc" | "desc"); setUserFilter(null); }
+                  else if (v.startsWith("user:")) setUserFilter(v.slice(5));
+                }}
+                style={sortSelect}
+              >
+                <optgroup label="Sort">
+                  <option value="sort:desc">episode order</option>
                 </optgroup>
-              )}
-            </select>
-          )}
-          {show && progressForShow && (
-            <div className={tab === "private" ? "private-progress" : undefined} style={{ marginLeft: "auto" }}>
-              <OneSelectProgress
-                show={show}
-                value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
-                onConfirm={onProgressConfirm}
-                onForwardPick={onForwardPick}
-                requireConfirm
-                allowZero={(effectiveProgress(progressForShow)?.s ?? 1) === 0}
-              />
-            </div>
-          )}
+                {mapMembers.length > 0 && (
+                  <optgroup label="Filter by member">
+                    {mapMembers.map((m) => (
+                      <option key={m.userId} value={`user:${m.userId}`}>only @{m.username}{m.isDeparted ? " (left)" : ""}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            )}
+            {show && progressForShow && (
+              <div className={tab === "private" ? "private-progress" : undefined}>
+                <OneSelectProgress
+                  show={show}
+                  value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
+                  onConfirm={onProgressConfirm}
+                  onForwardPick={onForwardPick}
+                  requireConfirm
+                  allowZero={(effectiveProgress(progressForShow)?.s ?? 1) === 0}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
@@ -516,6 +521,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           ) : (
             <V2RoomFeed
               ref={feedRef}
+              mobileIdiom
               entries={visibleFriendEntries}
               sortOrder={effectiveSortOrder}
               initialExpandedThreadId={initialExpandThreadId ?? undefined}
@@ -537,6 +543,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           <>
             {privateFeedEntries.length > 0 && (
               <V2RoomFeed
+                mobileIdiom
                 entries={privateFeedEntries}
                 viewerProgress={progressForShow}
                 userId={user?.id ?? ""}
@@ -558,6 +565,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={16} color={CANON.alert} /></button>
           <ComposeForm
             ref={composeFormRef}
+            mobileIdiom
             showId={show?.id}
             restrictGroupId={privateOnly ? undefined : roomId}
             privateOnly={privateOnly}
