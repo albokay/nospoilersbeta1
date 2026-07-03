@@ -13,15 +13,21 @@ import type { ProgressEntry } from "../types";
 /**
  * MobilePool — read-only view of a person's watch pool, single column.
  * Mobile re-expression of the desktop PublicDashboardPage's non-invite
- * branch (same data calls + copy); reached by tapping a member's name in
- * a show-room feed (desktop's byline click → /pool/:username). Back pops
- * to wherever you came from (the room), like desktop's edge tab.
+ * branch (same data calls + copy).
+ *
+ * Two mounts:
+ *   • Route (/m/pool/:username) — a full page; back pops history.
+ *   • OVERLAY (from a show-room byline tap) — renders on TOP of the
+ *     still-mounted room with `overlay` + `onBack`. The room pushes a
+ *     history entry when opening, so the iOS edge-swipe (a history pop)
+ *     closes the overlay and reveals the room exactly as it was — same
+ *     expanded ticket, same scroll, no refetch (the "stable back swipe").
  */
 
 const C = { green: CANON.personal, cream: CANON.cream, blue: CANON.identity };
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
-export default function MobilePool({ username }: { username: string }) {
+export default function MobilePool({ username, overlay = false, onBack }: { username: string; overlay?: boolean; onBack?: () => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -70,12 +76,17 @@ export default function MobilePool({ username }: { username: string }) {
     return { watching: w.sort(byName), notStarted: n.sort(byName) };
   }, [progress, showsById]);
 
-  if (loading) return <div style={{ ...page, background: C.green }} aria-busy="true" />;
+  const goBack = onBack ?? (() => navigate(-1));
+  const rootStyle: React.CSSProperties = overlay
+    ? { ...page, background: C.green, position: "fixed", inset: 0, zIndex: 1500, overflowY: "auto", WebkitOverflowScrolling: "touch" }
+    : { ...page, background: C.green };
+
+  if (loading) return <div style={rootStyle} aria-busy="true" />;
 
   return (
-    <div style={{ ...page, background: C.green }}>
+    <div style={rootStyle}>
       <div style={topBar}>
-        <button style={iconBtn} title="back" onClick={() => navigate(-1)}>
+        <button style={iconBtn} title="back" onClick={goBack}>
           <ArrowLeft size={22} color={C.cream} />
         </button>
         <SidebarLogo scale={0.5} blocksOpacity={1} />

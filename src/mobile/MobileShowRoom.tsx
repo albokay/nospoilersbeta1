@@ -18,6 +18,7 @@ import type { V2RoomMapMember } from "../components/v2/V2RoomMap";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
 import OneSelectProgress from "../components/OneSelectProgress";
 import RatingCaptureModal from "../components/RatingCaptureModal";
+import MobilePool from "./MobilePool";
 import { CANON } from "../styles/canon";
 
 /**
@@ -80,6 +81,21 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
+  // Byline tap → the member's pool as an OVERLAY on the still-mounted room
+  // (stable back swipe): opening pushes a same-path history entry, so the
+  // iOS edge-swipe / back button pops it → popstate → overlay closes and
+  // the room is exactly as you left it (expanded ticket, scroll, no refetch).
+  const [poolUser, setPoolUser] = useState<string | null>(null);
+  function openPool(username: string) {
+    window.history.pushState({ mPoolOverlay: true }, "", `#pool=${encodeURIComponent(username)}`);
+    setPoolUser(username);
+  }
+  useEffect(() => {
+    if (!poolUser) return;
+    const onPop = () => setPoolUser(null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [poolUser]);
 
   // Progress picker → rating capture (forward picks only).
   const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
@@ -545,7 +561,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               onEntryCollapsed={handleEntryCollapsed}
               onThreadEdited={handleThreadEdited}
               onThreadDeleted={handleThreadDeleted}
-              onClickProfile={(username) => navigate(`/m/pool/${encodeURIComponent(username)}`)}
+              onClickProfile={openPool}
               isNewMap={isNewMap}
               cellSignals={cellSignals}
               engagedThreadIds={engagedSet}
@@ -596,6 +612,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           />
         </div>,
         document.body,
+      )}
+
+      {/* ── Member pool overlay (byline tap) — the room stays mounted under
+             it; closing = history.back() so swipe and button share one path. ── */}
+      {poolUser && (
+        <MobilePool username={poolUser} overlay onBack={() => window.history.back()} />
       )}
 
       {/* ── Rate the episode you just finished (forward progress pick) ── */}
