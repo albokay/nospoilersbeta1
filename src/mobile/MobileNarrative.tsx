@@ -10,7 +10,7 @@ import {
   HOW_IT_WORKS_STEPS,
   CTA_JOIN_LABEL,
   CTA_DETAILS_LABEL,
-  BETA_PILL_CLOSED,
+  BETA_PILL_CLOSED_MOBILE,
   BETA_PILL_OPEN,
   BETA_LETTER_PARAGRAPHS,
 } from "../lib/homepageCopy";
@@ -204,7 +204,7 @@ export default function MobileNarrative() {
               color: !betaOpen ? "var(--dos-bg)" : "transparent",
               whiteSpace: "nowrap",
             }}>
-              {BETA_PILL_CLOSED}
+              {BETA_PILL_CLOSED_MOBILE}
             </span>
             <span style={{
               display: "inline-flex",

@@ -39,6 +39,9 @@ export const CTA_DETAILS_LABEL = "Want more details?";
 
 // Beta-tester pill (two-state toggle) + the letter it reveals.
 export const BETA_PILL_CLOSED = "*click here beta tester!";
+// Mobile variant — touch verb, same pill (Alborz 2026-07-02). Kept beside the
+// desktop line so a future rewording changes both together.
+export const BETA_PILL_CLOSED_MOBILE = "*tap here beta tester!";
 export const BETA_PILL_OPEN = "Hello!";
 
 // Rendered as paragraphs separated by blank lines on both surfaces.
