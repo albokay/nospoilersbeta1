@@ -67,9 +67,9 @@ export default function MobileNarrative() {
           top: "calc(env(safe-area-inset-top, 0px) + 14px)",
           right: 14,
           zIndex: 100,
-          background: "transparent",
+          background: "var(--canon-accent,#dea838)",
           color: CANON.cream,
-          border: "2px solid var(--canon-cream,#fef8ea)",
+          border: "none",
           borderRadius: 9999,
           padding: "8px 18px",
           minHeight: 44,
@@ -180,7 +180,9 @@ export default function MobileNarrative() {
             onClick={() => setBetaOpen(o => !o)}
             style={{
               display: "inline-flex",
-              alignItems: "center",
+              // Stretch the two label spans to the button's full height so the
+              // cream fill reaches the pill outline (was a floating stripe).
+              alignItems: "stretch",
               borderRadius: 999,
               boxShadow: "0 0 0 2px var(--canon-cream,#fef8ea)",
               border: "none",
@@ -193,6 +195,8 @@ export default function MobileNarrative() {
             }}
           >
             <span style={{
+              display: "inline-flex",
+              alignItems: "center",
               padding: "4px 12px",
               fontSize: 12,
               fontWeight: !betaOpen ? 700 : 400,
@@ -203,6 +207,8 @@ export default function MobileNarrative() {
               {BETA_PILL_CLOSED}
             </span>
             <span style={{
+              display: "inline-flex",
+              alignItems: "center",
               padding: "4px 12px",
               fontSize: 12,
               fontWeight: betaOpen ? 700 : 400,

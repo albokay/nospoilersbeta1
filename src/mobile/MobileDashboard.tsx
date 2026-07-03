@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { X, LogOut } from "lucide-react";
+import { X, LogOut, UserCog } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
+import AccountModal from "../components/AccountModal";
 import SidebarLogo from "../components/SidebarLogo";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
@@ -112,6 +113,7 @@ export default function MobileDashboard() {
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
 
   // ── Loads (same calls + tolerance as desktop DashboardPage) ──────────────
   const loadRail = useCallback(async (uid: string): Promise<RailGroup[]> => {
@@ -308,14 +310,21 @@ export default function MobileDashboard() {
         <div onClick={() => navigate("/m/dashboard")} role="button" aria-label="Home" style={{ cursor: "pointer" }}>
           <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
         </div>
-        <button
-          style={topCircleBtn}
-          title="sign out"
-          onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/m", { replace: true }); }}
-        >
-          <LogOut size={18} color={C.cream} />
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button style={topCircleBtn} title="account" onClick={() => setShowAccount(true)}>
+            <UserCog size={18} color={C.cream} />
+          </button>
+          <button
+            style={topCircleBtn}
+            title="sign out"
+            onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/m", { replace: true }); }}
+          >
+            <LogOut size={18} color={C.cream} />
+          </button>
+        </div>
       </div>
+
+      {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
 
       {/* ── Groups (top — social first per spec) ── */}
       {(railGroups.length > 0 || pendingInvites.length > 0) && (
@@ -484,9 +493,11 @@ export default function MobileDashboard() {
               {/* Desktop's hover × (title "remove from pool") — a visible
                   button here, since hover doesn't exist on mobile. */}
               <div style={sheetDivider} />
-              <button style={dangerBtn} onClick={() => setRemoveConfirm({ id: showSheet.showId, name: showSheet.name })}>
-                remove from pool
-              </button>
+              <div style={{ textAlign: "center" }}>
+                <button style={dangerBtn} onClick={() => setRemoveConfirm({ id: showSheet.showId, name: showSheet.name })}>
+                  remove from pool
+                </button>
+              </div>
             </div>
           </div>
         );

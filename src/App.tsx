@@ -1298,9 +1298,14 @@ function AppShell() {
                 <button
                   className="btn"
                   onClick={() => { setAuthInitialMode("signin"); setShowAuthModal(true); }}
+                  // Accent fill + cream text (matches the mobile homepage's
+                  // Sign in — approved for both surfaces 2026-07-02).
                   style={{
                     position: "fixed", top: 16, right: 16, zIndex: 200,
                     flexShrink: 0,
+                    background: "var(--canon-accent,#dea838)",
+                    color: "var(--canon-cream,#fef8ea)",
+                    border: "none",
                   }}
                 >
                   Sign in
