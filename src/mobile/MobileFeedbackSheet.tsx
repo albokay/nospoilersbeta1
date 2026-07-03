@@ -64,7 +64,7 @@ export default function MobileFeedbackSheet({ onClose }: { onClose: () => void }
     <div style={dim} onClick={(e) => { if (e.target === e.currentTarget && phase !== "sending") onClose(); }}>
       <div style={sheet}>
         <div style={{ fontWeight: 700, fontSize: 16, color: C.midnight, marginBottom: 10 }}>
-          Send me your thoughts
+          Send me your feedback.
         </div>
         <div style={{ fontSize: 13, lineHeight: 1.5, color: C.midnight, opacity: 0.8, marginBottom: 14 }}>
           {PROMPT_LINES.join(" ")}
