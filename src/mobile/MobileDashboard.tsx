@@ -75,6 +75,12 @@ const C = {
 
 type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingHandles: string[] };
 
+// Last-render snapshot for instant paint (stale-while-revalidate): the
+// dashboard renders this immediately on open while the live fetches run,
+// so cold opens / back-swipes don't flash a bare page. Pooled shows only
+// (search re-fetches the full catalog by the time it opens).
+const SNAP_KEY = (uid: string) => `ns_m_dash_snap_${uid}`;
+
 /** Custom name if set, else a stable generic "Group <seq>". (Same rule as desktop.) */
 function groupAutoName(group: PeopleGroup, others: PeopleGroupMember[]): string {
   if (group.name) return group.name;
@@ -132,11 +138,35 @@ export default function MobileDashboard() {
     }
   }, []);
 
+  // One-time-per-mount snapshot hydration guard.
+  const hydratedRef = React.useRef(false);
+
   useEffect(() => {
     if (authLoading || !user) return;
     let cancelled = false;
+    // Instant paint: hydrate from the last visit's snapshot (if any) before
+    // the live fetches — the page renders real content immediately and the
+    // fresh data replaces it when it lands. Display-only staleness; every
+    // write path still goes through the live DB calls.
+    let snapshotUsed = false;
+    if (!hydratedRef.current) {
+      hydratedRef.current = true;
+      try {
+        const raw = sessionStorage.getItem(SNAP_KEY(user.id));
+        if (raw) {
+          const s = JSON.parse(raw);
+          setShows(s.shows ?? []);
+          setProgress(s.progress ?? {});
+          setOutOfPool(new Set(s.outOfPool ?? []));
+          setRailGroups(s.railGroups ?? []);
+          setPendingInvites(s.pendingInvites ?? []);
+          setLoading(false);
+          snapshotUsed = true;
+        }
+      } catch { /* corrupt/absent snapshot → normal load */ }
+    }
     (async () => {
-      setLoading(true);
+      if (!snapshotUsed) setLoading(true);
       let pooled: Show[] = [];
       try {
         const [showRows, prog, oop] = await Promise.all([
@@ -173,6 +203,21 @@ export default function MobileDashboard() {
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, loadRail]);
+
+  // Keep the instant-paint snapshot current (pooled shows only — the full
+  // catalog is large and search re-fetches it live anyway).
+  useEffect(() => {
+    if (loading || !user) return;
+    try {
+      sessionStorage.setItem(SNAP_KEY(user.id), JSON.stringify({
+        shows: shows.filter((s) => progress[s.id]),
+        progress,
+        outOfPool: Array.from(outOfPool),
+        railGroups,
+        pendingInvites,
+      }));
+    } catch { /* quota/private mode — instant paint just won't happen */ }
+  }, [loading, user, shows, progress, outOfPool, railGroups, pendingInvites]);
 
   const showsById = useMemo(() => {
     const m: Record<string, Show> = {};
@@ -300,7 +345,18 @@ export default function MobileDashboard() {
   }
 
   // ── Guards ─────────────────────────────────────────────────────────────────
-  if (authLoading) return null;
+  // While the session restores, paint the page chrome instead of a blank
+  // screen (the blank was the "feels broken" moment on cold opens).
+  if (authLoading) {
+    return (
+      <div style={page}>
+        <div style={topBar}>
+          <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
+        </div>
+        <div style={{ textAlign: "center", padding: 48, color: C.cream }}><LoadingDots /></div>
+      </div>
+    );
+  }
   if (!user) return <Navigate to="/m" replace />;
 
   return (
