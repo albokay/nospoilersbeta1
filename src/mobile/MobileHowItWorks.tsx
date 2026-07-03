@@ -42,8 +42,10 @@ export default function MobileHowItWorks({ onClose, onSignup }: { onClose: () =>
           return (
             <section key={i} style={{ marginBottom: 32 }}>
               {panelTitles[i] && <div style={titleStyle}>{panelTitles[i]}</div>}
-              <div style={sectionNumber}>{i + 1}.</div>
-              <div style={captionStyle}>{panelCaptionsMobile[i]}</div>
+              <div style={captionStyle}>
+                <span style={sectionNumber}>{i + 1}. </span>
+                {panelCaptionsMobile[i]}
+              </div>
               <div style={card}>
                 <div style={{ position: "relative", height: (lastIdx + 1) * SLOT_H }}>
                   {slots.map((slot, si) => slot && (
@@ -53,13 +55,16 @@ export default function MobileHowItWorks({ onClose, onSignup }: { onClose: () =>
                   ))}
                 </div>
               </div>
-              <div style={divider} />
+              {/* No divider after the last diagram — the join block follows. */}
+              {i < panelSlots.length - 1 && <div style={divider} />}
             </section>
           );
         })}
 
-        {/* ── Join step (desktop's fifth panel: logo + CTA) ── */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 32, padding: "16px 0 24px" }}>
+        {/* ── Join step (desktop's fifth panel: logo + CTA) — centered in a
+               tall block so, scrolled to the end, it rests around the middle
+               of the screen rather than pinned to the bottom edge. ── */}
+        <div style={{ minHeight: "55dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 32, marginTop: 24 }}>
           <SidebarLogo scale={0.9} />
           <button onClick={onSignup} style={joinBtn}>Join Sidebar</button>
         </div>
@@ -91,8 +96,9 @@ const captionStyle: React.CSSProperties = {
   fontSize: 15, fontWeight: 700, lineHeight: 1.6, color: CANON.cream,
   whiteSpace: "pre-line", marginBottom: 16,
 };
+// Inline with the caption's first line, at the larger size.
 const sectionNumber: React.CSSProperties = {
-  fontSize: 22, fontWeight: 900, color: CANON.cream, marginBottom: 8,
+  fontSize: 22, fontWeight: 900, color: CANON.cream, marginRight: 4, lineHeight: 1,
 };
 // Post-illustration divider — narrower than the diagram card, centered.
 const divider: React.CSSProperties = {
