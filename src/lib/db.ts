@@ -2686,14 +2686,36 @@ export async function createPeopleGroupInvite(groupId: string, email: string): P
 }
 
 /** Email an existing people-group invite via the send-group-invite edge
- *  function. Best-effort — never throws; the in-app link is the fallback. */
-export async function sendGroupInviteEmail(token: string, displayName?: string): Promise<void> {
+ *  function. Best-effort — never throws; the in-app link is the fallback.
+ *  Returns whether the email actually went out so callers can tell the
+ *  sender to share the link themselves (silent failures — stale-JWT 401s,
+ *  Resend refusals, rate limits — used to hide behind an unconditional
+ *  "Invites sent!"; diagnosed 2026-07-03). */
+export async function sendGroupInviteEmail(token: string, displayName?: string): Promise<{ ok: boolean; reason?: string }> {
   try {
-    await supabase.functions.invoke("send-group-invite", {
+    const { data, error } = await supabase.functions.invoke("send-group-invite", {
       body: { token, appUrl: window.location.origin, ...(displayName ? { displayName } : {}) },
     });
+    if (error) {
+      // Non-2xx (401 stale token / 429 rate limit / …) — surface the fn's
+      // message when the response body is readable.
+      let reason: string | undefined;
+      try {
+        const body = await (error as any)?.context?.json?.();
+        reason = body?.message || body?.error;
+      } catch { /* opaque response */ }
+      console.warn("[send-group-invite] email send failed (link still works)", reason ?? error);
+      return { ok: false, reason };
+    }
+    // 200 with a warning = the fn ran but Resend refused the send.
+    if (data && (data.ok === false || data.warning === "email_send_failed")) {
+      console.warn("[send-group-invite] email not delivered", data);
+      return { ok: false, reason: data.message || data.error || "email_send_failed" };
+    }
+    return { ok: true };
   } catch (e) {
     console.warn("[send-group-invite] email send failed (link still works)", e);
+    return { ok: false };
   }
 }
 

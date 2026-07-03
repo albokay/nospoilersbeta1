@@ -34,7 +34,7 @@ export default function MobileInviteSheet({
   const [emails, setEmails] = useState<string[]>([""]);
   const [fromName, setFromName] = useState("");
   const [sending, setSending] = useState(false);
-  const [links, setLinks] = useState<{ email: string; link?: string; error?: string }[] | null>(null);
+  const [links, setLinks] = useState<{ email: string; link?: string; error?: string; emailFailed?: boolean }[] | null>(null);
 
   async function sendInvites() {
     if (sending) return;
@@ -43,12 +43,14 @@ export default function MobileInviteSheet({
     setSending(true);
     try {
       const id = targetGroupId ?? (await createPeopleGroup());
-      const out: { email: string; link?: string; error?: string }[] = [];
+      const out: { email: string; link?: string; error?: string; emailFailed?: boolean }[] = [];
       for (const email of list) {
         try {
           const token = await createPeopleGroupInvite(id, email);
-          sendGroupInviteEmail(token, fromName.trim() || undefined); // best-effort email
-          out.push({ email, link: `${window.location.origin}/group-invite/${token}` });
+          // Await the email leg so a silent refusal surfaces as a
+          // copy-the-link row instead of a false "Invites sent!".
+          const sent = await sendGroupInviteEmail(token, fromName.trim() || undefined);
+          out.push({ email, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
         } catch (e: any) {
           out.push({ email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
         }
@@ -111,12 +113,27 @@ export default function MobileInviteSheet({
           </>
         ) : (
           <>
-            {links.some((r) => r.error) ? (
+            {links.some((r) => r.error) && (
               <div style={{ color: C.red, fontSize: 14, fontWeight: 700, textAlign: "center", margin: "8px 0 16px" }}>
                 {links.filter((r) => r.error).map((r, i) => <div key={i}>{preventLastWordOrphan(r.error ?? "")}</div>)}
               </div>
-            ) : (
+            )}
+            {links.every((r) => !r.error && !r.emailFailed) && (
               <h1 style={title}>Invites sent!</h1>
+            )}
+            {/* Invite minted but the email leg failed — the link still
+                works, so hand it to the sender (same copy as desktop). */}
+            {links.some((r) => !r.error && r.emailFailed) && (
+              <>
+                <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.5, color: C.cream, margin: "8px 0 12px" }}>
+                  {preventLastWordOrphan(links.filter((r) => !r.error && r.emailFailed).length === 1
+                    ? "Sidebar is having an issue and couldn't email this invite right now. You can copy the link and send it to your friend yourself. It works the same. Or log out, log back in, and try one more time. Sorry for the inconvenience."
+                    : "Sidebar is having an issue and couldn't email these invites right now. You can copy the links and send them to your friends yourself. They work the same. Or log out, log back in, and try one more time. Sorry for the inconvenience.")}
+                </p>
+                {links.filter((r) => !r.error && r.emailFailed).map((r, i) => (
+                  <CopyLinkRow key={i} email={r.email} link={r.link ?? ""} />
+                ))}
+              </>
             )}
             <div style={{ textAlign: "center", marginTop: 12 }}>
               <button style={sendBtn} onClick={onClose}>done</button>
@@ -127,6 +144,24 @@ export default function MobileInviteSheet({
       {/* Cream placeholders on the sky sheet (the shared .m-input rule is
           scoped to green surfaces; these inputs are cream-filled). */}
       <style>{`.m-invite-input::placeholder { color: rgba(26,58,74,0.45); }`}</style>
+    </div>
+  );
+}
+
+// Copyable invite-link row (mobile twin of the dashboard's CopyRow — raw
+// text is too easy to mis-transcribe).
+function CopyLinkRow({ email, link }: { email: string; link: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div style={{ background: C.cream, borderRadius: 12, padding: 12, marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.midnight }}>{email || "—"}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+        <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.blue, wordBreak: "break-all", flex: 1, textDecoration: "none" }}>{link}</a>
+        <button
+          onClick={() => { try { navigator.clipboard?.writeText(link); } catch { /* ignore */ } setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+          style={{ border: "none", background: C.blue, color: C.cream, fontSize: 11, fontWeight: 700, padding: "8px 14px", borderRadius: 65, cursor: "pointer", whiteSpace: "nowrap", minHeight: 32 }}
+        >{copied ? "copied!" : "copy"}</button>
+      </div>
     </div>
   );
 }

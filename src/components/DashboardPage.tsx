@@ -165,7 +165,7 @@ export default function DashboardPage() {
   const [inviteEmails, setInviteEmails] = useState<string[]>([""]);
   const [inviteFromName, setInviteFromName] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
-  const [inviteLinks, setInviteLinks] = useState<{ email: string; link?: string; error?: string }[] | null>(null);
+  const [inviteLinks, setInviteLinks] = useState<{ email: string; link?: string; error?: string; emailFailed?: boolean }[] | null>(null);
   // null = INVITE FRIENDS (form a NEW group); set = "connect more" to this group.
   const [inviteTargetGroupId, setInviteTargetGroupId] = useState<string | null>(null);
 
@@ -639,12 +639,15 @@ export default function DashboardPage() {
     setInviteSending(true);
     try {
       const id = inviteTargetGroupId ?? (await createPeopleGroup());
-      const links: { email: string; link?: string; error?: string }[] = [];
+      const links: { email: string; link?: string; error?: string; emailFailed?: boolean }[] = [];
       for (const email of emails) {
         try {
           const token = await createPeopleGroupInvite(id, email);
-          sendGroupInviteEmail(token, inviteFromName.trim() || undefined); // best-effort email; link below is the fallback
-          links.push({ email, link: `${window.location.origin}/group-invite/${token}` });
+          // Await the email leg so a silent refusal (stale token, Resend,
+          // rate limit) surfaces as a copy-the-link row instead of a false
+          // "Invites sent!". The link works either way.
+          const sent = await sendGroupInviteEmail(token, inviteFromName.trim() || undefined);
+          links.push({ email, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
         } catch (e: any) {
           links.push({ email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
         }
@@ -1212,14 +1215,30 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                {inviteLinks.some((r) => r.error) ? (
+                {inviteLinks.some((r) => r.error) && (
                   <div style={{ color: C.red, fontSize: 14, fontWeight: 700, textAlign: "center", margin: "8px 0 16px" }}>
                     {inviteLinks.filter((r) => r.error).map((r, i) => <div key={i}>{preventLastWordOrphan(r.error ?? "")}</div>)}
                   </div>
-                ) : (
+                )}
+                {inviteLinks.every((r) => !r.error && !r.emailFailed) && (
                   <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
                     Invites sent!
                   </h1>
+                )}
+                {/* Invite minted but the email leg failed (stale session,
+                    rate limit, Resend refusal) — the link still works, so
+                    hand it to the sender instead of a false "sent!". */}
+                {inviteLinks.some((r) => !r.error && r.emailFailed) && (
+                  <>
+                    <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.5, color: C.cream, margin: "8px 0 12px" }}>
+                      {preventLastWordOrphan(inviteLinks.filter((r) => !r.error && r.emailFailed).length === 1
+                        ? "Sidebar is having an issue and couldn't email this invite right now. You can copy the link and send it to your friend yourself. It works the same. Or log out, log back in, and try one more time. Sorry for the inconvenience."
+                        : "Sidebar is having an issue and couldn't email these invites right now. You can copy the links and send them to your friends yourself. They work the same. Or log out, log back in, and try one more time. Sorry for the inconvenience.")}
+                    </p>
+                    {inviteLinks.filter((r) => !r.error && r.emailFailed).map((r, i) => (
+                      <CopyRow key={i} email={r.email} link={r.link} />
+                    ))}
+                  </>
                 )}
                 <div style={{ textAlign: "center", marginTop: 12 }}>
                   <button style={invitePill} onClick={() => setInviteOpen(false)}>done</button>
