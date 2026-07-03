@@ -41,7 +41,6 @@ const HomepageLab = lazy(() => import("./components/HomepageLab"));
 const HowItWorks = lazy(() => import("./components/HowItWorks"));
 const HowItWorksV2 = lazy(() => import("./components/HowItWorksV2"));
 import HomepageNarrative from "./components/HomepageNarrative";
-import MobileLockout from "./components/MobileLockout";
 const InviteAcceptPage = lazy(() => import("./components/InviteAcceptPage"));
 const AllowResponsePage = lazy(() => import("./components/AllowResponsePage"));
 const MobileApp = lazy(() => import("./mobile/MobileApp"));
@@ -129,44 +128,29 @@ export default function App() {
   // On mobile (<768px) every old route falls through to its existing handling
   // (the /m surface + mobile lockout are left entirely untouched — §15.7).
   const onMobile = typeof window !== "undefined" && window.innerWidth < 768;
-  // ── Mobile lockout (all routes) ─────────────────────────────────────
-  // The mobile site is being rebuilt from scratch at /m and isn't ready.
-  // Until it is, every non-admin visitor on a <768px viewport sees the
-  // MobileLockout screen ("sign up / sign in on your desktop") on EVERY
-  // path — including the restructure routes (/dashboard, /show-room, /pool,
-  // /invite, /reset-password) that render at this top level and used to slip
-  // past the old AppShell-level gate. Admins bypass entirely so we can still
-  // reach the desktop site AND /m to build the new mobile experience. This
-  // useAuth() call is unconditional (above every early return) so the hook
-  // count stays fixed per render — see §6 item 19. Race-guard mirrors the old
-  // gate: while auth/profile are still resolving, return null (brief blank)
-  // rather than flashing the lockout to an admin who's about to bypass.
-  // When /m is ready, flip this to route non-admins into /m instead.
+  // This useAuth() call is unconditional (above every early return) so the
+  // hook count stays fixed per render — see §6 item 19.
   const { user: mobileGateUser, profile: mobileGateProfile, loading: mobileGateAuthLoading } = useAuth();
   const isAdmin = !!mobileGateProfile?.is_admin;
-  // Sticky device unlock: the admin bypass needs a live session, which makes
-  // SIGNED-OUT mobile surfaces (e.g. the /m homepage) unviewable on a real
-  // phone — you'd hit the lockout the moment you sign out. So the first time
-  // an admin session is seen in this browser, mark the device; from then on
-  // this device skips the lockout even when signed out. Testers' devices
-  // never get the mark. Cleared only by clearing browser data.
-  useEffect(() => {
-    if (isAdmin) { try { localStorage.setItem("ns_admin_device", "1"); } catch { /* private mode */ } }
-  }, [isAdmin]);
-  let deviceUnlocked = false;
-  try { deviceUnlocked = localStorage.getItem("ns_admin_device") === "1"; } catch { /* private mode */ }
-  // /m/auth is the ONE path exemption: with no session there's no profile, so
-  // isAdmin is false and the gate would block the admin from ever signing in
-  // on a phone in the first place. Letting only the auth screen through
-  // solves the bootstrap: admin signs in there → profile resolves → bypass
-  // (+ the device mark above). A non-admin who finds /m/auth can sign in but
-  // lands right back on the lockout for every other path, so the site stays
-  // sealed to testers.
-  const isMobileAuthPath = pathParts[0] === "m" && pathParts[1] === "auth";
-  if (onMobile && !isAdmin && !deviceUnlocked && !isMobileAuthPath) {
+  // ── Mobile routing (the FLIP, 2026-07-03): phones get the /m app. ────────
+  // Desktop-shaped paths on a <768px viewport redirect into /m. Passthroughs:
+  //   • "m"              — the mobile app itself.
+  //   • "reset-password" — recovery emails land here with tokens in the URL
+  //                        hash; the page is narrow-friendly (420px card).
+  //   • "invite", "show-room", "group-invite", "pool" — each has its own
+  //     viewport fork below that preserves params (?entry=, tokens); letting
+  //     this generic redirect swallow them would strand deep links on /m.
+  // Admins stay exempt so the desktop UI remains QA-able from a phone; the
+  // race guards (return null) keep an admin's first paint from redirecting
+  // before their profile resolves. location.hash rides along so a Supabase
+  // email-confirmation token (implicit flow) isn't dropped by the redirect.
+  // (The pre-flip MobileLockout screen + the ns_admin_device unlock are
+  // retired; the component stays in src/components as the rollback surface.)
+  const MOBILE_PASSTHROUGH = ["m", "reset-password", "invite", "show-room", "group-invite", "pool"];
+  if (onMobile && !isAdmin && !MOBILE_PASSTHROUGH.includes(pathParts[0] ?? "")) {
     if (mobileGateAuthLoading) return null;
     if (mobileGateUser && !mobileGateProfile) return null;
-    return <MobileLockout />;
+    return <Navigate to={`/m${location.hash || ""}`} replace />;
   }
   if (pathParts[0] === "lab") return <Suspense fallback={<RouteFallback />}><HomepageLab /></Suspense>;
   if (pathParts[0] === "how-it-works") return <Suspense fallback={<RouteFallback />}><HowItWorksV2 /></Suspense>;
@@ -1235,9 +1219,9 @@ function AppShell() {
   // Show tabs are now integrated directly into the diary graphic on the profile page.
   const fixedProfileTabs = null;
 
-  // Mobile lockout moved UP to the top-level <App> (see the "Mobile lockout"
-  // block there): non-admin mobile visitors now see the MobileLockout screen
-  // on every route before AppShell renders, so there's no gate here anymore.
+  // Mobile routing lives in the top-level <App> (the FLIP gate): non-admin
+  // phone visitors are redirected into /m before AppShell ever renders, so
+  // there's no gate here. Only admins-on-mobile reach AppShell at <768px.
   // isMobileLocked is still used above for the post-login nav destination.
 
   return (
