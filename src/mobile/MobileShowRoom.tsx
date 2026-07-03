@@ -479,11 +479,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
         {/* ── Toolbar: write · sort/filter · progress picker ── */}
         {/* Toolbar — two fixed rows so nothing wraps to a third:
-            row 1: write (left) · row 2: order dropdown (left) + progress (right). */}
+            row 1: order dropdown (left) + progress (right) · row 2: write. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
-          <div>
-            <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
-          </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             {tab === "friend" && !privateOnly && feedEntries.length > 0 ? (
               <select
@@ -519,6 +516,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 />
               </div>
             )}
+          </div>
+          <div>
+            <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
           </div>
         </div>
 
