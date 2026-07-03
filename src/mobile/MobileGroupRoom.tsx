@@ -8,6 +8,7 @@ import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
 import TrailerCard from "../components/TrailerCard";
 import MobileSearchSheet from "./MobileSearchSheet";
+import MobileInviteSheet from "./MobileInviteSheet";
 import {
   fetchShows,
   refreshStaleShows,
@@ -130,6 +131,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq" } | null>(null);
   const [declaredProgress, setDeclaredProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
   const [searchOpen, setSearchOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [gearOpen, setGearOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
 
@@ -427,6 +429,11 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         </div>
       </div>
 
+      {/* ── Add friends to THIS group (desktop's cream context pill) ── */}
+      <div style={{ textAlign: "center", padding: "0 16px 16px" }}>
+        <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
+      </div>
+
       {loading ? (
         <div style={{ textAlign: "center", padding: 48, color: C.cream }}><LoadingDots /></div>
       ) : (
@@ -596,6 +603,18 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         </div>
       )}
 
+      {/* ── Invite compose (full-screen; targets THIS group) ── */}
+      {inviteOpen && (
+        <MobileInviteSheet
+          targetGroupId={groupId}
+          onClose={() => setInviteOpen(false)}
+          onSent={() => {
+            // Refresh the member list so pending invites reflect on return.
+            fetchPeopleGroupMembers(groupId).then(setMembers).catch(() => {});
+          }}
+        />
+      )}
+
       {/* ── Search (shared full-screen sheet) ── */}
       {searchOpen && (
         <MobileSearchSheet
@@ -725,6 +744,11 @@ const writerPencilBadge: React.CSSProperties = {
 const searchPill: React.CSSProperties = {
   border: "none", background: C.yellow, color: C.cream, fontWeight: 700, fontSize: 14,
   padding: "16px 56px", borderRadius: 65, cursor: "pointer", minHeight: 48,
+};
+// Desktop parity: group context = cream fill, green text, no drop-shadow.
+const addFriendsPill: React.CSSProperties = {
+  border: "none", background: C.cream, color: C.green, fontWeight: 700, fontSize: 14,
+  padding: "14px 32px", borderRadius: 65, cursor: "pointer", minHeight: 48,
 };
 const sheet: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, overflowY: "auto",

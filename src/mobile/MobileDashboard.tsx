@@ -7,6 +7,7 @@ import SidebarLogo from "../components/SidebarLogo";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
 import MobileSearchSheet from "./MobileSearchSheet";
+import MobileInviteSheet from "./MobileInviteSheet";
 import {
   fetchShows,
   refreshStaleShows,
@@ -110,6 +111,7 @@ export default function MobileDashboard() {
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   // ── Loads (same calls + tolerance as desktop DashboardPage) ──────────────
   const loadRail = useCallback(async (uid: string): Promise<RailGroup[]> => {
@@ -362,6 +364,11 @@ export default function MobileDashboard() {
         </div>
       )}
 
+      {/* ── Invite new friends (starts a NEW group) — desktop's top-right pill ── */}
+      <div style={{ textAlign: "center", padding: "0 16px 24px" }}>
+        <button style={invitePill} onClick={() => setInviteOpen(true)}>Invite new friends?</button>
+      </div>
+
       {/* ── Personal shelves ── */}
       {loading ? (
         <div style={{ textAlign: "center", padding: 48, color: C.cream }}><LoadingDots /></div>
@@ -520,6 +527,14 @@ export default function MobileDashboard() {
         </div>
       )}
 
+      {/* ── Invite compose (full-screen; creates a new group) ── */}
+      {inviteOpen && (
+        <MobileInviteSheet
+          onClose={() => setInviteOpen(false)}
+          onSent={() => { refreshRailAndInvites(); }}
+        />
+      )}
+
       {/* ── Search (shared full-screen sheet) ── */}
       {searchOpen && (
         <MobileSearchSheet
@@ -606,6 +621,11 @@ const pillName: React.CSSProperties = { whiteSpace: "nowrap", overflow: "hidden"
 const searchPill: React.CSSProperties = {
   border: "none", background: C.yellow, color: C.cream, fontWeight: 700, fontSize: 14,
   padding: "16px 56px", borderRadius: 65, cursor: "pointer", minHeight: 48,
+};
+const invitePill: React.CSSProperties = {
+  border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14,
+  padding: "16px 40px", borderRadius: 65, cursor: "pointer", minHeight: 48,
+  boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
 };
 // Full-screen sheet (mobile idiom for desktop's centered modal cards).
 const sheet: React.CSSProperties = {
