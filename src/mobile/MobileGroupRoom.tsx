@@ -22,6 +22,7 @@ import {
   leavePeopleGroup,
   renamePeopleGroup,
   fetchOutOfPoolShows,
+  removeShowFromPool,
   restoreShowToPool,
   clearMigrationDormantForShow,
   fetchRoomActivityVisibility,
@@ -319,6 +320,17 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           await restoreShowToPool(user.id, showId);
           setOutOfPool((prev) => { const next = new Set(prev); next.delete(showId); return next; });
         }
+      } else {
+        // Toggling back to "no" reverts the whole opt-in (2026-07-03,
+        // desktop parity): the show leaves your personal dashboard too —
+        // the same global un-opt as remove-from-pool (votes cleared in
+        // every group; progress kept, restores on re-add). The open sheet
+        // collapses back to the bare vote question.
+        try {
+          await removeShowFromPool(showId);
+          setOutOfPool((prev) => new Set(prev).add(showId));
+        } catch (e) { console.error("[m-group] un-vote pool removal failed", e); }
+        setClicked((prev) => (prev && prev.showId === showId ? { ...prev, mode: "vote" } : prev));
       }
       await refreshGroup();
     } catch (e) { console.error("[m-group] vote failed", e); }

@@ -708,6 +708,17 @@ export default function DashboardPage() {
           await restoreShowToPool(user.id, showId);
           setOutOfPool((prev) => { const next = new Set(prev); next.delete(showId); return next; });
         }
+      } else {
+        // Toggling back to "no" reverts the whole opt-in (2026-07-03): the
+        // show leaves your personal dashboard too — the same global un-opt
+        // as the dashboard's × (remove_show_from_pool clears votes in every
+        // group; progress is kept and restores on re-add). The open modal
+        // collapses back to the bare vote question.
+        try {
+          await removeShowFromPool(showId);
+          setOutOfPool((prev) => new Set(prev).add(showId));
+        } catch (e) { console.error("[dashboard] un-vote pool removal failed", e); }
+        setClicked((prev) => (prev && prev.showId === showId ? { ...prev, mode: "vote" } : prev));
       }
       await refreshGroup(activeGroupId);
     } catch (e) { console.error("[dashboard] vote failed", e); }
