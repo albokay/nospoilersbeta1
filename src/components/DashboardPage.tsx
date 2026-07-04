@@ -1271,7 +1271,11 @@ export default function DashboardPage() {
           anchoring to the clicked pill is a later polish. */}
       {clicked && (() => {
         const gs = groupShows.find((s) => s.showId === clicked.showId);
-        const selfVoted = !!gs?.members.find((m) => m.userId === selfUserId)?.voted;
+        // Opted-in = the show is in your personal pool (2026-07-03): adding a
+        // show to your dashboard and voting "yes" in a group are ONE state —
+        // the toggle reflects pool membership, never the bare per-group vote
+        // row (which stays in sync via doVote but must not drive the UI).
+        const optedIn = !!progress[clicked.showId] && !outOfPool.has(clicked.showId);
         const roomLabel = gs?.roomId ? "Open show room?" : "Start a show room?";
         // "Solo" only when you're the sole opt-in; 2+ opted in → plain show room.
         const optedCount = gs?.members.length ?? 0;
@@ -1301,68 +1305,56 @@ export default function DashboardPage() {
             <div style={{ ...yellowCard, ...(clicked.mode === "watchq" || clicked.mode === "solo" ? { width: "min(460px, 92vw)" } : {}) }}>
               <button style={modalClose} onClick={() => setClicked(null)}><X size={16} color={CANON.cream} /></button>
 
-              {clicked.mode === "solo" && (
-                <>
-                  {/* Haven't-started shows keep the vote question above the
-                      progress/room actions — toggling to "no" un-votes in
-                      THIS group (the show stays on your personal dashboard;
-                      remove-from-pool is the global un-vote). 2026-07-03. */}
-                  {clicked.voteToggle && (
-                    <>
-                      <div style={yellowTitle}>Do you want to watch <b>{clicked.name}</b>?</div>
-                      <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                        <YesNoToggle value={selfVoted} onChange={(v) => doVote(clicked.showId, v)} />
-                      </div>
-                      <div style={yellowDivider} />
-                    </>
-                  )}
-                  <div style={yellowTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
-                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                    <OneSelectProgress
-                      show={showsById[clicked.showId] ?? { seasons: [] }}
-                      value={curVal}
-                      allowZero
-                      requireConfirm={false}
-                      pillBg="transparent"
-                      onChangeSelected={(v) => setDeclaredProgress(v)}
-                      onConfirm={() => {}}
-                    />
-                  </div>
-                  <div style={yellowDivider} />
-                  <div style={{ ...yellowTitle, fontSize: 13 }}>{showRead ? readText : gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : (
-                    <>Start a show room?<br />Your friends can join in when they&rsquo;re ready.</>
-                  )}</div>
-                  <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
-                    <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Yes"}</button>
-                    <button
-                      style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
-                      onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
-                    >just confirm my progress</button>
-                  </div>
-                </>
-              )}
-
-              {clicked.mode === "vote" && (
-                <>
-                  <div style={yellowTitle}>Do you want to watch <b>{clicked.name}</b>?</div>
-                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                    <YesNoToggle value={selfVoted} onChange={(v) => doVote(clicked.showId, v)} />
-                  </div>
-                  {selfVoted && (
-                    <>
-                      <div style={yellowDivider} />
-                      <div style={{ ...yellowTitle, fontSize: 13 }}>{roomLabel}</div>
-                      <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
-                        <button style={startBtn} onClick={() => goToRoom(clicked.showId)}>Yes</button>
-                        <button
-                          style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
-                          onClick={() => setClicked(null)}
-                        >not yet</button>
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
+              {/* Not-started shows — solo-with-toggle and vote mode share ONE
+                  shape (2026-07-03): the vote question leads, and the
+                  progress + room sections render only once the toggle is
+                  "yes". A first click on a friend's show reads as pure
+                  discovery (question + trailer); in the yes state progress /
+                  room / trailer are all active. Watching-shelf solo (no
+                  toggle) keeps the full content unconditionally. */}
+              {(clicked.mode === "solo" || clicked.mode === "vote") && (() => {
+                const withToggle = clicked.mode === "vote" || !!clicked.voteToggle;
+                return (
+                  <>
+                    {withToggle && (
+                      <>
+                        <div style={yellowTitle}>Do you want to watch <b>{clicked.name}</b>?</div>
+                        <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                          <YesNoToggle value={optedIn} onChange={(v) => doVote(clicked.showId, v)} />
+                        </div>
+                      </>
+                    )}
+                    {(!withToggle || optedIn) && (
+                      <>
+                        {withToggle && <div style={yellowDivider} />}
+                        <div style={yellowTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
+                        <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                          <OneSelectProgress
+                            show={showsById[clicked.showId] ?? { seasons: [] }}
+                            value={curVal}
+                            allowZero
+                            requireConfirm={false}
+                            pillBg="transparent"
+                            onChangeSelected={(v) => setDeclaredProgress(v)}
+                            onConfirm={() => {}}
+                          />
+                        </div>
+                        <div style={yellowDivider} />
+                        <div style={{ ...yellowTitle, fontSize: 13 }}>{showRead ? readText : gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : (
+                          <>Start a show room?<br />Your friends can join in when they&rsquo;re ready.</>
+                        )}</div>
+                        <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
+                          <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Yes"}</button>
+                          <button
+                            style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
+                            onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
+                          >just confirm my progress</button>
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
 
               {clicked.mode === "watchq" && (
                 <>

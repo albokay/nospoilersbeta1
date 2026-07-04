@@ -492,7 +492,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       {/* ── Click-model sheet (full-screen; desktop's yellow modal + trailer) ── */}
       {clicked && (() => {
         const gs = groupShows.find((s) => s.showId === clicked.showId);
-        const selfVoted = !!gs?.members.find((m) => m.userId === selfUserId)?.voted;
+        // Opted-in = the show is in your personal pool (2026-07-03, desktop
+        // parity): dashboard adds and group yes-votes are ONE state — the
+        // toggle reflects pool membership, never the bare per-group vote row.
+        const optedIn = !!progress[clicked.showId] && !outOfPool.has(clicked.showId);
         const roomLabel = gs?.roomId ? "Open show room?" : "Start a show room?";
         const optedCount = gs?.members.length ?? 0;
         const cur = progress[clicked.showId];
@@ -517,67 +520,60 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                 {clicked.name}
               </div>
 
-              {clicked.mode === "solo" && (
-                <>
-                  {/* Haven't-started shows keep the vote question above the
-                      progress/room actions (desktop parity, 2026-07-03):
-                      toggling to "no" un-votes in THIS group only. */}
-                  {clicked.voteToggle && (
-                    <>
-                      <div style={sheetTitle}>Do you want to watch <b>{clicked.name}</b>?</div>
-                      <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                        <YesNoToggle value={selfVoted} onChange={(v) => doVote(clicked.showId, v)} />
-                      </div>
-                      <div style={sheetDivider} />
-                    </>
-                  )}
-                  <div style={sheetTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
-                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                    <OneSelectProgress
-                      show={showsById[clicked.showId] ?? { seasons: [] }}
-                      value={curVal}
-                      allowZero
-                      requireConfirm={false}
-                      pillBg="transparent"
-                      onChangeSelected={(v) => setDeclaredProgress(v)}
-                      onConfirm={() => {}}
-                    />
-                  </div>
-                  <div style={sheetDivider} />
-                  <div style={{ ...sheetTitle, fontSize: 13 }}>{showRead ? readText : gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : (
-                    <>Start a show room?<br />Your friends can join in when they&rsquo;re ready.</>
-                  )}</div>
-                  <div style={sheetBtnRow}>
-                    <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Yes"}</button>
-                    <button style={outlineBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
-                  </div>
-                </>
-              )}
-
-              {clicked.mode === "vote" && (
-                <>
-                  <div style={sheetTitle}>Do you want to watch <b>{clicked.name}</b>?</div>
-                  {interestedNames.length > 0 && (
-                    // Desktop's hover tooltip on "haven't started" pills, inline.
-                    <div style={{ marginTop: 10, color: C.cream, fontSize: 13, fontWeight: 600, textAlign: "center", opacity: 0.9 }}>
-                      {interestedLine(interestedNames, clicked.name, selfVoted)}
-                    </div>
-                  )}
-                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                    <YesNoToggle value={selfVoted} onChange={(v) => doVote(clicked.showId, v)} />
-                  </div>
-                  {selfVoted && (
-                    <>
-                      <div style={sheetDivider} />
-                      <div style={{ ...sheetTitle, fontSize: 13 }}>{roomLabel}</div>
-                      <div style={sheetBtnRow}>
-                        <button style={startBtn} onClick={() => goToRoom(clicked.showId)}>Yes</button>
-                        <button style={outlineBtn} onClick={() => setClicked(null)}>not yet</button>
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
+              {/* Not-started shows — solo-with-toggle and vote mode share ONE
+                  shape (2026-07-03, desktop parity): the vote question leads
+                  (with the inline "also interested" line), and the progress +
+                  room sections render only once the toggle is "yes". A first
+                  tap on a friend's show reads as pure discovery (question +
+                  trailer); in the yes state progress / room / trailer are all
+                  active. Watching-shelf solo (no toggle) keeps the full
+                  content unconditionally. */}
+              {(clicked.mode === "solo" || clicked.mode === "vote") && (() => {
+                const withToggle = clicked.mode === "vote" || !!clicked.voteToggle;
+                return (
+                  <>
+                    {withToggle && (
+                      <>
+                        <div style={sheetTitle}>Do you want to watch <b>{clicked.name}</b>?</div>
+                        {interestedNames.length > 0 && (
+                          // Desktop's hover tooltip on "haven't started" pills, inline.
+                          <div style={{ marginTop: 10, color: C.cream, fontSize: 13, fontWeight: 600, textAlign: "center", opacity: 0.9 }}>
+                            {interestedLine(interestedNames, clicked.name, optedIn)}
+                          </div>
+                        )}
+                        <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                          <YesNoToggle value={optedIn} onChange={(v) => doVote(clicked.showId, v)} />
+                        </div>
+                      </>
+                    )}
+                    {(!withToggle || optedIn) && (
+                      <>
+                        {withToggle && <div style={sheetDivider} />}
+                        <div style={sheetTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
+                        <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                          <OneSelectProgress
+                            show={showsById[clicked.showId] ?? { seasons: [] }}
+                            value={curVal}
+                            allowZero
+                            requireConfirm={false}
+                            pillBg="transparent"
+                            onChangeSelected={(v) => setDeclaredProgress(v)}
+                            onConfirm={() => {}}
+                          />
+                        </div>
+                        <div style={sheetDivider} />
+                        <div style={{ ...sheetTitle, fontSize: 13 }}>{showRead ? readText : gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : (
+                          <>Start a show room?<br />Your friends can join in when they&rsquo;re ready.</>
+                        )}</div>
+                        <div style={sheetBtnRow}>
+                          <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Yes"}</button>
+                          <button style={outlineBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
 
               {clicked.mode === "watchq" && (
                 <>
