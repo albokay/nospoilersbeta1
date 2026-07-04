@@ -572,9 +572,10 @@ export default function MobileDashboard() {
             <div style={{ color: C.red, fontWeight: 700, fontSize: 15, marginBottom: 12, letterSpacing: -0.3 }}>Remove this show from your pool?</div>
             <div style={{ color: C.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>This will opt you out of the show across all your groups and you will leave any friend rooms for the show.</div>
             <div style={{ color: C.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>BUT, your progress will be saved and restored if you search for and add the show back to your show pool.</div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 16, alignItems: "center" }}>
-              <button style={{ border: "none", background: "transparent", color: C.midnight, fontWeight: 700, fontSize: 13, cursor: "pointer", minHeight: 44 }} onClick={() => setRemoveConfirm(null)}>cancel</button>
+            {/* Bottom-sheet rule (2026-07-03): left-justify. */}
+            <div style={{ display: "flex", justifyContent: "flex-start", gap: 16, alignItems: "center" }}>
               <button style={dangerBtn} onClick={() => doRemoveFromPool(removeConfirm.id)}>remove</button>
+              <button style={{ border: "none", background: "transparent", color: C.midnight, fontWeight: 700, fontSize: 13, cursor: "pointer", minHeight: 44 }} onClick={() => setRemoveConfirm(null)}>cancel</button>
             </div>
           </div>
         </div>
@@ -584,17 +585,18 @@ export default function MobileDashboard() {
              hover tooltip line moved inline) ── */}
       {invitePrompt && (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) { setInvitePrompt(null); setAcceptError(null); } }}>
-          <div style={{ ...bottomSheet, background: C.yellow, textAlign: "center" }}>
+          {/* Bottom-sheet rule (2026-07-03): left-justify. */}
+          <div style={{ ...bottomSheet, background: C.yellow }}>
             <div style={{ color: C.cream, fontSize: 13, fontWeight: 600, marginBottom: 10, opacity: 0.9 }}>
               You&rsquo;ve been invited by @{invitePrompt.inviterName} to join a watch group.
             </div>
-            <div style={sheetTitle}>Join a group with {inviteNames(invitePrompt)}?</div>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
+            <div style={{ ...sheetTitle, textAlign: "left" }}>Join a group with {inviteNames(invitePrompt)}?</div>
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-start", marginTop: 16 }}>
               <button style={startBtn} onClick={() => acceptInvite(invitePrompt)}>Yes</button>
               <button style={{ ...startBtn, background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }} onClick={() => declineInvite(invitePrompt)}>no</button>
             </div>
             {acceptError && (
-              <div style={{ marginTop: 14, textAlign: "center", color: C.cream, fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{acceptError}</div>
+              <div style={{ marginTop: 14, textAlign: "left", color: C.cream, fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{acceptError}</div>
             )}
           </div>
         </div>

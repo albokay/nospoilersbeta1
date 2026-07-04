@@ -621,16 +621,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       {gearOpen && (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) setGearOpen(false); }}>
           <div style={{ ...bottomSheet, background: C.yellow }}>
+            {/* Bottom-sheet rule (Alborz 2026-07-03): bottom-of-screen panels
+                LEFT-justify their elements; full-screen panels center. */}
             <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Rename group:</div>
             <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={renameInput} className="m-input" />
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <button style={{ ...startBtn, marginTop: 12 }} onClick={doRename}>confirm name</button>
-            </div>
+            <button style={{ ...startBtn, marginTop: 12 }} onClick={doRename}>confirm name</button>
             <div style={sheetDivider} />
             <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Leave this group?</div>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <button style={dangerBtn} onClick={doLeave}>yes, leave</button>
-            </div>
+            <button style={dangerBtn} onClick={doLeave}>yes, leave</button>
             <div style={{ color: C.cream, fontSize: 12, opacity: 0.9, marginTop: 14 }}>You can join again if someone sends you another invite.</div>
           </div>
         </div>
