@@ -14,7 +14,11 @@
  *             engaged with shows a blank right side (no arrow). Shows s/e (no
  *             arrow) when you ARE watching and everyone's at the same point; a
  *             written-but-unwatched room (no watchers) shows "s0 e0" with no arrow
- *   • shelf   = currentlyWatching once anyone watches OR anyone has written
+ *   • shelf   = the room decides (group-scoped model, 2026-07-06): a show with
+ *             a started room is "watching" (the active-rooms shelf); a show
+ *             without one is a PROPOSAL on "notStarted", no matter how far
+ *             along individual voters are. Starting a room is what promotes a
+ *             show off the proposed shelf — for everyone.
  */
 import type { GroupDashboardShow } from "./db";
 
@@ -67,7 +71,7 @@ export function computePill(
   const people = writerCount >= 2;
   const pencil = writerCount === 1;
   const showCount = count >= 2 && !people;
-  const shelf = watchers.length >= 1 || writerCount >= 1 ? "watching" : "notStarted";
+  const shelf = show.roomId ? "watching" : "notStarted";
 
   const self = members.find((m) => m.userId === selfUserId);
   const selfWatching = !!self && self.s != null && ((self.s ?? 0) > 0 || (self.e ?? 0) > 0);

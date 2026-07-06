@@ -54,6 +54,7 @@ import {
   fetchOutOfPoolShows,
   removeShowFromPool,
   restoreShowToPool,
+  ensureProgressRow,
   clearMigrationDormantForShow,
   fetchRoomActivityVisibility,
   roomHasNewActivity,
@@ -508,19 +509,23 @@ export default function DashboardPage() {
     return m;
   }, [roomVis, chatActivity]);
 
-  // Catalog search (CP2: catalog-only; TVMaze add is a later refinement).
+  // Catalog search. "Already added" is context-scoped (2026-07-06): in a
+  // group it means the show is already proposed/active in THIS group; on the
+  // personal dashboard it means the show is in your personal pool. Removed
+  // (out-of-pool) shows stay listed so they can be re-added/re-proposed.
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    // Exclude shows already in pool; KEEP removed (out-of-pool) shows so they
-    // can be re-added (which restores their saved progress).
-    // Keep already-in-pool shows in the list (flagged) so we can show an
-    // "already in the watch pool" note instead of silently hiding them.
     return shows
       .filter((s) => !s.isHidden && s.name.toLowerCase().includes(q))
-      .map((s) => ({ show: s, inPool: !!progress[s.id] && !outOfPool.has(s.id) }))
+      .map((s) => ({
+        show: s,
+        inPool: activeGroupId
+          ? groupShows.some((gs) => gs.showId === s.id)
+          : !!progress[s.id] && !outOfPool.has(s.id),
+      }))
       .slice(0, 8);
-  }, [query, shows, progress, outOfPool]);
+  }, [query, shows, progress, outOfPool, activeGroupId, groupShows]);
 
   // Debounced TVMaze lookup while the search is open, so a not-yet-cataloged
   // show (e.g. "The Bear") can be found + added. Only fires for queries of 2+.
@@ -587,10 +592,31 @@ export default function DashboardPage() {
 
   async function addShow(show: Show, val: { s: number; e: number }) {
     if (!user) return;
-    const entry: ProgressEntry = { s: val.s, e: val.e, highestS: val.s, highestE: val.e };
     try {
-      await upsertRewatchStatus(user.id, show.id, entry);
-      setProgress((prev) => ({ ...prev, [show.id]: entry }));
+      if (activeGroupId) {
+        // In-group add = PROPOSE the show into THIS group (group-scoped model,
+        // 2026-07-06): the vote is the proposal. A not-started pick stays off
+        // the personal dashboard (a proposal lives only in its group); a real
+        // progress pick records your global watch position as always.
+        await setShowVote(activeGroupId, show.id, true);
+        if (val.s === 0 && val.e === 0) {
+          if (!progress[show.id]) {
+            await ensureProgressRow(user.id, show.id);
+            setProgress((prev) => ({ ...prev, [show.id]: { s: 0, e: 0, highestS: 0, highestE: 0 } }));
+            setOutOfPool((prev) => new Set(prev).add(show.id)); // mirror in_pool=false
+          }
+        } else {
+          const entry: ProgressEntry = { s: val.s, e: val.e, highestS: val.s, highestE: val.e };
+          await upsertRewatchStatus(user.id, show.id, entry);
+          setProgress((prev) => ({ ...prev, [show.id]: entry }));
+          setOutOfPool((prev) => { const n = new Set(prev); n.delete(show.id); return n; });
+        }
+      } else {
+        const entry: ProgressEntry = { s: val.s, e: val.e, highestS: val.s, highestE: val.e };
+        await upsertRewatchStatus(user.id, show.id, entry);
+        setProgress((prev) => ({ ...prev, [show.id]: entry }));
+        setOutOfPool((prev) => { const n = new Set(prev); n.delete(show.id); return n; });
+      }
       // CP8a: re-adding a show un-hides any dormant group that owns its room
       // (Beyond the Underdome on Paradise re-add); reload the rail to surface it.
       await clearMigrationDormantForShow(show.id);
@@ -599,6 +625,20 @@ export default function DashboardPage() {
     } catch (e) {
       console.error("[dashboard] add show failed", e);
     }
+    closeSearch();
+  }
+
+  // In-group search hit on a show you already have a progress row for (in or
+  // out of the personal pool): propose it here directly — no picker, your
+  // saved progress is left exactly as it is.
+  async function proposeExisting(show: Show) {
+    if (!user || !activeGroupId) return;
+    try {
+      await setShowVote(activeGroupId, show.id, true);
+      await clearMigrationDormantForShow(show.id);
+      setRailGroups(await loadRail(user.id));
+      await refreshGroup(activeGroupId);
+    } catch (e) { console.error("[dashboard] propose failed", e); }
     closeSearch();
   }
 
@@ -670,12 +710,15 @@ export default function DashboardPage() {
     if (!activeGroupId) return;
     // Already in the room → open it directly, no dropdown (§9 rule 1).
     if (pill.inRoom) { goToRoom(pill.showId); return; }
-    // Resolve the dropdown mode: your own show (you have it) → solo; else a
-    // want-only show → vote; else (others watching / written) → "also watching?".
-    // OUT-OF-POOL shows don't count as yours — removing a show from your
-    // personal dashboard cancels your votes (server-side), so the next click
-    // must offer the vote question again, not the solo modal (2026-07-03).
-    const selfHasShow = !!progress[pill.showId] && !outOfPool.has(pill.showId);
+    // Resolve the dropdown mode. Group-scoped model (2026-07-06): "yours"
+    // means you've engaged with the show IN THIS GROUP — for a proposal
+    // (no room yet) that's your yes-vote here; for a roomed show it's your
+    // own watching. Your personal pool no longer drives the group click
+    // model, so a show you added or removed on the personal dashboard reads
+    // here purely by what you've done in this group.
+    const gsClicked = groupShows.find((s) => s.showId === pill.showId);
+    const selfVoted = !!gsClicked?.members.find((m) => m.userId === selfUserId)?.voted;
+    const selfHasShow = pill.shelf === "notStarted" ? selfVoted : pill.selfWatching;
     const mode = selfHasShow ? "solo" : pill.shelf === "notStarted" ? "vote" : "watchq";
     // Default the picker to your current progress (solo) so a button press
     // without touching the dropdown can't reset it; 0 for vote/watchq.
@@ -687,39 +730,40 @@ export default function DashboardPage() {
     setClicked({ showId: pill.showId, name, mode, voteToggle: pill.shelf === "notStarted" });
   }
 
+  // Group-scoped voting (2026-07-06): a vote lives in THIS group only.
+  //   • yes = propose/join the proposal here. The composer needs a progress
+  //     row to work, so quietly ensure a not-started (S0E0) one exists —
+  //     created OUT of the personal pool (a proposal lives only in its group;
+  //     the personal dashboard is untouched). Existing rows — including ones
+  //     you'd deliberately removed — are never touched, and real progress is
+  //     never reset.
+  //   • no = withdraw YOUR yes in THIS group only. No global remove, no other
+  //     group affected, and a started room is never affected. The open modal
+  //     collapses back to the bare vote question; the show leaves the
+  //     Proposed shelf only if yours was the last yes.
   async function doVote(showId: string, voted: boolean) {
     if (!activeGroupId || !user) return;
     try {
       await setShowVote(activeGroupId, showId, voted);
-      // Voting "yes" opts you into the show's pool — same as adding it to your
-      // want-to-watch shelf. The composer needs a pool entry to work, so make
-      // sure you have one:
-      //   • no progress yet → create a not-started (S0E0) want-to-watch entry
-      //     (matches the path someone who added the show themselves took);
-      //   • progress exists but you'd removed it from your pool → restore it
-      //     (otherwise voting back in would leave you opted-out everywhere).
-      // Existing real progress is never reset.
-      if (voted) {
-        if (!progress[showId]) {
-          const entry: ProgressEntry = { s: 0, e: 0, highestS: 0, highestE: 0 };
-          await upsertRewatchStatus(user.id, showId, entry);
-          setProgress((prev) => ({ ...prev, [showId]: entry }));
-        } else if (outOfPool.has(showId)) {
-          await restoreShowToPool(user.id, showId);
-          setOutOfPool((prev) => { const next = new Set(prev); next.delete(showId); return next; });
-        }
-      } else {
-        // Toggling back to "no" reverts the whole opt-in (2026-07-03): the
-        // show leaves your personal dashboard too — the same global un-opt
-        // as the dashboard's × (remove_show_from_pool clears votes in every
-        // group; progress is kept and restores on re-add). The open modal
-        // collapses back to the bare vote question.
-        try {
-          await removeShowFromPool(showId);
-          setOutOfPool((prev) => new Set(prev).add(showId));
-        } catch (e) { console.error("[dashboard] un-vote pool removal failed", e); }
-        setClicked((prev) => (prev && prev.showId === showId ? { ...prev, mode: "vote" } : prev));
+      if (voted && !progress[showId]) {
+        await ensureProgressRow(user.id, showId);
+        setProgress((prev) => ({ ...prev, [showId]: { s: 0, e: 0, highestS: 0, highestE: 0 } }));
+        setOutOfPool((prev) => new Set(prev).add(showId)); // mirror in_pool=false
       }
+      // Optimistic: flip your own vote in the loaded group data so the toggle
+      // and shelf react instantly; refreshGroup below re-syncs from the server.
+      setGroupShows((prev) => prev.map((gs) => {
+        if (gs.showId !== showId) return gs;
+        const selfRow = gs.members.find((m) => m.userId === user.id);
+        if (!voted) {
+          // Withdrawing on a proposal (no room) removes you from its members.
+          return { ...gs, members: gs.members.filter((m) => m.userId !== user.id) };
+        }
+        if (selfRow) return { ...gs, members: gs.members.map((m) => (m.userId === user.id ? { ...m, voted: true } : m)) };
+        const cur = progress[showId];
+        return { ...gs, members: [...gs.members, { userId: user.id, voted: true, s: cur?.s ?? 0, e: cur?.e ?? 0, wrote: false, wroteEntryMinS: null, wroteEntryMinE: null }] };
+      }));
+      if (!voted) setClicked((prev) => (prev && prev.showId === showId ? { ...prev, mode: "vote" } : prev));
       await refreshGroup(activeGroupId);
     } catch (e) { console.error("[dashboard] vote failed", e); }
   }
@@ -739,18 +783,22 @@ export default function DashboardPage() {
       const entry: ProgressEntry = { s: val.s, e: val.e, highestS: val.s, highestE: val.e };
       await upsertRewatchStatus(user.id, showId, entry);
       setProgress((prev) => ({ ...prev, [showId]: entry }));
+      setOutOfPool((prev) => { const n = new Set(prev); n.delete(showId); return n; }); // mirror in_pool=true
       await goToRoom(showId);
     } catch (e) { console.error("[dashboard] declare+start failed", e); }
   }
 
-  // "Just log my progress for now": record progress (which opts you into the
-  // group's pool per the dashboard RPC) without starting/opening a show room.
+  // "Just confirm my progress": record your (global) watch position without
+  // starting/opening a show room. Group-scoped model (2026-07-06): progress
+  // alone no longer surfaces you on a group's show — only a yes-vote or room
+  // membership does — so this stays deliberately non-committal.
   async function declareProgressOnly(showId: string, val: { s: number; e: number }) {
     if (!user || !activeGroupId) return;
     try {
       const entry: ProgressEntry = { s: val.s, e: val.e, highestS: val.s, highestE: val.e };
       await upsertRewatchStatus(user.id, showId, entry);
       setProgress((prev) => ({ ...prev, [showId]: entry }));
+      setOutOfPool((prev) => { const n = new Set(prev); n.delete(showId); return n; }); // mirror in_pool=true
       setClicked(null);
       await refreshGroup(activeGroupId);
     } catch (e) { console.error("[dashboard] log-progress failed", e); }
@@ -769,6 +817,7 @@ export default function DashboardPage() {
     try {
       await upsertRewatchStatus(user.id, showId, entry);
       setProgress((p) => ({ ...p, [showId]: entry }));
+      setOutOfPool((prev) => { const n = new Set(prev); n.delete(showId); return n; }); // mirror in_pool=true
     } catch (e) { console.error("[dashboard] personal log-progress failed", e); }
   }
 
@@ -1132,10 +1181,16 @@ export default function DashboardPage() {
                 <div style={{ marginTop: 8 }}>
                   {results.map(({ show: s, inPool }) => (
                     inPool ? (
-                      <div key={s.id} className="dash-result dash-result--inpool">You've already added <i>{s.name}</i> to your watch pool.</div>
+                      <div key={s.id} className="dash-result dash-result--inpool">{activeGroupId ? <><i>{s.name}</i> is already in this group.</> : <>You've already added <i>{s.name}</i> to your watch pool.</>}</div>
                     ) : (
-                      <button key={s.id} className="dash-result" onClick={() => { if (outOfPool.has(s.id)) { restoreShow(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}>
-                        {s.name}{outOfPool.has(s.id) ? " · restore" : ""}
+                      <button key={s.id} className="dash-result" onClick={() => {
+                        // Group context: a show you already have a progress row
+                        // for is proposed as-is (no picker — progress kept).
+                        if (activeGroupId) { if (progress[s.id]) { proposeExisting(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }
+                        else if (outOfPool.has(s.id)) { restoreShow(s); }
+                        else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); }
+                      }}>
+                        {s.name}{!activeGroupId && outOfPool.has(s.id) ? " · restore" : ""}
                       </button>
                     )
                   ))}
@@ -1271,11 +1326,10 @@ export default function DashboardPage() {
           anchoring to the clicked pill is a later polish. */}
       {clicked && (() => {
         const gs = groupShows.find((s) => s.showId === clicked.showId);
-        // Opted-in = the show is in your personal pool (2026-07-03): adding a
-        // show to your dashboard and voting "yes" in a group are ONE state —
-        // the toggle reflects pool membership, never the bare per-group vote
-        // row (which stays in sync via doVote but must not drive the UI).
-        const optedIn = !!progress[clicked.showId] && !outOfPool.has(clicked.showId);
+        // Opted-in = YOUR yes-vote in THIS group (2026-07-06 group-scoped
+        // model): the toggle reflects the per-group vote row — proposals live
+        // inside a group, so your personal pool never drives this modal.
+        const optedIn = !!gs?.members.find((m) => m.userId === selfUserId)?.voted;
         const roomLabel = gs?.roomId ? "Open show room?" : "Start a show room?";
         // "Solo" only when you're the sole opt-in; 2+ opted in → plain show room.
         const optedCount = gs?.members.length ?? 0;

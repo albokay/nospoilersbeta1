@@ -1527,6 +1527,28 @@ export async function upsertProgress(userId: string, showId: string, s: number, 
   if (error) throw error;
 }
 
+// Group-scoped proposals (2026-07-06): writing in a show room requires a
+// progress row, so proposing/voting yes quietly creates a not-started (S0E0)
+// one when none exists — OUT of the personal pool (in_pool=false), because a
+// proposal lives only in its group and must not surface on the personal
+// dashboard. ignoreDuplicates = an existing row (any state, including one
+// deliberately removed from the pool) is never touched; any later real
+// progress write flips in_pool back to true via upsertRewatchStatus.
+export async function ensureProgressRow(userId: string, showId: string): Promise<void> {
+  const { error } = await supabase
+    .from("progress")
+    .upsert({
+      user_id: userId,
+      show_id: showId,
+      season: 0,
+      episode: 0,
+      highest_season: 0,
+      highest_episode: 0,
+      in_pool: false,
+    }, { onConflict: "user_id,show_id", ignoreDuplicates: true });
+  if (error) throw error;
+}
+
 export async function upsertRewatchStatus(
   userId: string,
   showId: string,
