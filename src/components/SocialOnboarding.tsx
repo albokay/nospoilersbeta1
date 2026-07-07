@@ -218,7 +218,7 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   // while the card beneath grows/shrinks with the results.
   if (step === 1) {
     return (
-      <div style={{ ...overlay, flexDirection: "column", justifyContent: "flex-start", paddingTop: "16vh", gap: 28, overflowY: "auto" }}>
+      <div style={{ ...overlay, background: "transparent", flexDirection: "column", justifyContent: "flex-start", paddingTop: "16vh", gap: 28, overflowY: "auto" }}>
         <div style={{ textAlign: "center", maxWidth: 640, padding: "0 24px" }}>
           <h1 style={onbHeading}>What&rsquo;s the show you&rsquo;re most excited to watch with a friend?</h1>
           <div style={onbSubline}>(You can add more later.)</div>
@@ -380,8 +380,8 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   // ── Screen 4: confirmation, straight on the green (no modal). Header 1
   // heading + Header 2 message (§16), with a create-group-sized button. ──────
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, background: `var(--canon-personal, ${CANON.personal})`, display: "flex", alignItems: "center", justifyContent: "center", overflowY: "auto" }}>
-      <div style={{ textAlign: "center", maxWidth: 620, padding: "0 24px" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+      <div style={{ textAlign: "center", maxWidth: 620, padding: "0 24px", pointerEvents: "auto" }}>
         <h1 style={{ ...onbHeading, marginBottom: 24 }}>You&rsquo;re in.</h1>
         <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: "normal", lineHeight: 1.7, color: CANON.cream, marginBottom: 36 }}>
           You&rsquo;ve now created a show room for <b>{show?.name}</b>, invited{" "}

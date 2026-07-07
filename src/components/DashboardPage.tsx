@@ -1191,7 +1191,7 @@ export default function DashboardPage() {
         <div style={{ ...contentWrap, paddingTop: 24 }}>
           {groupShelves.watching.length > 0 && (
             <>
-              <h1 style={shelfHeader}>SHOW ROOMS:</h1>
+              <h1 style={shelfHeader}>OPEN SHOW ROOMS:</h1>
               <div style={shelfLayout(groupShelves.watching.length)}>
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
@@ -1239,13 +1239,14 @@ export default function DashboardPage() {
               What shows are you watching<br />or thinking about starting?
             </h1>
           )}
-          {/* CP2: the group room's two centered actions. */}
-          <div style={{ textAlign: "center", marginTop: groupShelves.watching.length || groupShelves.notStarted.length ? 56 : 24 }}>
-            <button style={searchPill} onClick={openSearch}>Propose more shows?</button>
+          {/* CP2: the group room's two centered actions — equal width, set a
+              little apart from the show buttons above. */}
+          <div style={{ textAlign: "center", marginTop: groupShelves.watching.length || groupShelves.notStarted.length ? 80 : 32 }}>
+            <button style={{ ...searchPill, width: 384 }} onClick={openSearch}>Propose more shows?</button>
           </div>
           <div style={{ textAlign: "center", marginTop: 20 }}>
             <button
-              style={{ ...invitePill, background: C.cream, color: C.green, boxShadow: "none" }}
+              style={{ ...invitePill, width: 384, padding: "16px 0" }}
               onClick={() => activeGroupId && openInvite(activeGroupId)}
             >Add more friends to this group?</button>
           </div>
