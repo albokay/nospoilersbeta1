@@ -5,7 +5,7 @@ import { CircleCheck, DoorClosed, DoorOpen, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
-import DiceFace from "./DiceFace";
+import StarFace from "./StarFace";
 import NudgePopover, { type NudgeDirection } from "../NudgePopover";
 import AskTheRoomPicker from "../AskTheRoomPicker";
 import PollComposer from "../PollComposer";
@@ -29,7 +29,6 @@ import SIKWComposer from "../SIKWComposer";
 // headers stay sticky at the top of the scroll container.
 
 const CELL = 32;          // 32px cell — 8px grid
-const CELL_RADIUS = 8;
 const GAP_BELOW = 16;     // spine + dot live in this strip
 const HELPER_W = 140;     // helper-text column ("click a name to nudge a friend")
 const DOOR_W = 48;        // door-icon column (ask the room launcher)
@@ -1395,12 +1394,10 @@ export default function V2RoomMap({
                             // declared width. theme.ts sets a global
                             // box-sizing: border-box, so the cell's 2px
                             // border eats 4px from the content area
-                            // (32 - 2*2 = 28). Without this adjustment,
-                            // a size=32 DiceFace overflows the content
-                            // area by 2px right + 2px down, visibly
-                            // shifting the dice off-center toward the
-                            // bottom-right of the visual cell.
-                            <DiceFace rating={rating} size={CELL - 4} />
+                            // (32 - 2*2 = 28). Without this the star face
+                            // overflows the content area 2px right + 2px
+                            // down, shifting it off-center.
+                            <StarFace rating={rating} size={CELL - 4} />
                           )}
                         </div>
                       );
@@ -1700,7 +1697,7 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
     return {
       background: CANON.alert,
       border: "2px solid var(--canon-alert,#f45028)",
-      borderRadius: CELL_RADIUS,
+      borderRadius: "50%",
     };
   }
   const filledBg = isSelf ? CANON.identity : CANON.personal;
@@ -1715,21 +1712,21 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   if (isReached && hasEntry && aboveViewer) {
     return {
       background: CANON.business,
-      borderRadius: CELL_RADIUS,
+      borderRadius: "50%",
     };
   }
   if (isReached && hasEntry) {
     return {
       background: filledBg,
       border: `2px solid ${filledBg}`,
-      borderRadius: CELL_RADIUS,
+      borderRadius: "50%",
     };
   }
   if (isReached) {
     return {
       background: "transparent",
       border: `2px solid ${outlineColor}`,
-      borderRadius: CELL_RADIUS,
+      borderRadius: "50%",
       opacity: 0.7,
     };
   }
