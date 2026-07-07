@@ -93,7 +93,14 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   async function join() {
     setStatus("joining");
     const res = await acceptPeopleGroupInvite(token);
-    if (res.ok) { setStatus("done"); setTimeout(() => navigate("/dashboard", { replace: true }), 900); return; }
+    if (res.ok) {
+      setStatus("done");
+      // CP3: a bootstrap invite lands the friend INSIDE the show room (the
+      // seed entry is waiting there); ordinary invites keep the dashboard.
+      const dest = res.roomId ? `/show-room/${res.roomId}` : "/dashboard";
+      setTimeout(() => navigate(dest, { replace: true }), 900);
+      return;
+    }
     if (res.error === "wrong_recipient") { setMasked(res.maskedEmail); setStatus("wrong"); return; }
     if (res.error === "already_accepted") { setStatus("already"); return; }
     if (res.error === "expired") { setStatus("expired"); return; }

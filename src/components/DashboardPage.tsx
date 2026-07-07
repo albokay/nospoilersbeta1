@@ -64,6 +64,8 @@ import {
   markGroupChatSeen,
   fetchTspDemoSeen,
   markTspDemoSeen,
+  fetchSocialOnboarded,
+  markSocialOnboarded,
   type Show,
   type GroupDashboardShow,
   type PendingGroupInvite,
@@ -80,6 +82,7 @@ import OneSelectProgress from "./OneSelectProgress";
 import TrailerCard from "./TrailerCard";
 import { prefetchTrailers } from "../lib/trailers";
 import TSPDemoModal from "./TSPDemoModal";
+import SocialOnboarding from "./SocialOnboarding";
 import GroupRoomSticky from "./GroupRoomSticky";
 import { linkifyText } from "../lib/linkify";
 
@@ -143,6 +146,43 @@ export default function DashboardPage() {
     setShowTspDemo(false);
     if (!forceTspDemo && user) markTspDemoSeen(user.id).catch(() => {});
   }
+
+  // CP3 social onboarding (3-screen show→friend→seed-entry flow). Fires ONCE,
+  // AFTER the demo (render is gated on !showTspDemo), on the BASE dashboard,
+  // for brand-new self-signup accounts only: invited accounts (already in a
+  // group) are stamped as done without ever seeing it, and an account with a
+  // pending invite waits (they may accept; re-evaluated next visit).
+  // Force-show for testing with ?sonb=1 (doesn't stamp).
+  const forceSocialOnb = new URLSearchParams(location.search).get("sonb") === "1";
+  const [showSocialOnb, setShowSocialOnb] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    if (new URLSearchParams(location.search).get("g")) return; // base dashboard only
+    if (forceSocialOnb) { setShowSocialOnb(true); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const done = await fetchSocialOnboarded(user.id);
+        if (cancelled || done) return;
+        const [groups, invites] = await Promise.all([
+          fetchPeopleGroupsForUser(user.id).catch(() => []),
+          fetchMyPendingGroupInvites().catch(() => []),
+        ]);
+        if (cancelled) return;
+        if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); return; }
+        if (invites.length > 0) return;
+        setShowSocialOnb(true);
+      } catch { /* tolerant — never block the dashboard */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user, location.search, forceSocialOnb]);
+  async function handleSocialOnbDone(groupId: string | null) {
+    setShowSocialOnb(false);
+    if (!forceSocialOnb && user) markSocialOnboarded(user.id).catch(() => {});
+    if (user) { try { setRailGroups(await loadRail(user.id)); } catch { /* tolerant */ } }
+    if (groupId) navigate(`/dashboard?g=${groupId}`);
+  }
+
   const [outOfPool, setOutOfPool] = useState<Set<string>>(new Set());
 
   // Group context
@@ -879,7 +919,9 @@ export default function DashboardPage() {
       setInvitePrompt(null);
       setAcceptError(null);
       await refreshRailAndInvites();            // tolerant — never blocks the nav below
-      navigate(`/dashboard?g=${inv.groupId}`);  // enter the group you just joined
+      // CP3: a bootstrap invite lands you INSIDE the show room (the seed
+      // entry is waiting); ordinary invites enter the group you just joined.
+      navigate(res.roomId ? `/show-room/${res.roomId}` : `/dashboard?g=${inv.groupId}`);
       return;
     }
     // Genuine failure — keep the modal open and say why (was a silent console log).
@@ -1100,7 +1142,9 @@ export default function DashboardPage() {
           <MessageCircle size={24} color={C.green} />
         </button>
       )}
-      {inGroup && <GroupRoomSticky />}
+      {/* CP3: the bootstrap group gets the onboarding explainer instead of
+          the generic one (its own copy + its own dismissal). */}
+      {inGroup && <GroupRoomSticky onboarding={(() => { try { return localStorage.getItem("ns_onb_group") === activeGroupId; } catch { return false; } })()} />}
 
       {inGroup ? (
         // ── Group context (sky) ───────────────────────────────────────────────
@@ -1601,6 +1645,9 @@ export default function DashboardPage() {
 
       {/* TSP onboarding demo — over the empty dashboard (spec §9). */}
       {showTspDemo && <TSPDemoModal onClose={closeTspDemo} />}
+
+      {/* CP3 social onboarding — strictly AFTER the demo (never both at once). */}
+      {showSocialOnb && !showTspDemo && <SocialOnboarding onDone={handleSocialOnbDone} />}
 
       {/* Feedback tab — same left-edge widget the homepage has, so feedback
           is reachable from every live desktop surface (2026-07-03). */}

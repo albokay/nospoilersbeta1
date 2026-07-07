@@ -10,18 +10,53 @@ import StickyNote from "./StickyNote";
  * blue text, slight tilt, fade-in).
  */
 const DISMISS_KEY = "ns_group_room_sticky_dismissed";
+// CP3: the onboarding-bootstrap group gets its own explainer copy + its own
+// dismissal, so dismissing one variant never hides the other.
+const ONB_DISMISS_KEY = "ns_onb_group_sticky_dismissed";
 
-export default function GroupRoomSticky() {
+export default function GroupRoomSticky({ onboarding = false }: { onboarding?: boolean }) {
+  const key = onboarding ? ONB_DISMISS_KEY : DISMISS_KEY;
   const [hidden, setHidden] = useState(() => {
-    try { return localStorage.getItem(DISMISS_KEY) === "1"; } catch { return false; }
+    try { return localStorage.getItem(key) === "1"; } catch { return false; }
   });
 
   function handleDismiss() {
-    try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* tolerate */ }
+    try { localStorage.setItem(key, "1"); } catch { /* tolerate */ }
     setHidden(true);
   }
 
   if (hidden) return null;
+
+  if (onboarding) {
+    return (
+      <StickyNote
+        ariaLabel="Your first show room"
+        tone="cream"
+        tilt={3}
+        width={300}
+        centered
+        padding="16px 18px"
+        fontSize={14}
+        lineHeight={1.5}
+        dismissSize={17}
+        onDismiss={handleDismiss}
+        style={{
+          top: "calc(50% + 40px)",
+          left: "min(calc(75vw + 180px), calc(100vw - 250px))",
+          zIndex: 60,
+        }}
+      >
+        <div style={{ paddingRight: 12 }}>
+          We went ahead and created a show room for your first show so you can
+          see how things work. From now on, when you {"“"}propose more
+          shows,{"”"} it gets added to the {"“"}Proposed shows{"”"} list where
+          your friend(s) can vote for the shows they{"’"}re interested in.
+          They can add shows there too. Once you all decide on a show, anyone
+          can start a room for it and start writing.
+        </div>
+      </StickyNote>
+    );
+  }
 
   return (
     <StickyNote

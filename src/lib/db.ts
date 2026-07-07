@@ -2603,6 +2603,22 @@ export async function markTspDemoSeen(userId: string): Promise<void> {
   await supabase.from("profiles").update({ tsp_demo_seen_at: new Date().toISOString() }).eq("id", userId);
 }
 
+/** CP3 social onboarding (3-screen flow) durable gate. NOTE the safe default
+ *  is the OPPOSITE of the demo's: on any error (column not migrated yet) we
+ *  report SEEN so a brand-new flow can never pester pre-migration accounts. */
+export async function fetchSocialOnboarded(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("profiles").select("social_onboarded_at").eq("id", userId).maybeSingle();
+  if (error) return true; // column not yet migrated → treat as done
+  return !!(data as any)?.social_onboarded_at;
+}
+
+/** Stamp the 3-screen onboarding as done (also used to silently skip it for
+ *  invited signups). Tolerant. */
+export async function markSocialOnboarded(userId: string): Promise<void> {
+  await supabase.from("profiles").update({ social_onboarded_at: new Date().toISOString() }).eq("id", userId);
+}
+
 // ── Group chat (restructure §12) ────────────────────────────────────────────
 
 export type GroupMessage = {
@@ -2699,16 +2715,20 @@ export async function fetchGroupPendingInvites(groupId: string): Promise<string[
 /** Create (or reuse) a people-group invite for an email. Returns the token.
  *  inviteeName ("the name I call this friend", CP2 contact naming) rides on
  *  the invitation and becomes the inviter's contact name for the accepter.
- *  Tolerant pre-migration: if the server doesn't know the name param yet,
- *  retries the old signature (the name is just dropped). */
-export async function createPeopleGroupInvite(groupId: string, email: string, inviteeName?: string): Promise<string> {
+ *  autoRoomId (CP3 onboarding bootstrap) makes accepting also opt the friend
+ *  into that show room so the seed entry is reachable. Tolerant pre-migration:
+ *  unknown params fall back to the older signatures (the extras are dropped). */
+export async function createPeopleGroupInvite(groupId: string, email: string, inviteeName?: string, autoRoomId?: string): Promise<string> {
   await checkRateLimit('send_invite', 6, 60, 'Too many invite requests sent. Please wait before trying again.');
   const name = inviteeName?.trim();
-  let res = name
-    ? await supabase.rpc("create_people_group_invitation", { p_group_id: groupId, p_email: email, p_invitee_display_name: name })
-    : await supabase.rpc("create_people_group_invitation", { p_group_id: groupId, p_email: email });
-  if (res.error && name) {
-    res = await supabase.rpc("create_people_group_invitation", { p_group_id: groupId, p_email: email });
+  const attempts: Record<string, unknown>[] = [];
+  if (name && autoRoomId) attempts.push({ p_group_id: groupId, p_email: email, p_invitee_display_name: name, p_auto_room_id: autoRoomId });
+  if (name) attempts.push({ p_group_id: groupId, p_email: email, p_invitee_display_name: name });
+  attempts.push({ p_group_id: groupId, p_email: email });
+  let res: { data: any; error: any } = { data: null, error: new Error("no attempt ran") };
+  for (const params of attempts) {
+    res = await supabase.rpc("create_people_group_invitation", params);
+    if (!res.error) break;
   }
   const { data, error } = res;
   if (error) throw error;
@@ -2773,21 +2793,25 @@ export async function fetchMyPendingInviteNames(userId: string): Promise<Record<
  *  sender to share the link themselves (silent failures — stale-JWT 401s,
  *  Resend refusals, rate limits — used to hide behind an unconditional
  *  "Invites sent!"; diagnosed 2026-07-03). */
-export async function sendGroupInviteEmail(token: string, displayName?: string): Promise<{ ok: boolean; reason?: string }> {
+export async function sendGroupInviteEmail(token: string, displayName?: string): Promise<{ ok: boolean; reason?: string; status?: number }> {
   try {
     const { data, error } = await supabase.functions.invoke("send-group-invite", {
       body: { token, appUrl: window.location.origin, ...(displayName ? { displayName } : {}) },
     });
     if (error) {
       // Non-2xx (401 stale token / 429 rate limit / …) — surface the fn's
-      // message when the response body is readable.
+      // message when the response body is readable. The HTTP status lets the
+      // CP3 onboarding backstop tell an auth failure (skip the retry, go to
+      // copy-the-link) from a transient one (retry once).
       let reason: string | undefined;
+      let status: number | undefined;
+      try { status = (error as any)?.context?.status; } catch { /* opaque */ }
       try {
         const body = await (error as any)?.context?.json?.();
         reason = body?.message || body?.error;
       } catch { /* opaque response */ }
       console.warn("[send-group-invite] email send failed (link still works)", reason ?? error);
-      return { ok: false, reason };
+      return { ok: false, reason, status };
     }
     // 200 with a warning = the fn ran but Resend refused the send.
     if (data && (data.ok === false || data.warning === "email_send_failed")) {
@@ -2846,16 +2870,18 @@ export async function getPeopleGroupInvite(
   };
 }
 
-/** Accept a people-group invite (recipient-bound). */
+/** Accept a people-group invite (recipient-bound). roomId is the CP3
+ *  bootstrap show room the accepter was auto-opted into (when the invite
+ *  carried one) — the client lands them INSIDE that room. */
 export async function acceptPeopleGroupInvite(
   token: string
-): Promise<{ ok: true; groupId: string } | { ok: false; error: string; maskedEmail?: string }> {
+): Promise<{ ok: true; groupId: string; roomId?: string } | { ok: false; error: string; maskedEmail?: string }> {
   const { data, error } = await supabase.rpc("accept_people_group_invitation", { p_token: token });
   if (error) return { ok: false, error: error.message };
   if (!data || data.ok === false) {
     return { ok: false, error: data?.error || "failed", maskedEmail: data?.invitee_email_masked };
   }
-  return { ok: true, groupId: data.group_id };
+  return { ok: true, groupId: data.group_id, roomId: data.auto_room_id ?? undefined };
 }
 
 /** Decline a people-group invite (recipient-bound; deletes the row so it
