@@ -516,7 +516,7 @@ export default function DashboardPage() {
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
     type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean };
-    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; tier: number; lastActivityAt: number | null };
+    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; furthestFriend: { s: number; e: number } | null; tier: number; lastActivityAt: number | null };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
@@ -532,13 +532,22 @@ export default function DashboardPage() {
       // Your own progress on this show (if any) → the show-button tooltip.
       const self = gs.members.find((mm) => mm.userId === selfUserId);
       const selfProg = self && ((self.s ?? 0) > 0 || (self.e ?? 0) > 0) ? { s: self.s as number, e: self.e as number } : null;
+      // Furthest-along OTHER member with real progress → the proposed-shelf
+      // "furthest progress: SxEx" label (highest wins across seasons).
+      let furthestFriend: { s: number; e: number } | null = null;
+      for (const o of opted) {
+        if ((o.s ?? 0) === 0 && (o.e ?? 0) === 0) continue;
+        if (!furthestFriend || linearIndex(o.s ?? 0, o.e ?? 0, show?.seasons) > linearIndex(furthestFriend.s, furthestFriend.e, show?.seasons)) {
+          furthestFriend = { s: o.s as number, e: o.e as number };
+        }
+      }
       // Activity bucket: 2+ writing → 1 writing → 2+ watching → 1 watching.
       const writerCount = pill.writerCount;
       const watcherCount = gs.members.filter((mm) => (mm.s ?? 0) > 0 || (mm.e ?? 0) > 0).length;
       const tier = writerCount >= 2 ? 0 : writerCount === 1 ? 1 : watcherCount >= 2 ? 2 : watcherCount >= 1 ? 3 : 4;
       // Exactly one writer → mark that writer's avatar (green fill + pencil).
       // (If the lone writer is you, no avatar exists to mark — nothing shows.)
-      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, selfWrote: !!self?.wrote, tier, lastActivityAt: gs.lastActivityAt };
+      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, selfWrote: !!self?.wrote, furthestFriend, tier, lastActivityAt: gs.lastActivityAt };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
     const byName = (a: Row, b: Row) => a.name.localeCompare(b.name);
@@ -1287,9 +1296,9 @@ export default function DashboardPage() {
                 <div key={r.pill.showId} className="group-pill-wrap">
                   {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
                   <div {...interestedTipProps(r.opted, r.name, r.selfOpted, r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
-                    <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
+                    <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
-                  <OptInAvatars members={r.opted} withTooltip={false} onTip={setTip} />
+                  <OptInAvatars members={r.opted} withTooltip onTip={setTip} />
                 </div>
               ))}
             </div>
@@ -1882,7 +1891,7 @@ function YesNoToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
 }
 
 // ── Group pill (§7) ──────────────────────────────────────────────────────────
-function GroupPill({ pill, name, onClick }: { pill: PillData; name: string; onClick: () => void }) {
+function GroupPill({ pill, name, furthestFriend, onClick }: { pill: PillData; name: string; furthestFriend?: { s: number; e: number } | null; onClick: () => void }) {
   // Fill = your relationship to the show (2026-07-07, see groupPills.ts):
   //   green    = open show room       → solid green fill, cream text
   //   cream    = proposal you're in   → cream fill, green text
@@ -1903,7 +1912,15 @@ function GroupPill({ pill, name, onClick }: { pill: PillData; name: string; onCl
       {/* No left badge: opted-in avatars convey who's in, and a writer is shown
           by the pen badge on that writer's own avatar (every writer, any count). */}
       <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
-      <PillRightSide right={pill.right} />
+      {/* Proposed shelf: a friend already watching → surface how far the
+          furthest one has gotten (takes the right slot; else the ▲/▼ gap). */}
+      {furthestFriend ? (
+        <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", opacity: 0.9 }}>
+          furthest progress: S{furthestFriend.s} E{furthestFriend.e}
+        </span>
+      ) : (
+        <PillRightSide right={pill.right} />
+      )}
     </button>
   );
 }
