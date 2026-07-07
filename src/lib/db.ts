@@ -2912,6 +2912,11 @@ export type GroupDashboardShow = {
   showId: string;
   roomId: string | null;
   inRoom: boolean;
+  /** CP5 (2026-07-06): the viewer deliberately LEFT this show's room (departed
+   *  marker present) — the client hides the button from THEIR shelves; rejoin
+   *  goes via the in-group search. false pre-migration / for proposals /
+   *  never-joined rooms. */
+  viewerLeft: boolean;
   /** ms — newest of room writing + any member's progress update (null if none).
    *  Drives within-bucket ordering on the group dashboard. */
   lastActivityAt: number | null;
@@ -2931,6 +2936,7 @@ export async function fetchGroupDashboard(groupId: string): Promise<GroupDashboa
     showId: s.show_id,
     roomId: s.room_id ?? null,
     inRoom: !!s.in_room,
+    viewerLeft: !!s.viewer_left,
     lastActivityAt: s.last_activity_at ? new Date(s.last_activity_at).getTime() : null,
     members: (s.members ?? []).map((m: any) => ({
       userId: m.user_id,
@@ -3364,6 +3370,16 @@ export async function fetchGroupThreads(
     if (ahead > 0) aheadCounts[thread.id] = ahead;
   }
   return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, latestHiddenReplyAt, aheadCounts, sharedAt, gatedThreads };
+}
+
+/** CP5 (2026-07-06): leave ONE show room in ONE group — never global. The
+ *  server records the departed marker (map shows it only for writers; it also
+ *  hides the button from the leaver's own shelf) and removes membership.
+ *  Votes/room untouched. Rejoin = start_show_room (clears the marker). */
+export async function leaveShowRoom(roomId: string): Promise<void> {
+  const { data, error } = await supabase.rpc("leave_show_room", { p_room_id: roomId });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "leave room failed");
 }
 
 /** Rename a friend group. */

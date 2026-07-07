@@ -41,6 +41,7 @@ import {
   createPeopleGroup,
   setShowVote,
   startShowRoom,
+  leaveShowRoom,
   createPeopleGroupInvite,
   sendGroupInviteEmail,
   acceptPeopleGroupInvite,
@@ -224,6 +225,9 @@ export default function DashboardPage() {
   // the rail reloads (accepts and new invites both land there).
   const [contactNames, setContactNames] = useState<Record<string, string>>({});
   const [pendingInviteNames, setPendingInviteNames] = useState<Record<string, string[]>>({});
+
+  // CP5: leave-a-room confirm (the X on an active-room button).
+  const [leaveConfirm, setLeaveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
 
   // §9 click-model popover (group context). mode captured at click time.
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
@@ -492,6 +496,9 @@ export default function DashboardPage() {
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
+      // CP5: a room the viewer deliberately LEFT is hidden from THEIR view
+      // (other members are unaffected); the in-group search re-enters it.
+      if (gs.viewerLeft && !gs.inRoom) continue;
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
       // Opted-in members other than you → the avatars overlapping the pill.
@@ -560,12 +567,19 @@ export default function DashboardPage() {
     if (!q) return [];
     return shows
       .filter((s) => !s.isHidden && s.name.toLowerCase().includes(q))
-      .map((s) => ({
-        show: s,
-        inPool: activeGroupId
-          ? groupShows.some((gs) => gs.showId === s.id)
-          : !!progress[s.id] && !outOfPool.has(s.id),
-      }))
+      .map((s) => {
+        const gs = activeGroupId ? groupShows.find((x) => x.showId === s.id) : undefined;
+        // CP5: a room the viewer LEFT is findable again — selecting it
+        // re-enters (clears the "has left" marker) and restores the button.
+        const rejoin = !!gs && !!gs.roomId && gs.viewerLeft && !gs.inRoom;
+        return {
+          show: s,
+          rejoin,
+          inPool: activeGroupId
+            ? !!gs && !rejoin
+            : !!progress[s.id] && !outOfPool.has(s.id),
+        };
+      })
       .slice(0, 8);
   }, [query, shows, progress, outOfPool, activeGroupId, groupShows]);
 
@@ -717,6 +731,30 @@ export default function DashboardPage() {
     } catch (e) {
       console.error("[dashboard] add show failed", e);
     }
+    closeSearch();
+  }
+
+  // CP5: leave ONE show room in THIS group. Your writing stays, the room and
+  // everyone else's votes are untouched; only your own shelf loses the button.
+  async function doLeaveRoom(roomId: string, showId: string) {
+    if (!activeGroupId) return;
+    setLeaveConfirm(null);
+    try {
+      await leaveShowRoom(roomId);
+      // Optimistic: hide the button + drop own membership; refreshGroup re-syncs.
+      setGroupShows((prev) => prev.map((gs) => (gs.showId === showId ? { ...gs, inRoom: false, viewerLeft: true } : gs)));
+      await refreshGroup(activeGroupId);
+    } catch (e) { console.error("[dashboard] leave room failed", e); }
+  }
+
+  // CP5 restore: re-enter a room you'd left (search → select). Clears the
+  // "has left" marker server-side (start_show_room's re-join path).
+  async function rejoinRoom(show: Show) {
+    if (!activeGroupId) return;
+    try {
+      await startShowRoom(activeGroupId, show.id);
+      await refreshGroup(activeGroupId);
+    } catch (e) { console.error("[dashboard] rejoin room failed", e); }
     closeSearch();
   }
 
@@ -1162,6 +1200,10 @@ export default function DashboardPage() {
                     <div {...(r.selfProg || r.selfWrote ? watchingTipProps(r) : {})}>
                       <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                     </div>
+                    {/* CP5: leave THIS room only — shown on rooms you're in. */}
+                    {r.pill.inRoom && r.pill.roomId && (
+                      <button className="dash-pill-x" title="leave this show room" onClick={() => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name })}>×</button>
+                    )}
                     <OptInAvatars members={r.opted} withTooltip onTip={setTip} />
                   </div>
                 ))}
@@ -1227,9 +1269,14 @@ export default function DashboardPage() {
               />
               {results.length > 0 && (
                 <div style={{ marginTop: 8 }}>
-                  {results.map(({ show: s, inPool }) => (
+                  {results.map(({ show: s, inPool, rejoin }) => (
                     inPool ? (
                       <div key={s.id} className="dash-result dash-result--inpool">{activeGroupId ? <><i>{s.name}</i> is already in this group.</> : <>You've already added <i>{s.name}</i> to your watch pool.</>}</div>
+                    ) : rejoin ? (
+                      // CP5: re-enter a room you'd left (marker clears server-side).
+                      <button key={s.id} className="dash-result" onClick={() => rejoinRoom(s)}>
+                        {s.name} · rejoin
+                      </button>
                     ) : (
                       <button key={s.id} className="dash-result" onClick={() => {
                         // A show you already have a progress row for is
@@ -1630,6 +1677,30 @@ export default function DashboardPage() {
           </div>
         );
       })()}
+
+      {/* CP5: leave-a-show-room confirm (accent card / cream title / outline
+          buttons). One version covers both the wrote / never-wrote cases. */}
+      {leaveConfirm && (
+        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setLeaveConfirm(null); }}>
+          <div style={yellowCard}>
+            <button style={modalClose} onClick={() => setLeaveConfirm(null)}><X size={16} color={CANON.cream} /></button>
+            <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this show room?</div>
+            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>
+              This takes you out of the <b>{leaveConfirm.name}</b> room in this group and removes this button from view.
+            </div>
+            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
+              If you have writing in the room, it will stay intact. Search and add the show back anytime to rejoin.
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+              <button
+                style={{ ...startBtn, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }}
+                onClick={() => setLeaveConfirm(null)}
+              >cancel</button>
+              <button style={dangerBtn} onClick={() => doLeaveRoom(leaveConfirm.roomId, leaveConfirm.showId)}>leave</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cursor-following tooltip bubble (opt-in avatars + watch progress;
           optional new-activity line beneath a divider). */}
@@ -2176,6 +2247,7 @@ function DashboardStyles() {
       }
       .dash-pill-wrap:hover .dash-pill-x { opacity: 1; }
       .group-pill-wrap { position: relative; margin-bottom: 8px; }
+      .group-pill-wrap:hover .dash-pill-x { opacity: 1; }
     `}</style>
   );
 }
