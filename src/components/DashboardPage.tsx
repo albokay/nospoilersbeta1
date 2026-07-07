@@ -919,9 +919,7 @@ export default function DashboardPage() {
       setInvitePrompt(null);
       setAcceptError(null);
       await refreshRailAndInvites();            // tolerant — never blocks the nav below
-      // CP3: a bootstrap invite lands you INSIDE the show room (the seed
-      // entry is waiting); ordinary invites enter the group you just joined.
-      navigate(res.roomId ? `/show-room/${res.roomId}` : `/dashboard?g=${inv.groupId}`);
+      navigate(`/dashboard?g=${inv.groupId}`);  // enter the group you just joined
       return;
     }
     // Genuine failure — keep the modal open and say why (was a silent console log).
