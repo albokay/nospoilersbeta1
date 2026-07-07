@@ -506,6 +506,17 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     navigate(`/pool/${encodeURIComponent(username)}`);
   }, [navigate]);
 
+  // username → the viewer's given name, for every room surface (map columns,
+  // bylines, stubs, tooltips, highlight attributions, filter labels). Keys
+  // and URLs keep the real handles; this is display-text only. MUST sit above
+  // the loading early-return — hooks run on every render (the first deploy
+  // had it below and crashed every room with "rendered more hooks").
+  const displayNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const mm of mapMembers) if (mm.username) m[mm.username] = roomContactNames[mm.userId] ?? mm.username;
+    return m;
+  }, [mapMembers, roomContactNames]);
+
   if (authLoading || loading) {
     return <div style={{ ...page, background: C.green }} aria-busy="true" />;
   }
@@ -520,15 +531,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // map columns via filteredUserId); sort forced to desc while filtering.
   const visibleFriendEntries = userFilter ? feedEntries.filter((e) => e.authorId === userFilter) : feedEntries;
   const effectiveSortOrder = userFilter ? "desc" : sortOrder;
-
-  // username → the viewer's given name, for every room surface (map columns,
-  // bylines, stubs, tooltips, highlight attributions, filter labels). Keys
-  // and URLs keep the real handles; this is display-text only.
-  const displayNames = useMemo(() => {
-    const m: Record<string, string> = {};
-    for (const mm of mapMembers) if (mm.username) m[mm.username] = roomContactNames[mm.userId] ?? mm.username;
-    return m;
-  }, [mapMembers, roomContactNames]);
 
   const privateFeedEntries: V2RoomFeedEntry[] = privateEntries.map((t) => ({
     threadId: t.id, s: t.season, e: t.episode, title: t.titleBase, body: t.body, preview: t.preview,
