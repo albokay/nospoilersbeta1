@@ -1321,6 +1321,10 @@ export default function DashboardPage() {
         // the top of the page (flex:1 fills the remaining height; content taller
         // than the space grows naturally and the page scrolls).
         <div style={dashboardCenter}>
+          {/* 1:2 spacer ratio → content rests ~⅓ down (split between top-pinned
+              and dead-center). Empty spacers shrink to 0 if content overflows,
+              so the top stays reachable via page scroll. */}
+          <div style={{ flex: 1 }} />
           {clustersEl}
           <div style={{ textAlign: "center", marginTop: 40 }}>
             {/* Hidden while the onboarding flow is up — its overlays own the
@@ -1329,6 +1333,7 @@ export default function DashboardPage() {
               <button style={invitePill} onClick={() => openInvite()}>Create another watch group?</button>
             )}
           </div>
+          <div style={{ flex: 2 }} />
         </div>
       )}
 
@@ -2158,8 +2163,7 @@ const clustersRow: React.CSSProperties = {
 // auto, so taller-than-viewport content grows and the page scrolls instead of
 // clipping.
 const dashboardCenter: React.CSSProperties = {
-  flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-  justifyContent: "center", padding: "24px",
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "24px",
 };
 const clusterBtn: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 0 };
 const avatarPile: React.CSSProperties = {
