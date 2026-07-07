@@ -1883,21 +1883,19 @@ function YesNoToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
 
 // ── Group pill (§7) ──────────────────────────────────────────────────────────
 function GroupPill({ pill, name, onClick }: { pill: PillData; name: string; onClick: () => void }) {
-  // Shows the viewer themselves is watching get a green fill + green outline,
-  // regardless of the group's writer/watcher fill tier.
-  const isSelfWatching = pill.selfWatching;
+  // Fill = your relationship to the show (2026-07-07, see groupPills.ts):
+  //   green    = open show room       → solid green fill, cream text
+  //   cream    = proposal you're in   → cream fill, green text
+  //   outlined = proposal you're not  → transparent fill, cream outline + text
   const isGreen = pill.fill === "green";
   const isCream = pill.fill === "cream";
-  // In sky group-context: self-watching = green fill + green outline; group
-  // green = solid green/white; outlined = white outline + white text; cream =
-  // cream fill + green text.
   const base: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 10, padding: "12px 18px",
     borderRadius: 65, fontFamily: '"Inter", sans-serif', fontWeight: 700,
     fontSize: 14, letterSpacing: -1, width: "100%", boxSizing: "border-box",
-    background: isSelfWatching || isGreen ? C.green : isCream ? C.cream : "transparent",
-    border: isSelfWatching ? `2px solid ${C.green}` : (isCream || isGreen ? "2px solid transparent" : "2px solid var(--canon-cream,#fef8ea)"),
-    color: isSelfWatching || isGreen ? CANON.cream : isCream ? C.green : CANON.cream,
+    background: isGreen ? C.green : isCream ? C.cream : "transparent",
+    border: (isGreen || isCream) ? "2px solid transparent" : "2px solid var(--canon-cream,#fef8ea)",
+    color: isGreen ? CANON.cream : isCream ? C.green : CANON.cream,
     cursor: "pointer", textAlign: "left",
   };
   return (

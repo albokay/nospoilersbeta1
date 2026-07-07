@@ -5,7 +5,12 @@
  *
  * Per pooled show:
  *   • count   = watchers + wanters (everyone opted in)
- *   • fill    = cream (want-only) / outlined (≥1 watching) / green (2+ writers)
+ *   • fill    = YOUR relationship to the show (2026-07-07, group-scoped model):
+ *             green = there's an OPEN show room; cream = a PROPOSAL you've
+ *             voted yes on; outlined = a proposal by others you haven't opted
+ *             into. (The old writer/watcher-count tiering + self-watching
+ *             override are gone — the fill now mirrors the shelf + your vote,
+ *             not who-wrote, which the avatars already show.)
  *   • pencil  at exactly 1 writer; people icon (replaces number) at 2+ writers
  *   • ▲N/▼N   your progress vs the room: ▲ when you're the furthest along, ▼ for
  *             how far behind the furthest watcher you are. Shown only once YOU'VE
@@ -67,14 +72,18 @@ export function computePill(
   const writerCount = members.filter((m) => m.wrote).length;
   const count = members.length;
 
-  const fill: PillFill = writerCount >= 2 ? "green" : watchers.length >= 1 ? "outlined" : "cream";
+  const self = members.find((m) => m.userId === selfUserId);
+  const selfWatching = !!self && self.s != null && ((self.s ?? 0) > 0 || (self.e ?? 0) > 0);
+
+  // Fill = your relationship to the show (2026-07-07): an OPEN room is green;
+  // a proposal you've voted yes on is cream-filled; a proposal you haven't
+  // opted into (someone else's) is outline-only. On a proposal, `members`
+  // holds only the yes-voters, so self-present-and-voted = you're in.
+  const fill: PillFill = show.roomId ? "green" : self?.voted ? "cream" : "outlined";
   const people = writerCount >= 2;
   const pencil = writerCount === 1;
   const showCount = count >= 2 && !people;
   const shelf = show.roomId ? "watching" : "notStarted";
-
-  const self = members.find((m) => m.userId === selfUserId);
-  const selfWatching = !!self && self.s != null && ((self.s ?? 0) > 0 || (self.e ?? 0) > 0);
 
   let right: PillRight = { kind: "none" };
 
