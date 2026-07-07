@@ -3245,6 +3245,14 @@ export async function fetchGroupThreads(
    * converted into the room, this is the conversion moment.
    */
   sharedAt: Record<string, number>;
+  /**
+   * Entries ABOVE the viewer's progress (spoiler-gated, excluded from
+   * `threads`), surfaced so the room can render a one-line placeholder per
+   * gated entry — "X has watched … and written to you/the room." (CP4,
+   * 2026-07-06). Deleted entries never appear. Their shared_at is recorded
+   * in `sharedAt` so stubs sort like ordinary entries.
+   */
+  gatedThreads: Thread[];
 }> {
   // Fetch threads linked to this group, with reply count scoped to this group_id
   // (shared seed threads have per-room reply copies — without the group_id filter,
@@ -3259,6 +3267,7 @@ export async function fetchGroupThreads(
   if (error) throw error;
 
   const threads: Thread[] = [];
+  const gatedThreads: Thread[] = [];
   const replyCounts: Record<string, number> = {};
   const latestVisibleReplyAt: Record<string, number> = {};
   const hiddenCounts: Record<string, number> = {};
@@ -3292,7 +3301,15 @@ export async function fetchGroupThreads(
     const replyCount = visibleReplies.length;
     if (t.is_deleted && replyCount === 0) continue;
     const thread = rowToThread(t);
-    if (thread.season > maxS || (thread.season === maxS && thread.episode > maxE)) continue;
+    if (thread.season > maxS || (thread.season === maxS && thread.episode > maxE)) {
+      // Spoiler-gated entry: excluded from the feed, but surfaced so the
+      // room can render its one-line stub (CP4). Deleted entries never stub.
+      if (!t.is_deleted) {
+        gatedThreads.push(thread);
+        sharedAt[thread.id] = (row as any).shared_at ? new Date((row as any).shared_at).getTime() : 0;
+      }
+      continue;
+    }
     threads.push(thread);
     sharedAt[thread.id] = (row as any).shared_at ? new Date((row as any).shared_at).getTime() : 0;
     replyCounts[thread.id] = replyCount;
@@ -3346,7 +3363,7 @@ export async function fetchGroupThreads(
     }
     if (ahead > 0) aheadCounts[thread.id] = ahead;
   }
-  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, latestHiddenReplyAt, aheadCounts, sharedAt };
+  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, latestHiddenReplyAt, aheadCounts, sharedAt, gatedThreads };
 }
 
 /** Rename a friend group. */

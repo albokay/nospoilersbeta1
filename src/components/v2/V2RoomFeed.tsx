@@ -67,6 +67,11 @@ export type V2RoomFeedEntry = {
   /** TSP onboarding demo only: instructional "Alborz" entry — gets a distinct
       treatment and no map cell. Undefined/false everywhere in live rooms. */
   isInstructional?: boolean;
+  /** CP4 (2026-07-06): a spoiler-gated entry, rendered as a non-interactive
+      one-line placeholder ("X has watched … and written to …") instead of a
+      ticket — the entry-level twin of RepliesList's ahead-of-progress reply
+      stub. title/body/preview are unused on stubs. */
+  gatedStub?: boolean;
 };
 
 export type V2RoomFeedHandle = {
@@ -95,6 +100,10 @@ export type V2RoomFeedProps = {
    *  highlights are suppressed, and the entry-row Users icon is replaced
    *  with whatever `entryIcon` provides (default: no icon for public). */
   groupId?: string;
+  /** CP4 gated-entry stub audience — decided at DISPLAY time by the caller
+   *  from how many OTHER people are currently in the room: exactly one →
+   *  "you", two or more → "the room". Default "the room". */
+  gatedStubAudience?: "you" | "the room";
   viewerProgress: ProgressEntry | null;
   /** Caller's user id. May be null for logged-out visitors viewing
    *  public threads; interactive controls route through onAuthRequired. */
@@ -223,6 +232,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     mobileIdiom = false,
     sortOrder = "asc",
     groupId,
+    gatedStubAudience = "the room",
     viewerProgress,
     userId,
     onAuthRequired,
@@ -585,6 +595,31 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   return (
     <div>
       {sorted.map((entry) => {
+        // CP4: a spoiler-gated entry renders as a one-line non-interactive
+        // stub — the entry-level twin of RepliesList's ahead-of-progress
+        // reply stub (same `card redacted` shell). One stub per gated entry;
+        // catching up replaces it with the real ticket on the next load.
+        // No signals/outlines/expansion apply.
+        if (entry.gatedStub) {
+          return (
+            <div
+              key={entry.threadId}
+              ref={(el) => { ticketRefs.current[entry.threadId] = el; }}
+              data-thread-id={entry.threadId}
+              style={{ position: "relative", margin: "0 0 12px 0", scrollMarginTop: 72 }}
+            >
+              <div
+                className="card redacted"
+                style={{ margin: 0, border: "none", display: "flex", alignItems: "center", minHeight: 40, padding: "8px 16px", cursor: "default" }}
+              >
+                <div style={{ fontWeight: 400, fontSize: 13, lineHeight: 1.4 }}>
+                  <b>{entry.authorUsername}</b> has watched <b>S{entry.s} E{entry.e}</b> and
+                  written to {gatedStubAudience}. You can read this once you catch up.
+                </div>
+              </div>
+            </div>
+          );
+        }
         const isExpanded = expandedThreadId === entry.threadId;
         const isHighlighted = highlightedId === entry.threadId;
         // Notification-signal lookups (computed in V2FriendRoomPage).
