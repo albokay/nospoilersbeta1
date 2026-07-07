@@ -106,6 +106,10 @@ type ComposeFormProps = {
    *  the room id when opened from the friend tab and "private" from the private
    *  tab. Unset → no default (the user must pick). */
   defaultDestination?: "private" | string;
+  /** CP6 (2026-07-06): label for the private-destination submit button.
+   *  The desktop show room's drafts tab passes "save draft"; every other
+   *  caller (incl. mobile) keeps the default. */
+  privateSubmitLabel?: string;
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -120,7 +124,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, mobileIdiom = false },
+  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", mobileIdiom = false },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -799,7 +803,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                     ? null
                     : submitting
                       ? <>posting<LoadingDots /></>
-                      : <>{destination === "private" ? "save privately" : "share entry"}<ArrowRight size={14} /></>}
+                      : <>{destination === "private" ? privateSubmitLabel : "share entry"}<ArrowRight size={14} /></>}
                 </button>
               );
             })()}
