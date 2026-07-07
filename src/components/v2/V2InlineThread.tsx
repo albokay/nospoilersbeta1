@@ -40,6 +40,9 @@ import type { ProgressEntry, Thread } from "../../types";
 
 export type V2InlineThreadProps = {
   thread: Thread;
+  /** Naming arc (2026-07-07): username → the viewer's given name. Display-
+   *  only; forwarded to RepliesList + HighlightableBody. */
+  displayNames?: Record<string, string>;
   /** Friend-room group id. When undefined, this is a public-conversation
    *  thread: replies are fetched from group_id IS NULL, the Highlight
    *  affordance is suppressed, and the composer posts to the public channel. */
@@ -91,6 +94,7 @@ export type V2InlineThreadProps = {
 
 export default function V2InlineThread({
   thread,
+  displayNames,
   groupId,
   viewerProgress,
   userId,
@@ -553,7 +557,7 @@ export default function V2InlineThread({
       {/* Body — gravestone if tombstone; edit form if editing; plain body otherwise */}
       {isTombstone ? (
         <div style={{ marginTop: 8, fontStyle: "italic", color: CANON.dark, opacity: 0.35 }}>
-          @{thread.author} deleted their entry.
+          {displayNames?.[thread.author] ?? thread.author} deleted their entry.
         </div>
       ) : editing ? (
         <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -631,6 +635,7 @@ export default function V2InlineThread({
           <HighlightableBody
             body={thread.body}
             highlights={highlights}
+            displayNames={displayNames}
             currentUserId={userId}
             onDeleteHighlight={handleDeleteHighlight}
           />
@@ -745,6 +750,7 @@ export default function V2InlineThread({
       <div style={{ marginTop: 8 }}>
         <RepliesList
           thread={thread}
+          displayNames={displayNames}
           groupId={groupId}
           progressForShow={viewerProgress ?? undefined}
           likeReply={handleLikeReply}

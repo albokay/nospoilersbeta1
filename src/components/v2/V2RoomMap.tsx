@@ -105,6 +105,9 @@ export type V2RoomMapMember = {
 
 export type V2RoomMapProps = {
   members: V2RoomMapMember[];
+  /** Naming arc (2026-07-07): username → the viewer's given name for that
+   *  person. Display-only (labels/tooltips); ids and URLs keep handles. */
+  displayNames?: Record<string, string>;
   /** Per-season episode counts — comes from shows.seasons. */
   seasons: number[];
   /** Viewer's progress — drives initial scroll + above-progress title masking. */
@@ -236,6 +239,7 @@ function isAbove(
 
 export default function V2RoomMap({
   members,
+  displayNames,
   seasons,
   viewerProgress,
   viewerUserId,
@@ -292,10 +296,11 @@ export default function V2RoomMap({
     () => (viewerUserId ? members.find((m) => m.userId === viewerUserId) : undefined),
     [members, viewerUserId],
   );
+  const dn = (u: string) => displayNames?.[u] ?? u;
   const selfUsernameWidth = useMemo(
-    () => (selfMember ? measureUsernameWidth(`@${selfMember.username}`) : 0),
+    () => (selfMember ? measureUsernameWidth(dn(selfMember.username)) : 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selfMember?.username, fontsReady],
+    [selfMember?.username, fontsReady, displayNames],
   );
   const dynamicHeaderHeight = Math.max(
     HEADER_HEIGHT,
@@ -682,7 +687,7 @@ export default function V2RoomMap({
               : isClickable
               ? (
                   <>
-                    <span style={{ display: "block" }}>Give @{m.username}</span>
+                    <span style={{ display: "block" }}>Give {dn(m.username)}</span>
                     <span style={{ display: "block", fontStyle: "italic" }}>a nudge.</span>
                   </>
                 )
@@ -866,7 +871,7 @@ export default function V2RoomMap({
                           : undefined
                       }
                     >
-                      @{m.username}
+                      {dn(m.username)}
                     </div>
                   );
                   if (usernameTooltipText == null) {
@@ -1259,7 +1264,7 @@ export default function V2RoomMap({
                   // context still surfaces.
                   <span>
                     <span style={{ display: "block", whiteSpace: "nowrap" }}>
-                      @{m.username} wrote {cellEntries.length} entries on
+                      {dn(m.username)} wrote {cellEntries.length} entries on
                       {" "}S{row.season} E{row.episode}.
                     </span>
                     <span style={{ display: "block", marginTop: 2, fontStyle: "italic", whiteSpace: "nowrap" }}>
@@ -1278,7 +1283,7 @@ export default function V2RoomMap({
                         </span>
                       )}
                       S{String(row.season).padStart(2, "0")} E
-                      {String(row.episode).padStart(2, "0")} / @{m.username}
+                      {String(row.episode).padStart(2, "0")} / {dn(m.username)}
                     </span>
                     {entryLine}
                     {ratedLine}
@@ -1558,6 +1563,7 @@ export default function V2RoomMap({
         createPortal(
           <NudgePopover
             recipientUsername={nudgeOpenFor.recipientUsername}
+            recipientDisplayName={dn(nudgeOpenFor.recipientUsername)}
             recipientId={nudgeOpenFor.recipientId}
             groupId={groupId}
             currentUserId={viewerUserId}

@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
-  fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser,
+  fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser, fetchContactNames,
   type Show,
 } from "../lib/db";
 import type { ProgressEntry } from "../types";
@@ -34,6 +34,10 @@ export default function PublicDashboardPage({ username, invite }: { username: st
   const [notFound, setNotFound] = useState(false);
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
+  // Naming arc (2026-07-07): a signed-in viewer sees THEIR given name for the
+  // pool's owner (handle fallback); logged-out visitors have no contacts and
+  // keep the handle. Display-only — the route stays keyed by username.
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,10 +46,15 @@ export default function PublicDashboardPage({ username, invite }: { username: st
       try {
         const prof = await fetchPublicProfileByUsername(username);
         if (!prof) { if (!cancelled) { setNotFound(true); setLoading(false); } return; }
-        const [allShows, prog] = await Promise.all([fetchShows(), fetchPublicProgressForUser(prof.id)]);
+        const [allShows, prog, cn] = await Promise.all([
+          fetchShows(),
+          fetchPublicProgressForUser(prof.id),
+          user ? fetchContactNames(user.id).catch(() => ({} as Record<string, string>)) : Promise.resolve({} as Record<string, string>),
+        ]);
         if (cancelled) return;
         setShows(allShows);
         setProgress(prog);
+        setDisplayName(cn[prof.id] ?? null);
       } catch (e) {
         console.error("[public-dashboard] load failed", e);
         if (!cancelled) setNotFound(true);
@@ -54,7 +63,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
       }
     })();
     return () => { cancelled = true; };
-  }, [username]);
+  }, [username, user?.id]);
 
   const showsById = useMemo(() => {
     const m: Record<string, Show> = {};
@@ -102,7 +111,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
         <div style={contentWrap}>
           {notStarted.length > 0 && (
             <>
-              <h2 style={inviteHeading}><span style={{ color: C.cream }}>@{username}</span> wants to watch these shows:</h2>
+              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> wants to watch these shows:</h2>
               <div style={inviteShelfLayout(notStarted.length)}>
                 {notStarted.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, ...pillWant }}><span style={pillName}>{show.name}</span></div>
@@ -115,7 +124,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
               <h2 style={{ ...inviteHeading, marginTop: notStarted.length ? 64 : 0 }}>
                 {notStarted.length > 0
                   ? "and is already watching these:"
-                  : <><span style={{ color: C.cream }}>@{username}</span> is watching these shows:</>}
+                  : <><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is watching these shows:</>}
               </h2>
               <div style={inviteShelfLayout(watching.length)}>
                 {watching.map(({ show, entry }) => (
@@ -135,7 +144,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
         </div>
       ) : (
         <div style={contentWrap}>
-          <h1 style={heading}><span style={{ color: C.cream }}>@{username}</span>&rsquo;s watch pool:</h1>
+          <h1 style={heading}><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span>&rsquo;s watch pool:</h1>
 
           {watching.length > 0 && (
             <>
@@ -166,7 +175,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
 
           {watching.length === 0 && notStarted.length === 0 && (
             <div style={{ textAlign: "center", color: C.cream, opacity: 0.85, marginTop: 24 }}>
-              @{username} hasn&rsquo;t added any shows yet.
+              {displayName ?? `@${username}`} hasn&rsquo;t added any shows yet.
             </div>
           )}
 

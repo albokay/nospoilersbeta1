@@ -56,6 +56,12 @@ export const searchPill: React.CSSProperties = {
   padding: "16px 56px", borderRadius: 65, cursor: "pointer",
 };
 
+// The group heading's "with …" members line (naming arc 2026-07-07): shared
+// by the group room AND the show room header so the two never drift.
+export const groupHeadingMembers: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: CANON.cream,
+};
+
 // The show room's compose shell (ShowRoomPage) — the "regular compose modal".
 export const composeBackdrop: React.CSSProperties = {
   position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", display: "flex",

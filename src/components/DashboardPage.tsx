@@ -56,6 +56,7 @@ import {
   ensureProgressRow,
   fetchContactNames,
   fetchMyPendingInviteNames,
+  setContactName,
   clearMigrationDormantForShow,
   fetchRoomActivityVisibility,
   roomHasNewActivity,
@@ -75,8 +76,9 @@ import {
   type GroupChatActivity,
 } from "../lib/db";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { groupDisplayName } from "../lib/groupNames";
+import { groupDisplayName, groupGenericName, personDisplayName } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
+import { groupHeadingMembers } from "./dashboardChrome";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
@@ -242,6 +244,10 @@ export default function DashboardPage() {
   const [optionsFor, setOptionsFor] = useState<string | null>(null); // group id whose gear options are open
   const [optionsAnchor, setOptionsAnchor] = useState<{ x: number; y: number } | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  // CP-C rename-contacts (naming arc 2026-07-07): the gear's per-member "your
+  // name for them" inputs — keyed by userId, initialized on gear open.
+  const [contactEdits, setContactEdits] = useState<Record<string, string>>({});
+  const [contactsSaving, setContactsSaving] = useState(false);
 
   // CP6: group chat panel.
   const [chatGroupId, setChatGroupId] = useState<string | null>(null);
@@ -483,13 +489,29 @@ export default function DashboardPage() {
     };
   }, [activeGroupId, groupShows, progress, showsById]);
 
-  // userId → username for the active group (drives the opted-in tooltip).
+  // Per-viewer "Group N": the viewer's Nth group by THEIR join order —
+  // viewer-specific like every other part of the naming model, so the rail
+  // can never hold two "Group 1"s (the old per-creator seq could collide).
+  const groupNumberById = useMemo(() => {
+    const withJoin = railGroups.map((r) => ({
+      id: r.group.id,
+      joinedAt: r.members.find((m) => m.userId === selfUserId)?.joinedAt ?? 0,
+    }));
+    withJoin.sort((a, b) => (a.joinedAt - b.joinedAt));
+    const m: Record<string, number> = {};
+    withJoin.forEach((g, i) => { m[g.id] = i + 1; });
+    return m;
+  }, [railGroups, selfUserId]);
+
+  // userId → display name for the active group (naming arc 2026-07-07: the
+  // name the VIEWER gave each member, else their handle) — drives the opted-in
+  // tooltips, the "Read what … has written?" prompt, and avatar letters.
   const memberNameById = useMemo(() => {
     const m: Record<string, string> = {};
     const ag = railGroups.find((r) => r.group.id === activeGroupId);
-    for (const mem of ag?.members ?? []) m[mem.userId] = mem.username;
+    for (const mem of ag?.members ?? []) m[mem.userId] = personDisplayName(contactNames, mem.userId, mem.username);
     return m;
-  }, [railGroups, activeGroupId]);
+  }, [railGroups, activeGroupId, contactNames]);
 
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
@@ -991,6 +1013,25 @@ export default function DashboardPage() {
     navigate("/dashboard");
   }
 
+  // CP-C: save the viewer's names for this group's members (phone-contacts
+  // rename — overwrites; empty clears back to the handle). Private to the
+  // viewer; every surface re-labels instantly via the shared lookup.
+  async function saveContactNames(groupId: string) {
+    if (!user || contactsSaving) return;
+    setContactsSaving(true);
+    try {
+      const others = (railGroups.find((r) => r.group.id === groupId)?.members ?? []).filter((m) => m.userId !== selfUserId);
+      for (const m of others) {
+        const next = (contactEdits[m.userId] ?? "").trim();
+        const cur = contactNames[m.userId] ?? "";
+        if (next !== cur) await setContactName(user.id, m.userId, next);
+      }
+      setContactNames(await fetchContactNames(user.id));
+      setOptionsFor(null);
+    } catch (e) { console.error("[dashboard] contact rename failed", e); }
+    finally { setContactsSaving(false); }
+  }
+
   async function doRename(groupId: string) {
     setOptionsFor(null);
     try { await renamePeopleGroup(groupId, renameValue); } catch (e) { console.error("[dashboard] rename failed", e); }
@@ -1009,7 +1050,7 @@ export default function DashboardPage() {
     // (every chat author is a member, so this covers them without a query).
     const grp = railGroups.find((r) => r.group.id === chatGroupId);
     const nameById: Record<string, string> = {};
-    for (const m of grp?.members ?? []) nameById[m.userId] = m.username;
+    for (const m of grp?.members ?? []) nameById[m.userId] = personDisplayName(contactNames, m.userId, m.username);
 
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
@@ -1053,7 +1094,7 @@ export default function DashboardPage() {
     markGroupChatSeen(chatGroupId).catch(() => { /* tolerate */ });
     setChatActivity((prev) => prev.map((a) => (a.groupId === chatGroupId ? { ...a, chatLastSeenAt: Date.now() } : a)));
     return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
-  }, [chatGroupId, loadChat, railGroups]);
+  }, [chatGroupId, loadChat, railGroups, contactNames]);
 
   // Live chat dot while you're VIEWING a group with the panel closed: a
   // filtered, per-group realtime listen that flips the new-message dot the
@@ -1162,9 +1203,18 @@ export default function DashboardPage() {
         clusterDotByGroup={clusterDotByGroup}
         contactNames={contactNames}
         pendingInviteNames={pendingInviteNames}
+        groupNumberById={groupNumberById}
         onEnter={(id) => navigate(`/dashboard?g=${id}`)}
         onInviteClick={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
-        onGearClick={(id, rect) => { setOptionsFor(id); setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 }); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
+        onGearClick={(id, rect) => {
+          setOptionsFor(id);
+          setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 });
+          setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? "");
+          const others = (railGroups.find((r) => r.group.id === id)?.members ?? []).filter((m) => m.userId !== selfUserId);
+          const edits: Record<string, string> = {};
+          for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
+          setContactEdits(edits);
+        }}
         onTip={setTip}
       />
 
@@ -1503,7 +1553,7 @@ export default function DashboardPage() {
         );
         const showRead = !!gs?.roomId && visibleWriters.length >= 1;
         const readName = visibleWriters.length === 1 ? (memberNameById[visibleWriters[0].userId] ?? "someone") : null;
-        const readText = visibleWriters.length > 1 ? "Read what your friends have written?" : `Read what @${readName} has written?`;
+        const readText = visibleWriters.length > 1 ? "Read what your friends have written?" : `Read what ${readName} has written?`;
         return (
           // Dedicated scrollable two-layer overlay (NOT the shared `overlay`):
           // centers [modal + 8px gap + trailer card] as one pair and lets the
@@ -1639,6 +1689,29 @@ export default function DashboardPage() {
               <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight }} />
               <button style={{ ...startBtn, marginTop: 12 }} onClick={() => doRename(optionsFor)}>confirm name</button>
             </div>
+            {(() => {
+              const others = (railGroups.find((r) => r.group.id === optionsFor)?.members ?? []).filter((m) => m.userId !== selfUserId);
+              if (!others.length) return null;
+              return (
+                <div style={yellowCard}>
+                  <div style={{ ...yellowTitle, marginBottom: 4 }}>Your names for the people here:</div>
+                  <div style={{ color: CANON.cream, fontSize: 11, opacity: 0.85, marginBottom: 12 }}>Only you see these — like your phone contacts.</div>
+                  {others.map((m) => (
+                    <input
+                      key={m.userId}
+                      value={contactEdits[m.userId] ?? ""}
+                      onChange={(e) => setContactEdits((prev) => ({ ...prev, [m.userId]: e.target.value }))}
+                      placeholder={m.username}
+                      maxLength={40}
+                      style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, marginBottom: 8 }}
+                    />
+                  ))}
+                  <button style={{ ...startBtn, marginTop: 4, opacity: contactsSaving ? 0.6 : 1 }} disabled={contactsSaving} onClick={() => saveContactNames(optionsFor)}>
+                    {contactsSaving ? "saving…" : "save names"}
+                  </button>
+                </div>
+              );
+            })()}
             <div style={yellowCard}>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this group?</div>
               <button style={dangerBtn} onClick={() => doLeave(optionsFor)}>yes, leave</button>
@@ -1653,7 +1726,7 @@ export default function DashboardPage() {
       {chatGroupId && (() => {
         const cg = railGroups.find((r) => r.group.id === chatGroupId);
         const others = cg ? cg.members.filter((m) => m.userId !== selfUserId) : [];
-        const connected = others.length ? others.map((m) => `@${m.username}`).join(", ") : "just you";
+        const connected = others.length ? others.map((m) => personDisplayName(contactNames, m.userId, m.username)).join(", ") : "just you";
         return (
           <div style={chatPanel}>
             <div style={chatHeader}>
@@ -1665,7 +1738,7 @@ export default function DashboardPage() {
                 const mine = m.authorId === selfUserId;
                 return (
                   <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
-                    {!mine && <div style={{ fontSize: 11, color: CANON.cream, opacity: 0.85, marginBottom: 3 }}>{m.username}</div>}
+                    {!mine && <div style={{ fontSize: 11, color: CANON.cream, opacity: 0.85, marginBottom: 3 }}>{personDisplayName(contactNames, m.authorId, m.username)}</div>}
                     <div style={mine ? chatBubbleMine : chatBubbleOther}>{linkifyText(m.body)}</div>
                   </div>
                 );
@@ -1932,7 +2005,7 @@ function OptInAvatars({ members, withTooltip, onTip }: {
 }
 
 function GroupClusters({
-  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, contactNames, pendingInviteNames, onEnter, onInviteClick, onGearClick, onTip,
+  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, contactNames, pendingInviteNames, groupNumberById, onEnter, onInviteClick, onGearClick, onTip,
 }: {
   groups: RailGroup[];
   selfUserId: string;
@@ -1941,6 +2014,7 @@ function GroupClusters({
   clusterDotByGroup: Map<string, "blue" | "red">;
   contactNames: Record<string, string>;
   pendingInviteNames: Record<string, string[]>;
+  groupNumberById: Record<string, number>;
   onEnter: (id: string) => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string, rect: DOMRect) => void;
@@ -1952,10 +2026,13 @@ function GroupClusters({
   // (Back-to-dashboard lives in the left-edge tab in the page chrome.)
   if (active) {
     const others = active.members.filter((m) => m.userId !== selfUserId);
-    const names = others.map((m) => m.username).join(", ");
+    // Naming arc (2026-07-07): the header's TITLE is the generic/custom label
+    // ("Group N" → custom name); the PEOPLE live in the "with…" line as the
+    // viewer's given names (handle fallback).
+    const names = others.map((m) => personDisplayName(contactNames, m.userId, m.username)).join(", ");
     return (
       <div style={groupHeadingRow}>
-        <h1 style={groupHeadingTitle}>{groupDisplayName(active.group, others, contactNames, pendingInviteNames[active.group.id] ?? [])}</h1>
+        <h1 style={groupHeadingTitle}>{groupGenericName(active.group, groupNumberById[active.group.id])}</h1>
         {names && <span style={groupHeadingMembers}><span style={{ color: C.greyblue }}>with</span> {names}</span>}
         <button style={headingIconBtn} title="group options" onClick={(e) => onGearClick(active.group.id, e.currentTarget.getBoundingClientRect())}><Settings size={22} color={CANON.cream} /></button>
       </div>
@@ -1970,7 +2047,7 @@ function GroupClusters({
         // invitees yellow). Never your own icon, even before anyone accepts.
         const others = members.filter((m) => m.userId !== selfUserId);
         const avatars = [
-          ...others.map((m) => <Avatar key={m.userId} letter={m.username[0]} state="accepted" />),
+          ...others.map((m) => <Avatar key={m.userId} letter={personDisplayName(contactNames, m.userId, m.username)[0]} state="accepted" />),
           ...pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />),
         ];
         const dot = clusterDotByGroup.get(group.id);
@@ -1988,7 +2065,7 @@ function GroupClusters({
             <AvatarPile avatars={avatars} />
             <div style={clusterName}>
               {dot && <span style={{ ...notifDotCluster, background: dot === "red" ? C.red : C.blue }} />}
-              {groupDisplayName(group, others, contactNames, pendingInviteNames[group.id] ?? [])}
+              {groupDisplayName(group, others, contactNames, pendingInviteNames[group.id] ?? [], groupNumberById[group.id])}
             </div>
           </button>
         );
@@ -2123,9 +2200,6 @@ const headingIconBtn: React.CSSProperties = {
 };
 const groupHeadingTitle: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: CANON.cream, margin: 0,
-};
-const groupHeadingMembers: React.CSSProperties = {
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: CANON.cream,
 };
 const backTab: React.CSSProperties = {
   // ~50% larger tab; padding/radius on the 8px grid (spec §16). Icon unchanged.

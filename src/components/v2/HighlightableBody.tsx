@@ -79,6 +79,7 @@ function HighlightableSegment({
   onDeleteHighlight,
   linkify = false,
   color = DEFAULT_HIGHLIGHT_COLOR,
+  displayNames,
 }: {
   text: string;
   bodyStart: number;
@@ -93,6 +94,7 @@ function HighlightableSegment({
   /** Highlight span fill color. Default canon-yellow for entry bodies;
    *  reply bodies pass canon-light-blue. */
   color?: string;
+  displayNames?: Record<string, string>;
 }) {
   const renderText = (s: string): React.ReactNode => (linkify ? linkifyText(s) : s);
 
@@ -121,6 +123,7 @@ function HighlightableSegment({
         isOwn={!!currentUserId && h.authorId === currentUserId}
         onDelete={onDeleteHighlight ? () => onDeleteHighlight(h.id) : undefined}
         color={color}
+        displayName={displayNames?.[h.authorUsername]}
       >
         {renderText(segText)}
       </HighlightSpan>
@@ -146,12 +149,15 @@ function HighlightSpan({
   isOwn,
   onDelete,
   color = DEFAULT_HIGHLIGHT_COLOR,
+  displayName,
 }: {
   highlight: Highlight;
   children: React.ReactNode;
   isOwn: boolean;
   onDelete?: () => void;
   color?: string;
+  /** Naming arc (2026-07-07): the viewer's given name for the highlighter. */
+  displayName?: string;
 }) {
   const [hovered, setHovered] = useState(false);
   // Cursor position captured on mouseenter — the tooltip anchors here so
@@ -245,7 +251,7 @@ function HighlightSpan({
             pointerEvents: "auto",
           }}
         >
-          <span>@{highlight.authorUsername}:</span>
+          <span>{displayName ?? highlight.authorUsername}:</span>
           {highlight.kind === "yup" ? (
             <ThumbsUp size={12} color={CANON_NAVY} strokeWidth={2} />
           ) : (
@@ -294,6 +300,7 @@ export default function HighlightableBody({
   bodyStart = 0,
   linkify = false,
   color = DEFAULT_HIGHLIGHT_COLOR,
+  displayNames,
 }: {
   body: string;
   highlights: Highlight[];
@@ -311,6 +318,9 @@ export default function HighlightableBody({
   /** Highlight fill color. Default canon-yellow (entries). Reply bodies
    *  pass canon-light-blue (`var(--canon-friend,#adc8d7)`) to distinguish reaction context. */
   color?: string;
+  /** Naming arc (2026-07-07): username → the viewer's given name (tooltip
+   *  attribution only). */
+  displayNames?: Record<string, string>;
 }) {
   const tokens = tokenizeBody(body, bodyStart);
   return (
@@ -333,6 +343,7 @@ export default function HighlightableBody({
             onDeleteHighlight={onDeleteHighlight}
             linkify={linkify}
             color={color}
+            displayNames={displayNames}
           />
         );
       })}

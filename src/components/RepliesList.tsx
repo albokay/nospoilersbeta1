@@ -204,6 +204,7 @@ function ReplyBody({
   highlights = [],
   currentUserId = null,
   onDeleteHighlight,
+  displayNames,
 }: {
   body: string;
   quotedText?: string | null;
@@ -221,6 +222,7 @@ function ReplyBody({
   highlights?: Highlight[];
   currentUserId?: string | null;
   onDeleteHighlight?: (id: string) => void;
+  displayNames?: Record<string, string>;
 }) {
   // Suppress the unused-quoteSups warning while the API surface is preserved.
   void quoteSups;
@@ -243,6 +245,7 @@ function ReplyBody({
           <HighlightableBody
             body={before}
             highlights={highlights}
+            displayNames={displayNames}
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
             bodyStart={0}
@@ -261,6 +264,7 @@ function ReplyBody({
           <HighlightableBody
             body={after}
             highlights={highlights}
+            displayNames={displayNames}
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
             bodyStart={afterStart}
@@ -282,6 +286,7 @@ function ReplyBody({
           <HighlightableBody
             body={before}
             highlights={highlights}
+            displayNames={displayNames}
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
             bodyStart={0}
@@ -300,6 +305,7 @@ function ReplyBody({
           <HighlightableBody
             body={after}
             highlights={highlights}
+            displayNames={displayNames}
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
             bodyStart={afterStart}
@@ -318,6 +324,7 @@ function ReplyBody({
       <HighlightableBody
         body={body}
         highlights={highlights}
+        displayNames={displayNames}
         currentUserId={currentUserId}
         onDeleteHighlight={onDeleteHighlight}
         bodyStart={0}
@@ -334,7 +341,7 @@ export default function RepliesList({
   threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile, compactBorders,
   showAheadStubs = false,
   onSetPendingReference, pendingReference, citations, threadCitations, composerRef, onScrollToComposer,
-  externalReplies, onRepliesLoaded, refreshKey, groupId, departedUsernames,
+  externalReplies, onRepliesLoaded, refreshKey, groupId, departedUsernames, displayNames,
   orderMode = "episode",
   hideRespondButtons = false,
   enableHighlights = false,
@@ -369,6 +376,9 @@ export default function RepliesList({
   refreshKey?: number;               // increment to force a re-fetch
   groupId?: string | null;           // scope replies to this friend room (prevents cross-room duplicates)
   departedUsernames?: Set<string>;   // users who have left the room
+  /** Naming arc (2026-07-07): username → the viewer's given name. Display-
+   *  only (bylines/stubs/tombstones/labels); ids and URLs keep handles. */
+  displayNames?: Record<string, string>;
   // Suppresses the per-reply "Respond" buttons AND the bottom "Respond
   // to the thread" CTA. V2 (V2InlineThread) opts in so it can render its
   // own single "Write a response" button. V1 leaves this false to keep
@@ -395,6 +405,7 @@ export default function RepliesList({
    *  visibility. Default false — desktop rendering unchanged. */
   mobileIdiom?: boolean;
 }) {
+  const dn = (u: string) => displayNames?.[u] ?? u;
   const { user, profile } = useAuth();
   const { scrollTo: scrollHighlight } = useScrollHighlight();
 
@@ -958,7 +969,7 @@ export default function RepliesList({
                 style={{ marginLeft: 8, opacity: 0.45, borderLeft: "4px solid var(--dos-border)" }}
               >
                 <span className="muted" style={{ fontSize: 14 }}>
-                  (@{r.author}) deleted their reply.
+                  ({dn(r.author)}) deleted their reply.
                 </span>
               </div>
             );
@@ -991,7 +1002,7 @@ export default function RepliesList({
                 }}
               >
                 <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>
-                  {r.author} responded from episode {tag}.
+                  {dn(r.author)} responded from episode {tag}.
                 </div>
               </div>
             );
@@ -1076,7 +1087,7 @@ export default function RepliesList({
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "2px 6px" }}>
                 <div style={{ fontSize: 14, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" }}>
-                  <Username name={r.author} onClickProfile={onClickProfile ?? (() => {})} bold />
+                  <Username name={r.author} displayName={dn(r.author)} onClickProfile={onClickProfile ?? (() => {})} bold />
                   {groupId && departedUsernames?.has(r.author) && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6 }}>has left the room</span>
                   )}
@@ -1107,7 +1118,7 @@ export default function RepliesList({
                           : scrollHighlight("thread-entry")
                       }
                     >
-                      · responding to {referencedReply ? referencedReply.author : thread.author}
+                      · responding to {dn(referencedReply ? referencedReply.author : thread.author)}
                     </button>
                   )}
                 </div>
@@ -1228,6 +1239,7 @@ export default function RepliesList({
                     highlights={highlightsEnabled ? (highlightsByReply[r.id] ?? []) : []}
                     currentUserId={user?.id ?? null}
                     onDeleteHighlight={highlightsEnabled ? (hid) => handleDeleteHighlightReply(r.id, hid) : undefined}
+                    displayNames={displayNames}
                   />
                   {highlightsEnabled && highlightError[r.id] && (
                     <div style={{ fontSize: 12, color: "#f45028", marginTop: 6, fontStyle: "italic" }}>

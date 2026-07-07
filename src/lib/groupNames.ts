@@ -21,6 +21,7 @@ export function groupDisplayName(
   others: PeopleGroupMember[],
   contactNames: Record<string, string>,
   pendingNames: string[] = [],
+  viewerNumber?: number,
 ): string {
   if (group.name) return group.name;
   const names = [
@@ -28,6 +29,22 @@ export function groupDisplayName(
     ...pendingNames,
   ].filter(Boolean);
   if (names.length) return joinNames(names);
-  if (group.seq != null) return `Group ${group.seq}`;
-  return "Group";
+  return groupGenericName(group, viewerNumber);
+}
+
+/** The group's GENERIC label — custom name if set, else "Group N" where N is
+ *  the VIEWER's number for it (their Nth group by join order — per-viewer, so
+ *  a rail can never hold two "Group 1"s; the old per-creator seq is only the
+ *  last-resort fallback). Used as the group room header's title, where the
+ *  people belong to the "with…" line instead (2026-07-07 naming arc). */
+export function groupGenericName(group: PeopleGroup, viewerNumber?: number): string {
+  if (group.name) return group.name;
+  const n = viewerNumber ?? group.seq;
+  return n != null ? `Group ${n}` : "Group";
+}
+
+/** One person's display name through the viewer's eyes: the name the viewer
+ *  gave them (phone-contacts model), else their handle. Bare — never "@". */
+export function personDisplayName(contactNames: Record<string, string>, userId: string, username: string): string {
+  return contactNames[userId] ?? username;
 }

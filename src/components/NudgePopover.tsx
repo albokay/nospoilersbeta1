@@ -27,6 +27,9 @@ export type NudgeDirection = "ahead" | "same" | "behind" | "not-started";
 
 interface Props {
   recipientUsername: string;
+  /** Naming arc (2026-07-07): what to SHOW for the recipient (viewer's given
+   *  name). Display-only; the profile link still navigates by handle. */
+  recipientDisplayName?: string;
   recipientId: string;
   groupId: string;
   currentUserId: string;
@@ -92,6 +95,7 @@ function relativePositionLabel(direction: NudgeDirection, count: number | null):
 
 export default function NudgePopover({
   recipientUsername,
+  recipientDisplayName,
   recipientId,
   groupId,
   currentUserId,
@@ -302,7 +306,7 @@ export default function NudgePopover({
               gap: 6,
             }}
           >
-            <SidebarAvatar userId={recipientId} username={recipientUsername} size={24} />{recipientUsername}
+            <SidebarAvatar userId={recipientId} username={recipientUsername} size={24} />{recipientDisplayName ?? recipientUsername}
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
             {relativePositionLabel(direction, count)}
@@ -491,7 +495,7 @@ export default function NudgePopover({
             gap: 4,
           }}
         >
-          View @{recipientUsername}'s profile <ArrowRight size={11} />
+          View {recipientDisplayName ?? recipientUsername}'s profile <ArrowRight size={11} />
         </a>
       </div>
     </div>

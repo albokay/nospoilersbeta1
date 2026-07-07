@@ -84,6 +84,10 @@ export type V2RoomFeedHandle = {
 
 export type V2RoomFeedProps = {
   entries: V2RoomFeedEntry[];
+  /** Naming arc (2026-07-07): username → the viewer's given name. Display-
+   *  only (bylines/stubs/tombstones); ids, URLs, keys keep real handles.
+   *  Forwarded to V2InlineThread → RepliesList so replies match. */
+  displayNames?: Record<string, string>;
   /** Mobile rebuild (/m) idiom: hides the title-row star and (via
    *  V2InlineThread → RepliesList) the selection-based Highlight…/Quote…
    *  affordances + reply stars. Default false — desktop rendering unchanged. */
@@ -229,6 +233,7 @@ const demoCollapseBtn: React.CSSProperties = {
 const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2RoomFeed(
   {
     entries,
+    displayNames,
     mobileIdiom = false,
     sortOrder = "asc",
     groupId,
@@ -269,6 +274,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   // see V2FriendRoomPage) — newest arrival floats to the top within its
   // episode bucket. Across episodes, asc/desc controlled by sortOrder (desc
   // puts the newest episode tag at the top).
+  const dn = (u: string) => displayNames?.[u] ?? u;
   const sorted = useMemo(() => {
     if (preserveOrder) return entries;
     const dir = sortOrder === "desc" ? -1 : 1;
@@ -613,7 +619,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 style={{ margin: 0, border: "none", display: "flex", alignItems: "center", minHeight: 40, padding: "8px 16px", cursor: "default" }}
               >
                 <div style={{ fontWeight: 400, fontSize: 13, lineHeight: 1.4 }}>
-                  <b>{entry.authorUsername}</b> has watched <b>S{entry.s} E{entry.e}</b> and
+                  <b>{dn(entry.authorUsername)}</b> has watched <b>S{entry.s} E{entry.e}</b> and
                   written to {gatedStubAudience}. You can read this once you catch up.
                 </div>
               </div>
@@ -793,6 +799,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 ) : (
                   <Username
                     name={entry.authorUsername}
+                    displayName={dn(entry.authorUsername)}
                     userId={entry.authorId}
                     onClickProfile={onClickProfile ?? (() => {})}
                     bold
@@ -854,6 +861,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   <div onClick={(e) => e.stopPropagation()}>
                     <V2InlineThread
                       thread={entry.thread}
+                      displayNames={displayNames}
                       groupId={groupId}
                       mobileIdiom={mobileIdiom}
                       viewerProgress={viewerProgress}
@@ -888,7 +896,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   </div>
                 ) : entry.isDeleted ? (
                   <div style={{ fontStyle: "italic", color: CANON.dark, opacity: 0.35 }}>
-                    @{entry.authorUsername} deleted their entry.
+                    {dn(entry.authorUsername)} deleted their entry.
                   </div>
                 ) : (
                   <div className="clamp3">

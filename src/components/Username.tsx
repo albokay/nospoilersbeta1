@@ -12,22 +12,28 @@ import SidebarAvatar from "./SidebarAvatar";
  */
 export default function Username({
   name,
+  displayName,
   userId,
   onClickProfile,
   bold = false,
   avatarSize = 16,
 }: {
   name: string;
+  /** Naming arc (2026-07-07): what to SHOW (the viewer's given name for this
+   *  person). Display-only — navigation + avatar identity keep `name` (the
+   *  real handle) so profile URLs and avatar colors never change. */
+  displayName?: string;
   userId?: string | null;
   onClickProfile: (username: string) => void;
   bold?: boolean;
   avatarSize?: number;
 }) {
   const Tag = bold ? "b" : "span";
+  const shown = displayName ?? name;
   const inner = (
     <>
       <SidebarAvatar userId={userId} username={name} size={avatarSize} />
-      <span>{name}</span>
+      <span>{shown}</span>
     </>
   );
 
@@ -52,7 +58,7 @@ export default function Username({
         verticalAlign: "middle",
       }}
       onClick={(e) => { e.stopPropagation(); onClickProfile(name); }}
-      title={`View ${name}'s profile`}
+      title={`View ${shown}'s profile`}
     >
       {inner}
     </Tag>

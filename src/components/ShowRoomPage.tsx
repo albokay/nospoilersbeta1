@@ -20,12 +20,12 @@ import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen,
-  fetchHighlights, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
+  fetchHighlights, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchMyPendingInviteNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
 import { groupDisplayName } from "../lib/groupNames";
-import { composeBackdrop, composeCardOuter } from "./dashboardChrome";
+import { composeBackdrop, composeCardOuter, groupHeadingMembers } from "./dashboardChrome";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember } from "./v2/V2RoomMap";
@@ -98,6 +98,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const [progressForShow, setProgressForShow] = useState<ProgressEntry | null>(null);
   const [feedEntries, setFeedEntries] = useState<V2RoomFeedEntry[]>([]);
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
+  // Naming arc (2026-07-07): the viewer's contact names (userId → name),
+  // resolved into a username → display-name map for every room surface.
+  const [roomContactNames, setRoomContactNames] = useState<Record<string, string>>({});
   const [privateEntries, setPrivateEntries] = useState<Thread[]>([]);
   const [tab, setTab] = useState<Tab>(privateOnly ? "private" : "friend");
   const [loading, setLoading] = useState(true);
@@ -202,10 +205,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // Entering the room clears its new-activity dot on the dashboard/group view.
       markRoomSeen(roomId).catch(() => { /* tolerate (migration not applied) */ });
 
-      const [allShows, progressMap, roomMapData, myGroups] = await Promise.all([
+      const [allShows, progressMap, roomMapData, myGroups, cn] = await Promise.all([
         fetchShows(), fetchProgress(user.id), fetchRoomMapData(roomId),
         roomRow.parent_group_id ? fetchPeopleGroupsForUser(user.id).catch(() => []) : Promise.resolve([]),
+        fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
       ]);
+      setRoomContactNames(cn);
       const showRow = allShows.find((s) => s.id === showId) ?? null;
       const progress = progressMap[showId] ?? null;
       // Group display name for the "[show] with [group]" header — same
@@ -219,8 +224,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         if (pg.name) derivedGroupName = pg.name;
         else {
           try {
-            const [pgMembers, cn] = await Promise.all([fetchPeopleGroupMembers(pg.id), fetchContactNames(user.id)]);
-            derivedGroupName = groupDisplayName(pg, pgMembers.filter((m) => m.userId !== user.id), cn);
+            const [pgMembers, pn] = await Promise.all([
+              fetchPeopleGroupMembers(pg.id), fetchMyPendingInviteNames(user.id),
+            ]);
+            derivedGroupName = groupDisplayName(pg, pgMembers.filter((m) => m.userId !== user.id), cn, pn[pg.id] ?? []);
           } catch { derivedGroupName = pg.seq != null ? `Group ${pg.seq}` : null; }
         }
       }
@@ -514,6 +521,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const visibleFriendEntries = userFilter ? feedEntries.filter((e) => e.authorId === userFilter) : feedEntries;
   const effectiveSortOrder = userFilter ? "desc" : sortOrder;
 
+  // username → the viewer's given name, for every room surface (map columns,
+  // bylines, stubs, tooltips, highlight attributions, filter labels). Keys
+  // and URLs keep the real handles; this is display-text only.
+  const displayNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const mm of mapMembers) if (mm.username) m[mm.username] = roomContactNames[mm.userId] ?? mm.username;
+    return m;
+  }, [mapMembers, roomContactNames]);
+
   const privateFeedEntries: V2RoomFeedEntry[] = privateEntries.map((t) => ({
     threadId: t.id, s: t.season, e: t.episode, title: t.titleBase, body: t.body, preview: t.preview,
     authorId: user?.id ?? "", authorUsername: t.author,
@@ -544,8 +560,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap" }}>
           <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: C.cream, margin: 0 }}>
             {show?.name ?? "Show"}
-            {groupName && <span style={{ color: C.blue }}> with {groupName}</span>}
           </h1>
+          {/* Naming arc (2026-07-07): the "with …" line matches the group
+              room's members line — same font, same greyblue "with", given
+              names (cluster rule: given-names until a custom group name). */}
+          {groupName && (
+            <span style={groupHeadingMembers}><span style={{ color: CANON.business }}>with</span> {groupName}</span>
+          )}
           {!privateOnly && roomId && (
             <button
               onClick={openDigestModal}
@@ -594,7 +615,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     {mapMembers.length > 0 && (
                       <optgroup label="Filter by member">
                         {mapMembers.map((m) => (
-                          <option key={m.userId} value={`user:${m.userId}`}>only @{m.username}{m.isDeparted ? " (left)" : ""}</option>
+                          <option key={m.userId} value={`user:${m.userId}`}>only {displayNames[m.username] ?? m.username}{m.isDeparted ? " (left)" : ""}</option>
                         ))}
                       </optgroup>
                     )}
@@ -627,6 +648,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               ) : (
                 <V2RoomFeed
                   ref={feedRef}
+                  displayNames={displayNames}
                   entries={visibleFriendEntries}
                   sortOrder={effectiveSortOrder}
                   initialExpandedThreadId={initialExpandThreadId ?? undefined}
@@ -653,6 +675,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               <>
                 {privateFeedEntries.length > 0 && (
                   <V2RoomFeed
+                    displayNames={displayNames}
                     entries={privateFeedEntries}
                     viewerProgress={progressForShow}
                     userId={user?.id ?? ""}
@@ -676,6 +699,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               <div style={{ position: "sticky", top: 24 }}>
               <V2RoomMap
                 members={mapMembers}
+                displayNames={displayNames}
                 seasons={show?.seasons ?? []}
                 viewerProgress={progressForShow}
                 viewerUserId={user?.id}

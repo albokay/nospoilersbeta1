@@ -2753,6 +2753,22 @@ export async function fetchContactNames(userId: string): Promise<Record<string, 
   } catch { return {}; }
 }
 
+/** Set (or clear, with an empty string) the viewer's private name for a
+ *  person — the deliberate rename path (phone-contacts model), so unlike the
+ *  accept-time seeding this OVERWRITES. Owner-only by RLS. */
+export async function setContactName(userId: string, contactId: string, name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    const { error } = await supabase.from("contact_names").delete().eq("owner_id", userId).eq("contact_id", contactId);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await supabase
+    .from("contact_names")
+    .upsert({ owner_id: userId, contact_id: contactId, name: trimmed }, { onConflict: "owner_id,contact_id" });
+  if (error) throw error;
+}
+
 /** Names on the viewer's OWN still-pending invites, per group — so a group
  *  you just invited "Johnny" into reads as "Johnny" before he accepts.
  *  Falls back to the invitee email's local part when no name was typed.
