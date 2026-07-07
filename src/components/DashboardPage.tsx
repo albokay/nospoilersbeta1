@@ -178,6 +178,7 @@ export default function DashboardPage() {
     })();
     return () => { cancelled = true; };
   }, [user, location.search, forceSocialOnb]);
+  const socialOnbActive = showSocialOnb && !showTspDemo;
   async function handleSocialOnbDone(groupId: string | null) {
     setShowSocialOnb(false);
     if (!forceSocialOnb && user) markSocialOnboarded(user.id).catch(() => {});
@@ -1255,7 +1256,11 @@ export default function DashboardPage() {
         // above) plus one centered act — create a new group by pairing at
         // least one named friend with at least one proposed show.
         <div style={{ textAlign: "center", padding: "48px 24px 80px" }}>
-          <button style={invitePill} onClick={() => openInvite()}>Create another watch group?</button>
+          {/* Hidden while the onboarding flow is up — its overlays own the
+              screen and this reads as a competing (and nonsensical) action. */}
+          {!socialOnbActive && (
+            <button style={invitePill} onClick={() => openInvite()}>Create another watch group?</button>
+          )}
         </div>
       )}
 
@@ -1717,7 +1722,7 @@ export default function DashboardPage() {
       {showTspDemo && <TSPDemoModal onClose={closeTspDemo} />}
 
       {/* CP3 social onboarding — strictly AFTER the demo (never both at once). */}
-      {showSocialOnb && !showTspDemo && <SocialOnboarding onDone={handleSocialOnbDone} />}
+      {socialOnbActive && <SocialOnboarding onDone={handleSocialOnbDone} />}
 
       {/* Feedback tab — same left-edge widget the homepage has, so feedback
           is reachable from every live desktop surface (2026-07-03). */}

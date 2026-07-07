@@ -40,12 +40,12 @@ import {
 } from "../lib/db";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import OneSelectProgress from "./OneSelectProgress";
-import ComposeForm from "./v2/ComposeForm";
+import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import LoadingDots from "./LoadingDots";
 import { CANON } from "../styles/canon";
 import {
-  overlay, searchCard, pickerCard, searchInput, invitePill, yellowCard, yellowTitle, startBtn,
-  composeBackdrop, composeCardOuter,
+  overlay, searchCard, pickerCard, searchInput, invitePill, searchPill,
+  composeBackdrop, composeCardOuter, yellowCard, yellowTitle, startBtn,
 } from "./dashboardChrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
@@ -64,6 +64,7 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   const [shows, setShows] = useState<Show[]>([]);
   const [show, setShow] = useState<Show | null>(null);
   const [prog, setProg] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
+  const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
   const [creatingShow, setCreatingShow] = useState(false);
@@ -75,6 +76,7 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   const [advancing, setAdvancing] = useState(false);
 
   const bootRef = useRef<Boot>({});
+  const composeRef = useRef<ComposeFormHandle>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -211,15 +213,20 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   const emailValid = friendEmail.includes("@") && friendEmail.trim().length >= 5;
   const screen2Ready = friendName.trim().length > 0 && emailValid;
 
-  // ── Screen 1: the site's search card → picker card ─────────────────────────
+  // ── Screen 1: search button → the site's search card → picker card ─────────
+  // Anchored near the top (NOT flex-centered): the heading holds its position
+  // while the card beneath grows/shrinks with the results.
   if (step === 1) {
     return (
-      <div style={{ ...overlay, flexDirection: "column", gap: 24 }}>
+      <div style={{ ...overlay, flexDirection: "column", justifyContent: "flex-start", paddingTop: "16vh", gap: 28, overflowY: "auto" }}>
         <div style={{ textAlign: "center", maxWidth: 640, padding: "0 24px" }}>
           <h1 style={onbHeading}>What&rsquo;s the show you&rsquo;re most excited to watch with a friend?</h1>
           <div style={onbSubline}>(You can add more later.)</div>
         </div>
-        {!show ? (
+        {!show && !searchOpen && (
+          <button style={searchPill} onClick={() => setSearchOpen(true)}>Find your show</button>
+        )}
+        {!show && searchOpen && (
           <div style={searchCard}>
             <input
               autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
@@ -250,12 +257,13 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
               </div>
             )}
           </div>
-        ) : (
-          <div style={pickerCard}>
+        )}
+        {show && (
+          <div style={{ ...pickerCard, position: "relative" }}>
+            <button style={{ ...backLink, color: CANON.personal }} onClick={() => setShow(null)}>← back</button>
             <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: CANON.personal }}>
               {show.name}
             </div>
-            <button style={quietLink} onClick={() => setShow(null)}>pick a different show</button>
             <div style={{ marginTop: 24, color: CANON.personal, fontWeight: 600, fontSize: 13, letterSpacing: -1, textAlign: "center" }}>
               How much have you watched?
             </div>
@@ -340,10 +348,19 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
     return (
       <div style={composeBackdrop}>
         <div style={composeCardOuter}>
+          {/* Back replaces the compose modal's "not now" exits (no skipping
+              out) — routed through the form's discard check so typed writing
+              still gets its "discard?" confirm. */}
+          <button
+            style={{ ...backLink, color: CANON.identity, zIndex: 30, position: "absolute", top: 20, left: 24 }}
+            onClick={() => composeRef.current?.attemptDiscard()}
+          >← back</button>
           <ComposeForm
+            ref={composeRef}
             showId={show.id}
             privateOnly
-            hideTopRightClose={false}
+            hideTopRightClose
+            hideCancel
             onCancel={() => setStep(2)}
             onSubmitted={() => {}}
             initialTitle="Let's do this!"
@@ -360,17 +377,18 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
     );
   }
 
-  // ── Screen 4: the site's accent confirm card ────────────────────────────────
+  // ── Screen 4: confirmation, straight on the green (no modal). Header 1
+  // heading + Header 2 message (§16), with a create-group-sized button. ──────
   return (
-    <div style={overlay}>
-      <div style={{ ...yellowCard, width: "min(440px, 88vw)" }}>
-        <div style={{ ...yellowTitle, marginBottom: 12 }}>You&rsquo;re in.</div>
-        <div style={{ color: CANON.cream, fontSize: 13, lineHeight: 1.6, textAlign: "left", marginBottom: 18 }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 50, background: `var(--canon-personal, ${CANON.personal})`, display: "flex", alignItems: "center", justifyContent: "center", overflowY: "auto" }}>
+      <div style={{ textAlign: "center", maxWidth: 620, padding: "0 24px" }}>
+        <h1 style={{ ...onbHeading, marginBottom: 24 }}>You&rsquo;re in.</h1>
+        <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: "normal", lineHeight: 1.7, color: CANON.cream, marginBottom: 36 }}>
           You&rsquo;ve now created a show room for <b>{show?.name}</b>, invited{" "}
           <b>{friendName.trim() || "your friend"}</b>, and left them some writing to read.
           Invite more friends you want to watch with. Sidebar is for writing to your friends.
         </div>
-        <button style={startBtn} onClick={() => onDone(bootRef.current.gid ?? null)}>Get started!</button>
+        <button style={invitePill} onClick={() => onDone(bootRef.current.gid ?? null)}>Get started!</button>
       </div>
     </div>
   );
@@ -383,10 +401,6 @@ const onbHeading: React.CSSProperties = {
 };
 const onbSubline: React.CSSProperties = {
   fontFamily: "Inter, sans-serif", fontSize: 13, color: CANON.cream, marginTop: 10,
-};
-const quietLink: React.CSSProperties = {
-  border: "none", background: "transparent", color: CANON.personal, opacity: 0.75, fontSize: 12,
-  textDecoration: "underline", cursor: "pointer", marginTop: 6,
 };
 const backLink: React.CSSProperties = {
   position: "absolute", top: 14, left: 18, border: "none", background: "transparent",

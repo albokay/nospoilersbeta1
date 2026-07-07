@@ -138,6 +138,9 @@ type ComposeFormProps = {
   promptButton?: { label: React.ReactNode; background?: string };
   /** Onboarding: prefill the title field (spec: "Let's do this!"). */
   initialTitle?: string;
+  /** Onboarding: hide the action-row "not now" cancel (the flow provides its
+   *  own back affordance instead; there is no skipping out). */
+  hideCancel?: boolean;
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -152,7 +155,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", externalSubmit, headingOverride, promptButton, initialTitle, mobileIdiom = false },
+  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", externalSubmit, headingOverride, promptButton, initialTitle, hideCancel = false, mobileIdiom = false },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -318,7 +321,8 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   // of which "× not now" was clicked (top-right or action row, OR the
   // modal-wrapper's own × in modal mode — see ComposeModal).
   function attemptDiscard() {
-    const dirty = postTitle.trim().length > 0 || postBody.trim().length > 0;
+    const initial = (initialTitle ?? "").trim();
+    const dirty = postBody.trim().length > 0 || (postTitle.trim().length > 0 && postTitle.trim() !== initial);
     if (dirty) {
       setDiscardOpen(true);
     } else {
@@ -608,6 +612,12 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           <OneSelectProgress
             show={show}
             value={progress}
+            // A zero-progress writer (pre-watch note / onboarding at
+            // "haven't started") must see their real position — without
+            // allowZero the picker DISPLAYED S01 E01 while the spoiler tag
+            // was correctly 0,0. Same gate ShowRoomPage's picker uses; the
+            // zero option only renders while the value is actually zero.
+            allowZero={(progress.s ?? 0) === 0 && (progress.e ?? 0) === 0}
             onConfirm={async (next) => {
               if (!user) return;
               try {
@@ -815,6 +825,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               gap: 10,
             }}
           >
+            {!hideCancel && (
             <button
               onClick={attemptDiscard}
               disabled={submitting}
@@ -832,6 +843,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
             >
               not now
             </button>
+            )}
             {(() => {
               const hasContent =
                 postTitle.trim() !== "" &&
