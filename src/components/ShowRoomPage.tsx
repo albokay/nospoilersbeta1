@@ -20,10 +20,11 @@ import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen,
-  fetchHighlights, fetchPeopleGroupsForUser, fetchRoomDigestOptOut, setRoomDigestOptOut,
+  fetchHighlights, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
+import { groupDisplayName } from "../lib/groupNames";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember } from "./v2/V2RoomMap";
@@ -204,11 +205,22 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       ]);
       const showRow = allShows.find((s) => s.id === showId) ?? null;
       const progress = progressMap[showId] ?? null;
-      // Group display name for the "[show] with [group]" header — custom name,
-      // else "Group <seq>" (mirrors the dashboard's groupAutoName). Null → just
-      // the show name (e.g. private-only standalone or an unresolvable group).
+      // Group display name for the "[show] with [group]" header — same
+      // dual-mode rule as the dashboard (CP2): custom name wins, else the
+      // names the VIEWER gave the members (handle fallback), else "Group
+      // <seq>". Null → just the show name (private-only standalone or an
+      // unresolvable group). Naming fetches are tolerant (pre-migration → {}).
       const pg = roomRow.parent_group_id ? myGroups.find((x) => x.id === roomRow.parent_group_id) : null;
-      const derivedGroupName = pg ? (pg.name || (pg.seq != null ? `Group ${pg.seq}` : null)) : null;
+      let derivedGroupName: string | null = null;
+      if (pg) {
+        if (pg.name) derivedGroupName = pg.name;
+        else {
+          try {
+            const [pgMembers, cn] = await Promise.all([fetchPeopleGroupMembers(pg.id), fetchContactNames(user.id)]);
+            derivedGroupName = groupDisplayName(pg, pgMembers.filter((m) => m.userId !== user.id), cn);
+          } catch { derivedGroupName = pg.seq != null ? `Group ${pg.seq}` : null; }
+        }
+      }
       const eff = effectiveProgress(progress);
 
       const empty = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number>, latestVisibleReplyAt: {} as Record<string, number>, hiddenCounts: {} as Record<string, number>, latestHiddenReplyAt: {} as Record<string, number> };

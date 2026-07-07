@@ -52,9 +52,9 @@ import {
   fetchGroupMessages,
   sendGroupMessage,
   fetchOutOfPoolShows,
-  removeShowFromPool,
-  restoreShowToPool,
   ensureProgressRow,
+  fetchContactNames,
+  fetchMyPendingInviteNames,
   clearMigrationDormantForShow,
   fetchRoomActivityVisibility,
   roomHasNewActivity,
@@ -72,6 +72,7 @@ import {
   type GroupChatActivity,
 } from "../lib/db";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
+import { groupDisplayName } from "../lib/groupNames";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
@@ -143,7 +144,6 @@ export default function DashboardPage() {
     if (!forceTspDemo && user) markTspDemoSeen(user.id).catch(() => {});
   }
   const [outOfPool, setOutOfPool] = useState<Set<string>>(new Set());
-  const [removeConfirm, setRemoveConfirm] = useState<{ id: string; name: string } | null>(null);
 
   // Group context
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
@@ -162,14 +162,28 @@ export default function DashboardPage() {
   const [creatingShow, setCreatingShow] = useState(false);
   const tvDebounceRef = useRef<number | null>(null);
 
-  // Invite / create-group modal
+  // Invite / create-group modal. CP2: each friend row is name + email — the
+  // typed name seeds the viewer's contact name for that person (group naming).
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmails, setInviteEmails] = useState<string[]>([""]);
+  const [inviteRows, setInviteRows] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
   const [inviteFromName, setInviteFromName] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteLinks, setInviteLinks] = useState<{ email: string; link?: string; error?: string; emailFailed?: boolean }[] | null>(null);
-  // null = INVITE FRIENDS (form a NEW group); set = "connect more" to this group.
+  // null = create a NEW group (friends + proposed shows, one act); set =
+  // "add more friends" to this group.
   const [inviteTargetGroupId, setInviteTargetGroupId] = useState<string | null>(null);
+  // CP2 create-a-group: the paired show proposals (≥1 required) + its picker.
+  const [inviteShows, setInviteShows] = useState<Show[]>([]);
+  const [inviteShowQuery, setInviteShowQuery] = useState("");
+  const [inviteTvResults, setInviteTvResults] = useState<TVmazeShow[]>([]);
+  const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
+  const inviteTvDebounceRef = useRef<number | null>(null);
+
+  // CP2 dual-mode group naming: the viewer's private contact names + the
+  // names on their own still-pending invites (per group). Refreshed whenever
+  // the rail reloads (accepts and new invites both land there).
+  const [contactNames, setContactNames] = useState<Record<string, string>>({});
+  const [pendingInviteNames, setPendingInviteNames] = useState<Record<string, string[]>>({});
 
   // §9 click-model popover (group context). mode captured at click time.
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
@@ -198,10 +212,6 @@ export default function DashboardPage() {
   // New-activity dots: per-room visibility (own excluded) + per-group chat state.
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   const [chatActivity, setChatActivity] = useState<GroupChatActivity[]>([]);
-
-  // Personal-dashboard pill click → progress dropdown (+ write-by-yourself on
-  // the currently-watching shelf). mode distinguishes the two shelves.
-  const [pillModal, setPillModal] = useState<{ showId: string; name: string; mode: "watching" | "notStarted" } | null>(null);
 
   // Cursor-following tooltip (opt-in avatars + show-button watch progress).
   // `sub` adds a second line beneath a divider — used to hang the new-activity
@@ -384,6 +394,17 @@ export default function DashboardPage() {
     refreshGroup(activeGroupId);
   }, [activeGroupId, refreshGroup]);
 
+  // Contact names + own-pending-invite names refresh with the rail (both
+  // small owner-scoped reads; tolerant pre-migration → {}).
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    Promise.all([fetchContactNames(user.id), fetchMyPendingInviteNames(user.id)])
+      .then(([cn, pn]) => { if (!cancelled) { setContactNames(cn); setPendingInviteNames(pn); } })
+      .catch(() => { /* tolerant */ });
+    return () => { cancelled = true; };
+  }, [user, railGroups]);
+
   const showsById = useMemo(() => {
     const m: Record<string, Show> = {};
     for (const s of shows) m[s.id] = s;
@@ -415,25 +436,6 @@ export default function DashboardPage() {
       else clearTimeout(handle as any);
     };
   }, [activeGroupId, groupShows, progress, showsById]);
-
-  // ── Dashboard shelves (green) ──────────────────────────────────────────────
-  const { watching, notStarted } = useMemo(() => {
-    const watching: { show: Show; entry: ProgressEntry }[] = [];
-    const notStarted: { show: Show; entry: ProgressEntry }[] = [];
-    for (const [showId, entry] of Object.entries(progress)) {
-      const show = showsById[showId];
-      if (!show) continue;
-      if (outOfPool.has(showId)) continue; // removed from pool (progress kept)
-      const started = (entry.s ?? 0) > 0 || (entry.e ?? 0) > 0;
-      (started ? watching : notStarted).push({ show, entry });
-    }
-    // Most-recently-updated progress first (then name as a stable tiebreak).
-    const byRecent = (a: { show: Show; entry: ProgressEntry }, b: { show: Show; entry: ProgressEntry }) =>
-      ((b.entry.progressUpdatedAt ?? 0) - (a.entry.progressUpdatedAt ?? 0)) || a.show.name.localeCompare(b.show.name);
-    return { watching: watching.sort(byRecent), notStarted: notStarted.sort(byRecent) };
-  }, [progress, showsById, outOfPool]);
-
-  const hasAnyShows = watching.length + notStarted.length > 0;
 
   // userId → username for the active group (drives the opted-in tooltip).
   const memberNameById = useMemo(() => {
@@ -561,6 +563,62 @@ export default function DashboardPage() {
     return out;
   }, [tvResults, shows]);
 
+  // ── Create-a-group show picker (CP2: friends + shows, one act) ─────────────
+  const inviteCatalogMatches = useMemo(() => {
+    const q = inviteShowQuery.trim().toLowerCase();
+    if (!q) return [];
+    const sel = new Set(inviteShows.map((s) => s.id));
+    return shows.filter((s) => !s.isHidden && !sel.has(s.id) && s.name.toLowerCase().includes(q)).slice(0, 5);
+  }, [inviteShowQuery, shows, inviteShows]);
+
+  useEffect(() => {
+    if (!inviteOpen || inviteTargetGroupId) { setInviteTvResults([]); return; }
+    const q = inviteShowQuery.trim();
+    if (q.length < 2) { setInviteTvResults([]); return; }
+    if (inviteTvDebounceRef.current) window.clearTimeout(inviteTvDebounceRef.current);
+    let cancelled = false;
+    inviteTvDebounceRef.current = window.setTimeout(async () => {
+      try {
+        const r = await tvmazeSearch(q);
+        if (!cancelled) setInviteTvResults(r);
+      } catch { if (!cancelled) setInviteTvResults([]); }
+    }, 320);
+    return () => { cancelled = true; if (inviteTvDebounceRef.current) window.clearTimeout(inviteTvDebounceRef.current); };
+  }, [inviteShowQuery, inviteOpen, inviteTargetGroupId]);
+
+  const inviteTvToAdd = useMemo(() => {
+    const known = new Set(shows.map((s) => s.id));
+    const sel = new Set(inviteShows.map((s) => s.id));
+    const seen = new Set<string>();
+    const out: { tv: TVmazeShow; id: string }[] = [];
+    for (const tv of inviteTvResults) {
+      const id = slugify(tv.name);
+      if (known.has(id) || sel.has(id) || seen.has(id)) continue;
+      seen.add(id);
+      out.push({ tv, id });
+      if (out.length >= 5) break;
+    }
+    return out;
+  }, [inviteTvResults, shows, inviteShows]);
+
+  function pickInviteShow(s: Show) {
+    setInviteShows((prev) => (prev.some((x) => x.id === s.id) ? prev : [...prev, s]));
+    setInviteShowQuery("");
+    setInviteTvResults([]);
+  }
+
+  async function pickInviteTvShow(tv: TVmazeShow) {
+    if (creatingShow) return;
+    setCreatingShow(true);
+    try {
+      const seasons = await tvmazeEpisodes(tv.id);
+      const show = await createShow({ id: slugify(tv.name), name: tv.name, seasons, tvmazeId: String(tv.id), status: tv.status });
+      setShows((prev) => (prev.some((s) => s.id === show.id) ? prev : [...prev, show]));
+      pickInviteShow(show);
+    } catch (e) { console.error("[dashboard] add show from TVMaze failed", e); }
+    finally { setCreatingShow(false); }
+  }
+
   // ── Actions ────────────────────────────────────────────────────────────────
   function openSearch() { setSearchOpen(true); setQuery(""); setTvResults([]); }
   function closeSearch() { setSearchOpen(false); setQuery(""); setPickShow(null); setTvResults([]); }
@@ -590,26 +648,20 @@ export default function DashboardPage() {
     }
   }
 
+  // In-group add = PROPOSE the show into THIS group (group-scoped model,
+  // 2026-07-06): the vote is the proposal. A not-started pick stays off the
+  // personal record's pool (a proposal lives only in its group); a real
+  // progress pick records your global watch position as always. (The search
+  // only opens inside a group since CP2 — the dashboard is groups-only.)
   async function addShow(show: Show, val: { s: number; e: number }) {
-    if (!user) return;
+    if (!user || !activeGroupId) return;
     try {
-      if (activeGroupId) {
-        // In-group add = PROPOSE the show into THIS group (group-scoped model,
-        // 2026-07-06): the vote is the proposal. A not-started pick stays off
-        // the personal dashboard (a proposal lives only in its group); a real
-        // progress pick records your global watch position as always.
-        await setShowVote(activeGroupId, show.id, true);
-        if (val.s === 0 && val.e === 0) {
-          if (!progress[show.id]) {
-            await ensureProgressRow(user.id, show.id);
-            setProgress((prev) => ({ ...prev, [show.id]: { s: 0, e: 0, highestS: 0, highestE: 0 } }));
-            setOutOfPool((prev) => new Set(prev).add(show.id)); // mirror in_pool=false
-          }
-        } else {
-          const entry: ProgressEntry = { s: val.s, e: val.e, highestS: val.s, highestE: val.e };
-          await upsertRewatchStatus(user.id, show.id, entry);
-          setProgress((prev) => ({ ...prev, [show.id]: entry }));
-          setOutOfPool((prev) => { const n = new Set(prev); n.delete(show.id); return n; });
+      await setShowVote(activeGroupId, show.id, true);
+      if (val.s === 0 && val.e === 0) {
+        if (!progress[show.id]) {
+          await ensureProgressRow(user.id, show.id);
+          setProgress((prev) => ({ ...prev, [show.id]: { s: 0, e: 0, highestS: 0, highestE: 0 } }));
+          setOutOfPool((prev) => new Set(prev).add(show.id)); // mirror in_pool=false
         }
       } else {
         const entry: ProgressEntry = { s: val.s, e: val.e, highestS: val.s, highestE: val.e };
@@ -621,7 +673,7 @@ export default function DashboardPage() {
       // (Beyond the Underdome on Paradise re-add); reload the rail to surface it.
       await clearMigrationDormantForShow(show.id);
       setRailGroups(await loadRail(user.id));
-      if (activeGroupId) await refreshGroup(activeGroupId);
+      await refreshGroup(activeGroupId);
     } catch (e) {
       console.error("[dashboard] add show failed", e);
     }
@@ -642,55 +694,53 @@ export default function DashboardPage() {
     closeSearch();
   }
 
-  // Re-add a removed show: restore its saved progress (no picker).
-  async function restoreShow(show: Show) {
-    if (!user) return;
-    try {
-      await restoreShowToPool(user.id, show.id);
-      setOutOfPool((prev) => { const n = new Set(prev); n.delete(show.id); return n; });
-      // CP8a: un-hide a dormant group (Beyond the Underdome) on its show's
-      // re-add, then reload the rail so it reappears.
-      await clearMigrationDormantForShow(show.id);
-      setRailGroups(await loadRail(user.id));
-    } catch (e) { console.error("[dashboard] restore show failed", e); }
-    closeSearch();
-  }
-
-  // §4 remove-from-pool: global down-vote + leave rooms; progress kept.
-  async function doRemoveFromPool(showId: string) {
-    setRemoveConfirm(null);
-    try {
-      await removeShowFromPool(showId);
-      setOutOfPool((prev) => new Set(prev).add(showId));
-    } catch (e) { console.error("[dashboard] remove from pool failed", e); }
-  }
-
   function openInvite(targetGroupId?: string) {
     setInviteTargetGroupId(targetGroupId ?? null);
-    setInviteEmails([""]);
+    setInviteRows([{ name: "", email: "" }]);
+    setInviteShows([]);
+    setInviteShowQuery("");
+    setInviteTvResults([]);
+    setCreatedGroupId(null);
     setInviteLinks(null);
     setInviteOpen(true);
   }
 
-  // INVITE FRIENDS forms a NEW group; "connect more friends" invites into the
-  // current group (inviteTargetGroupId). Either way each email mints a link.
+  // "Create another watch group?" forms a NEW group as ONE act — ≥1 named
+  // friend AND ≥1 proposed show (CP2); "add more friends" invites into the
+  // current group. Either way each email mints a link, and a typed friend
+  // name rides the invite (it becomes your contact name for them on accept).
   async function sendInvites() {
     if (!user || inviteSending) return;
-    const emails = inviteEmails.map((e) => e.trim()).filter(Boolean);
+    const rows = inviteRows.map((r) => ({ name: r.name.trim(), email: r.email.trim() })).filter((r) => r.email);
     setInviteSending(true);
     try {
+      const creating = !inviteTargetGroupId;
       const id = inviteTargetGroupId ?? (await createPeopleGroup());
+      if (creating) {
+        setCreatedGroupId(id);
+        // Propose the picked shows into the new group (proposing = your yes).
+        for (const s of inviteShows) {
+          try {
+            await setShowVote(id, s.id, true);
+            if (!progress[s.id]) {
+              await ensureProgressRow(user.id, s.id);
+              setProgress((prev) => ({ ...prev, [s.id]: { s: 0, e: 0, highestS: 0, highestE: 0 } }));
+              setOutOfPool((prev) => new Set(prev).add(s.id)); // mirror in_pool=false
+            }
+          } catch (e) { console.error("[dashboard] propose into new group failed", e); }
+        }
+      }
       const links: { email: string; link?: string; error?: string; emailFailed?: boolean }[] = [];
-      for (const email of emails) {
+      for (const row of rows) {
         try {
-          const token = await createPeopleGroupInvite(id, email);
+          const token = await createPeopleGroupInvite(id, row.email, row.name || undefined);
           // Await the email leg so a silent refusal (stale token, Resend,
           // rate limit) surfaces as a copy-the-link row instead of a false
           // "Invites sent!". The link works either way.
           const sent = await sendGroupInviteEmail(token, inviteFromName.trim() || undefined);
-          links.push({ email, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
+          links.push({ email: row.email, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
         } catch (e: any) {
-          links.push({ email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
+          links.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
         }
       }
       setInviteLinks(links);
@@ -701,6 +751,16 @@ export default function DashboardPage() {
       setInviteLinks([{ email: "", error: "Could not send invites." }]);
     } finally {
       setInviteSending(false);
+    }
+  }
+
+  // Done on the create-group results → land inside the new group.
+  function closeInviteModal() {
+    setInviteOpen(false);
+    if (createdGroupId) {
+      const id = createdGroupId;
+      setCreatedGroupId(null);
+      navigate(`/dashboard?g=${id}`);
     }
   }
 
@@ -802,23 +862,6 @@ export default function DashboardPage() {
       setClicked(null);
       await refreshGroup(activeGroupId);
     } catch (e) { console.error("[dashboard] log-progress failed", e); }
-  }
-
-  // Personal dashboard: record progress for a show (no group, no room). Keeps
-  // the user's highest-watched point so a re-save can't regress a rewatcher.
-  async function logProgressPersonal(showId: string, val: { s: number; e: number }) {
-    if (!user) return;
-    const prev = progress[showId];
-    let highestS = val.s, highestE = val.e;
-    if (prev?.highestS != null && (prev.highestS > val.s || (prev.highestS === val.s && (prev.highestE ?? 0) >= val.e))) {
-      highestS = prev.highestS; highestE = prev.highestE ?? val.e;
-    }
-    const entry: ProgressEntry = { ...(prev ?? {}), s: val.s, e: val.e, highestS, highestE };
-    try {
-      await upsertRewatchStatus(user.id, showId, entry);
-      setProgress((p) => ({ ...p, [showId]: entry }));
-      setOutOfPool((prev) => { const n = new Set(prev); n.delete(showId); return n; }); // mirror in_pool=true
-    } catch (e) { console.error("[dashboard] personal log-progress failed", e); }
   }
 
   // ── CP5b: invites + group options ────────────────────────────────────────
@@ -1011,13 +1054,9 @@ export default function DashboardPage() {
           <SidebarLogo scale={0.5} blocksOpacity={1} bg={activeGroupId ? "sky" : "green"} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Context-aware: dashboard → new group (blue); group room → add to this group (cream). */}
-          <button
-            style={inGroup ? { ...invitePill, background: C.cream, color: C.green, boxShadow: "none" } : invitePill}
-            onClick={() => (inGroup && activeGroupId ? openInvite(activeGroupId) : openInvite())}
-          >
-            {inGroup ? "Add more friends to this group?" : "Invite new friends?"}
-          </button>
+          {/* CP2: the invite affordances moved into the body — dashboard gets
+              the centered "Create another watch group?", the group room gets
+              the centered "Add more friends to this group?". */}
           <button style={topCircleBtn(inGroup)} title="account" onClick={() => setShowAccount(true)}>
             <UserCog size={18} color={inGroup ? C.midnight : CANON.cream} />
           </button>
@@ -1041,6 +1080,8 @@ export default function DashboardPage() {
         activeGroupId={activeGroupId}
         pendingInvites={pendingInvites}
         clusterDotByGroup={clusterDotByGroup}
+        contactNames={contactNames}
+        pendingInviteNames={pendingInviteNames}
         onEnter={(id) => navigate(`/dashboard?g=${id}`)}
         onInviteClick={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
         onGearClick={(id, rect) => { setOptionsFor(id); setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 }); setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? ""); }}
@@ -1068,7 +1109,7 @@ export default function DashboardPage() {
         <div style={{ ...contentWrap, paddingTop: 24 }}>
           {groupShelves.watching.length > 0 && (
             <>
-              <h1 style={shelfHeader}>CURRENTLY WATCHING:</h1>
+              <h1 style={shelfHeader}>SHOW ROOMS:</h1>
               <div style={shelfLayout(groupShelves.watching.length)}>
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
@@ -1086,21 +1127,13 @@ export default function DashboardPage() {
             </>
           )}
 
+          {/* CP2: the group room's second shelf — proposed-but-not-started
+              shows (votes live here per CP1; starting a room promotes off). */}
           {groupShelves.notStarted.length > 0 && (
             <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: groupShelves.watching.length ? 56 : 0 }}>
-              Haven&rsquo;t started yet:
+              Proposed shows:
             </h1>
           )}
-          {/* Empty group → mirror the home empty state: the prompt sits just
-              below the clusters, with the search button beneath it. */}
-          {groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0 && (
-            <h1 style={{ ...heroH1, textAlign: "center", marginTop: 8, marginBottom: 8 }}>
-              What shows are you watching<br />or thinking about starting?
-            </h1>
-          )}
-          <div style={{ textAlign: "center", marginBottom: 24, marginTop: groupShelves.notStarted.length === 0 && groupShelves.watching.length ? 56 : 0 }}>
-            <button style={searchPill} onClick={openSearch}>SEARCH</button>
-          </div>
           {groupShelves.notStarted.length > 0 && (
             <div style={shelfLayout(groupShelves.notStarted.length)}>
               {groupShelves.notStarted.map((r) => (
@@ -1114,57 +1147,30 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </div>
-      ) : !hasAnyShows && !searchOpen ? (
-        // ── Search-first empty state (green) ──────────────────────────────────
-        <div style={heroWrap}>
-          <h1 style={heroH1}>
-            What shows are you watching<br />or thinking about starting?
-          </h1>
-          <button style={searchPill} onClick={openSearch}>SEARCH</button>
-        </div>
-      ) : (
-        // ── Populated dashboard (green) ───────────────────────────────────────
-        <div style={contentWrap}>
-          {watching.length > 0 && (
-            <>
-              <h1 style={shelfHeader}>CURRENTLY WATCHING:</h1>
-              <div style={shelfLayout(watching.length)}>
-                {watching.map(({ show, entry }) => (
-                  <div key={show.id} className="dash-pill-wrap">
-                    <button className="dash-pill dash-pill--watching" onClick={() => { setDeclaredProgress({ s: entry.s, e: entry.e }); setPillModal({ showId: show.id, name: show.name, mode: "watching" }); }}>
-                      <span className="dash-pill__name">{show.name}</span>
-                      <span className="dash-pill__prog">s{entry.s} e{entry.e}</span>
-                    </button>
-                    <button className="dash-pill-x" title="remove from pool" onClick={() => setRemoveConfirm({ id: show.id, name: show.name })}>×</button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {notStarted.length > 0 && (
-            <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: watching.length ? 56 : 0 }}>
-              Haven&rsquo;t started yet:
+          {/* Empty group → the prompt sits just below the clusters. */}
+          {groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0 && (
+            <h1 style={{ ...heroH1, textAlign: "center", marginTop: 8, marginBottom: 8 }}>
+              What shows are you watching<br />or thinking about starting?
             </h1>
           )}
-          {notStarted.length > 0 && (
-            <div style={shelfLayout(notStarted.length)}>
-              {notStarted.map(({ show }) => (
-                <div key={show.id} className="dash-pill-wrap">
-                  <button className="dash-pill dash-pill--want" onClick={() => { setDeclaredProgress({ s: 0, e: 0 }); setPillModal({ showId: show.id, name: show.name, mode: "notStarted" }); }}>
-                    <span className="dash-pill__name">{show.name}</span>
-                  </button>
-                  <button className="dash-pill-x" title="remove from pool" onClick={() => setRemoveConfirm({ id: show.id, name: show.name })}>×</button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ textAlign: "center", marginTop: 48 }}>
-            <h1 style={{ ...shelfHeader, textTransform: "none", marginBottom: 16 }}>What else?</h1>
-            <button style={searchPill} onClick={openSearch}>SEARCH</button>
+          {/* CP2: the group room's two centered actions. */}
+          <div style={{ textAlign: "center", marginTop: groupShelves.watching.length || groupShelves.notStarted.length ? 56 : 24 }}>
+            <button style={searchPill} onClick={openSearch}>Propose more shows?</button>
           </div>
+          <div style={{ textAlign: "center", marginTop: 20 }}>
+            <button
+              style={{ ...invitePill, background: C.cream, color: C.green, boxShadow: "none" }}
+              onClick={() => activeGroupId && openInvite(activeGroupId)}
+            >Add more friends to this group?</button>
+          </div>
+        </div>
+      ) : (
+        // ── Groups-only dashboard (green, CP2) ────────────────────────────────
+        // The personal shelves are gone: the dashboard is your groups (clusters
+        // above) plus one centered act — create a new group by pairing at
+        // least one named friend with at least one proposed show.
+        <div style={{ textAlign: "center", padding: "48px 24px 80px" }}>
+          <button style={invitePill} onClick={() => openInvite()}>Create another watch group?</button>
         </div>
       )}
 
@@ -1184,13 +1190,11 @@ export default function DashboardPage() {
                       <div key={s.id} className="dash-result dash-result--inpool">{activeGroupId ? <><i>{s.name}</i> is already in this group.</> : <>You've already added <i>{s.name}</i> to your watch pool.</>}</div>
                     ) : (
                       <button key={s.id} className="dash-result" onClick={() => {
-                        // Group context: a show you already have a progress row
-                        // for is proposed as-is (no picker — progress kept).
-                        if (activeGroupId) { if (progress[s.id]) { proposeExisting(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }
-                        else if (outOfPool.has(s.id)) { restoreShow(s); }
-                        else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); }
+                        // A show you already have a progress row for is
+                        // proposed as-is (no picker — progress kept).
+                        if (progress[s.id]) { proposeExisting(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); }
                       }}>
-                        {s.name}{!activeGroupId && outOfPool.has(s.id) ? " · restore" : ""}
+                        {s.name}
                       </button>
                     )
                   ))}
@@ -1244,10 +1248,17 @@ export default function DashboardPage() {
 
       {/* Invite / create-group modal. CP3a: creates the people-group. CP5 adds
           the email-invite send + accept flow. */}
-      {inviteOpen && (
-        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setInviteOpen(false); }}>
+      {inviteOpen && (() => {
+        const creating = !inviteTargetGroupId;
+        // ≥1 complete friend row; in create mode every filled row needs BOTH a
+        // name and an email (names drive group naming), plus ≥1 proposed show.
+        const filledRows = inviteRows.filter((r) => r.email.trim() || r.name.trim());
+        const completeRows = filledRows.filter((r) => r.email.includes("@") && (!creating || r.name.trim()));
+        const ready = completeRows.length >= 1 && completeRows.length === filledRows.length && (!creating || inviteShows.length >= 1);
+        return (
+        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) closeInviteModal(); }}>
           <div style={{ ...searchCard, background: C.sky, position: "relative" }}>
-            <button style={modalClose} onClick={() => setInviteOpen(false)}><X size={18} color={CANON.cream} /></button>
+            <button style={modalClose} onClick={closeInviteModal}><X size={18} color={CANON.cream} /></button>
             {!inviteLinks && (
               <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
                 {inviteTargetGroupId ? <>Connect more friends<br />to this group:</> : <>Email friends to<br />start a watch group:</>}
@@ -1256,19 +1267,67 @@ export default function DashboardPage() {
 
             {!inviteLinks ? (
               <>
-                {inviteEmails.map((email, i) => (
-                  <input
-                    key={i}
-                    value={email}
-                    onChange={(e) => setInviteEmails((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
-                    placeholder="email"
-                    style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, marginBottom: 10 }}
-                  />
+                {inviteRows.map((row, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                    <input
+                      value={row.name}
+                      onChange={(e) => setInviteRows((prev) => prev.map((v, j) => (j === i ? { ...v, name: e.target.value } : v)))}
+                      placeholder="their name"
+                      maxLength={40}
+                      style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, marginBottom: 0, flex: 0.8 }}
+                    />
+                    <input
+                      value={row.email}
+                      onChange={(e) => setInviteRows((prev) => prev.map((v, j) => (j === i ? { ...v, email: e.target.value } : v)))}
+                      placeholder="email"
+                      style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, marginBottom: 0, flex: 1.2 }}
+                    />
+                  </div>
                 ))}
                 <button
-                  onClick={() => setInviteEmails((prev) => [...prev, ""])}
+                  onClick={() => setInviteRows((prev) => [...prev, { name: "", email: "" }])}
                   style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.cream, color: C.midnight, fontSize: 20, cursor: "pointer", marginTop: 2 }}
                 >+</button>
+                {/* CP2 create-a-group: pair the invite with ≥1 proposed show. */}
+                {creating && (
+                  <>
+                    <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal", lineHeight: 1.5, color: C.cream, margin: "24px 0 10px" }}>
+                      And propose at least one show to watch together:
+                    </p>
+                    {inviteShows.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                        {inviteShows.map((s) => (
+                          <span key={s.id} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.cream, color: C.midnight, fontWeight: 700, fontSize: 13, padding: "8px 14px", borderRadius: 65 }}>
+                            {s.name}
+                            <button
+                              onClick={() => setInviteShows((prev) => prev.filter((x) => x.id !== s.id))}
+                              style={{ border: "none", background: "transparent", color: C.midnight, cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 0 }}
+                              title="remove"
+                            >×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <input
+                      value={inviteShowQuery}
+                      onChange={(e) => setInviteShowQuery(e.target.value)}
+                      placeholder="find a show"
+                      style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, marginBottom: 0 }}
+                    />
+                    {(inviteCatalogMatches.length > 0 || inviteTvToAdd.length > 0) && (
+                      <div style={{ marginTop: 8 }}>
+                        {inviteCatalogMatches.map((s) => (
+                          <button key={s.id} className="dash-result" onClick={() => pickInviteShow(s)}>{s.name}</button>
+                        ))}
+                        {inviteTvToAdd.map(({ tv, id }) => (
+                          <button key={id} className="dash-result" disabled={creatingShow} onClick={() => pickInviteTvShow(tv)}>
+                            {tv.name}{networkLabel(tv) ? ` · ${networkLabel(tv)}` : ""}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
                 {/* §16 Body font (Inter regular 13, normal letter-spacing); cream. */}
                 <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal", lineHeight: 1.5, color: C.cream, margin: "28px 0 12px" }}>
                   Your friend(s) will get an email invite from your username. If you don&rsquo;t think they&rsquo;d recognize it, tell them who you are:
@@ -1281,8 +1340,8 @@ export default function DashboardPage() {
                     maxLength={40}
                     style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, flex: 1, marginBottom: 0 }}
                   />
-                  <button style={{ ...invitePill, opacity: inviteSending ? 0.6 : 1, flexShrink: 0 }} disabled={inviteSending} onClick={sendInvites}>
-                    {inviteSending ? "creating…" : "send invite"}
+                  <button style={{ ...invitePill, opacity: inviteSending || !ready ? 0.6 : 1, flexShrink: 0 }} disabled={inviteSending || !ready} onClick={sendInvites}>
+                    {inviteSending ? "creating…" : creating ? "create group" : "send invite"}
                   </button>
                 </div>
               </>
@@ -1314,13 +1373,14 @@ export default function DashboardPage() {
                   </>
                 )}
                 <div style={{ textAlign: "center", marginTop: 12 }}>
-                  <button style={invitePill} onClick={() => setInviteOpen(false)}>done</button>
+                  <button style={invitePill} onClick={closeInviteModal}>done</button>
                 </div>
               </>
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* §9 click-model popover (group context). Centered yellow card; pixel-
           anchoring to the clicked pill is a later polish. */}
@@ -1524,77 +1584,6 @@ export default function DashboardPage() {
                 style={chatInputBox}
               />
               <button style={chatSend} onClick={sendChat}><ArrowUp size={18} color={CANON.cream} /></button>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* §4 remove-from-pool confirm */}
-      {removeConfirm && (
-        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setRemoveConfirm(null); }}>
-          <div style={{ background: C.sky, borderRadius: 15, padding: "26px 30px", width: "min(340px, 90vw)", position: "relative" }}>
-            <button style={modalClose} onClick={() => setRemoveConfirm(null)}><X size={16} color={CANON.cream} /></button>
-            <div style={{ color: C.red, fontWeight: 700, fontSize: 15, marginBottom: 12, letterSpacing: -0.3 }}>Remove this show from your pool?</div>
-            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>This will opt you out of the show across all your groups and you will leave any friend rooms for the show.</div>
-            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>BUT, your progress will be saved and restored if you search for and add the show back to your show pool.</div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button style={{ border: "none", background: "transparent", color: C.midnight, fontWeight: 700, fontSize: 13, cursor: "pointer" }} onClick={() => setRemoveConfirm(null)}>cancel</button>
-              <button style={dangerBtn} onClick={() => doRemoveFromPool(removeConfirm.id)}>remove</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Personal dashboard pill → progress dropdown. Currently-watching also
-          offers write-by-yourself; haven't-started is a self-committing picker. */}
-      {pillModal && (() => {
-        const cur = progress[pillModal.showId];
-        const curVal = cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 };
-        const isWatching = pillModal.mode === "watching";
-        return (
-          <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setPillModal(null); }}>
-            <div style={{ ...yellowCard, ...(isWatching ? { width: "min(460px, 92vw)" } : {}) }}>
-              <button style={modalClose} onClick={() => setPillModal(null)}><X size={16} color={CANON.cream} /></button>
-
-              {!isWatching ? (
-                <>
-                  <div style={yellowTitle}>Have you started watching?</div>
-                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                    <OneSelectProgress
-                      show={showsById[pillModal.showId] ?? { seasons: [] }}
-                      value={{ s: 0, e: 0 }}
-                      allowZero
-                      pillBg="transparent"
-                      onForwardPick={(v) => { logProgressPersonal(pillModal.showId, v); setPillModal(null); }}
-                      onConfirm={(v) => { logProgressPersonal(pillModal.showId, v); setPillModal(null); }}
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={yellowTitle}>Have you watched more?</div>
-                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                    <OneSelectProgress
-                      show={showsById[pillModal.showId] ?? { seasons: [] }}
-                      value={curVal}
-                      allowZero
-                      requireConfirm={false}
-                      pillBg="transparent"
-                      onChangeSelected={(v) => setDeclaredProgress(v)}
-                      onConfirm={() => {}}
-                    />
-                  </div>
-                  <div style={yellowDivider} />
-                  <div style={{ ...yellowTitle, fontSize: 13 }}>Do you want to write by yourself?</div>
-                  <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
-                    <button style={startBtn} onClick={() => { const id = pillModal.showId; logProgressPersonal(id, declaredProgress); setPillModal(null); navigate(`/show-room/private/${id}`); }}>Yes</button>
-                    <button
-                      style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
-                      onClick={() => { logProgressPersonal(pillModal.showId, declaredProgress); setPillModal(null); }}
-                    >just confirm my progress</button>
-                  </div>
-                </>
-              )}
             </div>
           </div>
         );
@@ -1820,13 +1809,15 @@ function OptInAvatars({ members, withTooltip, onTip }: {
 }
 
 function GroupClusters({
-  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, onEnter, onInviteClick, onGearClick, onTip,
+  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, contactNames, pendingInviteNames, onEnter, onInviteClick, onGearClick, onTip,
 }: {
   groups: RailGroup[];
   selfUserId: string;
   activeGroupId: string | null;
   pendingInvites: PendingGroupInvite[];
   clusterDotByGroup: Map<string, "blue" | "red">;
+  contactNames: Record<string, string>;
+  pendingInviteNames: Record<string, string[]>;
   onEnter: (id: string) => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string, rect: DOMRect) => void;
@@ -1841,7 +1832,7 @@ function GroupClusters({
     const names = others.map((m) => m.username).join(", ");
     return (
       <div style={groupHeadingRow}>
-        <h1 style={groupHeadingTitle}>{active.group.name || groupAutoName(active.group, others)}</h1>
+        <h1 style={groupHeadingTitle}>{groupDisplayName(active.group, others, contactNames, pendingInviteNames[active.group.id] ?? [])}</h1>
         {names && <span style={groupHeadingMembers}><span style={{ color: C.greyblue }}>with</span> {names}</span>}
         <button style={headingIconBtn} title="group options" onClick={(e) => onGearClick(active.group.id, e.currentTarget.getBoundingClientRect())}><Settings size={22} color={CANON.cream} /></button>
       </div>
@@ -1874,7 +1865,7 @@ function GroupClusters({
             <AvatarPile avatars={avatars} />
             <div style={clusterName}>
               {dot && <span style={{ ...notifDotCluster, background: dot === "red" ? C.red : C.blue }} />}
-              {groupAutoName(group, others)}
+              {groupDisplayName(group, others, contactNames, pendingInviteNames[group.id] ?? [])}
             </div>
           </button>
         );
@@ -1899,24 +1890,9 @@ function GroupClusters({
   );
 }
 
-/** Custom name if set, else a stable generic "Group <seq>". (Pre-seq-migration
- *  fallback: the other members' usernames, alphabetical, else "Group".) */
-function groupAutoName(group: PeopleGroup, others: PeopleGroupMember[]): string {
-  if (group.name) return group.name;
-  if (group.seq != null) return `Group ${group.seq}`;
-  if (!others.length) return "Group";
-  return others.map((m) => m.username).sort((a, b) => a.localeCompare(b)).join(", ");
-}
-
 // ── Styles ──────────────────────────────────────────────────────────────────────
 const pageStyle: React.CSSProperties = {
   position: "fixed", inset: 0, fontFamily: '"Inter", system-ui, sans-serif', overflowY: "auto",
-};
-const heroWrap: React.CSSProperties = {
-  minHeight: "100%", display: "flex", flexDirection: "column", alignItems: "center",
-  // Top-aligned (was centered) so the prompt sits just below the group clusters
-  // instead of floating in the middle of the page.
-  justifyContent: "flex-start", textAlign: "center", gap: 32, padding: "48px 24px 24px",
 };
 const heroH1: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 44, lineHeight: 1.15, letterSpacing: 0, color: C.cream, margin: 0,

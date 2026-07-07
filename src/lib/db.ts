@@ -2696,15 +2696,75 @@ export async function fetchGroupPendingInvites(groupId: string): Promise<string[
 
 // ── People-group invitations (restructure) ──────────────────────────────────
 
-/** Create (or reuse) a people-group invite for an email. Returns the token. */
-export async function createPeopleGroupInvite(groupId: string, email: string): Promise<string> {
+/** Create (or reuse) a people-group invite for an email. Returns the token.
+ *  inviteeName ("the name I call this friend", CP2 contact naming) rides on
+ *  the invitation and becomes the inviter's contact name for the accepter.
+ *  Tolerant pre-migration: if the server doesn't know the name param yet,
+ *  retries the old signature (the name is just dropped). */
+export async function createPeopleGroupInvite(groupId: string, email: string, inviteeName?: string): Promise<string> {
   await checkRateLimit('send_invite', 6, 60, 'Too many invite requests sent. Please wait before trying again.');
-  const { data, error } = await supabase.rpc("create_people_group_invitation", {
-    p_group_id: groupId, p_email: email,
-  });
+  const name = inviteeName?.trim();
+  let res = name
+    ? await supabase.rpc("create_people_group_invitation", { p_group_id: groupId, p_email: email, p_invitee_display_name: name })
+    : await supabase.rpc("create_people_group_invitation", { p_group_id: groupId, p_email: email });
+  if (res.error && name) {
+    res = await supabase.rpc("create_people_group_invitation", { p_group_id: groupId, p_email: email });
+  }
+  const { data, error } = res;
   if (error) throw error;
   if (!data || data.ok === false) throw new Error(data?.error || "create invite failed");
   return data.token as string;
+}
+
+// ── Contact names (CP2 dual-mode group naming, 2026-07-06) ──────────────────
+
+/** The viewer's private "name I gave this person" map (contactId → name).
+ *  Tolerant pre-migration (missing table → {}). */
+export async function fetchContactNames(userId: string): Promise<Record<string, string>> {
+  try {
+    const { data, error } = await supabase
+      .from("contact_names")
+      .select("contact_id, name")
+      .eq("owner_id", userId);
+    if (error || !data) return {};
+    const m: Record<string, string> = {};
+    for (const r of data) if (r.name) m[r.contact_id] = r.name;
+    return m;
+  } catch { return {}; }
+}
+
+/** Names on the viewer's OWN still-pending invites, per group — so a group
+ *  you just invited "Johnny" into reads as "Johnny" before he accepts.
+ *  Falls back to the invitee email's local part when no name was typed.
+ *  Tolerant pre-migration (missing column → email local parts). */
+export async function fetchMyPendingInviteNames(userId: string): Promise<Record<string, string[]>> {
+  const nowIso = new Date().toISOString();
+  const mapRows = (rows: any[]): Record<string, string[]> => {
+    const m: Record<string, string[]> = {};
+    for (const r of rows) {
+      const name = (r.invitee_display_name as string | null)?.trim() || (r.invitee_email as string).split("@")[0];
+      (m[r.people_group_id] ??= []).push(name);
+    }
+    return m;
+  };
+  try {
+    const { data, error } = await supabase
+      .from("people_group_invitations")
+      .select("people_group_id, invitee_email, invitee_display_name")
+      .eq("created_by", userId)
+      .is("accepted_at", null)
+      .gt("expires_at", nowIso);
+    if (!error && data) return mapRows(data);
+    // Pre-migration fallback: no invitee_display_name column yet.
+    const legacy = await supabase
+      .from("people_group_invitations")
+      .select("people_group_id, invitee_email")
+      .eq("created_by", userId)
+      .is("accepted_at", null)
+      .gt("expires_at", nowIso);
+    if (legacy.error || !legacy.data) return {};
+    return mapRows(legacy.data);
+  } catch { return {}; }
 }
 
 /** Email an existing people-group invite via the send-group-invite edge
