@@ -76,6 +76,7 @@ import {
 } from "../lib/db";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { groupDisplayName } from "../lib/groupNames";
+import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
@@ -2037,14 +2038,6 @@ function shelfLayout(count: number): React.CSSProperties {
     gap: "24px 16px", justifyContent: "center", maxWidth: 880, margin: "0 auto",
   };
 }
-const searchPill: React.CSSProperties = {
-  border: "none", background: C.yellow, color: C.cream, fontWeight: 700, fontSize: 14,
-  padding: "16px 56px", borderRadius: 65, cursor: "pointer",
-};
-const invitePill: React.CSSProperties = {
-  border: "none", background: C.blue, color: CANON.cream, fontWeight: 700, fontSize: 14,
-  padding: "18px 64px", borderRadius: 65, cursor: "pointer", boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
-};
 const topBar: React.CSSProperties = {
   display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 28px",
 };
@@ -2168,10 +2161,6 @@ const chatSend: React.CSSProperties = {
   border: "none", background: C.blue, borderRadius: "50%", width: 38, height: 38, display: "inline-flex",
   alignItems: "center", justifyContent: "center", cursor: "pointer", flex: "0 0 auto",
 };
-const overlay: React.CSSProperties = {
-  position: "fixed", inset: 0, background: "rgba(26,58,74,0.25)", display: "flex",
-  alignItems: "center", justifyContent: "center", zIndex: 50,
-};
 // Trailer-aware overlay for the opt-in modal ONLY (the shared `overlay` above is
 // used by other modals and must stay untouched). Two layers: a fixed scrollable
 // backdrop + an inner column that centers [modal + 8px gap + trailer] as a pair
@@ -2184,34 +2173,10 @@ const trailerCenterColumn: React.CSSProperties = {
   alignItems: "center", justifyContent: "center", gap: 8,
   padding: "24px 16px", boxSizing: "border-box",
 };
-const searchCard: React.CSSProperties = { background: C.cream, borderRadius: 24, padding: 32, width: "min(560px, 86vw)" };
-const pickerCard: React.CSSProperties = {
-  background: C.cream, borderRadius: 24, padding: "40px 48px", width: "min(640px, 88vw)",
-  display: "flex", flexDirection: "column", alignItems: "center",
-};
-const searchInput: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", border: `2px solid ${C.green}`, borderRadius: 65,
-  padding: "14px 24px", fontFamily: '"Inter", sans-serif', fontSize: 14, color: C.green,
-  background: "transparent", outline: "none",
-};
-const modalClose: React.CSSProperties = {
-  position: "absolute", top: 16, right: 16, border: "none", background: "transparent", cursor: "pointer",
-};
-const yellowCard: React.CSSProperties = {
-  background: C.yellow, borderRadius: 15, padding: "28px 32px", width: "min(360px, 88vw)",
-  position: "relative", textAlign: "center",
-};
-const yellowTitle: React.CSSProperties = {
-  color: CANON.cream, fontSize: 15, fontWeight: 600, letterSpacing: -0.5,
-};
 const yellowDivider: React.CSSProperties = {
   height: 1, background: "rgba(253,248,236,0.5)", margin: "20px 0 14px",
 };
 // Button-outline rule: solid fill = no contrasting outline; outlined = transparent fill.
-const startBtn: React.CSSProperties = {
-  border: "none", background: C.blue, color: CANON.cream, fontWeight: 700, fontSize: 14,
-  padding: "11px 38px", borderRadius: 65, cursor: "pointer",
-};
 const dangerBtn: React.CSSProperties = {
   border: `2px solid ${C.red}`, background: "transparent", color: C.red, fontWeight: 700, fontSize: 14,
   padding: "10px 32px", borderRadius: 65, cursor: "pointer",

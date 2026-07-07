@@ -25,6 +25,7 @@ import {
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
 import { groupDisplayName } from "../lib/groupNames";
+import { composeBackdrop, composeCardOuter } from "./dashboardChrome";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember } from "./v2/V2RoomMap";
@@ -825,14 +826,6 @@ const sortSelect: React.CSSProperties = {
   fontFamily: '"Inter", system-ui, sans-serif', cursor: "pointer", outline: "none",
 };
 const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 };
-const composeBackdrop: React.CSSProperties = {
-  position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)", display: "flex",
-  alignItems: "center", justifyContent: "center", zIndex: 1000,
-};
-const composeCardOuter: React.CSSProperties = {
-  position: "relative", width: "85vw", height: "90vh", background: C.cream,
-  borderRadius: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.25)", overflow: "auto",
-};
 const composeCloseX: React.CSSProperties = {
   position: "absolute", top: 20, right: 24, background: "transparent", border: "2px solid var(--canon-alert,#f45028)",
   color: CANON.alert, borderRadius: "50%", width: 34, height: 34, padding: 0,

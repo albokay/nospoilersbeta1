@@ -110,6 +110,34 @@ type ComposeFormProps = {
    *  The desktop show room's drafts tab passes "save draft"; every other
    *  caller (incl. mobile) keeps the default. */
   privateSubmitLabel?: string;
+  /** Onboarding look-and-feel pass (2026-07-06): let a caller take over the
+   *  PUBLISH itself while keeping the real compose experience. When set, the
+   *  submit button uses `label` and hands the validated draft to `onSubmit`
+   *  (which runs the onboarding bootstrap) instead of insertThread — nothing
+   *  is published by the form. Every other caller leaves this undefined and
+   *  is byte-identical. */
+  externalSubmit?: {
+    label: React.ReactNode;
+    onSubmit: (data: {
+      title: string;
+      body: string;
+      preview: string;
+      season: number;
+      episode: number;
+      isRewatch: boolean;
+      rewatchSeason?: number;
+      rewatchEpisode?: number;
+      insertedPromptIds: number[];
+    }) => Promise<void>;
+  };
+  /** Onboarding: replaces the header's eyebrow + show-name line (the
+   *  progress picker beneath stays). Undefined everywhere else. */
+  headingOverride?: React.ReactNode;
+  /** Onboarding: relabel/recolor the prompt helper button (spec: Identity
+   *  fill, "Want help with what to write?"). Behavior unchanged. */
+  promptButton?: { label: React.ReactNode; background?: string };
+  /** Onboarding: prefill the title field (spec: "Let's do this!"). */
+  initialTitle?: string;
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -124,7 +152,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", mobileIdiom = false },
+  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", externalSubmit, headingOverride, promptButton, initialTitle, mobileIdiom = false },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -137,7 +165,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   const [showError, setShowError] = useState<string | null>(null);
 
   // Form state.
-  const [postTitle, setPostTitle] = useState("");
+  const [postTitle, setPostTitle] = useState(initialTitle ?? "");
   const [postBody, setPostBody] = useState("");
   // Single-select destination model — null until the user makes a choice.
   // The post-entry button is disabled (and rendered minimally) until a
@@ -367,6 +395,31 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
     }
     setSubmitting(true);
     setSubmitError(null);
+    // Onboarding external submit: hand the validated draft to the caller
+    // (which runs the bootstrap + publishes itself) — the form publishes
+    // nothing. Same look, same posting… state, different plumbing.
+    if (externalSubmit) {
+      try {
+        const tag = tagPosition(progress);
+        await externalSubmit.onSubmit({
+          title,
+          body,
+          preview: body.slice(0, 240) + (body.length > 240 ? "…" : ""),
+          season: tag.s,
+          episode: tag.e,
+          isRewatch: progress.isRewatching ?? false,
+          rewatchSeason: progress.isRewatching ? (progress.rewatchS ?? progress.s) : undefined,
+          rewatchEpisode: progress.isRewatching ? (progress.rewatchE ?? progress.e) : undefined,
+          insertedPromptIds,
+        });
+      } catch (err) {
+        console.error("compose external submit failed:", err);
+        setSubmitError("Something went wrong. Nothing was lost — try again.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
     try {
       const tag = tagPosition(progress);
       const threadData = {
@@ -514,31 +567,35 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
       <main style={{ maxWidth: 720, margin: "0 auto", padding: mobileIdiom ? "56px 16px 24px" : "64px 48px 180px" }}>
         {/* === CONTEXT === */}
         <div style={{ textAlign: "center", marginBottom: 20 }}>
-          <div
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontSize: 13,
-              fontWeight: 400,
-              color: CANON.identity,
-              marginBottom: 4,
-            }}
-          >
-            capture your thoughts on:
-          </div>
-          <h1
-            style={{
-              fontFamily: "Lora, Georgia, serif",
-              fontWeight: 700,
-              fontSize: 36,
-              letterSpacing: "0.02em",
-              color: CANON.identity,
-              textTransform: "uppercase",
-              margin: 0,
-              marginBottom: 10,
-            }}
-          >
-            {show.name}
-          </h1>
+          {headingOverride ?? (
+            <>
+              <div
+                style={{
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: 13,
+                  fontWeight: 400,
+                  color: CANON.identity,
+                  marginBottom: 4,
+                }}
+              >
+                capture your thoughts on:
+              </div>
+              <h1
+                style={{
+                  fontFamily: "Lora, Georgia, serif",
+                  fontWeight: 700,
+                  fontSize: 36,
+                  letterSpacing: "0.02em",
+                  color: CANON.identity,
+                  textTransform: "uppercase",
+                  margin: 0,
+                  marginBottom: 10,
+                }}
+              >
+                {show.name}
+              </h1>
+            </>
+          )}
           {/* Universal watch-progress updater. Doubles as a reminder
               ("make sure this is right before posting") and an inline
               control to update if it isn't. Confirms in-modal on change
@@ -681,7 +738,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 <button
                   onClick={handlePromptBtn}
                   style={{
-                    background: "var(--green)",
+                    background: promptButton?.background ?? "var(--green)",
                     color: CANON.cream,
                     border: "none",
                     borderRadius: 9999,
@@ -696,7 +753,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                     gap: 8,
                   }}
                 >
-                  <Sparkles size={14} color="currentColor" /> want a prompt?
+                  <Sparkles size={14} color="currentColor" /> {promptButton?.label ?? "want a prompt?"}
                 </button>
               ) : (
                 <PromptCard
@@ -803,7 +860,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                     ? null
                     : submitting
                       ? <>posting<LoadingDots /></>
-                      : <>{destination === "private" ? privateSubmitLabel : "share entry"}<ArrowRight size={14} /></>}
+                      : <>{externalSubmit ? externalSubmit.label : destination === "private" ? privateSubmitLabel : "share entry"}<ArrowRight size={14} /></>}
                 </button>
               );
             })()}
