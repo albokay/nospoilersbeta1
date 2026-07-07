@@ -1673,7 +1673,7 @@ export default function DashboardPage() {
 
       {/* CP5b: group options (gear) — rename + leave, anchored near the gear */}
       {optionsFor && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50 }} onClick={() => setOptionsFor(null)}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(26,58,74,0.25)" }} onClick={() => setOptionsFor(null)}>
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -1683,19 +1683,16 @@ export default function DashboardPage() {
               display: "flex", flexDirection: "column", gap: 16, width: 360,
             }}
           >
-            <div style={yellowCard}>
-              <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
-              <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
-              <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight }} />
-              <button style={{ ...startBtn, marginTop: 12 }} onClick={() => doRename(optionsFor)}>confirm name</button>
-            </div>
             {(() => {
               const others = (railGroups.find((r) => r.group.id === optionsFor)?.members ?? []).filter((m) => m.userId !== selfUserId);
               if (!others.length) return null;
               return (
                 <div style={yellowCard}>
-                  <div style={{ ...yellowTitle, marginBottom: 4 }}>Your names for the people here:</div>
-                  <div style={{ color: CANON.cream, fontSize: 11, opacity: 0.85, marginBottom: 12 }}>Only you see these — like your phone contacts.</div>
+                  <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
+                  <div style={{ ...yellowTitle, marginBottom: 4 }}>Update your contact list:</div>
+                  <div style={{ color: CANON.cream, fontSize: 11, opacity: 0.85, marginBottom: 12, lineHeight: 1.5 }}>
+                    Your friends&rsquo; names default to their log-in info. You can enter your own names for them &mdash; just like you would on your phone&rsquo;s contacts.
+                  </div>
                   {others.map((m) => (
                     <input
                       key={m.userId}
@@ -1712,6 +1709,12 @@ export default function DashboardPage() {
                 </div>
               );
             })()}
+            <div style={yellowCard}>
+              <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
+              <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
+              <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight }} />
+              <button style={{ ...startBtn, marginTop: 12 }} onClick={() => doRename(optionsFor)}>confirm name</button>
+            </div>
             <div style={yellowCard}>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this group?</div>
               <button style={dangerBtn} onClick={() => doLeave(optionsFor)}>yes, leave</button>
