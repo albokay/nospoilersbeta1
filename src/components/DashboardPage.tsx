@@ -1159,8 +1159,37 @@ export default function DashboardPage() {
     return <div style={{ ...pageStyle, background: C.green }} aria-busy="true" />;
   }
 
+  // Group clusters / group heading — the same component in both contexts.
+  // Extracted so the dashboard can wrap it (with the create button) in a
+  // vertically-centering column while the group context keeps it at the top.
+  const clustersEl = (
+    <GroupClusters
+      groups={railGroups}
+      selfUserId={selfUserId}
+      activeGroupId={activeGroupId}
+      pendingInvites={pendingInvites}
+      clusterDotByGroup={clusterDotByGroup}
+      contactNames={contactNames}
+      pendingInviteNames={pendingInviteNames}
+      groupNumberById={groupNumberById}
+      onEnter={(id) => navigate(`/dashboard?g=${id}`)}
+      onInviteClick={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
+      onGearClick={(id, rect) => {
+        setOptionsFor(id);
+        setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 });
+        setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? "");
+        const others = (railGroups.find((r) => r.group.id === id)?.members ?? []).filter((m) => m.userId !== selfUserId);
+        const edits: Record<string, string> = {};
+        for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
+        setContactEdits(edits);
+      }}
+      onTip={setTip}
+    />
+  );
+
   return (
-    <div style={{ ...pageStyle, background: inGroup ? C.sky : C.green }}>
+    // Non-group dashboard is a flex column so its body can center vertically.
+    <div style={{ ...pageStyle, background: inGroup ? C.sky : C.green, ...(inGroup ? null : { display: "flex", flexDirection: "column" }) }}>
       <DashboardStyles />
 
       {/* Top bar: logo left · INVITE FRIENDS + sign-out + admin right */}
@@ -1194,31 +1223,13 @@ export default function DashboardPage() {
 
       {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
 
-      {/* Group clusters (top of the body) — replaces the old right rail */}
-      <GroupClusters
-        groups={railGroups}
-        selfUserId={selfUserId}
-        activeGroupId={activeGroupId}
-        pendingInvites={pendingInvites}
-        clusterDotByGroup={clusterDotByGroup}
-        contactNames={contactNames}
-        pendingInviteNames={pendingInviteNames}
-        groupNumberById={groupNumberById}
-        onEnter={(id) => navigate(`/dashboard?g=${id}`)}
-        onInviteClick={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
-        onGearClick={(id, rect) => {
-          setOptionsFor(id);
-          setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 });
-          setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? "");
-          const others = (railGroups.find((r) => r.group.id === id)?.members ?? []).filter((m) => m.userId !== selfUserId);
-          const edits: Record<string, string> = {};
-          for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
-          setContactEdits(edits);
-        }}
-        onTip={setTip}
-      />
+      {/* Group heading (group context only) — the clusters component returns
+          the room heading there; the dashboard renders its clusters inside
+          the centered body below. */}
+      {inGroup && clustersEl}
 
-      {/* Edge tabs (group context only): back-to-dashboard left · chat right */}
+      {/* Edge tabs (group context only): back-to-dashboard left · chat right.
+          Position-fixed, so DOM order relative to the heading is irrelevant. */}
       {inGroup && (
         <button style={backTab} title="back to dashboard" onClick={() => navigate("/dashboard")}>
           <ArrowLeft size={24} color={C.green} />
@@ -1303,15 +1314,21 @@ export default function DashboardPage() {
         </div>
       ) : (
         // ── Groups-only dashboard (green, CP2) ────────────────────────────────
-        // The personal shelves are gone: the dashboard is your groups (clusters
-        // above) plus one centered act — create a new group by pairing at
-        // least one named friend with at least one proposed show.
-        <div style={{ textAlign: "center", padding: "48px 24px 80px" }}>
-          {/* Hidden while the onboarding flow is up — its overlays own the
-              screen and this reads as a competing (and nonsensical) action. */}
-          {!socialOnbActive && (
-            <button style={invitePill} onClick={() => openInvite()}>Create another watch group?</button>
-          )}
+        // The personal shelves are gone: the dashboard is your groups (the
+        // clusters) plus one act — create a new group by pairing at least one
+        // named friend with at least one proposed show. Vertically centered in
+        // the space below the top bar so a sparse dashboard doesn't cling to
+        // the top of the page (flex:1 fills the remaining height; content taller
+        // than the space grows naturally and the page scrolls).
+        <div style={dashboardCenter}>
+          {clustersEl}
+          <div style={{ textAlign: "center", marginTop: 40 }}>
+            {/* Hidden while the onboarding flow is up — its overlays own the
+                screen and this reads as a competing (and nonsensical) action. */}
+            {!socialOnbActive && (
+              <button style={invitePill} onClick={() => openInvite()}>Create another watch group?</button>
+            )}
+          </div>
         </div>
       )}
 
@@ -2135,6 +2152,14 @@ const topCircleBtn = (inGroup: boolean): React.CSSProperties => ({
 const clustersRow: React.CSSProperties = {
   display: "flex", justifyContent: "center", alignItems: "flex-start", flexWrap: "wrap",
   gap: 56, padding: "16px 80px 36px",
+};
+// Groups-only dashboard body: fills the height under the top bar and centers
+// its content (clusters + create button) vertically. flex item min-height is
+// auto, so taller-than-viewport content grows and the page scrolls instead of
+// clipping.
+const dashboardCenter: React.CSSProperties = {
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+  justifyContent: "center", padding: "24px",
 };
 const clusterBtn: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 0 };
 const avatarPile: React.CSSProperties = {

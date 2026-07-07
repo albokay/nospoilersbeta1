@@ -567,7 +567,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               room's members line — same font, same greyblue "with", given
               names (cluster rule: given-names until a custom group name). */}
           {groupName && (
-            <span style={groupHeadingMembers}><span style={{ color: CANON.business }}>with</span> {groupName}</span>
+            <span style={groupHeadingMembers}><span style={{ color: CANON.dark }}>with</span> {groupName}</span>
           )}
           {!privateOnly && roomId && (
             <button
