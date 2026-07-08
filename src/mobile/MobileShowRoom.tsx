@@ -159,7 +159,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   useEffect(() => {
     if (privateOnly || !roomId || !user?.id) return;
     const vKey = `ns_room_visible_threads_${user.id}_${roomId}`;
-    const ids = feedEntries.filter((e) => !e.isDeleted).map((e) => e.threadId);
+    // Stubs are excluded so the white "newly-visible" outline still fires
+    // when the viewer catches up to the real entry (desktop parity).
+    const ids = feedEntries.filter((e) => !e.isDeleted && !e.gatedStub).map((e) => e.threadId);
     try { localStorage.setItem(vKey, JSON.stringify(ids)); } catch { /* ignore quota */ }
   }, [user?.id, roomId, privateOnly, feedEntries]);
 
@@ -225,6 +227,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         replyCount: (gr.replyCounts[t.id] ?? 0) + (gr.aheadCounts?.[t.id] ?? 0),
         thread: t,
       }));
+      // CP4 (desktop parity): spoiler-gated entries ride the same feed as
+      // one-line stubs ("X has watched … and written to …"), sorted like
+      // ordinary entries.
+      const gatedStubs: V2RoomFeedEntry[] = ((gr.gatedThreads ?? []) as Thread[]).map((t) => ({
+        threadId: t.id, s: t.season, e: t.episode, title: "", body: "", preview: "",
+        authorId: u2id[t.author] ?? "", authorUsername: t.author,
+        isDeparted: departed.has(t.author), isDeleted: false,
+        updatedAt: gr.sharedAt?.[t.id] || t.updatedAt,
+        replyCount: 0, thread: t, gatedStub: true,
+      }));
 
       const members: V2RoomMapMember[] = roomMapData.map((m) => ({
         userId: m.userId, username: m.username ?? "?", isDeparted: m.isDeparted,
@@ -239,7 +251,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       if (showRow) freshenShow(showRow);
       setGroupName(derivedGroupName);
       setProgressForShow(progress);
-      setFeedEntries(entries);
+      setFeedEntries([...entries, ...gatedStubs]);
       setMapMembers(members);
       setPrivateEntries(priv);
       setPerThreadLatestReply(gr.latestVisibleReplyAt ?? {});
@@ -352,7 +364,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     if (!profile?.username) return out;
     const prevSet = prevVisibleThreadIdsRef.current;
     for (const entry of feedEntries) {
-      if (entry.isDeleted || entry.authorUsername === profile.username) continue;
+      if (entry.isDeleted || entry.gatedStub || entry.authorUsername === profile.username) continue;
       if (!prevSet.has(entry.threadId) && !engagedSet.has(entry.threadId)) out[entry.threadId] = true;
     }
     return out;
@@ -565,6 +577,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               isNewMap={isNewMap}
               cellSignals={cellSignals}
               engagedThreadIds={engagedSet}
+              // CP4: stub audience decided at display time — exactly one OTHER
+              // current room member → "you", 2+ → "the room" (departed members
+              // don't count; desktop parity).
+              gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
               onReplyAdded={(tid) => setFeedEntries((prev) => prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)))}
             />
           )
