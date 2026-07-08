@@ -8,7 +8,10 @@ import MobileFeedbackSheet from "./MobileFeedbackSheet";
 import SidebarLogo from "../components/SidebarLogo";
 import LoadingDots from "../components/LoadingDots";
 import MobileInviteSheet from "./MobileInviteSheet";
+import MobileSocialOnboarding from "./MobileSocialOnboarding";
 import {
+  fetchSocialOnboarded,
+  markSocialOnboarded,
   fetchPeopleGroupsForUser,
   fetchPeopleGroupMembers,
   fetchGroupPendingInvites,
@@ -88,6 +91,40 @@ export default function MobileDashboard() {
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   const [chatActivity, setChatActivity] = useState<GroupChatActivity[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // CP3 social onboarding (3-screen show→friend→seed-entry flow). Fires ONCE
+  // for brand-new self-signup accounts (no TSP demo on mobile per Alborz):
+  // invited accounts (already in a group) are stamped as done without ever
+  // seeing it, and an account with a pending invite waits (they may accept;
+  // re-evaluated next visit). Force-show for testing with ?sonb=1 (no stamp).
+  const forceSocialOnb = new URLSearchParams(window.location.search).get("sonb") === "1";
+  const [showSocialOnb, setShowSocialOnb] = useState(false);
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (forceSocialOnb) { setShowSocialOnb(true); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const done = await fetchSocialOnboarded(user.id);
+        if (cancelled || done) return;
+        const [groups, invites] = await Promise.all([
+          fetchPeopleGroupsForUser(user.id).catch(() => []),
+          fetchMyPendingGroupInvites().catch(() => []),
+        ]);
+        if (cancelled) return;
+        if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); return; }
+        if (invites.length > 0) return;
+        setShowSocialOnb(true);
+      } catch { /* tolerant — never block the dashboard */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user, authLoading, forceSocialOnb]);
+  async function handleSocialOnbDone(groupId: string | null) {
+    setShowSocialOnb(false);
+    if (!forceSocialOnb && user) markSocialOnboarded(user.id).catch(() => {});
+    await refreshRailAndInvites();
+    if (groupId) navigate(`/m/group/${groupId}`);
+  }
 
   // Sheets
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
@@ -344,10 +381,14 @@ export default function MobileDashboard() {
           )}
 
           {/* ── The dashboard's ONE act (CP2): create a new group by pairing
-                 ≥1 named friend with ≥1 proposed show (desktop copy). ── */}
-          <div style={{ textAlign: "center", padding: "16px 16px 24px" }}>
-            <button style={invitePill} onClick={() => setInviteOpen(true)}>Create another watch group?</button>
-          </div>
+                 ≥1 named friend with ≥1 proposed show (desktop copy). Hidden
+                 while onboarding is up — its screens own the page and this
+                 reads as a competing action. ── */}
+          {!showSocialOnb && (
+            <div style={{ textAlign: "center", padding: "16px 16px 24px" }}>
+              <button style={invitePill} onClick={() => setInviteOpen(true)}>Create another watch group?</button>
+            </div>
+          )}
         </>
       )}
 
@@ -381,6 +422,9 @@ export default function MobileDashboard() {
           onCreated={(groupId) => { setInviteOpen(false); navigate(`/m/group/${groupId}`); }}
         />
       )}
+
+      {/* ── CP3: the 3-screen first-run flow (over the plain green). ── */}
+      {showSocialOnb && <MobileSocialOnboarding onDone={handleSocialOnbDone} />}
     </div>
   );
 }

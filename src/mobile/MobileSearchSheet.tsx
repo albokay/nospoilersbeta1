@@ -22,7 +22,7 @@ const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const C = { green: CANON.personal, blue: CANON.identity, cream: CANON.cream, midnight: CANON.dark };
 
 export default function MobileSearchSheet({
-  shows, progress, outOfPool, groupContext, onClose, onAdd, onRestore, onCatalogAdd,
+  shows, progress, outOfPool, groupContext, addLabel, onClose, onAdd, onRestore, onCatalogAdd,
 }: {
   shows: Show[];
   progress: Record<string, ProgressEntry>;
@@ -35,6 +35,9 @@ export default function MobileSearchSheet({
     groupShowIds: Set<string>;
     onProposeExisting: (show: Show) => void;
   };
+  /** Picker commit-button label override (default "add to my shows") — the
+   *  onboarding flow reuses this sheet and advances with "next". */
+  addLabel?: string;
   onClose: () => void;
   /** Add a picked show at the picked progress (parent persists + closes). */
   onAdd: (show: Show, val: { s: number; e: number }) => void;
@@ -186,7 +189,7 @@ export default function MobileSearchSheet({
             />
           </div>
           <button style={addBtn} onClick={() => onAdd(pickShow, pickProgress)}>
-            add to my shows
+            {addLabel ?? "add to my shows"}
           </button>
         </div>
       )}
