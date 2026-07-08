@@ -12,6 +12,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser, fetchContactNames,
+  fetchPublicPool, type PublicPoolShow,
   type Show,
 } from "../lib/db";
 import type { ProgressEntry } from "../types";
@@ -38,6 +39,9 @@ export default function PublicDashboardPage({ username, invite }: { username: st
   // pool's owner (handle fallback); logged-out visitors have no contacts and
   // keep the handle. Display-only — the route stays keyed by username.
   const [displayName, setDisplayName] = useState<string | null>(null);
+  // Opt-in-based shelves (2026-07-07): proposals + open rooms from the new
+  // RPC; null pre-migration → the old progress-derived split below.
+  const [pool, setPool] = useState<{ proposals: PublicPoolShow[]; rooms: PublicPoolShow[] } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,14 +50,16 @@ export default function PublicDashboardPage({ username, invite }: { username: st
       try {
         const prof = await fetchPublicProfileByUsername(username);
         if (!prof) { if (!cancelled) { setNotFound(true); setLoading(false); } return; }
-        const [allShows, prog, cn] = await Promise.all([
+        const [allShows, prog, cn, pp] = await Promise.all([
           fetchShows(),
           fetchPublicProgressForUser(prof.id),
           user ? fetchContactNames(user.id).catch(() => ({} as Record<string, string>)) : Promise.resolve({} as Record<string, string>),
+          fetchPublicPool(prof.id),
         ]);
         if (cancelled) return;
         setShows(allShows);
         setProgress(prog);
+        setPool(pp);
         setDisplayName(cn[prof.id] ?? null);
       } catch (e) {
         console.error("[public-dashboard] load failed", e);
@@ -71,9 +77,21 @@ export default function PublicDashboardPage({ username, invite }: { username: st
     return m;
   }, [shows]);
 
-  // Pool = the user's shows split into watching (started) / haven't-started.
-  // Stopped shows are excluded (not part of the watch pool).
-  const { watching, notStarted } = useMemo(() => {
+  // Opt-in-based shelves (2026-07-07, Alborz):
+  //   interested = live yes-votes in any of their groups (minus left rooms)
+  //   watching   = shows with an open room they're currently in
+  // Watch progress alone no longer surfaces a show (consistent with the
+  // group-scoped model). Pre-migration fallback: the old progress-derived
+  // split (started → watching, not-started → interested).
+  const { watching, interested } = useMemo(() => {
+    const byName = (a: { show: Show }, b: { show: Show }) => a.show.name.localeCompare(b.show.name);
+    if (pool) {
+      const map = (rows: PublicPoolShow[]) => rows
+        .map((r) => ({ show: showsById[r.showId], entry: { s: r.s, e: r.e } as ProgressEntry }))
+        .filter((x): x is { show: Show; entry: ProgressEntry } => !!x.show && !x.show.isHidden)
+        .sort(byName);
+      return { watching: map(pool.rooms), interested: map(pool.proposals) };
+    }
     const w: { show: Show; entry: ProgressEntry }[] = [];
     const n: { show: Show; entry: ProgressEntry }[] = [];
     for (const [showId, entry] of Object.entries(progress)) {
@@ -83,9 +101,8 @@ export default function PublicDashboardPage({ username, invite }: { username: st
       const started = (entry.s ?? 0) > 0 || (entry.e ?? 0) > 0;
       (started ? w : n).push({ show, entry });
     }
-    const byName = (a: { show: Show }, b: { show: Show }) => a.show.name.localeCompare(b.show.name);
-    return { watching: w.sort(byName), notStarted: n.sort(byName) };
-  }, [progress, showsById]);
+    return { watching: w.sort(byName), interested: n.sort(byName) };
+  }, [pool, progress, showsById]);
 
   if (loading) return <div style={{ ...pageStyle, background: C.green }} aria-busy="true" />;
 
@@ -109,11 +126,13 @@ export default function PublicDashboardPage({ username, invite }: { username: st
         </div>
       ) : invite ? (
         <div style={contentWrap}>
-          {notStarted.length > 0 && (
+          {/* Same shelf copy as /pool (2026-07-07): interested-in-starting
+              (opted-in proposals) first, open-room shows second. */}
+          {interested.length > 0 && (
             <>
-              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> wants to watch these shows:</h2>
-              <div style={inviteShelfLayout(notStarted.length)}>
-                {notStarted.map(({ show }) => (
+              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is interested in starting these shows:</h2>
+              <div style={inviteShelfLayout(interested.length)}>
+                {interested.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, ...pillWant }}><span style={pillName}>{show.name}</span></div>
                 ))}
               </div>
@@ -121,10 +140,10 @@ export default function PublicDashboardPage({ username, invite }: { username: st
           )}
           {watching.length > 0 && (
             <>
-              <h2 style={{ ...inviteHeading, marginTop: notStarted.length ? 64 : 0 }}>
-                {notStarted.length > 0
+              <h2 style={{ ...inviteHeading, marginTop: interested.length ? 64 : 0 }}>
+                {interested.length > 0
                   ? "and is already watching these:"
-                  : <><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is watching these shows:</>}
+                  : <><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is already watching these shows:</>}
               </h2>
               <div style={inviteShelfLayout(watching.length)}>
                 {watching.map(({ show, entry }) => (
@@ -146,9 +165,30 @@ export default function PublicDashboardPage({ username, invite }: { username: st
         <div style={contentWrap}>
           <h1 style={heading}><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span>&rsquo;s watch pool:</h1>
 
+          {/* Same shelf copy as the invite arrival (2026-07-07): interested-
+              in-starting (opted-in proposals) first, open-room shows second. */}
+          {interested.length > 0 && (
+            <>
+              <h2 style={{ ...shelfHeader, textTransform: "none" }}>
+                <span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is interested in starting these shows:
+              </h2>
+              <div style={shelfLayout(interested.length)}>
+                {interested.map(({ show }) => (
+                  <div key={show.id} style={{ ...pill, ...pillWant }}>
+                    <span style={pillName}>{show.name}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
           {watching.length > 0 && (
             <>
-              <h2 style={shelfHeader}>CURRENTLY WATCHING</h2>
+              <h2 style={{ ...shelfHeader, textTransform: "none", marginTop: interested.length ? 48 : 0 }}>
+                {interested.length > 0
+                  ? "and is already watching these:"
+                  : <><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is already watching these shows:</>}
+              </h2>
               <div style={shelfLayout(watching.length)}>
                 {watching.map(({ show, entry }) => (
                   <div key={show.id} style={{ ...pill, ...pillWatching }}>
@@ -160,20 +200,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
             </>
           )}
 
-          {notStarted.length > 0 && (
-            <>
-              <h2 style={{ ...shelfHeader, textTransform: "none", marginTop: watching.length ? 48 : 0 }}>Haven&rsquo;t started yet</h2>
-              <div style={shelfLayout(notStarted.length)}>
-                {notStarted.map(({ show }) => (
-                  <div key={show.id} style={{ ...pill, ...pillWant }}>
-                    <span style={pillName}>{show.name}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {watching.length === 0 && notStarted.length === 0 && (
+          {watching.length === 0 && interested.length === 0 && (
             <div style={{ textAlign: "center", color: C.cream, opacity: 0.85, marginTop: 24 }}>
               {displayName ?? `@${username}`} hasn&rsquo;t added any shows yet.
             </div>

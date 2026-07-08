@@ -6,6 +6,7 @@ import { useAuth } from "../lib/auth";
 import SidebarLogo from "../components/SidebarLogo";
 import {
   fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser, fetchContactNames,
+  fetchPublicPool, type PublicPoolShow,
   type Show,
 } from "../lib/db";
 import type { ProgressEntry } from "../types";
@@ -38,6 +39,9 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
   // desktop parity): signed-in viewers see THEIR name for the person; anon
   // (and unnamed) keeps the @handle.
   const [displayName, setDisplayName] = useState<string | null>(null);
+  // Opt-in-based shelves (2026-07-07): proposals + open rooms from the new
+  // RPC; null pre-migration → the old progress-derived split below.
+  const [pool, setPool] = useState<{ proposals: PublicPoolShow[]; rooms: PublicPoolShow[] } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,14 +50,16 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
       try {
         const prof = await fetchPublicProfileByUsername(username);
         if (!prof) { if (!cancelled) { setNotFound(true); setLoading(false); } return; }
-        const [allShows, prog, cn] = await Promise.all([
+        const [allShows, prog, cn, pp] = await Promise.all([
           fetchShows(),
           fetchPublicProgressForUser(prof.id),
           user ? fetchContactNames(user.id).catch(() => ({} as Record<string, string>)) : Promise.resolve({} as Record<string, string>),
+          fetchPublicPool(prof.id),
         ]);
         if (cancelled) return;
         setShows(allShows);
         setProgress(prog);
+        setPool(pp);
         setDisplayName(cn[prof.id] ?? null);
       } catch (e) {
         console.error("[m-pool] load failed", e);
@@ -71,7 +77,19 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
     return m;
   }, [shows]);
 
-  const { watching, notStarted } = useMemo(() => {
+  // Opt-in-based shelves (2026-07-07, desktop parity): interested = live
+  // yes-votes anywhere (minus left rooms); watching = open rooms they're in.
+  // Progress alone no longer surfaces a show. Pre-migration fallback: the
+  // old progress-derived split.
+  const { watching, interested } = useMemo(() => {
+    const byName = (a: { show: Show }, b: { show: Show }) => a.show.name.localeCompare(b.show.name);
+    if (pool) {
+      const map = (rows: PublicPoolShow[]) => rows
+        .map((r) => ({ show: showsById[r.showId], entry: { s: r.s, e: r.e } as ProgressEntry }))
+        .filter((x): x is { show: Show; entry: ProgressEntry } => !!x.show && !x.show.isHidden)
+        .sort(byName);
+      return { watching: map(pool.rooms), interested: map(pool.proposals) };
+    }
     const w: { show: Show; entry: ProgressEntry }[] = [];
     const n: { show: Show; entry: ProgressEntry }[] = [];
     for (const [showId, entry] of Object.entries(progress)) {
@@ -81,9 +99,8 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
       const started = (entry.s ?? 0) > 0 || (entry.e ?? 0) > 0;
       (started ? w : n).push({ show, entry });
     }
-    const byName = (a: { show: Show }, b: { show: Show }) => a.show.name.localeCompare(b.show.name);
-    return { watching: w.sort(byName), notStarted: n.sort(byName) };
-  }, [progress, showsById]);
+    return { watching: w.sort(byName), interested: n.sort(byName) };
+  }, [pool, progress, showsById]);
 
   const goBack = onBack ?? (() => navigate(-1));
   const rootStyle: React.CSSProperties = overlay
@@ -109,9 +126,30 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
         <div style={{ padding: "8px 16px 48px" }}>
           <h1 style={heading}><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span>&rsquo;s watch pool:</h1>
 
+          {/* Same shelf copy as desktop + the invite arrival (2026-07-07):
+              interested-in-starting first, open-room shows second. */}
+          {interested.length > 0 && (
+            <>
+              <h2 style={{ ...shelfHeader, textTransform: "none" }}>
+                <span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is interested in starting these shows:
+              </h2>
+              <div style={shelfCol}>
+                {interested.map(({ show }) => (
+                  <div key={show.id} style={{ ...pill, background: C.cream, color: C.green }}>
+                    <span style={pillName}>{show.name}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
           {watching.length > 0 && (
             <>
-              <h2 style={shelfHeader}>CURRENTLY WATCHING</h2>
+              <h2 style={{ ...shelfHeader, textTransform: "none", marginTop: interested.length ? 40 : 0 }}>
+                {interested.length > 0
+                  ? "and is already watching these:"
+                  : <><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is already watching these shows:</>}
+              </h2>
               <div style={shelfCol}>
                 {watching.map(({ show, entry }) => (
                   <div key={show.id} style={{ ...pill, background: "transparent", border: `2px solid ${C.cream}`, color: C.cream }}>
@@ -123,20 +161,7 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
             </>
           )}
 
-          {notStarted.length > 0 && (
-            <>
-              <h2 style={{ ...shelfHeader, textTransform: "none", marginTop: watching.length ? 40 : 0 }}>Haven&rsquo;t started yet</h2>
-              <div style={shelfCol}>
-                {notStarted.map(({ show }) => (
-                  <div key={show.id} style={{ ...pill, background: C.cream, color: C.green }}>
-                    <span style={pillName}>{show.name}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {watching.length === 0 && notStarted.length === 0 && (
+          {watching.length === 0 && interested.length === 0 && (
             <div style={{ textAlign: "center", color: C.cream, opacity: 0.85, marginTop: 24 }}>
               {displayName ?? `@${username}`} hasn&rsquo;t added any shows yet.
             </div>

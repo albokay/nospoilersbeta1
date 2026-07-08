@@ -7,6 +7,7 @@ import { preventLastWordOrphan } from "../lib/utils";
 import {
   getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite,
   fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser,
+  fetchPublicPool, type PublicPoolShow,
   type GroupInviteInfo, type Show,
 } from "../lib/db";
 import type { ProgressEntry } from "../types";
@@ -45,6 +46,9 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
   // desktop arrival's PublicDashboardPage).
   const [poolShows, setPoolShows] = useState<Show[]>([]);
   const [poolProgress, setPoolProgress] = useState<Record<string, ProgressEntry>>({});
+  // Opt-in-based shelves (2026-07-07): proposals + open rooms from the new
+  // RPC; null pre-migration → the old progress-derived split below.
+  const [pool, setPool] = useState<{ proposals: PublicPoolShow[]; rooms: PublicPoolShow[] } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,10 +67,13 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
       try {
         const prof = await fetchPublicProfileByUsername(res.info.inviterName);
         if (!prof || cancelled) return;
-        const [allShows, prog] = await Promise.all([fetchShows(), fetchPublicProgressForUser(prof.id)]);
+        const [allShows, prog, pp] = await Promise.all([
+          fetchShows(), fetchPublicProgressForUser(prof.id), fetchPublicPool(prof.id),
+        ]);
         if (cancelled) return;
         setPoolShows(allShows);
         setPoolProgress(prog);
+        setPool(pp);
       } catch { /* welcome degrades to headings + JOIN IN */ }
     })();
     return () => { cancelled = true; };
@@ -78,7 +85,18 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     return m;
   }, [poolShows]);
 
-  const { watching, notStarted } = useMemo(() => {
+  // Opt-in-based shelves (2026-07-07, desktop parity): interested = live
+  // yes-votes anywhere (minus left rooms); watching = open rooms they're in.
+  // Pre-migration fallback: the old progress-derived split.
+  const { watching, interested } = useMemo(() => {
+    const byName = (a: { show: Show }, b: { show: Show }) => a.show.name.localeCompare(b.show.name);
+    if (pool) {
+      const map = (rows: PublicPoolShow[]) => rows
+        .map((r) => ({ show: showsById[r.showId], entry: { s: r.s, e: r.e } as ProgressEntry }))
+        .filter((x): x is { show: Show; entry: ProgressEntry } => !!x.show && !x.show.isHidden)
+        .sort(byName);
+      return { watching: map(pool.rooms), interested: map(pool.proposals) };
+    }
     const w: { show: Show; entry: ProgressEntry }[] = [];
     const n: { show: Show; entry: ProgressEntry }[] = [];
     for (const [showId, entry] of Object.entries(poolProgress)) {
@@ -88,9 +106,8 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
       const started = (entry.s ?? 0) > 0 || (entry.e ?? 0) > 0;
       (started ? w : n).push({ show, entry });
     }
-    const byName = (a: { show: Show }, b: { show: Show }) => a.show.name.localeCompare(b.show.name);
-    return { watching: w.sort(byName), notStarted: n.sort(byName) };
-  }, [poolProgress, showsById]);
+    return { watching: w.sort(byName), interested: n.sort(byName) };
+  }, [pool, poolProgress, showsById]);
 
   async function join() {
     setStatus("joining");
@@ -136,11 +153,13 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
           <SidebarLogo scale={0.5} blocksOpacity={1} />
         </div>
         <div style={{ padding: "8px 16px 48px" }}>
-          {notStarted.length > 0 && (
+          {/* Same shelf copy as desktop + /pool (2026-07-07): interested-in-
+              starting (opted-in proposals) first, open-room shows second. */}
+          {interested.length > 0 && (
             <>
-              <h2 style={inviteHeading}><span style={{ color: C.cream }}>@{info.inviterName}</span> wants to watch these shows:</h2>
+              <h2 style={inviteHeading}><span style={{ color: C.cream }}>@{info.inviterName}</span> is interested in starting these shows:</h2>
               <div style={shelfCol}>
-                {notStarted.map(({ show }) => (
+                {interested.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, background: C.cream, color: C.green }}><span style={pillName}>{show.name}</span></div>
                 ))}
               </div>
@@ -148,10 +167,10 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
           )}
           {watching.length > 0 && (
             <>
-              <h2 style={{ ...inviteHeading, marginTop: notStarted.length ? 40 : 0 }}>
-                {notStarted.length > 0
+              <h2 style={{ ...inviteHeading, marginTop: interested.length ? 40 : 0 }}>
+                {interested.length > 0
                   ? "and is already watching these:"
-                  : <><span style={{ color: C.cream }}>@{info.inviterName}</span> is watching these shows:</>}
+                  : <><span style={{ color: C.cream }}>@{info.inviterName}</span> is already watching these shows:</>}
               </h2>
               <div style={shelfCol}>
                 {watching.map(({ show, entry }) => (

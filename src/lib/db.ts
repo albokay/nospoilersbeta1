@@ -2736,6 +2736,29 @@ export async function createPeopleGroupInvite(groupId: string, email: string, in
   return data.token as string;
 }
 
+// ── Public pool (opt-in-based shelves, 2026-07-07) ───────────────────────────
+
+export type PublicPoolShow = { showId: string; s: number; e: number };
+
+/** The two opt-in-based shelves for the pool page + invite arrival:
+ *  proposals = shows the target has a live yes-vote on in any of their groups
+ *  (minus left rooms); rooms = shows with an open room they're currently in.
+ *  Global s/e rides along for the labels. Anon-callable (invite arrival).
+ *  Tolerant pre-migration: RPC missing → null (callers keep the old
+ *  progress-derived shelves). */
+export async function fetchPublicPool(userId: string): Promise<{ proposals: PublicPoolShow[]; rooms: PublicPoolShow[] } | null> {
+  try {
+    const { data, error } = await supabase.rpc("get_public_pool", { target_user_id: userId });
+    if (error || !data) return null;
+    const proposals: PublicPoolShow[] = [];
+    const rooms: PublicPoolShow[] = [];
+    for (const r of data as any[]) {
+      (r.bucket === "room" ? rooms : proposals).push({ showId: r.show_id, s: r.season ?? 0, e: r.episode ?? 0 });
+    }
+    return { proposals, rooms };
+  } catch { return null; }
+}
+
 // ── Contact names (CP2 dual-mode group naming, 2026-07-06) ──────────────────
 
 /** The viewer's own joined_at per group (groupId → ms) in ONE query — drives
