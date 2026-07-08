@@ -5,7 +5,7 @@ import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import SidebarLogo from "../components/SidebarLogo";
 import {
-  fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser,
+  fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser, fetchContactNames,
   type Show,
 } from "../lib/db";
 import type { ProgressEntry } from "../types";
@@ -34,6 +34,10 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
   const [notFound, setNotFound] = useState(false);
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
+  // The viewer's contact name for the pool's owner (naming arc 2026-07-07,
+  // desktop parity): signed-in viewers see THEIR name for the person; anon
+  // (and unnamed) keeps the @handle.
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,10 +46,15 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
       try {
         const prof = await fetchPublicProfileByUsername(username);
         if (!prof) { if (!cancelled) { setNotFound(true); setLoading(false); } return; }
-        const [allShows, prog] = await Promise.all([fetchShows(), fetchPublicProgressForUser(prof.id)]);
+        const [allShows, prog, cn] = await Promise.all([
+          fetchShows(),
+          fetchPublicProgressForUser(prof.id),
+          user ? fetchContactNames(user.id).catch(() => ({} as Record<string, string>)) : Promise.resolve({} as Record<string, string>),
+        ]);
         if (cancelled) return;
         setShows(allShows);
         setProgress(prog);
+        setDisplayName(cn[prof.id] ?? null);
       } catch (e) {
         console.error("[m-pool] load failed", e);
         if (!cancelled) setNotFound(true);
@@ -54,7 +63,7 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
       }
     })();
     return () => { cancelled = true; };
-  }, [username]);
+  }, [username, user?.id]);
 
   const showsById = useMemo(() => {
     const m: Record<string, Show> = {};
@@ -98,7 +107,7 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
         </div>
       ) : (
         <div style={{ padding: "8px 16px 48px" }}>
-          <h1 style={heading}><span style={{ color: C.cream }}>@{username}</span>&rsquo;s watch pool:</h1>
+          <h1 style={heading}><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span>&rsquo;s watch pool:</h1>
 
           {watching.length > 0 && (
             <>
@@ -129,7 +138,7 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
 
           {watching.length === 0 && notStarted.length === 0 && (
             <div style={{ textAlign: "center", color: C.cream, opacity: 0.85, marginTop: 24 }}>
-              @{username} hasn&rsquo;t added any shows yet.
+              {displayName ?? `@${username}`} hasn&rsquo;t added any shows yet.
             </div>
           )}
 

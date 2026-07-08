@@ -8,9 +8,10 @@ import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, markRoomSeen,
   fetchHighlights, fetchPeopleGroupsForUser, fetchRoomDigestOptOut, setRoomDigestOptOut,
-  leaveShowRoom,
+  leaveShowRoom, fetchContactNames, fetchPeopleGroupMembers, fetchMyPendingInviteNames,
   type Show,
 } from "../lib/db";
+import { groupDisplayName } from "../lib/groupNames";
 import { effectiveProgress } from "../lib/utils";
 import { linearIndex } from "../lib/groupPills";
 import type { Thread, ProgressEntry } from "../types";
@@ -74,6 +75,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [show, setShow] = useState<Show | null>(null);
   const [parentGroupId, setParentGroupId] = useState<string | null>(null);
   const [groupName, setGroupName] = useState<string | null>(null);
+  // The viewer's contact names (naming arc 2026-07-07, desktop parity) —
+  // drives the displayNames map for the reused feed components, the roster,
+  // and the member filter. Display-only; ids/keys stay real handles.
+  const [roomContactNames, setRoomContactNames] = useState<Record<string, string>>({});
   const [progressForShow, setProgressForShow] = useState<ProgressEntry | null>(null);
   const [feedEntries, setFeedEntries] = useState<V2RoomFeedEntry[]>([]);
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
@@ -224,14 +229,30 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       // Entering the room clears its new-activity dot up the tree.
       markRoomSeen(roomId).catch(() => { /* tolerate */ });
 
-      const [allShows, progressMap, roomMapData, myGroups] = await Promise.all([
+      const [allShows, progressMap, roomMapData, myGroups, cn] = await Promise.all([
         fetchShows(), fetchProgress(user.id), fetchRoomMapData(roomId),
         roomRow.parent_group_id ? fetchPeopleGroupsForUser(user.id).catch(() => []) : Promise.resolve([]),
+        fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
       ]);
+      setRoomContactNames(cn);
       const showRow = allShows.find((s) => s.id === showId) ?? null;
       const progress = progressMap[showId] ?? null;
       const pg = roomRow.parent_group_id ? myGroups.find((x) => x.id === roomRow.parent_group_id) : null;
-      const derivedGroupName = pg ? (pg.name || (pg.seq != null ? `Group ${pg.seq}` : null)) : null;
+      // "with [group]" header: custom name wins → else the viewer's given
+      // names for the members (+ their own pending-invite names) — the same
+      // cluster rule as desktop's show-room header (naming arc 2026-07-07).
+      let derivedGroupName: string | null = null;
+      if (pg) {
+        if (pg.name) derivedGroupName = pg.name;
+        else {
+          try {
+            const [pgMembers, pn] = await Promise.all([
+              fetchPeopleGroupMembers(pg.id), fetchMyPendingInviteNames(user.id),
+            ]);
+            derivedGroupName = groupDisplayName(pg, pgMembers.filter((m) => m.userId !== user.id), cn, pn[pg.id] ?? []);
+          } catch { derivedGroupName = pg.seq != null ? `Group ${pg.seq}` : null; }
+        }
+      }
       const eff = effectiveProgress(progress);
 
       const empty = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number>, latestVisibleReplyAt: {} as Record<string, number>, hiddenCounts: {} as Record<string, number>, latestHiddenReplyAt: {} as Record<string, number> };
@@ -444,6 +465,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     updatedAt: t.updatedAt, replyCount: 0, thread: t,
   }));
 
+  // username → the viewer's given name (identity fallback) for the reused
+  // feed components + roster + filter — desktop's displayNames convention.
+  const displayNames: Record<string, string> = {};
+  for (const mm of mapMembers) if (mm.username) displayNames[mm.username] = roomContactNames[mm.userId] ?? mm.username;
+
   // Roster ordering: by watch progress (furthest first), raw S/E, viewer included.
   const rosterRows = [...mapMembers].sort((a, b) => {
     const ai = linearIndex(a.progress?.s ?? 0, a.progress?.e ?? 0, show?.seasons);
@@ -496,7 +522,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 {rosterRows.slice(0, 6).map((m) => (
                   // Departed member: opaque accent fill. Viewer: green + cream.
                   <span key={m.userId} style={{ ...rosterAvatar, ...(m.isDeparted ? { background: C.yellow, color: C.cream } : m.userId === user?.id ? { background: C.green, color: C.cream } : {}) }}>
-                    {(m.username[0] ?? "?").toUpperCase()}
+                    {((displayNames[m.username] ?? m.username)[0] ?? "?").toUpperCase()}
                   </span>
                 ))}
               </span>
@@ -513,10 +539,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                   return (
                     <div key={m.userId} style={rosterRow}>
                       <span style={{ ...rosterAvatar, marginRight: 10, ...(m.isDeparted ? { background: C.yellow, color: C.cream } : isSelf ? { background: C.green, color: C.cream } : {}) }}>
-                        {(m.username[0] ?? "?").toUpperCase()}
+                        {((displayNames[m.username] ?? m.username)[0] ?? "?").toUpperCase()}
                       </span>
                       <span style={{ flex: 1, fontWeight: isSelf ? 700 : 600, fontSize: 14, color: C.midnight, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        @{m.username}{isSelf ? " (you)" : ""}{m.isDeparted ? " (left show)" : ""}
+                        {displayNames[m.username] ?? m.username}{isSelf ? " (you)" : ""}{m.isDeparted ? " (left show)" : ""}
                       </span>
                       <span style={{ fontWeight: 600, fontSize: 13, color: C.midnight, opacity: 0.8, flexShrink: 0 }}>
                         s{p?.s ?? 0} e{p?.e ?? 0}
@@ -550,7 +576,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 {mapMembers.length > 0 && (
                   <optgroup label="Filter by member">
                     {mapMembers.map((m) => (
-                      <option key={m.userId} value={`user:${m.userId}`}>only @{m.username}{m.isDeparted ? " (left)" : ""}</option>
+                      <option key={m.userId} value={`user:${m.userId}`}>only {displayNames[m.username] ?? m.username}{m.isDeparted ? " (left)" : ""}</option>
                     ))}
                   </optgroup>
                 )}
@@ -586,6 +612,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <V2RoomFeed
               ref={feedRef}
               mobileIdiom
+              displayNames={displayNames}
               entries={visibleFriendEntries}
               sortOrder={effectiveSortOrder}
               initialExpandedThreadId={initialExpandThreadId ?? undefined}
@@ -613,6 +640,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             {privateFeedEntries.length > 0 && (
               <V2RoomFeed
                 mobileIdiom
+                displayNames={displayNames}
                 entries={privateFeedEntries}
                 viewerProgress={progressForShow}
                 userId={user?.id ?? ""}
