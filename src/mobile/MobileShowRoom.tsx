@@ -482,7 +482,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         {/* Tabs on the header/body boundary (same swap rule as desktop). */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "0 16px" }}>
           {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
-          <RoomTab label="private writing" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
+          {/* CP6: solo → drafts (desktop parity) — just-for-you space. */}
+          <RoomTab label="drafts" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
         </div>
       </div>
 
@@ -621,7 +622,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             )}
             <div style={{ marginTop: privateFeedEntries.length ? 40 : 8 }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "0 0 12px" }}>Sidebar is best with friends.</p>
-              <p style={{ ...emptyCopy, maxWidth: 460 }}>But you can use this private space to write drafts or to keep a personal journal. No one will see what you write here. Sometimes we do our best thinking when we write for ourselves.</p>
+              <p style={{ ...emptyCopy, maxWidth: 460 }}>But this drafts space is just for you — no one will ever see what you write here. Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
             </div>
           </>
         )}
@@ -638,6 +639,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             restrictGroupId={privateOnly ? undefined : roomId}
             privateOnly={privateOnly}
             defaultDestination={privateOnly ? undefined : (tab === "private" ? "private" : roomId)}
+            privateSubmitLabel="save draft"
             hideTopRightClose
             onCancel={() => setComposeOpen(false)}
             onSubmitted={(destination, threadId) => {
@@ -707,7 +709,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           <div style={{ ...bottomSheet, background: C.yellow }}>
             <div style={{ color: C.cream, fontWeight: 700, fontSize: 15, marginBottom: 12, letterSpacing: -0.3 }}>Leave this show room?</div>
             <div style={{ color: C.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>
-              This takes you out of the <b>{show?.name ?? "show"}</b> room in this group and removes it from your shelf.
+              This takes you out of the <b>{show?.name ?? "show"}</b> room in this group and removes it from your list.
             </div>
             <div style={{ color: C.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
               If you have writing in the room, it will stay intact. Search and add the show back anytime to rejoin.
