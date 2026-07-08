@@ -16,6 +16,7 @@ import { effectiveProgress } from "../lib/utils";
 import { linearIndex } from "../lib/groupPills";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
+import LoadingDots from "../components/LoadingDots";
 import type { V2RoomMapMember } from "../components/v2/V2RoomMap";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
 import OneSelectProgress from "../components/OneSelectProgress";
@@ -455,7 +456,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   }, []);
 
   if (authLoading || loading) {
-    return <div style={{ ...page, background: C.green }} aria-busy="true" />;
+    return (
+      <div style={{ ...page, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
+        {/* Standard loading line: "loading" + ellipses, Header 2, cream. */}
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: C.cream }}>loading<LoadingDots /></span>
+      </div>
+    );
   }
 
   const bodyBg = tab === "friend" ? C.sky : C.green;

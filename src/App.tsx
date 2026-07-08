@@ -72,7 +72,9 @@ function RouteFallback() {
       background: "var(--dos-bg)",
       color: "var(--dos-fg)",
     }}>
-      <LoadingDots />
+      {/* Standard loading line (2026-07-07): "loading" + animated ellipses,
+          Header 2 (Inter bold 14), cream. */}
+      <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: "var(--canon-cream,#FEF8EA)" }}>loading<LoadingDots /></span>
     </div>
   );
 }

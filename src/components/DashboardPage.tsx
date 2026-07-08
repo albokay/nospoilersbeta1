@@ -82,6 +82,7 @@ import { groupHeadingMembers } from "./dashboardChrome";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
+import LoadingDots from "./LoadingDots";
 import OneSelectProgress from "./OneSelectProgress";
 import TrailerCard from "./TrailerCard";
 import { prefetchTrailers } from "../lib/trailers";
@@ -1167,7 +1168,12 @@ export default function DashboardPage() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   if (authLoading || loading) {
-    return <div style={{ ...pageStyle, background: C.green }} aria-busy="true" />;
+    return (
+      <div style={{ ...pageStyle, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
+        {/* Standard loading line: "loading" + ellipses, Header 2, cream. */}
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>loading<LoadingDots /></span>
+      </div>
+    );
   }
 
   // Group clusters / group heading — the same component in both contexts.

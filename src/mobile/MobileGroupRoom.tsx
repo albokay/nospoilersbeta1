@@ -539,7 +539,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: 48, color: C.cream }}><LoadingDots /></div>
+        <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
       ) : (
         // CP2 four-part group room (desktop parity): SHOW ROOMS shelf →
         // Proposed shelf → "Propose more shows?" → "Add more friends…".

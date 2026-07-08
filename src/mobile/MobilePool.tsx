@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import SidebarLogo from "../components/SidebarLogo";
+import LoadingDots from "../components/LoadingDots";
 import {
   fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser, fetchContactNames,
   fetchPublicPool, type PublicPoolShow,
@@ -107,7 +108,14 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
     ? { ...page, background: C.green, position: "fixed", inset: 0, zIndex: 1500, overflowY: "auto", WebkitOverflowScrolling: "touch" }
     : { ...page, background: C.green };
 
-  if (loading) return <div style={rootStyle} aria-busy="true" />;
+  if (loading) {
+    return (
+      <div style={{ ...rootStyle, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
+        {/* Standard loading line: "loading" + ellipses, Header 2, cream. */}
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: C.cream }}>loading<LoadingDots /></span>
+      </div>
+    );
+  }
 
   return (
     <div style={rootStyle}>

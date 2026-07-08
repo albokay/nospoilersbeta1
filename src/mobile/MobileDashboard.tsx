@@ -294,7 +294,7 @@ export default function MobileDashboard() {
         <div style={topBar}>
           <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
         </div>
-        <div style={{ textAlign: "center", padding: 48, color: C.cream }}><LoadingDots /></div>
+        <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
       </div>
     );
   }
@@ -328,7 +328,7 @@ export default function MobileDashboard() {
       {feedbackOpen && <MobileFeedbackSheet onClose={() => setFeedbackOpen(false)} />}
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: 48, color: C.cream }}><LoadingDots /></div>
+        <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
       ) : (
         <>
           {/* ── Groups + pending invites ── */}
