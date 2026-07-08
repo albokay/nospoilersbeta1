@@ -319,6 +319,9 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
             </h1>
           }
           promptButton={{ label: "Want help with what to write?", background: `var(--canon-identity, ${CANON.identity})` }}
+          // Onboarding-only prompt batch (2026-07-08), split on the
+          // declared progress: fresh = s0e0 through s1e4, else returning.
+          promptPoolTag={prog.s < 1 || (prog.s === 1 && prog.e <= 4) ? "onb-fresh" : "onb-returning"}
           externalSubmit={{ label: "publish & invite", onSubmit: publishAndInvite }}
         />
       </div>

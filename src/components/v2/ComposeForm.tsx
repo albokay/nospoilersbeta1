@@ -136,6 +136,13 @@ type ComposeFormProps = {
   /** Onboarding: relabel/recolor the prompt helper button (spec: Identity
    *  fill, "Want help with what to write?"). Behavior unchanged. */
   promptButton?: { label: React.ReactNode; background?: string };
+  /** Onboarding prompt pool (2026-07-08): serve ONLY prompts carrying this
+   *  progress tag (e.g. "onb-fresh"/"onb-returning" — tags the regular
+   *  composer never computes), cycling through the batch when exhausted.
+   *  Never mixes in the regular pool; an EMPTY tagged pool (prompts not yet
+   *  inserted) degrades to the normal suggestion flow so the button isn't
+   *  dead. Default off → all other callers byte-identical. */
+  promptPoolTag?: string;
   /** Onboarding: prefill the title field (spec: "Let's do this!"). */
   initialTitle?: string;
   /** Onboarding: hide the action-row "not now" cancel (the flow provides its
@@ -155,7 +162,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", externalSubmit, headingOverride, promptButton, initialTitle, hideCancel = false, mobileIdiom = false },
+  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, initialTitle, hideCancel = false, mobileIdiom = false },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -281,6 +288,27 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   // [PROMPT: text] at cursor.
   function handlePromptBtn() {
     if (!show || !progress) return;
+    // Onboarding pool: ONLY the tagged batch, cycling when exhausted —
+    // never the regular pool (Alborz 2026-07-08). Empty batch (prompts not
+    // yet inserted) falls through to the normal flow below.
+    if (promptPoolTag) {
+      const pool = promptEntries.filter((p) => p.displayType === "prompt" && p.progressTags.includes(promptPoolTag));
+      if (pool.length) {
+        const fresh = pool.filter((p) => !shownPromptIds.includes(p.id));
+        if (fresh.length) {
+          const next = fresh[Math.floor(Math.random() * fresh.length)];
+          setShownPromptIds((prev) => [...prev, next.id]);
+          setActivePrompt(next);
+        } else {
+          // Batch exhausted → start over (skip an immediate repeat when we can).
+          const restart = pool.length > 1 && activePrompt ? pool.filter((p) => p.id !== activePrompt.id) : pool;
+          const next = restart[Math.floor(Math.random() * restart.length)];
+          setShownPromptIds([next.id]);
+          setActivePrompt(next);
+        }
+        return;
+      }
+    }
     const tag = tagPosition(progress);
     const next = getPromptSuggestion(show, { s: tag.s, e: tag.e }, shownPromptIds, promptEntries);
     if (next) {
