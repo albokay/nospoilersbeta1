@@ -420,14 +420,16 @@ export default function DashboardPage() {
       setGroupShows(rows);
       // A group room exposes progress dropdowns for every show in the group —
       // including ones you haven't pooled yet — and they read the same catalog
-      // (showsById). Keep those shows' episode lists fresh too (12h cadence,
-      // non-blocking). fetchShows() is the warm in-memory cache here.
+      // (showsById). Keep those shows' episode lists fresh too (12h cadence).
+      // Perf (2026-07-07): FULLY non-blocking — the catalog read + TVMaze sync
+      // no longer delay refreshGroup resolving (post-vote syncs awaited it).
       const ids = new Set(rows.map((r) => r.showId));
-      const catalog = await fetchShows();
-      refreshStaleShows(catalog.filter((s) => ids.has(s.id))).then((upd) => {
-        if (!upd.length) return;
-        setShows((prev) => prev.map((s) => upd.find((u) => u.id === s.id) ?? s));
-      }).catch(() => {});
+      fetchShows().then((catalog) =>
+        refreshStaleShows(catalog.filter((s) => ids.has(s.id))).then((upd) => {
+          if (!upd.length) return;
+          setShows((prev) => prev.map((s) => upd.find((u) => u.id === s.id) ?? s));
+        }),
+      ).catch(() => {});
     } catch (e) {
       console.error("[dashboard] group load failed", e);
       setGroupShows([]);

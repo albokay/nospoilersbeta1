@@ -205,10 +205,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // Entering the room clears its new-activity dot on the dashboard/group view.
       markRoomSeen(roomId).catch(() => { /* tolerate (migration not applied) */ });
 
-      const [allShows, progressMap, roomMapData, myGroups, cn] = await Promise.all([
+      // Perf (2026-07-07): the drafts fetch needs only the showId, so it
+      // rides the main parallel batch instead of trailing the whole chain.
+      const [allShows, progressMap, roomMapData, myGroups, cn, mine] = await Promise.all([
         fetchShows(), fetchProgress(user.id), fetchRoomMapData(roomId),
         roomRow.parent_group_id ? fetchPeopleGroupsForUser(user.id).catch(() => []) : Promise.resolve([]),
         fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
+        fetchUserThreads(user.id, showId),
       ]);
       setRoomContactNames(cn);
       const showRow = allShows.find((s) => s.id === showId) ?? null;
@@ -218,23 +221,26 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // names the VIEWER gave the members (handle fallback), else "Group
       // <seq>". Null → just the show name (private-only standalone or an
       // unresolvable group). Naming fetches are tolerant (pre-migration → {}).
+      // Perf (2026-07-07): resolved CONCURRENTLY with the writing fetch below
+      // (they don't depend on each other); errors are contained in-promise.
       const pg = roomRow.parent_group_id ? myGroups.find((x) => x.id === roomRow.parent_group_id) : null;
-      let derivedGroupName: string | null = null;
-      if (pg) {
-        if (pg.name) derivedGroupName = pg.name;
-        else {
-          try {
-            const [pgMembers, pn] = await Promise.all([
-              fetchPeopleGroupMembers(pg.id), fetchMyPendingInviteNames(user.id),
-            ]);
-            derivedGroupName = groupDisplayName(pg, pgMembers.filter((m) => m.userId !== user.id), cn, pn[pg.id] ?? []);
-          } catch { derivedGroupName = pg.seq != null ? `Group ${pg.seq}` : null; }
-        }
-      }
+      const namePromise: Promise<string | null> = (async () => {
+        if (!pg) return null;
+        if (pg.name) return pg.name;
+        try {
+          const [pgMembers, pn] = await Promise.all([
+            fetchPeopleGroupMembers(pg.id), fetchMyPendingInviteNames(user.id),
+          ]);
+          return groupDisplayName(pg, pgMembers.filter((m) => m.userId !== user.id), cn, pn[pg.id] ?? []);
+        } catch { return pg.seq != null ? `Group ${pg.seq}` : null; }
+      })();
       const eff = effectiveProgress(progress);
 
       const empty = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number>, latestVisibleReplyAt: {} as Record<string, number>, hiddenCounts: {} as Record<string, number>, latestHiddenReplyAt: {} as Record<string, number> };
-      const gr: any = eff ? await fetchGroupThreads(roomId, eff.s, eff.e, user.id) : empty;
+      const [gr, derivedGroupName]: [any, string | null] = await Promise.all([
+        eff ? fetchGroupThreads(roomId, eff.s, eff.e, user.id) : Promise.resolve(empty),
+        namePromise,
+      ]);
 
       const departed = new Set(roomMapData.filter((m) => m.isDeparted).map((m) => m.username ?? "").filter(Boolean));
       const u2id: Record<string, string> = {};
@@ -265,7 +271,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         entries: m.entries.map((e) => ({ threadId: e.threadId, s: e.s, e: e.e, title: e.title })),
       }));
 
-      const mine = await fetchUserThreads(user.id, showId);
       const priv = mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread);
 
       setShow(showRow);

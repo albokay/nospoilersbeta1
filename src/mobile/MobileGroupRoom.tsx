@@ -142,13 +142,16 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     try {
       const rows = await fetchGroupDashboard(groupId);
       setGroupShows(rows);
-      // Keep this group's shows' episode lists fresh (12h cadence; non-blocking).
+      // Keep this group's shows' episode lists fresh (12h cadence). Perf
+      // (2026-07-07): FULLY non-blocking — the catalog read + TVMaze sync no
+      // longer delay refreshGroup resolving (the shelves are already up).
       const ids = new Set(rows.map((r) => r.showId));
-      const catalog = await fetchShows();
-      refreshStaleShows(catalog.filter((s) => ids.has(s.id))).then((upd) => {
-        if (!upd.length) return;
-        setShows((prev) => prev.map((s) => upd.find((u) => u.id === s.id) ?? s));
-      }).catch(() => {});
+      fetchShows().then((catalog) =>
+        refreshStaleShows(catalog.filter((s) => ids.has(s.id))).then((upd) => {
+          if (!upd.length) return;
+          setShows((prev) => prev.map((s) => upd.find((u) => u.id === s.id) ?? s));
+        }),
+      ).catch(() => {});
     } catch (e) {
       console.error("[m-group] group load failed", e);
       setGroupShows([]);
@@ -160,18 +163,23 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      try {
-        const [showRows, prog, oop] = await Promise.all([
-          fetchShows(), fetchProgress(user.id), fetchOutOfPoolShows(user.id),
-        ]);
-        if (cancelled) return;
-        setShows(showRows);
-        setProgress(prog);
-        setOutOfPool(oop);
-      } catch (e) {
-        console.error("[m-group] core load failed", e);
-      }
-      await refreshGroup();
+      // Perf (2026-07-07): the personal core (catalog/progress/pool) and the
+      // group's shows load CONCURRENTLY — neither depends on the other, and
+      // serializing them doubled the first-paint wait.
+      const core = (async () => {
+        try {
+          const [showRows, prog, oop] = await Promise.all([
+            fetchShows(), fetchProgress(user.id), fetchOutOfPoolShows(user.id),
+          ]);
+          if (cancelled) return;
+          setShows(showRows);
+          setProgress(prog);
+          setOutOfPool(oop);
+        } catch (e) {
+          console.error("[m-group] core load failed", e);
+        }
+      })();
+      await Promise.all([core, refreshGroup()]);
       if (!cancelled) setLoading(false);
       // Group meta + activity — concurrent, independently tolerant.
       // The join-order read pairs with the group list to derive the viewer's
