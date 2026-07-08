@@ -2738,6 +2738,22 @@ export async function createPeopleGroupInvite(groupId: string, email: string, in
 
 // ── Contact names (CP2 dual-mode group naming, 2026-07-06) ──────────────────
 
+/** The viewer's own joined_at per group (groupId → ms) in ONE query — drives
+ *  the per-viewer "Group N" numbering on surfaces that don't load the full
+ *  member lists of every group (the mobile group room). Tolerant → {}. */
+export async function fetchMyGroupJoinOrder(userId: string): Promise<Record<string, number>> {
+  try {
+    const { data, error } = await supabase
+      .from("people_group_members")
+      .select("group_id, joined_at")
+      .eq("user_id", userId);
+    if (error || !data) return {};
+    const m: Record<string, number> = {};
+    for (const r of data) m[r.group_id] = new Date(r.joined_at).getTime();
+    return m;
+  } catch { return {}; }
+}
+
 /** The viewer's private "name I gave this person" map (contactId → name).
  *  Tolerant pre-migration (missing table → {}). */
 export async function fetchContactNames(userId: string): Promise<Record<string, string>> {

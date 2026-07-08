@@ -16,6 +16,9 @@ import {
   upsertRewatchStatus,
   fetchPeopleGroupsForUser,
   fetchPeopleGroupMembers,
+  fetchMyGroupJoinOrder,
+  fetchContactNames,
+  setContactName,
   fetchGroupDashboard,
   setShowVote,
   ensureProgressRow,
@@ -33,6 +36,7 @@ import {
   type RoomVisibility,
 } from "../lib/db";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
+import { groupGenericName, personDisplayName } from "../lib/groupNames";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 
 /**
@@ -74,14 +78,6 @@ const C = {
   greyblue: CANON.business,
 };
 
-/** Custom name if set, else a stable generic "Group <seq>". (Same rule as desktop.) */
-function groupAutoName(group: PeopleGroup | null, others: PeopleGroupMember[]): string {
-  if (group?.name) return group.name;
-  if (group?.seq != null) return `Group ${group.seq}`;
-  if (!others.length) return "Group";
-  return others.map((m) => m.username).sort((a, b) => a.localeCompare(b)).join(", ");
-}
-
 /** Desktop's "haven't started" hover copy, moved inline (no hover on mobile). */
 function interestedLine(names: string[], showName: string, selfOpted: boolean): React.ReactNode {
   if (!names.length) return null;
@@ -118,6 +114,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const selfUserId = user?.id ?? "";
 
   const [group, setGroup] = useState<PeopleGroup | null>(null);
+  // The viewer's number for this group (their Nth by join order) — drives the
+  // per-viewer "Group N" header title (naming arc 2026-07-07).
+  const [viewerNumber, setViewerNumber] = useState<number | undefined>(undefined);
+  const [contactNames, setContactNames] = useState<Record<string, string>>({});
   const [members, setMembers] = useState<PeopleGroupMember[]>([]);
   const [groupShows, setGroupShows] = useState<GroupDashboardShow[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
@@ -134,6 +134,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [gearOpen, setGearOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [contactEdits, setContactEdits] = useState<Record<string, string>>({});
+  const [contactsSaving, setContactsSaving] = useState(false);
 
   // ── Loads (same calls as desktop's group context) ─────────────────────────
   const refreshGroup = useCallback(async () => {
@@ -172,11 +174,22 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       await refreshGroup();
       if (!cancelled) setLoading(false);
       // Group meta + activity — concurrent, independently tolerant.
-      fetchPeopleGroupsForUser(user.id)
-        .then((gs) => { if (!cancelled) setGroup(gs.find((g) => g.id === groupId) ?? null); })
+      // The join-order read pairs with the group list to derive the viewer's
+      // "Group N" number (their Nth group by their own join order).
+      Promise.all([fetchPeopleGroupsForUser(user.id), fetchMyGroupJoinOrder(user.id)])
+        .then(([gs, jo]) => {
+          if (cancelled) return;
+          setGroup(gs.find((g) => g.id === groupId) ?? null);
+          const sorted = gs.map((g) => ({ id: g.id, j: jo[g.id] ?? 0 })).sort((a, b) => a.j - b.j);
+          const idx = sorted.findIndex((g) => g.id === groupId);
+          if (idx >= 0) setViewerNumber(idx + 1);
+        })
         .catch(() => {});
       fetchPeopleGroupMembers(groupId)
         .then((ms) => { if (!cancelled) setMembers(ms); })
+        .catch(() => {});
+      fetchContactNames(user.id)
+        .then((cn) => { if (!cancelled) setContactNames(cn); })
         .catch(() => {});
       fetchRoomActivityVisibility(user.id, true)
         .then((rv) => { if (!cancelled) setRoomVis(rv); })
@@ -228,11 +241,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     return m;
   }, [shows]);
 
+  // userId → display name (naming arc 2026-07-07, desktop parity): the name
+  // the VIEWER gave each member, else their handle — drives the interested
+  // lines, the "Read what … has written?" prompt, and avatar letters.
   const memberNameById = useMemo(() => {
     const m: Record<string, string> = {};
-    for (const mem of members) m[mem.userId] = mem.username;
+    for (const mem of members) m[mem.userId] = personDisplayName(contactNames, mem.userId, mem.username);
     return m;
-  }, [members]);
+  }, [members, contactNames]);
 
   // ── Shelves — identical pill computation + ordering to desktop ────────────
   const groupShelves = useMemo(() => {
@@ -428,6 +444,24 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     }
   }
 
+  // CP-C (desktop parity): save the viewer's names for this group's members
+  // (phone-contacts rename — overwrites; empty clears back to the handle).
+  // Private to the viewer; every surface re-labels instantly via the lookup.
+  async function saveContactNames() {
+    if (!user || contactsSaving) return;
+    setContactsSaving(true);
+    try {
+      for (const m of members.filter((mm) => mm.userId !== selfUserId)) {
+        const next = (contactEdits[m.userId] ?? "").trim();
+        const cur = contactNames[m.userId] ?? "";
+        if (next !== cur) await setContactName(user.id, m.userId, next);
+      }
+      setContactNames(await fetchContactNames(user.id));
+      setGearOpen(false);
+    } catch (e) { console.error("[m-group] contact rename failed", e); }
+    finally { setContactsSaving(false); }
+  }
+
   async function doLeave() {
     setGearOpen(false);
     try { await leavePeopleGroup(groupId); } catch (e) { console.error("[m-group] leave failed", e); }
@@ -439,8 +473,11 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   if (!user) return <Navigate to="/m" replace />;
 
   const others = members.filter((m) => m.userId !== selfUserId);
-  const names = others.map((m) => m.username).join(", ");
-  const groupName = groupAutoName(group, others);
+  // Naming arc (2026-07-07, desktop parity): the header's TITLE is the
+  // generic/custom label ("Group N" → custom name); the PEOPLE live in the
+  // "with…" line as the viewer's given names (handle fallback).
+  const names = others.map((m) => personDisplayName(contactNames, m.userId, m.username)).join(", ");
+  const groupName = group ? groupGenericName(group, viewerNumber) : "Group";
   const empty = groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0;
 
   return (
@@ -456,7 +493,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <div style={headerMembers}><span style={{ color: C.greyblue }}>with</span> {names}</div>
           )}
         </div>
-        <button style={iconBtn} title="group options" onClick={() => { setRenameValue(group?.name ?? ""); setGearOpen(true); }}>
+        <button style={iconBtn} title="group options" onClick={() => {
+          setRenameValue(group?.name ?? "");
+          // Seed the contact-rename inputs with the viewer's current names.
+          const edits: Record<string, string> = {};
+          for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
+          setContactEdits(edits);
+          setGearOpen(true);
+        }}>
           <Settings size={22} color={C.cream} />
         </button>
       </div>
@@ -473,18 +517,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         </div>
       </div>
 
-      {/* ── Add friends to THIS group (desktop's cream context pill) ── */}
-      <div style={{ textAlign: "center", padding: "0 16px 16px" }}>
-        <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
-      </div>
-
       {loading ? (
         <div style={{ textAlign: "center", padding: 48, color: C.cream }}><LoadingDots /></div>
       ) : (
+        // CP2 four-part group room (desktop parity): SHOW ROOMS shelf →
+        // Proposed shelf → "Propose more shows?" → "Add more friends…".
         <div style={contentWrap}>
           {groupShelves.watching.length > 0 && (
             <>
-              <h1 style={shelfHeader}>CURRENTLY WATCHING:</h1>
+              <h1 style={shelfHeader}>OPEN SHOW ROOMS:</h1>
               <div style={shelfCol}>
                 {groupShelves.watching.map((r) => (
                   <ShowRow key={r.pill.showId} row={r} dot={!!r.pill.roomId && roomDotByRoomId.has(r.pill.roomId)} line2={gapLine(r)} onClick={() => onRowClick(r.pill, r.name)} />
@@ -494,25 +535,32 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           )}
 
           {groupShelves.notStarted.length > 0 && (
-            <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: groupShelves.watching.length ? 40 : 0 }}>
-              Haven&rsquo;t started yet:
-            </h1>
+            <>
+              <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: groupShelves.watching.length ? 40 : 0 }}>
+                Proposed shows:
+              </h1>
+              <div style={shelfCol}>
+                {groupShelves.notStarted.map((r) => (
+                  <ShowRow key={r.pill.showId} row={r} dot={!!r.pill.roomId && roomDotByRoomId.has(r.pill.roomId)} line2={null} onClick={() => onRowClick(r.pill, r.name)} />
+                ))}
+              </div>
+            </>
           )}
+
           {empty && (
             <h1 style={{ ...heroH1, textAlign: "center", marginTop: 8, marginBottom: 8 }}>
               What shows are you watching<br />or thinking about starting?
             </h1>
           )}
-          <div style={{ textAlign: "center", marginBottom: 24, marginTop: groupShelves.notStarted.length === 0 && groupShelves.watching.length ? 40 : 0 }}>
-            <button style={searchPill} onClick={() => setSearchOpen(true)}>SEARCH</button>
+
+          {/* The group room's two centered actions, set a little apart from
+              the show rows above (desktop CP2 order + copy). */}
+          <div style={{ textAlign: "center", marginTop: empty ? 24 : 40 }}>
+            <button style={searchPill} onClick={() => setSearchOpen(true)}>Propose more shows?</button>
           </div>
-          {groupShelves.notStarted.length > 0 && (
-            <div style={shelfCol}>
-              {groupShelves.notStarted.map((r) => (
-                <ShowRow key={r.pill.showId} row={r} dot={!!r.pill.roomId && roomDotByRoomId.has(r.pill.roomId)} line2={null} onClick={() => onRowClick(r.pill, r.name)} />
-              ))}
-            </div>
-          )}
+          <div style={{ textAlign: "center", marginTop: 16 }}>
+            <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
+          </div>
         </div>
       )}
 
@@ -534,7 +582,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         );
         const showRead = !!gs?.roomId && visibleWriters.length >= 1;
         const readName = visibleWriters.length === 1 ? (memberNameById[visibleWriters[0].userId] ?? "someone") : null;
-        const readText = visibleWriters.length > 1 ? "Read what your friends have written?" : `Read what @${readName} has written?`;
+        // Display names, bare (naming arc: no "@" where a given name renders).
+        const readText = visibleWriters.length > 1 ? "Read what your friends have written?" : `Read what ${readName} has written?`;
         const interestedNames = (gs?.members ?? [])
           .filter((m) => m.userId !== selfUserId)
           .map((m) => memberNameById[m.userId] ?? "someone");
@@ -642,9 +691,34 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       {/* ── Gear: rename + leave (bottom sheet; desktop copy) ── */}
       {gearOpen && (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) setGearOpen(false); }}>
-          <div style={{ ...bottomSheet, background: C.yellow }}>
+          <div style={{ ...bottomSheet, background: C.yellow, maxHeight: "80dvh", overflowY: "auto" }}>
             {/* Bottom-sheet rule (Alborz 2026-07-03): bottom-of-screen panels
                 LEFT-justify their elements; full-screen panels center. */}
+            {/* CP-C: the contacts card comes FIRST (desktop round-2 order +
+                copy) — the viewer's own names for the people here. */}
+            {others.length > 0 && (
+              <>
+                <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 4 }}>Update your contact list:</div>
+                <div style={{ color: C.cream, fontSize: 11, opacity: 0.85, marginBottom: 12, lineHeight: 1.5 }}>
+                  Your friends&rsquo; names default to their log-in info. You can enter your own names for them &mdash; just like you would on your phone&rsquo;s contacts.
+                </div>
+                {others.map((m) => (
+                  <input
+                    key={m.userId}
+                    value={contactEdits[m.userId] ?? ""}
+                    onChange={(e) => setContactEdits((prev) => ({ ...prev, [m.userId]: e.target.value }))}
+                    placeholder={m.username}
+                    maxLength={40}
+                    style={{ ...renameInput, marginBottom: 8 }}
+                    className="m-input"
+                  />
+                ))}
+                <button style={{ ...startBtn, marginTop: 4, opacity: contactsSaving ? 0.6 : 1 }} disabled={contactsSaving} onClick={saveContactNames}>
+                  {contactsSaving ? "saving…" : "save names"}
+                </button>
+                <div style={sheetDivider} />
+              </>
+            )}
             <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Rename group:</div>
             <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={renameInput} className="m-input" />
             <button style={{ ...startBtn, marginTop: 12 }} onClick={doRename}>confirm name</button>

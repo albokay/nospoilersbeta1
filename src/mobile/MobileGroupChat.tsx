@@ -9,9 +9,11 @@ import {
   fetchGroupMessages,
   sendGroupMessage,
   fetchPeopleGroupMembers,
+  fetchContactNames,
   markGroupChatSeen,
   type GroupMessage,
 } from "../lib/db";
+import { personDisplayName } from "../lib/groupNames";
 import type { PeopleGroupMember } from "../types";
 
 /**
@@ -38,6 +40,7 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
   const selfUserId = user?.id ?? "";
 
   const [members, setMembers] = useState<PeopleGroupMember[]>([]);
+  const [contactNames, setContactNames] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [input, setInput] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -62,6 +65,11 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
         setMembers(ms);
         for (const m of ms) nameById[m.userId] = m.username;
       } catch { /* tolerate */ }
+      // The viewer's contact names (naming arc 2026-07-07) — bylines + the
+      // connected-with line render given names; tolerant → handles.
+      fetchContactNames(user.id)
+        .then((cn) => { if (!cancelled) setContactNames(cn); })
+        .catch(() => { /* tolerate */ });
 
       // group_messages is member-gated RLS, so the realtime socket must carry
       // the user's token or it silently delivers nothing (same note as desktop).
@@ -121,8 +129,10 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
   if (authLoading) return null;
   if (!user) return <Navigate to="/m" replace />;
 
+  // Given names, bare (naming arc: the "@" drops wherever a display name
+  // renders; an unnamed person shows their handle).
   const others = members.filter((m) => m.userId !== selfUserId);
-  const connected = others.length ? others.map((m) => `@${m.username}`).join(", ") : "just you";
+  const connected = others.length ? others.map((m) => personDisplayName(contactNames, m.userId, m.username)).join(", ") : "just you";
 
   return (
     <div style={page}>
@@ -143,7 +153,7 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
           const mine = m.authorId === selfUserId;
           return (
             <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
-              {!mine && <div style={{ fontSize: 11, color: C.cream, opacity: 0.85, marginBottom: 3 }}>{m.username}</div>}
+              {!mine && <div style={{ fontSize: 11, color: C.cream, opacity: 0.85, marginBottom: 3 }}>{personDisplayName(contactNames, m.authorId, m.username)}</div>}
               <div style={mine ? bubbleMine : bubbleOther}>{linkifyText(m.body)}</div>
             </div>
           );
