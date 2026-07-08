@@ -1319,12 +1319,6 @@ export default function V2RoomMap({
                       // and would visually contaminate the grey hidden-cell
                       // fill with a contrasting outline color.
                       const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer);
-                      // Stars are cream on any FILLED cell; on an outline-only
-                      // cell (reached, no writing) they take the outline's own
-                      // color — the same expression cellShapeStyle uses for
-                      // that border.
-                      const isOutlineOnly = isReached && !entry && !(editMode && isSelf);
-                      const starColor = isOutlineOnly ? (isSelf ? CANON.identity : CANON.business) : "#FEF8EA";
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
                         ? { border: "2px solid var(--canon-cream,#fef8ea)" }
                         : {};
@@ -1403,7 +1397,7 @@ export default function V2RoomMap({
                             // (32 - 2*2 = 28). Without this the star face
                             // overflows the content area 2px right + 2px
                             // down, shifting it off-center.
-                            <StarFace rating={rating} size={CELL - 4} color={starColor} />
+                            <StarFace rating={rating} size={CELL - 4} />
                           )}
                         </div>
                       );
