@@ -1324,7 +1324,7 @@ export default function V2RoomMap({
                       // color — the same expression cellShapeStyle uses for
                       // that border.
                       const isOutlineOnly = isReached && !entry && !(editMode && isSelf);
-                      const starColor = isOutlineOnly ? (isSelf ? CANON.identity : "var(--dos-border)") : "#FEF8EA";
+                      const starColor = isOutlineOnly ? (isSelf ? CANON.identity : CANON.business) : "#FEF8EA";
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
                         ? { border: "2px solid var(--canon-cream,#fef8ea)" }
                         : {};
@@ -1707,7 +1707,10 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
     };
   }
   const filledBg = isSelf ? CANON.identity : CANON.personal;
-  const outlineColor = isSelf ? CANON.identity : "var(--dos-border)";
+  // Full-opacity outline color (2026-07-07): the non-self border used the
+  // translucent var(--dos-border) (rgba .3), which read as washed-out; the
+  // opaque greyblue equivalent keeps the look but at full opacity.
+  const outlineColor = isSelf ? CANON.identity : CANON.business;
   // Hidden-entry cell: the member authored at (s, e) but the viewer
   // hasn't reached it yet — the entry is invisible to them. OPAQUE canon
   // greyblue fill (var(--canon-business,#8daaba), flat — no opacity) so a multi-entry stack's
@@ -1733,13 +1736,11 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
       background: "transparent",
       border: `2px solid ${outlineColor}`,
       borderRadius: "50%",
-      opacity: 0.7,
     };
   }
   return {
     background: "transparent",
     border: "2px dashed var(--canon-cream,#fef8ea)",
     borderRadius: "50%",
-    opacity: 0.5,
   };
 }
