@@ -231,25 +231,30 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
           <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal", color: C.cream, margin: "0 0 20px" }}>
             (You can invite more later.)
           </p>
-          <input
-            value={friendName}
-            onChange={(e) => setFriendName(e.target.value)}
-            placeholder="their name"
-            maxLength={40}
-            className="m-onb-input"
-            style={{ ...creamInput, marginBottom: 10 }}
-          />
-          <input
-            value={friendEmail}
-            onChange={(e) => setFriendEmail(e.target.value)}
-            placeholder="their email"
-            type="email"
-            inputMode="email"
-            autoCapitalize="none"
-            autoCorrect="off"
-            className="m-onb-input"
-            style={{ ...creamInput, marginBottom: 20 }}
-          />
+          {/* Exactly the standard invite-sheet row (Alborz 2026-07-08): name
+              + email SIDE BY SIDE (0.8/1.2), "their name" / "email" — two
+              equal stacked fields read as one thing. */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+            <input
+              value={friendName}
+              onChange={(e) => setFriendName(e.target.value)}
+              placeholder="their name"
+              maxLength={40}
+              className="m-onb-input"
+              style={{ ...creamInput, marginBottom: 0, flex: 0.8, minWidth: 0 }}
+            />
+            <input
+              value={friendEmail}
+              onChange={(e) => setFriendEmail(e.target.value)}
+              placeholder="email"
+              type="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              className="m-onb-input"
+              style={{ ...creamInput, marginBottom: 0, flex: 1.2, minWidth: 0 }}
+            />
+          </div>
           {/* Optional "hi, it's…" — the invite sheet's copy, singular. */}
           <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal", lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>
             Your friend will get an email invite from your username. If you don&rsquo;t think they&rsquo;d recognize it, tell them who you are:
