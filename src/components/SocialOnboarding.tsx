@@ -73,6 +73,10 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   // Screen 2 — the one required friend (the site's real invite card).
   const [friendName, setFriendName] = useState("");
   const [friendEmail, setFriendEmail] = useState("");
+  // Optional "hi, it's…" (2026-07-07, invite-modal parity): rides the invite
+  // email so the friend knows who's asking, and seeds THEIR contact name for
+  // the inviter on accept (the send fn writes it best-effort at email time).
+  const [fromName, setFromName] = useState("");
   const [advancing, setAdvancing] = useState(false);
 
   const bootRef = useRef<Boot>({});
@@ -194,12 +198,12 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
     // NOW the invite email — held until the writing existed. Transient
     // failure → one auto-retry after a short delay (the button keeps its
     // animated posting… ellipsis); auth failure → straight to copy-the-link.
-    const first = await sendGroupInviteEmail(boot.token);
+    const first = await sendGroupInviteEmail(boot.token, fromName.trim() || undefined);
     if (first.ok) { setStep(4); return; }
     const authFail = first.status === 401 || first.status === 403;
     if (!authFail) {
       await new Promise((r) => setTimeout(r, 2500));
-      const second = await sendGroupInviteEmail(boot.token);
+      const second = await sendGroupInviteEmail(boot.token, fromName.trim() || undefined);
       if (second.ok) { setStep(4); return; }
     }
     setFallbackLink(`${window.location.origin}/group-invite/${boot.token}`);
@@ -307,6 +311,17 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
             value={friendEmail}
             onChange={(e) => setFriendEmail(e.target.value)}
             placeholder="their email"
+            style={{ ...searchInput, border: "none", background: CANON.cream, color: CANON.dark, marginBottom: 20 }}
+          />
+          {/* Optional "hi, it's…" — the invite modal's copy, singular. */}
+          <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal", lineHeight: 1.5, color: CANON.cream, margin: "0 0 10px" }}>
+            Your friend will get an email invite from your username. If you don&rsquo;t think they&rsquo;d recognize it, tell them who you are:
+          </p>
+          <input
+            value={fromName}
+            onChange={(e) => setFromName(e.target.value)}
+            placeholder="hi, it's…"
+            maxLength={40}
             style={{ ...searchInput, border: "none", background: CANON.cream, color: CANON.dark, marginBottom: 20 }}
           />
           <div style={{ textAlign: "center" }}>

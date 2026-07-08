@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Modal from "./Modal";
+import StarFace from "./v2/StarFace";
 import { CANON } from "../styles/canon";
 
 // Rating capture modal — replaces the OneSelectProgress confirm modal on
@@ -19,7 +20,7 @@ import { CANON } from "../styles/canon";
 //   - closing this modal (by unmounting it)
 
 // Integer scale ASCENDS with goodness: 1 = worst, 6 = best. Aligns with
-// the dice-face display on the friend room map (more dots = better).
+// the star-face display on the friend room map (more stars = better).
 export const RATING_LABELS: Record<number, string> = {
   1: "Nope",
   2: "Losing me",
@@ -37,29 +38,13 @@ const INTER    = "Inter, sans-serif";
 
 const COMMIT_DELAY_MS = 150;
 
-// Dice-face dot layout (same integer→pip semantics as the map's DiceFace).
-// Solid sky square (4px radius) + cream dots — drawn locally so the modal's
-// dice can be recolored independently of the map's white-dot DiceFace. No
-// border, so the dot coordinates (relative to the size×size box) stay exactly
-// centered.
-function RatingDice({ rating, size = 24 }: { rating: number; size?: number }) {
-  const dotSize = Math.max(2, Math.round(size * 0.16));
-  const inset = Math.round(size * 0.28);
-  const center = size / 2;
-  const far = size - inset;
-  const positions: Record<number, [number, number][]> = {
-    1: [[center, center]],
-    2: [[far, inset], [inset, far]],
-    3: [[far, inset], [center, center], [inset, far]],
-    4: [[inset, inset], [far, inset], [inset, far], [far, far]],
-    5: [[inset, inset], [far, inset], [center, center], [inset, far], [far, far]],
-    6: [[inset, inset], [far, inset], [inset, center], [far, center], [inset, far], [far, far]],
-  };
+// Star face in a sky CIRCLE — the same shared StarFace (cream stars) the
+// room map's rating cells use (dice dots → stars, 2026-07-07), so the
+// pick-a-rating choices and the map read as one system.
+function RatingStars({ rating, size = 24 }: { rating: number; size?: number }) {
   return (
-    <div style={{ position: "relative", width: size, height: size, background: SKY, borderRadius: 4, flex: "0 0 auto" }}>
-      {(positions[rating] ?? []).map(([x, y], i) => (
-        <div key={i} style={{ position: "absolute", left: x, top: y, width: dotSize, height: dotSize, borderRadius: "50%", background: CREAM, transform: "translate(-50%, -50%)" }} />
-      ))}
+    <div style={{ width: size, height: size, background: SKY, borderRadius: "50%", flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <StarFace rating={rating} size={size} />
     </div>
   );
 }
@@ -111,7 +96,7 @@ export default function RatingCaptureModal({
               {/* Keep label slot rendered (visibility:hidden) so the pill
                   height doesn't change when labels collapse. */}
               <span style={{ visibility: showLabel ? "visible" : "hidden", display: "inline-flex", alignItems: "center", gap: 12 }}>
-                <RatingDice rating={r} />
+                <RatingStars rating={r} />
                 {RATING_LABELS[r]}
               </span>
             </button>

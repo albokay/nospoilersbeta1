@@ -760,7 +760,6 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         <MobileSearchSheet
           shows={shows}
           progress={progress}
-          outOfPool={outOfPool}
           groupContext={{
             // A left room is findable again as "· rejoin" (CP5); everything
             // else already surfaced here reads "already in this group".

@@ -7,30 +7,29 @@ import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } 
 import type { ProgressEntry } from "../types";
 
 /**
- * Full-screen show search (mobile idiom of the desktop dashboard's cream
- * search overlay) — shared by MobileDashboard and MobileGroupRoom, since the
- * desktop search overlay serves both contexts too. Same behavior as desktop:
- * catalog results first (in-pool notes, out-of-pool "restore"), then TVMaze
- * matches to add a not-yet-cataloged show, then the "How much have you
- * watched?" picker before adding.
+ * Full-screen show search (mobile idiom of the desktop group room's cream
+ * search overlay). Two consumers since the groups-only cutover (2026-07-07;
+ * the personal-dashboard mode died with mobile CP2): the GROUP room (search
+ * = propose, via groupContext) and the ONBOARDING flow (bare pick, no
+ * context). Catalog results first, then TVMaze matches to add a
+ * not-yet-cataloged show, then the "How much have you watched?" picker.
  *
- * The parent owns what happens on add/restore (rail/group refreshes differ
- * by context); this component owns the search/pick UI + TVMaze create.
+ * The parent owns what happens on pick (proposing/refreshing differs by
+ * context); this component owns the search/pick UI + TVMaze create.
  */
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const C = { green: CANON.personal, blue: CANON.identity, cream: CANON.cream, midnight: CANON.dark };
 
 export default function MobileSearchSheet({
-  shows, progress, outOfPool, groupContext, addLabel, onClose, onAdd, onRestore, onCatalogAdd,
+  shows, progress, groupContext, addLabel, onClose, onAdd, onCatalogAdd,
 }: {
   shows: Show[];
   progress: Record<string, ProgressEntry>;
-  outOfPool: Set<string>;
   /** Group-scoped model (2026-07-06, desktop parity): inside a group the
    *  search PROPOSES. A show already surfaced in the group reads "already in
-   *  this group"; a hit you have any progress row for (in or out of the
-   *  personal pool) proposes directly with no picker, progress untouched. */
+   *  this group"; a hit you have any progress row for proposes directly with
+   *  no picker, progress untouched. Omit for a bare pick (onboarding). */
   groupContext?: {
     groupShowIds: Set<string>;
     /** CP5: rooms the viewer LEFT — listed as "· rejoin", selecting re-enters
@@ -45,9 +44,6 @@ export default function MobileSearchSheet({
   onClose: () => void;
   /** Add a picked show at the picked progress (parent persists + closes). */
   onAdd: (show: Show, val: { s: number; e: number }) => void;
-  /** Re-add a removed show (restores saved progress; parent persists + closes).
-   *  Personal context only — the group context proposes instead. */
-  onRestore?: (show: Show) => void;
   /** A TVMaze show was just created in the catalog — merge into parent state. */
   onCatalogAdd: (show: Show) => void;
 }) {
@@ -64,14 +60,8 @@ export default function MobileSearchSheet({
     if (!q) return [];
     return shows
       .filter((s) => !s.isHidden && s.name.toLowerCase().includes(q))
-      .map((s) => ({
-        show: s,
-        // In a group, "already added" means already in THIS group (proposal
-        // or room) — the personal pool doesn't gate proposing here.
-        inPool: groupContext ? groupContext.groupShowIds.has(s.id) : !!progress[s.id] && !outOfPool.has(s.id),
-      }))
       .slice(0, 8);
-  }, [query, shows, progress, outOfPool, groupContext]);
+  }, [query, shows]);
 
   useEffect(() => {
     const q = query.trim();
@@ -137,10 +127,10 @@ export default function MobileSearchSheet({
           />
           {results.length > 0 && (
             <div style={{ marginTop: 8 }}>
-              {results.map(({ show: s, inPool }) => (
-                inPool ? (
+              {results.map((s) => (
+                groupContext?.groupShowIds.has(s.id) ? (
                   <div key={s.id} style={{ ...resultRow, cursor: "default", opacity: 0.55 }}>
-                    {groupContext ? <><i>{s.name}</i> is already in this group.</> : <>You&rsquo;ve already added <i>{s.name}</i> to your watch pool.</>}
+                    <i>{s.name}</i> is already in this group.
                   </div>
                 ) : groupContext?.rejoinShowIds?.has(s.id) ? (
                   // CP5: re-enter a room you'd left (marker clears server-side).
@@ -154,8 +144,9 @@ export default function MobileSearchSheet({
                     {s.name}
                   </button>
                 ) : (
-                  <button key={s.id} style={resultRow} onClick={() => { if (outOfPool.has(s.id)) { onRestore?.(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}>
-                    {s.name}{outOfPool.has(s.id) ? " · restore" : ""}
+                  // Bare pick (onboarding): every hit opens the picker.
+                  <button key={s.id} style={resultRow} onClick={() => { setPickShow(s); setPickProgress({ s: 0, e: 0 }); }}>
+                    {s.name}
                   </button>
                 )
               ))}
