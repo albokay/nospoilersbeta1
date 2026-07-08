@@ -34,6 +34,7 @@ import OneSelectProgress from "./OneSelectProgress";
 import RatingCaptureModal from "./RatingCaptureModal";
 import SidebarLogo from "./SidebarLogo";
 import FeedbackWidget from "./FeedbackWidget";
+import LoadingDots from "./LoadingDots";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
 import SIKWSticky from "./SIKWSticky";
@@ -372,7 +373,25 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       await Promise.all(changes.map((c) => c.rating === null
         ? deleteEpisodeRating({ userId: user.id, showId: show.id, season: c.s, episode: c.e })
         : upsertEpisodeRating({ userId: user.id, showId: show.id, season: c.s, episode: c.e, rating: c.rating })));
-      await load();
+      // Patch the viewer's own map cells in place (perf 2026-07-07): only
+      // their ratings changed and the writes just succeeded, so the full
+      // room reload (writing + map + drafts refetch) was pure waste — the
+      // whole page visibly restarted on every edit-mode save.
+      setMapMembers((prev) => prev.map((m) => {
+        if (m.userId !== user.id) return m;
+        let ratings = m.ratings;
+        for (const c of changes) {
+          if (c.rating === null) {
+            ratings = ratings.filter((r) => !(r.s === c.s && r.e === c.e));
+          } else {
+            const idx = ratings.findIndex((r) => r.s === c.s && r.e === c.e);
+            ratings = idx >= 0
+              ? ratings.map((r, i) => (i === idx ? { ...r, rating: c.rating as number } : r))
+              : [...ratings, { s: c.s, e: c.e, rating: c.rating as number }];
+          }
+        }
+        return { ...m, ratings };
+      }));
       return { ok: true };
     } catch (e) { console.warn("batch rating commit failed", e); return { ok: false }; }
   }
@@ -523,7 +542,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }, [mapMembers, roomContactNames]);
 
   if (authLoading || loading) {
-    return <div style={{ ...page, background: C.green }} aria-busy="true" />;
+    return (
+      <div style={{ ...page, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
+        {/* Standard loading line: "loading" + ellipses, Header 2, cream. */}
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>loading<LoadingDots /></span>
+      </div>
+    );
   }
 
   const bodyBg = tab === "friend" ? C.sky : C.green;
