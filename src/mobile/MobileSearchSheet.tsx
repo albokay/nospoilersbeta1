@@ -22,16 +22,25 @@ const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const C = { green: CANON.personal, blue: CANON.identity, cream: CANON.cream, midnight: CANON.dark };
 
 export default function MobileSearchSheet({
-  shows, progress, outOfPool, onClose, onAdd, onRestore, onCatalogAdd,
+  shows, progress, outOfPool, groupContext, onClose, onAdd, onRestore, onCatalogAdd,
 }: {
   shows: Show[];
   progress: Record<string, ProgressEntry>;
   outOfPool: Set<string>;
+  /** Group-scoped model (2026-07-06, desktop parity): inside a group the
+   *  search PROPOSES. A show already surfaced in the group reads "already in
+   *  this group"; a hit you have any progress row for (in or out of the
+   *  personal pool) proposes directly with no picker, progress untouched. */
+  groupContext?: {
+    groupShowIds: Set<string>;
+    onProposeExisting: (show: Show) => void;
+  };
   onClose: () => void;
   /** Add a picked show at the picked progress (parent persists + closes). */
   onAdd: (show: Show, val: { s: number; e: number }) => void;
-  /** Re-add a removed show (restores saved progress; parent persists + closes). */
-  onRestore: (show: Show) => void;
+  /** Re-add a removed show (restores saved progress; parent persists + closes).
+   *  Personal context only — the group context proposes instead. */
+  onRestore?: (show: Show) => void;
   /** A TVMaze show was just created in the catalog — merge into parent state. */
   onCatalogAdd: (show: Show) => void;
 }) {
@@ -48,9 +57,14 @@ export default function MobileSearchSheet({
     if (!q) return [];
     return shows
       .filter((s) => !s.isHidden && s.name.toLowerCase().includes(q))
-      .map((s) => ({ show: s, inPool: !!progress[s.id] && !outOfPool.has(s.id) }))
+      .map((s) => ({
+        show: s,
+        // In a group, "already added" means already in THIS group (proposal
+        // or room) — the personal pool doesn't gate proposing here.
+        inPool: groupContext ? groupContext.groupShowIds.has(s.id) : !!progress[s.id] && !outOfPool.has(s.id),
+      }))
       .slice(0, 8);
-  }, [query, shows, progress, outOfPool]);
+  }, [query, shows, progress, outOfPool, groupContext]);
 
   useEffect(() => {
     const q = query.trim();
@@ -118,9 +132,17 @@ export default function MobileSearchSheet({
             <div style={{ marginTop: 8 }}>
               {results.map(({ show: s, inPool }) => (
                 inPool ? (
-                  <div key={s.id} style={{ ...resultRow, cursor: "default", opacity: 0.55 }}>You&rsquo;ve already added <i>{s.name}</i> to your watch pool.</div>
+                  <div key={s.id} style={{ ...resultRow, cursor: "default", opacity: 0.55 }}>
+                    {groupContext ? <><i>{s.name}</i> is already in this group.</> : <>You&rsquo;ve already added <i>{s.name}</i> to your watch pool.</>}
+                  </div>
+                ) : groupContext ? (
+                  // A show with an existing progress row proposes as-is (no
+                  // picker — saved progress kept); anything else picks first.
+                  <button key={s.id} style={resultRow} onClick={() => { if (progress[s.id]) { groupContext.onProposeExisting(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}>
+                    {s.name}
+                  </button>
                 ) : (
-                  <button key={s.id} style={resultRow} onClick={() => { if (outOfPool.has(s.id)) { onRestore(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}>
+                  <button key={s.id} style={resultRow} onClick={() => { if (outOfPool.has(s.id)) { onRestore?.(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}>
                     {s.name}{outOfPool.has(s.id) ? " · restore" : ""}
                   </button>
                 )
