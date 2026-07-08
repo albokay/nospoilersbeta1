@@ -20,15 +20,13 @@ const STAR_POSITIONS: Record<number, [number, number][]> = {
   2: [[0.36, 0.34], [0.64, 0.66]],
   3: [[0.5, 0.28], [0.32, 0.7], [0.68, 0.7]],
   4: [[0.32, 0.32], [0.68, 0.32], [0.32, 0.68], [0.68, 0.68]],
-  // Pentagon (top, upper-L, upper-R, lower-L, lower-R), nudged up ~1px so the
-  // cluster sits centered in the circle rather than a touch low.
-  5: [[0.5, 0.184], [0.215, 0.391], [0.785, 0.391], [0.324, 0.727], [0.676, 0.727]],
-  6: [[0.5, 0.184], [0.215, 0.391], [0.785, 0.391], [0.324, 0.727], [0.676, 0.727], [0.5, 0.484]],
+  // Pentagon: top, upper-L, upper-R, lower-L, lower-R.
+  5: [[0.5, 0.22], [0.215, 0.427], [0.785, 0.427], [0.324, 0.763], [0.676, 0.763]],
+  6: [[0.5, 0.22], [0.215, 0.427], [0.785, 0.427], [0.324, 0.763], [0.676, 0.763], [0.5, 0.52]],
 };
 
-// One uniform star size across every rating (the smaller weight — keeps the
-// dense 5/6 clusters from overlapping and reads consistently 1→6).
-const STAR_RADIUS = 0.145;
+// One uniform star size across every rating (reads consistently 1→6).
+const STAR_RADIUS = 0.17;
 
 // A chunky 5-point star centered at (cx,cy), outer radius ro. Inner ratio 0.45.
 function starPath(cx: number, cy: number, ro: number): string {
@@ -42,7 +40,7 @@ function starPath(cx: number, cy: number, ro: number): string {
   return `M${pts.join("L")}Z`;
 }
 
-export default function StarFace({ rating, size = 32 }: { rating: number; size?: number }) {
+export default function StarFace({ rating, size = 32, color = "#FEF8EA" }: { rating: number; size?: number; color?: string }) {
   const positions = STAR_POSITIONS[rating] ?? [];
   const ro = STAR_RADIUS * 100;
   return (
@@ -54,7 +52,7 @@ export default function StarFace({ rating, size = 32 }: { rating: number; size?:
       aria-hidden
     >
       {positions.map(([x, y], i) => (
-        <path key={i} d={starPath(x * 100, y * 100, ro)} fill="#FEF8EA" />
+        <path key={i} d={starPath(x * 100, y * 100, ro)} fill={color} />
       ))}
     </svg>
   );
