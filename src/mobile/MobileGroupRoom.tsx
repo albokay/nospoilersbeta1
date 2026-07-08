@@ -257,6 +257,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
+      // CP5: a room the viewer deliberately LEFT is hidden from THEIR shelves
+      // only (never-joined rooms stay visible for discovery; desktop parity).
+      if (gs.viewerLeft && !gs.inRoom) continue;
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
       const opted: OptIn[] = gs.members
@@ -417,6 +420,16 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     } catch (e) {
       console.error("[m-group] propose show failed", e);
     }
+    setSearchOpen(false);
+  }
+
+  // CP5 restore: re-enter a room you'd left (search → "· rejoin"). Clears the
+  // "has left" marker server-side (start_show_room's re-join path).
+  async function rejoinRoom(show: Show) {
+    try {
+      await startShowRoom(groupId, show.id);
+      await refreshGroup();
+    } catch (e) { console.error("[m-group] rejoin room failed", e); }
     setSearchOpen(false);
   }
 
@@ -749,8 +762,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           progress={progress}
           outOfPool={outOfPool}
           groupContext={{
-            groupShowIds: new Set(groupShows.map((gs) => gs.showId)),
+            // A left room is findable again as "· rejoin" (CP5); everything
+            // else already surfaced here reads "already in this group".
+            groupShowIds: new Set(groupShows.filter((gs) => !(gs.roomId && gs.viewerLeft && !gs.inRoom)).map((gs) => gs.showId)),
+            rejoinShowIds: new Set(groupShows.filter((gs) => !!gs.roomId && gs.viewerLeft && !gs.inRoom).map((gs) => gs.showId)),
             onProposeExisting: proposeExisting,
+            onRejoin: rejoinRoom,
           }}
           onClose={() => setSearchOpen(false)}
           onAdd={addShow}

@@ -8,6 +8,7 @@ import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, markRoomSeen,
   fetchHighlights, fetchPeopleGroupsForUser, fetchRoomDigestOptOut, setRoomDigestOptOut,
+  leaveShowRoom,
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
@@ -122,6 +123,28 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       alert("Couldn't update your email setting. Please try again.");
     } finally {
       setDigestBusy(false);
+    }
+  }
+
+  // CP5 (mobile mirror): leave ONLY this show room in this group — never
+  // global. Writing stays intact; the room and everyone else's votes are
+  // untouched; rejoin via the group's search ("· rejoin"). Lands back on the
+  // group, whose shelf now hides this room for the leaver only.
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [leaveBusy, setLeaveBusy] = useState(false);
+  async function doLeaveRoom() {
+    if (!roomId || leaveBusy) return;
+    setLeaveBusy(true);
+    try {
+      await leaveShowRoom(roomId);
+      setLeaveConfirmOpen(false);
+      setDigestModalOpen(false);
+      closeRoom();
+    } catch (e) {
+      console.error("[m-show-room] leave room failed", e);
+      alert("Couldn't leave the room. Please try again.");
+    } finally {
+      setLeaveBusy(false);
     }
   }
 
@@ -668,6 +691,31 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 <div style={digestSub}>You'll stop getting the daily digest for this room. You can resubscribe here anytime.</div>
               </>
             )}
+            {/* CP5: per-room leave lives here (the room's own gear) — mobile
+                has no hover-X on the group shelf rows. */}
+            <div style={digestDivider} />
+            <div style={digestTitle}>Leave this show room?</div>
+            <button style={alertBtn} onClick={() => { setDigestModalOpen(false); setLeaveConfirmOpen(true); }}>yes, leave</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── CP5: leave-room confirm (bottom sheet; desktop copy; left-justified
+             per the bottom-sheet rule) ── */}
+      {leaveConfirmOpen && roomId && (
+        <div style={dim} onClick={(e) => { if (e.target === e.currentTarget && !leaveBusy) setLeaveConfirmOpen(false); }}>
+          <div style={{ ...bottomSheet, background: C.yellow }}>
+            <div style={{ color: C.cream, fontWeight: 700, fontSize: 15, marginBottom: 12, letterSpacing: -0.3 }}>Leave this show room?</div>
+            <div style={{ color: C.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>
+              This takes you out of the <b>{show?.name ?? "show"}</b> room in this group and removes it from your shelf.
+            </div>
+            <div style={{ color: C.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
+              If you have writing in the room, it will stay intact. Search and add the show back anytime to rejoin.
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-start", gap: 16, alignItems: "center" }}>
+              <button style={{ ...alertBtn, opacity: leaveBusy ? 0.6 : 1 }} disabled={leaveBusy} onClick={doLeaveRoom}>leave</button>
+              <button style={{ border: "none", background: "transparent", color: C.cream, fontWeight: 700, fontSize: 13, cursor: "pointer", minHeight: 44 }} disabled={leaveBusy} onClick={() => setLeaveConfirmOpen(false)}>cancel</button>
+            </div>
           </div>
         </div>
       )}

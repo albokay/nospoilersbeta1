@@ -33,7 +33,11 @@ export default function MobileSearchSheet({
    *  personal pool) proposes directly with no picker, progress untouched. */
   groupContext?: {
     groupShowIds: Set<string>;
+    /** CP5: rooms the viewer LEFT — listed as "· rejoin", selecting re-enters
+     *  (clears the "has left" marker via start_show_room's re-join path). */
+    rejoinShowIds?: Set<string>;
     onProposeExisting: (show: Show) => void;
+    onRejoin?: (show: Show) => void;
   };
   /** Picker commit-button label override (default "add to my shows") — the
    *  onboarding flow reuses this sheet and advances with "next". */
@@ -138,6 +142,11 @@ export default function MobileSearchSheet({
                   <div key={s.id} style={{ ...resultRow, cursor: "default", opacity: 0.55 }}>
                     {groupContext ? <><i>{s.name}</i> is already in this group.</> : <>You&rsquo;ve already added <i>{s.name}</i> to your watch pool.</>}
                   </div>
+                ) : groupContext?.rejoinShowIds?.has(s.id) ? (
+                  // CP5: re-enter a room you'd left (marker clears server-side).
+                  <button key={s.id} style={resultRow} onClick={() => groupContext.onRejoin?.(s)}>
+                    {s.name} · rejoin
+                  </button>
                 ) : groupContext ? (
                   // A show with an existing progress row proposes as-is (no
                   // picker — saved progress kept); anything else picks first.
