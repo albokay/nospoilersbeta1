@@ -95,7 +95,13 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         .map((r) => ({ show: showsById[r.showId], entry: { s: r.s, e: r.e } as ProgressEntry }))
         .filter((x): x is { show: Show; entry: ProgressEntry } => !!x.show && !x.show.isHidden)
         .sort(byName);
-      return { watching: map(pool.rooms), interested: map(pool.proposals) };
+      // s0e0 room shows (haven't started) belong on the "interested in
+      // starting" shelf, not "already watching" (Alborz 2026-07-08).
+      const started = (r: PublicPoolShow) => (r.s ?? 0) > 0 || (r.e ?? 0) > 0;
+      return {
+        watching: map(pool.rooms.filter(started)),
+        interested: map([...pool.proposals, ...pool.rooms.filter((r) => !started(r))]),
+      };
     }
     const w: { show: Show; entry: ProgressEntry }[] = [];
     const n: { show: Show; entry: ProgressEntry }[] = [];
