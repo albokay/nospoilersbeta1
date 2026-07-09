@@ -529,17 +529,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         </button>
       </div>
 
-      {/* ── Shows ↔ chat contextual toggle (group-room level only) ── */}
-      <div style={toggleRow}>
-        <div style={toggleShell}>
-          <button style={{ ...toggleSeg, background: C.cream, color: C.midnight }}>shows</button>
-          <button style={{ ...toggleSeg, background: "transparent", color: C.cream, position: "relative" }} onClick={() => navigate(`/m/group/${groupId}/chat`)}>
-            <MessageCircle size={16} style={{ marginRight: 6 }} />
-            chat
-            {chatNew && <span style={chatDot} />}
-          </button>
-        </div>
-      </div>
+      {/* ── Chat: a right-edge tab (matches desktop; 2026-07-09) — the old
+             shows/chat toggle wasn't a real toggle, just a link to chat. ── */}
+      <button style={chatTab} title="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
+        {chatNew && <span style={notifDotChat} />}
+        <MessageCircle size={24} color={C.green} />
+      </button>
 
       {loading ? (
         <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
@@ -861,17 +856,16 @@ const headerMembers: React.CSSProperties = {
   fontWeight: 700, fontSize: 12, color: C.cream, marginTop: 2,
   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
 };
-const toggleRow: React.CSSProperties = { display: "flex", justifyContent: "center", padding: "8px 16px 16px" };
-const toggleShell: React.CSSProperties = {
-  display: "inline-flex", borderRadius: 65, border: `2px solid ${C.cream}`, overflow: "hidden",
+// Right-edge chat tab (matches desktop's chatTab): a cream tab off the right
+// of the screen at 60% height; MessageCircle green; new-chat dot on the curve.
+const chatTab: React.CSSProperties = {
+  position: "fixed", right: 0, top: "60%", background: C.cream, border: "none", cursor: "pointer",
+  borderTopLeftRadius: 48, borderBottomLeftRadius: 48, padding: "24px 20px 24px 30px",
+  display: "inline-flex", alignItems: "center", boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
-const toggleSeg: React.CSSProperties = {
-  border: "none", cursor: "pointer", padding: "10px 24px", minHeight: 44,
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13,
-  display: "inline-flex", alignItems: "center",
-};
-const chatDot: React.CSSProperties = {
-  position: "absolute", top: 6, right: 8, width: 10, height: 10, borderRadius: "50%", background: C.blue,
+const notifDotChat: React.CSSProperties = {
+  position: "absolute", top: 10, left: 0, width: 16, height: 16, borderRadius: "50%",
+  background: C.blue, zIndex: 1,
 };
 const contentWrap: React.CSSProperties = { padding: "8px 16px 40px" };
 const shelfHeader: React.CSSProperties = {
