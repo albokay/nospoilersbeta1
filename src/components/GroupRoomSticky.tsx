@@ -47,12 +47,19 @@ export default function GroupRoomSticky({ onboarding = false }: { onboarding?: b
         }}
       >
         <div style={{ paddingRight: 12 }}>
-          We went ahead and created a show room for your first show so you can
-          see how things work. From now on, when you {"“"}propose more
-          shows,{"”"} it gets added to the {"“"}Proposed shows{"”"} list where
-          your friend(s) can vote for the shows they{"’"}re interested in.
-          They can add shows there too. Once you all decide on a show, anyone
-          can start a room for it and start writing.
+          <div>You have a room started for your first show.</div>
+          <div style={{ marginTop: 12 }}>
+            From now on, when you and your friends propose more shows, they get
+            added to a {"“"}proposed shows{"”"} list. Everyone can vote for the
+            shows they{"’"}re interested in, and anyone can start a room for any
+            show.
+          </div>
+          <div style={{ marginTop: 12 }}>
+            Use the 💬 button on the right to discuss what you want to watch.
+          </div>
+          <div style={{ marginTop: 12, fontStyle: "italic", opacity: 0.85 }}>
+            (Careful, the chat box isn{"’"}t spoiler-gated!)
+          </div>
         </div>
       </StickyNote>
     );

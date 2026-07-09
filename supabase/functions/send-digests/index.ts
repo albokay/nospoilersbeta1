@@ -136,7 +136,7 @@ function buildDigestHtml(rooms: RoomDigest[], baseUrl: string): string {
   </h1>
   ${sections}
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
-    To stop getting emails about your friend rooms, you can open a room and click the &#9881;&#65039; next to its name. There, toggle &ldquo;email digest&rdquo; to &ldquo;off.&rdquo;
+    To stop getting emails about your friend rooms, open a room and click the &#9881;&#65039; next to its name, then choose &ldquo;unsubscribe.&rdquo;
   </p>
 </div>
 </body>
@@ -167,7 +167,7 @@ function buildDigestText(rooms: RoomDigest[], baseUrl: string): string {
 
 ${sections}
 
-To stop getting emails about your friend rooms, you can open a room and click the gear icon next to its name. There, toggle "email digest" to "off."`;
+To stop getting emails about your friend rooms, open a room and click the gear icon next to its name, then choose "unsubscribe."`;
 }
 
 function json(payload: unknown, status = 200): Response {
