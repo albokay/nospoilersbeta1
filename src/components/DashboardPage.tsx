@@ -66,7 +66,6 @@ import {
   markGroupChatSeen,
   fetchTspDemoSeen,
   markTspDemoSeen,
-  fetchSocialOnboarded,
   markSocialOnboarded,
   type Show,
   type GroupDashboardShow,
@@ -167,15 +166,20 @@ export default function DashboardPage() {
     let cancelled = false;
     (async () => {
       try {
-        const done = await fetchSocialOnboarded(user.id);
-        if (cancelled || done) return;
         const [groups, invites] = await Promise.all([
           fetchPeopleGroupsForUser(user.id).catch(() => []),
           fetchMyPendingGroupInvites().catch(() => []),
         ]);
         if (cancelled) return;
-        if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); return; }
+        // Onboarding fires whenever you have NO groups and NO pending invites
+        // — brand-new self-signups AND a returning user who has LEFT all their
+        // groups (guide them back to starting a room + inviting a friend;
+        // Alborz 2026-07-08). Pending invite → accept that first; any group
+        // (incl. one just accepted into) stamps done + skips. The onboarded
+        // flag no longer suppresses it (a reset should re-guide). The TSP demo
+        // stays gated-once, so a returning user won't re-see it.
         if (invites.length > 0) return;
+        if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); return; }
         setShowSocialOnb(true);
       } catch { /* tolerant — never block the dashboard */ }
     })();

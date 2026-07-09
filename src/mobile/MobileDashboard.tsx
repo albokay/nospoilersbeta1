@@ -10,7 +10,6 @@ import LoadingDots from "../components/LoadingDots";
 import MobileInviteSheet from "./MobileInviteSheet";
 import MobileSocialOnboarding from "./MobileSocialOnboarding";
 import {
-  fetchSocialOnboarded,
   markSocialOnboarded,
   fetchPeopleGroupsForUser,
   fetchPeopleGroupMembers,
@@ -105,15 +104,18 @@ export default function MobileDashboard() {
     let cancelled = false;
     (async () => {
       try {
-        const done = await fetchSocialOnboarded(user.id);
-        if (cancelled || done) return;
         const [groups, invites] = await Promise.all([
           fetchPeopleGroupsForUser(user.id).catch(() => []),
           fetchMyPendingGroupInvites().catch(() => []),
         ]);
         if (cancelled) return;
-        if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); return; }
+        // Onboarding fires whenever you have NO groups and NO pending invites
+        // — brand-new self-signups AND a returning user who has LEFT all their
+        // groups (guide them back; Alborz 2026-07-08). Pending invite → accept
+        // first; any group stamps done + skips. The onboarded flag no longer
+        // suppresses it (a reset should re-guide). No TSP demo on mobile.
         if (invites.length > 0) return;
+        if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); return; }
         setShowSocialOnb(true);
       } catch { /* tolerant — never block the dashboard */ }
     })();
