@@ -113,15 +113,18 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
 
   const wants = info?.inviterWants ?? [];
   const watching = info?.inviterWatching ?? [];
+  // How the inviter is named to the invitee THROUGHOUT onboarding: if they
+  // typed a "hi, it's…" name, show ONLY that (no @handle, no parens — it
+  // becomes the invitee's contact name for them on accept anyway); else the
+  // @handle. (Alborz 2026-07-08.)
+  const inviterLabel = info?.inviterDisplayName || `@${info?.inviterName ?? "someone"}`;
+  // "Join a group with …?" — the inviter shows as their typed name; any other
+  // already-present members keep their @handle (no typed name to show).
   const others = info ? info.memberNames.filter((n) => n) : [];
-  const names = others.length
-    ? others.map((n) => `@${n}`).reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
-    : `@${info?.inviterName ?? "someone"}`;
-  // How the inviter is named to the invitee: "Johnny (@handle)" when a display
-  // name was given, else just "@handle".
-  const inviterLabel = info?.inviterDisplayName
-    ? `${info.inviterDisplayName} (@${info.inviterName})`
-    : `@${info?.inviterName ?? "someone"}`;
+  const memberLabels = others.map((n) => (n === info?.inviterName && info?.inviterDisplayName ? info.inviterDisplayName : `@${n}`));
+  const names = memberLabels.length
+    ? memberLabels.reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
+    : inviterLabel;
 
   // Account just created — brief "setting up" screen while routing to /dashboard.
   if (phase === "entering") {
@@ -140,7 +143,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   if (status === "ready" && info && !user && !authLoading && !postSignin) {
     return (
       <>
-        <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth }} />
+        <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth }} displayNameOverride={info.inviterDisplayName || undefined} />
         {phase === "signup" && (
           <AuthModal
             initialMode={info.inviteeHasAccount ? "signin" : "signup"}

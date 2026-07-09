@@ -154,11 +154,11 @@ serve(async (req) => {
     const inviteUrl = `${baseUrl}/group-invite/${token}`;
     const email     = (inv.invitee_email as string).toLowerCase().trim();
     const groupBit  = groupLabel ? ` &ldquo;${escapeHtml(groupLabel)}&rdquo;` : "";
-    // Subject shows the recognizable name + handle when provided; the body
-    // always uses the @handle alone.
-    const subject   = customName
-      ? `${customName} (@${inviterName}) invited you to a watch group on Sidebar`
-      : `@${inviterName} invited you to a watch group on Sidebar`;
+    // The inviter is shown to the invitee by their typed name ONLY when one was
+    // given (no @handle, no parens — it becomes the invitee's contact name for
+    // them on accept anyway); else the @handle. (Alborz 2026-07-08.)
+    const senderName = customName || `@${inviterName}`;
+    const subject   = `${senderName} invited you to a watch group on Sidebar`;
 
     const html = `
 <!DOCTYPE html>
@@ -166,7 +166,7 @@ serve(async (req) => {
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    📺 <strong>@${escapeHtml(inviterName)}</strong> wants to watch shows with you on Sidebar.
+    📺 <strong>${escapeHtml(senderName)}</strong> wants to watch shows with you on Sidebar.
   </h1>
   <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
     Sidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — everything is filtered by each person's watch progress. They've invited you to their watch group${groupBit}.
@@ -184,7 +184,7 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    const text = `@${inviterName} wants to watch shows with you on Sidebar.\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — filtered by each person's watch progress. They've invited you to their watch group${groupLabel ? ` "${groupLabel}"` : ""}.\n\ntalk. together. whenever.\n\nJoin here: ${inviteUrl}\n\nThis link expires in a week and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
+    const text = `${senderName} wants to watch shows with you on Sidebar.\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — filtered by each person's watch progress. They've invited you to their watch group${groupLabel ? ` "${groupLabel}"` : ""}.\n\ntalk. together. whenever.\n\nJoin here: ${inviteUrl}\n\nThis link expires in a week and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",

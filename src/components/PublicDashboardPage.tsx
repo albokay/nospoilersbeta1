@@ -27,7 +27,7 @@ const LORA = '"Lora", Georgia, serif';
 // "@X wants to watch these shows:" / "and is already watching these:" headings
 // (wants first), and a "Want to watch something with them? / JOIN IN" footer
 // instead of the watch-pool title + sign-in CTA. Same data + styling as /pool.
-export default function PublicDashboardPage({ username, invite }: { username: string; invite?: { onJoin: () => void } }) {
+export default function PublicDashboardPage({ username, invite, displayNameOverride }: { username: string; invite?: { onJoin: () => void }; displayNameOverride?: string }) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -106,6 +106,12 @@ export default function PublicDashboardPage({ username, invite }: { username: st
 
   if (loading) return <div style={{ ...pageStyle, background: C.green }} aria-busy="true" />;
 
+  // How the pool's owner is named. An explicit override (the inviter's typed
+  // "hi, it's…" name, passed on the logged-out invite arrival where no viewer
+  // contacts exist) wins; then the signed-in viewer's contact name; else the
+  // @handle. Bare name — no "@", no parenthetical handle (Alborz 2026-07-08).
+  const ownerName = displayNameOverride ?? displayName ?? `@${username}`;
+
   return (
     <div style={{ ...pageStyle, background: C.green }}>
       {/* Back-to-where-you-came-from tab — cream edge pill (mirrors the rooms).
@@ -130,7 +136,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
               (opted-in proposals) first, open-room shows second. */}
           {interested.length > 0 && (
             <>
-              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is interested in starting these shows:</h2>
+              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{ownerName}</span> is interested in starting these shows:</h2>
               <div style={inviteShelfLayout(interested.length)}>
                 {interested.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, ...pillWant }}><span style={pillName}>{show.name}</span></div>
@@ -143,7 +149,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
               <h2 style={{ ...inviteHeading, marginTop: interested.length ? 64 : 0 }}>
                 {interested.length > 0
                   ? "and is already watching these:"
-                  : <><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is already watching these shows:</>}
+                  : <><span style={{ color: C.cream }}>{ownerName}</span> is already watching these shows:</>}
               </h2>
               <div style={inviteShelfLayout(watching.length)}>
                 {watching.map(({ show, entry }) => (
@@ -163,14 +169,14 @@ export default function PublicDashboardPage({ username, invite }: { username: st
         </div>
       ) : (
         <div style={contentWrap}>
-          <h1 style={heading}><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span>&rsquo;s watch pool:</h1>
+          <h1 style={heading}><span style={{ color: C.cream }}>{ownerName}</span>&rsquo;s watch pool:</h1>
 
           {/* Same shelf copy as the invite arrival (2026-07-07): interested-
               in-starting (opted-in proposals) first, open-room shows second. */}
           {interested.length > 0 && (
             <>
               <h2 style={{ ...shelfHeader, textTransform: "none" }}>
-                <span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is interested in starting these shows:
+                <span style={{ color: C.cream }}>{ownerName}</span> is interested in starting these shows:
               </h2>
               <div style={shelfLayout(interested.length)}>
                 {interested.map(({ show }) => (
@@ -187,7 +193,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
               <h2 style={{ ...shelfHeader, textTransform: "none", marginTop: interested.length ? 48 : 0 }}>
                 {interested.length > 0
                   ? "and is already watching these:"
-                  : <><span style={{ color: C.cream }}>{displayName ?? `@${username}`}</span> is already watching these shows:</>}
+                  : <><span style={{ color: C.cream }}>{ownerName}</span> is already watching these shows:</>}
               </h2>
               <div style={shelfLayout(watching.length)}>
                 {watching.map(({ show, entry }) => (
@@ -202,7 +208,7 @@ export default function PublicDashboardPage({ username, invite }: { username: st
 
           {watching.length === 0 && interested.length === 0 && (
             <div style={{ textAlign: "center", color: C.cream, opacity: 0.85, marginTop: 24 }}>
-              {displayName ?? `@${username}`} hasn&rsquo;t added any shows yet.
+              {ownerName} hasn&rsquo;t added any shows yet.
             </div>
           )}
 

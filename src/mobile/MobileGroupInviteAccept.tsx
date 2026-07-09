@@ -131,19 +131,24 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     q.set("mode", info.inviteeHasAccount ? "signin" : "signup");
     q.set("returnTo", `/m/group-invite/${token}`);
     if (info.inviteeEmail) { q.set("email", info.inviteeEmail); q.set("lock", "1"); }
-    const inviterLabel = info.inviterDisplayName
-      ? `${info.inviterDisplayName} (@${info.inviterName})`
-      : `@${info.inviterName}`;
+    // Typed name only (no @handle, no parens) throughout onboarding.
+    const inviterLabel = info.inviterDisplayName || `@${info.inviterName}`;
     q.set("hint", info.inviteeHasAccount
       ? `Sign in to watch shows with ${inviterLabel} on Sidebar.`
       : `Create your account to watch shows with ${inviterLabel} on Sidebar.`);
     navigate(`/m/auth?${q.toString()}`);
   }
 
+  // How the inviter is shown to the invitee throughout onboarding: their
+  // typed "hi, it's…" name only (no @handle, no parens); else the handle.
+  const inviterShown = info?.inviterDisplayName || `@${info?.inviterName ?? "someone"}`;
+  // "Join a group with …?" — inviter as their typed name; other members keep
+  // their @handle (no typed name to show for them).
   const others = info ? info.memberNames.filter((n) => n) : [];
-  const names = others.length
-    ? others.map((n) => `@${n}`).reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
-    : `@${info?.inviterName ?? "someone"}`;
+  const memberLabels = others.map((n) => (n === info?.inviterName && info?.inviterDisplayName ? info.inviterDisplayName : `@${n}`));
+  const names = memberLabels.length
+    ? memberLabels.reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
+    : inviterShown;
 
   // ── Logged-out welcome: inviter's pool + JOIN IN (single column) ──────────
   if (status === "ready" && info && !user && !authLoading) {
@@ -157,7 +162,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
               starting (opted-in proposals) first, open-room shows second. */}
           {interested.length > 0 && (
             <>
-              <h2 style={inviteHeading}><span style={{ color: C.cream }}>@{info.inviterName}</span> is interested in starting these shows:</h2>
+              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{inviterShown}</span> is interested in starting these shows:</h2>
               <div style={shelfCol}>
                 {interested.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, background: C.cream, color: C.green }}><span style={pillName}>{show.name}</span></div>
@@ -170,7 +175,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
               <h2 style={{ ...inviteHeading, marginTop: interested.length ? 40 : 0 }}>
                 {interested.length > 0
                   ? "and is already watching these:"
-                  : <><span style={{ color: C.cream }}>@{info.inviterName}</span> is already watching these shows:</>}
+                  : <><span style={{ color: C.cream }}>{inviterShown}</span> is already watching these shows:</>}
               </h2>
               <div style={shelfCol}>
                 {watching.map(({ show, entry }) => (
