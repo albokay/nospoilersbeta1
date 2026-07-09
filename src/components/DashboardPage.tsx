@@ -2222,7 +2222,7 @@ const optInRow: React.CSSProperties = {
 const optInAvatar: React.CSSProperties = {
   position: "relative",
   width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.cream}`, background: C.sky,
-  color: C.blue, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
+  color: C.cream, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
   display: "inline-flex", alignItems: "center", justifyContent: "center",
   pointerEvents: "auto", // hoverable for the per-member tooltip
 };

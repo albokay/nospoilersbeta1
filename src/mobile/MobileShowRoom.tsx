@@ -813,7 +813,7 @@ const rosterHead: React.CSSProperties = {
   padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", boxSizing: "border-box",
 };
 const rosterAvatar: React.CSSProperties = {
-  width: 28, height: 28, borderRadius: "50%", background: C.sky, color: C.blue,
+  width: 28, height: 28, borderRadius: "50%", background: C.sky, color: C.cream,
   border: `2px solid ${C.cream}`, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13,
   display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: -6, boxSizing: "border-box",
 };
