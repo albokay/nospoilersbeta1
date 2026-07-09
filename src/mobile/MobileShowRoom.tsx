@@ -753,7 +753,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               This takes you out of the <b>{show?.name ?? "show"}</b> room in this group and removes it from your list.
             </div>
             <div style={{ color: C.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
-              If you have writing in the room, it will stay intact. Search and add the show back anytime to rejoin.
+              If you have writing in the room, it will stay intact. Simply re-propose the show to rejoin the room.
             </div>
             <div style={{ display: "flex", justifyContent: "flex-start", gap: 16, alignItems: "center" }}>
               <button style={{ ...alertBtn, opacity: leaveBusy ? 0.6 : 1 }} disabled={leaveBusy} onClick={doLeaveRoom}>leave</button>

@@ -1818,7 +1818,7 @@ export default function DashboardPage() {
               This takes you out of the <b>{leaveConfirm.name}</b> room in this group and removes this button from view.
             </div>
             <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
-              If you have writing in the room, it will stay intact. Search and add the show back anytime to rejoin.
+              If you have writing in the room, it will stay intact. Simply re-propose the show to rejoin the room.
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
               <button
