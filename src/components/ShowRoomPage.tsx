@@ -20,11 +20,11 @@ import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen,
-  fetchHighlights, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchMyPendingInviteNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
+  fetchHighlights, fetchPeopleGroupsForUser, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
-import { groupDisplayName } from "../lib/groupNames";
+import { joinNames } from "../lib/groupNames";
 import { composeBackdrop, composeCardOuter, groupHeadingMembers } from "./dashboardChrome";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
@@ -224,24 +224,28 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // unresolvable group). Naming fetches are tolerant (pre-migration → {}).
       // Perf (2026-07-07): resolved CONCURRENTLY with the writing fetch below
       // (they don't depend on each other); errors are contained in-promise.
+      // "with …" lists the members who OPTED INTO THIS SHOW — the room's
+      // current (non-departed) members from roomMapData, NOT the whole group
+      // (2026-07-09). A custom group name still wins; unnamed → the viewer's
+      // given names for those members; else "Group N". (No extra fetch —
+      // roomMapData is already loaded.)
       const pg = roomRow.parent_group_id ? myGroups.find((x) => x.id === roomRow.parent_group_id) : null;
-      const namePromise: Promise<string | null> = (async () => {
-        if (!pg) return null;
-        if (pg.name) return pg.name;
-        try {
-          const [pgMembers, pn] = await Promise.all([
-            fetchPeopleGroupMembers(pg.id), fetchMyPendingInviteNames(user.id),
-          ]);
-          return groupDisplayName(pg, pgMembers.filter((m) => m.userId !== user.id), cn, pn[pg.id] ?? []);
-        } catch { return pg.seq != null ? `Group ${pg.seq}` : null; }
-      })();
+      let derivedGroupName: string | null = null;
+      if (pg) {
+        if (pg.name) derivedGroupName = pg.name;
+        else {
+          const optedNames = roomMapData
+            .filter((m) => !m.isDeparted && m.userId !== user.id && m.username)
+            .map((m) => cn[m.userId] ?? (m.username as string));
+          // No one else in the room yet → no "with" line at all (cleaner than
+          // "with Group N" for a solo/awaiting-accept room).
+          derivedGroupName = optedNames.length ? joinNames(optedNames) : null;
+        }
+      }
       const eff = effectiveProgress(progress);
 
       const empty = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number>, latestVisibleReplyAt: {} as Record<string, number>, hiddenCounts: {} as Record<string, number>, latestHiddenReplyAt: {} as Record<string, number> };
-      const [gr, derivedGroupName]: [any, string | null] = await Promise.all([
-        eff ? fetchGroupThreads(roomId, eff.s, eff.e, user.id) : Promise.resolve(empty),
-        namePromise,
-      ]);
+      const gr: any = eff ? await fetchGroupThreads(roomId, eff.s, eff.e, user.id) : empty;
 
       const departed = new Set(roomMapData.filter((m) => m.isDeparted).map((m) => m.username ?? "").filter(Boolean));
       const u2id: Record<string, string> = {};
