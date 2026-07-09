@@ -2208,10 +2208,10 @@ const avatarCircle: React.CSSProperties = {
 };
 const optInRow: React.CSSProperties = {
   // Right-anchored: avatars fill from the button's right edge toward center.
-  // Lowered 8px (translateY 50% + 8) so the pen badges clear the s/e label;
-  // .group-pill-wrap adds a matching 8px of row spacing below so the avatars
-  // don't crowd the next row.
-  position: "absolute", right: 40, bottom: 0, transform: "translateY(calc(50% + 8px))",
+  // Lowered 4px (translateY 50% + 4) — pulled up from +8 now that the pen
+  // badge is gone (2026-07-09); .group-pill-wrap keeps its 8px row spacing
+  // below so the avatars don't crowd the next row.
+  position: "absolute", right: 40, bottom: 0, transform: "translateY(calc(50% + 4px))",
   display: "flex", gap: 6, pointerEvents: "none", zIndex: 5,
 };
 const optInAvatar: React.CSSProperties = {
