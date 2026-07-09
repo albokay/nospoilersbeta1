@@ -63,9 +63,10 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-// "@a" / "@a and @b" / "@a, @b, and @c"
-function formatHandles(names: string[]): string {
-  const u = [...new Set(names)].map((n) => `@${n}`);
+// Join already-formatted display names ("Johnny" or "@handle" — each carries
+// its own @ or not): "a" / "a and b" / "a, b, and c".
+function formatNames(names: string[]): string {
+  const u = [...new Set(names)];
   if (u.length === 0) return "";
   if (u.length === 1) return u[0];
   if (u.length === 2) return `${u[0]} and ${u[1]}`;
@@ -96,7 +97,10 @@ async function sendResendEmail(
   }
 }
 
-type DigestEntry = { threadId: string; title: string; authorUsername: string };
+// authorName is the recipient's display name for the author: their given
+// (contact) name if set, else "@handle", else a graceful fallback. Already
+// formatted — no @ is added downstream.
+type DigestEntry = { threadId: string; title: string; authorName: string };
 type RoomDigest = { groupId: string; roomName: string; entries: DigestEntry[]; authorNames: string[] };
 
 function buildDigestHtml(rooms: RoomDigest[], baseUrl: string): string {
@@ -112,7 +116,7 @@ function buildDigestHtml(rooms: RoomDigest[], baseUrl: string): string {
           // via the /room/:id -> /show-room/:id redirect.
           const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(e.threadId)}`;
           const byline = multiAuthor
-            ? ` <span style="color:rgba(26,44,58,0.6)">by @${escapeHtml(e.authorUsername)}</span>`
+            ? ` <span style="color:rgba(26,44,58,0.6)">by ${escapeHtml(e.authorName)}</span>`
             : "";
           return `<p style="margin:0 0 8px;font-size:15px;color:#1a2c3a;line-height:1.5">&mdash; <a href="${url}" style="color:#1a2c3a;font-style:italic;font-weight:600">&ldquo;${escapeHtml(e.title)}&rdquo;</a>${byline}</p>`;
         })
@@ -120,7 +124,7 @@ function buildDigestHtml(rooms: RoomDigest[], baseUrl: string): string {
       return `
   <div style="margin:0 0 28px">
     <h2 style="margin:0 0 6px;font-size:18px;color:#1a2c3a;font-weight:800;line-height:1.3">${escapeHtml(r.roomName)}</h2>
-    <p style="margin:0 0 12px;font-size:15px;color:#1a2c3a;line-height:1.55">${formatHandles(r.authorNames)} ${verb}:</p>
+    <p style="margin:0 0 12px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(r.authorNames))} ${verb}:</p>
     ${items}
   </div>`;
     })
@@ -155,11 +159,11 @@ function buildDigestText(rooms: RoomDigest[], baseUrl: string): string {
           // reads ?entry= and auto-expands the post. Old emails still resolve
           // via the /room/:id -> /show-room/:id redirect.
           const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(e.threadId)}`;
-          const byline = multiAuthor ? ` by @${e.authorUsername}` : "";
+          const byline = multiAuthor ? ` by ${e.authorName}` : "";
           return `  - "${e.title}"${byline} — ${url}`;
         })
         .join("\n");
-      return `${r.roomName}\n${formatHandles(r.authorNames)} ${verb}:\n${items}`;
+      return `${r.roomName}\n${formatNames(r.authorNames)} ${verb}:\n${items}`;
     })
     .join("\n\n");
 
@@ -291,6 +295,23 @@ serve(async (req) => {
   }
   if (perUser.size === 0) return json({ ok: true, sent: 0, reason: "nothing visible/new" });
 
+  // 6b. Each recipient's contact names for the authors — so the digest shows
+  //     the recipient's given name for a friend (else @handle). Owner-scoped;
+  //     one bulk read for all recipients (2026-07-08).
+  const recipientIds = [...perUser.keys()];
+  const contactByOwner = new Map<string, Map<string, string>>();
+  if (recipientIds.length) {
+    const { data: cn } = await admin
+      .from("contact_names")
+      .select("owner_id, contact_id, name")
+      .in("owner_id", recipientIds);
+    for (const row of cn ?? []) {
+      if (!row.name) continue;
+      if (!contactByOwner.has(row.owner_id)) contactByOwner.set(row.owner_id, new Map());
+      contactByOwner.get(row.owner_id)!.set(row.contact_id, String(row.name));
+    }
+  }
+
   // 7. Build + send one email per recipient.
   let sent = 0;
   const report: any[] = [];
@@ -299,6 +320,14 @@ serve(async (req) => {
     const email = u?.user?.email;
     if (!email) { report.push({ userId, skipped: "no_email" }); continue; }
 
+    const contacts = contactByOwner.get(userId);
+    const authorName = (authorId: string): string => {
+      // Given name (recipient's contact) → @handle → graceful fallback.
+      const given = contacts?.get(authorId);
+      if (given) return given;
+      const uname = usernameById.get(authorId);
+      return uname ? `@${uname}` : "a friend";
+    };
     const roomDigests: RoomDigest[] = [...rooms.entries()]
       .map(([groupId, r]) => {
         const entries: DigestEntry[] = r.entries
@@ -306,9 +335,9 @@ serve(async (req) => {
           .map((e) => ({
             threadId: e.threadId,
             title: e.title,
-            authorUsername: usernameById.get(e.authorId) ?? "someone",
+            authorName: authorName(e.authorId),
           }));
-        const authorNames = [...new Set(entries.map((e) => e.authorUsername))];
+        const authorNames = [...new Set(entries.map((e) => e.authorName))];
         return { groupId, roomName: r.roomName, entries, authorNames };
       })
       .sort((a, b) => a.roomName.localeCompare(b.roomName));

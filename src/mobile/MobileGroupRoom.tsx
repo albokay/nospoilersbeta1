@@ -260,7 +260,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
   // ── Shelves — identical pill computation + ordering to desktop ────────────
   const groupShelves = useMemo(() => {
-    type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean };
+    type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean };
     type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; tier: number; lastActivityAt: number | null };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
@@ -272,7 +272,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       const pill = computePill(gs, show?.seasons, selfUserId);
       const opted: OptIn[] = gs.members
         .filter((mm) => mm.userId !== selfUserId)
-        .map((mm) => ({ username: memberNameById[mm.userId] ?? "someone", s: mm.s, e: mm.e, wrote: !!mm.wrote }));
+        // resolved = the member's name has loaded (members fetch lands after
+        // groupShows); the avatar shows its letter only once resolved, so it
+        // never flashes a bogus "S" from the "someone" text fallback.
+        .map((mm) => ({ username: memberNameById[mm.userId] ?? "someone", s: mm.s, e: mm.e, wrote: !!mm.wrote, resolved: !!memberNameById[mm.userId] }));
       const self = gs.members.find((mm) => mm.userId === selfUserId);
       const selfProg = self && ((self.s ?? 0) > 0 || (self.e ?? 0) > 0) ? { s: self.s as number, e: self.e as number } : null;
       const writerCount = pill.writerCount;
@@ -787,7 +790,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
 // ── Show row (full-width, two-line, opt-in avatars right) ───────────────────
 function ShowRow({ row, dot, line2, onClick }: {
-  row: { pill: PillData; name: string; opted: { username: string; s: number | null; e: number | null; wrote: boolean }[] };
+  row: { pill: PillData; name: string; opted: { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean }[] };
   dot: boolean;
   line2: string | null;
   onClick: () => void;
@@ -814,7 +817,7 @@ function ShowRow({ row, dot, line2, onClick }: {
         <span style={{ display: "inline-flex", flexShrink: 0 }}>
           {row.opted.map((m, i) => (
             <span key={`${m.username}-${i}`} style={optInAvatar}>
-              {(m.username[0] ?? "?").toUpperCase()}
+              {m.resolved ? (m.username[0] ?? "?").toUpperCase() : ""}
               {m.wrote && (
                 <span style={writerPencilBadge}>
                   <Pencil size={13} color={C.cream} fill={C.sky} strokeWidth={2} />

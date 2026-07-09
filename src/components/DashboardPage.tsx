@@ -518,7 +518,7 @@ export default function DashboardPage() {
 
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
-    type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean };
+    type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean };
     type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; furthestFriend: { s: number; e: number } | null; tier: number; lastActivityAt: number | null };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
@@ -531,7 +531,10 @@ export default function DashboardPage() {
       // Opted-in members other than you → the avatars overlapping the pill.
       const opted: OptIn[] = gs.members
         .filter((mm) => mm.userId !== selfUserId)
-        .map((mm) => ({ username: memberNameById[mm.userId] ?? "someone", s: mm.s, e: mm.e, wrote: !!mm.wrote }));
+        // resolved = the member's name has loaded (members fetch lands after
+        // groupShows); the avatar shows its letter only once resolved, so it
+        // never flashes a bogus "S" from the "someone" text fallback.
+        .map((mm) => ({ username: memberNameById[mm.userId] ?? "someone", s: mm.s, e: mm.e, wrote: !!mm.wrote, resolved: !!memberNameById[mm.userId] }));
       // Your own progress on this show (if any) → the show-button tooltip.
       const self = gs.members.find((mm) => mm.userId === selfUserId);
       const selfProg = self && ((self.s ?? 0) > 0 || (self.e ?? 0) > 0) ? { s: self.s as number, e: self.e as number } : null;
@@ -2018,7 +2021,7 @@ function AvatarPile({ avatars }: { avatars: React.ReactNode[] }) {
  *  who have this show in the group's pool). Decorative — pointer-events off so
  *  they never block a pill click. */
 function OptInAvatars({ members, withTooltip, onTip }: {
-  members: { username: string; s: number | null; e: number | null; wrote?: boolean }[];
+  members: { username: string; s: number | null; e: number | null; wrote?: boolean; resolved?: boolean }[];
   withTooltip: boolean;
   onTip: (t: { text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number } | null) => void;
 }) {
@@ -2040,7 +2043,7 @@ function OptInAvatars({ members, withTooltip, onTip }: {
             onMouseMove={withTooltip ? (e) => onTip({ text: tip, sub, wrap: !!sub, x: e.clientX, y: e.clientY }) : undefined}
             onMouseLeave={withTooltip ? () => onTip(null) : undefined}
           >
-            {(m.username[0] ?? "?").toUpperCase()}
+            {m.resolved === false ? "" : (m.username[0] ?? "?").toUpperCase()}
             {/* Sole-writer indicator: cream pen on a green dot. The avatar
                 fill is NOT changed — the badge is the only indicator. */}
             {/* Sole indicator: the pen icon alone (no dot) — cream lines, sky fill. */}
