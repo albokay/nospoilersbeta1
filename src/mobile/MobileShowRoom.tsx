@@ -508,7 +508,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           </button>
           <h1 style={headerTitle}>
             {show?.name ?? "Show"}
-            {groupName && <span style={{ color: C.blue }}> with {groupName}</span>}
+            {/* "with …" matches desktop (naming arc): cream, Inter bold 14
+                (Body) — was blue. */}
+            {groupName && <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: C.cream }}> with {groupName}</span>}
           </h1>
           {!privateOnly && roomId ? (
             <button style={iconBtn} aria-label="Email updates for this room" title="Email updates for this room" onClick={openDigestModal}>
