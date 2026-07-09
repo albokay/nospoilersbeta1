@@ -578,12 +578,13 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           )}
 
           {/* The group room's two centered actions, set a little apart from
-              the show rows above (desktop CP2 order + copy). */}
-          <div style={{ textAlign: "center", marginTop: empty ? 24 : 40 }}>
-            <button style={searchPill} onClick={() => setSearchOpen(true)}>Propose more shows?</button>
-          </div>
-          <div style={{ textAlign: "center", marginTop: 16 }}>
-            <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
+              the show rows above (desktop CP2 order + copy). Equal width via
+              the stretch column (both sized to the wider "Add friends" label). */}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: empty ? 24 : 40 }}>
+            <div style={actionCol}>
+              <button style={searchPill} onClick={() => setSearchOpen(true)}>Propose more shows?</button>
+              <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
+            </div>
           </div>
         </div>
       )}
@@ -895,19 +896,24 @@ const rowDot: React.CSSProperties = {
 const optInAvatar: React.CSSProperties = {
   position: "relative",
   width: 30, height: 30, borderRadius: "50%", border: `2px solid ${C.cream}`, background: C.sky,
-  color: C.blue, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
+  color: C.cream, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
   display: "inline-flex", alignItems: "center", justifyContent: "center",
   marginLeft: -4, // slight overlap; enough spread that pen badges don't crowd
 };
-const searchPill: React.CSSProperties = {
-  border: "none", background: C.yellow, color: C.cream, fontWeight: 700, fontSize: 14,
-  padding: "16px 56px", borderRadius: 65, cursor: "pointer", minHeight: 48,
-};
-// Desktop parity: group context = cream fill, green text, no drop-shadow.
-const addFriendsPill: React.CSSProperties = {
-  border: "none", background: C.cream, color: C.green, fontWeight: 700, fontSize: 14,
+// The two group-room actions (2026-07-09): EQUAL width, sized to the wider
+// "Add more friends…" label (NOT full-screen) — the stretch column below
+// makes "Propose" match it. "Propose" = accent fill; "Add friends" =
+// Identity fill, cream text.
+const actionPillBase: React.CSSProperties = {
+  border: "none", color: C.cream, fontWeight: 700, fontSize: 14,
   padding: "14px 32px", borderRadius: 65, cursor: "pointer", minHeight: 48,
+  boxSizing: "border-box",
 };
+const searchPill: React.CSSProperties = { ...actionPillBase, background: C.yellow };
+const addFriendsPill: React.CSSProperties = { ...actionPillBase, background: C.blue };
+// Centered column; align-items:stretch makes both buttons the width of the
+// widest label ("Add more friends…"), so they match without spanning the row.
+const actionCol: React.CSSProperties = { display: "inline-flex", flexDirection: "column", gap: 16 };
 const sheet: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, overflowY: "auto",
   WebkitOverflowScrolling: "touch",
