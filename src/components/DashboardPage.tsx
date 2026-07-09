@@ -1291,7 +1291,7 @@ export default function DashboardPage() {
                     {r.pill.inRoom && r.pill.roomId && (
                       <button className="dash-pill-x" title="leave this show room" onClick={() => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name })}>×</button>
                     )}
-                    <OptInAvatars members={r.opted} withTooltip onTip={setTip} />
+                    <OptInAvatars members={r.opted} personalFill={r.pill.fill === "green"} withTooltip onTip={setTip} />
                   </div>
                 ))}
               </div>
@@ -2024,9 +2024,12 @@ function AvatarPile({ avatars }: { avatars: React.ReactNode[] }) {
 /** Opt-in member avatars overlapping a group-pill's bottom edge (the friends
  *  who have this show in the group's pool). Decorative — pointer-events off so
  *  they never block a pill click. */
-function OptInAvatars({ members, withTooltip, onTip }: {
+function OptInAvatars({ members, withTooltip, onTip, personalFill = false }: {
   members: { username: string; s: number | null; e: number | null; wrote?: boolean; resolved?: boolean }[];
   withTooltip: boolean;
+  // On a Personal-filled (green) show pill, the avatar outline is Personal
+  // (green) too (2026-07-09) — else cream (non-writer) / Friend-sky (writer).
+  personalFill?: boolean;
   onTip: (t: { text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number } | null) => void;
 }) {
   if (!members.length) return null;
@@ -2036,10 +2039,12 @@ function OptInAvatars({ members, withTooltip, onTip }: {
         const watched = (m.s ?? 0) > 0 || (m.e ?? 0) > 0;
         const isWriter = !!m.wrote;
         // Writer indicator (2026-07-08): the AVATAR restyles — Personal fill,
-        // Friend outline, Cream text — replacing the old pen badge.
+        // Friend outline, Cream text — replacing the old pen badge. Writers
+        // KEEP their sky outline on green pills (a green ring on a green fill
+        // would vanish); only non-writer avatars go Personal-green there.
         const avStyle = isWriter
           ? { ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream }
-          : optInAvatar;
+          : { ...optInAvatar, border: `2px solid ${personalFill ? C.green : C.cream}` };
         const tip: React.ReactNode = watched
           ? `${m.username} has watched: S${m.s} E${m.e}`
           // Not started watching → "hasn't started / watching yet." (two

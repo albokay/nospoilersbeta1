@@ -799,6 +799,9 @@ function ShowRow({ row, dot, line2, onClick }: {
   const isSelfWatching = pill.selfWatching;
   const isGreen = pill.fill === "green";
   const isCream = pill.fill === "cream";
+  // Personal-filled (green) row → the avatar outline is Personal (green) too
+  // (2026-07-09; matches desktop). Else cream (non-writer) / Friend-sky (writer).
+  const personalFill = isSelfWatching || isGreen;
   const bg = isSelfWatching || isGreen ? C.green : isCream ? C.cream : "transparent";
   const border = isSelfWatching ? `2px solid ${C.green}` : (isCream || isGreen ? "2px solid transparent" : `2px solid ${C.cream}`);
   const fg = isSelfWatching || isGreen ? CANON.cream : isCream ? C.green : CANON.cream;
@@ -820,7 +823,9 @@ function ShowRow({ row, dot, line2, onClick }: {
             // fill, Friend outline, Cream text — replacing the old pen badge.
             <span
               key={`${m.username}-${i}`}
-              style={m.wrote ? { ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream } : optInAvatar}
+              style={m.wrote
+                ? { ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream }
+                : { ...optInAvatar, border: `2px solid ${personalFill ? C.green : C.cream}` }}
             >
               {m.resolved ? (m.username[0] ?? "?").toUpperCase() : ""}
             </span>
