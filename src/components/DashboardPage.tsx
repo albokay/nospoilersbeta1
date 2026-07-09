@@ -25,7 +25,7 @@ import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, Pencil, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, UserCog } from "lucide-react";
+import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, UserCog } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import AccountModal from "./AccountModal";
 import FeedbackWidget from "./FeedbackWidget";
@@ -2034,24 +2034,27 @@ function OptInAvatars({ members, withTooltip, onTip }: {
     <div style={optInRow}>
       {members.map((m, i) => {
         const watched = (m.s ?? 0) > 0 || (m.e ?? 0) > 0;
-        const tip = watched ? `${m.username} has watched: S${m.s} E${m.e}` : `${m.username} hasn't started yet`;
-        // Every member who has written gets the pen badge on their own avatar
-        // (no longer gated to the lone-writer case).
         const isWriter = !!m.wrote;
-        // The lone writer's avatar (green + pencil) also notes they've begun writing.
-        const sub = isWriter ? "They have started writing in here." : undefined;
+        // Writer indicator (2026-07-08): the AVATAR restyles — Personal fill,
+        // Friend outline, Cream text — replacing the old pen badge.
+        const avStyle = isWriter
+          ? { ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream }
+          : optInAvatar;
+        const tip: React.ReactNode = watched
+          ? `${m.username} has watched: S${m.s} E${m.e}`
+          // Not started watching → "hasn't started / watching yet." (two
+          // lines) — for writers too (a writer's own "They have writing in
+          // here." sub still clarifies they've written, not watched).
+          : <>{m.username} hasn&rsquo;t started<br />watching yet.</>;
+        const sub = isWriter ? "They have writing in here." : undefined;
         return (
           <span
             key={`${m.username}-${i}`}
-            style={optInAvatar}
+            style={avStyle}
             onMouseMove={withTooltip ? (e) => onTip({ text: tip, sub, wrap: !!sub, x: e.clientX, y: e.clientY }) : undefined}
             onMouseLeave={withTooltip ? () => onTip(null) : undefined}
           >
             {m.resolved === false ? "" : (m.username[0] ?? "?").toUpperCase()}
-            {/* Sole-writer indicator: cream pen on a green dot. The avatar
-                fill is NOT changed — the badge is the only indicator. */}
-            {/* Sole indicator: the pen icon alone (no dot) — cream lines, sky fill. */}
-            {isWriter && <span style={writerPencilBadge}><Pencil size={14} color={C.cream} fill={C.sky} strokeWidth={2} /></span>}
           </span>
         );
       })}
@@ -2217,11 +2220,6 @@ const optInAvatar: React.CSSProperties = {
   color: C.blue, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
   display: "inline-flex", alignItems: "center", justifyContent: "center",
   pointerEvents: "auto", // hoverable for the per-member tooltip
-};
-// Pencil badge on the lone-writer's avatar (top-right corner).
-const writerPencilBadge: React.CSSProperties = {
-  position: "absolute", top: -5, right: -5, display: "inline-flex",
-  alignItems: "center", justifyContent: "center",
 };
 // New-activity dots (blue, 16px), slightly overlapping their surface.
 const notifDotButton: React.CSSProperties = {

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { X, ArrowLeft, Settings, MessageCircle, Pencil } from "lucide-react";
+import { X, ArrowLeft, Settings, MessageCircle } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
@@ -816,13 +816,13 @@ function ShowRow({ row, dot, line2, onClick }: {
       {row.opted.length > 0 && (
         <span style={{ display: "inline-flex", flexShrink: 0 }}>
           {row.opted.map((m, i) => (
-            <span key={`${m.username}-${i}`} style={optInAvatar}>
+            // Writer indicator (2026-07-08): the AVATAR restyles — Personal
+            // fill, Friend outline, Cream text — replacing the old pen badge.
+            <span
+              key={`${m.username}-${i}`}
+              style={m.wrote ? { ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream } : optInAvatar}
+            >
               {m.resolved ? (m.username[0] ?? "?").toUpperCase() : ""}
-              {m.wrote && (
-                <span style={writerPencilBadge}>
-                  <Pencil size={13} color={C.cream} fill={C.sky} strokeWidth={2} />
-                </span>
-              )}
             </span>
           ))}
         </span>
@@ -893,10 +893,6 @@ const optInAvatar: React.CSSProperties = {
   color: C.blue, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
   display: "inline-flex", alignItems: "center", justifyContent: "center",
   marginLeft: -4, // slight overlap; enough spread that pen badges don't crowd
-};
-const writerPencilBadge: React.CSSProperties = {
-  position: "absolute", top: -5, right: -5, display: "inline-flex",
-  alignItems: "center", justifyContent: "center",
 };
 const searchPill: React.CSSProperties = {
   border: "none", background: C.yellow, color: C.cream, fontWeight: 700, fontSize: 14,
