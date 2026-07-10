@@ -254,7 +254,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // lines, the "Read what … has written?" prompt, and avatar letters.
   const memberNameById = useMemo(() => {
     const m: Record<string, string> = {};
-    for (const mem of members) m[mem.userId] = personDisplayName(contactNames, mem.userId, mem.username);
+    for (const mem of members) m[mem.userId] = personDisplayName(contactNames, mem.userId, mem.username, mem.displayName);
     return m;
   }, [members, contactNames]);
 
@@ -500,7 +500,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // Naming arc (2026-07-07, desktop parity): the header's TITLE is the
   // generic/custom label ("Group N" → custom name); the PEOPLE live in the
   // "with…" line as the viewer's given names (handle fallback).
-  const names = others.map((m) => personDisplayName(contactNames, m.userId, m.username)).join(", ");
+  const names = others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ");
   const groupName = group ? groupGenericName(group, viewerNumber) : "Group";
   const empty = groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0;
 
@@ -727,7 +727,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                     key={m.userId}
                     value={contactEdits[m.userId] ?? ""}
                     onChange={(e) => setContactEdits((prev) => ({ ...prev, [m.userId]: e.target.value }))}
-                    placeholder={m.username}
+                    placeholder={m.displayName ?? m.username}
                     maxLength={40}
                     style={{ ...renameInput, marginBottom: 8 }}
                     className="m-input"

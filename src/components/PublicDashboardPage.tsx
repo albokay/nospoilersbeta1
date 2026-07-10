@@ -60,7 +60,9 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
         setShows(allShows);
         setProgress(prog);
         setPool(pp);
-        setDisplayName(cn[prof.id] ?? null);
+        // Name chain (CP2): the viewer's contact name → the owner's self-chosen
+        // first name (public — anon visitors see it too) → null (handle below).
+        setDisplayName(cn[prof.id] ?? prof.displayName ?? null);
       } catch (e) {
         console.error("[public-dashboard] load failed", e);
         if (!cancelled) setNotFound(true);
@@ -114,8 +116,9 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
 
   // How the pool's owner is named. An explicit override (the inviter's typed
   // "hi, it's…" name, passed on the logged-out invite arrival where no viewer
-  // contacts exist) wins; then the signed-in viewer's contact name; else the
-  // @handle. Bare name — no "@", no parenthetical handle (Alborz 2026-07-08).
+  // contacts exist) wins; then contact name → the owner's first name (CP2);
+  // else the @handle — a last resort that stops firing once every account
+  // has a display_name. Bare name — no "@" once a real name resolves.
   const ownerName = displayNameOverride ?? displayName ?? `@${username}`;
 
   return (

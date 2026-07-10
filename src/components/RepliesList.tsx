@@ -1087,7 +1087,7 @@ export default function RepliesList({
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "2px 6px" }}>
                 <div style={{ fontSize: 14, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" }}>
-                  <Username name={r.author} displayName={dn(r.author)} onClickProfile={onClickProfile ?? (() => {})} bold />
+                  <Username name={r.author} displayName={dn(r.author)} userId={r.authorId} onClickProfile={onClickProfile ?? (() => {})} bold />
                   {groupId && departedUsernames?.has(r.author) && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6 }}>has left the room</span>
                   )}

@@ -236,7 +236,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         else {
           const optedNames = roomMapData
             .filter((m) => !m.isDeparted && m.userId !== user.id && m.username)
-            .map((m) => cn[m.userId] ?? (m.username as string));
+            .map((m) => cn[m.userId] ?? m.displayName ?? (m.username as string));
           // No one else in the room yet → no "with" line at all (cleaner than
           // "with Group N" for a solo/awaiting-accept room).
           derivedGroupName = optedNames.length ? joinNames(optedNames) : null;
@@ -271,7 +271,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       }));
 
       const members: V2RoomMapMember[] = roomMapData.map((m) => ({
-        userId: m.userId, username: m.username ?? "?", isDeparted: m.isDeparted,
+        userId: m.userId, username: m.username ?? "?", displayName: m.displayName, isDeparted: m.isDeparted,
         progress: m.progress, ratings: m.ratings,
         entries: m.entries.map((e) => ({ threadId: e.threadId, s: e.s, e: e.e, title: e.title })),
       }));
@@ -541,7 +541,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // had it below and crashed every room with "rendered more hooks").
   const displayNames = useMemo(() => {
     const m: Record<string, string> = {};
-    for (const mm of mapMembers) if (mm.username) m[mm.username] = roomContactNames[mm.userId] ?? mm.username;
+    for (const mm of mapMembers) if (mm.username) m[mm.username] = roomContactNames[mm.userId] ?? mm.displayName ?? mm.username;
     return m;
   }, [mapMembers, roomContactNames]);
 

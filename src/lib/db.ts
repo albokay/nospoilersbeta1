@@ -477,6 +477,7 @@ function rowToReply(row: any): Reply {
     season:             row.season,
     episode:            row.episode,
     author:             row.author_name,
+    authorId:           row.author_id ?? null,
     body:               row.body,
     createdAt:          new Date(row.created_at).getTime(),
     updatedAt:          new Date(row.updated_at).getTime(),
@@ -2489,16 +2490,19 @@ export async function fetchPeopleGroupMembers(groupId: string): Promise<PeopleGr
   if (error) throw error;
 
   const ids = (rows ?? []).map((r: any) => r.user_id);
-  const usernames: Record<string, string> = {};
+  const profiles: Record<string, { username: string; displayName: string | null }> = {};
   if (ids.length) {
-    const { data: profs } = await supabase.from("profiles").select("id, username").in("id", ids);
-    for (const p of profs ?? []) usernames[p.id] = p.username;
+    // Column-tolerant (§6 item 28): display_name shipped 20260710.
+    let profs: any = await supabase.from("profiles").select("id, username, display_name").in("id", ids);
+    if (profs.error) profs = await supabase.from("profiles").select("id, username").in("id", ids);
+    for (const p of (profs.data ?? []) as any[]) profiles[p.id] = { username: p.username, displayName: p.display_name ?? null };
   }
 
   return (rows ?? []).map((row: any) => ({
     groupId:  row.group_id,
     userId:   row.user_id,
-    username: usernames[row.user_id] ?? "unknown",
+    username: profiles[row.user_id]?.username ?? "unknown",
+    displayName: profiles[row.user_id]?.displayName ?? null,
     joinedAt: new Date(row.joined_at).getTime(),
   }));
 }
@@ -2639,6 +2643,7 @@ export type GroupMessage = {
   id: string;
   authorId: string;
   username: string;
+  displayName: string | null;
   body: string;
   createdAt: number;
 };
@@ -2653,16 +2658,19 @@ export async function fetchGroupMessages(groupId: string): Promise<GroupMessage[
   if (error) throw error;
 
   const ids = Array.from(new Set((rows ?? []).map((r: any) => r.author_id)));
-  const usernames: Record<string, string> = {};
+  const profiles: Record<string, { username: string; displayName: string | null }> = {};
   if (ids.length) {
-    const { data: profs } = await supabase.from("profiles").select("id, username").in("id", ids);
-    for (const p of profs ?? []) usernames[p.id] = p.username;
+    // Column-tolerant (§6 item 28): display_name shipped 20260710.
+    let profs: any = await supabase.from("profiles").select("id, username, display_name").in("id", ids);
+    if (profs.error) profs = await supabase.from("profiles").select("id, username").in("id", ids);
+    for (const p of (profs.data ?? []) as any[]) profiles[p.id] = { username: p.username, displayName: p.display_name ?? null };
   }
 
   return (rows ?? []).map((r: any) => ({
     id: r.id,
     authorId: r.author_id,
-    username: usernames[r.author_id] ?? "unknown",
+    username: profiles[r.author_id]?.username ?? "unknown",
+    displayName: profiles[r.author_id]?.displayName ?? null,
     body: r.body,
     createdAt: new Date(r.created_at).getTime(),
   }));
@@ -4810,6 +4818,9 @@ export type RoomMapEntry = {
 export type RoomMapMember = {
   userId: string;
   username: string | null;
+  /** profiles.display_name, resolved client-side after the RPC (the RPC
+   *  predates the column). Covers departed writers who left the group too. */
+  displayName: string | null;
   isDeparted: boolean;
   departedAt: number | null;
   progress: import("../types").ProgressEntry | null;
@@ -4831,12 +4842,13 @@ type RoomMapRPCRow = {
   entries: Array<{ thread_id: string; s: number; e: number; title: string; created_at: string }> | null;
 };
 
-function rowToRoomMapMember(row: RoomMapRPCRow): RoomMapMember {
+function rowToRoomMapMember(row: RoomMapRPCRow, displayNames?: Record<string, string>): RoomMapMember {
   const hasProgress =
     typeof row.progress_season === "number" && typeof row.progress_episode === "number";
   return {
     userId: row.user_id,
     username: row.username,
+    displayName: displayNames?.[row.user_id] ?? null,
     isDeparted: !!row.is_departed,
     departedAt: row.departed_at ? Date.parse(row.departed_at) : null,
     progress: hasProgress
@@ -4868,7 +4880,20 @@ function rowToRoomMapMember(row: RoomMapRPCRow): RoomMapMember {
 export async function fetchRoomMapData(groupId: string): Promise<RoomMapMember[]> {
   const { data, error } = await supabase.rpc("get_room_map_data", { p_group_id: groupId });
   if (error) throw error;
-  return ((data ?? []) as RoomMapRPCRow[]).map(rowToRoomMapMember);
+  const rows = (data ?? []) as RoomMapRPCRow[];
+  // display_name rides a follow-up profiles read (the RPC predates the
+  // column; a client-side merge avoids a prod RPC migration and also covers
+  // departed writers who are no longer group members). Best-effort — a
+  // failure just leaves the username fallback.
+  const displayNames: Record<string, string> = {};
+  const ids = rows.map((r) => r.user_id);
+  if (ids.length) {
+    try {
+      const { data: profs } = await supabase.from("profiles").select("id, display_name").in("id", ids);
+      for (const p of (profs ?? []) as any[]) if (p.display_name) displayNames[p.id] = p.display_name;
+    } catch { /* tolerate — pre-migration or transient */ }
+  }
+  return rows.map((r) => rowToRoomMapMember(r, displayNames));
 }
 
 /**

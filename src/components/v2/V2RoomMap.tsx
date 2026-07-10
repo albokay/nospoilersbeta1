@@ -96,6 +96,8 @@ export type V2RoomMapRating = {
 export type V2RoomMapMember = {
   userId: string;
   username: string;
+  /** profiles.display_name — middle link of the name chain (CP2). */
+  displayName?: string | null;
   isDeparted: boolean;
   progress: ProgressEntry | null;
   ratings: V2RoomMapRating[];

@@ -61,7 +61,9 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
         setShows(allShows);
         setProgress(prog);
         setPool(pp);
-        setDisplayName(cn[prof.id] ?? null);
+        // Name chain (CP2): viewer's contact name → the owner's self-chosen
+        // first name (public — anon visitors see it too) → null (handle below).
+        setDisplayName(cn[prof.id] ?? prof.displayName ?? null);
       } catch (e) {
         console.error("[m-pool] load failed", e);
         if (!cancelled) setNotFound(true);

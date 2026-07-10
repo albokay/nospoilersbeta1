@@ -91,6 +91,7 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
               id: r.id,
               authorId: r.author_id,
               username: nameById[r.author_id] ?? "unknown",
+              displayName: null, // nameById above already resolved the chain
               body: r.body,
               createdAt: new Date(r.created_at).getTime(),
             }]);
@@ -132,7 +133,7 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
   // Given names, bare (naming arc: the "@" drops wherever a display name
   // renders; an unnamed person shows their handle).
   const others = members.filter((m) => m.userId !== selfUserId);
-  const connected = others.length ? others.map((m) => personDisplayName(contactNames, m.userId, m.username)).join(", ") : "just you";
+  const connected = others.length ? others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ") : "just you";
 
   return (
     <div style={page}>
@@ -153,7 +154,7 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
           const mine = m.authorId === selfUserId;
           return (
             <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
-              {!mine && <div style={{ fontSize: 11, color: C.cream, opacity: 0.85, marginBottom: 3 }}>{personDisplayName(contactNames, m.authorId, m.username)}</div>}
+              {!mine && <div style={{ fontSize: 11, color: C.cream, opacity: 0.85, marginBottom: 3 }}>{personDisplayName(contactNames, m.authorId, m.username, m.displayName)}</div>}
               <div style={mine ? bubbleMine : bubbleOther}>{linkifyText(m.body)}</div>
             </div>
           );

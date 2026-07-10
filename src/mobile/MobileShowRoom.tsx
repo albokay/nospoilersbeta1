@@ -253,7 +253,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         else {
           const optedNames = roomMapData
             .filter((m) => !m.isDeparted && m.userId !== user.id && m.username)
-            .map((m) => cn[m.userId] ?? (m.username as string));
+            .map((m) => cn[m.userId] ?? m.displayName ?? (m.username as string));
           // No one else in the room yet → no "with" line at all (cleaner than
           // "with Group N" for a solo/awaiting-accept room).
           derivedGroupName = optedNames.length ? joinNames(optedNames) : null;
@@ -289,7 +289,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       }));
 
       const members: V2RoomMapMember[] = roomMapData.map((m) => ({
-        userId: m.userId, username: m.username ?? "?", isDeparted: m.isDeparted,
+        userId: m.userId, username: m.username ?? "?", displayName: m.displayName, isDeparted: m.isDeparted,
         progress: m.progress, ratings: m.ratings,
         entries: m.entries.map((e) => ({ threadId: e.threadId, s: e.s, e: e.e, title: e.title })),
       }));
@@ -478,7 +478,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // username → the viewer's given name (identity fallback) for the reused
   // feed components + roster + filter — desktop's displayNames convention.
   const displayNames: Record<string, string> = {};
-  for (const mm of mapMembers) if (mm.username) displayNames[mm.username] = roomContactNames[mm.userId] ?? mm.username;
+  for (const mm of mapMembers) if (mm.username) displayNames[mm.username] = roomContactNames[mm.userId] ?? mm.displayName ?? mm.username;
 
   // Roster ordering: by watch progress (furthest first), raw S/E, viewer included.
   const rosterRows = [...mapMembers].sort((a, b) => {

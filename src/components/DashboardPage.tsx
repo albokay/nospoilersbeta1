@@ -516,7 +516,7 @@ export default function DashboardPage() {
   const memberNameById = useMemo(() => {
     const m: Record<string, string> = {};
     const ag = railGroups.find((r) => r.group.id === activeGroupId);
-    for (const mem of ag?.members ?? []) m[mem.userId] = personDisplayName(contactNames, mem.userId, mem.username);
+    for (const mem of ag?.members ?? []) m[mem.userId] = personDisplayName(contactNames, mem.userId, mem.username, mem.displayName);
     return m;
   }, [railGroups, activeGroupId, contactNames]);
 
@@ -1069,7 +1069,7 @@ export default function DashboardPage() {
     // (every chat author is a member, so this covers them without a query).
     const grp = railGroups.find((r) => r.group.id === chatGroupId);
     const nameById: Record<string, string> = {};
-    for (const m of grp?.members ?? []) nameById[m.userId] = personDisplayName(contactNames, m.userId, m.username);
+    for (const m of grp?.members ?? []) nameById[m.userId] = personDisplayName(contactNames, m.userId, m.username, m.displayName);
 
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
@@ -1097,6 +1097,7 @@ export default function DashboardPage() {
               id: r.id,
               authorId: r.author_id,
               username: nameById[r.author_id] ?? "unknown",
+              displayName: null, // nameById above already resolved the chain
               body: r.body,
               createdAt: new Date(r.created_at).getTime(),
             }]);
@@ -1744,7 +1745,7 @@ export default function DashboardPage() {
                       key={m.userId}
                       value={contactEdits[m.userId] ?? ""}
                       onChange={(e) => setContactEdits((prev) => ({ ...prev, [m.userId]: e.target.value }))}
-                      placeholder={m.username}
+                      placeholder={m.displayName ?? m.username}
                       maxLength={40}
                       style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, marginBottom: 8 }}
                     />
@@ -1775,7 +1776,7 @@ export default function DashboardPage() {
       {chatGroupId && (() => {
         const cg = railGroups.find((r) => r.group.id === chatGroupId);
         const others = cg ? cg.members.filter((m) => m.userId !== selfUserId) : [];
-        const connected = others.length ? others.map((m) => personDisplayName(contactNames, m.userId, m.username)).join(", ") : "just you";
+        const connected = others.length ? others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ") : "just you";
         return (
           <div style={chatPanel}>
             <div style={chatHeader}>
@@ -1787,7 +1788,7 @@ export default function DashboardPage() {
                 const mine = m.authorId === selfUserId;
                 return (
                   <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
-                    {!mine && <div style={{ fontSize: 11, color: CANON.cream, opacity: 0.85, marginBottom: 3 }}>{personDisplayName(contactNames, m.authorId, m.username)}</div>}
+                    {!mine && <div style={{ fontSize: 11, color: CANON.cream, opacity: 0.85, marginBottom: 3 }}>{personDisplayName(contactNames, m.authorId, m.username, m.displayName)}</div>}
                     <div style={mine ? chatBubbleMine : chatBubbleOther}>{linkifyText(m.body)}</div>
                   </div>
                 );
@@ -2092,7 +2093,7 @@ function GroupClusters({
     // Naming arc (2026-07-07): the header's TITLE is the generic/custom label
     // ("Group N" → custom name); the PEOPLE live in the "with…" line as the
     // viewer's given names (handle fallback).
-    const names = others.map((m) => personDisplayName(contactNames, m.userId, m.username)).join(", ");
+    const names = others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ");
     return (
       <div style={groupHeadingRow}>
         <h1 style={groupHeadingTitle}>{groupGenericName(active.group, groupNumberById[active.group.id])}</h1>
@@ -2110,7 +2111,7 @@ function GroupClusters({
         // invitees yellow). Never your own icon, even before anyone accepts.
         const others = members.filter((m) => m.userId !== selfUserId);
         const avatars = [
-          ...others.map((m) => <Avatar key={m.userId} letter={personDisplayName(contactNames, m.userId, m.username)[0]} state="accepted" />),
+          ...others.map((m) => <Avatar key={m.userId} letter={personDisplayName(contactNames, m.userId, m.username, m.displayName)[0]} state="accepted" />),
           ...pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />),
         ];
         const dot = clusterDotByGroup.get(group.id);

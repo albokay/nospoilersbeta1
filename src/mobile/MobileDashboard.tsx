@@ -347,7 +347,7 @@ export default function MobileDashboard() {
                     <span style={avatarStrip}>
                       {others.map((m) => (
                         <span key={m.userId} style={{ ...avatarCircle, background: C.cream, color: C.green }}>
-                          {(personDisplayName(contactNames, m.userId, m.username)[0] ?? "?").toUpperCase()}
+                          {(personDisplayName(contactNames, m.userId, m.username, m.displayName)[0] ?? "?").toUpperCase()}
                         </span>
                       ))}
                       {pendingHandles.map((h, i) => (

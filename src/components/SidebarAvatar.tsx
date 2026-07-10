@@ -8,14 +8,16 @@ import Avatar from "boring-avatars";
  * import boring-avatars directly. One file owns variant + palette + seed
  * strategy so swapping any of them is a single-file change.
  *
- * Seed: username, every time. Originally userId-first with username
- * fallback, but most byline surfaces only carry the username string —
- * the mixed-seed model made the same user render as different avatars
- * across the site (e.g. byline used "libdenk" while NudgePopover used
- * the UUID). Pinning to username gives one avatar per user everywhere.
- * Tradeoff: if username-change ever ships, a user's avatar would change
- * with their handle. Sidebar doesn't expose username editing today, so
- * the tradeoff is theoretical for now.
+ * Seed: userId-first (first-name identity arc CP2, 2026-07-10) — the
+ * public-rooms hedge: a future handle rename (claim-a-vanity-handle) must
+ * not change anyone's avatar, and user_id never changes. Every LIVE
+ * surface passes userId (reply bylines gained Reply.authorId for this).
+ * The username fallback exists only for dormant/retired pages and
+ * anonymized authors (author_id nulled on account deletion) — the
+ * historical mixed-seed bug (same person, different avatars, because SOME
+ * live surfaces seeded by name) can't recur as long as live callsites
+ * keep passing userId. One-time consequence, accepted 2026-07-10: every
+ * pre-existing account's avatar changed appearance once at this flip.
  *
  * Palette: Sidebar canon — yellow / green / dark-blue / light-blue / red.
  * Hexes mirrored from theme.ts:6-18 (the CSS-vars source of truth).
@@ -38,7 +40,7 @@ type SidebarAvatarProps = {
 };
 
 export default function SidebarAvatar({ userId, username, size = 24 }: SidebarAvatarProps) {
-  const seed = username || userId || "anon";
+  const seed = userId || username || "anon";
   return (
     <Avatar
       name={seed}

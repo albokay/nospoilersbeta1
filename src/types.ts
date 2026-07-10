@@ -52,6 +52,9 @@ export type PeopleGroupMember = {
   groupId: string;
   userId: string;
   username: string;
+  // Self-chosen first name (profiles.display_name) — the middle link of the
+  // contactName → displayName → username resolution chain. Null pre-backfill.
+  displayName: string | null;
   joinedAt: number;
 };
 
@@ -79,6 +82,9 @@ export type Invitation = {
 export type Reply = {
   id: string; threadId: string; showId: string; season: number; episode: number;
   author: string; body: string; createdAt: number; updatedAt: number; replyToId?: string;
+  /** replies.author_id — null for anonymized (deleted) accounts. Added for
+   *  the user_id-seeded avatars (first-name identity arc CP2). */
+  authorId?: string | null;
   likes: number;
   isDeleted?: boolean;
   isEdited?: boolean;

@@ -25,7 +25,7 @@ export function groupDisplayName(
 ): string {
   if (group.name) return group.name;
   const names = [
-    ...others.map((m) => contactNames[m.userId] ?? m.username),
+    ...others.map((m) => contactNames[m.userId] ?? m.displayName ?? m.username),
     ...pendingNames,
   ].filter(Boolean);
   if (names.length) return joinNames(names);
@@ -44,7 +44,10 @@ export function groupGenericName(group: PeopleGroup, viewerNumber?: number): str
 }
 
 /** One person's display name through the viewer's eyes: the name the viewer
- *  gave them (phone-contacts model), else their handle. Bare — never "@". */
-export function personDisplayName(contactNames: Record<string, string>, userId: string, username: string): string {
-  return contactNames[userId] ?? username;
+ *  gave them (phone-contacts model) → their self-chosen first name
+ *  (profiles.display_name, first-name identity arc) → their handle as the
+ *  last resort. Bare — never "@". Callers pass displayName when the person
+ *  object at hand carries it (members/chat/map rows all do since CP2). */
+export function personDisplayName(contactNames: Record<string, string>, userId: string, username: string, displayName?: string | null): string {
+  return contactNames[userId] ?? displayName ?? username;
 }
