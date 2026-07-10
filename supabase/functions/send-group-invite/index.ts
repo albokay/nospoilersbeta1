@@ -96,7 +96,9 @@ serve(async (req) => {
     if (!body) return jsonError("invalid_body", 400);
     const { token, appUrl, displayName } = body as Record<string, string>;
     if (!token) return jsonError("missing_fields", 400);
-    // Optional inviter-provided display name ("Johnny"). Trimmed + capped.
+    // Legacy "hi, it's…" typed name — post-CP4 clients no longer send it; a
+    // stale pre-CP4 bundle still might. Used only as a fallback below when
+    // the inviter has no display_name (shouldn't happen post-backfill).
     const customName = (displayName || "").trim().slice(0, 40);
 
     // ── Look up the invitation ───────────────────────────────────────────────
@@ -117,10 +119,28 @@ serve(async (req) => {
       .maybeSingle();
     if (!membership) return jsonError("not_member", 403);
 
-    // Persist the inviter's display name on the invite so the welcome screen
-    // (get_people_group_invitation) can show it. Only overwrite when provided.
-    if (customName) {
-      await admin.from("people_group_invitations").update({ inviter_display_name: customName }).eq("token", token);
+    // ── Inviter's name (first-name identity CP4) ─────────────────────────────
+    // The inviter is introduced by their self-chosen first name
+    // (profiles.display_name). Chain: display_name → legacy typed name (stale
+    // pre-CP4 clients only) → @handle. NOTE: the profile is the INVITE
+    // CREATOR's (inv.created_by), matching the name the accepter's contact
+    // seeding attaches to.
+    let inviterHandle = "";
+    let inviterFirstName = "";
+    try {
+      const { data: p } = await admin.from("profiles").select("username, display_name").eq("id", inv.created_by).maybeSingle();
+      inviterHandle = p?.username ?? "";
+      inviterFirstName = (p?.display_name ?? "").trim();
+    } catch { /* generic fallback below */ }
+    const senderName = inviterFirstName || customName || (inviterHandle ? `@${inviterHandle}` : "A friend");
+
+    // Persist the resolved name on the invite so the welcome screen
+    // (get_people_group_invitation) shows it and accept-time contact seeding
+    // (accept_people_group_invitation) attaches it — both read
+    // inviter_display_name, unchanged. Never persist the bare-@ fallback.
+    const persistName = inviterFirstName || customName;
+    if (persistName) {
+      await admin.from("people_group_invitations").update({ inviter_display_name: persistName }).eq("token", token);
     }
 
     // ── Rate limit ───────────────────────────────────────────────────────────
@@ -133,13 +153,7 @@ serve(async (req) => {
       return jsonError("rate_limit", 429, "You've sent a lot of emails today. Try again tomorrow.");
     }
 
-    // ── Names for the email copy ─────────────────────────────────────────────
-    let inviterName = "A friend";
-    try {
-      const { data: p } = await admin.from("profiles").select("username").eq("id", inv.created_by).maybeSingle();
-      if (p?.username) inviterName = p.username;
-    } catch { /* generic fallback */ }
-
+    // ── Group label for the email copy ───────────────────────────────────────
     let groupLabel = "";
     try {
       const { data: g } = await admin.from("people_groups").select("name").eq("id", inv.people_group_id).maybeSingle();
@@ -154,10 +168,6 @@ serve(async (req) => {
     const inviteUrl = `${baseUrl}/group-invite/${token}`;
     const email     = (inv.invitee_email as string).toLowerCase().trim();
     const groupBit  = groupLabel ? ` &ldquo;${escapeHtml(groupLabel)}&rdquo;` : "";
-    // The inviter is shown to the invitee by their typed name ONLY when one was
-    // given (no @handle, no parens — it becomes the invitee's contact name for
-    // them on accept anyway); else the @handle. (Alborz 2026-07-08.)
-    const senderName = customName || `@${inviterName}`;
     const subject   = `${senderName} invited you to a watch group on Sidebar`;
 
     const html = `

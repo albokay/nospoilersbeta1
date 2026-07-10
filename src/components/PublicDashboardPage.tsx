@@ -114,11 +114,11 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
 
   if (loading) return <div style={{ ...pageStyle, background: C.green }} aria-busy="true" />;
 
-  // How the pool's owner is named. An explicit override (the inviter's typed
-  // "hi, it's…" name, passed on the logged-out invite arrival where no viewer
-  // contacts exist) wins; then contact name → the owner's first name (CP2);
-  // else the @handle — a last resort that stops firing once every account
-  // has a display_name. Bare name — no "@" once a real name resolves.
+  // How the pool's owner is named. An explicit override (the inviter's
+  // first name off the invite, passed on the logged-out arrival where no
+  // viewer contacts exist) wins; then contact name → the owner's first name
+  // (CP2); else the @handle — a last resort that stops firing once every
+  // account has a display_name. Bare name — no "@" once a real name resolves.
   const ownerName = displayNameOverride ?? displayName ?? `@${username}`;
 
   return (

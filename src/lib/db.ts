@@ -2817,6 +2817,18 @@ export async function fetchContactNames(userId: string): Promise<Record<string, 
 /** Set (or clear, with an empty string) the viewer's private name for a
  *  person — the deliberate rename path (phone-contacts model), so unlike the
  *  accept-time seeding this OVERWRITES. Owner-only by RLS. */
+/** Update the caller's own first name (profiles.display_name — how they
+ *  appear everywhere; first-name identity arc CP4). Never blank: the UI
+ *  requires 1–40 chars, so the handle fallback can't resurface. RLS: owner
+ *  write on profiles. */
+export async function setOwnDisplayName(userId: string, name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("name_required");
+  validateLength("Name", trimmed, 1, 40);
+  const { error } = await supabase.from("profiles").update({ display_name: trimmed }).eq("id", userId);
+  if (error) throw error;
+}
+
 export async function setContactName(userId: string, contactId: string, name: string): Promise<void> {
   const trimmed = name.trim();
   if (!trimmed) {
@@ -2870,10 +2882,13 @@ export async function fetchMyPendingInviteNames(userId: string): Promise<Record<
  *  sender to share the link themselves (silent failures — stale-JWT 401s,
  *  Resend refusals, rate limits — used to hide behind an unconditional
  *  "Invites sent!"; diagnosed 2026-07-03). */
-export async function sendGroupInviteEmail(token: string, displayName?: string): Promise<{ ok: boolean; reason?: string; status?: number }> {
+export async function sendGroupInviteEmail(token: string): Promise<{ ok: boolean; reason?: string; status?: number }> {
+  // The inviter is introduced by their profiles.display_name — resolved
+  // server-side by the edge fn (first-name identity CP4; the per-invite
+  // "hi, it's…" typed-name param is gone).
   try {
     const { data, error } = await supabase.functions.invoke("send-group-invite", {
-      body: { token, appUrl: window.location.origin, ...(displayName ? { displayName } : {}) },
+      body: { token, appUrl: window.location.origin },
     });
     if (error) {
       // Non-2xx (401 stale token / 429 rate limit / …) — surface the fn's

@@ -216,7 +216,6 @@ export default function DashboardPage() {
   // typed name seeds the viewer's contact name for that person (group naming).
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteRows, setInviteRows] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
-  const [inviteFromName, setInviteFromName] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteLinks, setInviteLinks] = useState<{ email: string; link?: string; error?: string; emailFailed?: boolean }[] | null>(null);
   // null = create a NEW group (friends + proposed shows, one act); set =
@@ -858,7 +857,7 @@ export default function DashboardPage() {
           // Await the email leg so a silent refusal (stale token, Resend,
           // rate limit) surfaces as a copy-the-link row instead of a false
           // "Invites sent!". The link works either way.
-          const sent = await sendGroupInviteEmail(token, inviteFromName.trim() || undefined);
+          const sent = await sendGroupInviteEmail(token);
           links.push({ email: row.email, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
         } catch (e: any) {
           links.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
@@ -1521,19 +1520,10 @@ export default function DashboardPage() {
                     )}
                   </>
                 )}
-                {/* §16 Body font (Inter regular 13, normal letter-spacing); cream. */}
-                <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal", lineHeight: 1.5, color: C.cream, margin: "28px 0 12px" }}>
-                  Your friend(s) will get an email invite from your username. If you don&rsquo;t think they&rsquo;d recognize it, tell them who you are:
-                </p>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <input
-                    value={inviteFromName}
-                    onChange={(e) => setInviteFromName(e.target.value)}
-                    placeholder="hi, it's…"
-                    maxLength={40}
-                    style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, flex: 1, marginBottom: 0 }}
-                  />
-                  <button style={{ ...invitePill, opacity: inviteSending || !ready ? 0.6 : 1, flexShrink: 0 }} disabled={inviteSending || !ready} onClick={sendInvites}>
+                {/* "hi, it's…" removed (first-name identity CP4): the invite
+                    email now introduces the inviter by their first name. */}
+                <div style={{ textAlign: "center", marginTop: 28 }}>
+                  <button style={{ ...invitePill, opacity: inviteSending || !ready ? 0.6 : 1 }} disabled={inviteSending || !ready} onClick={sendInvites}>
                     {inviteSending ? "creating…" : creating ? "create group" : "send invite"}
                   </button>
                 </div>

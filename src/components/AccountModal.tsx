@@ -3,7 +3,7 @@ import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
-import { deleteAccount } from "../lib/db";
+import { deleteAccount, setOwnDisplayName } from "../lib/db";
 import { CANON } from "../styles/canon";
 
 // Minimal account surface. Currently houses the self-serve "delete account"
@@ -13,11 +13,36 @@ import { CANON } from "../styles/canon";
 const C = { red: CANON.alert, cream: CANON.cream, midnight: CANON.dark, greyblue: CANON.business };
 
 export default function AccountModal({ onClose }: { onClose: () => void }) {
-  const { profile } = useAuth() as any;
+  const { user, profile, refreshProfile } = useAuth() as any;
   const [phase, setPhase] = useState<"main" | "confirm">("main");
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // "Your name" (first-name identity CP4): edits profiles.display_name — how
+  // the user appears everywhere. Prefilled with the current name; required
+  // (blank can't save, so the internal handle never resurfaces as a name).
+  const [nameDraft, setNameDraft] = useState<string>(profile?.display_name ?? "");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameSaved, setNameSaved] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const nameDirty = nameDraft.trim() !== (profile?.display_name ?? "") && nameDraft.trim().length > 0;
+
+  async function saveName() {
+    if (!user?.id || !nameDirty || nameSaving) return;
+    setNameSaving(true);
+    setNameError(null);
+    try {
+      await setOwnDisplayName(user.id, nameDraft);
+      await refreshProfile();
+      setNameSaved(true);
+      setTimeout(() => setNameSaved(false), 2500);
+    } catch {
+      setNameError("Couldn't save your name. Please try again.");
+    } finally {
+      setNameSaving(false);
+    }
+  }
 
   const canDelete = confirmText.trim().toUpperCase() === "DELETE";
 
@@ -53,10 +78,38 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal onClose={busy ? () => {} : onClose}>
       <h3 style={{ margin: "0 0 16px", fontSize: 20, color: C.midnight, fontWeight: 700 }}>Account</h3>
-      {profile?.username && (
+      {user?.email && (
         <p style={{ margin: "0 0 20px", fontSize: 14, color: C.midnight }}>
-          Signed in as <strong>@{profile.username}</strong>
+          Signed in as <strong>{user.email}</strong>
         </p>
+      )}
+
+      {phase === "main" && (
+        <div style={{ borderTop: `1px solid ${C.cream}`, paddingTop: 16, marginBottom: 20 }}>
+          <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: C.midnight }}>Your name</p>
+          <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55, color: C.midnight }}>
+            This is how you show up for your friends (unless they&rsquo;ve saved their own name for you).
+          </p>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              value={nameDraft}
+              onChange={(e) => { setNameDraft(e.target.value); setNameError(null); }}
+              placeholder="your first name"
+              maxLength={40}
+              disabled={nameSaving}
+              autoComplete="given-name"
+              style={{ flex: 1, height: 40, padding: "0 12px", borderRadius: 8, border: `2px solid ${C.greyblue}`, fontSize: 14, color: C.midnight, boxSizing: "border-box" }}
+            />
+            <button
+              onClick={saveName}
+              disabled={nameSaving || !nameDirty}
+              style={{ ...saveBtn, opacity: nameSaving || !nameDirty ? 0.5 : 1, cursor: nameSaving || !nameDirty ? "default" : "pointer" }}
+            >
+              {nameSaving ? <LoadingDots /> : nameSaved ? "saved!" : "save"}
+            </button>
+          </div>
+          {nameError && <p style={{ margin: "10px 0 0", fontSize: 13, color: C.red, fontWeight: 600 }}>{nameError}</p>}
+        </div>
       )}
 
       {phase === "main" && (
@@ -105,3 +158,4 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
 const dangerOutline: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: `2px solid ${C.red}`, background: "transparent", color: C.red, fontSize: 14, fontWeight: 700, cursor: "pointer" };
 const dangerSolid: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: "none", background: C.red, color: CANON.cream, fontSize: 14, fontWeight: 700 };
 const cancelBtn: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: `2px solid ${C.cream}`, background: "transparent", color: C.cream, fontSize: 14, fontWeight: 700, cursor: "pointer" };
+const saveBtn: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: "none", background: C.midnight, color: CANON.cream, fontSize: 14, fontWeight: 700, flexShrink: 0 };

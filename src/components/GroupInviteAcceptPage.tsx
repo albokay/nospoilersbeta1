@@ -113,10 +113,10 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
 
   const wants = info?.inviterWants ?? [];
   const watching = info?.inviterWatching ?? [];
-  // How the inviter is named to the invitee THROUGHOUT onboarding: if they
-  // typed a "hi, it's…" name, show ONLY that (no @handle, no parens — it
-  // becomes the invitee's contact name for them on accept anyway); else the
-  // @handle. (Alborz 2026-07-08.)
+  // How the inviter is named to the invitee THROUGHOUT onboarding:
+  // inviter_display_name (auto-filled at email time from the inviter's
+  // profiles.display_name since CP4 — it becomes the invitee's contact name
+  // for them on accept); else the @handle (email leg never ran).
   const inviterLabel = info?.inviterDisplayName || `@${info?.inviterName ?? "someone"}`;
   // "Join a group with …?" — the inviter shows as their typed name; any other
   // already-present members keep their @handle (no typed name to show).

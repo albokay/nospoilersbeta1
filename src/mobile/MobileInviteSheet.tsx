@@ -58,7 +58,6 @@ export default function MobileInviteSheet({
   const creating = !targetGroupId;
 
   const [rows, setRows] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
-  const [fromName, setFromName] = useState("");
   const [sending, setSending] = useState(false);
   const [links, setLinks] = useState<{ email: string; link?: string; error?: string; emailFailed?: boolean }[] | null>(null);
   const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
@@ -168,7 +167,7 @@ export default function MobileInviteSheet({
           const token = await createPeopleGroupInvite(id, row.email, row.name || undefined);
           // Await the email leg so a silent refusal surfaces as a
           // copy-the-link row instead of a false "Invites sent!".
-          const sent = await sendGroupInviteEmail(token, fromName.trim() || undefined);
+          const sent = await sendGroupInviteEmail(token);
           out.push({ email: row.email, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
         } catch (e: any) {
           out.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
@@ -268,18 +267,8 @@ export default function MobileInviteSheet({
                 )}
               </>
             )}
-            {/* §16 Body font (Inter regular 13); cream — desktop copy. */}
-            <p style={explainer}>
-              Your friend(s) will get an email invite from your username. If you don&rsquo;t think they&rsquo;d recognize it, tell them who you are:
-            </p>
-            <input
-              value={fromName}
-              onChange={(e) => setFromName(e.target.value)}
-              placeholder="hi, it's…"
-              maxLength={40}
-              className="m-invite-input"
-              style={{ ...emailInput, marginBottom: 0 }}
-            />
+            {/* "hi, it's…" removed (first-name identity CP4): the invite
+                email introduces the inviter by their first name. */}
             <div style={{ textAlign: "center", marginTop: 20 }}>
               <button style={{ ...sendBtn, opacity: sending || !ready ? 0.6 : 1 }} disabled={sending || !ready} onClick={sendInvites}>
                 {sending ? "creating…" : creating ? "create group" : "send invite"}

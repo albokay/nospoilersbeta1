@@ -146,7 +146,8 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
   }
 
   // How the inviter is shown to the invitee throughout onboarding: their
-  // typed "hi, it's…" name only (no @handle, no parens); else the handle.
+  // first name (inviter_display_name, auto-filled from the inviter's profile
+  // at email time since CP4); else the handle (email leg never ran).
   const inviterShown = info?.inviterDisplayName || `@${info?.inviterName ?? "someone"}`;
   // "Join a group with …?" — inviter as their typed name; other members keep
   // their @handle (no typed name to show for them).
