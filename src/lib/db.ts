@@ -1703,17 +1703,26 @@ export async function fetchBrowseProgress(
 
 // ── Public profile ────────────────────────────────────────────────────────────
 
-export type PublicProfile = { id: string; username: string; bio: string | null };
+export type PublicProfile = { id: string; username: string; displayName: string | null; bio: string | null };
 
-/** Resolves a username → userId + bio. Returns null if not found or is a seed user.
- *  Bio-tolerant: if the bio column doesn't exist (migration not applied),
- *  falls back to the legacy select and returns bio: null. */
+/** Resolves a username → userId + display name + bio. Returns null if not found
+ *  or is a seed user. Column-tolerant cascade (§6 item 28 pattern):
+ *  display_name (20260710) → bio (20260510) → legacy. */
 export async function fetchPublicProfileByUsername(username: string): Promise<PublicProfile | null> {
+  let displayNameSupported = true;
   let res = await supabase
     .from("profiles")
-    .select("id, username, is_seed, bio")
+    .select("id, username, display_name, is_seed, bio")
     .eq("username", username)
     .single();
+  if (res.error) {
+    displayNameSupported = false;
+    res = await supabase
+      .from("profiles")
+      .select("id, username, is_seed, bio")
+      .eq("username", username)
+      .single();
+  }
   let bioSupported = !res.error;
   if (res.error) {
     res = await supabase
@@ -1724,7 +1733,12 @@ export async function fetchPublicProfileByUsername(username: string): Promise<Pu
   }
   const data: any = res.data;
   if (!data || data.is_seed) return null;
-  return { id: data.id, username: data.username, bio: bioSupported ? (data.bio ?? null) : null };
+  return {
+    id: data.id,
+    username: data.username,
+    displayName: displayNameSupported ? (data.display_name ?? null) : null,
+    bio: bioSupported ? (data.bio ?? null) : null,
+  };
 }
 
 /** Public threads by a user — only those marked is_public=true. */

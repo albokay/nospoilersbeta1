@@ -13,7 +13,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   // Shown after a sign-up when "Confirm email" is enabled: the account exists
@@ -38,11 +38,11 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
     setLoading(true);
 
     if (mode === "signup") {
-      if (!username.trim()) { setError("Please choose a username."); setLoading(false); return; }
-      if (username.trim().length < 3) { setError("Username must be at least 3 characters."); setLoading(false); return; }
+      if (!firstName.trim()) { setError("Please enter your first name."); setLoading(false); return; }
+      if (firstName.trim().length > 40) { setError("That name is a little long — 40 characters max."); setLoading(false); return; }
       if (password.length < 8) { setError("Password must be at least 8 characters."); setLoading(false); return; }
       const redirect = signupRedirectTo ?? (typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined);
-      const res = await signUp(email.trim(), password, username.trim(), redirect ? { emailRedirectTo: redirect } : undefined);
+      const res = await signUp(email.trim(), password, firstName.trim(), redirect ? { emailRedirectTo: redirect } : undefined);
       setLoading(false);
       if (res.error) { setError(res.error); return; }
       if (res.needsConfirmation) { setConfirmSent(true); return; }
@@ -194,15 +194,20 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
 
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10 }}>
         {mode === "signup" && (
-          <input
-            className="badge"
-            placeholder="Username"
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            style={{ height: 40, width: "100%" }}
-            autoFocus
-            autoComplete="off"
-          />
+          <>
+            <input
+              className="badge"
+              placeholder="your first name"
+              value={firstName}
+              onChange={e => setFirstName(e.target.value)}
+              style={{ height: 40, width: "100%" }}
+              autoFocus
+              autoComplete="given-name"
+            />
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: "var(--canon-cream,#FEF8EA)" }}>
+              This is how you'll show up for your friends. Think of it like saving a name in their contact list — no need for a complicated handle.
+            </p>
+          </>
         )}
         <input
           className="badge"

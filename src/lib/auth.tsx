@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import type { User } from "@supabase/supabase-js";
 
-type Profile = { id: string; username: string; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null };
+type Profile = { id: string; username: string; display_name: string | null; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null };
 
 // Result of a sign-up attempt. `needsConfirmation` is true when Supabase
 // "Confirm email" is enabled and the new account has no session yet (the user
@@ -14,7 +14,10 @@ type AuthCtx = {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, username: string, opts?: { emailRedirectTo?: string }) => Promise<SignUpResult>;
+  // firstName = the self-chosen display name (first-name identity arc). The
+  // unique handle is auto-generated internally (slug + random suffix) and
+  // never chosen by — or shown to — the user.
+  signUp: (email: string, password: string, firstName: string, opts?: { emailRedirectTo?: string }) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   // Re-reads the current user's profile row into context. Called after the
@@ -38,15 +41,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // to /journal and /profile rendering blank (both gate on
     // profile.username) and breaks first-login routing.
     //
+    //   tier 0: + display_name      (20260710 applied)
     //   tier 1: bio + onboarded_at  (20260510 + 20260608 applied)
     //   tier 2: bio                 (only 20260510 applied)
     //   tier 3: legacy              (neither applied)
+    let displayNameSupported = true;
     let onboardedSupported = true;
     let res = await supabase
       .from("profiles")
-      .select("id, username, is_seed, is_admin, bio, onboarded_at")
+      .select("id, username, display_name, is_seed, is_admin, bio, onboarded_at")
       .eq("id", userId)
       .single();
+    if (res.error) {
+      displayNameSupported = false;
+      res = await supabase
+        .from("profiles")
+        .select("id, username, is_seed, is_admin, bio, onboarded_at")
+        .eq("id", userId)
+        .single();
+    }
     if (res.error) {
       onboardedSupported = false;
       res = await supabase
@@ -64,13 +77,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
     }
     if (res.data) {
+      const row: any = res.data;
       setProfile({
-        id: res.data.id,
-        username: res.data.username,
-        is_seed: res.data.is_seed,
-        is_admin: res.data.is_admin,
-        bio: bioSupported ? (res.data.bio ?? null) : null,
-        onboarded_at: onboardedSupported ? (res.data.onboarded_at ?? null) : null,
+        id: row.id,
+        username: row.username,
+        display_name: displayNameSupported ? (row.display_name ?? null) : null,
+        is_seed: row.is_seed,
+        is_admin: row.is_admin,
+        bio: bioSupported ? (row.bio ?? null) : null,
+        onboarded_at: onboardedSupported ? (row.onboarded_at ?? null) : null,
       });
     } else {
       setProfile(null);
@@ -115,27 +130,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signUp(
     email: string,
     password: string,
-    username: string,
+    firstName: string,
     opts?: { emailRedirectTo?: string },
   ): Promise<SignUpResult> {
-    // Validate username length
-    const trimmed = username.trim();
-    if (trimmed.length < 3) return { error: "Username must be at least 3 characters", needsConfirmation: false };
-    if (trimmed.length > 30) return { error: "Username must be 30 characters or less", needsConfirmation: false };
+    const trimmed = firstName.trim();
+    if (!trimmed) return { error: "Please enter your first name.", needsConfirmation: false };
+    if (trimmed.length > 40) return { error: "That name is a little long — 40 characters max.", needsConfirmation: false };
 
-    // Check username is not already taken
-    const { data: existing } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("username", username)
-      .single();
-    if (existing) return { error: "An account with that email or username already exists.", needsConfirmation: false };
+    // Generate the internal handle: slugified first name + short random
+    // suffix, pre-checked against profiles (public-read RLS allows this
+    // signed-out, same as the old username-taken check). The suffix makes a
+    // collision vanishingly rare; the retry + widening suffix make it
+    // effectively impossible. The handle stays unique-constrained in the DB
+    // (pool URL) — it just isn't user-visible anymore.
+    const base =
+      trimmed
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 20) || "user";
+    let slug = "";
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const suffix = Math.random().toString(36).slice(2, 6 + attempt);
+      const candidate = `${base}-${suffix}`;
+      const { data: taken } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("username", candidate)
+        .maybeSingle();
+      if (!taken) { slug = candidate; break; }
+    }
+    if (!slug) return { error: "Something went wrong creating your account. Please try again.", needsConfirmation: false };
 
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { username },
+        data: { username: slug, display_name: trimmed },
         // Where the confirmation link lands the user (only used when "Confirm
         // email" is enabled). Must be in the Supabase redirect allowlist.
         ...(opts?.emailRedirectTo ? { emailRedirectTo: opts.emailRedirectTo } : {}),
@@ -149,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error.message.toLowerCase().includes("registered") ||
         error.message.toLowerCase().includes("duplicate")
       ) {
-        return { error: "An account with that email or username already exists.", needsConfirmation: false };
+        return { error: "An account with that email already exists.", needsConfirmation: false };
       }
       return { error: error.message, needsConfirmation: false };
     }

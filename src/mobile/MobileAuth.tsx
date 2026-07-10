@@ -56,7 +56,7 @@ export default function MobileAuth() {
   const hint = params.get("hint");
   const [email, setEmail] = useState(() => new URLSearchParams(location.search).get("email") ?? "");
   const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   // After a sign-up when "Confirm email" is enabled: account exists but has no
@@ -97,12 +97,12 @@ export default function MobileAuth() {
     }
 
     if (mode === "signup") {
-      if (!username.trim()) { setError("Please choose a username."); setLoading(false); return; }
-      if (username.trim().length < 3) { setError("Username must be at least 3 characters."); setLoading(false); return; }
+      if (!firstName.trim()) { setError("Please enter your first name."); setLoading(false); return; }
+      if (firstName.trim().length > 40) { setError("That name is a little long — 40 characters max."); setLoading(false); return; }
       if (password.length < 8) { setError("Password must be at least 8 characters."); setLoading(false); return; }
       // Confirmation link returns the user back into /m (the validated returnTo).
       const redirect = typeof window !== "undefined" ? `${window.location.origin}${returnTo}` : undefined;
-      const res = await signUp(email.trim(), password, username.trim(), redirect ? { emailRedirectTo: redirect } : undefined);
+      const res = await signUp(email.trim(), password, firstName.trim(), redirect ? { emailRedirectTo: redirect } : undefined);
       setLoading(false);
       if (res.error) { setError(res.error); return; }
       if (res.needsConfirmation) { setConfirmSent(true); return; }
@@ -317,17 +317,21 @@ export default function MobileAuth() {
         {/* ── Form ── */}
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {mode === "signup" && (
-            <input
-              placeholder="Username"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              autoFocus
-              autoComplete="off"
-              autoCapitalize="none"
-              autoCorrect="off"
-              className="m-input"
-            style={inputStyle}
-            />
+            <>
+              <input
+                placeholder="your first name"
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                autoFocus
+                autoComplete="given-name"
+                autoCorrect="off"
+                className="m-input"
+                style={inputStyle}
+              />
+              <p style={{ margin: "0 0 2px", fontSize: 13, lineHeight: 1.5, color: CANON.cream, opacity: 0.9 }}>
+                This is how you'll show up for your friends. Think of it like saving a name in their contact list — no need for a complicated handle.
+              </p>
+            </>
           )}
           <input
             placeholder="Email"
