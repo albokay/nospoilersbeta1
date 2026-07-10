@@ -554,7 +554,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                         {((displayNames[m.username] ?? m.username)[0] ?? "?").toUpperCase()}
                       </span>
                       <span style={{ flex: 1, fontWeight: isSelf ? 700 : 600, fontSize: 14, color: C.midnight, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {displayNames[m.username] ?? m.username}{isSelf ? " (you)" : ""}{m.isDeparted ? " (left show)" : ""}
+                        {isSelf ? "(you)" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left show)" : ""}
                       </span>
                       <span style={{ fontWeight: 600, fontSize: 13, color: C.midnight, opacity: 0.8, flexShrink: 0 }}>
                         s{p?.s ?? 0} e{p?.e ?? 0}
@@ -588,7 +588,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 {mapMembers.length > 0 && (
                   <optgroup label="Filter by member">
                     {mapMembers.map((m) => (
-                      <option key={m.userId} value={`user:${m.userId}`}>only {displayNames[m.username] ?? m.username}{m.isDeparted ? " (left)" : ""}</option>
+                      <option key={m.userId} value={`user:${m.userId}`}>only {m.userId === user?.id ? "you" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left)" : ""}</option>
                     ))}
                   </optgroup>
                 )}

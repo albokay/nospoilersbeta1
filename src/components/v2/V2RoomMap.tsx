@@ -298,8 +298,11 @@ export default function V2RoomMap({
     [members, viewerUserId],
   );
   const dn = (u: string) => displayNames?.[u] ?? u;
+  // Self-view (first-name identity arc CP3): the viewer's own column is
+  // labeled just "(you)" — no name. Bylines still publish the name.
+  const SELF_LABEL = "(you)";
   const selfUsernameWidth = useMemo(
-    () => (selfMember ? measureUsernameWidth(dn(selfMember.username)) : 0),
+    () => (selfMember ? measureUsernameWidth(SELF_LABEL) : 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selfMember?.username, fontsReady, displayNames],
   );
@@ -872,7 +875,7 @@ export default function V2RoomMap({
                           : undefined
                       }
                     >
-                      {dn(m.username)}
+                      {isSelfCol ? SELF_LABEL : dn(m.username)}
                     </div>
                   );
                   if (usernameTooltipText == null) {

@@ -650,7 +650,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     {mapMembers.length > 0 && (
                       <optgroup label="Filter by member">
                         {mapMembers.map((m) => (
-                          <option key={m.userId} value={`user:${m.userId}`}>only {displayNames[m.username] ?? m.username}{m.isDeparted ? " (left)" : ""}</option>
+                          <option key={m.userId} value={`user:${m.userId}`}>only {m.userId === user?.id ? "you" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left)" : ""}</option>
                         ))}
                       </optgroup>
                     )}
