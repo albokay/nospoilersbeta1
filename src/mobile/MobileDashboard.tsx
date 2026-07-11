@@ -27,7 +27,7 @@ import {
   type RoomVisibility,
   type GroupChatActivity,
 } from "../lib/db";
-import { groupDisplayName, personDisplayName } from "../lib/groupNames";
+import { groupDisplayName, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import type { PeopleGroup, PeopleGroupMember } from "../types";
 
 /**
@@ -71,8 +71,8 @@ const SNAP_KEY = (uid: string) => `ns_m_dash_snap2_${uid}`;
 
 /** Format a pending invite's members as "@X and @Y" for the join prompt.
  *  (Received-invite surfaces keep @handles — naming-the-inviter deferred.) */
-function inviteNames(inv: PendingGroupInvite): string {
-  const ns = (inv.memberNames.length ? inv.memberNames : [inv.inviterName]).map((n) => `@${n}`);
+function inviteNames(inv: PendingGroupInvite, contactNames: Record<string, string>): string {
+  const ns = pendingInviteMemberNames(inv, contactNames);
   if (ns.length === 1) return ns[0];
   if (ns.length === 2) return `${ns[0]} and ${ns[1]}`;
   return `${ns.slice(0, -1).join(", ")} and ${ns[ns.length - 1]}`;
@@ -364,7 +364,7 @@ export default function MobileDashboard() {
                 );
               })}
               {pendingInvites.map((inv) => {
-                const names = inv.memberNames.length ? inv.memberNames : [inv.inviterName];
+                const names = pendingInviteMemberNames(inv, contactNames);
                 const label = inv.groupName || names.join(", ");
                 return (
                   <button key={inv.token} style={groupRow} onClick={() => { setInvitePrompt(inv); setAcceptError(null); }}>
@@ -401,9 +401,9 @@ export default function MobileDashboard() {
           {/* Bottom-sheet rule (2026-07-03): left-justify. */}
           <div style={{ ...bottomSheet, background: C.yellow }}>
             <div style={{ color: C.cream, fontSize: 13, fontWeight: 600, marginBottom: 10, opacity: 0.9 }}>
-              You&rsquo;ve been invited by @{invitePrompt.inviterName} to join a watch group.
+              You&rsquo;ve been invited by {pendingInviterLabel(invitePrompt, contactNames)} to join a watch group.
             </div>
-            <div style={{ ...sheetTitle, textAlign: "left" }}>Join a group with {inviteNames(invitePrompt)}?</div>
+            <div style={{ ...sheetTitle, textAlign: "left" }}>Join a group with {inviteNames(invitePrompt, contactNames)}?</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "flex-start", marginTop: 16 }}>
               <button style={startBtn} onClick={() => acceptInvite(invitePrompt)}>Yes</button>
               <button style={{ ...startBtn, background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }} onClick={() => declineInvite(invitePrompt)}>no</button>

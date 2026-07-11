@@ -75,7 +75,7 @@ import {
   type GroupChatActivity,
 } from "../lib/db";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { groupDisplayName, groupGenericName, personDisplayName } from "../lib/groupNames";
+import { groupDisplayName, groupGenericName, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
 import { groupHeadingMembers } from "./dashboardChrome";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
@@ -1696,7 +1696,7 @@ export default function DashboardPage() {
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) { setInvitePrompt(null); setAcceptError(null); } }}>
           <div style={yellowCard}>
             <button style={modalClose} onClick={() => { setInvitePrompt(null); setAcceptError(null); }}><X size={16} color={CANON.cream} /></button>
-            <div style={yellowTitle}>Join a group with {inviteNames(invitePrompt)}?</div>
+            <div style={yellowTitle}>Join a group with {inviteNames(invitePrompt, contactNames)}?</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
               <button style={startBtn} onClick={() => acceptInvite(invitePrompt)}>Yes</button>
               <button style={{ ...startBtn, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }} onClick={() => declineInvite(invitePrompt)}>no</button>
@@ -1845,9 +1845,10 @@ export default function DashboardPage() {
   );
 }
 
-/** Format a pending invite's members as "@X and @Y" for the join prompt. */
-function inviteNames(inv: PendingGroupInvite): string {
-  const ns = (inv.memberNames.length ? inv.memberNames : [inv.inviterName]).map((n) => `@${n}`);
+/** Format a pending invite's members as "X and Y" for the join prompt —
+ *  first names via the CP6 chain (contact → display_name → bare handle). */
+function inviteNames(inv: PendingGroupInvite, contactNames: Record<string, string>): string {
+  const ns = pendingInviteMemberNames(inv, contactNames);
   if (ns.length === 1) return ns[0];
   if (ns.length === 2) return `${ns[0]} and ${ns[1]}`;
   return `${ns.slice(0, -1).join(", ")} and ${ns[ns.length - 1]}`;
@@ -2125,14 +2126,14 @@ function GroupClusters({
         );
       })}
       {pendingInvites.map((inv) => {
-        const names = inv.memberNames.length ? inv.memberNames : [inv.inviterName];
+        const names = pendingInviteMemberNames(inv, contactNames);
         const label = inv.groupName || names.join(", ");
         return (
           <button
             key={inv.token}
             style={clusterBtn}
             onClick={() => onInviteClick(inv)}
-            onMouseMove={(e) => onTip({ text: <>You&rsquo;ve been invited by @{inv.inviterName}<br />to join a watch group.</>, wrap: true, x: e.clientX, y: e.clientY })}
+            onMouseMove={(e) => onTip({ text: <>You&rsquo;ve been invited by {pendingInviterLabel(inv, contactNames)}<br />to join a watch group.</>, wrap: true, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)} />

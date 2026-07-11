@@ -2706,8 +2706,16 @@ export type PendingGroupInvite = {
   token: string;
   groupId: string;
   groupName: string | null;
+  /** Inviter's handle — legacy last-resort fallback. */
   inviterName: string;
+  inviterId: string | null;
+  /** Inviter's first name (profile, freshest; else the invite's carried name). */
+  inviterDisplayName: string | null;
+  /** Member handles — legacy fallback for pre-CP6-migration servers. */
   memberNames: string[];
+  /** Members with ids + first names so the client can chain
+   *  contactName → display_name → username (CP6). Empty pre-migration. */
+  members: { id: string | null; username: string; displayName: string | null }[];
 };
 
 /** Pending people-group invites addressed to the caller ("*you're invited"). */
@@ -2720,7 +2728,14 @@ export async function fetchMyPendingGroupInvites(): Promise<PendingGroupInvite[]
     groupId: i.group_id,
     groupName: i.group_name ?? null,
     inviterName: i.inviter_name ?? "someone",
+    inviterId: i.inviter_id ?? null,
+    inviterDisplayName: i.inviter_display_name ?? null,
     memberNames: i.member_names ?? [],
+    members: (i.members ?? []).map((m: any) => ({
+      id: m.id ?? null,
+      username: m.username ?? "unknown",
+      displayName: m.display_name ?? null,
+    })),
   }));
 }
 

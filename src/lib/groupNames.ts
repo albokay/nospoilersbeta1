@@ -9,6 +9,7 @@
  * all, falls back to the stable "Group N".
  */
 import type { PeopleGroup, PeopleGroupMember } from "../types";
+import type { PendingGroupInvite } from "./db";
 
 export function joinNames(names: string[]): string {
   if (names.length <= 1) return names[0] ?? "";
@@ -50,4 +51,26 @@ export function groupGenericName(group: PeopleGroup, viewerNumber?: number): str
  *  object at hand carries it (members/chat/map rows all do since CP2). */
 export function personDisplayName(contactNames: Record<string, string>, userId: string, username: string, displayName?: string | null): string {
   return contactNames[userId] ?? displayName ?? username;
+}
+
+/** Names for a received (pending) group invite — CP6. Chain per member:
+ *  the viewer's contact name (they may know people here from other groups)
+ *  → first name → bare handle. Pre-CP6-migration servers send no `members`;
+ *  fall back to the legacy handle list (bare — the "@" is dropped site-wide). */
+export function pendingInviteMemberNames(
+  inv: PendingGroupInvite,
+  contactNames: Record<string, string>,
+): string[] {
+  if (inv.members.length) {
+    return inv.members.map((m) => (m.id ? contactNames[m.id] : undefined) ?? m.displayName ?? m.username);
+  }
+  return inv.memberNames.length ? inv.memberNames : [inv.inviterName];
+}
+
+/** How the inviter is named on a received invite ("You've been invited by …"). */
+export function pendingInviterLabel(
+  inv: PendingGroupInvite,
+  contactNames: Record<string, string>,
+): string {
+  return (inv.inviterId ? contactNames[inv.inviterId] : undefined) ?? inv.inviterDisplayName ?? inv.inviterName;
 }
