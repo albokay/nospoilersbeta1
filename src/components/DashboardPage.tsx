@@ -89,6 +89,7 @@ import TSPDemoModal from "./TSPDemoModal";
 import SocialOnboarding from "./SocialOnboarding";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
+import DeckGridCard from "./deck/DeckGridCard";
 import GroupRoomSticky from "./GroupRoomSticky";
 import { linkifyText } from "../lib/linkify";
 
@@ -1884,6 +1885,26 @@ export default function DashboardPage() {
           onboarding). */}
       {inGroup && !groupWaveDone && !postAccept && !socialOnbActive && (
         <DeckWave wave={2} requirePriorWave heading="more" idiom="desktop" onComplete={() => setGroupWaveDone(true)} />
+      )}
+
+      {/* Swipe-deck arc CP3 — the docked result cards (self-hiding until
+          someone has answers). Base dashboard = "How I Watch TV" (your
+          column); group room = "How We Watch TV" (everyone's columns +
+          the n=2 header line / n≥3 Findings sticky). Hidden while any
+          first-run overlay owns the page. */}
+      {user && !socialOnbActive && !showTspDemo && !postAccept && !inGroup && (
+        <DeckGridCard mode="personal" viewerId={user.id} />
+      )}
+      {user && !socialOnbActive && !postAccept && inGroup && groupWaveDone && (
+        <DeckGridCard
+          key={activeGroupId}
+          mode="group"
+          groupId={activeGroupId!}
+          viewerId={user.id}
+          others={(railGroups.find((r) => r.group.id === activeGroupId)?.members ?? [])
+            .filter((m) => m.userId !== user.id)
+            .map((m) => ({ id: m.userId, label: personDisplayName(contactNames, m.userId, m.username, m.displayName) }))}
+        />
       )}
 
       {/* Feedback tab — same left-edge widget the homepage has, so feedback
