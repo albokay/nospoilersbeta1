@@ -11,6 +11,7 @@ import MobileInviteSheet from "./MobileInviteSheet";
 import MobileSocialOnboarding from "./MobileSocialOnboarding";
 import DeckWave from "../components/deck/DeckWave";
 import YoureInCard from "../components/deck/YoureInCard";
+import MobileDeckCard from "../components/deck/MobileDeckCard";
 import {
   markSocialOnboarded,
   fetchPeopleGroupsForUser,
@@ -100,6 +101,10 @@ export default function MobileDashboard() {
   // re-evaluated next visit). Force-show for testing with ?sonb=1 (no stamp).
   const forceSocialOnb = new URLSearchParams(window.location.search).get("sonb") === "1";
   const [showSocialOnb, setShowSocialOnb] = useState(false);
+  // Swipe-deck arc CP4: the drip modal waits for this gate to RESOLVE so it
+  // can never race the onboarding waves (waves take precedence). A pending
+  // invite leaves it unresolved — the accept flow owns that user's cards.
+  const [onbResolved, setOnbResolved] = useState(false);
   useEffect(() => {
     if (authLoading || !user) return;
     if (forceSocialOnb) { setShowSocialOnb(true); return; }
@@ -117,8 +122,9 @@ export default function MobileDashboard() {
         // first; any group stamps done + skips. The onboarded flag no longer
         // suppresses it (a reset should re-guide). No TSP demo on mobile.
         if (invites.length > 0) return;
-        if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); return; }
+        if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); setOnbResolved(true); return; }
         setShowSocialOnb(true);
+        setOnbResolved(true);
       } catch { /* tolerant — never block the dashboard */ }
     })();
     return () => { cancelled = true; };
@@ -452,6 +458,21 @@ export default function MobileDashboard() {
           variant={{ kind: "invitee", friendName: postAccept.inviterDisplayName || postAccept.inviterName }}
           onDone={() => setPostAccept(null)}
         />
+      )}
+
+      {/* ── Swipe-deck arc CP3b — the docked "How I Watch TV" card (answers-
+             led artifact leads; grid behind the tap). Self-hiding until the
+             user has answers; hidden while a first-run overlay owns the
+             page. ── */}
+      {user && !showSocialOnb && !postAccept && (
+        <MobileDeckCard mode="personal" viewerId={user.id} />
+      )}
+
+      {/* ── Swipe-deck arc CP4 — the drip / catch-up modal: up to 4 released,
+             unanswered cards, once per session; waits for the onboarding
+             gate (waves take precedence). ── */}
+      {user && onbResolved && !showSocialOnb && !postAccept && (
+        <DeckWave wave="drip" heading="none" idiom="mobile" onComplete={() => {}} />
       )}
     </div>
   );

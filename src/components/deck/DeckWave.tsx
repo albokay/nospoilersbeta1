@@ -27,9 +27,15 @@ import { CANON } from "../../styles/canon";
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
 export default function DeckWave({ wave, heading, idiom, requirePriorWave, onComplete }: {
-  wave: 1 | 2;
-  /** "welcome" = the §12.4 Wave-1 copy block; "more" = the §12.5 "a few more…" H1. */
-  heading: "welcome" | "more";
+  /** 1 | 2 = the fixed onboarding waves. "drip" (CP4) = the catch-up/drip
+   *  modal: up to 4 released, unanswered cards, oldest first, at most once
+   *  per session (sessionStorage flag). Wave-2 cards are EXCLUDED from the
+   *  drip — wave 2 always arrives through its reserved moments (onboarding
+   *  completion / first group-room click), so the drip can't preempt them. */
+  wave: 1 | 2 | "drip";
+  /** "welcome" = the §12.4 Wave-1 copy block; "more" = the §12.5 "a few
+   *  more…" H1; "none" = bare card (the drip modal, per mockup). */
+  heading: "welcome" | "more" | "none";
   idiom: "desktop" | "mobile";
   /** Serve only if every earlier-wave card is answered. Used by the
    *  group-room wave-2 trigger so an account still owed wave 1 (an existing
@@ -49,6 +55,17 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
     (async () => {
       const [cards, answers] = await Promise.all([fetchDeckCards(), fetchMyDeckAnswers(user.id)]);
       if (cancelled) return;
+      if (wave === "drip") {
+        const key = `ns_deck_drip_${user.id}`;
+        try { if (sessionStorage.getItem(key)) { setQueue([]); return; } } catch { /* tolerate */ }
+        // The once-per-session flag is stamped on COMPLETION (see answer()),
+        // not on serve — a mid-batch refresh brings the cards back (there is
+        // no dismissal, incl. by reload).
+        setQueue(cards
+          .filter((c) => c.wave !== 2 && !(c.id in answers))
+          .slice(0, 4)); // fetchDeckCards is already in serve order (oldest first)
+        return;
+      }
       if (requirePriorWave && cards.some((c) => c.wave != null && c.wave < wave && !(c.id in answers))) {
         setQueue([]);
         return;
@@ -74,14 +91,17 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
     if (!user || doneRef.current) return;
     upsertDeckAnswer({ userId: user.id, cardId: card.id, answer: agreed })
       .catch((e) => console.warn("[deck] answer write failed (drip will re-serve):", e));
-    if (idx + 1 < queue!.length) setIdx(idx + 1);
-    else { doneRef.current = true; onComplete(); }
+    if (idx + 1 < queue!.length) { setIdx(idx + 1); return; }
+    doneRef.current = true;
+    // Drip batch completed → don't serve another this session (4 per login).
+    if (wave === "drip") { try { sessionStorage.setItem(`ns_deck_drip_${user.id}`, "1"); } catch { /* tolerate */ } }
+    onComplete();
   }
 
   return (
     <div style={{ ...dimWrap, background: mobile ? "rgba(26,58,74,0.35)" : "rgba(26,58,74,0.25)", zIndex: mobile ? 1000 : 900 }}>
       <div style={{ width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", maxHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        {heading === "welcome" ? (
+        {heading === "welcome" && (
           <div style={{ textAlign: "left", marginBottom: mobile ? 20 : 28 }}>
             <h1 style={{ ...h1Style, fontSize: mobile ? 28 : 34 }}>Welcome to Sidebar.</h1>
             <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: mobile ? 14 : 15, color: CANON.cream, marginTop: 10, lineHeight: 1.45 }}>
@@ -91,7 +111,8 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
               (Your friends will answer these too.)
             </div>
           </div>
-        ) : (
+        )}
+        {heading === "more" && (
           <div style={{ textAlign: "left", marginBottom: mobile ? 20 : 28 }}>
             <h1 style={{ ...h1Style, fontSize: mobile ? 28 : 34 }}>a few more&hellip;</h1>
           </div>

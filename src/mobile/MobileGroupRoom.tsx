@@ -10,6 +10,7 @@ import TrailerCard from "../components/TrailerCard";
 import MobileSearchSheet from "./MobileSearchSheet";
 import MobileInviteSheet from "./MobileInviteSheet";
 import DeckWave from "../components/deck/DeckWave";
+import MobileDeckCard from "../components/deck/MobileDeckCard";
 import {
   fetchShows,
   refreshStaleShows,
@@ -544,6 +545,28 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
              requirePriorWave keeps wave order for pre-catch-up accounts. ── */}
       {!groupWaveDone && (
         <DeckWave wave={2} requirePriorWave heading="more" idiom="mobile" onComplete={() => setGroupWaveDone(true)} />
+      )}
+
+      {/* ── Swipe-deck arc CP4 — the drip / catch-up modal (once per
+             session, wherever the user is); waits for the wave-2 check so
+             the reserved wave can't be preempted. ── */}
+      {user && groupWaveDone && (
+        <DeckWave wave="drip" heading="none" idiom="mobile" onComplete={() => {}} />
+      )}
+
+      {/* ── Swipe-deck arc CP3b — the docked "How We Watch TV" card
+             (answers-led artifact; full grid behind the tap). Self-hiding
+             until someone here has answers. ── */}
+      {user && groupWaveDone && (
+        <MobileDeckCard
+          key={groupId}
+          mode="group"
+          groupId={groupId}
+          viewerId={user.id}
+          others={members
+            .filter((m) => m.userId !== selfUserId)
+            .map((m) => ({ id: m.userId, label: personDisplayName(contactNames, m.userId, m.username, m.displayName) }))}
+        />
       )}
 
       {loading ? (

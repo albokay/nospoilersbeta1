@@ -19,6 +19,7 @@ import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../comp
 import LoadingDots from "../components/LoadingDots";
 import type { V2RoomMapMember } from "../components/v2/V2RoomMap";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
+import DeckWave from "../components/deck/DeckWave";
 import OneSelectProgress from "../components/OneSelectProgress";
 import RatingCaptureModal from "../components/RatingCaptureModal";
 import MobilePool from "./MobilePool";
@@ -761,6 +762,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           </div>
         </div>
       )}
+
+      {/* ── Swipe-deck arc CP4 — the drip / catch-up modal fires wherever
+             the user is (once per session; self-skipping). ── */}
+      {user && <DeckWave wave="drip" heading="none" idiom="mobile" onComplete={() => {}} />}
     </div>
   );
 }

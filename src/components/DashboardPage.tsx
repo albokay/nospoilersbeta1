@@ -166,6 +166,10 @@ export default function DashboardPage() {
   // Force-show for testing with ?sonb=1 (doesn't stamp).
   const forceSocialOnb = new URLSearchParams(location.search).get("sonb") === "1";
   const [showSocialOnb, setShowSocialOnb] = useState(false);
+  // Swipe-deck arc CP4: the drip modal waits for this gate to RESOLVE so it
+  // can never race the onboarding waves (waves take precedence). A pending
+  // invite leaves it unresolved — the accept flow owns that user's cards.
+  const [onbResolved, setOnbResolved] = useState(false);
   useEffect(() => {
     if (!user) return;
     if (new URLSearchParams(location.search).get("g")) return; // base dashboard only
@@ -186,8 +190,9 @@ export default function DashboardPage() {
         // flag no longer suppresses it (a reset should re-guide). The TSP demo
         // stays gated-once, so a returning user won't re-see it.
         if (invites.length > 0) return;
-        if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); return; }
+        if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); setOnbResolved(true); return; }
         setShowSocialOnb(true);
+        setOnbResolved(true);
       } catch { /* tolerant — never block the dashboard */ }
     })();
     return () => { cancelled = true; };
@@ -1905,6 +1910,15 @@ export default function DashboardPage() {
             .filter((m) => m.userId !== user.id)
             .map((m) => ({ id: m.userId, label: personDisplayName(contactNames, m.userId, m.username, m.displayName) }))}
         />
+      )}
+
+      {/* Swipe-deck arc CP4 — the drip / catch-up modal: up to 4 released,
+          unanswered cards, once per session, wherever the user is. Waits
+          for the onboarding gate to resolve (waves take precedence) and
+          never fires over a first-run overlay. */}
+      {user && !showTspDemo && !postAccept &&
+        (inGroup ? groupWaveDone : (onbResolved && !showSocialOnb)) && (
+          <DeckWave wave="drip" heading="none" idiom="desktop" onComplete={() => {}} />
       )}
 
       {/* Feedback tab — same left-edge widget the homepage has, so feedback
