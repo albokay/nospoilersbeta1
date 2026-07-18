@@ -4,9 +4,9 @@
  *
  * ── COPY TEMPLATES LIVE IN THIS FILE ──────────────────────────────────────
  * Every user-facing string the n=2 header and the Findings sticky can emit
- * is authored below (search "T_"). The spec's §10 inventory marks most of
- * these unchecked — the ones marked STAND-IN are Claude drafts awaiting
- * Alborz's rewrite; the ones marked SPEC are lifted verbatim from the spec.
+ * is authored below (search "T_"). Copy pass COMPLETE (Alborz 2026-07-17):
+ * SPEC = verbatim from the spec; ALBORZ = written/approved in the CP3
+ * review. Future copy changes happen here and nowhere else.
  *
  * ── DECISIONS BAKED IN (flagged for review) ───────────────────────────────
  * • A "hot take" = a solo YES: you answered yes, every other member who
@@ -38,16 +38,18 @@ const T_PAIR_STARK = (name: string, n: number, t: number) =>
 const T_PAIR_PLAIN = (name: string, n: number, t: number) =>
   `You and ${name} agree on ${n} of ${t} questions:`; // SPEC (§5 + mockup)
 
-// Findings sticky (§7.5 skeleton).
-const T_RENEGADE = (name: string) => `${name} is the renegade.`; // STAND-IN
-const T_UNANIMOUS = (n: number, plural: string) => `All ${n} of you ${plural}.`; // STAND-IN (§6 shape)
+// Findings sticky (§7.5 skeleton). Copy pass: Alborz 2026-07-17 (all
+// templates below are now his — none awaiting rewrite).
+const T_RENEGADE = (name: string) =>
+  `Your group's renegade is ${name} — they have the most hot-takes between you.`; // ALBORZ
+const T_UNANIMOUS = (n: number, plural: string) => `All ${n} of you ${plural}.`; // ALBORZ (approved)
 const T_CANT_AGREE = (statement: string) =>
-  `You can't agree on anything. Start with the fight over "${statement}"`; // STAND-IN (§7.5.4-3)
+  `No two of you watch TV the same way. The liveliest split: "${statement}"`; // ALBORZ
 const T_ALIGNED_HEAD = `Nobody here has a hot take.`; // SPEC (§8)
 const T_ALIGNED_SUB = `Friends, aligned. Go forth and watch.`; // SPEC (§8)
 const T_PAIR_LINE = (name: string, a: number, t: number) =>
-  `You and ${name} watch TV the same way — you agree on ${a} of ${t}.`; // STAND-IN (§7.5.8 shape)
-const T_PAIR_DUO_PROOF = (plural: string) => `You're the only two who ${plural}.`; // STAND-IN
+  `You and ${name} watch TV the same way — you agree on ${a} of ${t}.`; // ALBORZ (approved)
+const T_PAIR_DUO_PROOF = (plural: string) => `You're the only two who ${plural}.`; // ALBORZ (approved)
 const T_BACKBONE = `You're the backbone of the group. You have the most in common with everyone else in the group.`; // SPEC (§7.5.5)
 const T_OPPOSITE = (name: string, a: number, t: number) =>
   `You and ${name} are the furthest apart — ${a} of ${t}.`; // SPEC (§7.5.8)
@@ -167,12 +169,17 @@ export function computeFindings(args: {
     headline = T_RENEGADE(label(renegade));
     quotes = (takes.get(renegade) ?? []).slice(0, 3).map((c) => c.statement); // quote, don't inflect (§9.1)
   } else {
-    // Unanimous YES with everyone on the card (≥3 answerers = all members here).
+    // ALIGNED runs BEFORE the unanimous fallback (Alborz 2026-07-17): an
+    // aligned group almost always HAS a unanimous card, so the old order
+    // made the §8 ending unreachable in practice.
+    if (!anyTakes && scored.every((p) => p.agree / p.total >= ALIGNED_RATIO)) {
+      return { headline: T_ALIGNED_HEAD, quotes: [], lines: [T_ALIGNED_SUB], aligned: true };
+    }
+    // Unanimous YES with everyone on the card. (All-NO unanimity is pinned
+    // with the solo-NO hot takes — both need the unauthored negated forms.)
     const unanimous = cards.find((c) => memberIds.every((id) => byUser.get(id)?.get(c.id) === true));
     if (unanimous) {
       headline = T_UNANIMOUS(members.length, unanimous.plural);
-    } else if (!anyTakes && scored.every((p) => p.agree / p.total >= ALIGNED_RATIO)) {
-      return { headline: T_ALIGNED_HEAD, quotes: [], lines: [T_ALIGNED_SUB], aligned: true };
     } else {
       // Sharpest split: the most even yes/no divide with the most answers.
       let best: { card: DeckCard; score: number } | null = null;
