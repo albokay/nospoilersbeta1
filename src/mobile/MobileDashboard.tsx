@@ -9,6 +9,8 @@ import SidebarLogo from "../components/SidebarLogo";
 import LoadingDots from "../components/LoadingDots";
 import MobileInviteSheet from "./MobileInviteSheet";
 import MobileSocialOnboarding from "./MobileSocialOnboarding";
+import DeckWave from "../components/deck/DeckWave";
+import YoureInCard from "../components/deck/YoureInCard";
 import {
   markSocialOnboarded,
   fetchPeopleGroupsForUser,
@@ -121,16 +123,22 @@ export default function MobileDashboard() {
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, forceSocialOnb]);
-  async function handleSocialOnbDone(groupId: string | null) {
+  async function handleSocialOnbDone(_groupId: string | null) {
     setShowSocialOnb(false);
     if (!forceSocialOnb && user) markSocialOnboarded(user.id).catch(() => {});
     await refreshRailAndInvites();
-    if (groupId) navigate(`/m/group/${groupId}`);
+    // Swipe-deck arc CP2 (spec §12.1): onboarding lands on the DASHBOARD —
+    // the new group's row is waiting there (was: straight into the group).
   }
 
   // Sheets
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
+  // Swipe-deck arc CP2 (spec §12.2): accepting an invite runs WAVE 1 → the
+  // "You're in!" invitee card → rests on the dashboard (wave 2 fires on the
+  // first click into the group room). Both self-skip once answered.
+  const [postAccept, setPostAccept] = useState<PendingGroupInvite | null>(null);
+  const [postAcceptPhase, setPostAcceptPhase] = useState<"wave" | "card">("wave");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -265,7 +273,10 @@ export default function MobileDashboard() {
       setInvitePrompt(null);
       setAcceptError(null);
       await refreshRailAndInvites();
-      navigate(`/m/group/${inv.groupId}`);
+      // Swipe-deck arc CP2: wave 1 → "You're in!" card → rest on the
+      // dashboard (was: straight into the group; spec §12.2 lands here).
+      setPostAcceptPhase("wave");
+      setPostAccept(inv);
       return;
     }
     console.error("[m-dashboard] accept invite failed", res.error);
@@ -425,8 +436,23 @@ export default function MobileDashboard() {
         />
       )}
 
-      {/* ── CP3: the 3-screen first-run flow (over the plain green). ── */}
+      {/* ── CP3: the 3-screen first-run flow (over the plain green). Now
+             opens with WAVE 1 and closes with WAVE 2 + the "You're in!" card
+             (swipe-deck arc CP2). ── */}
       {showSocialOnb && <MobileSocialOnboarding onDone={handleSocialOnbDone} />}
+
+      {/* ── Swipe-deck arc CP2 — invitee accept sequence: wave 1 → "You're
+             in!" card, then rest on the dashboard. ── */}
+      {postAccept && postAcceptPhase === "wave" && (
+        <DeckWave wave={1} heading="welcome" idiom="mobile" onComplete={() => setPostAcceptPhase("card")} />
+      )}
+      {postAccept && postAcceptPhase === "card" && (
+        <YoureInCard
+          idiom="mobile"
+          variant={{ kind: "invitee", friendName: postAccept.inviterDisplayName || postAccept.inviterName }}
+          onDone={() => setPostAccept(null)}
+        />
+      )}
     </div>
   );
 }

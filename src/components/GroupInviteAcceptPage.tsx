@@ -16,6 +16,8 @@ import { getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite
 import SidebarLogo from "./SidebarLogo";
 import AuthModal from "./AuthModal";
 import PublicDashboardPage from "./PublicDashboardPage";
+import DeckWave from "./deck/DeckWave";
+import YoureInCard from "./deck/YoureInCard";
 import { CANON } from "../styles/canon";
 import { preventLastWordOrphan } from "../lib/utils";
 
@@ -90,13 +92,17 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
     if (phase === "entering" && user) navigate("/dashboard", { replace: true });
   }, [phase, user, navigate]);
 
+  // Swipe-deck arc CP2 (spec §12.2): a successful accept runs WAVE 1 (4
+  // question cards, welcome copy) → the "You're in!" invitee card → THEN the
+  // dashboard (the old "Taking you to your dashboard…" interstitial is
+  // dropped). Landing on the dashboard, not in the room, is unchanged
+  // (Alborz 2026-07-06).
+  const [donePhase, setDonePhase] = useState<"wave" | "card">("wave");
+
   async function join() {
     setStatus("joining");
     const res = await acceptPeopleGroupInvite(token);
-    // Accepting always lands on the DASHBOARD (Alborz 2026-07-06) — the
-    // bootstrap room is auto-joined server-side, so its button is waiting
-    // there; we deliberately don't drop people straight into the room.
-    if (res.ok) { setStatus("done"); setTimeout(() => navigate("/dashboard", { replace: true }), 900); return; }
+    if (res.ok) { setDonePhase("wave"); setStatus("done"); return; }
     if (res.error === "wrong_recipient") { setMasked(res.maskedEmail); setStatus("wrong"); return; }
     if (res.error === "already_accepted") { setStatus("already"); return; }
     if (res.error === "expired") { setStatus("expired"); return; }
@@ -125,6 +131,25 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   const names = memberLabels.length
     ? memberLabels.reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
     : inviterLabel;
+
+  // Joined — the wave-1 cards then the "You're in!" card, over the plain
+  // green (the sequence brings its own dim; no yellow card behind it).
+  if (status === "done") {
+    return (
+      <div style={page}>
+        <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
+        {donePhase === "wave" ? (
+          <DeckWave wave={1} heading="welcome" idiom="desktop" onComplete={() => setDonePhase("card")} />
+        ) : (
+          <YoureInCard
+            idiom="desktop"
+            variant={{ kind: "invitee", friendName: info?.inviterDisplayName || info?.inviterName || "your friend" }}
+            onDone={() => navigate("/dashboard", { replace: true })}
+          />
+        )}
+      </div>
+    );
+  }
 
   // Account just created — brief "setting up" screen while routing to /dashboard.
   if (phase === "entering") {
@@ -184,7 +209,6 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
         )}
 
         {status === "joining" && <p style={muted}>Joining…</p>}
-        {status === "done" && <p style={title}>You're in! Taking you to your dashboard…</p>}
         {status === "wrong" && (
           <>
             <p style={title}>{preventLastWordOrphan("This invite was sent to a different email.")}</p>

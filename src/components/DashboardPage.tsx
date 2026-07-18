@@ -87,6 +87,8 @@ import TrailerCard from "./TrailerCard";
 import { prefetchTrailers } from "../lib/trailers";
 import TSPDemoModal from "./TSPDemoModal";
 import SocialOnboarding from "./SocialOnboarding";
+import DeckWave from "./deck/DeckWave";
+import YoureInCard from "./deck/YoureInCard";
 import GroupRoomSticky from "./GroupRoomSticky";
 import { linkifyText } from "../lib/linkify";
 
@@ -99,7 +101,11 @@ import { linkifyText } from "../lib/linkify";
 // 20260623_profiles_tsp_demo_seen.sql applied, or the demo re-shows every
 // /dashboard visit (the once-only flag can't persist without the column).
 // ?tspdemo=1 still force-shows for testing.
-const TSP_DEMO_ENABLED = true;
+// Swipe-deck arc CP2 (spec §12.3): the demo is DROPPED from the onboarding
+// flow — the question waves + social onboarding own the first run now. The
+// component stays dormant behind ?tspdemo=1; a `?` re-entry link in the
+// dashboard/rooms is a planned follow-up.
+const TSP_DEMO_ENABLED = false;
 
 // ── §16 palette (authoritative) ──────────────────────────────────────────────
 const C = {
@@ -186,11 +192,13 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [user, location.search, forceSocialOnb]);
   const socialOnbActive = showSocialOnb && !showTspDemo;
-  async function handleSocialOnbDone(groupId: string | null) {
+  async function handleSocialOnbDone(_groupId: string | null) {
     setShowSocialOnb(false);
     if (!forceSocialOnb && user) markSocialOnboarded(user.id).catch(() => {});
     if (user) { try { setRailGroups(await loadRail(user.id)); } catch { /* tolerant */ } }
-    if (groupId) navigate(`/dashboard?g=${groupId}`);
+    // Swipe-deck arc CP2 (spec §12.1): onboarding lands on the DASHBOARD —
+    // the new group's cluster is waiting there (was: straight into ?g=).
+    navigate("/dashboard", { replace: true });
   }
 
   const [outOfPool, setOutOfPool] = useState<Set<string>>(new Set());
@@ -243,6 +251,20 @@ export default function DashboardPage() {
 
   // CP5b: pending invites (rail "*you're invited"), group options (gear).
   const [pendingInvites, setPendingInvites] = useState<PendingGroupInvite[]>([]);
+
+  // Swipe-deck arc CP2 (spec §12.2): accepting an invite runs WAVE 1 (4
+  // question cards, welcome copy) → the "You're in!" invitee card → rests on
+  // the DASHBOARD (the group's cluster is waiting; entering it the first
+  // time serves wave 2 below). Both self-skip for accounts that already
+  // answered.
+  const [postAccept, setPostAccept] = useState<PendingGroupInvite | null>(null);
+  const [postAcceptPhase, setPostAcceptPhase] = useState<"wave" | "card">("wave");
+  // The invitee's WAVE 2 — first click into a group room (spec §12.2 step 5).
+  // requirePriorWave keeps an account still owed wave 1 (existing user
+  // pre-catch-up) from being served out of order. Re-arms per group entry;
+  // DeckWave self-skips once answered, so it costs two tolerant reads.
+  const [groupWaveDone, setGroupWaveDone] = useState(false);
+  useEffect(() => { setGroupWaveDone(false); }, [activeGroupId]);
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [optionsFor, setOptionsFor] = useState<string | null>(null); // group id whose gear options are open
@@ -998,8 +1020,11 @@ export default function DashboardPage() {
     if (res.ok) {
       setInvitePrompt(null);
       setAcceptError(null);
-      await refreshRailAndInvites();            // tolerant — never blocks the nav below
-      navigate(`/dashboard?g=${inv.groupId}`);  // enter the group you just joined
+      await refreshRailAndInvites();            // tolerant — never blocks the sequence below
+      // Swipe-deck arc CP2: wave 1 → "You're in!" card → rest on the
+      // dashboard (was: straight into ?g=; spec §12.2 lands invitees here).
+      setPostAcceptPhase("wave");
+      setPostAccept(inv);
       return;
     }
     // Genuine failure — keep the modal open and say why (was a silent console log).
@@ -1832,11 +1857,34 @@ export default function DashboardPage() {
         document.body,
       )}
 
-      {/* TSP onboarding demo — over the empty dashboard (spec §9). */}
+      {/* TSP onboarding demo — dormant in the flow (swipe-deck arc CP2);
+          still reachable via ?tspdemo=1. */}
       {showTspDemo && <TSPDemoModal onClose={closeTspDemo} />}
 
-      {/* CP3 social onboarding — strictly AFTER the demo (never both at once). */}
+      {/* CP3 social onboarding — strictly AFTER the demo (never both at once).
+          Now opens with WAVE 1 and closes with WAVE 2 + the "You're in!" card
+          (swipe-deck arc CP2). */}
       {socialOnbActive && <SocialOnboarding onDone={handleSocialOnbDone} />}
+
+      {/* Swipe-deck arc CP2 — invitee accept sequence: wave 1 → "You're in!"
+          card, then rest on the dashboard. */}
+      {postAccept && postAcceptPhase === "wave" && (
+        <DeckWave wave={1} heading="welcome" idiom="desktop" onComplete={() => setPostAcceptPhase("card")} />
+      )}
+      {postAccept && postAcceptPhase === "card" && (
+        <YoureInCard
+          idiom="desktop"
+          variant={{ kind: "invitee", friendName: postAccept.inviterDisplayName || postAccept.inviterName }}
+          onDone={() => setPostAccept(null)}
+        />
+      )}
+
+      {/* Swipe-deck arc CP2 — the invitee's WAVE 2 on first entry into a
+          group room (self-skipping; never over the accept sequence or
+          onboarding). */}
+      {inGroup && !groupWaveDone && !postAccept && !socialOnbActive && (
+        <DeckWave wave={2} requirePriorWave heading="more" idiom="desktop" onComplete={() => setGroupWaveDone(true)} />
+      )}
 
       {/* Feedback tab — same left-edge widget the homepage has, so feedback
           is reachable from every live desktop surface (2026-07-03). */}

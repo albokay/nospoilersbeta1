@@ -9,6 +9,7 @@ import LoadingDots from "../components/LoadingDots";
 import TrailerCard from "../components/TrailerCard";
 import MobileSearchSheet from "./MobileSearchSheet";
 import MobileInviteSheet from "./MobileInviteSheet";
+import DeckWave from "../components/deck/DeckWave";
 import {
   fetchShows,
   refreshStaleShows,
@@ -126,6 +127,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   const [chatNew, setChatNew] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Swipe-deck arc CP2: the invitee's WAVE 2 fires on first entry here.
+  const [groupWaveDone, setGroupWaveDone] = useState(false);
 
   // Sheets
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
@@ -535,6 +538,13 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         {chatNew && <span style={notifDotChat} />}
         <MessageCircle size={24} color={C.green} />
       </button>
+
+      {/* ── Swipe-deck arc CP2 — the invitee's WAVE 2 on first entry into the
+             group room (spec §12.2 step 5). Self-skipping once answered;
+             requirePriorWave keeps wave order for pre-catch-up accounts. ── */}
+      {!groupWaveDone && (
+        <DeckWave wave={2} requirePriorWave heading="more" idiom="mobile" onComplete={() => setGroupWaveDone(true)} />
+      )}
 
       {loading ? (
         <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>

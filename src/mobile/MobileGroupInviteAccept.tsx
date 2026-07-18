@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { CANON } from "../styles/canon";
 import SidebarLogo from "../components/SidebarLogo";
+import DeckWave from "../components/deck/DeckWave";
+import YoureInCard from "../components/deck/YoureInCard";
 import { preventLastWordOrphan } from "../lib/utils";
 import {
   getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite,
@@ -115,10 +117,15 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     return { watching: w.sort(byName), interested: n.sort(byName) };
   }, [pool, poolProgress, showsById]);
 
+  // Swipe-deck arc CP2 (spec §12.2): a successful accept runs WAVE 1 (4
+  // question cards, welcome copy) → the "You're in!" invitee card → THEN the
+  // dashboard (the "Taking you to your dashboard…" interstitial is dropped).
+  const [donePhase, setDonePhase] = useState<"wave" | "card">("wave");
+
   async function join() {
     setStatus("joining");
     const res = await acceptPeopleGroupInvite(token);
-    if (res.ok) { setStatus("done"); setTimeout(() => navigate("/m/dashboard", { replace: true }), 900); return; }
+    if (res.ok) { setDonePhase("wave"); setStatus("done"); return; }
     if (res.error === "wrong_recipient") { setMasked(res.maskedEmail); setStatus("wrong"); return; }
     if (res.error === "already_accepted") { setStatus("already"); return; }
     if (res.error === "expired") { setStatus("expired"); return; }
@@ -156,6 +163,26 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
   const names = memberLabels.length
     ? memberLabels.reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
     : inviterShown;
+
+  // ── Joined: wave-1 cards → the "You're in!" card, over the plain green ────
+  if (status === "done") {
+    return (
+      <div style={page}>
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 16 }}>
+          <SidebarLogo scale={0.5} blocksOpacity={1} />
+        </div>
+        {donePhase === "wave" ? (
+          <DeckWave wave={1} heading="welcome" idiom="mobile" onComplete={() => setDonePhase("card")} />
+        ) : (
+          <YoureInCard
+            idiom="mobile"
+            variant={{ kind: "invitee", friendName: info?.inviterDisplayName || info?.inviterName || "your friend" }}
+            onDone={() => navigate("/m/dashboard", { replace: true })}
+          />
+        )}
+      </div>
+    );
+  }
 
   // ── Logged-out welcome: inviter's pool + JOIN IN (single column) ──────────
   if (status === "ready" && info && !user && !authLoading) {
@@ -226,7 +253,6 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         {status === "ready" && !user && authLoading && <p style={muted}>Signing you in…</p>}
 
         {status === "joining" && <p style={muted}>Joining…</p>}
-        {status === "done" && <p style={title}>You're in! Taking you to your dashboard…</p>}
         {status === "wrong" && (
           <>
             <p style={title}>{preventLastWordOrphan("This invite was sent to a different email.")}</p>

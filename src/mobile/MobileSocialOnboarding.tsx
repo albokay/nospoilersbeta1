@@ -31,6 +31,8 @@ import { CANON } from "../styles/canon";
 import LoadingDots from "../components/LoadingDots";
 import OneSelectProgress from "../components/OneSelectProgress";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
+import DeckWave from "../components/deck/DeckWave";
+import YoureInCard from "../components/deck/YoureInCard";
 import MobileSearchSheet from "./MobileSearchSheet";
 import {
   fetchShows,
@@ -59,7 +61,10 @@ type Boot = { gid?: string; roomId?: string; token?: string; threadId?: string; 
 
 export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: string | null) => void }) {
   const { user, profile } = useAuth();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  // Swipe-deck arc CP2 (spec §12.1): step 0 = WAVE 1 (4 question cards with
+  // the welcome copy), steps 1–3 = the original show → friend → seed-entry
+  // screens, step 4 = WAVE 2 ("a few more…"), step 5 = the "You're in!" card.
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
   // Email backstop's last resort: bootstrap done, email undeliverable →
   // copy-the-link panel (shown in place of the compose), then step 4.
   const [fallbackLink, setFallbackLink] = useState<string | null>(null);
@@ -157,6 +162,12 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
 
   const emailValid = friendEmail.includes("@") && friendEmail.trim().length >= 5;
   const screen2Ready = friendName.trim().length > 0 && emailValid;
+
+  // ── Screen 0: WAVE 1 — 4 question cards with the welcome copy (§12.4).
+  //    Self-skipping (already-answered accounts pass straight through). ──────
+  if (step === 0) {
+    return <DeckWave wave={1} heading="welcome" idiom="mobile" onComplete={() => setStep(1)} />;
+  }
 
   // ── Screen 1: the question over the plain green; the shared search sheet
   //    picks the show + progress in one pass. A picked show renders the
@@ -319,20 +330,19 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
     );
   }
 
-  // ── Screen 4: confirmation, straight on the green — click-through wrapper
-  //    so the top bar (logo, account, sign-out) stays visible and alive. ─────
+  // ── Screen 4: WAVE 2 — 4 more cards, "a few more…" (§12.5), fired on
+  //    onboarding COMPLETION; self-skipping like wave 1. ──────────────────────
+  if (step === 4) {
+    return <DeckWave wave={2} heading="more" idiom="mobile" onComplete={() => setStep(5)} />;
+  }
+
+  // ── Screen 5: the "You're in!" card (§12.6, inviter variant). ─────────────
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-      <div style={{ textAlign: "center", maxWidth: 420, padding: "0 24px", pointerEvents: "auto" }}>
-        <h1 style={{ ...onbHeading, marginBottom: 24 }}>You&rsquo;re in.</h1>
-        <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: "normal", lineHeight: 1.7, color: C.cream, marginBottom: 36 }}>
-          You&rsquo;ve now created a show room for <b>{show?.name}</b>, invited{" "}
-          <b>{friendName.trim() || "your friend"}</b>, and left them some writing to read.
-          Invite more friends you want to watch with. Sidebar is for writing to your friends.
-        </div>
-        <button style={bluePill} onClick={() => onDone(bootRef.current.gid ?? null)}>Get started!</button>
-      </div>
-    </div>
+    <YoureInCard
+      idiom="mobile"
+      variant={{ kind: "inviter", showName: show?.name ?? "your show", friendName: friendName.trim() || "your friend" }}
+      onDone={() => onDone(bootRef.current.gid ?? null)}
+    />
   );
 }
 

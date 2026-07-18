@@ -41,6 +41,8 @@ import {
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import OneSelectProgress from "./OneSelectProgress";
 import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
+import DeckWave from "./deck/DeckWave";
+import YoureInCard from "./deck/YoureInCard";
 import LoadingDots from "./LoadingDots";
 import { CANON } from "../styles/canon";
 import {
@@ -54,7 +56,10 @@ type Boot = { gid?: string; roomId?: string; token?: string; threadId?: string; 
 
 export default function SocialOnboarding({ onDone }: { onDone: (groupId: string | null) => void }) {
   const { user, profile } = useAuth();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  // Swipe-deck arc CP2 (spec §12.1): step 0 = WAVE 1 (4 question cards with
+  // the welcome copy), steps 1–3 = the original show → friend → seed-entry
+  // screens, step 4 = WAVE 2 ("a few more…"), step 5 = the "You're in!" card.
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
   // Email backstop's last resort: bootstrap done, email undeliverable →
   // copy-the-link card (shown in place of the compose modal), then step 4.
   const [fallbackLink, setFallbackLink] = useState<string | null>(null);
@@ -212,6 +217,13 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
 
   const emailValid = friendEmail.includes("@") && friendEmail.trim().length >= 5;
   const screen2Ready = friendName.trim().length > 0 && emailValid;
+
+  // ── Screen 0: WAVE 1 — 4 question cards with the welcome copy (§12.4).
+  // Self-skipping: an account that already answered them passes straight
+  // through (e.g. a returning 0-group user re-guided by the gate). ──────────
+  if (step === 0) {
+    return <DeckWave wave={1} heading="welcome" idiom="desktop" onComplete={() => setStep(1)} />;
+  }
 
   // ── Screen 1: search button → the site's search card → picker card ─────────
   // Anchored near the top (NOT flex-centered): the heading holds its position
@@ -387,20 +399,20 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
     );
   }
 
-  // ── Screen 4: confirmation, straight on the green (no modal). Header 1
-  // heading + Header 2 message (§16), with a create-group-sized button. ──────
+  // ── Screen 4: WAVE 2 — 4 more cards, "a few more…" (§12.5). Fires on
+  // onboarding COMPLETION (the bootstrap succeeded or fell back to
+  // copy-the-link); self-skipping like wave 1. ───────────────────────────────
+  if (step === 4) {
+    return <DeckWave wave={2} heading="more" idiom="desktop" onComplete={() => setStep(5)} />;
+  }
+
+  // ── Screen 5: the "You're in!" card (§12.6, inviter variant). ─────────────
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-      <div style={{ textAlign: "center", maxWidth: 620, padding: "0 24px", pointerEvents: "auto" }}>
-        <h1 style={{ ...onbHeading, marginBottom: 24 }}>You&rsquo;re in.</h1>
-        <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: "normal", lineHeight: 1.7, color: CANON.cream, marginBottom: 36 }}>
-          You&rsquo;ve now created a show room for <b>{show?.name}</b>, invited{" "}
-          <b>{friendName.trim() || "your friend"}</b>, and left them some writing to read.
-          Invite more friends you want to watch with. Sidebar is for writing to your friends.
-        </div>
-        <button style={invitePill} onClick={() => onDone(bootRef.current.gid ?? null)}>Get started!</button>
-      </div>
-    </div>
+    <YoureInCard
+      idiom="desktop"
+      variant={{ kind: "inviter", showName: show?.name ?? "your show", friendName: friendName.trim() || "your friend" }}
+      onDone={() => onDone(bootRef.current.gid ?? null)}
+    />
   );
 }
 
