@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Swipe deck — mobile result surfaces (CP0 proposal, rev 2)</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --personal:#7ABD8E; --friend:#ADC8D7; --identity:#355EB8; --accent:#DEA838;
+    --alert:#F45028; --cream:#FEF8EA; --dark:#1A3A4A; --business:#8DAABA;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#e8e6e1; font-family:Inter,sans-serif; padding:32px; color:var(--dark);}
+  h1{font-family:Lora,serif; font-size:22px; margin-bottom:6px;}
+  .note{font-size:13px; color:#666; max-width:960px; margin-bottom:28px; line-height:1.5;}
+  .row{display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start;}
+  .phone{width:360px; height:720px; border-radius:28px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.25); position:relative; flex-shrink:0;}
+  .cap{width:360px; font-size:12.5px; line-height:1.55; color:#444; margin-top:12px;}
+  .cap b{color:#111;}
+  .col{display:flex; flex-direction:column;}
+
+  .logo{display:flex; align-items:flex-end; gap:2px; padding:18px 0 0 18px;}
+  .logo .sq{width:15px;height:15px;border-radius:5px;}
+  .logo .word{font-style:italic; font-weight:700; font-size:15px; color:var(--cream); margin-left:6px;}
+  .word i{color:var(--accent); font-style:italic;}
+
+  .dim{position:absolute; inset:0; background:rgba(26,58,74,.35);}
+
+  /* card / sheet */
+  .hw-mark{display:flex; gap:2px; align-items:flex-end;}
+  .hw-mark .sq{width:9px;height:9px;border-radius:3px;}
+  .hw-mark .w{font-style:italic;font-weight:700;font-size:10px;color:var(--dark);margin-left:3px;}
+  .hw-mark .w i{color:var(--accent);}
+  .hw-title{font-family:Lora,serif; font-weight:700; color:var(--identity); font-size:22px; white-space:nowrap;}
+  .hw-sub{font-size:11.5px; color:var(--business); font-weight:600; margin-top:3px;}
+
+  .docked{position:absolute; left:14px; right:14px; bottom:-24px; background:var(--cream); border-radius:24px; padding:18px 20px 40px; box-shadow:0 -6px 24px rgba(0,0,0,.2);}
+  .docked .hw-head{display:flex; justify-content:space-between; align-items:flex-start;}
+
+  .sheet-open{position:absolute; left:0; right:0; bottom:0; top:96px; background:var(--cream); border-radius:24px 24px 0 0; box-shadow:0 -8px 28px rgba(0,0,0,.28); display:flex; flex-direction:column; overflow:hidden;}
+  .sheet-open .hw-head{display:flex; justify-content:space-between; align-items:flex-start; padding:20px 20px 12px;}
+  .grabber{width:44px; height:4px; border-radius:2px; background:var(--business); opacity:.5; margin:10px auto 0;}
+
+  .rowline{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 20px; font-size:13px; line-height:1.35;}
+  .rowline:nth-child(odd){background:rgba(173,200,215,.45);}
+  .hw-foot{padding:12px 20px; font-size:12px; font-weight:600; color:var(--identity); text-align:right;}
+
+  svg.th{width:18px; height:18px; flex-shrink:0;}
+  svg.th.up{stroke:var(--personal);}
+  svg.th.down{stroke:var(--alert);}
+  svg.th.cell-th{width:15px; height:15px; stroke:var(--cream);}
+  .hold{width:18px; text-align:center; color:var(--business); font-weight:700;}
+
+  /* dashboard phone */
+  .ph-dash{background:var(--personal);}
+  .grouprow{background:rgba(253,248,236,.25); border-radius:16px; margin:10px 18px; padding:14px 16px; color:var(--cream); font-weight:600; font-size:14px;}
+  .createpill{background:var(--identity); color:var(--cream); font-weight:700; font-size:13px; border-radius:65px; padding:12px 22px; margin:16px auto 4px; width:max-content;}
+
+  /* group room phone */
+  .ph-group{background:var(--friend);}
+  .gr-head{padding:14px 18px 2px; text-align:center;}
+  .gr-title{font-family:Lora,serif; font-weight:700; font-size:20px; color:var(--cream);}
+  .gr-with{font-size:11px; color:var(--cream); font-weight:600; opacity:.85;}
+  .shelf{text-align:center; font-family:Lora,serif; color:var(--cream); font-size:15px; letter-spacing:.5px; margin:12px 0 6px;}
+  .showpill{background:var(--personal); color:var(--cream); border-radius:65px; padding:10px 18px; margin:6px auto; width:200px; font-weight:700; font-size:13px;}
+
+  /* #2 open — mini grid with vertical names */
+  .mini-grid{flex:1; overflow:hidden;}
+  .mg-head{display:grid; grid-template-columns:1fr 34px 34px 34px 34px 34px; padding:0 12px; align-items:end;}
+  .vname{writing-mode:vertical-rl; transform:rotate(180deg); font-size:11px; font-weight:700; height:64px; display:flex; align-items:center; justify-content:flex-start; margin:0 auto 4px;}
+  .mg-row{display:grid; grid-template-columns:1fr 34px 34px 34px 34px 34px; align-items:center; padding:9px 12px; font-size:12.5px; line-height:1.3;}
+  .mg-row:nth-child(even){background:rgba(173,200,215,.45);}
+  .mg-row .slot{display:flex; justify-content:center;}
+
+  /* #3 full grid */
+  .ph-grid{background:var(--friend);}
+  .sheet-full{position:absolute; inset:0; background:rgba(26,58,74,.35); display:flex; flex-direction:column;}
+  .sheet-close{position:absolute; top:10px; right:16px; font-size:22px; color:var(--cream); font-weight:700; z-index:2;}
+  .grid-card{background:var(--cream); border-radius:20px; margin:40px 10px 14px; flex:1; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 8px 24px rgba(0,0,0,.18);}
+  .g-head{display:grid; grid-template-columns:132px 50px 52px 52px 52px; align-items:end; padding:12px 0 6px; background:var(--cream); border-bottom:2px solid rgba(141,170,186,.3); position:relative;}
+  .g-title{font-family:Lora,serif; font-weight:700; color:var(--identity); font-size:13.5px; padding-left:14px; line-height:1.15; white-space:nowrap;}
+  .g-name{font-size:10.5px; font-weight:700; text-align:center; padding-bottom:2px;}
+  .g-name .pencil{display:block; font-size:10px; color:var(--identity);}
+  .g-row{display:grid; grid-template-columns:132px 50px 52px 52px 52px; min-height:42px; align-items:stretch;}
+  .g-st{font-size:10px; line-height:1.3; padding:5px 8px 5px 14px; display:flex; align-items:center;}
+  .g-row:nth-child(odd) .g-st{background:rgba(173,200,215,.5);}
+  .cell{display:flex; align-items:center; justify-content:center;}
+  .cell.y{background:var(--personal);} .cell.n{background:var(--alert);}
+  .cell.u{background:var(--cream); border-left:1px solid rgba(141,170,186,.18);}
+  .fade{position:absolute; right:0; top:0; bottom:0; width:26px; background:linear-gradient(to right, rgba(254,248,234,0), rgba(26,58,74,.12)); pointer-events:none;}
+  .freeze-tag{position:absolute; font-size:9px; font-weight:700; letter-spacing:.5px; color:var(--alert); background:rgba(254,248,234,.9); border:1px dashed var(--alert); border-radius:4px; padding:2px 5px; z-index:3;}
+</style>
+</head>
+<body>
+<h1>Swipe deck — mobile result surfaces (rev 2, for approval)</h1>
+<p class="note">Adjustments applied: headings are <b>"How I Watch TV" / "How We Watch TV"</b> (A); every surface <b>docks at the bottom and slides open on tap</b>, like desktop (B); answers render as <b>Lucide thumbs-up (personal green) / thumbs-down (alert red)</b> instead of pills and dots (C); the group card lists <b>friend names at the top, rotated vertical counterclockwise</b> (D); full-grid cells carry a <b>cream thumb centered in each cell</b> (E). Page dims behind every open surface. All colors canon.</p>
+
+<svg style="display:none">
+  <symbol id="thumb-up" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
+  </symbol>
+  <symbol id="thumb-down" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/>
+  </symbol>
+</svg>
+
+<div class="row">
+
+  <!-- 1a. dashboard, docked -->
+  <div class="col">
+    <div class="phone ph-dash">
+      <div class="logo">
+        <span class="sq" style="background:var(--cream)"></span><span class="sq" style="background:var(--alert)"></span><span class="sq" style="background:var(--friend)"></span><span class="sq" style="background:var(--identity)"></span>
+        <span class="word"><i>side</i>bar</span>
+      </div>
+      <div class="grouprow">Christine, Matt, Jill &amp; Libby</div>
+      <div class="grouprow">Zrobla</div>
+      <div class="createpill">Create another watch group?</div>
+      <div class="docked">
+        <div class="hw-head">
+          <div>
+            <div class="hw-title">How I Watch TV</div>
+          </div>
+          <div class="hw-mark">
+            <span class="sq" style="background:var(--accent)"></span><span class="sq" style="background:var(--alert)"></span><span class="sq" style="background:var(--personal)"></span><span class="sq" style="background:var(--identity)"></span>
+            <span class="w"><i>side</i>bar</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="cap"><b>1a — Dashboard, docked.</b> "How I Watch TV" peeks at the viewport bottom, mirroring the desktop docked state. Tap anywhere on it → slides up into 1b.</p>
+  </div>
+
+  <!-- 1b. dashboard, open -->
+  <div class="col">
+    <div class="phone ph-dash">
+      <div class="logo">
+        <span class="sq" style="background:var(--cream)"></span><span class="sq" style="background:var(--alert)"></span><span class="sq" style="background:var(--friend)"></span><span class="sq" style="background:var(--identity)"></span>
+        <span class="word"><i>side</i>bar</span>
+      </div>
+      <div class="dim"></div>
+      <div class="sheet-open">
+        <div class="grabber"></div>
+        <div class="hw-head">
+          <div>
+            <div class="hw-title">How I Watch TV</div>
+            <div class="hw-sub">my latest answers on Sidebar</div>
+          </div>
+          <div class="hw-mark">
+            <span class="sq" style="background:var(--accent)"></span><span class="sq" style="background:var(--alert)"></span><span class="sq" style="background:var(--personal)"></span><span class="sq" style="background:var(--identity)"></span>
+            <span class="w"><i>side</i>bar</span>
+          </div>
+        </div>
+        <div class="rowline"><span>I check my phone during television.</span><svg class="th down"><use href="#thumb-down"/></svg></div>
+        <div class="rowline"><span>I proactively stay away from trailers.</span><svg class="th up"><use href="#thumb-up"/></svg></div>
+        <div class="rowline"><span>Three episodes is enough to judge a show.</span><svg class="th down"><use href="#thumb-down"/></svg></div>
+        <div class="rowline"><span>I've been spoiled by a thumbnail.</span><svg class="th up"><use href="#thumb-up"/></svg></div>
+        <div class="rowline"><span>I've lied about being caught up.</span><svg class="th up"><use href="#thumb-up"/></svg></div>
+        <div class="rowline"><span>I fall asleep during television regularly.</span><svg class="th up"><use href="#thumb-up"/></svg></div>
+        <div class="rowline"><span>I'll give a show at least one full season.</span><svg class="th down"><use href="#thumb-down"/></svg></div>
+        <div class="hw-foot">see all &rarr;</div>
+      </div>
+    </div>
+    <p class="cap"><b>1b — Dashboard, open.</b> Slides up over the dimmed page (grabber + tap-out to re-dock). Latest answers as statement + Lucide thumb: personal-green up = agree, alert-red down = disagree. First-set state (§7.6.1): subtitle drops "latest," no "see all." Screenshot-safe: the mark rides the card.</p>
+  </div>
+
+  <!-- 2a. group room, docked -->
+  <div class="col">
+    <div class="phone ph-group">
+      <div class="logo">
+        <span class="sq" style="background:var(--cream)"></span><span class="sq" style="background:var(--alert)"></span><span class="sq" style="background:var(--personal)"></span><span class="sq" style="background:var(--identity)"></span>
+        <span class="word"><i>side</i>bar</span>
+      </div>
+      <div class="gr-head">
+        <div class="gr-title">Group 1</div>
+        <div class="gr-with">with Christine, Matt, Jill, Libby</div>
+      </div>
+      <div class="shelf">OPEN SHOW ROOMS:</div>
+      <div class="showpill">Paradise</div>
+      <div class="shelf">Proposed shows:</div>
+      <div class="showpill" style="background:var(--cream); color:var(--personal)">Spider-Noir</div>
+      <div class="docked">
+        <div class="hw-head">
+          <div>
+            <div class="hw-title">How We Watch TV</div>
+          </div>
+          <div class="hw-mark">
+            <span class="sq" style="background:var(--accent)"></span><span class="sq" style="background:var(--alert)"></span><span class="sq" style="background:var(--personal)"></span><span class="sq" style="background:var(--identity)"></span>
+            <span class="w"><i>side</i>bar</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="cap"><b>2a — Group room, docked.</b> Same docked grammar on the sky page, below the shelves. Tap → slides up into 2b.</p>
+  </div>
+
+  <!-- 2b. group room, open -->
+  <div class="col">
+    <div class="phone ph-group">
+      <div class="logo">
+        <span class="sq" style="background:var(--cream)"></span><span class="sq" style="background:var(--alert)"></span><span class="sq" style="background:var(--personal)"></span><span class="sq" style="background:var(--identity)"></span>
+        <span class="word"><i>side</i>bar</span>
+      </div>
+      <div class="dim"></div>
+      <div class="sheet-open">
+        <div class="grabber"></div>
+        <div class="hw-head">
+          <div>
+            <div class="hw-title">How We Watch TV</div>
+            <div class="hw-sub">our answers on Sidebar</div>
+          </div>
+          <div class="hw-mark">
+            <span class="sq" style="background:var(--accent)"></span><span class="sq" style="background:var(--alert)"></span><span class="sq" style="background:var(--personal)"></span><span class="sq" style="background:var(--identity)"></span>
+            <span class="w"><i>side</i>bar</span>
+          </div>
+        </div>
+        <div class="mini-grid">
+          <div class="mg-head">
+            <span></span>
+            <span class="vname">(me)</span>
+            <span class="vname">Christine</span>
+            <span class="vname">Libby</span>
+            <span class="vname">Jill</span>
+            <span class="vname">Matt</span>
+          </div>
+          <div class="mg-row"><span>Reaction videos count as spoilers.</span>
+            <span class="slot"><svg class="th up"><use href="#thumb-up"/></svg></span>
+            <span class="slot"><svg class="th down"><use href="#thumb-down"/></svg></span>
+            <span class="slot"><svg class="th up"><use href="#thumb-up"/></svg></span>
+            <span class="slot"><svg class="th down"><use href="#thumb-down"/></svg></span>
+            <span class="slot hold">·</span></div>
+          <div class="mg-row"><span>I've been spoiled by a thumbnail.</span>
+            <span class="slot"><svg class="th down"><use href="#thumb-down"/></svg></span>
+            <span class="slot"><svg class="th up"><use href="#thumb-up"/></svg></span>
+            <span class="slot"><svg class="th up"><use href="#thumb-up"/></svg></span>
+            <span class="slot"><svg class="th up"><use href="#thumb-up"/></svg></span>
+            <span class="slot hold">·</span></div>
+          <div class="mg-row"><span>I proactively stay away from trailers.</span>
+            <span class="slot"><svg class="th up"><use href="#thumb-up"/></svg></span>
+            <span class="slot"><svg class="th up"><use href="#thumb-up"/></svg></span>
+            <span class="slot"><svg class="th down"><use href="#thumb-down"/></svg></span>
+            <span class="slot"><svg class="th up"><use href="#thumb-up"/></svg></span>
+            <span class="slot hold">·</span></div>
+          <div class="mg-row"><span>I check my phone during television.</span>
+            <span class="slot"><svg class="th down"><use href="#thumb-down"/></svg></span>
+            <span class="slot"><svg class="th up"><use href="#thumb-up"/></svg></span>
+            <span class="slot"><svg class="th up"><use href="#thumb-up"/></svg></span>
+            <span class="slot"><svg class="th down"><use href="#thumb-down"/></svg></span>
+            <span class="slot hold">·</span></div>
+        </div>
+        <div class="hw-foot">tap for the full grid &rarr;</div>
+      </div>
+    </div>
+    <p class="cap"><b>2b — Group room, open.</b> Friend names run across the top, rotated vertical counterclockwise (read bottom-to-top), (me) first. One Lucide thumb per member per statement; a business-grey dot holds the slot for a member who hasn't answered that card yet. At n=2 the computed header line sits under the title. "tap for the full grid" → surface 3.</p>
+  </div>
+
+  <!-- 3. full grid -->
+  <div class="col">
+    <div class="phone ph-grid">
+      <div class="sheet-full">
+        <div class="sheet-close">&times;</div>
+        <div class="grid-card">
+          <div class="g-head">
+            <div class="g-title">How We Watch TV</div>
+            <div class="g-name">(me)<span class="pencil">&#9998;</span></div>
+            <div class="g-name">Christine</div>
+            <div class="g-name">Libby</div>
+            <div class="g-name">Jill</div>
+            <span class="freeze-tag" style="top:2px; right:64px;">frozen top</span>
+          </div>
+          <div style="flex:1; overflow:hidden; position:relative;">
+            <div class="g-row"><div class="g-st">Even if I know I'm not gonna watch a show, I still don't want to be spoiled.</div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div></div>
+            <div class="g-row"><div class="g-st">Reaction videos count as spoilers.</div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div></div>
+            <div class="g-row"><div class="g-st">Saying "nothing happens in this one" is a spoiler.</div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div>
+              <div class="cell u"></div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div></div>
+            <div class="g-row"><div class="g-st">I've been spoiled by a thumbnail.</div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div></div>
+            <div class="g-row"><div class="g-st">If someone tells me an episode is good, that's already too much.</div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div>
+              <div class="cell u"></div></div>
+            <div class="g-row"><div class="g-st">I proactively stay away from trailers.</div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div></div>
+            <div class="g-row"><div class="g-st">The "next episode" teases after an episode are too spoiler-y.</div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div></div>
+            <div class="g-row"><div class="g-st">I check my phone during television.</div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div></div>
+            <div class="g-row"><div class="g-st">I've lied about being caught up.</div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell y"><svg class="th cell-th"><use href="#thumb-up"/></svg></div>
+              <div class="cell n"><svg class="th cell-th"><use href="#thumb-down"/></svg></div>
+              <div class="cell u"></div></div>
+            <div class="fade"></div>
+            <span class="freeze-tag" style="bottom:10px; left:14px;">statements + (me) frozen left &mdash; friends scroll &rarr;</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="cap"><b>3 — The full grid.</b> Full-screen over the dimmed page. Every answered cell carries a cream Lucide thumb centered on its color (up on personal-green, down on alert-red); unanswered stays cream and empty. Frozen panes per §11.6. The pencil enters edit mode — your column live, friends faded, confirm riding the frozen header — where the cream thumbs become the tap targets for flipping an answer.</p>
+  </div>
+
+</div>
+</body>
+</html>

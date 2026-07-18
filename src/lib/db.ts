@@ -5298,3 +5298,141 @@ export async function reanchorHighlightsForTarget(args: {
     console.warn("reanchorHighlightsForTarget failed:", error);
   }
 }
+
+// ── Swipe deck ("How I/We Watch TV") ─────────────────────────────────────
+
+export type DeckCard = {
+  id: string;
+  statement: string;
+  singular: string;
+  plural: string;
+  /** §7.5.7 stranger-legible restatement; null until authored. Renderers
+   *  fall back cold → singular/plural. */
+  cold: string | null;
+  /** -1 = "I'll watch anything", +1 = "impress me", 0 = off-axis */
+  axisX: number;
+  /** -1 = "NO spoilers", +1 = "meh", 0 = off-axis */
+  axisY: number;
+  /** Empirical classification — updated from real yes-rates by admin SQL. */
+  cardType: "split" | "confession" | "consensus";
+  /** 1 | 2 = the fixed onboarding waves; null = drip card. */
+  wave: number | null;
+  releasedAt: number;
+  sortOrder: number;
+};
+
+function rowToDeckCard(row: any): DeckCard {
+  return {
+    id:         row.id,
+    statement:  row.statement,
+    singular:   row.singular,
+    plural:     row.plural,
+    cold:       row.cold ?? null,
+    axisX:      row.axis_x ?? 0,
+    axisY:      row.axis_y ?? 0,
+    cardType:   row.card_type,
+    wave:       row.wave ?? null,
+    releasedAt: new Date(row.released_at).getTime(),
+    sortOrder:  row.sort_order ?? 0,
+  };
+}
+
+/**
+ * All released, active cards in serve/display order. The explicit
+ * released_at filter keeps admin sessions consistent with everyone else
+ * (the RLS SELECT policy lets admins read unreleased cards).
+ *
+ * Pre-migration tolerant: any error returns [] so no deck surface can
+ * break a page before the tables exist.
+ */
+export async function fetchDeckCards(): Promise<DeckCard[]> {
+  try {
+    const { data, error } = await supabase
+      .from("deck_cards")
+      .select("id, statement, singular, plural, cold, axis_x, axis_y, card_type, wave, released_at, sort_order")
+      .eq("is_active", true)
+      .lte("released_at", new Date().toISOString())
+      .order("sort_order");
+    if (error) throw error;
+    return (data ?? []).map(rowToDeckCard);
+  } catch (err) {
+    console.warn("fetchDeckCards failed (pre-migration or transient):", err);
+    return [];
+  }
+}
+
+/**
+ * The caller's own answers: cardId → agree?. Pre-migration tolerant ({}).
+ */
+export async function fetchMyDeckAnswers(userId: string): Promise<Record<string, boolean>> {
+  try {
+    const { data, error } = await supabase
+      .from("deck_answers")
+      .select("card_id, answer")
+      .eq("user_id", userId);
+    if (error) throw error;
+    const out: Record<string, boolean> = {};
+    for (const row of (data ?? []) as any[]) out[row.card_id] = row.answer;
+    return out;
+  } catch (err) {
+    console.warn("fetchMyDeckAnswers failed (pre-migration or transient):", err);
+    return {};
+  }
+}
+
+/**
+ * Record (or change) an answer. Global, not per-group — the same stored
+ * answer feeds every group's grid. Mirrors upsertEpisodeRating: boolean-only
+ * write, no rate limit, throws on failure so callers can revert optimistic
+ * state. The grid edit mode batches changed cells through this in parallel,
+ * exactly like commitRatings.
+ */
+export async function upsertDeckAnswer(args: {
+  userId: string;
+  cardId: string;
+  answer: boolean;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("deck_answers")
+    .upsert(
+      {
+        user_id: args.userId,
+        card_id: args.cardId,
+        answer:  args.answer,
+      },
+      { onConflict: "user_id,card_id" },
+    );
+  if (error) throw error;
+}
+
+export type GroupDeckAnswer = {
+  userId: string;
+  cardId: string;
+  answer: boolean;
+  answeredAt: number;
+};
+
+/**
+ * Every current group member's answers to released cards, via the
+ * get_group_deck_answers SECURITY DEFINER RPC (the only cross-user path —
+ * deck_answers rows are owner-only under RLS). Returns [] for non-members
+ * and pre-migration. Names resolve through the existing member loaders
+ * (contactName → display_name chain); this payload is ids only.
+ */
+export async function fetchGroupDeckAnswers(groupId: string): Promise<GroupDeckAnswer[]> {
+  try {
+    const { data, error } = await supabase.rpc("get_group_deck_answers", {
+      p_group_id: groupId,
+    });
+    if (error) throw error;
+    return ((data ?? []) as any[]).map((row) => ({
+      userId:     row.user_id,
+      cardId:     row.card_id,
+      answer:     row.answer,
+      answeredAt: new Date(row.answered_at).getTime(),
+    }));
+  } catch (err) {
+    console.warn("fetchGroupDeckAnswers failed (pre-migration or transient):", err);
+    return [];
+  }
+}
