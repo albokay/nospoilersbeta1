@@ -258,13 +258,12 @@ export default function DashboardPage() {
   // CP5b: pending invites (rail "*you're invited"), group options (gear).
   const [pendingInvites, setPendingInvites] = useState<PendingGroupInvite[]>([]);
 
-  // Swipe-deck arc CP2 (spec §12.2): accepting an invite runs WAVE 1 (4
-  // question cards, welcome copy) → the "You're in!" invitee card → rests on
-  // the DASHBOARD (the group's cluster is waiting; entering it the first
-  // time serves wave 2 below). Both self-skip for accounts that already
-  // answered.
+  // Swipe-deck arc (reworked in QA 2026-07-18): the "You're in!" invitee
+  // card IS the accept confirmation. GET STARTED! accepts the invite, WAVE 1
+  // runs (self-skipping for accounts that already answered), then the user
+  // lands STRAIGHT IN the group room (where wave 2's trigger takes over).
   const [postAccept, setPostAccept] = useState<PendingGroupInvite | null>(null);
-  const [postAcceptPhase, setPostAcceptPhase] = useState<"wave" | "card">("wave");
+  const [accepting, setAccepting] = useState(false);
   // The invitee's WAVE 2 — first click into a group room (spec §12.2 step 5).
   // requirePriorWave keeps an account still owed wave 1 (existing user
   // pre-catch-up) from being served out of order. Re-arms per group entry;
@@ -1022,14 +1021,15 @@ export default function DashboardPage() {
   }
 
   async function acceptInvite(inv: PendingGroupInvite) {
+    if (accepting) return;
+    setAccepting(true);
     const res = await acceptPeopleGroupInvite(inv.token);
+    setAccepting(false);
     if (res.ok) {
       setInvitePrompt(null);
       setAcceptError(null);
       await refreshRailAndInvites();            // tolerant — never blocks the sequence below
-      // Swipe-deck arc CP2: wave 1 → "You're in!" card → rest on the
-      // dashboard (was: straight into ?g=; spec §12.2 lands invitees here).
-      setPostAcceptPhase("wave");
+      // Wave 1, then straight into the group room (QA 2026-07-18).
       setPostAccept(inv);
       return;
     }
@@ -1722,21 +1722,20 @@ export default function DashboardPage() {
         );
       })()}
 
-      {/* CP5b: "Join a group with @X?" from a pending invite (rail red cluster) */}
-      {invitePrompt && (
-        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) { setInvitePrompt(null); setAcceptError(null); } }}>
-          <div style={yellowCard}>
-            <button style={modalClose} onClick={() => { setInvitePrompt(null); setAcceptError(null); }}><X size={16} color={CANON.cream} /></button>
-            <div style={yellowTitle}>Join a group with {inviteNames(invitePrompt, contactNames)}?</div>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
-              <button style={startBtn} onClick={() => acceptInvite(invitePrompt)}>Yes</button>
-              <button style={{ ...startBtn, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }} onClick={() => declineInvite(invitePrompt)}>no</button>
-            </div>
-            {acceptError && (
-              <div style={{ marginTop: 14, textAlign: "center", color: CANON.cream, fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{acceptError}</div>
-            )}
-          </div>
-        </div>
+      {/* Pending-invite prompt (rail red cluster) — the "You're in!" invitee
+          card IS the confirmation now (Alborz QA 2026-07-18; replaces the
+          old Yes/no modal). GET STARTED! accepts → wave 1 → straight into
+          the group room. Dim-click backs out without accepting; the decline
+          (delete-invite) path no longer has a surface — flagged. */}
+      {invitePrompt && !postAccept && (
+        <YoureInCard
+          idiom="desktop"
+          variant={{ kind: "invitee", friendName: pendingInviterLabel(invitePrompt, contactNames) }}
+          busy={accepting}
+          errorText={acceptError}
+          onDone={() => acceptInvite(invitePrompt)}
+          onDismiss={() => { setInvitePrompt(null); setAcceptError(null); }}
+        />
       )}
 
       {/* CP5b: group options (gear) — rename + leave, anchored near the gear */}
@@ -1872,16 +1871,19 @@ export default function DashboardPage() {
           (swipe-deck arc CP2). */}
       {socialOnbActive && <SocialOnboarding onDone={handleSocialOnbDone} />}
 
-      {/* Swipe-deck arc CP2 — invitee accept sequence: wave 1 → "You're in!"
-          card, then rest on the dashboard. */}
-      {postAccept && postAcceptPhase === "wave" && (
-        <DeckWave wave={1} heading="welcome" idiom="desktop" onComplete={() => setPostAcceptPhase("card")} />
-      )}
-      {postAccept && postAcceptPhase === "card" && (
-        <YoureInCard
+      {/* Post-accept: WAVE 1, then straight into the just-joined group room
+          (QA 2026-07-18 — the "You're in!" card already served as the
+          confirmation above). */}
+      {postAccept && (
+        <DeckWave
+          wave={1}
+          heading="welcome"
           idiom="desktop"
-          variant={{ kind: "invitee", friendName: postAccept.inviterDisplayName || postAccept.inviterName }}
-          onDone={() => setPostAccept(null)}
+          onComplete={() => {
+            const gid = postAccept.groupId;
+            setPostAccept(null);
+            navigate(`/dashboard?g=${gid}`);
+          }}
         />
       )}
 

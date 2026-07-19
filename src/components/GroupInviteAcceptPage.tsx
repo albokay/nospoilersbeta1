@@ -92,29 +92,18 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
     if (phase === "entering" && user) navigate("/dashboard", { replace: true });
   }, [phase, user, navigate]);
 
-  // Swipe-deck arc CP2 (spec §12.2): a successful accept runs WAVE 1 (4
-  // question cards, welcome copy) → the "You're in!" invitee card → THEN the
-  // dashboard (the old "Taking you to your dashboard…" interstitial is
-  // dropped). Landing on the dashboard, not in the room, is unchanged
-  // (Alborz 2026-07-06).
-  const [donePhase, setDonePhase] = useState<"wave" | "card">("wave");
-
+  // Reworked in QA 2026-07-18: the "You're in!" invitee card IS the accept
+  // confirmation (replaces the old Yes/no). GET STARTED! accepts → WAVE 1
+  // (self-skipping) → straight into the group room. The decline path lost
+  // its surface with the Yes/no — flagged.
   async function join() {
     setStatus("joining");
     const res = await acceptPeopleGroupInvite(token);
-    if (res.ok) { setDonePhase("wave"); setStatus("done"); return; }
+    if (res.ok) { setStatus("done"); return; }
     if (res.error === "wrong_recipient") { setMasked(res.maskedEmail); setStatus("wrong"); return; }
     if (res.error === "already_accepted") { setStatus("already"); return; }
     if (res.error === "expired") { setStatus("expired"); return; }
     setStatus("error");
-  }
-
-  // "no" fully declines: deletes the invite (so it doesn't linger as a red
-  // pending cluster) and lands the invitee on a clean dashboard. To reconnect
-  // later they send their own invite. Tolerant — navigates regardless.
-  async function declineAndLeave() {
-    try { await declinePeopleGroupInvite(token); } catch { /* tolerant */ }
-    navigate("/dashboard");
   }
 
   const wants = info?.inviterWants ?? [];
@@ -132,21 +121,32 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
     ? memberLabels.reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
     : inviterLabel;
 
-  // Joined — the wave-1 cards then the "You're in!" card, over the plain
-  // green (the sequence brings its own dim; no yellow card behind it).
+  // The signed-in confirm — the "You're in!" card (GET STARTED! = accept).
+  if ((status === "ready" || status === "joining") && user && info) {
+    return (
+      <div style={page}>
+        <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
+        <YoureInCard
+          idiom="desktop"
+          variant={{ kind: "invitee", friendName: info.inviterDisplayName || info.inviterName }}
+          busy={status === "joining"}
+          onDone={join}
+        />
+      </div>
+    );
+  }
+
+  // Joined — wave 1 over the plain green, then straight into the group room.
   if (status === "done") {
     return (
       <div style={page}>
         <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
-        {donePhase === "wave" ? (
-          <DeckWave wave={1} heading="welcome" idiom="desktop" onComplete={() => setDonePhase("card")} />
-        ) : (
-          <YoureInCard
-            idiom="desktop"
-            variant={{ kind: "invitee", friendName: info?.inviterDisplayName || info?.inviterName || "your friend" }}
-            onDone={() => navigate("/dashboard", { replace: true })}
-          />
-        )}
+        <DeckWave
+          wave={1}
+          heading="welcome"
+          idiom="desktop"
+          onComplete={() => navigate(info ? `/dashboard?g=${info.groupId}` : "/dashboard", { replace: true })}
+        />
       </div>
     );
   }
@@ -198,17 +198,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
         {/* Existing account signed in from JOIN IN; bridge until `user` lands. */}
         {status === "ready" && !user && postSignin && <p style={muted}>Signing you in…</p>}
 
-        {status === "ready" && user && (
-          <>
-            <p style={title}>Join a group with {names}?</p>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
-              <button style={yes} onClick={join}>Yes</button>
-              <button style={no} onClick={declineAndLeave}>no</button>
-            </div>
-          </>
-        )}
-
-        {status === "joining" && <p style={muted}>Joining…</p>}
+        {/* (Signed-in ready/joining renders the "You're in!" card above.) */}
         {status === "wrong" && (
           <>
             <p style={title}>{preventLastWordOrphan("This invite was sent to a different email.")}</p>

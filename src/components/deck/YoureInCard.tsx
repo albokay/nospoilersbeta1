@@ -15,6 +15,7 @@
  */
 import React from "react";
 import { ArrowRight } from "lucide-react";
+import LoadingDots from "../LoadingDots";
 import { CANON } from "../../styles/canon";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
@@ -23,14 +24,26 @@ export type YoureInVariant =
   | { kind: "inviter"; showName: string; friendName: string }
   | { kind: "invitee"; friendName: string };
 
-export default function YoureInCard({ variant, idiom, onDone }: {
+export default function YoureInCard({ variant, idiom, onDone, busy = false, errorText = null, onDismiss }: {
   variant: YoureInVariant;
   idiom: "desktop" | "mobile";
   onDone: () => void;
+  /** GET STARTED! is mid-action (e.g. accepting the invite) — shows the
+   *  animated dots + guards double-clicks. */
+  busy?: boolean;
+  /** Failure line under the body (the invite-accept errors), Alert color. */
+  errorText?: string | null;
+  /** When set, clicking the dim backs out (the invite-prompt usage — a
+   *  mis-clicked cluster shouldn't trap the user). Omitted in the
+   *  onboarding confirm, where GET STARTED! is the only exit. */
+  onDismiss?: () => void;
 }) {
   const mobile = idiom === "mobile";
   return (
-    <div style={{ ...dimWrap, background: mobile ? "rgba(26,58,74,0.35)" : "rgba(26,58,74,0.25)", zIndex: mobile ? 1000 : 900 }}>
+    <div
+      style={{ ...dimWrap, background: mobile ? "rgba(26,58,74,0.35)" : "rgba(26,58,74,0.25)", zIndex: mobile ? 1000 : 900 }}
+      onClick={(e) => { if (onDismiss && !busy && e.target === e.currentTarget) onDismiss(); }}
+    >
       <div style={{ ...cardStyle, width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", height: mobile ? "min(680px, 78dvh)" : "min(590px, 72vh)", padding: mobile ? "56px 28px 40px" : "72px 64px 56px" }}>
         <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 34, letterSpacing: 0, color: CANON.accent, margin: 0 }}>
           You&rsquo;re in!
@@ -53,6 +66,9 @@ export default function YoureInCard({ variant, idiom, onDone }: {
               to watch together.
             </p>
           )}
+          {errorText && (
+            <p style={{ margin: "16px 0 0", color: CANON.alert, fontWeight: 700 }}>{errorText}</p>
+          )}
         </div>
 
         <div style={{ position: "absolute", right: mobile ? 28 : 64, bottom: mobile ? 40 : 56, left: mobile ? 28 : "auto" }}>
@@ -62,10 +78,11 @@ export default function YoureInCard({ variant, idiom, onDone }: {
         </div>
 
         <button
-          style={{ ...goTab, ...(mobile ? { right: -20, top: "48%" } : { right: -36, top: 40 }) }}
+          style={{ ...goTab, opacity: busy ? 0.7 : 1, ...(mobile ? { right: -20, top: "48%" } : { right: -36, top: 40 }) }}
+          disabled={busy}
           onClick={onDone}
         >
-          <ArrowRight size={24} strokeWidth={2.5} /> GET STARTED!
+          {busy ? <>one moment<LoadingDots /></> : <><ArrowRight size={24} strokeWidth={2.5} /> GET STARTED!</>}
         </button>
       </div>
     </div>
@@ -85,12 +102,12 @@ const cardStyle: React.CSSProperties = {
 const alertSpan: React.CSSProperties = { color: CANON.alert, fontWeight: 700 };
 // The tab grammar: rounded LEFT, FLAT right — it breaks the card's right
 // edge (§12.6 "breaking the card's right edge — same visual grammar as the
-// NOPE/YES tabs").
+// NOPE/YES tabs"). No drop shadow: the tab is part of the card, not an
+// element floating above it (Alborz QA 2026-07-18).
 const goTab: React.CSSProperties = {
   position: "absolute", border: "none", cursor: "pointer",
   display: "flex", alignItems: "center", gap: 12,
   background: CANON.identity, color: CANON.cream,
   fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: 0.5,
   padding: "22px 30px", borderRadius: "65px 0 0 65px", minHeight: 52,
-  boxShadow: "0 8px 22px rgba(0,0,0,0.2)",
 };

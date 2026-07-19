@@ -55,6 +55,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
   // back 'down' over 150ms; state clears so the transform rests at the
   // edit-mode scale.
   const [bounce, setBounce] = useState<{ cardId: string; phase: "up" | "down" } | null>(null);
+  const [editTip, setEditTip] = useState(false);
   function triggerBounce(cardId: string) {
     setBounce({ cardId, phase: "up" });
     requestAnimationFrame(() => {
@@ -150,32 +151,43 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
     }
   }
 
-  // ── The grid header row (shared by the docked peek + the open card) ───────
+  // ── The grid header row (shared by the docked peek + the open card).
+  // alignItems: baseline puts "(me)" + the friend names on the TITLE's
+  // baseline (Alborz QA 2026-07-18); the last column flex-grows so the
+  // colored area runs flush to the card's right edge. ───────────────────────
   const headerRow = (interactive: boolean) => (
-    <div style={{ display: "flex", background: CANON.cream, borderBottom: `2px solid ${withA(CANON.business, 0.3)}` }}>
-      <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "16px 8px 10px 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box", display: "flex", alignItems: "flex-end" }}>
+    <div style={{ display: "flex", alignItems: "baseline", background: CANON.cream }}>
+      <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "16px 8px 12px 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
         <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
       </div>
-      <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: 6, boxSizing: "border-box" }}>
+      <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, textAlign: "center", boxSizing: "border-box", ...(columns.length === 0 ? { flexGrow: 1 } : {}) }}>
         {ui === "edit" ? (
           <button title="save your answers" onClick={confirmEdits} disabled={saving}
-            style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "flex", alignItems: "center" }}>
+            style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "inline-flex", alignItems: "center" }}>
             {saving ? <LoadingDots /> : <CircleCheck size={22} strokeWidth={2.5} />}
           </button>
         ) : (
           <>
-            {isWe && <span style={colName}>(me)</span>}
+            {isWe && <span style={{ ...colName, display: "block" }}>(me)</span>}
             {interactive && (
-              <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
-                style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "flex" }}>
-                <Pencil size={14} />
-              </button>
+              <span style={{ position: "relative", display: "inline-block" }}>
+                <button
+                  onClick={() => { setEdits({}); setUi("edit"); }}
+                  onMouseEnter={() => setEditTip(true)}
+                  onMouseLeave={() => setEditTip(false)}
+                  style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "inline-flex" }}>
+                  <Pencil size={14} />
+                </button>
+                {editTip && (
+                  <span style={editTipBubble}>Edit answers?</span>
+                )}
+              </span>
             )}
           </>
         )}
       </div>
-      {columns.map((m) => (
-        <div key={m.id} style={{ width: MEMBER_W, minWidth: MEMBER_W, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 10, boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1 }}>
+      {columns.map((m, ci) => (
+        <div key={m.id} style={{ width: MEMBER_W, minWidth: MEMBER_W, textAlign: "center", boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}>
           <span style={colName}>{m.label}</span>
         </div>
       ))}
@@ -210,8 +222,10 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
       onClick={(e) => { if (e.target === e.currentTarget && ui === "open") setUi("docked"); }}
     >
       <div style={{ width: cardW, maxWidth: "92vw", maxHeight: "82vh", background: CANON.cream, borderRadius: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.25)", overflow: "auto", animation: "deckGridIn .24s ease" }}>
-        {/* Frozen top: the header (title + names + pencil/confirm). */}
-        <div style={{ position: "sticky", top: 0, zIndex: 4, background: CANON.cream }}>
+        {/* Frozen top: the header (title + names + pencil/confirm). The
+            divider sits under the WHOLE header block — below the n=2 line
+            when present, never between heading and subheading. */}
+        <div style={{ position: "sticky", top: 0, zIndex: 4, background: CANON.cream, borderBottom: `2px solid ${withA(CANON.business, 0.3)}` }}>
           {headerRow(true)}
           {pairLine && (
             <div style={{ padding: "0 24px 10px", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.personal, background: CANON.cream }}>
@@ -240,19 +254,20 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
                   background: CANON.cream, display: "flex", alignItems: "stretch",
                   borderLeft: mine === undefined && !editing ? `1px solid ${withA(CANON.business, 0.18)}` : "none",
                   cursor: editing ? "pointer" : "default",
+                  ...(columns.length === 0 ? { flexGrow: 1 } : {}),
                 }}
               >
+                {/* Sharp corners on the edit chips (Alborz QA 2026-07-18). */}
                 <div style={{
                   flex: 1,
                   background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
                   border: editing && mine === undefined ? `1.5px dashed ${withA(CANON.business, 0.6)}` : "none",
-                  borderRadius: editing ? 10 : 0,
                   transform: editing ? (phase === "up" ? "scale(0.94)" : "scale(0.82)") : undefined,
-                  transition: phase === "up" ? "none" : "transform .18s ease, border-radius .18s ease",
+                  transition: phase === "up" ? "none" : "transform .18s ease",
                 }} />
               </div>
-              {columns.map((m) => (
-                <div key={m.id} style={{ ...cell(valueFor(m.id, card.id)), opacity: editing ? 0.45 : 1 }} />
+              {columns.map((m, ci) => (
+                <div key={m.id} style={{ ...cell(valueFor(m.id, card.id)), opacity: editing ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }} />
               ))}
             </div>
           );
@@ -285,6 +300,14 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
     </div>
   );
 }
+
+// The site's tipBubble look (DashboardPage), anchored above the pencil.
+const editTipBubble: React.CSSProperties = {
+  position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+  background: CANON.personal, color: CANON.cream, padding: "7px 12px", borderRadius: 12,
+  fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 600, lineHeight: 1.3,
+  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 10, boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
+};
 
 const colName: React.CSSProperties = {
   fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: CANON.dark,

@@ -257,8 +257,8 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
               </>
             )}
           </div>
-          {columns.map((m) => (
-            <div key={m.id} style={{ width: FR_W, minWidth: FR_W, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 6, boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1 }}>
+          {columns.map((m, ci) => (
+            <div key={m.id} style={{ width: FR_W, minWidth: FR_W, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 6, boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}>
               <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10.5, color: CANON.dark, maxWidth: FR_W - 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.label}</span>
             </div>
           ))}
@@ -279,27 +279,27 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                   background: CANON.cream, display: "flex", alignItems: "stretch",
                   borderLeft: mine === undefined && ui !== "edit" ? "1px solid rgba(141,170,186,0.18)" : "none",
                   cursor: ui === "edit" ? "pointer" : "default",
+                  ...(columns.length === 0 ? { flexGrow: 1 } : {}),
                 }}
               >
-                {/* Edit mode shrinks the color block into a rounded chip;
-                    taps bounce it (the room map's rating-edit feel). */}
+                {/* Edit mode shrinks the color block into a sharp-cornered
+                    chip; taps bounce it (the room map's rating-edit feel). */}
                 <div style={{
                   flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
                   background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
                   border: ui === "edit" && mine === undefined ? "1.5px dashed rgba(141,170,186,0.6)" : "none",
-                  borderRadius: ui === "edit" ? 8 : 0,
                   transform: ui === "edit"
                     ? (bounce?.cardId === card.id && bounce.phase === "up" ? "scale(0.94)" : "scale(0.82)")
                     : undefined,
-                  transition: bounce?.cardId === card.id && bounce.phase === "up" ? "none" : "transform .18s ease, border-radius .18s ease",
+                  transition: bounce?.cardId === card.id && bounce.phase === "up" ? "none" : "transform .18s ease",
                 }}>
                   {mine !== undefined && <Th v={mine} size={14} color={CANON.cream} />}
                 </div>
               </div>
-              {columns.map((m) => {
+              {columns.map((m, ci) => {
                 const v = valueFor(m.id, card.id);
                 return (
-                  <div key={m.id} style={{ ...mCell(v, FR_W), opacity: ui === "edit" ? 0.45 : 1 }}>
+                  <div key={m.id} style={{ ...mCell(v, FR_W), opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}>
                     {v !== undefined && <Th v={v} size={14} color={CANON.cream} />}
                   </div>
                 );

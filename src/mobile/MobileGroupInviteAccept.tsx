@@ -117,25 +117,18 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     return { watching: w.sort(byName), interested: n.sort(byName) };
   }, [pool, poolProgress, showsById]);
 
-  // Swipe-deck arc CP2 (spec §12.2): a successful accept runs WAVE 1 (4
-  // question cards, welcome copy) → the "You're in!" invitee card → THEN the
-  // dashboard (the "Taking you to your dashboard…" interstitial is dropped).
-  const [donePhase, setDonePhase] = useState<"wave" | "card">("wave");
-
+  // Reworked in QA 2026-07-18: the "You're in!" invitee card IS the accept
+  // confirmation (replaces the old Yes/no). GET STARTED! accepts → WAVE 1
+  // (self-skipping) → straight into the group room. The decline path lost
+  // its surface with the Yes/no — flagged.
   async function join() {
     setStatus("joining");
     const res = await acceptPeopleGroupInvite(token);
-    if (res.ok) { setDonePhase("wave"); setStatus("done"); return; }
+    if (res.ok) { setStatus("done"); return; }
     if (res.error === "wrong_recipient") { setMasked(res.maskedEmail); setStatus("wrong"); return; }
     if (res.error === "already_accepted") { setStatus("already"); return; }
     if (res.error === "expired") { setStatus("expired"); return; }
     setStatus("error");
-  }
-
-  // "no" fully declines (deletes the invite) and lands on a clean dashboard.
-  async function declineAndLeave() {
-    try { await declinePeopleGroupInvite(token); } catch { /* tolerant */ }
-    navigate("/m/dashboard");
   }
 
   function goAuth() {
@@ -164,22 +157,36 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     ? memberLabels.reduce((acc, n, i, arr) => (i === 0 ? n : i === arr.length - 1 ? `${acc} and ${n}` : `${acc}, ${n}`), "")
     : inviterShown;
 
-  // ── Joined: wave-1 cards → the "You're in!" card, over the plain green ────
+  // ── The signed-in confirm — the "You're in!" card (GET STARTED! = accept) ─
+  if ((status === "ready" || status === "joining") && user && info) {
+    return (
+      <div style={page}>
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 16 }}>
+          <SidebarLogo scale={0.5} blocksOpacity={1} />
+        </div>
+        <YoureInCard
+          idiom="mobile"
+          variant={{ kind: "invitee", friendName: info.inviterDisplayName || info.inviterName }}
+          busy={status === "joining"}
+          onDone={join}
+        />
+      </div>
+    );
+  }
+
+  // ── Joined: wave 1 over the plain green → straight into the group room ────
   if (status === "done") {
     return (
       <div style={page}>
         <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 16 }}>
           <SidebarLogo scale={0.5} blocksOpacity={1} />
         </div>
-        {donePhase === "wave" ? (
-          <DeckWave wave={1} heading="welcome" idiom="mobile" onComplete={() => setDonePhase("card")} />
-        ) : (
-          <YoureInCard
-            idiom="mobile"
-            variant={{ kind: "invitee", friendName: info?.inviterDisplayName || info?.inviterName || "your friend" }}
-            onDone={() => navigate("/m/dashboard", { replace: true })}
-          />
-        )}
+        <DeckWave
+          wave={1}
+          heading="welcome"
+          idiom="mobile"
+          onComplete={() => navigate(info ? `/m/group/${info.groupId}` : "/m/dashboard", { replace: true })}
+        />
       </div>
     );
   }
@@ -240,19 +247,9 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
       <div style={card}>
         {status === "loading" && <p style={muted}>Loading…</p>}
 
-        {status === "ready" && user && (
-          <>
-            <p style={title}>Join a group with {names}?</p>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 16 }}>
-              <button style={yes} onClick={join}>Yes</button>
-              <button style={no} onClick={declineAndLeave}>no</button>
-            </div>
-          </>
-        )}
+        {/* (Signed-in ready/joining renders the "You're in!" card above.) */}
         {/* Session still resolving after returning from /m/auth. */}
         {status === "ready" && !user && authLoading && <p style={muted}>Signing you in…</p>}
-
-        {status === "joining" && <p style={muted}>Joining…</p>}
         {status === "wrong" && (
           <>
             <p style={title}>{preventLastWordOrphan("This invite was sent to a different email.")}</p>

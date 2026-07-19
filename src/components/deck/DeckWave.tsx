@@ -121,8 +121,9 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
           </div>
         )}
         {heading === "more" && (
-          <div style={{ textAlign: "left", marginBottom: mobile ? 20 : 28 }}>
-            <h1 style={{ ...h1Style, fontSize: mobile ? 28 : 34 }}>a few more&hellip;</h1>
+          <div style={{ textAlign: "left", marginBottom: mobile ? 16 : 20 }}>
+            {/* Header 2 styling (Inter bold 14) per Alborz QA 2026-07-18. */}
+            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>a few more&hellip;</div>
           </div>
         )}
 
@@ -176,10 +177,11 @@ const cardStyle: React.CSSProperties = {
   boxShadow: "0 12px 36px rgba(0,0,0,0.25)",
   display: "flex", alignItems: "center", justifyContent: "center",
 };
+// No drop shadow — the tabs read as PART of the card, stamped across its
+// edge, not elements floating above it (Alborz QA 2026-07-18).
 const tab: React.CSSProperties = {
   position: "absolute", border: "none", cursor: "pointer",
   display: "flex", alignItems: "center", gap: 10,
   color: CANON.cream, fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 14, letterSpacing: 0.5,
   padding: "18px 26px", borderRadius: 65, minHeight: 48,
-  boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
 };

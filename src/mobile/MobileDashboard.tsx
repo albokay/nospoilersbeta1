@@ -140,11 +140,11 @@ export default function MobileDashboard() {
   // Sheets
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
-  // Swipe-deck arc CP2 (spec §12.2): accepting an invite runs WAVE 1 → the
-  // "You're in!" invitee card → rests on the dashboard (wave 2 fires on the
-  // first click into the group room). Both self-skip once answered.
+  // Swipe-deck arc (reworked in QA 2026-07-18): the "You're in!" invitee
+  // card IS the accept confirmation. GET STARTED! accepts, WAVE 1 runs
+  // (self-skipping), then the user lands STRAIGHT IN the group room.
   const [postAccept, setPostAccept] = useState<PendingGroupInvite | null>(null);
-  const [postAcceptPhase, setPostAcceptPhase] = useState<"wave" | "card">("wave");
+  const [accepting, setAccepting] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -274,14 +274,15 @@ export default function MobileDashboard() {
   }
 
   async function acceptInvite(inv: PendingGroupInvite) {
+    if (accepting) return;
+    setAccepting(true);
     const res = await acceptPeopleGroupInvite(inv.token);
+    setAccepting(false);
     if (res.ok) {
       setInvitePrompt(null);
       setAcceptError(null);
       await refreshRailAndInvites();
-      // Swipe-deck arc CP2: wave 1 → "You're in!" card → rest on the
-      // dashboard (was: straight into the group; spec §12.2 lands here).
-      setPostAcceptPhase("wave");
+      // Wave 1, then straight into the group room (QA 2026-07-18).
       setPostAccept(inv);
       return;
     }
@@ -411,25 +412,19 @@ export default function MobileDashboard() {
         </>
       )}
 
-      {/* ── Pending-invite join prompt (bottom sheet; desktop copy + the
-             hover tooltip line moved inline) ── */}
-      {invitePrompt && (
-        <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) { setInvitePrompt(null); setAcceptError(null); } }}>
-          {/* Bottom-sheet rule (2026-07-03): left-justify. */}
-          <div style={{ ...bottomSheet, background: C.yellow }}>
-            <div style={{ color: C.cream, fontSize: 13, fontWeight: 600, marginBottom: 10, opacity: 0.9 }}>
-              You&rsquo;ve been invited by {pendingInviterLabel(invitePrompt, contactNames)} to join a watch group.
-            </div>
-            <div style={{ ...sheetTitle, textAlign: "left" }}>Join a group with {inviteNames(invitePrompt, contactNames)}?</div>
-            <div style={{ display: "flex", gap: 12, justifyContent: "flex-start", marginTop: 16 }}>
-              <button style={startBtn} onClick={() => acceptInvite(invitePrompt)}>Yes</button>
-              <button style={{ ...startBtn, background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }} onClick={() => declineInvite(invitePrompt)}>no</button>
-            </div>
-            {acceptError && (
-              <div style={{ marginTop: 14, textAlign: "left", color: C.cream, fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>{acceptError}</div>
-            )}
-          </div>
-        </div>
+      {/* ── Pending-invite prompt — the "You're in!" invitee card IS the
+             confirmation (Alborz QA 2026-07-18; replaces the old Yes/no
+             bottom sheet). GET STARTED! accepts → wave 1 → straight into
+             the group room. Dim-tap backs out without accepting. ── */}
+      {invitePrompt && !postAccept && (
+        <YoureInCard
+          idiom="mobile"
+          variant={{ kind: "invitee", friendName: pendingInviterLabel(invitePrompt, contactNames) }}
+          busy={accepting}
+          errorText={acceptError}
+          onDone={() => acceptInvite(invitePrompt)}
+          onDismiss={() => { setInvitePrompt(null); setAcceptError(null); }}
+        />
       )}
 
       {/* ── Invite compose (full-screen; creates a new group). Closing after
@@ -447,16 +442,18 @@ export default function MobileDashboard() {
              (swipe-deck arc CP2). ── */}
       {showSocialOnb && <MobileSocialOnboarding onDone={handleSocialOnbDone} />}
 
-      {/* ── Swipe-deck arc CP2 — invitee accept sequence: wave 1 → "You're
-             in!" card, then rest on the dashboard. ── */}
-      {postAccept && postAcceptPhase === "wave" && (
-        <DeckWave wave={1} heading="welcome" idiom="mobile" onComplete={() => setPostAcceptPhase("card")} />
-      )}
-      {postAccept && postAcceptPhase === "card" && (
-        <YoureInCard
+      {/* ── Post-accept: WAVE 1, then straight into the just-joined group
+             room (the "You're in!" card already served as the confirm). ── */}
+      {postAccept && (
+        <DeckWave
+          wave={1}
+          heading="welcome"
           idiom="mobile"
-          variant={{ kind: "invitee", friendName: postAccept.inviterDisplayName || postAccept.inviterName }}
-          onDone={() => setPostAccept(null)}
+          onComplete={() => {
+            const gid = postAccept.groupId;
+            setPostAccept(null);
+            navigate(`/m/group/${gid}`);
+          }}
         />
       )}
 

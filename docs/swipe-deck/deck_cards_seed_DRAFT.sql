@@ -71,7 +71,7 @@ VALUES
 
 -- ─── WAVE 2 (onboarding, "a few more…") ──────────────────────────────────────
 ('lied-caught-up',
- 'I''ve lied about being caught up.',
+ 'I''ve lied about being caught up with a show...for whatever reason.',  -- copy edit 2026-07-18
  'has lied about being caught up',
  'have lied about being caught up',
  0, 0, 'confession', 2, v_launch, 5),
