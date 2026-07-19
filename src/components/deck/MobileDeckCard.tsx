@@ -170,7 +170,8 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
           display: "flex", alignItems: "flex-start", justifyContent: "space-between",
         }}
       >
-        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
+        {/* Sky title while docked; Identity once opened (Alborz QA 2026-07-18). */}
+        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.friend, whiteSpace: "nowrap" }}>{title}</span>
       </div>
     );
   }
@@ -182,7 +183,11 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
         <div style={{ position: "absolute", inset: 0, background: "rgba(26,58,74,0.35)" }} onClick={() => setUi("docked")} />
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, top: 96, background: CANON.cream, borderRadius: "24px 24px 0 0", boxShadow: "0 -8px 28px rgba(0,0,0,0.28)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ width: 44, height: 4, borderRadius: 2, background: CANON.business, opacity: 0.5, margin: "10px auto 0" }} />
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "16px 20px 10px" }}>
+          {/* Header + the vertical names SHARE this band (names bottom-
+              aligned at the right) so they don't push the questions down
+              with their own row (Alborz QA 2026-07-18). Name slot widths
+              match the row thumbs below, so the columns line up. */}
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "16px 20px 8px" }}>
             <div>
               <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</div>
               {subtitle && <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 11.5, color: CANON.business, marginTop: 3 }}>{subtitle}</div>}
@@ -190,21 +195,18 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                 <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: CANON.personal, marginTop: 6 }}>{pairLine}</div>
               )}
             </div>
-          </div>
-          {/* Friend names over the thumb columns, vertical counterclockwise
-              ((me) first) — per the approved rev-2 mockup. Slot widths match
-              the row thumbs so the columns line up. */}
-          {mode === "group" && (
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, padding: "0 20px 2px" }}>
-              {[{ id: viewerId, label: "(me)" }, ...columns].map((m) => (
-                <span key={m.id} style={{ width: 20, display: "flex", justifyContent: "center" }}>
-                  <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10, color: CANON.dark, maxHeight: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {m.label}
+            {mode === "group" && (
+              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                {[{ id: viewerId, label: "(me)" }, ...columns].map((m) => (
+                  <span key={m.id} style={{ width: 20, display: "flex", justifyContent: "center" }}>
+                    <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10, color: CANON.dark, maxHeight: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {m.label}
+                    </span>
                   </span>
-                </span>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
           <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
             {windowRows.map((card, i) => (
               <div key={card.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 20px", fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.35, color: CANON.dark, background: i % 2 === 0 ? "rgba(173,200,215,0.45)" : "transparent" }}>

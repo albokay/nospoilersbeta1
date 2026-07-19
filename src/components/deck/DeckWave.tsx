@@ -107,7 +107,14 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
   }
 
   return (
-    <div style={{ ...dimWrap, background: mobile ? "rgba(26,58,74,0.35)" : "rgba(26,58,74,0.25)", zIndex: mobile ? 1000 : 900 }}>
+    <div style={{
+      ...dimWrap,
+      background: mobile ? "rgba(26,58,74,0.35)" : "rgba(26,58,74,0.25)",
+      zIndex: mobile ? 1000 : 900,
+      // Mobile: anchor BELOW the page chrome so the heading can't overlap
+      // the logo/top bar showing through the dim (Alborz QA 2026-07-18).
+      ...(mobile ? { alignItems: "flex-start", paddingTop: "calc(env(safe-area-inset-top, 0px) + 84px)" } : {}),
+    }}>
       <div style={{ width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", maxHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
         {heading === "welcome" && (
           <div style={{ textAlign: "left", marginBottom: mobile ? 20 : 28 }}>
@@ -131,7 +138,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
           key={card.id}
           style={{
             ...cardStyle,
-            height: mobile ? "min(560px, 60dvh)" : "min(580px, 66vh)",
+            height: mobile ? "min(500px, 55dvh)" : "min(580px, 66vh)",
             animation: exit
               ? `${exit === "right" ? "deckExitRight" : "deckExitLeft"} .22s ease forwards`
               : "deckCardIn .24s ease",
@@ -141,17 +148,20 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
             {card.statement}
           </div>
 
+          {/* Mobile tabs sit in the card's extreme corners, smaller — the
+              statement keeps Header-1 size and stays clear of them
+              (Alborz QA 2026-07-18). */}
           <button
-            style={{ ...tab, background: CANON.alert, ...(mobile ? { top: 76, left: -14 } : { top: "50%", transform: "translateY(-50%)", left: -30 }) }}
+            style={{ ...tab, background: CANON.alert, ...(mobile ? { ...tabMobile, top: 20, left: -14 } : { top: "50%", transform: "translateY(-50%)", left: -30 }) }}
             onClick={() => answer(false)}
           >
-            NOPE <ArrowLeft size={22} strokeWidth={2.5} />
+            NOPE <ArrowLeft size={mobile ? 18 : 22} strokeWidth={2.5} />
           </button>
           <button
-            style={{ ...tab, background: CANON.personal, ...(mobile ? { bottom: 84, right: -14 } : { top: "50%", transform: "translateY(-50%)", right: -30 }) }}
+            style={{ ...tab, background: CANON.personal, ...(mobile ? { ...tabMobile, bottom: 24, right: -14 } : { top: "50%", transform: "translateY(-50%)", right: -30 }) }}
             onClick={() => answer(true)}
           >
-            <ArrowRight size={22} strokeWidth={2.5} /> YES
+            <ArrowRight size={mobile ? 18 : 22} strokeWidth={2.5} /> YES
           </button>
         </div>
       </div>
@@ -184,4 +194,7 @@ const tab: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: 10,
   color: CANON.cream, fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 14, letterSpacing: 0.5,
   padding: "18px 26px", borderRadius: 65, minHeight: 48,
+};
+const tabMobile: React.CSSProperties = {
+  padding: "12px 20px", fontSize: 13, minHeight: 40, gap: 8,
 };

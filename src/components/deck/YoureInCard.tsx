@@ -78,11 +78,17 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
         </div>
 
         <button
-          style={{ ...goTab, opacity: busy ? 0.7 : 1, ...(mobile ? { right: -20, top: "48%" } : { right: -36, top: 40 }) }}
+          style={{
+            ...goTab,
+            opacity: busy ? 0.7 : 1,
+            ...(mobile
+              ? { right: -20, top: "50%", transform: "translateY(-50%)", padding: "14px 24px", fontSize: 13.5, minHeight: 44 }
+              : { right: -36, top: 40 }),
+          }}
           disabled={busy}
           onClick={onDone}
         >
-          {busy ? <>one moment<LoadingDots /></> : <><ArrowRight size={24} strokeWidth={2.5} /> GET STARTED!</>}
+          {busy ? <>one moment<LoadingDots /></> : <><ArrowRight size={mobile ? 18 : 24} strokeWidth={2.5} /> GET STARTED!</>}
         </button>
       </div>
     </div>
@@ -100,14 +106,13 @@ const cardStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 const alertSpan: React.CSSProperties = { color: CANON.alert, fontWeight: 700 };
-// The tab grammar: rounded LEFT, FLAT right — it breaks the card's right
-// edge (§12.6 "breaking the card's right edge — same visual grammar as the
-// NOPE/YES tabs"). No drop shadow: the tab is part of the card, not an
-// element floating above it (Alborz QA 2026-07-18).
+// The tab grammar: a full stadium pill breaking the card's right edge —
+// SAME shape as the NOPE/YES tabs (Alborz QA 2026-07-18; was flat-right).
+// No drop shadow: the tab is part of the card, not floating above it.
 const goTab: React.CSSProperties = {
   position: "absolute", border: "none", cursor: "pointer",
   display: "flex", alignItems: "center", gap: 12,
   background: CANON.identity, color: CANON.cream,
   fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: 0.5,
-  padding: "22px 30px", borderRadius: "65px 0 0 65px", minHeight: 52,
+  padding: "22px 30px", borderRadius: 65, minHeight: 52,
 };

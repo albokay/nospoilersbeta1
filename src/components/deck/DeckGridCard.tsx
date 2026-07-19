@@ -220,8 +220,9 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
           boxShadow: "0 -6px 24px rgba(0,0,0,0.18)", overflow: "hidden",
         }}
       >
+        {/* Sky title while docked; Identity once opened (Alborz QA 2026-07-18). */}
         <div style={{ padding: "16px 24px 14px" }}>
-          <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
+          <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: CANON.friend, whiteSpace: "nowrap" }}>{title}</span>
         </div>
       </div>
     );
