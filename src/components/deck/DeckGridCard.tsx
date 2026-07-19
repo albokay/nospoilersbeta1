@@ -34,9 +34,9 @@ import { CANON } from "../../styles/canon";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
-const STATEMENT_W = 400;
+const STATEMENT_W = 440;
 const MEMBER_W = 104;
-const ROW_MIN_H = 48;
+const ROW_MIN_H = 52;
 
 export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
   mode: "personal" | "group";
@@ -50,6 +50,22 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
   const [ui, setUi] = useState<"docked" | "open" | "edit">("docked");
   const [edits, setEdits] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
+  // Click bounce on own cells in edit mode — the room map's two-phase
+  // pattern (V2RoomMap): instant pop 'up' with no transition, then animate
+  // back 'down' over 150ms; state clears so the transform rests at the
+  // edit-mode scale.
+  const [bounce, setBounce] = useState<{ cardId: string; phase: "up" | "down" } | null>(null);
+  function triggerBounce(cardId: string) {
+    setBounce({ cardId, phase: "up" });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setBounce((prev) => (prev && prev.cardId === cardId ? { cardId, phase: "down" } : prev));
+      });
+    });
+    window.setTimeout(() => {
+      setBounce((prev) => (prev && prev.cardId === cardId && prev.phase === "down" ? null : prev));
+    }, 200);
+  }
 
   // Load the released deck + answers (group read includes the viewer's rows).
   useEffect(() => {
@@ -106,6 +122,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
     // Answered cells flip yes↔no; an unanswered own cell starts at yes
     // (the safety-net in-place answer — the forced modal is the real flow).
     setEdits((prev) => ({ ...prev, [cardId]: cur === undefined ? true : !cur }));
+    triggerBounce(cardId);
   }
 
   async function confirmEdits() {
@@ -137,7 +154,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
   const headerRow = (interactive: boolean) => (
     <div style={{ display: "flex", background: CANON.cream, borderBottom: `2px solid ${withA(CANON.business, 0.3)}` }}>
       <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "16px 8px 10px 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box", display: "flex", alignItems: "flex-end" }}>
-        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 28, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
+        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
       </div>
       <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: 6, boxSizing: "border-box" }}>
         {ui === "edit" ? (
@@ -149,7 +166,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
           <>
             {isWe && <span style={colName}>(me)</span>}
             {interactive && (
-              <button title="edit your answers" onClick={() => { setEdits({}); setUi("edit"); }}
+              <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
                 style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "flex" }}>
                 <Pencil size={14} />
               </button>
@@ -205,17 +222,37 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
 
         {cards.map((card, i) => {
           const mine = valueFor(viewerId, card.id);
+          // Edit mode shrinks the own-column color block into a rounded,
+          // tappable chip (animated via the standing transition); clicks
+          // bounce it (the room map's rating-edit feel).
+          const phase = bounce?.cardId === card.id ? bounce.phase : null;
+          const editing = ui === "edit";
           return (
             <div key={card.id} style={{ display: "flex", minHeight: ROW_MIN_H, alignItems: "stretch" }}>
-              <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, position: "sticky", left: 0, zIndex: 2, background: i % 2 === 0 ? CANON.friend : CANON.cream, padding: "10px 16px 10px 24px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 13.5, lineHeight: 1.35, color: CANON.dark }}>
+              <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, position: "sticky", left: 0, zIndex: 2, background: i % 2 === 0 ? CANON.friend : CANON.cream, padding: "10px 16px 10px 24px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.35, color: CANON.dark }}>
                 {card.statement}
               </div>
               <div
                 onClick={() => toggleOwn(card.id)}
-                style={{ ...cell(mine), position: "sticky", left: STATEMENT_W, zIndex: 2, cursor: ui === "edit" ? "pointer" : "default", outline: ui === "edit" && card.id in edits ? `2px solid ${CANON.cream}` : "none", outlineOffset: -2 }}
-              />
+                style={{
+                  width: MEMBER_W, minWidth: MEMBER_W, boxSizing: "border-box",
+                  position: "sticky", left: STATEMENT_W, zIndex: 2,
+                  background: CANON.cream, display: "flex", alignItems: "stretch",
+                  borderLeft: mine === undefined && !editing ? `1px solid ${withA(CANON.business, 0.18)}` : "none",
+                  cursor: editing ? "pointer" : "default",
+                }}
+              >
+                <div style={{
+                  flex: 1,
+                  background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
+                  border: editing && mine === undefined ? `1.5px dashed ${withA(CANON.business, 0.6)}` : "none",
+                  borderRadius: editing ? 10 : 0,
+                  transform: editing ? (phase === "up" ? "scale(0.94)" : "scale(0.82)") : undefined,
+                  transition: phase === "up" ? "none" : "transform .18s ease, border-radius .18s ease",
+                }} />
+              </div>
               {columns.map((m) => (
-                <div key={m.id} style={{ ...cell(valueFor(m.id, card.id)), opacity: ui === "edit" ? 0.45 : 1 }} />
+                <div key={m.id} style={{ ...cell(valueFor(m.id, card.id)), opacity: editing ? 0.45 : 1 }} />
               ))}
             </div>
           );

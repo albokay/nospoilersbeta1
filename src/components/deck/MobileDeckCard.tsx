@@ -54,6 +54,20 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
   const [ui, setUi] = useState<"docked" | "sheet" | "grid" | "edit">("docked");
   const [edits, setEdits] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
+  // Click bounce on own cells in edit mode — the room map's two-phase
+  // pattern (V2RoomMap): instant pop 'up', animate back 'down' over 150ms.
+  const [bounce, setBounce] = useState<{ cardId: string; phase: "up" | "down" } | null>(null);
+  function triggerBounce(cardId: string) {
+    setBounce({ cardId, phase: "up" });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setBounce((prev) => (prev && prev.cardId === cardId ? { cardId, phase: "down" } : prev));
+      });
+    });
+    window.setTimeout(() => {
+      setBounce((prev) => (prev && prev.cardId === cardId && prev.phase === "down" ? null : prev));
+    }, 200);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +125,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
     if (ui !== "edit" || saving) return;
     const cur = valueFor(viewerId, cardId);
     setEdits((prev) => ({ ...prev, [cardId]: cur === undefined ? true : !cur }));
+    triggerBounce(cardId);
   }
 
   async function confirmEdits() {
@@ -155,7 +170,6 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
         }}
       >
         <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
-        <Mark />
       </div>
     );
   }
@@ -175,7 +189,6 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                 <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: CANON.personal, marginTop: 6 }}>{pairLine}</div>
               )}
             </div>
-            <Mark />
           </div>
           <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
             {windowRows.map((card, i) => (
@@ -237,7 +250,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
             ) : (
               <>
                 {isWe && <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 11, color: CANON.dark }}>(me)</span>}
-                <button title="edit your answers" onClick={() => { setEdits({}); setUi("edit"); }}
+                <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
                   style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "flex" }}>
                   <Pencil size={12} />
                 </button>
@@ -260,9 +273,28 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
               </div>
               <div
                 onClick={() => toggleOwn(card.id)}
-                style={{ ...mCell(mine, ME_W), position: "sticky", left: ST_W, zIndex: 2, cursor: ui === "edit" ? "pointer" : "default", outline: ui === "edit" && card.id in edits ? `2px solid ${CANON.cream}` : "none", outlineOffset: -2 }}
+                style={{
+                  width: ME_W, minWidth: ME_W, boxSizing: "border-box",
+                  position: "sticky", left: ST_W, zIndex: 2,
+                  background: CANON.cream, display: "flex", alignItems: "stretch",
+                  borderLeft: mine === undefined && ui !== "edit" ? "1px solid rgba(141,170,186,0.18)" : "none",
+                  cursor: ui === "edit" ? "pointer" : "default",
+                }}
               >
-                {mine !== undefined && <Th v={mine} size={14} color={CANON.cream} />}
+                {/* Edit mode shrinks the color block into a rounded chip;
+                    taps bounce it (the room map's rating-edit feel). */}
+                <div style={{
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
+                  border: ui === "edit" && mine === undefined ? "1.5px dashed rgba(141,170,186,0.6)" : "none",
+                  borderRadius: ui === "edit" ? 8 : 0,
+                  transform: ui === "edit"
+                    ? (bounce?.cardId === card.id && bounce.phase === "up" ? "scale(0.94)" : "scale(0.82)")
+                    : undefined,
+                  transition: bounce?.cardId === card.id && bounce.phase === "up" ? "none" : "transform .18s ease, border-radius .18s ease",
+                }}>
+                  {mine !== undefined && <Th v={mine} size={14} color={CANON.cream} />}
+                </div>
               </div>
               {columns.map((m) => {
                 const v = valueFor(m.id, card.id);
@@ -286,21 +318,6 @@ function Th({ v, size, color }: { v: boolean; size: number; color?: string }) {
   return v
     ? <ThumbsUp size={size} color={c} strokeWidth={2.2} style={{ flexShrink: 0 }} />
     : <ThumbsDown size={size} color={c} strokeWidth={2.2} style={{ flexShrink: 0 }} />;
-}
-
-/** The in-card Sidebar mark (screenshot-safe requirement, §11.5). */
-function Mark() {
-  const sq = (c: string) => (
-    <span style={{ width: 9, height: 9, borderRadius: 3, background: c, display: "inline-block" }} />
-  );
-  return (
-    <span style={{ display: "flex", alignItems: "flex-end", gap: 2, flexShrink: 0, paddingTop: 4 }}>
-      {sq(CANON.accent)}{sq(CANON.alert)}{sq(CANON.personal)}{sq(CANON.identity)}
-      <span style={{ fontFamily: "Inter, sans-serif", fontStyle: "italic", fontWeight: 700, fontSize: 10, color: CANON.dark, marginLeft: 3 }}>
-        <span style={{ color: CANON.accent }}>side</span>bar
-      </span>
-    </span>
-  );
 }
 
 function mCell(v: boolean | undefined, w: number): React.CSSProperties {

@@ -47,6 +47,10 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
   const { user } = useAuth();
   const [queue, setQueue] = useState<DeckCard[] | null>(null); // null = loading
   const [idx, setIdx] = useState(0);
+  // Answering slides the card out toward the chosen tab (NOPE → left,
+  // YES → right) before the next card fades in (Alborz QA 2026-07-18 —
+  // replaces the old vertical entrance motion).
+  const [exit, setExit] = useState<"left" | "right" | null>(null);
   const doneRef = useRef(false);
 
   useEffect(() => {
@@ -88,14 +92,18 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
   const mobile = idiom === "mobile";
 
   function answer(agreed: boolean) {
-    if (!user || doneRef.current) return;
+    if (!user || doneRef.current || exit) return;
     upsertDeckAnswer({ userId: user.id, cardId: card.id, answer: agreed })
       .catch((e) => console.warn("[deck] answer write failed (drip will re-serve):", e));
-    if (idx + 1 < queue!.length) { setIdx(idx + 1); return; }
-    doneRef.current = true;
-    // Drip batch completed → don't serve another this session (4 per login).
-    if (wave === "drip") { try { sessionStorage.setItem(`ns_deck_drip_${user.id}`, "1"); } catch { /* tolerate */ } }
-    onComplete();
+    setExit(agreed ? "right" : "left");
+    window.setTimeout(() => {
+      setExit(null);
+      if (idx + 1 < queue!.length) { setIdx(idx + 1); return; }
+      doneRef.current = true;
+      // Drip batch completed → don't serve another this session (4 per login).
+      if (wave === "drip") { try { sessionStorage.setItem(`ns_deck_drip_${user!.id}`, "1"); } catch { /* tolerate */ } }
+      onComplete();
+    }, 220);
   }
 
   return (
@@ -118,8 +126,17 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
           </div>
         )}
 
-        <div key={card.id} style={{ ...cardStyle, height: mobile ? "min(560px, 60dvh)" : "min(540px, 64vh)", animation: "deckCardIn .28s ease" }}>
-          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 36, lineHeight: 1.25, color: CANON.identity, textAlign: "center", maxWidth: mobile ? "82%" : "58%" }}>
+        <div
+          key={card.id}
+          style={{
+            ...cardStyle,
+            height: mobile ? "min(560px, 60dvh)" : "min(580px, 66vh)",
+            animation: exit
+              ? `${exit === "right" ? "deckExitRight" : "deckExitLeft"} .22s ease forwards`
+              : "deckCardIn .24s ease",
+          }}
+        >
+          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 38, lineHeight: 1.25, color: CANON.identity, textAlign: "center", maxWidth: mobile ? "82%" : "58%" }}>
             {card.statement}
           </div>
 
@@ -137,7 +154,11 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
           </button>
         </div>
       </div>
-      <style>{`@keyframes deckCardIn { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }`}</style>
+      <style>{`
+        @keyframes deckCardIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+        @keyframes deckExitRight { to { opacity: 0; transform: translateX(140px) rotate(2deg); } }
+        @keyframes deckExitLeft { to { opacity: 0; transform: translateX(-140px) rotate(-2deg); } }
+      `}</style>
     </div>
   );
 }
