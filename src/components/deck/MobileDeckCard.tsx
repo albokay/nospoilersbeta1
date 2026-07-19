@@ -27,7 +27,7 @@
  * The artifact card is screenshot-safe: the Sidebar mark is baked in.
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { Pencil, CircleCheck, ThumbsUp, ThumbsDown, X } from "lucide-react";
+import { Pencil, CircleCheck, ThumbsUp, ThumbsDown, ArrowRight, X } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import {
   fetchDeckCards, fetchMyDeckAnswers, fetchGroupDeckAnswers, upsertDeckAnswer,
@@ -191,6 +191,20 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
               )}
             </div>
           </div>
+          {/* Friend names over the thumb columns, vertical counterclockwise
+              ((me) first) — per the approved rev-2 mockup. Slot widths match
+              the row thumbs so the columns line up. */}
+          {mode === "group" && (
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, padding: "0 20px 2px" }}>
+              {[{ id: viewerId, label: "(me)" }, ...columns].map((m) => (
+                <span key={m.id} style={{ width: 20, display: "flex", justifyContent: "center" }}>
+                  <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10, color: CANON.dark, maxHeight: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {m.label}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
           <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
             {windowRows.map((card, i) => (
               <div key={card.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 20px", fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.35, color: CANON.dark, background: i % 2 === 0 ? "rgba(173,200,215,0.45)" : "transparent" }}>
@@ -214,13 +228,15 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
               </div>
             ))}
             {/* Right under the question list, not pinned to the screen
-                bottom where it's easy to miss (Alborz QA 2026-07-18). */}
-            {(mode === "group" || !firstSet) && (
+                bottom. Appears only once there's MORE than the sheet shows
+                (Alborz QA 2026-07-18 — at 8 answered the sheet already IS
+                everything). */}
+            {(mode === "group" ? anyAnswered.length > WINDOW : !firstSet) && (
               <button
                 onClick={() => setUi("grid")}
-                style={{ display: "block", marginLeft: "auto", border: "none", background: "transparent", cursor: "pointer", padding: "12px 20px", textAlign: "right", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 12, color: CANON.identity }}
+                style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", border: "none", background: "transparent", cursor: "pointer", padding: "12px 20px", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 12, color: CANON.identity }}
               >
-                {mode === "group" ? "tap for the full grid →" : "see all →"}
+                see more answers <ArrowRight size={13} strokeWidth={2.5} />
               </button>
             )}
           </div>
