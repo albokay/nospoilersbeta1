@@ -107,8 +107,9 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
     : answeredMine;
   const windowRows = [...anyAnswered].sort((a, b) => b.sortOrder - a.sortOrder).slice(0, WINDOW);
   const firstSet = answeredMine.length <= WINDOW; // §7.6.1 conditional copy
+  // No group subtitle (Alborz QA 2026-07-18 — "our answers on Sidebar" cut).
   const subtitle = mode === "group"
-    ? "our answers on Sidebar"
+    ? null
     : firstSet ? "my answers on Sidebar" : "my latest answers on Sidebar";
 
   const pairLine = mode === "group" && others.length === 1
@@ -184,13 +185,13 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "16px 20px 10px" }}>
             <div>
               <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 11.5, color: CANON.business, marginTop: 3 }}>{subtitle}</div>
+              {subtitle && <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 11.5, color: CANON.business, marginTop: 3 }}>{subtitle}</div>}
               {pairLine && (
                 <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: CANON.personal, marginTop: 6 }}>{pairLine}</div>
               )}
             </div>
           </div>
-          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
             {windowRows.map((card, i) => (
               <div key={card.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 20px", fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.35, color: CANON.dark, background: i % 2 === 0 ? "rgba(173,200,215,0.45)" : "transparent" }}>
                 <span>{card.statement}</span>
@@ -212,15 +213,17 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                 )}
               </div>
             ))}
+            {/* Right under the question list, not pinned to the screen
+                bottom where it's easy to miss (Alborz QA 2026-07-18). */}
+            {(mode === "group" || !firstSet) && (
+              <button
+                onClick={() => setUi("grid")}
+                style={{ display: "block", marginLeft: "auto", border: "none", background: "transparent", cursor: "pointer", padding: "12px 20px", textAlign: "right", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 12, color: CANON.identity }}
+              >
+                {mode === "group" ? "tap for the full grid →" : "see all →"}
+              </button>
+            )}
           </div>
-          {(mode === "group" || !firstSet) && (
-            <button
-              onClick={() => setUi("grid")}
-              style={{ border: "none", background: "transparent", cursor: "pointer", padding: "12px 20px calc(env(safe-area-inset-bottom, 0px) + 12px)", textAlign: "right", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 12, color: CANON.identity }}
-            >
-              {mode === "group" ? "tap for the full grid →" : "see all →"}
-            </button>
-          )}
         </div>
       </div>
     );
@@ -237,7 +240,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
       )}
       <div style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 44px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: 20, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
         {/* Frozen top: title + (me) + names. */}
-        <div style={{ display: "flex", position: "sticky", top: 0, zIndex: 4, background: CANON.cream, borderBottom: `2px solid rgba(141,170,186,0.3)`, minWidth: ST_W + ME_W + FR_W * columns.length }}>
+        <div style={{ display: "flex", position: "sticky", top: 0, zIndex: 4, background: CANON.cream, minWidth: ST_W + ME_W + FR_W * columns.length }}>
           <div style={{ width: ST_W, minWidth: ST_W, position: "sticky", left: 0, background: CANON.cream, zIndex: 3, padding: "14px 8px 8px 14px", boxSizing: "border-box", display: "flex", alignItems: "flex-end" }}>
             <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 13.5, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
           </div>

@@ -151,40 +151,17 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
     }
   }
 
-  // ── The grid header row (shared by the docked peek + the open card).
-  // alignItems: baseline puts "(me)" + the friend names on the TITLE's
-  // baseline (Alborz QA 2026-07-18); the last column flex-grows so the
-  // colored area runs flush to the card's right edge. ───────────────────────
-  const headerRow = (interactive: boolean) => (
+  // ── The grid header (open card only — docked shows just the title).
+  // Row 1: title + "(me)" + friend names on the title's baseline. Row 2:
+  // the n=2 summary line with the pen (→ confirm check, SAME spot, same
+  // stroke width) aligned to it in the (me) column (Alborz QA 2026-07-18).
+  const headerRow = (
     <div style={{ display: "flex", alignItems: "baseline", background: CANON.cream }}>
-      <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "16px 8px 12px 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
+      <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "16px 8px 4px 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
         <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
       </div>
       <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, textAlign: "center", boxSizing: "border-box", ...(columns.length === 0 ? { flexGrow: 1 } : {}) }}>
-        {ui === "edit" ? (
-          <button title="save your answers" onClick={confirmEdits} disabled={saving}
-            style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "inline-flex", alignItems: "center" }}>
-            {saving ? <LoadingDots /> : <CircleCheck size={22} strokeWidth={2.5} />}
-          </button>
-        ) : (
-          <>
-            {isWe && <span style={{ ...colName, display: "block" }}>(me)</span>}
-            {interactive && (
-              <span style={{ position: "relative", display: "inline-block" }}>
-                <button
-                  onClick={() => { setEdits({}); setUi("edit"); }}
-                  onMouseEnter={() => setEditTip(true)}
-                  onMouseLeave={() => setEditTip(false)}
-                  style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "inline-flex" }}>
-                  <Pencil size={14} />
-                </button>
-                {editTip && (
-                  <span style={editTipBubble}>Edit answers?</span>
-                )}
-              </span>
-            )}
-          </>
-        )}
+        {isWe && <span style={colName}>(me)</span>}
       </div>
       {columns.map((m, ci) => (
         <div key={m.id} style={{ width: MEMBER_W, minWidth: MEMBER_W, textAlign: "center", boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}>
@@ -194,9 +171,42 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
     </div>
   );
 
+  const subRow = (
+    <div style={{ display: "flex", alignItems: "center", background: CANON.cream, paddingBottom: 6 }}>
+      <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "0 8px 0 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
+        {pairLine && (
+          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.personal }}>{pairLine}</span>
+        )}
+      </div>
+      <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, textAlign: "center", boxSizing: "border-box" }}>
+        {ui === "edit" ? (
+          <button title="save your answers" onClick={confirmEdits} disabled={saving}
+            style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "inline-flex", alignItems: "center", padding: 2 }}>
+            {saving ? <LoadingDots /> : <CircleCheck size={18} strokeWidth={2} />}
+          </button>
+        ) : (
+          <span style={{ position: "relative", display: "inline-block" }}>
+            <button
+              onClick={() => { setEdits({}); setUi("edit"); }}
+              onMouseEnter={() => setEditTip(true)}
+              onMouseLeave={() => setEditTip(false)}
+              style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "inline-flex" }}>
+              <Pencil size={15} strokeWidth={2} />
+            </button>
+            {editTip && (
+              <span style={editTipBubble}>Edit answers?</span>
+            )}
+          </span>
+        )}
+      </div>
+      <div style={{ flexGrow: 1 }} />
+    </div>
+  );
+
   const cardW = Math.min(STATEMENT_W + MEMBER_W * (columns.length + 1) + 2, typeof window !== "undefined" ? window.innerWidth * 0.92 : 1200);
 
-  // ── DOCKED — the header row peeking at the viewport bottom ────────────────
+  // ── DOCKED — title only, peeking at the viewport bottom (no names /
+  // (me) while docked; Alborz QA 2026-07-18) ────────────────────────────────
   if (ui === "docked") {
     return (
       <div
@@ -210,7 +220,9 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
           boxShadow: "0 -6px 24px rgba(0,0,0,0.18)", overflow: "hidden",
         }}
       >
-        {headerRow(false)}
+        <div style={{ padding: "16px 24px 14px" }}>
+          <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
+        </div>
       </div>
     );
   }
@@ -222,16 +234,11 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
       onClick={(e) => { if (e.target === e.currentTarget && ui === "open") setUi("docked"); }}
     >
       <div style={{ width: cardW, maxWidth: "92vw", maxHeight: "82vh", background: CANON.cream, borderRadius: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.25)", overflow: "auto", animation: "deckGridIn .24s ease" }}>
-        {/* Frozen top: the header (title + names + pencil/confirm). The
-            divider sits under the WHOLE header block — below the n=2 line
-            when present, never between heading and subheading. */}
-        <div style={{ position: "sticky", top: 0, zIndex: 4, background: CANON.cream, borderBottom: `2px solid ${withA(CANON.business, 0.3)}` }}>
-          {headerRow(true)}
-          {pairLine && (
-            <div style={{ padding: "0 24px 10px", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.personal, background: CANON.cream }}>
-              {pairLine}
-            </div>
-          )}
+        {/* Frozen top: the header block (no divider line — the grid sits
+            flush beneath it; Alborz QA 2026-07-18). */}
+        <div style={{ position: "sticky", top: 0, zIndex: 4, background: CANON.cream }}>
+          {headerRow}
+          {subRow}
         </div>
 
         {cards.map((card, i) => {
