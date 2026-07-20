@@ -38,7 +38,9 @@ import {
   logThreadPrompt,
   type Show,
 } from "../lib/db";
+import { Plus } from "lucide-react";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
+import { joinNames } from "../lib/groupNames";
 import OneSelectProgress from "./OneSelectProgress";
 import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import DeckWave from "./deck/DeckWave";
@@ -52,7 +54,12 @@ import {
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
-type Boot = { gid?: string; roomId?: string; token?: string; threadId?: string; attached?: boolean };
+type Boot = { gid?: string; roomId?: string; tokens?: Record<string, string>; threadId?: string; attached?: boolean };
+
+// Multi-friend onboarding (Alborz 2026-07-20): up to 7 friends in one pass —
+// the room cap is 8 MEMBERS including you (checked at invite-mint AND accept),
+// so an 8th invitee would bounce with "group full" when they tried to join.
+const MAX_FRIENDS = 7;
 
 export default function SocialOnboarding({ onDone }: { onDone: (groupId: string | null) => void }) {
   const { user, profile } = useAuth();
@@ -60,10 +67,10 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   // the welcome copy), steps 1–3 = the original show → friend → seed-entry
   // screens, step 4 = WAVE 2 ("a few more…"), step 5 = the "You're in!" card.
   const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
-  // Email backstop's last resort: bootstrap done, email undeliverable →
-  // copy-the-link card (shown in place of the compose modal), then step 4.
-  const [fallbackLink, setFallbackLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  // Email backstop's last resort: bootstrap done, email(s) undeliverable →
+  // copy-the-link card (one row per failed invite), then step 4.
+  const [fallbackLinks, setFallbackLinks] = useState<{ name: string; link: string }[] | null>(null);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
   // Screen 1 — show + progress (the site's real search + picker cards).
   const [shows, setShows] = useState<Show[]>([]);
@@ -75,10 +82,12 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   const [creatingShow, setCreatingShow] = useState(false);
   const tvDebounceRef = useRef<number | null>(null);
 
-  // Screen 2 — the one required friend (the site's real invite card).
-  const [friendName, setFriendName] = useState("");
-  const [friendEmail, setFriendEmail] = useState("");
+  // Screen 2 — at least one friend, up to MAX_FRIENDS at once (the "+" row).
+  const [friends, setFriends] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
   const [advancing, setAdvancing] = useState(false);
+  function setFriendField(i: number, field: "name" | "email", v: string) {
+    setFriends((prev) => prev.map((f, j) => (j === i ? { ...f, [field]: v } : f)));
+  }
 
   const bootRef = useRef<Boot>({});
   const composeRef = useRef<ComposeFormHandle>(null);
@@ -169,13 +178,20 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   }) {
     if (!user || !profile?.username || !show) return;
     const boot = bootRef.current;
-    // Group — left unnamed: the contact-name default names it after the friend.
+    // Group — left unnamed: the contact-name default names it after the friends.
     if (!boot.gid) boot.gid = await createPeopleGroup();
     // The show room, ALREADY STARTED (the "we went ahead" bootstrap).
     if (!boot.roomId) boot.roomId = (await startShowRoom(boot.gid, show.id)).roomId;
-    // The invitation — carries the friend's name (contact naming) + the
-    // bootstrap room (auto-opt-in on accept). Email NOT sent yet.
-    if (!boot.token) boot.token = await createPeopleGroupInvite(boot.gid, friendEmail.trim(), friendName.trim(), boot.roomId);
+    // The invitations — each carries the friend's name (contact naming) + the
+    // bootstrap room (auto-opt-in on accept). Emails NOT sent yet. Tokens are
+    // keyed by email so a retry resumes without double-minting.
+    const invitees = friends
+      .map((f) => ({ name: f.name.trim(), email: f.email.trim().toLowerCase() }))
+      .filter((f) => f.name && f.email.includes("@"));
+    if (!boot.tokens) boot.tokens = {};
+    for (const f of invitees) {
+      if (!boot.tokens[f.email]) boot.tokens[f.email] = await createPeopleGroupInvite(boot.gid, f.email, f.name, boot.roomId);
+    }
     // The seed entry, into the room — tagged exactly as the compose form
     // would have tagged it.
     if (!boot.threadId) {
@@ -196,27 +212,43 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
     // The onboarding sticky shows on THIS group's room after landing.
     try { localStorage.setItem("ns_onb_group", boot.gid); } catch { /* tolerate */ }
 
-    // NOW the invite email — held until the writing existed. Transient
-    // failure → one auto-retry after a short delay (the button keeps its
-    // animated posting… ellipsis); auth failure → straight to copy-the-link.
-    const first = await sendGroupInviteEmail(boot.token);
-    if (first.ok) { setStep(4); return; }
-    const authFail = first.status === 401 || first.status === 403;
-    if (!authFail) {
-      await new Promise((r) => setTimeout(r, 2500));
-      const second = await sendGroupInviteEmail(boot.token);
-      if (second.ok) { setStep(4); return; }
+    // NOW the invite emails — held until the writing existed. Transient
+    // failures → one auto-retry after a short delay (the button keeps its
+    // animated posting… ellipsis); an auth failure skips the retry and the
+    // failed invites go straight to copy-the-link rows.
+    let failed: { name: string; email: string; token: string }[] = [];
+    let authFail = false;
+    for (const f of invitees) {
+      const r = await sendGroupInviteEmail(boot.tokens[f.email]);
+      if (!r.ok) {
+        failed.push({ ...f, token: boot.tokens[f.email] });
+        if (r.status === 401 || r.status === 403) authFail = true;
+      }
     }
-    setFallbackLink(`${window.location.origin}/group-invite/${boot.token}`);
+    if (failed.length && !authFail) {
+      await new Promise((r) => setTimeout(r, 2500));
+      const still: typeof failed = [];
+      for (const f of failed) {
+        const r = await sendGroupInviteEmail(f.token);
+        if (!r.ok) still.push(f);
+      }
+      failed = still;
+    }
+    if (!failed.length) { setStep(4); return; }
+    setFallbackLinks(failed.map((f) => ({ name: f.name, link: `${window.location.origin}/group-invite/${f.token}` })));
   }
 
-  async function copyLink() {
-    if (!fallbackLink) return;
-    try { await navigator.clipboard.writeText(fallbackLink); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* tolerate */ }
+  async function copyLink(link: string, idx: number) {
+    try { await navigator.clipboard.writeText(link); setCopiedIdx(idx); setTimeout(() => setCopiedIdx(null), 1500); } catch { /* tolerate */ }
   }
 
-  const emailValid = friendEmail.includes("@") && friendEmail.trim().length >= 5;
-  const screen2Ready = friendName.trim().length > 0 && emailValid;
+  // Row validation: at least one COMPLETE row, and no half-filled rows
+  // (a name without an email or vice versa blocks the button).
+  const emailOk = (e: string) => e.includes("@") && e.trim().length >= 5;
+  const touchedRows = friends.filter((f) => f.name.trim() || f.email.trim());
+  const completeRows = friends.filter((f) => f.name.trim() && emailOk(f.email));
+  const screen2Ready = completeRows.length >= 1 && touchedRows.every((f) => f.name.trim() && emailOk(f.email));
+  const invitedNames = joinNames(completeRows.map((f) => f.name.trim()));
 
   // ── Screen 0: WAVE 1 — 4 question cards with the welcome copy (§12.4).
   // Self-skipping: an account that already answered them passes straight
@@ -303,31 +335,40 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
         <div style={{ ...searchCard, background: CANON.friend, position: "relative" }}>
           <button style={backLink} onClick={() => setStep(1)}>← back</button>
           <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: CANON.cream, textAlign: "center", margin: "16px 0 8px" }}>
-            Who&rsquo;s one friend you<br />always text about TV?
+            Who&rsquo;s at least one friend<br />you always text about TV?
           </h1>
           <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal", color: CANON.cream, textAlign: "center", margin: "0 0 20px" }}>
             (You can invite more later.)
           </p>
-          {/* Exactly the standard invite-modal row (Alborz 2026-07-08): name
-              + email SIDE BY SIDE (0.8/1.2), "their name" / "email" — two
-              equal stacked fields read as one thing. */}
-          <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-            <input
-              value={friendName}
-              onChange={(e) => setFriendName(e.target.value)}
-              placeholder="their name"
-              maxLength={40}
-              style={{ ...searchInput, border: "none", background: CANON.cream, color: CANON.dark, marginBottom: 0, flex: 0.8 }}
-            />
-            <input
-              value={friendEmail}
-              onChange={(e) => setFriendEmail(e.target.value)}
-              placeholder="email"
-              style={{ ...searchInput, border: "none", background: CANON.cream, color: CANON.dark, marginBottom: 0, flex: 1.2 }}
-            />
-          </div>
-          {/* "hi, it's…" removed (first-name identity CP4): the invite
-              email introduces the inviter by their first name. */}
+          {/* The standard invite-modal row (name + email SIDE BY SIDE,
+              0.8/1.2) × up to MAX_FRIENDS; the cream "+" circle appends a
+              row (Alborz 2026-07-20). */}
+          {friends.map((f, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+              <input
+                value={f.name}
+                onChange={(e) => setFriendField(i, "name", e.target.value)}
+                placeholder="their name"
+                maxLength={40}
+                style={{ ...searchInput, border: "none", background: CANON.cream, color: CANON.dark, marginBottom: 0, flex: 0.8 }}
+              />
+              <input
+                value={f.email}
+                onChange={(e) => setFriendField(i, "email", e.target.value)}
+                placeholder="email"
+                style={{ ...searchInput, border: "none", background: CANON.cream, color: CANON.dark, marginBottom: 0, flex: 1.2 }}
+              />
+            </div>
+          ))}
+          {friends.length < MAX_FRIENDS && (
+            <button
+              title="invite another friend"
+              onClick={() => setFriends((prev) => [...prev, { name: "", email: "" }])}
+              style={plusBtn}
+            >
+              <Plus size={18} strokeWidth={2.5} color={CANON.friend} />
+            </button>
+          )}
           <div style={{ textAlign: "center", marginTop: 20 }}>
             <button
               style={{ ...invitePill, opacity: screen2Ready && !advancing ? 1 : 0.6 }}
@@ -344,20 +385,23 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
 
   // ── Screen 3: the REAL compose modal (or the copy-link fallback card) ──────
   if (step === 3 && show) {
-    if (fallbackLink) {
+    if (fallbackLinks) {
       return (
         <div style={overlay}>
-          <div style={{ ...yellowCard, width: "min(420px, 88vw)", textAlign: "left" }}>
+          <div style={{ ...yellowCard, width: "min(460px, 88vw)", textAlign: "left" }}>
             <div style={{ ...yellowTitle, marginBottom: 12 }}>Your writing is published!</div>
             <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>
-              But Sidebar couldn&rsquo;t email the invite to {friendName.trim() || "your friend"} right now.
-              Copy the link and send it to them yourself — it works the same.
+              But Sidebar couldn&rsquo;t email {joinNames(fallbackLinks.map((f) => f.name)) || "your friends"} right now.
+              Copy the link{fallbackLinks.length > 1 ? "s" : ""} and send them yourself — they work the same.
             </div>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 16 }}>
-              <div style={{ flex: 1, fontSize: 12, color: CANON.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fallbackLink}</div>
-              <button style={{ ...startBtn, padding: "8px 20px" }} onClick={copyLink}>{copied ? "copied!" : "copy"}</button>
-            </div>
-            <div style={{ textAlign: "center" }}>
+            {fallbackLinks.map((f, i) => (
+              <div key={f.link} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+                <div style={{ width: 90, fontSize: 12, fontWeight: 700, color: CANON.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</div>
+                <div style={{ flex: 1, fontSize: 12, color: CANON.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.link}</div>
+                <button style={{ ...startBtn, padding: "8px 20px" }} onClick={() => copyLink(f.link, i)}>{copiedIdx === i ? "copied!" : "copy"}</button>
+              </div>
+            ))}
+            <div style={{ textAlign: "center", marginTop: 16 }}>
               <button style={startBtn} onClick={() => setStep(4)}>continue →</button>
             </div>
           </div>
@@ -410,7 +454,7 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   return (
     <YoureInCard
       idiom="desktop"
-      variant={{ kind: "inviter", showName: show?.name ?? "your show", friendName: friendName.trim() || "your friend" }}
+      variant={{ kind: "inviter", showName: show?.name ?? "your show", friendName: invitedNames || "your friend" }}
       onDone={() => onDone(bootRef.current.gid ?? null)}
     />
   );
@@ -427,4 +471,11 @@ const onbSubline: React.CSSProperties = {
 const backLink: React.CSSProperties = {
   position: "absolute", top: 14, left: 18, border: "none", background: "transparent",
   color: CANON.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 4,
+};
+// The "+" add-a-friend circle: cream (site-white) with a Sky plus,
+// left-justified under the rows.
+const plusBtn: React.CSSProperties = {
+  width: 36, height: 36, borderRadius: "50%", border: "none", background: CANON.cream,
+  display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+  padding: 0, marginTop: 2,
 };
