@@ -22,11 +22,12 @@ import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { fetchDeckCards, fetchMyDeckAnswers, upsertDeckAnswer, type DeckCard } from "../../lib/db";
+import { readPendingDeckAnswers, addPendingDeckAnswer } from "../../lib/deckPending";
 import { CANON } from "../../styles/canon";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
-export default function DeckWave({ wave, heading, idiom, requirePriorWave, onComplete }: {
+export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadCardId, anonymous, onComplete }: {
   /** 1 | 2 = the fixed onboarding waves. "drip" (CP4) = the catch-up/drip
    *  modal: up to 4 released, unanswered cards, oldest first, at most once
    *  per session (sessionStorage flag). Wave-2 cards are EXCLUDED from the
@@ -42,6 +43,13 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
    *  user pre-catch-up) isn't served out of order — their catch-up runs
    *  through the drip modal instead. */
   requirePriorWave?: boolean;
+  /** Serve this card FIRST (onboarding changeset §3 — the invitee's wave 1
+   *  must open on the card quoted in the invite email). */
+  leadCardId?: string;
+  /** Pre-account mode (changeset §5): no signed-in user required — answers
+   *  park in localStorage and are claimed by the next sign-in on this
+   *  browser (see lib/deckPending). Used at the invitee's door, wave 1. */
+  anonymous?: boolean;
   onComplete: () => void;
 }) {
   const { user } = useAuth();
@@ -54,13 +62,16 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
   const doneRef = useRef(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!anonymous && !user) return;
     let cancelled = false;
     (async () => {
-      const [cards, answers] = await Promise.all([fetchDeckCards(), fetchMyDeckAnswers(user.id)]);
+      const [cards, answers] = await Promise.all([
+        fetchDeckCards(),
+        anonymous ? Promise.resolve(readPendingDeckAnswers()) : fetchMyDeckAnswers(user!.id),
+      ]);
       if (cancelled) return;
       if (wave === "drip") {
-        const key = `ns_deck_drip_${user.id}`;
+        const key = `ns_deck_drip_${user!.id}`;
         try { if (sessionStorage.getItem(key)) { setQueue([]); return; } } catch { /* tolerate */ }
         // The once-per-session flag is stamped on COMPLETION (see answer()),
         // not on serve — a mid-batch refresh brings the cards back (there is
@@ -74,10 +85,12 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
         setQueue([]);
         return;
       }
-      setQueue(cards.filter((c) => c.wave === wave && !(c.id in answers)));
+      let q = cards.filter((c) => c.wave === wave && !(c.id in answers));
+      if (leadCardId) q = [...q.filter((c) => c.id === leadCardId), ...q.filter((c) => c.id !== leadCardId)];
+      setQueue(q);
     })();
     return () => { cancelled = true; };
-  }, [user, wave, requirePriorWave]);
+  }, [user, wave, requirePriorWave, leadCardId, anonymous]);
 
   // Nothing to serve → complete silently (once).
   useEffect(() => {
@@ -87,14 +100,18 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, onCom
     }
   }, [queue, onComplete]);
 
-  if (!user || queue === null || queue.length === 0) return null;
+  if ((!anonymous && !user) || queue === null || queue.length === 0) return null;
   const card = queue[Math.min(idx, queue.length - 1)];
   const mobile = idiom === "mobile";
 
   function answer(agreed: boolean) {
-    if (!user || doneRef.current || exit) return;
-    upsertDeckAnswer({ userId: user.id, cardId: card.id, answer: agreed })
-      .catch((e) => console.warn("[deck] answer write failed (drip will re-serve):", e));
+    if ((!anonymous && !user) || doneRef.current || exit) return;
+    if (anonymous) {
+      addPendingDeckAnswer(card.id, agreed);
+    } else {
+      upsertDeckAnswer({ userId: user!.id, cardId: card.id, answer: agreed })
+        .catch((e) => console.warn("[deck] answer write failed (drip will re-serve):", e));
+    }
     setExit(agreed ? "right" : "left");
     window.setTimeout(() => {
       setExit(null);

@@ -117,6 +117,10 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     return { watching: w.sort(byName), interested: n.sort(byName) };
   }, [pool, poolProgress, showsById]);
 
+  // Onboarding changeset §5: the pre-wall wave state (see the logged-out
+  // welcome below).
+  const [prewallDone, setPrewallDone] = useState(false);
+
   // Reworked in QA 2026-07-18: the "You're in!" invitee card IS the accept
   // confirmation (replaces the old Yes/no). GET STARTED! accepts → WAVE 1
   // (self-skipping) → straight into the group room. The decline path lost
@@ -183,6 +187,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         </div>
         <DeckWave
           wave={1}
+          leadCardId="just-wait-ep4"
           heading="welcome"
           idiom="mobile"
           onComplete={() => navigate(info ? `/m/group/${info.groupId}` : "/m/dashboard", { replace: true })}
@@ -191,10 +196,16 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     );
   }
 
-  // ── Logged-out welcome: inviter's pool + JOIN IN (single column) ──────────
+  // ── Logged-out welcome: inviter's pool + JOIN IN (single column). The
+  //    PRE-WALL wave (changeset §5) fires over it first — wave 1, no account,
+  //    opening on the email's quoted card; answers park locally and attach
+  //    on sign-in. ─────────────────────────────────────────────────────────
   if (status === "ready" && info && !user && !authLoading) {
     return (
       <div style={welcomePage}>
+        {!prewallDone && (
+          <DeckWave anonymous wave={1} leadCardId="just-wait-ep4" heading="welcome" idiom="mobile" onComplete={() => setPrewallDone(true)} />
+        )}
         <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 12px) 16px 8px" }}>
           <SidebarLogo scale={0.5} blocksOpacity={1} />
         </div>

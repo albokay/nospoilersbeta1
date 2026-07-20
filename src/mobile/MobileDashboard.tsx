@@ -447,6 +447,7 @@ export default function MobileDashboard() {
       {postAccept && (
         <DeckWave
           wave={1}
+          leadCardId="just-wait-ep4"
           heading="welcome"
           idiom="mobile"
           onComplete={() => {

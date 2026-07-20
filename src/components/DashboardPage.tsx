@@ -1877,6 +1877,7 @@ export default function DashboardPage() {
       {postAccept && (
         <DeckWave
           wave={1}
+          leadCardId="just-wait-ep4"
           heading="welcome"
           idiom="desktop"
           onComplete={() => {

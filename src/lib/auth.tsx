@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
+import { claimPendingDeckAnswers } from "./deckPending";
 import type { User } from "@supabase/supabase-js";
 
 type Profile = { id: string; username: string; display_name: string | null; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null };
@@ -126,6 +127,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Pre-account swipe answers (onboarding changeset §5): an invitee answers
+  // wave 1 at the door before any account exists; those swipes park in
+  // localStorage and attach to whatever account signs in next on this
+  // browser. Fire-and-forget + tolerant — a failure retries next sign-in.
+  useEffect(() => {
+    if (user?.id) claimPendingDeckAnswers(user.id);
+  }, [user?.id]);
 
   async function signUp(
     email: string,

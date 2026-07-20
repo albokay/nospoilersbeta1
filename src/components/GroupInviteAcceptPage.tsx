@@ -47,6 +47,12 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   // confirmation on this page instead of the logged-out welcome screen. (App's
   // generic sign-in → /dashboard redirect is suppressed for /group-invite.)
   const [postSignin, setPostSignin] = useState(false);
+  // Onboarding changeset §5: the PRE-WALL wave — wave 1 fires over the
+  // logged-out arrival before any account exists (answers park locally and
+  // attach on sign-in), opening on the email's quoted card. Completing it
+  // reveals the welcome page + JOIN IN (the wall). Self-skips for a visitor
+  // who already answered at this door.
+  const [prewallDone, setPrewallDone] = useState(false);
 
   function openAuth() {
     // Brand-new invitee → create-account; flag App to route them to /dashboard
@@ -143,6 +149,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
         <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
         <DeckWave
           wave={1}
+          leadCardId="just-wait-ep4"
           heading="welcome"
           idiom="desktop"
           onComplete={() => navigate(info ? `/dashboard?g=${info.groupId}` : "/dashboard", { replace: true })}
@@ -169,6 +176,9 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
     return (
       <>
         <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth }} displayNameOverride={info.inviterDisplayName || undefined} />
+        {!prewallDone && (
+          <DeckWave anonymous wave={1} leadCardId="just-wait-ep4" heading="welcome" idiom="desktop" onComplete={() => setPrewallDone(true)} />
+        )}
         {phase === "signup" && (
           <AuthModal
             initialMode={info.inviteeHasAccount ? "signin" : "signup"}

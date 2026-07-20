@@ -1,5 +1,10 @@
 -- ============================================================================
--- SWIPE DECK — card seed (DRAFT for Alborz's review — DO NOT APPLY YET)
+-- SWIPE DECK — card seed (APPLIED to prod 2026-07-17; kept for env spin-up)
+-- ⚠️ SUPERSEDED IN PART 2026-07-20 by onboarding_changeset_CP1.sql (same
+-- folder): the onboarding 8 was re-selected (new card `just-wait-ep4`; new
+-- wave/sort assignments; avoid-trailers / three-episodes / lied-caught-up /
+-- fall-asleep / full-season demoted to drip). For a fresh env: apply THIS
+-- file first, then the changeset. Prod truth = this file + the changeset.
 -- ============================================================================
 -- Apply AFTER the CP1 migration creates public.deck_cards.
 -- Paste-ready for the SQL editor, per the onboarding-prompts precedent
