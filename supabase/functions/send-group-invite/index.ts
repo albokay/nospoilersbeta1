@@ -153,12 +153,21 @@ serve(async (req) => {
       return jsonError("rate_limit", 429, "You've sent a lot of emails today. Try again tomorrow.");
     }
 
-    // ── Group label for the email copy ───────────────────────────────────────
-    let groupLabel = "";
+    // ── The inviter's just-wait-ep4 answer (onboarding changeset §6) ─────────
+    // The headline leads with the inviter's OWN yes/no on the card the
+    // invitee's wave 1 opens on — the click continues the email. Fallback
+    // (inviter hasn't answered it yet — pre-catch-up accounts): the old
+    // static headline, no "Do you?" line.
+    let ep4: boolean | null = null;
     try {
-      const { data: g } = await admin.from("people_groups").select("name").eq("id", inv.people_group_id).maybeSingle();
-      if (g?.name) groupLabel = g.name;
-    } catch { /* unnamed */ }
+      const { data: a } = await admin
+        .from("deck_answers")
+        .select("answer")
+        .eq("user_id", inv.created_by)
+        .eq("card_id", "just-wait-ep4")
+        .maybeSingle();
+      ep4 = a ? (a.answer as boolean) : null;
+    } catch { /* fallback headline */ }
 
     // ── Send via Resend ──────────────────────────────────────────────────────
     const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -167,8 +176,19 @@ serve(async (req) => {
     const baseUrl   = (appUrl ?? "https://beta.sidebar.watch").replace(/\/$/, "");
     const inviteUrl = `${baseUrl}/group-invite/${token}`;
     const email     = (inv.invitee_email as string).toLowerCase().trim();
-    const groupBit  = groupLabel ? ` &ldquo;${escapeHtml(groupLabel)}&rdquo;` : "";
     const subject   = `${senderName} invited you to a watch group on Sidebar`;
+
+    // Onboarding changeset §6: dynamic headline on the inviter's yes/no;
+    // "Do you?" rides only the dynamic variants; body drops the old closing
+    // sentence; tagline removed; CTA = "Join in →". Fine print unchanged.
+    const headlineHtml = ep4 === null
+      ? `📺 <strong>${escapeHtml(senderName)}</strong> wants to watch shows with you on Sidebar.`
+      : `📺 <strong>${escapeHtml(senderName)}</strong> thinks that &ldquo;just wait for episode 4&rdquo; when discussing TV ${ep4 ? "counts as a spoiler" : "is not a spoiler"}.`;
+    const headlineText = ep4 === null
+      ? `${senderName} wants to watch shows with you on Sidebar.`
+      : `${senderName} thinks that "just wait for episode 4" when discussing TV ${ep4 ? "counts as a spoiler" : "is not a spoiler"}.`;
+    const doYouHtml = ep4 === null ? "" : `\n  <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;font-weight:700">Do you?</p>`;
+    const doYouText = ep4 === null ? "" : `\n\nDo you?`;
 
     const html = `
 <!DOCTYPE html>
@@ -176,14 +196,13 @@ serve(async (req) => {
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    📺 <strong>${escapeHtml(senderName)}</strong> wants to watch shows with you on Sidebar.
-  </h1>
-  <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    Sidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — everything is filtered by each person's watch progress. They've invited you to their watch group${groupBit}.
+    ${headlineHtml}
+  </h1>${doYouHtml}
+  <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
+    Sidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.
   </p>
-  <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;font-style:italic">talk. together. whenever.</p>
   <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
-    Join the group →
+    Join in →
   </a>
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
     This link expires in a week and can only be used once.<br>
@@ -194,7 +213,7 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    const text = `${senderName} wants to watch shows with you on Sidebar.\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — filtered by each person's watch progress. They've invited you to their watch group${groupLabel ? ` "${groupLabel}"` : ""}.\n\ntalk. together. whenever.\n\nJoin here: ${inviteUrl}\n\nThis link expires in a week and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
+    const text = `${headlineText}${doYouText}\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.\n\nJoin in: ${inviteUrl}\n\nThis link expires in a week and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",
