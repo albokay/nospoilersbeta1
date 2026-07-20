@@ -73,7 +73,10 @@ import {
   type GroupMessage,
   type RoomVisibility,
   type GroupChatActivity,
+  fetchMyPendingInvitesForGroup,
+  type MyPendingInvite,
 } from "../lib/db";
+import PendingInvitesPanel, { isInviteStale, staleInviteLine } from "./PendingInvitesPanel";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { groupDisplayName, groupGenericName, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
@@ -270,6 +273,21 @@ export default function DashboardPage() {
   // DeckWave self-skips once answered, so it costs two tolerant reads.
   const [groupWaveDone, setGroupWaveDone] = useState(false);
   useEffect(() => { setGroupWaveDone(false); }, [activeGroupId]);
+
+  // Pending-invites changeset CP2: the viewer's OWN pending invites for the
+  // active group — drives the gear panel + the 3-day stale dot/tooltip.
+  const [myGroupInvites, setMyGroupInvites] = useState<MyPendingInvite[]>([]);
+  function reloadMyGroupInvites() {
+    if (user && activeGroupId) fetchMyPendingInvitesForGroup(user.id, activeGroupId).then(setMyGroupInvites).catch(() => {});
+  }
+  useEffect(() => {
+    if (!user || !activeGroupId) { setMyGroupInvites([]); return; }
+    let cancelled = false;
+    fetchMyPendingInvitesForGroup(user.id, activeGroupId).then((rows) => { if (!cancelled) setMyGroupInvites(rows); });
+    return () => { cancelled = true; };
+    // railGroups in deps: a just-sent invite (add-friends modal refreshes the
+    // rail) shows up in the gear panel without re-entering the room.
+  }, [user, activeGroupId, railGroups]);
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [optionsFor, setOptionsFor] = useState<string | null>(null); // group id whose gear options are open
@@ -1227,6 +1245,7 @@ export default function DashboardPage() {
       contactNames={contactNames}
       pendingInviteNames={pendingInviteNames}
       groupNumberById={groupNumberById}
+      staleInviteCount={myGroupInvites.filter(isInviteStale).length}
       onEnter={(id) => navigate(`/dashboard?g=${id}`)}
       onInviteClick={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
       onGearClick={(id, rect) => {
@@ -1776,6 +1795,14 @@ export default function DashboardPage() {
                 </div>
               );
             })()}
+            {/* Pending invites (changeset CP2): the viewer's own unaccepted
+                invites for this group — nudge + rescind, always available. */}
+            {myGroupInvites.length > 0 && (
+              <div style={yellowCard}>
+                <div style={{ ...yellowTitle, marginBottom: 12 }}>Pending invites:</div>
+                <PendingInvitesPanel invites={myGroupInvites} onRefresh={reloadMyGroupInvites} />
+              </div>
+            )}
             <div style={yellowCard}>
               <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
@@ -2146,7 +2173,7 @@ function OptInAvatars({ members, withTooltip, onTip, personalFill = false }: {
 }
 
 function GroupClusters({
-  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, contactNames, pendingInviteNames, groupNumberById, onEnter, onInviteClick, onGearClick, onTip,
+  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, contactNames, pendingInviteNames, groupNumberById, staleInviteCount = 0, onEnter, onInviteClick, onGearClick, onTip,
 }: {
   groups: RailGroup[];
   selfUserId: string;
@@ -2156,6 +2183,9 @@ function GroupClusters({
   contactNames: Record<string, string>;
   pendingInviteNames: Record<string, string[]>;
   groupNumberById: Record<string, number>;
+  /** Pending-invites changeset: the viewer's stale (3-day-silent) invites
+   *  for the ACTIVE group — drives the gear dot + tooltip. */
+  staleInviteCount?: number;
   onEnter: (id: string) => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string, rect: DOMRect) => void;
@@ -2175,7 +2205,17 @@ function GroupClusters({
       <div style={groupHeadingRow}>
         <h1 style={groupHeadingTitle}>{groupGenericName(active.group, groupNumberById[active.group.id])}</h1>
         {names && <span style={groupHeadingMembers}><span style={{ color: C.greyblue }}>with</span> {names}</span>}
-        <button style={headingIconBtn} title="group options" onClick={(e) => onGearClick(active.group.id, e.currentTarget.getBoundingClientRect())}><Settings size={22} color={CANON.cream} /></button>
+        <button
+          style={{ ...headingIconBtn, position: "relative" }}
+          title="group options"
+          onClick={(e) => { onTip(null); onGearClick(active.group.id, e.currentTarget.getBoundingClientRect()); }}
+          onMouseEnter={(e) => { if (staleInviteCount > 0) onTip({ text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, x: e.clientX, y: e.clientY }); }}
+          onMouseMove={(e) => { if (staleInviteCount > 0) onTip({ text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, x: e.clientX, y: e.clientY }); }}
+          onMouseLeave={() => onTip(null)}
+        >
+          <Settings size={22} color={CANON.cream} />
+          {staleInviteCount > 0 && <span style={gearStaleDot} />}
+        </button>
       </div>
     );
   }
@@ -2340,6 +2380,12 @@ const groupHeadingRow: React.CSSProperties = {
 };
 const headingIconBtn: React.CSSProperties = {
   border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0, display: "inline-flex", alignItems: "center",
+};
+// Pending-invites changeset: the blue stale-invite dot on the group gear
+// (one dot regardless of how many invites are stale; sky ring = the page bg).
+const gearStaleDot: React.CSSProperties = {
+  position: "absolute", top: -2, right: -2, width: 11, height: 11, borderRadius: "50%",
+  background: CANON.identity, border: `2px solid ${CANON.friend}`, boxSizing: "border-box",
 };
 const groupHeadingTitle: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: CANON.cream, margin: 0,

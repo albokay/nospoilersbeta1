@@ -11,6 +11,7 @@ import MobileSearchSheet from "./MobileSearchSheet";
 import MobileInviteSheet from "./MobileInviteSheet";
 import DeckWave from "../components/deck/DeckWave";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
+import PendingInvitesPanel, { isInviteStale } from "../components/PendingInvitesPanel";
 import {
   fetchShows,
   refreshStaleShows,
@@ -33,6 +34,8 @@ import {
   roomHasNewActivity,
   fetchGroupChatActivity,
   chatHasNewActivity,
+  fetchMyPendingInvitesForGroup,
+  type MyPendingInvite,
   type Show,
   type GroupDashboardShow,
   type RoomVisibility,
@@ -130,6 +133,23 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [loading, setLoading] = useState(true);
   // Swipe-deck arc CP2: the invitee's WAVE 2 fires on first entry here.
   const [groupWaveDone, setGroupWaveDone] = useState(false);
+
+  // Pending-invites changeset CP2: the viewer's OWN pending invites for
+  // this group — the gear panel + the 3-day stale dot (no hover on touch,
+  // so mobile's encouragement lives in the panel line).
+  const [myInvites, setMyInvites] = useState<MyPendingInvite[]>([]);
+  function reloadMyInvites() {
+    if (user) fetchMyPendingInvitesForGroup(user.id, groupId).then(setMyInvites).catch(() => {});
+  }
+  useEffect(() => {
+    if (!user) { setMyInvites([]); return; }
+    let cancelled = false;
+    fetchMyPendingInvitesForGroup(user.id, groupId).then((rows) => { if (!cancelled) setMyInvites(rows); });
+    return () => { cancelled = true; };
+    // members in deps: the invite sheet's onSent refreshes members, which
+    // pulls a just-sent invite into the gear panel without re-entering.
+  }, [user, groupId, members]);
+  const staleInviteCount = myInvites.filter(isInviteStale).length;
 
   // Sheets
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
@@ -521,7 +541,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <div style={headerMembers}><span style={{ color: C.greyblue }}>with</span> {names}</div>
           )}
         </div>
-        <button style={iconBtn} title="group options" onClick={() => {
+        <button style={{ ...iconBtn, position: "relative" }} title="group options" onClick={() => {
           setRenameValue(group?.name ?? "");
           // Seed the contact-rename inputs with the viewer's current names.
           const edits: Record<string, string> = {};
@@ -529,6 +549,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           setContactEdits(edits);
           setGearOpen(true);
         }}>
+          {staleInviteCount > 0 && <span style={gearStaleDot} />}
           <Settings size={22} color={C.cream} />
         </button>
       </div>
@@ -772,6 +793,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                 <div style={sheetDivider} />
               </>
             )}
+            {/* Pending invites (changeset CP2): the viewer's own unaccepted
+                invites — nudge + rescind, always available. */}
+            {myInvites.length > 0 && (
+              <>
+                <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Pending invites:</div>
+                <PendingInvitesPanel invites={myInvites} onRefresh={reloadMyInvites} />
+                <div style={sheetDivider} />
+              </>
+            )}
             <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Rename group:</div>
             <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={renameInput} className="m-input" />
             <button style={{ ...startBtn, marginTop: 12 }} onClick={doRename}>confirm name</button>
@@ -880,6 +910,12 @@ const topBar: React.CSSProperties = {
 const iconBtn: React.CSSProperties = {
   width: 44, height: 44, flexShrink: 0, border: "none", background: "transparent", cursor: "pointer",
   display: "inline-flex", alignItems: "center", justifyContent: "center",
+};
+// Pending-invites changeset: the blue stale-invite dot on the gear (one dot
+// regardless of how many invites are stale; sky ring = the page bg).
+const gearStaleDot: React.CSSProperties = {
+  position: "absolute", top: 6, right: 6, width: 11, height: 11, borderRadius: "50%",
+  background: CANON.identity, border: `2px solid ${CANON.friend}`, boxSizing: "border-box",
 };
 const headerTitle: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: 0, color: C.cream,
