@@ -94,8 +94,14 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => null);
     if (!body) return jsonError("invalid_body", 400);
-    const { token, appUrl, displayName } = body as Record<string, string>;
-    if (!token) return jsonError("missing_fields", 400);
+    const { token, appUrl, displayName, nudge, message } = body as Record<string, string | boolean>;
+    if (!token || typeof token !== "string") return jsonError("missing_fields", 400);
+    // Nudge mode (pending-invites changeset): a follow-up email with the
+    // inviter's own (editable) text. Creator-only; resets the invite's
+    // silence clock + renews expiry on a successful send.
+    const isNudge = nudge === true;
+    const nudgeMessage = typeof message === "string" ? message.trim().slice(0, 500) : "";
+    if (isNudge && !nudgeMessage) return jsonError("missing_fields", 400, "A nudge needs a message.");
     // Legacy "hi, it's…" typed name — post-CP4 clients no longer send it; a
     // stale pre-CP4 bundle still might. Used only as a fallback below when
     // the inviter has no display_name (shouldn't happen post-backfill).
@@ -118,6 +124,9 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
     if (!membership) return jsonError("not_member", 403);
+
+    // Nudges are creator-only — you can only nudge YOUR invites (Alborz).
+    if (isNudge && inv.created_by !== user.id) return jsonError("not_yours", 403);
 
     // ── Inviter's name (first-name identity CP4) ─────────────────────────────
     // The inviter is introduced by their self-chosen first name
@@ -173,10 +182,17 @@ serve(async (req) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not configured");
 
-    const baseUrl   = (appUrl ?? "https://beta.sidebar.watch").replace(/\/$/, "");
+    const baseUrl   = (typeof appUrl === "string" ? appUrl : "https://beta.sidebar.watch").replace(/\/$/, "");
     const inviteUrl = `${baseUrl}/group-invite/${token}`;
     const email     = (inv.invitee_email as string).toLowerCase().trim();
-    const subject   = `${senderName} invited you to a watch group on Sidebar`;
+    const subject   = isNudge
+      ? `${senderName} still hopes you'll join them on Sidebar.`
+      : `${senderName} invited you to a watch group on Sidebar`;
+
+    // Nudge email: the inviter's own text (escaped, line breaks kept), then
+    // the Join in → button — the link is never part of the editable text so
+    // it can't be mangled. Fine print unchanged (expiry is renewed below).
+    const nudgeBodyHtml = escapeHtml(nudgeMessage).replace(/\n/g, "<br>");
 
     // Onboarding changeset §6: dynamic headline on the inviter's yes/no;
     // "Do you?" rides only the dynamic variants; body drops the old closing
@@ -190,7 +206,31 @@ serve(async (req) => {
     const doYouHtml = ep4 === null ? "" : `\n  <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;font-weight:700">Do you?</p>`;
     const doYouText = ep4 === null ? "" : `\n\nDo you?`;
 
-    const html = `
+    const finePrintHtml = `
+  <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
+    This link expires in a week and can only be used once.<br>
+    New to Sidebar? You'll be able to create an account when you join.<br>
+    If you weren't expecting this, you can safely ignore it.
+  </p>`;
+    const finePrintText = `This link expires in a week and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
+    const ctaHtml = `
+  <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
+    Join in →
+  </a>`;
+
+    const html = isNudge
+      ? `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:56px 32px">
+  <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
+    ${nudgeBodyHtml}
+  </p>${ctaHtml}${finePrintHtml}
+</div>
+</body>
+</html>`
+      : `
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
@@ -200,20 +240,14 @@ serve(async (req) => {
   </h1>${doYouHtml}
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
     Sidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.
-  </p>
-  <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
-    Join in →
-  </a>
-  <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
-    This link expires in a week and can only be used once.<br>
-    New to Sidebar? You'll be able to create an account when you join.<br>
-    If you weren't expecting this, you can safely ignore it.
-  </p>
+  </p>${ctaHtml}${finePrintHtml}
 </div>
 </body>
 </html>`;
 
-    const text = `${headlineText}${doYouText}\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.\n\nJoin in: ${inviteUrl}\n\nThis link expires in a week and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
+    const text = isNudge
+      ? `${nudgeMessage}\n\nJoin in: ${inviteUrl}\n\n${finePrintText}`
+      : `${headlineText}${doYouText}\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.\n\nJoin in: ${inviteUrl}\n\n${finePrintText}`;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",
@@ -225,6 +259,19 @@ serve(async (req) => {
       const detail = await resendRes.text();
       console.error("Resend error:", detail);
       return jsonOk({ warning: "email_send_failed" });
+    }
+
+    // A DELIVERED nudge resets the silence clock and renews the link (the
+    // email just sent must work for a week). Failed sends skip this — the
+    // stale signal should keep pointing at a nudge that never went out.
+    if (isNudge) {
+      await admin
+        .from("people_group_invitations")
+        .update({
+          last_nudged_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 7 * 86400 * 1000).toISOString(),
+        })
+        .eq("token", token);
     }
     return jsonOk({});
 

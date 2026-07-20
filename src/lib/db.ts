@@ -5436,3 +5436,94 @@ export async function fetchGroupDeckAnswers(groupId: string): Promise<GroupDeckA
     return [];
   }
 }
+
+// ── Pending invites: nudge & rescind (pending-invites changeset) ─────────
+
+export type MyPendingInvite = {
+  token: string;
+  email: string;
+  /** The name the inviter typed for them (invitee_display_name); null → show the email. */
+  name: string | null;
+  createdAt: number;
+  /** Last successful nudge (resets the silence clock); null pre-migration or never nudged. */
+  lastNudgedAt: number | null;
+};
+
+/**
+ * The VIEWER's own pending invites for one group — the gear panel's list.
+ * Includes expired-but-unaccepted invites (a nudge renews the link server-
+ * side). Reads ride the existing creator-scoped RLS; column-tolerant on
+ * last_nudged_at (20260720) per §6 item 28.
+ */
+export async function fetchMyPendingInvitesForGroup(userId: string, groupId: string): Promise<MyPendingInvite[]> {
+  try {
+    let res: any = await supabase
+      .from("people_group_invitations")
+      .select("token, invitee_email, invitee_display_name, created_at, last_nudged_at")
+      .eq("created_by", userId)
+      .eq("people_group_id", groupId)
+      .is("accepted_at", null)
+      .order("created_at", { ascending: true });
+    if (res.error) {
+      res = await supabase
+        .from("people_group_invitations")
+        .select("token, invitee_email, invitee_display_name, created_at")
+        .eq("created_by", userId)
+        .eq("people_group_id", groupId)
+        .is("accepted_at", null)
+        .order("created_at", { ascending: true });
+    }
+    if (res.error) throw res.error;
+    return ((res.data ?? []) as any[]).map((r) => ({
+      token:        r.token,
+      email:        r.invitee_email,
+      name:         (r.invitee_display_name as string | null)?.trim() || null,
+      createdAt:    new Date(r.created_at).getTime(),
+      lastNudgedAt: r.last_nudged_at ? new Date(r.last_nudged_at).getTime() : null,
+    }));
+  } catch (err) {
+    console.warn("fetchMyPendingInvitesForGroup failed (pre-migration or transient):", err);
+    return [];
+  }
+}
+
+/** Rescind (delete) the caller's own pending invite — the invitee's link
+ *  lands on the existing "no longer active" screen. Creator-gated in the RPC. */
+export async function rescindPeopleGroupInvite(token: string): Promise<{ ok: boolean; error?: string }> {
+  const { data, error } = await supabase.rpc("rescind_people_group_invitation", { p_token: token });
+  if (error) return { ok: false, error: error.message };
+  const d = data as any;
+  return d?.ok ? { ok: true } : { ok: false, error: d?.error ?? "unknown" };
+}
+
+/**
+ * Send a nudge — the inviter's (possibly edited) text through the same
+ * send-group-invite edge fn (`nudge` mode: creator-only; a delivered nudge
+ * resets last_nudged_at + renews the link's expiry server-side). Mirrors
+ * sendGroupInviteEmail's error surface.
+ */
+export async function sendGroupInviteNudge(token: string, message: string): Promise<{ ok: boolean; reason?: string; status?: number }> {
+  try {
+    const { data, error } = await supabase.functions.invoke("send-group-invite", {
+      body: { token, appUrl: window.location.origin, nudge: true, message },
+    });
+    if (error) {
+      let reason: string | undefined;
+      let status: number | undefined;
+      try { status = (error as any)?.context?.status; } catch { /* opaque */ }
+      try {
+        const body = await (error as any)?.context?.json?.();
+        reason = body?.message || body?.error;
+      } catch { /* opaque response */ }
+      console.warn("[send-group-invite] nudge send failed", reason ?? error);
+      return { ok: false, reason, status };
+    }
+    if ((data as any)?.warning === "email_send_failed") {
+      return { ok: false, reason: "email_send_failed" };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.warn("[send-group-invite] nudge send failed", err);
+    return { ok: false };
+  }
+}
