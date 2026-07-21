@@ -319,6 +319,11 @@ export default function DashboardPage() {
   // notification copy under a show button's "You've watched…" line. `wrap`
   // lets the longer notification copy break instead of forcing a wide bubble.
   const [tip, setTip] = useState<{ text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number } | null>(null);
+  // A tooltip must never survive a navigation (QA 2026-07-20): clicking a
+  // tipped element that navigates in-page (dashboard ↔ ?g= group) keeps this
+  // component mounted, so no mouseLeave ever fires — clear on any location
+  // change.
+  useEffect(() => { setTip(null); }, [location.pathname, location.search]);
   // progress = the "You've watched…" line (top); notif = the new-activity line.
   // When both exist the notif hangs beneath a divider; a notif alone shows on
   // its own. Nothing to show → no tooltip.
@@ -2120,7 +2125,7 @@ function AvatarPile({ avatars }: { avatars: React.ReactNode[] }) {
       {rows.map((size, r) => {
         const slice = avatars.slice(idx, idx + size);
         idx += size;
-        return <div key={r} style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: r === 0 ? 0 : 4 }}>{slice}</div>;
+        return <div key={r} style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: r === 0 ? 0 : 6 }}>{slice}</div>;
       })}
     </div>
   );
@@ -2325,9 +2330,11 @@ const clusterBtn: React.CSSProperties = { border: "none", background: "transpare
 const avatarPile: React.CSSProperties = {
   display: "flex", flexDirection: "column", alignItems: "center", margin: "0 auto",
 };
+// Bumped 40→56 (QA 2026-07-20): the cluster is the first thing a new user
+// sees on the dashboard and read as diminished at the old size.
 const avatarCircle: React.CSSProperties = {
-  width: 40, height: 40, borderRadius: "50%", display: "inline-flex", alignItems: "center",
-  justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 32, letterSpacing: 0,
+  width: 56, height: 56, borderRadius: "50%", display: "inline-flex", alignItems: "center",
+  justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 42, letterSpacing: 0,
 };
 const optInRow: React.CSSProperties = {
   // Right-anchored: avatars fill from the button's right edge toward center.
@@ -2370,8 +2377,8 @@ const tipDivider: React.CSSProperties = {
   height: 1, background: "rgba(253,248,236,0.45)", margin: "7px 0",
 };
 const clusterName: React.CSSProperties = {
-  marginTop: 8, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: -1,
-  color: CANON.cream, maxWidth: 120, lineHeight: 1.25, marginLeft: "auto", marginRight: "auto",
+  marginTop: 10, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 17, letterSpacing: -1,
+  color: CANON.cream, maxWidth: 168, lineHeight: 1.25, marginLeft: "auto", marginRight: "auto",
 };
 const clusterIcon: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0 };
 const groupHeadingRow: React.CSSProperties = {

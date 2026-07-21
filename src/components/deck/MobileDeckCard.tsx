@@ -170,8 +170,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
           display: "flex", alignItems: "flex-start", justifyContent: "space-between",
         }}
       >
-        {/* Sky title while docked; Identity once opened (Alborz QA 2026-07-18). */}
-        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.friend, whiteSpace: "nowrap" }}>{title}</span>
+        {/* Docked title matches the page behind it: Personal green on the
+            dashboard, Sky in the group room (Alborz QA 2026-07-20);
+            Identity once opened. */}
+        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: mode === "personal" ? CANON.personal : CANON.friend, whiteSpace: "nowrap" }}>{title}</span>
       </div>
     );
   }
