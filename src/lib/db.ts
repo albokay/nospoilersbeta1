@@ -2739,12 +2739,34 @@ export async function fetchMyPendingGroupInvites(): Promise<PendingGroupInvite[]
   }));
 }
 
-/** Pending invitees of a group (their handle/username), for the yellow avatars. */
-export async function fetchGroupPendingInvites(groupId: string): Promise<string[]> {
+/** A group's pending invitee, as ANY member may see it (help-system arc CP2):
+ *  name (typed name → account name; "" when fully unnamed), who invited them,
+ *  and when. Never carries the invitee's email or the invite token. */
+export type GroupPendingInvite = {
+  name: string;
+  inviterId: string | null;
+  inviterName: string | null;
+  createdAt: number | null;
+};
+
+/** Pending invitees of a group — yellow avatars, labels, and per-person
+ *  status, visible to every member. Tolerant pre-migration: an older RPC
+ *  payload (handles only) maps to name-only rows. */
+export async function fetchGroupPendingInvites(groupId: string): Promise<GroupPendingInvite[]> {
   const { data, error } = await supabase.rpc("get_group_pending_invites", { p_group_id: groupId });
   if (error) return [];
   if (!data || data.ok === false) return [];
-  return data.handles ?? [];
+  if (Array.isArray(data.invites)) {
+    return data.invites.map((r: any) => ({
+      name: ((r.name as string | null) ?? "").trim(),
+      inviterId: r.inviter_id ?? null,
+      inviterName: ((r.inviter_name as string | null) ?? "").trim() || null,
+      createdAt: r.created_at ? new Date(r.created_at).getTime() : null,
+    }));
+  }
+  return ((data.handles ?? []) as string[]).map((h) => ({
+    name: h, inviterId: null, inviterName: null, createdAt: null,
+  }));
 }
 
 // ── People-group invitations (restructure) ──────────────────────────────────

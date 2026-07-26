@@ -11,7 +11,7 @@ import MobileSearchSheet from "./MobileSearchSheet";
 import MobileInviteSheet from "./MobileInviteSheet";
 import DeckWave from "../components/deck/DeckWave";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
-import PendingInvitesPanel, { isInviteStale } from "../components/PendingInvitesPanel";
+import PendingInvitesPanel, { isInviteStale, type OtherPendingInvite } from "../components/PendingInvitesPanel";
 import {
   fetchShows,
   refreshStaleShows,
@@ -35,7 +35,9 @@ import {
   fetchGroupChatActivity,
   chatHasNewActivity,
   fetchMyPendingInvitesForGroup,
+  fetchGroupPendingInvites,
   type MyPendingInvite,
+  type GroupPendingInvite,
   type Show,
   type GroupDashboardShow,
   type RoomVisibility,
@@ -136,20 +138,33 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
   // Pending-invites changeset CP2: the viewer's OWN pending invites for
   // this group — the gear panel + the 3-day stale dot (no hover on touch,
-  // so mobile's encouragement lives in the panel line).
+  // so mobile's encouragement lives in the panel line). Help-system arc CP2
+  // adds the GROUP-WIDE pending list (any inviter; names only, no tokens)
+  // for the header "with…" line + the panel's status-only rows.
   const [myInvites, setMyInvites] = useState<MyPendingInvite[]>([]);
+  const [groupInvites, setGroupInvites] = useState<GroupPendingInvite[]>([]);
   function reloadMyInvites() {
-    if (user) fetchMyPendingInvitesForGroup(user.id, groupId).then(setMyInvites).catch(() => {});
+    if (!user) return;
+    fetchMyPendingInvitesForGroup(user.id, groupId).then(setMyInvites).catch(() => {});
+    fetchGroupPendingInvites(groupId).then(setGroupInvites).catch(() => {});
   }
   useEffect(() => {
-    if (!user) { setMyInvites([]); return; }
+    if (!user) { setMyInvites([]); setGroupInvites([]); return; }
     let cancelled = false;
     fetchMyPendingInvitesForGroup(user.id, groupId).then((rows) => { if (!cancelled) setMyInvites(rows); });
+    fetchGroupPendingInvites(groupId).then((rows) => { if (!cancelled) setGroupInvites(rows); });
     return () => { cancelled = true; };
     // members in deps: the invite sheet's onSent refreshes members, which
     // pulls a just-sent invite into the gear panel without re-entering.
   }, [user, groupId, members]);
   const staleInviteCount = myInvites.filter(isInviteStale).length;
+  const othersPending: OtherPendingInvite[] = groupInvites
+    .filter((p) => p.inviterId != null && p.inviterId !== user?.id)
+    .map((p) => ({
+      name: p.name,
+      createdAt: p.createdAt,
+      inviterLabel: personDisplayName(contactNames, p.inviterId!, p.inviterName ?? "someone", p.inviterName),
+    }));
 
   // Sheets
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
@@ -524,7 +539,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // Naming arc (2026-07-07, desktop parity): the header's TITLE is the
   // generic/custom label ("Group N" → custom name); the PEOPLE live in the
   // "with…" line as the viewer's given names (handle fallback).
-  const names = others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ");
+  const names = [
+    ...others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)),
+    // Pending invitees ride along — whoever invited them — so the whole
+    // group sees who's been asked (help-system arc CP2).
+    ...groupInvites.map((p) => p.name || "a friend"),
+  ].join(", ");
   const groupName = group ? groupGenericName(group, viewerNumber) : "Group";
   const empty = groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0;
 
@@ -794,11 +814,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               </>
             )}
             {/* Pending invites (changeset CP2): the viewer's own unaccepted
-                invites — nudge + rescind, always available. */}
-            {myInvites.length > 0 && (
+                invites — nudge + rescind, always available. Co-members'
+                pending invites show as status-only rows (help-system CP2). */}
+            {(myInvites.length > 0 || othersPending.length > 0) && (
               <>
                 <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Pending invites:</div>
-                <PendingInvitesPanel invites={myInvites} onRefresh={reloadMyInvites} />
+                <PendingInvitesPanel invites={myInvites} others={othersPending} onRefresh={reloadMyInvites} />
                 <div style={sheetDivider} />
               </>
             )}

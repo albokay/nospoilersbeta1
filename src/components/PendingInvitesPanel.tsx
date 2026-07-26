@@ -33,19 +33,31 @@ export function staleInviteLine(n: number): string {
   return n === 1 ? "1 friend hasn't joined yet." : `${n} friends haven't joined yet.`;
 }
 
-function ageLine(createdAt: number): string {
+/** "today" / "yesterday" / "N days ago" — shared with the cluster-avatar
+ *  tooltips (help-system arc CP2). */
+export function inviteAgePhrase(createdAt: number): string {
   const days = Math.floor((Date.now() - createdAt) / 86400000);
-  if (days <= 0) return "invited today";
-  if (days === 1) return "invited yesterday";
-  return `invited ${days} days ago`;
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days} days ago`;
 }
+
+function ageLine(createdAt: number): string {
+  return `invited ${inviteAgePhrase(createdAt)}`;
+}
+
+/** A co-member's pending invite, display-only (no token → no actions). */
+export type OtherPendingInvite = { name: string; createdAt: number | null; inviterLabel: string | null };
 
 function inviteeLabel(inv: MyPendingInvite): string {
   return inv.name || inv.email.split("@")[0];
 }
 
-export default function PendingInvitesPanel({ invites, onRefresh }: {
+export default function PendingInvitesPanel({ invites, others = [], onRefresh }: {
   invites: MyPendingInvite[];
+  /** Co-members' pending invites (help-system arc CP2) — status only, no
+   *  nudge/rescind (those need the creator's own token-bearing read). */
+  others?: OtherPendingInvite[];
   onRefresh: () => void;
 }) {
   const [nudgeFor, setNudgeFor] = useState<string | null>(null); // token
@@ -157,6 +169,21 @@ export default function PendingInvitesPanel({ invites, onRefresh }: {
               </div>
             </div>
           )}
+        </div>
+      ))}
+      {others.map((inv, i) => (
+        <div key={`o${i}`} style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ color: CANON.cream, fontSize: 13, fontWeight: 700 }}>{inv.name || "A friend"}</span>
+              {inv.createdAt != null && (
+                <span style={{ color: CANON.cream, fontSize: 11, opacity: 0.8, marginLeft: 8 }}>{ageLine(inv.createdAt)}</span>
+              )}
+              <div style={{ color: CANON.cream, fontSize: 11, opacity: 0.75 }}>
+                {inv.inviterLabel ? `invited by ${inv.inviterLabel} — ` : ""}hasn&rsquo;t joined yet
+              </div>
+            </div>
+          </div>
         </div>
       ))}
       {actionError && (

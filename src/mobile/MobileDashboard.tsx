@@ -21,7 +21,7 @@ import {
   acceptPeopleGroupInvite,
   declinePeopleGroupInvite,
   fetchContactNames,
-  fetchMyPendingInviteNames,
+  type GroupPendingInvite,
   fetchRoomActivityVisibility,
   roomHasNewActivity,
   fetchGroupChatActivity,
@@ -63,14 +63,15 @@ const C = {
   midnight: CANON.dark,
 };
 
-type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingHandles: string[] };
+type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: GroupPendingInvite[] };
 
 // Last-render snapshot for instant paint (stale-while-revalidate): the
 // dashboard renders this immediately on open while the live fetches run,
 // so cold opens / back-swipes don't flash a bare page. Key bumped to v2 at
 // the CP2 groups-only cutover so a pre-cutover snapshot (personal shelves)
-// can never paint the dead layer.
-const SNAP_KEY = (uid: string) => `ns_m_dash_snap2_${uid}`;
+// can never paint the dead layer; v3 at help-system CP2 (RailGroup's
+// pending-invite shape changed).
+const SNAP_KEY = (uid: string) => `ns_m_dash_snap3_${uid}`;
 
 /** Format a pending invite's members as "@X and @Y" for the join prompt.
  *  (Received-invite surfaces keep @handles — naming-the-inviter deferred.) */
@@ -89,7 +90,6 @@ export default function MobileDashboard() {
   const [railGroups, setRailGroups] = useState<RailGroup[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingGroupInvite[]>([]);
   const [contactNames, setContactNames] = useState<Record<string, string>>({});
-  const [pendingInviteNames, setPendingInviteNames] = useState<Record<string, string[]>>({});
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   const [chatActivity, setChatActivity] = useState<GroupChatActivity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,7 +157,7 @@ export default function MobileDashboard() {
         groups.map(async (g) => ({
           group: g,
           members: await fetchPeopleGroupMembers(g.id),
-          pendingHandles: await fetchGroupPendingInvites(g.id),
+          pendingInvites: await fetchGroupPendingInvites(g.id),
         }))
       );
     } catch (e) {
@@ -186,7 +186,6 @@ export default function MobileDashboard() {
           setRailGroups(s.railGroups ?? []);
           setPendingInvites(s.pendingInvites ?? []);
           setContactNames(s.contactNames ?? {});
-          setPendingInviteNames(s.pendingInviteNames ?? {});
           setLoading(false);
           snapshotUsed = true;
         }
@@ -206,10 +205,11 @@ export default function MobileDashboard() {
       fetchMyPendingGroupInvites()
         .then((inv) => { if (!cancelled) setPendingInvites(inv); })
         .catch((e) => console.warn("[m-dashboard] pending invites not loaded", e));
-      // Contact names + own-pending-invite names (both small owner-scoped
-      // reads; tolerant pre-migration → {}).
-      Promise.all([fetchContactNames(user.id), fetchMyPendingInviteNames(user.id)])
-        .then(([cn, pn]) => { if (!cancelled) { setContactNames(cn); setPendingInviteNames(pn); } })
+      // Contact names (small owner-scoped read; tolerant pre-migration → {}).
+      // Pending invitee names now ride the rail's per-group read (group-wide,
+      // any inviter — help-system arc CP2).
+      fetchContactNames(user.id)
+        .then((cn) => { if (!cancelled) setContactNames(cn); })
         .catch(() => { /* tolerant */ });
       Promise.all([
         fetchRoomActivityVisibility(user.id, true),
@@ -229,10 +229,9 @@ export default function MobileDashboard() {
         railGroups,
         pendingInvites,
         contactNames,
-        pendingInviteNames,
       }));
     } catch { /* quota/private mode — instant paint just won't happen */ }
-  }, [loading, user, railGroups, pendingInvites, contactNames, pendingInviteNames]);
+  }, [loading, user, railGroups, pendingInvites, contactNames]);
 
   // Per-viewer "Group N": the viewer's Nth group by THEIR join order —
   // viewer-specific like every other part of the naming model, so the rail
@@ -268,8 +267,7 @@ export default function MobileDashboard() {
     try { setRailGroups(await loadRail(user.id)); } catch { /* tolerant */ }
     try { setPendingInvites(await fetchMyPendingGroupInvites()); } catch { /* tolerant */ }
     try {
-      const [cn, pn] = await Promise.all([fetchContactNames(user.id), fetchMyPendingInviteNames(user.id)]);
-      setContactNames(cn); setPendingInviteNames(pn);
+      setContactNames(await fetchContactNames(user.id));
     } catch { /* tolerant */ }
   }
 
@@ -354,7 +352,7 @@ export default function MobileDashboard() {
           {/* ── Groups + pending invites ── */}
           {(railGroups.length > 0 || pendingInvites.length > 0) && (
             <div style={groupsWrap}>
-              {railGroups.map(({ group, members, pendingHandles }) => {
+              {railGroups.map(({ group, members, pendingInvites: groupPending }) => {
                 const others = members.filter((m) => m.userId !== selfUserId);
                 // ONE dot per group row: new visible writing OR new chat (the
                 // split shows up inside the group — show-row dots vs the chat
@@ -368,14 +366,14 @@ export default function MobileDashboard() {
                           {(personDisplayName(contactNames, m.userId, m.username, m.displayName)[0] ?? "?").toUpperCase()}
                         </span>
                       ))}
-                      {pendingHandles.map((h, i) => (
+                      {groupPending.map((p, i) => (
                         <span key={`p${i}`} style={{ ...avatarCircle, background: C.yellow, color: C.cream }}>
-                          {(h[0] ?? "?").toUpperCase()}
+                          {(p.name[0] ?? "?").toUpperCase()}
                         </span>
                       ))}
                     </span>
                     <span style={groupRowName}>
-                      {groupDisplayName(group, others, contactNames, pendingInviteNames[group.id] ?? [], groupNumberById[group.id])}
+                      {groupDisplayName(group, others, contactNames, groupPending.map((p) => p.name || "a friend"), groupNumberById[group.id])}
                     </span>
                     {anyNew && <span style={writingDot} />}
                   </button>

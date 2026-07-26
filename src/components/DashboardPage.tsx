@@ -55,7 +55,7 @@ import {
   fetchOutOfPoolShows,
   ensureProgressRow,
   fetchContactNames,
-  fetchMyPendingInviteNames,
+  type GroupPendingInvite,
   setContactName,
   clearMigrationDormantForShow,
   fetchRoomActivityVisibility,
@@ -76,7 +76,7 @@ import {
   fetchMyPendingInvitesForGroup,
   type MyPendingInvite,
 } from "../lib/db";
-import PendingInvitesPanel, { isInviteStale, staleInviteLine } from "./PendingInvitesPanel";
+import PendingInvitesPanel, { isInviteStale, staleInviteLine, inviteAgePhrase, type OtherPendingInvite } from "./PendingInvitesPanel";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { groupDisplayName, groupGenericName, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
@@ -128,7 +128,7 @@ const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const NOTIF_VISIBLE = "There is new writing in here for you.";
 const NOTIF_INVISIBLE = "There is new writing in here for you… for when you catch up.";
 
-type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingHandles: string[] };
+type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: GroupPendingInvite[] };
 
 export default function DashboardPage() {
   const { user, profile, loading: authLoading, signOut } = useAuth() as any;
@@ -245,11 +245,10 @@ export default function DashboardPage() {
   const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
   const inviteTvDebounceRef = useRef<number | null>(null);
 
-  // CP2 dual-mode group naming: the viewer's private contact names + the
-  // names on their own still-pending invites (per group). Refreshed whenever
-  // the rail reloads (accepts and new invites both land there).
+  // CP2 dual-mode group naming: the viewer's private contact names. Pending
+  // invitee names now ride the rail's per-group fetchGroupPendingInvites read
+  // (help-system arc CP2 — group-wide, any inviter), not an own-invites read.
   const [contactNames, setContactNames] = useState<Record<string, string>>({});
-  const [pendingInviteNames, setPendingInviteNames] = useState<Record<string, string[]>>({});
 
   // CP5: leave-a-room confirm (the X on an active-room button).
   const [leaveConfirm, setLeaveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
@@ -406,7 +405,7 @@ export default function DashboardPage() {
         groups.map(async (g) => ({
           group: g,
           members: await fetchPeopleGroupMembers(g.id),
-          pendingHandles: await fetchGroupPendingInvites(g.id),
+          pendingInvites: await fetchGroupPendingInvites(g.id),
         }))
       );
       return withMembers;
@@ -502,13 +501,13 @@ export default function DashboardPage() {
     refreshGroup(activeGroupId);
   }, [activeGroupId, refreshGroup]);
 
-  // Contact names + own-pending-invite names refresh with the rail (both
-  // small owner-scoped reads; tolerant pre-migration → {}).
+  // Contact names refresh with the rail (small owner-scoped read; tolerant
+  // pre-migration → {}).
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    Promise.all([fetchContactNames(user.id), fetchMyPendingInviteNames(user.id)])
-      .then(([cn, pn]) => { if (!cancelled) { setContactNames(cn); setPendingInviteNames(pn); } })
+    fetchContactNames(user.id)
+      .then((cn) => { if (!cancelled) setContactNames(cn); })
       .catch(() => { /* tolerant */ });
     return () => { cancelled = true; };
   }, [user, railGroups]);
@@ -1248,7 +1247,6 @@ export default function DashboardPage() {
       pendingInvites={pendingInvites}
       clusterDotByGroup={clusterDotByGroup}
       contactNames={contactNames}
-      pendingInviteNames={pendingInviteNames}
       groupNumberById={groupNumberById}
       staleInviteCount={myGroupInvites.filter(isInviteStale).length}
       onEnter={(id) => navigate(`/dashboard?g=${id}`)}
@@ -1801,13 +1799,25 @@ export default function DashboardPage() {
               );
             })()}
             {/* Pending invites (changeset CP2): the viewer's own unaccepted
-                invites for this group — nudge + rescind, always available. */}
-            {myGroupInvites.length > 0 && (
-              <div style={yellowCard}>
-                <div style={{ ...yellowTitle, marginBottom: 12 }}>Pending invites:</div>
-                <PendingInvitesPanel invites={myGroupInvites} onRefresh={reloadMyGroupInvites} />
-              </div>
-            )}
+                invites for this group — nudge + rescind, always available.
+                Co-members' pending invites show as status-only rows
+                (help-system arc CP2). */}
+            {(() => {
+              const othersPending: OtherPendingInvite[] = (railGroups.find((r) => r.group.id === optionsFor)?.pendingInvites ?? [])
+                .filter((p) => p.inviterId != null && p.inviterId !== selfUserId)
+                .map((p) => ({
+                  name: p.name,
+                  createdAt: p.createdAt,
+                  inviterLabel: personDisplayName(contactNames, p.inviterId!, p.inviterName ?? "someone", p.inviterName),
+                }));
+              if (myGroupInvites.length === 0 && othersPending.length === 0) return null;
+              return (
+                <div style={yellowCard}>
+                  <div style={{ ...yellowTitle, marginBottom: 12 }}>Pending invites:</div>
+                  <PendingInvitesPanel invites={myGroupInvites} others={othersPending} onRefresh={reloadMyGroupInvites} />
+                </div>
+              );
+            })()}
             <div style={yellowCard}>
               <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
@@ -2178,7 +2188,7 @@ function OptInAvatars({ members, withTooltip, onTip, personalFill = false }: {
 }
 
 function GroupClusters({
-  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, contactNames, pendingInviteNames, groupNumberById, staleInviteCount = 0, onEnter, onInviteClick, onGearClick, onTip,
+  groups, selfUserId, activeGroupId, pendingInvites, clusterDotByGroup, contactNames, groupNumberById, staleInviteCount = 0, onEnter, onInviteClick, onGearClick, onTip,
 }: {
   groups: RailGroup[];
   selfUserId: string;
@@ -2186,7 +2196,6 @@ function GroupClusters({
   pendingInvites: PendingGroupInvite[];
   clusterDotByGroup: Map<string, "blue" | "red">;
   contactNames: Record<string, string>;
-  pendingInviteNames: Record<string, string[]>;
   groupNumberById: Record<string, number>;
   /** Pending-invites changeset: the viewer's stale (3-day-silent) invites
    *  for the ACTIVE group — drives the gear dot + tooltip. */
@@ -2204,8 +2213,13 @@ function GroupClusters({
     const others = active.members.filter((m) => m.userId !== selfUserId);
     // Naming arc (2026-07-07): the header's TITLE is the generic/custom label
     // ("Group N" → custom name); the PEOPLE live in the "with…" line as the
-    // viewer's given names (handle fallback).
-    const names = others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ");
+    // viewer's given names (handle fallback). Pending invitees ride along —
+    // whoever invited them — so the whole group sees who's been asked
+    // (help-system arc CP2).
+    const names = [
+      ...others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)),
+      ...active.pendingInvites.map((p) => p.name || "a friend"),
+    ].join(", ");
     return (
       <div style={groupHeadingRow}>
         <h1 style={groupHeadingTitle}>{groupGenericName(active.group, groupNumberById[active.group.id])}</h1>
@@ -2228,13 +2242,33 @@ function GroupClusters({
   // Green dashboard: every group you're in + every group you're invited to.
   return (
     <div style={clustersRow}>
-      {groups.map(({ group, members, pendingHandles }) => {
+      {groups.map(({ group, members, pendingInvites: groupPending }) => {
         // Cluster icons = the OTHER people (accepted cream, not-yet-accepted
         // invitees yellow). Never your own icon, even before anyone accepts.
         const others = members.filter((m) => m.userId !== selfUserId);
+        // Per-avatar status tooltip on the yellows (help-system arc CP2):
+        // who this is, who invited them, how long ago — plus the nudge
+        // pointer when the invite is the viewer's own.
+        const pendingTip = (p: GroupPendingInvite): React.ReactNode => {
+          const mine = p.inviterId != null && p.inviterId === selfUserId;
+          const who = p.inviterId == null ? null
+            : mine ? "you"
+            : personDisplayName(contactNames, p.inviterId, p.inviterName ?? "someone", p.inviterName);
+          const age = p.createdAt != null ? ` ${inviteAgePhrase(p.createdAt)}` : "";
+          const line = `${p.name || "A friend"} hasn't joined yet${who ? ` — invited by ${who}${age}` : ""}.`;
+          return mine ? <>{line}<br />A nudge from the group&rsquo;s ⚙️ might help.</> : line;
+        };
         const avatars = [
           ...others.map((m) => <Avatar key={m.userId} letter={personDisplayName(contactNames, m.userId, m.username, m.displayName)[0]} state="accepted" />),
-          ...pendingHandles.map((h, i) => <Avatar key={`p${i}`} letter={h[0]} state="pending" />),
+          ...groupPending.map((p, i) => (
+            <span
+              key={`p${i}`}
+              onMouseMove={(e) => { e.stopPropagation(); onTip({ text: pendingTip(p), wrap: true, x: e.clientX, y: e.clientY }); }}
+              onMouseLeave={(e) => { e.stopPropagation(); onTip(null); }}
+            >
+              <Avatar letter={p.name ? p.name[0] : undefined} state="pending" />
+            </span>
+          )),
         ];
         const dot = clusterDotByGroup.get(group.id);
         const notif = dot === "red" ? NOTIF_INVISIBLE : dot === "blue" ? NOTIF_VISIBLE : undefined;
@@ -2251,7 +2285,7 @@ function GroupClusters({
             <AvatarPile avatars={avatars} />
             <div style={clusterName}>
               {dot && <span style={{ ...notifDotCluster, background: dot === "red" ? C.red : C.blue }} />}
-              {groupDisplayName(group, others, contactNames, pendingInviteNames[group.id] ?? [], groupNumberById[group.id])}
+              {groupDisplayName(group, others, contactNames, groupPending.map((p) => p.name || "a friend"), groupNumberById[group.id])}
             </div>
           </button>
         );
