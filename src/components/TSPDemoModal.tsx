@@ -13,7 +13,7 @@ import V2RoomMap, { type V2RoomMapMember, type V2RoomMapRating } from "./v2/V2Ro
 import OneSelectProgress from "./OneSelectProgress";
 import type { ProgressEntry } from "../types";
 import {
-  TSP_DEMO_SHOW, TSP_EPISODE_COUNT,
+  TSP_DEMO_SHOW, TSP_EPISODE_COUNT, TSP_GATE6_REENTRY,
   tspDemoFeedEntries, tspDemoReplies, tspDemoSeedMembers,
 } from "../lib/tspDemoFixture";
 import { CANON } from "../styles/canon";
@@ -24,7 +24,14 @@ const RULE = "rgba(43, 36, 24, 0.32)";
 const LORA = '"Lora", Georgia, serif';
 const C = { green: CANON.personal, sky: CANON.friend, cream: CANON.cream, midnight: CANON.dark };
 
-export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
+export default function TSPDemoModal({ onClose, reentry }: {
+  onClose: () => void;
+  /** Help-system arc CP3: opened from the show room's "how does this room
+   *  work?" button (vs the original post-signup flow) — the closing entry
+   *  and exit button send the reader back to their room instead of "find a
+   *  show". */
+  reentry?: boolean;
+}) {
   const { user, profile } = useAuth();
   const feedRef = useRef<V2RoomFeedHandle>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -34,10 +41,14 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
   const [reachedE6, setReachedE6] = useState(false);
   const [userRatings, setUserRatings] = useState<V2RoomMapRating[]>([]);
 
-  // The reused feed/map expect the group-context (sky) palette.
+  // The reused feed/map expect the group-context (sky) palette. Restore-aware:
+  // the show room (re-entry host) sets this class itself — only remove on
+  // close if WE added it, or closing the tour would strip the host page's
+  // palette out from under it.
   useEffect(() => {
+    const had = document.body.classList.contains("group-context");
     document.body.classList.add("group-context");
-    return () => { document.body.classList.remove("group-context"); };
+    return () => { if (!had) document.body.classList.remove("group-context"); };
   }, []);
 
   // Guide posts appear EXPANDED the first time their episode is reached (still
@@ -56,11 +67,23 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
     }
   }, [selectedEpisode]);
 
+  // Re-entry context swaps the gate-6 closer (both the entry object and its
+  // nested thread copy — the feed reads both).
+  const allEntries = useMemo(() => {
+    if (!reentry) return tspDemoFeedEntries;
+    return tspDemoFeedEntries.map((e) => e.threadId === "tsp-gate-6"
+      ? {
+          ...e, body: TSP_GATE6_REENTRY.body, preview: TSP_GATE6_REENTRY.preview,
+          thread: { ...e.thread, body: TSP_GATE6_REENTRY.body, preview: TSP_GATE6_REENTRY.preview },
+        }
+      : e);
+  }, [reentry]);
+
   // Gate (spec §5): visible iff episode <= selectedEpisode (episode 0 always
   // visible). Evaluated on local state — never the live spoiler engine.
   const gatedEntries = useMemo(
-    () => tspDemoFeedEntries.filter((e) => e.e <= selectedEpisode),
-    [selectedEpisode],
+    () => allEntries.filter((e) => e.e <= selectedEpisode),
+    [allEntries, selectedEpisode],
   );
   // Pass the FULL reply set; V2RoomFeed's demo render gates per-reply against
   // viewerProgress, showing ahead-of-progress replies as stubs (reply gating).
@@ -177,7 +200,7 @@ export default function TSPDemoModal({ onClose }: { onClose: () => void }) {
               cursor: "pointer", fontFamily: '"Inter", sans-serif',
             }}
           >
-            {reachedE6 ? "start finding shows →" : "skip the tour"}
+            {reachedE6 ? (reentry ? "back to your room →" : "start finding shows →") : "skip the tour"}
           </button>
         </div>
       </div>

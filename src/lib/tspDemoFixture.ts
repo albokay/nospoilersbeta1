@@ -5,7 +5,8 @@
  * here — nothing is fetched from or written to the database. The mock
  * Maya/James/Sarah entries + replies are lifted verbatim from the parked
  * `tsp-seed-*` content (the seed is only the authoring source); the seven
- * instructional "Alborz" entries are the verbatim spec copy. The map is three
+ * instructional "Sidebar" entries are the spec copy (depersonalized from
+ * "Alborz" for the help-system arc — the site itself narrates the tour). The map is three
  * fixed seed columns (Maya E2 / James E4 / Sarah E6) — the viewer's own
  * growing column is added at runtime by the demo orchestrator.
  *
@@ -24,7 +25,7 @@ const U = {
   maya:   { id: "tsp-demo-maya",   name: "Maya" },
   james:  { id: "tsp-demo-james",  name: "James" },
   sarah:  { id: "tsp-demo-sarah",  name: "Sarah" },
-  alborz: { id: "tsp-demo-alborz", name: "Alborz" },
+  alborz: { id: "tsp-demo-alborz", name: "Sidebar" },
 };
 
 // ── Replies (display-only, gated by episode) ────────────────────────────────
@@ -129,8 +130,8 @@ const INSTRUCTIONAL_ENTRIES: V2RoomFeedEntry[] = [
     body: `You all watch at your own pace and you all update your progress after you watch. No one can spoil you, and you can't spoil anyone. This is also true for responses inside entries.\n\nAdvance to episode 3 to learn about the map on the right.` }),
   entry({ id: "tsp-gate-3", e: 3, author: U.alborz, isInstructional: true,
     title: "The map keeps score",
-    preview: `Take a look at the grid. Each row represents an episode, each column represents a friend, and the little dice faces are everyone's episode ratings.`,
-    body: `Take a look at the grid. Each row represents an episode, each column represents a friend, and the little dice faces are everyone's episode ratings. You can see the shape of everyone's journey at a glance. You can click on the map to navigate to writing available to you (the filled-in green cells) and also have an indication of what's waiting for you once you watch more (the grey cells). It's the spoiler-free way to know your friends are out there.\n\nTry clicking the edit button at the top of your column. That unlocks the cells so that you can leave ratings for the episodes you've watched. When you're done rating, click the check mark at the top to confirm.\n\nNow unlock episode 4.` }),
+    preview: `Take a look at the grid. Each row represents an episode, each column represents a friend, and the little star faces are everyone's episode ratings.`,
+    body: `Take a look at the grid. Each row represents an episode, each column represents a friend, and the little star faces are everyone's episode ratings. You can see the shape of everyone's journey at a glance. You can click on the map to navigate to writing available to you (the filled-in green cells) and also have an indication of what's waiting for you once you watch more (the grey cells). It's the spoiler-free way to know your friends are out there.\n\nTry clicking the edit button at the top of your column. That unlocks the cells so that you can leave ratings for the episodes you've watched. When you're done rating, click the check mark at the top to confirm.\n\nNow unlock episode 4.` }),
   entry({ id: "tsp-gate-4", e: 4, author: U.alborz, isInstructional: true,
     title: "You're ahead of someone now",
     preview: `The map can tell you how your watch progress relates to others'. Maya is still back on episode 2.`,
@@ -142,8 +143,16 @@ const INSTRUCTIONAL_ENTRIES: V2RoomFeedEntry[] = [
   entry({ id: "tsp-gate-6", e: 6, author: U.alborz, isInstructional: true,
     title: "Your turn.",
     preview: `That's the tour. You've experienced the main thing that makes Sidebar different: the spoiler-gate.`,
-    body: `That's the tour. You've experienced the main thing that makes Sidebar unique: the spoiler-gate. I think it changes how you engage with your friends and the shows you're watching (in a good way!). I can't wait to hear how it works for you.\n\nThe next room is yours. Close this window when you're ready, and let's find a show you're actually watching.\n\n~ Alborz` }),
+    body: `That's the tour. You've experienced the main thing that makes Sidebar unique: the spoiler-gate. I think it changes how you engage with your friends and the shows you're watching (in a good way!). I can't wait to hear how it works for you.\n\nThe next room is yours. Close this window when you're ready, and let's find a show you're actually watching.\n\nSigned,\nSidebar` }),
 ];
+
+/** Gate-6 closer for the RE-ENTRY context (the show room's "how does this
+ *  room work?" button — help-system arc CP3): the reader already has a room,
+ *  so the "find a show" send-off would ring false. */
+export const TSP_GATE6_REENTRY = {
+  preview: `That's the tour. You've experienced the main thing that makes Sidebar different: the spoiler-gate.`,
+  body: `That's the tour. You've experienced the main thing that makes Sidebar unique: the spoiler-gate. I think it changes how you engage with your friends and the shows you're watching (in a good way!). I can't wait to hear how it works for you.\n\nClose this window when you're ready to head back to your room.\n\nSigned,\nSidebar`,
+};
 
 /** Full feed fixture — mock + instructional, interleaved (the feed sorts by episode). */
 export const tspDemoFeedEntries: V2RoomFeedEntry[] = [...MOCK_ENTRIES, ...INSTRUCTIONAL_ENTRIES];

@@ -35,6 +35,7 @@ import RatingCaptureModal from "./RatingCaptureModal";
 import SidebarLogo from "./SidebarLogo";
 import FeedbackWidget from "./FeedbackWidget";
 import DeckWave from "./deck/DeckWave";
+import TSPDemoModal from "./TSPDemoModal";
 import LoadingDots from "./LoadingDots";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
@@ -105,6 +106,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const [roomContactNames, setRoomContactNames] = useState<Record<string, string>>({});
   const [privateEntries, setPrivateEntries] = useState<Thread[]>([]);
   const [tab, setTab] = useState<Tab>(privateOnly ? "private" : "friend");
+  // Help-system arc CP3: the sample-room tour, reopened on demand.
+  const [tourOpen, setTourOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
 
@@ -615,6 +618,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           )}
         </div>
 
+        {/* Help-system arc CP3: the tour entry point — the ONLY re-askable
+            "how does this work?" on the signed-in site. Top-right is free
+            chrome on this page (logo left, title center). */}
+        {!privateOnly && (
+          <button style={tourBtn} onClick={() => setTourOpen(true)}>how does this room work?</button>
+        )}
+
         <div style={{ position: "absolute", left: 160, bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
           {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
           {/* CP6 (2026-07-06): solo journaling downgraded to DRAFTS — an
@@ -842,6 +852,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {/* Swipe-deck arc CP4 — the drip / catch-up modal fires wherever the
           user is (once per session; self-skipping when nothing is owed). */}
       {user && <DeckWave wave="drip" heading="none" idiom="desktop" onComplete={() => {}} />}
+
+      {/* Help-system arc CP3 — the guided sample-room tour, re-entry
+          context (the header's "how does this room work?" button). */}
+      {tourOpen && <TSPDemoModal reentry onClose={() => setTourOpen(false)} />}
     </div>
   );
 }
@@ -872,6 +886,14 @@ function RoomTab({ label, active, bg, onClick }: { label: string; active: boolea
 }
 
 const page: React.CSSProperties = { position: "fixed", inset: 0, overflowY: "auto", fontFamily: '"Inter", system-ui, sans-serif' };
+// The tour button — cream stadium outline, top-right of the room header.
+const tourBtn: React.CSSProperties = {
+  position: "absolute", right: 20, top: 22,
+  background: "transparent", border: `2px solid ${C.cream}`, color: C.cream,
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13,
+  padding: "8px 16px", borderRadius: 65, cursor: "pointer",
+};
+
 const backTab: React.CSSProperties = {
   // ~50% larger tab matching the dashboard's; padding/radius on the 8px grid
   // (spec §16). Icon unchanged.
