@@ -16,6 +16,7 @@ import { effectiveProgress } from "../lib/utils";
 import { linearIndex } from "../lib/groupPills";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
+import ZeroProgressTip from "../components/ZeroProgressTip";
 import LoadingDots from "../components/LoadingDots";
 import type { V2RoomMapMember } from "../components/v2/V2RoomMap";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
@@ -612,6 +613,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
           </div>
         </div>
+
+        {/* Help-system arc CP4: the zero-progress pointer — sits with the
+            writing it unlocks (desktop parity). */}
+        {tab === "friend" && (effectiveProgress(progressForShow)?.s ?? 1) === 0 && <ZeroProgressTip />}
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
         {tab === "friend" ? (

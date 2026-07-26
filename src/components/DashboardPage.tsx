@@ -77,6 +77,8 @@ import {
   type MyPendingInvite,
 } from "../lib/db";
 import PendingInvitesPanel, { isInviteStale, staleInviteLine, inviteAgePhrase, type OtherPendingInvite } from "./PendingInvitesPanel";
+import TipsNote from "./TipsNote";
+import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { groupDisplayName, groupGenericName, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
@@ -252,6 +254,16 @@ export default function DashboardPage() {
 
   // CP5: leave-a-room confirm (the X on an active-room button).
   const [leaveConfirm, setLeaveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
+
+  // Help-system arc CP4: the "?" pointer-tips sticky. Page-scoped (dashboard
+  // vs group room); auto-opens on first visit for post-launch accounts, and
+  // any close stamps the seen flag so the auto-open never returns.
+  const tipsPage: TipsPage = activeGroupId ? "groupRoom" : "dashboard";
+  const [tipsOpen, setTipsOpen] = useState(false);
+  useEffect(() => {
+    setTipsOpen(tipsDefaultOpen(tipsPage, user?.created_at));
+  }, [tipsPage, user]);
+  function closeTips() { markTipsSeen(tipsPage); setTipsOpen(false); }
 
   // §9 click-model popover (group context). mode captured at click time.
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
@@ -1284,6 +1296,9 @@ export default function DashboardPage() {
           {/* CP2: the invite affordances moved into the body — dashboard gets
               the centered "Create another watch group?", the group room gets
               the centered "Add more friends to this group?". */}
+          <button style={topCircleBtn(inGroup)} title="tips" onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))}>
+            <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 18, color: inGroup ? C.midnight : CANON.cream, lineHeight: 1 }}>?</span>
+          </button>
           <button style={topCircleBtn(inGroup)} title="account" onClick={() => setShowAccount(true)}>
             <UserCog size={18} color={inGroup ? C.midnight : CANON.cream} />
           </button>
@@ -1299,6 +1314,9 @@ export default function DashboardPage() {
       </div>
 
       {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
+
+      {/* Help-system arc CP4: the pointer-tips sticky ("?" toggles). */}
+      {tipsOpen && <TipsNote page={tipsPage} onDismiss={closeTips} />}
 
       {/* Group heading (group context only) — the clusters component returns
           the room heading there; the dashboard renders its clusters inside

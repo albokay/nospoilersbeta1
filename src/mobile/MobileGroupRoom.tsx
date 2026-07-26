@@ -11,6 +11,7 @@ import MobileSearchSheet from "./MobileSearchSheet";
 import MobileInviteSheet from "./MobileInviteSheet";
 import DeckWave from "../components/deck/DeckWave";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
+import MobileTipsSheet from "../components/MobileTipsSheet";
 import PendingInvitesPanel, { isInviteStale, type OtherPendingInvite } from "../components/PendingInvitesPanel";
 import {
   fetchShows,
@@ -609,6 +610,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             .map((m) => ({ id: m.userId, label: personDisplayName(contactNames, m.userId, m.username, m.displayName) }))}
         />
       )}
+
+      {/* Help-system arc CP4: the docked "tips" tab + sheet (waits for the
+          wave gate so it can't float over an onboarding card). */}
+      {user && groupWaveDone && <MobileTipsSheet page="groupRoom" />}
 
       {loading ? (
         <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>

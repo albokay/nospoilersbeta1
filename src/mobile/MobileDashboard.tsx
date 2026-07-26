@@ -12,6 +12,7 @@ import MobileSocialOnboarding from "./MobileSocialOnboarding";
 import DeckWave from "../components/deck/DeckWave";
 import YoureInCard from "../components/deck/YoureInCard";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
+import MobileTipsSheet from "../components/MobileTipsSheet";
 import {
   markSocialOnboarded,
   fetchPeopleGroupsForUser,
@@ -462,6 +463,11 @@ export default function MobileDashboard() {
              page. ── */}
       {user && !showSocialOnb && !postAccept && (
         <MobileDeckCard mode="personal" viewerId={user.id} />
+      )}
+
+      {/* Help-system arc CP4: the docked "tips" tab + sheet. */}
+      {user && !showSocialOnb && !postAccept && (
+        <MobileTipsSheet page="dashboard" />
       )}
 
       {/* ── Swipe-deck arc CP4 — the drip / catch-up modal: up to 4 released,

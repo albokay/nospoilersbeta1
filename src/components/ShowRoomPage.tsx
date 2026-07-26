@@ -36,6 +36,7 @@ import SidebarLogo from "./SidebarLogo";
 import FeedbackWidget from "./FeedbackWidget";
 import DeckWave from "./deck/DeckWave";
 import TSPDemoModal from "./TSPDemoModal";
+import ZeroProgressTip from "./ZeroProgressTip";
 import LoadingDots from "./LoadingDots";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
@@ -618,13 +619,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           )}
         </div>
 
-        {/* Help-system arc CP3: the tour entry point — the ONLY re-askable
-            "how does this work?" on the signed-in site. Top-right is free
-            chrome on this page (logo left, title center). */}
-        {!privateOnly && (
-          <button style={tourBtn} onClick={() => setTourOpen(true)}>how does this room work?</button>
-        )}
-
         <div style={{ position: "absolute", left: 160, bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
           {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
           {/* CP6 (2026-07-06): solo journaling downgraded to DRAFTS — an
@@ -684,6 +678,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               )}
             </div>
 
+            {/* Help-system arc CP4: the zero-progress pointer — sits with
+                the writing it unlocks rather than floating as chrome. */}
+            {tab === "friend" && (effectiveProgress(progressForShow)?.s ?? 1) === 0 && <ZeroProgressTip />}
+
             {tab === "friend" ? (
               feedEntries.length === 0 ? (
                 <div style={{ maxWidth: 420 }}>
@@ -734,6 +732,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   <p style={{ ...emptyCopy, maxWidth: 460 }}>But this drafts space is just for you — no one will ever see what you write here. Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
                 </div>
               </>
+            )}
+
+            {/* Help-system arc CP3/CP4: the tour entry point — centered in
+                the entry column, scrolling below the writing as the room
+                fills (moved from header chrome per Alborz). The ONLY
+                re-askable "how does this work?" on the signed-in site. */}
+            {tab === "friend" && !privateOnly && (
+              <div style={{ display: "flex", justifyContent: "center", margin: "36px 0 8px" }}>
+                <button style={tourBtn} onClick={() => setTourOpen(true)}>how does this room work?</button>
+              </div>
             )}
           </div>
 
@@ -886,9 +894,8 @@ function RoomTab({ label, active, bg, onClick }: { label: string; active: boolea
 }
 
 const page: React.CSSProperties = { position: "fixed", inset: 0, overflowY: "auto", fontFamily: '"Inter", system-ui, sans-serif' };
-// The tour button — cream stadium outline, top-right of the room header.
+// The tour button — cream stadium outline, in-column (scrolls with the feed).
 const tourBtn: React.CSSProperties = {
-  position: "absolute", right: 20, top: 22,
   background: "transparent", border: `2px solid ${C.cream}`, color: C.cream,
   fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13,
   padding: "8px 16px", borderRadius: 65, cursor: "pointer",
