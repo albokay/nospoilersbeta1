@@ -107,6 +107,11 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
     : answeredMine;
   const windowRows = [...anyAnswered].sort((a, b) => b.sortOrder - a.sortOrder).slice(0, WINDOW);
   const firstSet = answeredMine.length <= WINDOW; // §7.6.1 conditional copy
+  // A viewer with unanswered released cards (e.g. the pre-join backlog under
+  // the signup-anchored drip) needs the grid + its edit pencil to fill them —
+  // so the "see more answers" route also opens whenever blanks exist
+  // (help-system arc CP1; loosens the >8-answered gate, standing issue (h)).
+  const hasUnanswered = cards.some((c) => myAnswers[c.id] === undefined);
   // No group subtitle (Alborz QA 2026-07-18 — "our answers on Sidebar" cut).
   const subtitle = mode === "group"
     ? null
@@ -232,10 +237,11 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
               </div>
             ))}
             {/* Right under the question list, not pinned to the screen
-                bottom. Appears only once there's MORE than the sheet shows
+                bottom. Appears once there's MORE than the sheet shows
                 (Alborz QA 2026-07-18 — at 8 answered the sheet already IS
-                everything). */}
-            {(mode === "group" ? anyAnswered.length > WINDOW : !firstSet) && (
+                everything) OR the viewer has unanswered cards to fill in
+                via the grid's pencil. */}
+            {(hasUnanswered || (mode === "group" ? anyAnswered.length > WINDOW : !firstSet)) && (
               <button
                 onClick={() => setUi("grid")}
                 style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", border: "none", background: "transparent", cursor: "pointer", padding: "12px 20px", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 12, color: CANON.identity }}

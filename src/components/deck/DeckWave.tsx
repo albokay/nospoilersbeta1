@@ -29,8 +29,11 @@ const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
 export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadCardId, anonymous, onComplete }: {
   /** 1 | 2 = the fixed onboarding waves. "drip" (CP4) = the catch-up/drip
-   *  modal: up to 4 released, unanswered cards, oldest first, at most once
-   *  per session (sessionStorage flag). Wave-2 cards are EXCLUDED from the
+   *  modal: up to 4 unanswered cards released SINCE THIS ACCOUNT SIGNED UP,
+   *  oldest first, at most once per session (sessionStorage flag). Cards
+   *  released before signup are never force-served — a new member joining an
+   *  established deck fills that backlog voluntarily via the answer grids'
+   *  edit pencil (help-system arc CP1). Wave-2 cards are EXCLUDED from the
    *  drip — wave 2 always arrives through its reserved moments (onboarding
    *  completion / first group-room click), so the drip can't preempt them. */
   wave: 1 | 2 | "drip";
@@ -76,8 +79,13 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
         // The once-per-session flag is stamped on COMPLETION (see answer()),
         // not on serve — a mid-batch refresh brings the cards back (there is
         // no dismissal, incl. by reload).
+        // Signup anchor: only cards released while this account existed are
+        // owed to the drip; pre-signup releases stay as fillable blanks in
+        // the grids. (All pre-deck accounts predate every release, so their
+        // catch-up behavior is unchanged.)
+        const joinedAt = user!.created_at ? new Date(user!.created_at).getTime() : 0;
         setQueue(cards
-          .filter((c) => c.wave !== 2 && !(c.id in answers))
+          .filter((c) => c.wave !== 2 && !(c.id in answers) && c.releasedAt > joinedAt)
           .slice(0, 4)); // fetchDeckCards is already in serve order (oldest first)
         return;
       }
