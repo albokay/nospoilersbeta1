@@ -1,4 +1,4 @@
-# Sidebar — Technical State (2026-07-20)
+# Sidebar — Technical State (2026-07-25)
 
 > **⏭️ OPEN ARCS / NEXT SESSION.** The **MOBILE MIRROR ARC is DONE (2026-07-07, all 7 CPs shipped — dated entry below)**: `/m` now runs the same group-scoped-proposals / groups-only / contact-named world as desktop, and the "accepted divergence" notes scattered through older entries are **historical** — none are live. Migrations were **audit-verified on prod 2026-07-07** by Alborz (RPC one-shot: 0 missing; targeted checks on `20260706c_leave_show_room` + `20260707_inviter_name_to_invitee_contacts`: all true).
 > - **⭐ SWIPE-DECK + INVITEE-FUNNEL + PENDING-INVITES ARCS — ALL SHIPPED 2026-07-17→20 (full dated entry below; ALL prod SQL applied; `send-group-invite` redeployed with the final dynamic-headline + nudge version).** The deck ("How I/We Watch TV") is live end-to-end on both platforms: onboarding waves + pre-wall invitee wave + drip/catch-up + docked grid cards + Findings sticky + nudge/rescind pending-invites gear panel. **STANDING ISSUES (the next session's menu):**
@@ -386,15 +386,17 @@
 
 ---
 
+> **Reference-section staleness note (2026-07-25 hygiene pass).** §1–§6 below were written against the PRE-restructure architecture (before the 2026-06-24 groups/show-rooms cutover) and are kept because the code paths they describe are dormant, not deleted. The core mechanics still hold (spoiler filter §4, rewatch model, zero-progress §5, most §2 tables), but surface/routing specifics (§1's `/profile` redirects, §3's three destinations) describe the retired world, and §2 predates the post-cutover tables (the `people_groups` family, `group_show_votes`, `contact_names`, `people_group_invitations`, `deck_cards`/`deck_answers`, etc.). **The LIVE architecture — people-groups, show rooms, `/dashboard` + `/m`, group-scoped proposals, the swipe deck — is documented in the open-arcs block at the top and the dated entries.** When §1–§6 and a dated entry disagree, the dated entry wins.
+
 ## 1. Stack & Architecture
 
 - **Frontend:** React 18 + TypeScript + Vite, single `App.tsx` shell that derives view state from URL via `react-router-dom` wildcard route. Top-level rendering is gated by (a) the **mobile lockout** (`isMobileLocked && !isAdmin` short-circuits everything at `window.innerWidth < 768`) and (b) **auth-routing effects** that redirect signed-out users off `/profile` → `/` and signed-in non-admins off `/` → `/profile` (admins exempt; `/invite/:token` exempt). See §8.
-- **Backend:** Supabase (Postgres + Auth + Realtime + Edge Functions). One Edge Function: `send-invite` (Resend email).
+- **Backend:** Supabase (Postgres + Auth + Realtime + Edge Functions). Five Edge Functions as of 2026-07-25 (email via Resend): `send-group-invite` (LIVE group invites + nudges), `send-digests`, `send-message` (pings), `delete-account` (self-serve deletion), `send-invite` (V1 room invites — dormant surface). *(The original "one edge function" note predated the 2026-06+ arcs.)*
 - **Styling:** Single CSS string injected at boot from `src/styles/theme.ts`. DOS/canon palette, body-class context theming (`has-header`, `group-context`, `public-context`).
 - **Hosting:** Vercel auto-deploy on push to `main` (see `vercel.json`). `netlify.toml` is checked-in dead config from an earlier Netlify era — its CSP `[[headers]]` block is NOT enforced. Hobby plan; serverless function timeout caps at 10s, which is why the treated-art pipeline runs as a local pre-warm script rather than a Vercel function (see §7 arc 2026-05-15).
 - **Auth:** Supabase Auth via `src/lib/auth.tsx` `AuthProvider`. Session subscription updates `user`/`profile` globally.
-- **State:** All major state lifted to `App.tsx` (~1367 lines): `progress`, `shows`, `repliesToUser`, `allFriendGroups`, likes, profile-tab data. No Redux/Zustand.
-- **Data layer:** `src/lib/db.ts` (~1574 lines) — every Supabase call is here, with snake_case→camelCase mappers (`rowToThread`, `rowToReply`, `rowToFriendGroup`, `rowToInvitation`).
+- **State:** All major state lifted to `App.tsx` (~1800 lines as of 2026-07-25): `progress`, `shows`, `repliesToUser`, `allFriendGroups`, likes, profile-tab data. No Redux/Zustand.
+- **Data layer:** `src/lib/db.ts` (~5500 lines as of 2026-07-25) — every Supabase call is here, with snake_case→camelCase mappers (`rowToThread`, `rowToReply`, `rowToFriendGroup`, `rowToInvitation`).
 - **Rate-limit + length validation** wrap every write (`db.ts:12-37`).
 
 ## 2. Database Tables
@@ -4484,12 +4486,12 @@ When adding new routes or gates:
 - Always run `npm run build` before pushing. Never push a failing build.
 - Never blanket `git checkout --theirs / --ours` for merge conflicts — resolve per-file.
 - Verify current file state on `main` before editing.
-- Deploy: `git push origin main` → Netlify auto-deploys.
+- Deploy: `git push origin main` → Vercel auto-deploys (hosting moved off Netlify long ago; `netlify.toml` is dead config, see §1).
 - Revert: `git revert <sha> && git push origin main`.
 
 ## Future polish backlog
 
-Non-urgent UI polish items captured but intentionally deferred. Pick up as spot-fixes or batch later.
+Non-urgent UI polish items captured but intentionally deferred. Pick up as spot-fixes or batch later. *(Note 2026-07-25: many of the candidates below live in V1 surfaces that went dormant at the 2026-06-24 restructure — ShowSection, ProfilePage, InlineThreadView — and the live surfaces got a standardized loading treatment in the 2026-07-07 perf pass. Check whether a file still serves the live world before spending time on it.)*
 
 ### Animated loading ellipsis — remaining candidates
 
@@ -4518,15 +4520,15 @@ Reusable `<LoadingDots />` component lives at [src/components/LoadingDots.tsx](s
 
 ## Outstanding action items (carry across sessions)
 
-Both pre-launch blockers from the pings/polls arc shipped on 2026-05-07: rate limit is re-enabled, feature flag is removed, `pings-polls` merged to `main` and is live on `beta.sidebar.watch`. Password reset (pre-beta checklist item #2) shipped 2026-05-09. What's left is the rest of the pre-beta checklist + housekeeping + minor v2 follow-ups:
+Both pre-launch blockers from the pings/polls arc shipped on 2026-05-07: rate limit is re-enabled, feature flag is removed, `pings-polls` merged to `main` and is live on `beta.sidebar.watch`. Password reset (pre-beta checklist item #2) shipped 2026-05-09. **Hygiene update 2026-07-25:** the pre-beta checklist is now **4 of 5 DONE** — the beta copy pass is the only open item. Housekeeping + v2 follow-ups below are unchanged unless struck through or annotated.
 
-**Pre-beta checklist (4 of 5 remaining):**
-- **Account deletion** — full user data purge with care for shared catalog (TSP seeds etc.). See §6 item 25 for the gotcha pattern (don't sweep up `is_seed=true` author content via thread-scoped joins).
+**Pre-beta checklist (1 of 5 remaining — the beta copy pass):**
+- ~~**Account deletion**~~ — **DONE 2026-06-30 (security arc CP7):** self-serve deletion via the account gear, anonymize model, `delete-account` edge function. §6 item 25's shared-catalog gotcha still applies to any future ad-hoc SQL purge.
 
   **Test accounts** are formatted as email `NNN@sidebar.test`, username `NNNsidebar`, password `NNNsidebar` (e.g. `001@sidebar.test` / `001sidebar` / `001sidebar`). The `@sidebar.test` domain is the cleanup key. **TODO:** build a shared-catalog-aware "safely delete user" process (per §6 item 25) to purge these once onboarding testing is done.
-- **Error tracking — HALF DONE 2026-06-06.** Shipped a top-level in-app error boundary ([src/components/ErrorBoundary.tsx](src/components/ErrorBoundary.tsx), mounted as the outermost wrapper in [src/index.tsx](src/index.tsx)) — render-time crashes now show a recoverable canon-green "Something went wrong / Reload" screen instead of a blank page. **Still needed:** a real REMOTE reporter (probably Sentry) so prod errors are visible to the team — the boundary only logs locally (no remote visibility) and only catches render crashes, NOT event-handler failures (button clicks) or async/background failures (the Supabase calls in db.ts, ~29 files using console.warn/error). `componentDidCatch` in ErrorBoundary.tsx is the single hook point for a future reporter; pair with `window.onerror` + `unhandledrejection` + Sentry init in index.tsx. Sentry traffic goes to Sentry's servers (no Supabase egress impact). Errors-only scope recommended first; replay/perf later.
-- **Feedback-read flow** — admins see unread feedback count badge ([App.tsx:632](src/App.tsx:632)) but there's no per-item read-state tracking. Each feedback row should be markable as read so the badge clears properly.
-- **Beta copy pass** — top-to-bottom copy review across all surfaces.
+- ~~**Error tracking — HALF DONE 2026-06-06.**~~ **DONE 2026-06-30 (security arc CP9):** Sentry shipped per the plan below — `initSentry()` live in [src/index.tsx](src/index.tsx), dormant-until-DSN, with the DSN set in Vercel (verified in-repo 2026-07-25). Original item kept for context: Shipped a top-level in-app error boundary ([src/components/ErrorBoundary.tsx](src/components/ErrorBoundary.tsx), mounted as the outermost wrapper in [src/index.tsx](src/index.tsx)) — render-time crashes now show a recoverable canon-green "Something went wrong / Reload" screen instead of a blank page. **Still needed:** a real REMOTE reporter (probably Sentry) so prod errors are visible to the team — the boundary only logs locally (no remote visibility) and only catches render crashes, NOT event-handler failures (button clicks) or async/background failures (the Supabase calls in db.ts, ~29 files using console.warn/error). `componentDidCatch` in ErrorBoundary.tsx is the single hook point for a future reporter; pair with `window.onerror` + `unhandledrejection` + Sentry init in index.tsx. Sentry traffic goes to Sentry's servers (no Supabase egress impact). Errors-only scope recommended first; replay/perf later.
+- ~~**Feedback-read flow**~~ — **DONE (verified live 2026-07-25; the item was stale — the plumbing has existed since April):** per-item `read_at` tracking via `markFeedbackRead` ([db.ts:2162](src/lib/db.ts:2162)), AdminPage auto-marks unread items on view, and the admin badge counts `read_at IS NULL` rows (`fetchUnreadFeedbackCount`) — the badge clears on read.
+- **Beta copy pass — OPEN (in flight as of 2026-07-25):** top-to-bottom copy review across all surfaces. Working docs sit uncommitted in the repo: `docs/copy-inventory.md` + `docs/copy-rework-analysis.md`.
 
 **Cleanups (optional):**
 - **Remove `VITE_FEATURE_PINGS_POLLS=true` from the Vercel preview env.** The flag was deleted from code on 2026-05-07, so the env var has no consumer. No functional impact while it sits — just dangling config.
@@ -4559,7 +4561,7 @@ Both pre-launch blockers from the pings/polls arc shipped on 2026-05-07: rate li
 
 **V2 friend room follow-ups** (from the 2026-05-15 + 2026-05-16 arcs):
 
-- **8-friend cap enforcement.** The map's column model is hard-capped at 8 in `V2RoomMap.tsx` (layout-only — past 8 the columns squeeze unreadably). The cap is *not* enforced server-side: `addMember` / `accept_invitation` will happily create the 9th member if pushed. Land enforcement as either (a) a pre-check in the `send-invite` edge function that counts current members and refuses the 9th, or (b) a gate inside `accept_invitation` SECURITY DEFINER RPC. Option (b) catches both the email-invite path AND any future direct-add path; preferred.
+- **8-friend cap enforcement.** The map's column model is hard-capped at 8 in `V2RoomMap.tsx` (layout-only — past 8 the columns squeeze unreadably). The cap is *not* enforced server-side: `addMember` / `accept_invitation` will happily create the 9th member if pushed. Land enforcement as either (a) a pre-check in the `send-invite` edge function that counts current members and refuses the 9th, or (b) a gate inside `accept_invitation` SECURITY DEFINER RPC. Option (b) catches both the email-invite path AND any future direct-add path; preferred. **Update 2026-07-25: the LIVE invite path enforces this** — the 2026-07-20 multi-friend arc caps group invites at 7 friends (8-member room including you), checked at invite-mint AND accept. This item now applies only to the dormant V1 `invitations`/`accept_invitation` path.
 - **TreatedArt on `/v2/room/:groupId`.** Every other V2/V3 surface has the cutout-plus-tint atmospheric art; this page intentionally doesn't. A one-line insertion (`<TreatedArt showId={room.showId} anchor="fixed" />`) inside `V2FriendRoomPage` once you decide it belongs there. Note: room context is canon-light-blue palette, so the green/yellow/blue tints may or may not read well on this bg — visual QA needed.
 - **Rating capture UI is a separate spec** (per the V2 friend room spec, §"The rating system"). The data layer is in place: `episode_ratings` table, owner-only RLS, and the `upsertEpisodeRating(args)` helper in db.ts. Map currently displays whatever ratings exist (none yet). The five-pill tap interaction in the progress-advancement flow lands as its own spec'd piece of work.
 - **Username byline click-to-profile in V2RoomFeed.** Live ShowSection's friend-room thread card uses the `Username` component (underlined name, click → profile). V2RoomFeed currently renders the byline username as plain bold text (no click). The whole-card click is now an expansion toggle (not navigation), so this is the only path to a profile from a thread card. Drop-in upgrade if `Username`'s `onClickProfile` is plumbed through.
