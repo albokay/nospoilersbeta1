@@ -15,8 +15,10 @@
 
 export type TipsPage = "dashboard" | "groupRoom";
 
-/** Accounts created at/after this instant get first-visit auto-open. */
-export const TIPS_LAUNCH_MS = Date.parse("2026-07-27T00:00:00Z");
+/** Accounts created at/after this instant get first-visit auto-open.
+ *  (Pulled back to 07-26 so same-day test accounts exercise the auto-open —
+ *  every real pre-arc account predates this anyway.) */
+export const TIPS_LAUNCH_MS = Date.parse("2026-07-26T00:00:00Z");
 
 export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): string[] {
   if (page === "dashboard") {
