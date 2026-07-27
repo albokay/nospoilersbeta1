@@ -161,11 +161,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const staleInviteCount = myInvites.filter(isInviteStale).length;
   const othersPending: OtherPendingInvite[] = groupInvites
     .filter((p) => p.inviterId != null && p.inviterId !== user?.id)
-    .map((p) => ({
-      name: p.name,
-      createdAt: p.createdAt,
-      inviterLabel: personDisplayName(contactNames, p.inviterId!, p.inviterName ?? "someone", p.inviterName),
-    }));
+    .map((p) => ({ name: p.name, createdAt: p.createdAt }));
 
   // Sheets
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);

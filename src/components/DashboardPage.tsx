@@ -95,7 +95,6 @@ import SocialOnboarding from "./SocialOnboarding";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
 import DeckGridCard from "./deck/DeckGridCard";
-import GroupRoomSticky from "./GroupRoomSticky";
 import { linkifyText } from "../lib/linkify";
 
 // TSP onboarding demo (spec §9): the onboarding for the NEW /dashboard world.
@@ -1338,7 +1337,9 @@ export default function DashboardPage() {
       )}
       {/* CP3: the bootstrap group gets the onboarding explainer instead of
           the generic one (its own copy + its own dismissal). */}
-      {inGroup && <GroupRoomSticky onboarding={(() => { try { return localStorage.getItem("ns_onb_group") === activeGroupId; } catch { return false; } })()} />}
+      {/* GroupRoomSticky RETIRED (help-system QA round 1) — its copy was
+          absorbed into the group room's four placed tip stickies (TipsNote);
+          the component stays in the tree, dormant. */}
 
       {inGroup ? (
         // ── Group context (sky) ───────────────────────────────────────────────
@@ -1783,11 +1784,13 @@ export default function DashboardPage() {
         <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(26,58,74,0.25)" }} onClick={() => setOptionsFor(null)}>
           <div
             onClick={(e) => e.stopPropagation()}
+            // QA round 1: four cards → 2×2 grid (a single column got
+            // unwieldy). Row 1: contacts + rename; row 2: pending + leave.
             style={{
               position: "fixed",
               top: optionsAnchor?.y ?? 80,
-              left: Math.min(optionsAnchor?.x ?? 28, (typeof window !== "undefined" ? window.innerWidth : 1024) - 380),
-              display: "flex", flexDirection: "column", gap: 16, width: 360,
+              left: Math.min(optionsAnchor?.x ?? 28, (typeof window !== "undefined" ? window.innerWidth : 1024) - 760),
+              display: "grid", gridTemplateColumns: "360px 360px", gap: 16, alignItems: "start",
             }}
           >
             {(() => {
@@ -1816,18 +1819,20 @@ export default function DashboardPage() {
                 </div>
               );
             })()}
+            <div style={yellowCard}>
+              <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
+              <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
+              <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight }} />
+              <button style={{ ...startBtn, marginTop: 12 }} onClick={() => doRename(optionsFor)}>confirm name</button>
+            </div>
             {/* Pending invites (changeset CP2): the viewer's own unaccepted
                 invites for this group — nudge + rescind, always available.
-                Co-members' pending invites show as status-only rows
-                (help-system arc CP2). */}
+                Co-members' pending invites show as status-only rows; who
+                invited them is deliberately NOT shown (QA round 1). */}
             {(() => {
               const othersPending: OtherPendingInvite[] = (railGroups.find((r) => r.group.id === optionsFor)?.pendingInvites ?? [])
                 .filter((p) => p.inviterId != null && p.inviterId !== selfUserId)
-                .map((p) => ({
-                  name: p.name,
-                  createdAt: p.createdAt,
-                  inviterLabel: personDisplayName(contactNames, p.inviterId!, p.inviterName ?? "someone", p.inviterName),
-                }));
+                .map((p) => ({ name: p.name, createdAt: p.createdAt }));
               if (myGroupInvites.length === 0 && othersPending.length === 0) return null;
               return (
                 <div style={yellowCard}>
@@ -1836,12 +1841,6 @@ export default function DashboardPage() {
                 </div>
               );
             })()}
-            <div style={yellowCard}>
-              <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
-              <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
-              <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight }} />
-              <button style={{ ...startBtn, marginTop: 12 }} onClick={() => doRename(optionsFor)}>confirm name</button>
-            </div>
             <div style={yellowCard}>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this group?</div>
               <button style={dangerBtn} onClick={() => doLeave(optionsFor)}>yes, leave</button>

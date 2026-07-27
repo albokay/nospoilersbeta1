@@ -46,8 +46,9 @@ function ageLine(createdAt: number): string {
   return `invited ${inviteAgePhrase(createdAt)}`;
 }
 
-/** A co-member's pending invite, display-only (no token → no actions). */
-export type OtherPendingInvite = { name: string; createdAt: number | null; inviterLabel: string | null };
+/** A co-member's pending invite, display-only (no token → no actions; who
+ *  invited them is deliberately not shown — QA round 1). */
+export type OtherPendingInvite = { name: string; createdAt: number | null };
 
 function inviteeLabel(inv: MyPendingInvite): string {
   return inv.name || inv.email.split("@")[0];
@@ -118,74 +119,69 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
           {preventLastWordOrphan(`${staleInviteLine(staleCount)} A nudge might be all they need.`)}
         </div>
       )}
-      {invites.map((inv) => (
-        <div key={inv.token} style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Grid of info (QA round 1): aligned columns — who · when · actions
+          (own invites) or status (co-members' invites). Nudge/rescind
+          expansions span the full row beneath. */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto auto", columnGap: 12, rowGap: 12, alignItems: "baseline" }}>
+        {invites.map((inv) => (
+          <React.Fragment key={inv.token}>
+            <div style={{ minWidth: 0 }}>
               <span style={{ color: CANON.cream, fontSize: 13, fontWeight: 700 }}>{inviteeLabel(inv)}</span>
-              <span style={{ color: CANON.cream, fontSize: 11, opacity: 0.8, marginLeft: 8 }}>{ageLine(inv.createdAt)}</span>
               {inv.name && (
                 <div style={{ color: CANON.cream, fontSize: 11, opacity: 0.75, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.email}</div>
               )}
             </div>
+            <span style={ageCell}>{ageLine(inv.createdAt)}</span>
             {sentFor === inv.token ? (
               <span style={{ color: CANON.cream, fontSize: 12, fontWeight: 700 }}>nudge sent!</span>
             ) : (
-              <>
+              <span style={{ display: "flex", gap: 8 }}>
                 <button style={rowBtn} onClick={() => (nudgeFor === inv.token ? setNudgeFor(null) : openNudge(inv))}>nudge</button>
                 <button style={rowBtn} onClick={() => { setNudgeFor(null); setActionError(null); setRescindFor(rescindFor === inv.token ? null : inv.token); }}>rescind</button>
-              </>
+              </span>
             )}
-          </div>
 
-          {nudgeFor === inv.token && (
-            <div style={{ marginTop: 8 }}>
-              <textarea
-                value={nudgeText}
-                onChange={(e) => setNudgeText(e.target.value)}
-                rows={3}
-                maxLength={500}
-                style={nudgeBox}
-              />
-              <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 6 }}>
-                <button style={{ ...rowBtnSolid, opacity: sending || !nudgeText.trim() ? 0.6 : 1 }} disabled={sending || !nudgeText.trim()} onClick={() => sendNudge(inv)}>
-                  {sending ? "sending…" : "send nudge"}
-                </button>
-                <button style={quietBtn} disabled={sending} onClick={() => setNudgeFor(null)}>cancel</button>
+            {nudgeFor === inv.token && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <textarea
+                  value={nudgeText}
+                  onChange={(e) => setNudgeText(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  style={nudgeBox}
+                />
+                <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 6 }}>
+                  <button style={{ ...rowBtnSolid, opacity: sending || !nudgeText.trim() ? 0.6 : 1 }} disabled={sending || !nudgeText.trim()} onClick={() => sendNudge(inv)}>
+                    {sending ? "sending…" : "send nudge"}
+                  </button>
+                  <button style={quietBtn} disabled={sending} onClick={() => setNudgeFor(null)}>cancel</button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {rescindFor === inv.token && (
-            <div style={{ marginTop: 8 }}>
-              <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 6 }}>
-                {preventLastWordOrphan("Rescind this invite? Their link will stop working.")}
+            {rescindFor === inv.token && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 6 }}>
+                  {preventLastWordOrphan("Rescind this invite? Their link will stop working.")}
+                </div>
+                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                  <button style={{ ...dangerRowBtn, opacity: rescinding ? 0.6 : 1 }} disabled={rescinding} onClick={() => doRescind(inv)}>
+                    {rescinding ? "rescinding…" : "yes, rescind"}
+                  </button>
+                  <button style={quietBtn} disabled={rescinding} onClick={() => setRescindFor(null)}>cancel</button>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <button style={{ ...dangerRowBtn, opacity: rescinding ? 0.6 : 1 }} disabled={rescinding} onClick={() => doRescind(inv)}>
-                  {rescinding ? "rescinding…" : "yes, rescind"}
-                </button>
-                <button style={quietBtn} disabled={rescinding} onClick={() => setRescindFor(null)}>cancel</button>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-      {others.map((inv, i) => (
-        <div key={`o${i}`} style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ color: CANON.cream, fontSize: 13, fontWeight: 700 }}>{inv.name || "A friend"}</span>
-              {inv.createdAt != null && (
-                <span style={{ color: CANON.cream, fontSize: 11, opacity: 0.8, marginLeft: 8 }}>{ageLine(inv.createdAt)}</span>
-              )}
-              <div style={{ color: CANON.cream, fontSize: 11, opacity: 0.75 }}>
-                {inv.inviterLabel ? `invited by ${inv.inviterLabel} — ` : ""}hasn&rsquo;t joined yet
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
+            )}
+          </React.Fragment>
+        ))}
+        {others.map((inv, i) => (
+          <React.Fragment key={`o${i}`}>
+            <span style={{ color: CANON.cream, fontSize: 13, fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.name || "A friend"}</span>
+            <span style={ageCell}>{inv.createdAt != null ? ageLine(inv.createdAt) : ""}</span>
+            <span style={{ color: CANON.cream, fontSize: 11, opacity: 0.75 }}>hasn&rsquo;t joined yet</span>
+          </React.Fragment>
+        ))}
+      </div>
       {actionError && (
         <div style={{ color: CANON.cream, fontSize: 12, fontWeight: 700, lineHeight: 1.4 }}>{actionError}</div>
       )}
@@ -194,6 +190,9 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
 }
 
 // Sits on the accent-yellow gear card/sheet: cream text + cream outlines.
+const ageCell: React.CSSProperties = {
+  color: CANON.cream, fontSize: 11, opacity: 0.8, whiteSpace: "nowrap",
+};
 const rowBtn: React.CSSProperties = {
   border: `2px solid ${CANON.cream}`, background: "transparent", color: CANON.cream,
   fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12,

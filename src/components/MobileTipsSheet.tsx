@@ -1,12 +1,13 @@
 /**
  * MobileTipsSheet — the mobile pointer-tips surface (help-system arc CP4).
  *
- * Docked: a small cream "tips" tab pinned above the deck card's docked
- * title (bottom-left, so the two coexist). Open: a left-justified bottom
- * sheet with the page's tips. Dismiss = tap outside OR swipe down on the
- * sheet (the swipe gesture is built here first; rolling it out to the
- * app's other bottom sheets is a later arc — Alborz). Copy-only pointers,
- * no links inside tips (locked).
+ * Docked: a cream "?" circle pinned bottom-RIGHT, above the deck card's
+ * docked title (QA round 1 — was a bottom-left "tips" tab; the "?" mark
+ * matches the desktop button but in Friend color). Open: a left-justified
+ * bottom sheet with the page's tips. Dismiss = tap outside OR swipe down
+ * on the sheet (the swipe gesture is built here first; rolling it out to
+ * the app's other bottom sheets is a later arc — Alborz). Copy-only
+ * pointers, no links inside tips (locked).
  *
  * First-visit auto-open for post-launch accounts, like desktop; dismissing
  * stamps the seen flag and the tab reopens the sheet anytime.
@@ -33,7 +34,7 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
   }
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} style={tabStyle}>tips</button>;
+    return <button onClick={() => setOpen(true)} aria-label="tips" style={tabStyle}>?</button>;
   }
 
   return (
@@ -69,28 +70,28 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
         {/* Grab handle — signals the swipe-down affordance. */}
         <div style={{ width: 44, height: 4, borderRadius: 2, background: "rgba(26,58,74,0.25)", margin: "0 auto 14px" }} />
         {tips.map((t, i) => (
-          <p
-            key={i}
-            style={{
-              margin: i === 0 ? 0 : "12px 0 0",
-              fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5,
-              color: CANON.dark, textAlign: "left",
-              ...(t.startsWith("(") ? { fontStyle: "italic", opacity: 0.85 } : {}),
-            }}
-          >
-            {t}
-          </p>
+          <div key={i} style={{ marginTop: i === 0 ? 0 : 14 }}>
+            <p style={tipText}>{t.body}</p>
+            {t.aside && <p style={{ ...tipText, marginTop: 5, fontStyle: "italic", opacity: 0.85 }}>{t.aside}</p>}
+          </div>
         ))}
       </div>
     </div>
   );
 }
 
-// Sits above the deck card's docked title (which spans the bottom center).
+const tipText: React.CSSProperties = {
+  margin: 0, fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5,
+  color: CANON.dark, textAlign: "left",
+};
+
+// "?" circle, bottom-right above the deck card's docked title — cream fill,
+// Friend-color mark (matches the desktop "?" glyph).
 const tabStyle: React.CSSProperties = {
-  position: "fixed", left: 14, bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)",
-  zIndex: 40, background: CANON.cream, color: CANON.dark, border: "none",
-  borderRadius: 12, padding: "8px 14px",
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13,
+  position: "fixed", right: 14, bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)",
+  zIndex: 40, width: 44, height: 44, borderRadius: "50%",
+  background: CANON.cream, color: CANON.friend, border: "none",
+  fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 18, lineHeight: 1,
+  display: "flex", alignItems: "center", justifyContent: "center",
   cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
 };
