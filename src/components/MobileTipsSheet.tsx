@@ -14,6 +14,7 @@
  */
 import React, { useRef, useState } from "react";
 import { useAuth } from "../lib/auth";
+import TipText from "./TipText";
 import { CANON } from "../styles/canon";
 import { tipsFor, tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 
@@ -71,8 +72,8 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
         <div style={{ width: 44, height: 4, borderRadius: 2, background: "rgba(26,58,74,0.25)", margin: "0 auto 14px" }} />
         {tips.map((t, i) => (
           <div key={i} style={{ marginTop: i === 0 ? 0 : 14 }}>
-            <p style={tipText}>{t.body}</p>
-            {t.aside && <p style={{ ...tipText, marginTop: 5, fontStyle: "italic", opacity: 0.85 }}>{t.aside}</p>}
+            <p style={tipText}><TipText text={t.body} /></p>
+            {t.aside && <p style={{ ...tipText, marginTop: 5, fontStyle: "italic", opacity: 0.85 }}><TipText text={t.aside} /></p>}
           </div>
         ))}
       </div>

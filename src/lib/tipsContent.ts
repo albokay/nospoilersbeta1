@@ -25,9 +25,10 @@ export type Tip = { body: string; aside?: string };
 export const TIPS_LAUNCH_MS = Date.parse("2026-07-26T00:00:00Z");
 
 /** Desktop group room: one sticky per tip, placed by what it points at
- *  (Alborz's screenshot markup, QA round 1). Stickies 1+4 tilt left,
- *  2+3 tilt right; positions are viewport-relative anchors for the
- *  centered StickyNote transform. */
+ *  (Alborz's screenshot markup, QA round 1). QA round 2: shown ONE at a
+ *  time, stepped with < > in THIS array order (welcome → gear → chat →
+ *  deck) — all four at once was overwhelming. Positions are
+ *  viewport-relative anchors for the centered StickyNote transform. */
 export type GroupRoomTipSticky = Tip & { tilt: number; top: string; left: string };
 export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   {
@@ -36,18 +37,18 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
     tilt: -2, top: "44%", left: "24%",
   },
   {
-    body: "Invited friends who haven't joined yet are listed in the ⚙️ — open it to see who's pending and nudge the ones you invited.",
+    body: "Invited friends who haven't joined yet are listed in the ⚙️ — open it to see who's pending, nudge friends who need reminders, and do other group room maintenance.",
     tilt: 2, top: "14%", left: "54%",
-  },
-  {
-    body: "“How We Watch TV” is just a conversation start for you and your friends. It grows as you all answer — you'll get more questions periodically.",
-    aside: "(Missing any answer in your column? Open the grid and tap the pencil to fill them in.)",
-    tilt: 2, top: "80%", left: "71%",
   },
   {
     body: "Use this 💬 button to chat about what you want to watch.",
     aside: "(Careful, the chat box isn't spoiler-gated!)",
     tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))",
+  },
+  {
+    body: "“How We Watch TV” is a conversation starter for you and your friends. It grows as you all answer — you'll get more questions periodically.",
+    aside: "(Missing answers in your column? Open the grid and tap the pencil to fill them in.)",
+    tilt: 2, top: "80%", left: "71%",
   },
 ];
 
