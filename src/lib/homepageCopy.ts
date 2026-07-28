@@ -1,5 +1,5 @@
 import type { ElementType } from "react";
-import { UsersRound, ListChecks, Road, Eye, MessageSquareText, ShieldCheck } from "lucide-react";
+import { UsersRound, ListChecks, Road, MessageSquareText, ShieldCheck } from "lucide-react";
 
 // ── Homepage copy — single source of truth ──────────────────────────────
 //
@@ -25,11 +25,12 @@ export const HERO_EMPHASIS = "Not on Sidebar.";
 
 export const HOW_IT_WORKS_TITLE = "Here’s how it works:";
 
+// QA 2026-07-26: the old #4 ("Everyone logs how far they've watched…", Eye
+// icon) was dropped and the rest renumber up — five steps now.
 export const HOW_IT_WORKS_STEPS: { Icon: ElementType; text: string }[] = [
   { Icon: UsersRound,        text: "Start a group with the friends you love talking to." },
-  { Icon: ListChecks,        text: "Each friend lists what they’re watching or wants to watch." },
+  { Icon: ListChecks,        text: "Each friend lists what they would like to watch together." },
   { Icon: Road,              text: "Decide what you want to watch together. Or binge ahead… your writing will become breadcrumbs for your friends as they catch up." },
-  { Icon: Eye,               text: "Everyone logs how far they’ve watched, and keeps it current as they go." },
   { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers. Write as if everyone’s caught up to exactly where you are." },
   { Icon: ShieldCheck,       text: "Sidebar filters every room to each person’s progress. Nothing you read is ever ahead of where you are." },
 ];

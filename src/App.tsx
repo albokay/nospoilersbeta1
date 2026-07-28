@@ -1357,7 +1357,8 @@ function AppShell() {
                 {HOW_IT_WORKS_TITLE}
               </p>
 
-              {/* Feature grid — 6 steps, all white-filled with green text/icons */}
+              {/* Feature grid — the how-it-works steps, cream-filled with
+                  green text/icons; an odd count centers its last box. */}
               {(() => {
                 // Copy + icons come from the shared homepageCopy.ts source so
                 // the mobile narrative renders the identical words.
@@ -1382,6 +1383,11 @@ function AppShell() {
                         alignItems: "center",
                         gap: isMobile ? 14 : 8,
                         background: "rgba(253,248,236,0.92)",
+                        // Odd count (QA 2026-07-26): the last box spans the
+                        // row, centered, at one column's width.
+                        ...(!isMobile && idx === items.length - 1 && items.length % 2 === 1
+                          ? { gridColumn: "1 / -1", width: "calc(50% - 4px)", justifySelf: "center", boxSizing: "border-box" }
+                          : {}),
                       }}>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
                           <span style={{ fontSize: 16, fontWeight: 800, color: "var(--dos-bg)", lineHeight: 1 }}>

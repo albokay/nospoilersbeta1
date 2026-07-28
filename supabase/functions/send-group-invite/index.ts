@@ -199,10 +199,10 @@ serve(async (req) => {
     // sentence; tagline removed; CTA = "Join in →". Fine print unchanged.
     const headlineHtml = ep4 === null
       ? `📺 <strong>${escapeHtml(senderName)}</strong> wants to watch shows with you on Sidebar.`
-      : `📺 <strong>${escapeHtml(senderName)}</strong> thinks that &ldquo;just wait for episode 4&rdquo; when discussing TV ${ep4 ? "counts as a spoiler" : "is not a spoiler"}.`;
+      : `📺 <strong>${escapeHtml(senderName)}</strong> thinks that &ldquo;just wait till you see episode 4&rdquo; when discussing TV ${ep4 ? "counts as a spoiler" : "is not a spoiler"}.`;
     const headlineText = ep4 === null
       ? `${senderName} wants to watch shows with you on Sidebar.`
-      : `${senderName} thinks that "just wait for episode 4" when discussing TV ${ep4 ? "counts as a spoiler" : "is not a spoiler"}.`;
+      : `${senderName} thinks that "just wait till you see episode 4" when discussing TV ${ep4 ? "counts as a spoiler" : "is not a spoiler"}.`;
     const doYouHtml = ep4 === null ? "" : `\n  <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;font-weight:700">Do you?</p>`;
     const doYouText = ep4 === null ? "" : `\n\nDo you?`;
 
@@ -239,7 +239,7 @@ serve(async (req) => {
     ${headlineHtml}
   </h1>${doYouHtml}
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    Sidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.
+    Sidebar lets friends have ongoing, spoiler-safe conversations about the TV shows they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.
   </p>${ctaHtml}${finePrintHtml}
 </div>
 </body>
@@ -247,7 +247,7 @@ serve(async (req) => {
 
     const text = isNudge
       ? `${nudgeMessage}\n\nJoin in: ${inviteUrl}\n\n${finePrintText}`
-      : `${headlineText}${doYouText}\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.\n\nJoin in: ${inviteUrl}\n\n${finePrintText}`;
+      : `${headlineText}${doYouText}\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV shows they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.\n\nJoin in: ${inviteUrl}\n\n${finePrintText}`;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",

@@ -2303,11 +2303,12 @@ function GroupClusters({
           <button
             key={group.id}
             style={clusterBtn}
-            // Native title would compete with the new-activity tooltip; drop it when a dot is up.
-            title={notif ? undefined : "open group"}
+            // No native title — it collided with the cursor tooltips (QA
+            // round 5); "open group" rides the same onTip system instead,
+            // and the pending-avatar tips stopPropagation over it.
             onClick={() => onEnter(group.id)}
-            onMouseMove={notif ? (e) => onTip({ text: notif, wrap: true, x: e.clientX, y: e.clientY }) : undefined}
-            onMouseLeave={notif ? () => onTip(null) : undefined}
+            onMouseMove={(e) => onTip({ text: notif ?? "open group", wrap: !!notif, x: e.clientX, y: e.clientY })}
+            onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={avatars} />
             <div style={clusterName}>
