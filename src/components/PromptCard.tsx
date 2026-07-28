@@ -28,7 +28,7 @@ export default function PromptCard({
         style={{
           position: "absolute", top: 10, right: 10,
           background: "transparent", border: "none", cursor: "pointer",
-          color: "var(--canon-business,#8daaba)", padding: 4, display: "flex", lineHeight: 1,
+          color: "var(--canon-cream,#fef8ea)", padding: 4, display: "flex", lineHeight: 1,
         }}
       >
         <X size={16} />

@@ -954,30 +954,23 @@ body.public-context .prompt-ref { color: #8a6420; }
   margin-bottom: 12px;
 }
 
-/* Buttons inside the prompt card */
+/* Buttons inside the prompt card — cream fill, sky text (QA: the business
+   outline read illegibly on the sky paper). No hover styles by design. */
 .prompt-card-btn {
-  background: transparent;
-  border: 1.5px solid var(--canon-business,#8daaba);
+  background: var(--canon-cream,#fef8ea);
+  border: 1.5px solid var(--canon-cream,#fef8ea);
   border-radius: 9999px;
   padding: 5px 12px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  color: var(--canon-business,#8daaba);
+  color: var(--canon-friend,#adc8d7);
   font-family: inherit;
-  transition: background 120ms;
-}
-.prompt-card-btn:hover {
-  background: rgba(141,170,186,0.18);
 }
 .prompt-card-btn--use {
   background: var(--canon-identity,#355eb8);
   color: var(--canon-cream,#fef8ea);
   border-color: var(--canon-identity,#355eb8);
-}
-.prompt-card-btn--use:hover {
-  background: #1a44a8;
-  border-color: #1a44a8;
 }
 
 /* ── Prompt trigger button (inside compose / response area) ─────────────── */
