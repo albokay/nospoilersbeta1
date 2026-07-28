@@ -41,27 +41,25 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
     tilt: 2, top: "14%", left: "54%",
   },
   {
-    body: "Use this 💬 button to chat about what you want to watch.",
-    aside: "(Careful, the chat box isn't spoiler-gated!)",
-    tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))",
-  },
-  {
     body: "“How We Watch TV” is a conversation starter for you and your friends. It grows as you all answer — you'll get more questions periodically.",
     aside: "(Missing answers in your column? Open the grid and tap the pencil to fill them in.)",
     tilt: 2, top: "80%", left: "71%",
   },
+  // Chat is LAST (QA round 3) — it doubles as the send-off.
+  {
+    body: "You can use this 💬 button to discuss what you want to watch with your friends.\n\nAnd…that's it! Welcome to Sidebar!",
+    aside: "(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)",
+    tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))",
+  },
 ];
 
-export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
+export function tipsFor(page: TipsPage, _idiom: "desktop" | "mobile"): Tip[] {
   if (page === "dashboard") {
+    // QA round 3 copy (same on both platforms).
     return [
-      {
-        body: idiom === "desktop"
-          ? "Your watch groups live here. Click a cluster to go inside."
-          : "Your watch groups live here. Tap a group to go inside.",
-      },
-      { body: "Yellow circles are invited friends who haven't joined yet. Sidebar has emailed them their invite — a nudge from the group's ⚙️ can remind them." },
-      { body: "While you wait for friends to join, keep watching and writing. Everything you write will be waiting for them the moment they catch up." },
+      { body: "This is your home dashboard. When you have more than one friend group, this is where you access them." },
+      { body: "Yellow circles represent invited friends who haven't joined yet. Sidebar has emailed them their invite and if you're getting impatient, you can nudge them again from inside the group." },
+      { body: "While you wait for friends to join, you can still go inside to add shows or start writing. Everything you write will be waiting for them the moment they catch up." },
     ];
   }
   return GROUP_ROOM_TIPS.map(({ body, aside }) => ({ body, aside }));
@@ -82,7 +80,12 @@ export function tipsDefaultOpen(page: TipsPage, createdAtIso: string | null | un
   return new Date(createdAtIso).getTime() >= TIPS_LAUNCH_MS;
 }
 
-/** The show room's zero-progress pointer (copy locked by Alborz). */
-export const ZERO_PROGRESS_TIP =
-  "When you're caught up, update how far you've watched to unlock what your friend(s) wrote.";
-export const ZERO_TIP_KEY = "ns_tip_zeroprog";
+/** The show room's progress-picker sticky (QA round 3 — replaced the
+ *  zero-progress ticket; shows on first room entrance regardless of
+ *  progress, until X'd). The desktop sticky leads with a ← icon pointing
+ *  at the picker (rendered by RoomProgressTip, not part of the string). */
+export const ROOM_PROGRESS_TIP: Tip = {
+  body: "This progress picker is the most important part of this room. Every time you enter the show room, make sure this matches your watch progress so that you can read any new writing your friends left you.",
+  aside: "(And so that you don't accidentally spoil them with your own writing!)",
+};
+export const ROOM_TIP_KEY = "ns_tip_room_progress";

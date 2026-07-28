@@ -21,7 +21,9 @@ import { tipsFor, GROUP_ROOM_TIPS, type Tip, type TipsPage } from "../lib/tipsCo
 function TipBody({ tip, first = true }: { tip: Tip; first?: boolean }) {
   return (
     <>
-      <p style={{ margin: first ? 0 : "10px 0 0" }}><TipText text={tip.body} /></p>
+      {tip.body.split("\n\n").map((p, i) => (
+        <p key={i} style={{ margin: first && i === 0 ? 0 : "10px 0 0" }}><TipText text={p} /></p>
+      ))}
       {tip.aside && (
         <p style={{ margin: "8px 0 0", fontStyle: "italic", opacity: 0.85 }}><TipText text={tip.aside} /></p>
       )}
@@ -60,14 +62,16 @@ export default function TipsNote({ page, onDismiss }: {
         ariaLabel="Tips"
         ignoreViewportGate
         animateEntrance={!stepped}
+        entranceDelayMs={0}
         style={{ top: t.top, left: t.left }}
       >
         <TipBody tip={t} />
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 10 }}>
           <button aria-label="previous tip" disabled={atStart} onClick={() => step(-1)}
             style={{ ...stepBtn, opacity: atStart ? 0.3 : 1, cursor: atStart ? "default" : "pointer" }}>
             <ChevronLeft size={18} />
           </button>
+          <span style={{ opacity: 0.3, fontSize: 12, fontWeight: 700 }}>{idx + 1}/{GROUP_ROOM_TIPS.length}</span>
           <button aria-label="next tip" disabled={atEnd} onClick={() => step(1)}
             style={{ ...stepBtn, opacity: atEnd ? 0.3 : 1, cursor: atEnd ? "default" : "pointer" }}>
             <ChevronRight size={18} />
@@ -85,7 +89,10 @@ export default function TipsNote({ page, onDismiss }: {
       onDismiss={onDismiss}
       ariaLabel="Tips"
       ignoreViewportGate
-      style={{ top: 210, left: "min(calc(75vw + 180px), calc(100vw - 250px))" }}
+      entranceDelayMs={0}
+      // Adjacent to the avatar clusters (QA round 3) — just right of the
+      // centered cluster row, ~1/3 down where the clusters rest.
+      style={{ top: "36%", left: "min(calc(50% + 340px), calc(100vw - 180px))" }}
     >
       {tips.map((t, i) => <TipBody key={i} tip={t} first={i === 0} />)}
     </StickyNote>

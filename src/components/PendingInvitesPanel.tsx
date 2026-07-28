@@ -1,18 +1,22 @@
 /**
- * PendingInvitesPanel — the group-room gear's "Pending invites" section
- * (pending-invites changeset CP2). Shared by both platforms; the parent
- * gear (desktop yellowCard / mobile sheet) provides the shell + the invite
- * list and re-fetches via onRefresh after an action.
+ * PendingInvitesPanel — pending-invite rows, rendered INSIDE the contact-
+ * list card (help-system QA round 3 — the separate "Pending invites:" box
+ * is gone; pending friends appear as cream field rows in the contacts
+ * list, matching the rename inputs).
  *
- * Per invite: who (typed name, email beneath) · age ("invited 3 days ago")
- * · NUDGE (reveals an editable prefilled textarea — hidden by default so a
- * multi-invite room isn't a wall of boxes; sending emails the inviter's
- * text and resets the invite's silence clock + renews the link) · RESCIND
- * (one inline confirm — it kills the invitee's link).
+ * Per pending friend: a field row with their name. Right side: the
+ * viewer's OWN invites get in-field NUDGE / RESCIND buttons (accent
+ * outline, cream fill, accent text; clicking expands below the field);
+ * co-members' invites get an italic "(invite pending)". No invite-age
+ * shown (QA round 3 dropped it; `inviteAgePhrase` stays exported for the
+ * cluster-avatar tooltips). Pending names are display-only for now —
+ * per-viewer renaming of a not-yet-joined friend needs new storage
+ * (flagged to Alborz).
  *
- * Actions are ALWAYS available; the 3-day staleness threshold drives only
- * the signal layer (the gear dot + the encouragement line at the top of
- * this panel + the desktop tooltip).
+ * Nudge = same-channel email with editable prefilled text (resets the
+ * invite's silence clock + renews the link). Rescind = one inline confirm,
+ * kills the link. The 3-day staleness threshold drives only the signal
+ * layer (gear dot + tooltip + the encouragement line at the top).
  */
 import React, { useState } from "react";
 import {
@@ -33,8 +37,8 @@ export function staleInviteLine(n: number): string {
   return n === 1 ? "1 friend hasn't joined yet." : `${n} friends haven't joined yet.`;
 }
 
-/** "today" / "yesterday" / "N days ago" — shared with the cluster-avatar
- *  tooltips (help-system arc CP2). */
+/** "today" / "yesterday" / "N days ago" — used by the cluster-avatar
+ *  tooltips (the panel itself no longer shows invite age). */
 export function inviteAgePhrase(createdAt: number): string {
   const days = Math.floor((Date.now() - createdAt) / 86400000);
   if (days <= 0) return "today";
@@ -42,12 +46,8 @@ export function inviteAgePhrase(createdAt: number): string {
   return `${days} days ago`;
 }
 
-function ageLine(createdAt: number): string {
-  return `invited ${inviteAgePhrase(createdAt)}`;
-}
-
 /** A co-member's pending invite, display-only (no token → no actions; who
- *  invited them is deliberately not shown — QA round 1). */
+ *  invited them is deliberately not shown). */
 export type OtherPendingInvite = { name: string; createdAt: number | null };
 
 function inviteeLabel(inv: MyPendingInvite): string {
@@ -56,8 +56,6 @@ function inviteeLabel(inv: MyPendingInvite): string {
 
 export default function PendingInvitesPanel({ invites, others = [], onRefresh }: {
   invites: MyPendingInvite[];
-  /** Co-members' pending invites (help-system arc CP2) — status only, no
-   *  nudge/rescind (those need the creator's own token-bearing read). */
   others?: OtherPendingInvite[];
   onRefresh: () => void;
 }) {
@@ -115,88 +113,90 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
   return (
     <div>
       {staleCount > 0 && (
-        <div style={{ color: CANON.cream, fontSize: 12, fontWeight: 700, lineHeight: 1.5, marginBottom: 12 }}>
+        <div style={{ color: CANON.cream, fontSize: 12, fontWeight: 700, lineHeight: 1.5, margin: "4px 0 10px" }}>
           {preventLastWordOrphan(`${staleInviteLine(staleCount)} A nudge might be all they need.`)}
         </div>
       )}
-      {/* Grid of info (QA round 1): aligned columns — who · when · actions
-          (own invites) or status (co-members' invites). Nudge/rescind
-          expansions span the full row beneath. */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto auto", columnGap: 12, rowGap: 12, alignItems: "baseline" }}>
-        {invites.map((inv) => (
-          <React.Fragment key={inv.token}>
-            <div style={{ minWidth: 0 }}>
-              <span style={{ color: CANON.cream, fontSize: 13, fontWeight: 700 }}>{inviteeLabel(inv)}</span>
-              {inv.name && (
-                <div style={{ color: CANON.cream, fontSize: 11, opacity: 0.75, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.email}</div>
-              )}
-            </div>
-            <span style={ageCell}>{ageLine(inv.createdAt)}</span>
+      {invites.map((inv) => (
+        <div key={inv.token} style={{ marginBottom: 8 }}>
+          <div style={fieldRow}>
+            <span style={fieldName}>{inviteeLabel(inv)}</span>
             {sentFor === inv.token ? (
-              <span style={{ color: CANON.cream, fontSize: 12, fontWeight: 700 }}>nudge sent!</span>
+              <span style={{ ...pendingNote, opacity: 0.8 }}>nudge sent!</span>
             ) : (
-              <span style={{ display: "flex", gap: 8 }}>
-                <button style={rowBtn} onClick={() => (nudgeFor === inv.token ? setNudgeFor(null) : openNudge(inv))}>nudge</button>
-                <button style={rowBtn} onClick={() => { setNudgeFor(null); setActionError(null); setRescindFor(rescindFor === inv.token ? null : inv.token); }}>rescind</button>
+              <span style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <button style={inFieldBtn} onClick={() => (nudgeFor === inv.token ? setNudgeFor(null) : openNudge(inv))}>nudge</button>
+                <button style={inFieldBtn} onClick={() => { setNudgeFor(null); setActionError(null); setRescindFor(rescindFor === inv.token ? null : inv.token); }}>rescind</button>
               </span>
             )}
+          </div>
 
-            {nudgeFor === inv.token && (
-              <div style={{ gridColumn: "1 / -1" }}>
-                <textarea
-                  value={nudgeText}
-                  onChange={(e) => setNudgeText(e.target.value)}
-                  rows={3}
-                  maxLength={500}
-                  style={nudgeBox}
-                />
-                <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 6 }}>
-                  <button style={{ ...rowBtnSolid, opacity: sending || !nudgeText.trim() ? 0.6 : 1 }} disabled={sending || !nudgeText.trim()} onClick={() => sendNudge(inv)}>
-                    {sending ? "sending…" : "send nudge"}
-                  </button>
-                  <button style={quietBtn} disabled={sending} onClick={() => setNudgeFor(null)}>cancel</button>
-                </div>
+          {nudgeFor === inv.token && (
+            <div style={{ margin: "8px 0 4px" }}>
+              <textarea
+                value={nudgeText}
+                onChange={(e) => setNudgeText(e.target.value)}
+                rows={3}
+                maxLength={500}
+                style={nudgeBox}
+              />
+              <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 6 }}>
+                <button style={{ ...rowBtnSolid, opacity: sending || !nudgeText.trim() ? 0.6 : 1 }} disabled={sending || !nudgeText.trim()} onClick={() => sendNudge(inv)}>
+                  {sending ? "sending…" : "send nudge"}
+                </button>
+                <button style={quietBtn} disabled={sending} onClick={() => setNudgeFor(null)}>cancel</button>
               </div>
-            )}
+            </div>
+          )}
 
-            {rescindFor === inv.token && (
-              <div style={{ gridColumn: "1 / -1" }}>
-                <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 6 }}>
-                  {preventLastWordOrphan("Rescind this invite? Their link will stop working.")}
-                </div>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <button style={{ ...dangerRowBtn, opacity: rescinding ? 0.6 : 1 }} disabled={rescinding} onClick={() => doRescind(inv)}>
-                    {rescinding ? "rescinding…" : "yes, rescind"}
-                  </button>
-                  <button style={quietBtn} disabled={rescinding} onClick={() => setRescindFor(null)}>cancel</button>
-                </div>
+          {rescindFor === inv.token && (
+            <div style={{ margin: "8px 0 4px" }}>
+              <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 6 }}>
+                {preventLastWordOrphan("Rescind this invite? Their link will stop working.")}
               </div>
-            )}
-          </React.Fragment>
-        ))}
-        {others.map((inv, i) => (
-          <React.Fragment key={`o${i}`}>
-            <span style={{ color: CANON.cream, fontSize: 13, fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.name || "A friend"}</span>
-            <span style={ageCell}>{inv.createdAt != null ? ageLine(inv.createdAt) : ""}</span>
-            <span style={{ color: CANON.cream, fontSize: 11, opacity: 0.75 }}>hasn&rsquo;t joined yet</span>
-          </React.Fragment>
-        ))}
-      </div>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <button style={{ ...dangerRowBtn, opacity: rescinding ? 0.6 : 1 }} disabled={rescinding} onClick={() => doRescind(inv)}>
+                  {rescinding ? "rescinding…" : "yes, rescind"}
+                </button>
+                <button style={quietBtn} disabled={rescinding} onClick={() => setRescindFor(null)}>cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+      {others.map((inv, i) => (
+        <div key={`o${i}`} style={{ ...fieldRow, marginBottom: 8 }}>
+          <span style={fieldName}>{inv.name || "A friend"}</span>
+          <span style={pendingNote}>(invite pending)</span>
+        </div>
+      ))}
       {actionError && (
-        <div style={{ color: CANON.cream, fontSize: 12, fontWeight: 700, lineHeight: 1.4 }}>{actionError}</div>
+        <div style={{ color: CANON.cream, fontSize: 12, fontWeight: 700, lineHeight: 1.4, marginTop: 6 }}>{actionError}</div>
       )}
     </div>
   );
 }
 
-// Sits on the accent-yellow gear card/sheet: cream text + cream outlines.
-const ageCell: React.CSSProperties = {
-  color: CANON.cream, fontSize: 11, opacity: 0.8, whiteSpace: "nowrap",
+// Field rows match the contact-rename inputs they sit among (cream pills).
+const fieldRow: React.CSSProperties = {
+  background: CANON.cream, borderRadius: 65, boxSizing: "border-box",
+  padding: "9px 10px 9px 18px", minHeight: 44,
+  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
 };
-const rowBtn: React.CSSProperties = {
-  border: `2px solid ${CANON.cream}`, background: "transparent", color: CANON.cream,
-  fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12,
-  padding: "5px 14px", borderRadius: 65, cursor: "pointer", flexShrink: 0,
+// Pending names are uneditable and slightly greyed (Alborz, QA round 3) —
+// they read as placeholders until the friend joins and becomes renameable.
+const fieldName: React.CSSProperties = {
+  color: CANON.dark, opacity: 0.55, fontFamily: '"Inter", sans-serif', fontSize: 14,
+  minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+};
+const pendingNote: React.CSSProperties = {
+  fontStyle: "italic", fontFamily: '"Inter", sans-serif', fontSize: 12,
+  color: CANON.dark, opacity: 0.55, whiteSpace: "nowrap", flexShrink: 0, paddingRight: 8,
+};
+const inFieldBtn: React.CSSProperties = {
+  border: `2px solid ${CANON.accent}`, background: CANON.cream, color: CANON.accent,
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12,
+  padding: "4px 12px", borderRadius: 65, cursor: "pointer", flexShrink: 0,
 };
 const rowBtnSolid: React.CSSProperties = {
   border: "none", background: CANON.identity, color: CANON.cream,

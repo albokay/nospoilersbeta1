@@ -57,6 +57,10 @@ interface StickyNoteProps {
   ignoreViewportGate?: boolean;
   /** Fade-and-rise on mount. Default true. */
   animateEntrance?: boolean;
+  /** Delay before the entrance starts. The 600ms default suits page-load
+   *  stickies (let the page paint first); click-triggered stickies (the
+   *  "?" tips) pass 0 so the animation starts immediately (QA round 3). */
+  entranceDelayMs?: number;
 }
 
 export default function StickyNote({
@@ -79,6 +83,7 @@ export default function StickyNote({
   ariaLabel,
   ignoreViewportGate = false,
   animateEntrance = true,
+  entranceDelayMs = STICKY.ENTRY_DELAY_MS,
 }: StickyNoteProps) {
   const [wide, setWide] = useState(
     () => ignoreViewportGate ||
@@ -94,9 +99,9 @@ export default function StickyNote({
   const [entered, setEntered] = useState(!animateEntrance);
   useLayoutEffect(() => {
     if (!animateEntrance) return;
-    const t = window.setTimeout(() => setEntered(true), STICKY.ENTRY_DELAY_MS);
+    const t = window.setTimeout(() => setEntered(true), entranceDelayMs);
     return () => window.clearTimeout(t);
-  }, [animateEntrance]);
+  }, [animateEntrance, entranceDelayMs]);
 
   if (!ignoreViewportGate && !wide) return null;
 

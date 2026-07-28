@@ -790,8 +790,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             {/* Bottom-sheet rule (Alborz 2026-07-03): bottom-of-screen panels
                 LEFT-justify their elements; full-screen panels center. */}
             {/* CP-C: the contacts card comes FIRST (desktop round-2 order +
-                copy) — the viewer's own names for the people here. */}
-            {others.length > 0 && (
+                copy) — the viewer's own names for the people here. QA
+                round 3: pending friends live IN the contact list (field
+                rows; the separate "Pending invites:" section is gone). */}
+            {(others.length > 0 || myInvites.length > 0 || othersPending.length > 0) && (
               <>
                 <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 4 }}>Update your contact list:</div>
                 <div style={{ color: C.cream, fontSize: 11, opacity: 0.85, marginBottom: 12, lineHeight: 1.5 }}>
@@ -808,19 +810,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                     className="m-input"
                   />
                 ))}
-                <button style={{ ...startBtn, marginTop: 4, opacity: contactsSaving ? 0.6 : 1 }} disabled={contactsSaving} onClick={saveContactNames}>
-                  {contactsSaving ? "saving…" : "save names"}
-                </button>
-                <div style={sheetDivider} />
-              </>
-            )}
-            {/* Pending invites (changeset CP2): the viewer's own unaccepted
-                invites — nudge + rescind, always available. Co-members'
-                pending invites show as status-only rows (help-system CP2). */}
-            {(myInvites.length > 0 || othersPending.length > 0) && (
-              <>
-                <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Pending invites:</div>
                 <PendingInvitesPanel invites={myInvites} others={othersPending} onRefresh={reloadMyInvites} />
+                {others.length > 0 && (
+                  <button style={{ ...startBtn, marginTop: 4, opacity: contactsSaving ? 0.6 : 1 }} disabled={contactsSaving} onClick={saveContactNames}>
+                    {contactsSaving ? "saving…" : "save names"}
+                  </button>
+                )}
                 <div style={sheetDivider} />
               </>
             )}

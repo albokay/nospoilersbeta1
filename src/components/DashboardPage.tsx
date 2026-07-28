@@ -1295,8 +1295,14 @@ export default function DashboardPage() {
           {/* CP2: the invite affordances moved into the body — dashboard gets
               the centered "Create another watch group?", the group room gets
               the centered "Add more friends to this group?". */}
-          <button style={topCircleBtn(inGroup)} title="tips" onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))}>
-            <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 18, color: inGroup ? C.midnight : CANON.cream, lineHeight: 1 }}>?</span>
+          {/* QA round 3: notes OFF → cream fill + cream outline + sky/friend
+              "?" (an invitation); notes ON → the row's standard style. */}
+          <button
+            style={{ ...topCircleBtn(inGroup), ...(tipsOpen ? {} : { background: CANON.cream, border: `2px solid ${CANON.cream}` }) }}
+            title="tips"
+            onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))}
+          >
+            <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 18, lineHeight: 1, color: tipsOpen ? (inGroup ? C.midnight : CANON.cream) : C.sky }}>?</span>
           </button>
           <button style={topCircleBtn(inGroup)} title="account" onClick={() => setShowAccount(true)}>
             <UserCog size={18} color={inGroup ? C.midnight : CANON.cream} />
@@ -1795,7 +1801,13 @@ export default function DashboardPage() {
           >
             {(() => {
               const others = (railGroups.find((r) => r.group.id === optionsFor)?.members ?? []).filter((m) => m.userId !== selfUserId);
-              if (!others.length) return null;
+              // QA round 3: pending friends live IN the contact list (the
+              // separate "Pending invites:" box is gone) — field rows with
+              // in-field nudge/rescind on the viewer's own invites.
+              const othersPending: OtherPendingInvite[] = (railGroups.find((r) => r.group.id === optionsFor)?.pendingInvites ?? [])
+                .filter((p) => p.inviterId != null && p.inviterId !== selfUserId)
+                .map((p) => ({ name: p.name, createdAt: p.createdAt }));
+              if (!others.length && myGroupInvites.length === 0 && othersPending.length === 0) return null;
               return (
                 <div style={yellowCard}>
                   <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
@@ -1813,9 +1825,12 @@ export default function DashboardPage() {
                       style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, marginBottom: 8 }}
                     />
                   ))}
-                  <button style={{ ...startBtn, marginTop: 4, opacity: contactsSaving ? 0.6 : 1 }} disabled={contactsSaving} onClick={() => saveContactNames(optionsFor)}>
-                    {contactsSaving ? "saving…" : "save names"}
-                  </button>
+                  <PendingInvitesPanel invites={myGroupInvites} others={othersPending} onRefresh={reloadMyGroupInvites} />
+                  {others.length > 0 && (
+                    <button style={{ ...startBtn, marginTop: 4, opacity: contactsSaving ? 0.6 : 1 }} disabled={contactsSaving} onClick={() => saveContactNames(optionsFor)}>
+                      {contactsSaving ? "saving…" : "save names"}
+                    </button>
+                  )}
                 </div>
               );
             })()}
@@ -1825,23 +1840,9 @@ export default function DashboardPage() {
               <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight }} />
               <button style={{ ...startBtn, marginTop: 12 }} onClick={() => doRename(optionsFor)}>confirm name</button>
             </div>
-            {/* Pending invites (changeset CP2): the viewer's own unaccepted
-                invites for this group — nudge + rescind, always available.
-                Co-members' pending invites show as status-only rows; who
-                invited them is deliberately NOT shown (QA round 1). */}
-            {(() => {
-              const othersPending: OtherPendingInvite[] = (railGroups.find((r) => r.group.id === optionsFor)?.pendingInvites ?? [])
-                .filter((p) => p.inviterId != null && p.inviterId !== selfUserId)
-                .map((p) => ({ name: p.name, createdAt: p.createdAt }));
-              if (myGroupInvites.length === 0 && othersPending.length === 0) return null;
-              return (
-                <div style={yellowCard}>
-                  <div style={{ ...yellowTitle, marginBottom: 12 }}>Pending invites:</div>
-                  <PendingInvitesPanel invites={myGroupInvites} others={othersPending} onRefresh={reloadMyGroupInvites} />
-                </div>
-              );
-            })()}
-            <div style={yellowCard}>
+            {/* QA round 3: leave sits under Rename (column 2) now the
+                pending box is dissolved into the contact list. */}
+            <div style={{ ...yellowCard, gridColumn: 2 }}>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this group?</div>
               <button style={dangerBtn} onClick={() => doLeave(optionsFor)}>yes, leave</button>
               <div style={yellowDivider} />

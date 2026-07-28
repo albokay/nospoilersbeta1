@@ -36,7 +36,7 @@ import SidebarLogo from "./SidebarLogo";
 import FeedbackWidget from "./FeedbackWidget";
 import DeckWave from "./deck/DeckWave";
 import TSPDemoModal from "./TSPDemoModal";
-import ZeroProgressTip from "./ZeroProgressTip";
+import RoomProgressTip from "./RoomProgressTip";
 import LoadingDots from "./LoadingDots";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
@@ -678,10 +678,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               )}
             </div>
 
-            {/* Help-system arc CP4: the zero-progress pointer — sits with
-                the writing it unlocks rather than floating as chrome. */}
-            {tab === "friend" && (effectiveProgress(progressForShow)?.s ?? 1) === 0 && <ZeroProgressTip />}
-
             {tab === "friend" ? (
               feedEntries.length === 0 ? (
                 <div style={{ maxWidth: 420 }}>
@@ -861,6 +857,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           user is (once per session; self-skipping when nothing is owed). */}
       {user && <DeckWave wave="drip" heading="none" idiom="desktop" onComplete={() => {}} />}
 
+      {/* Help-system QA round 3: the progress-picker sticky — right of the
+          dropdown, ← pointing at it; first-entrance, X-able, no toggle. */}
+      {tab === "friend" && !privateOnly && <RoomProgressTip idiom="desktop" />}
+
       {/* Help-system arc CP3 — the guided sample-room tour, re-entry
           context (the header's "how does this room work?" button). */}
       {tourOpen && <TSPDemoModal reentry onClose={() => setTourOpen(false)} />}
@@ -894,11 +894,12 @@ function RoomTab({ label, active, bg, onClick }: { label: string; active: boolea
 }
 
 const page: React.CSSProperties = { position: "fixed", inset: 0, overflowY: "auto", fontFamily: '"Inter", system-ui, sans-serif' };
-// The tour button — cream stadium outline, in-column (scrolls with the feed).
+// The tour button — cream fill, sky text in Header-1 (Lora bold) weight,
+// in-column (scrolls with the feed). QA round 3 styling.
 const tourBtn: React.CSSProperties = {
-  background: "transparent", border: `2px solid ${C.cream}`, color: C.cream,
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13,
-  padding: "8px 16px", borderRadius: 65, cursor: "pointer",
+  background: C.cream, border: `2px solid ${C.cream}`, color: C.sky,
+  fontFamily: LORA, fontWeight: 700, fontSize: 16,
+  padding: "10px 20px", borderRadius: 65, cursor: "pointer",
 };
 
 const backTab: React.CSSProperties = {

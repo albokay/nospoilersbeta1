@@ -16,7 +16,7 @@ import { effectiveProgress } from "../lib/utils";
 import { linearIndex } from "../lib/groupPills";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
-import ZeroProgressTip from "../components/ZeroProgressTip";
+import RoomProgressTip from "../components/RoomProgressTip";
 import LoadingDots from "../components/LoadingDots";
 import type { V2RoomMapMember } from "../components/v2/V2RoomMap";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
@@ -614,9 +614,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           </div>
         </div>
 
-        {/* Help-system arc CP4: the zero-progress pointer — sits with the
-            writing it unlocks (desktop parity). */}
-        {tab === "friend" && (effectiveProgress(progressForShow)?.s ?? 1) === 0 && <ZeroProgressTip />}
+        {/* Help-system QA round 3: the progress-picker pointer — inline
+            card (mobile has no sticky layer), ↑ at the picker above;
+            first-entrance, X-able, any progress. */}
+        {tab === "friend" && <RoomProgressTip idiom="mobile" />}
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
         {tab === "friend" ? (
