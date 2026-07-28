@@ -36,7 +36,7 @@ export default function RoomProgressTip({ idiom }: { idiom: "desktop" | "mobile"
         onDismiss={dismiss}
         ariaLabel="Progress picker tip"
         ignoreViewportGate
-        style={{ top: 230, left: "min(calc(50% + 330px), calc(100vw - 175px))" }}
+        style={{ top: 222, left: "min(calc(50% + 330px), calc(100vw - 175px))" }}
       >
         <p style={{ margin: 0 }}>
           <ArrowLeft size={15} style={{ display: "inline", verticalAlign: "-3px", marginRight: 4 }} />

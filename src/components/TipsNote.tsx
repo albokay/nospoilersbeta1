@@ -22,7 +22,18 @@ function TipBody({ tip, first = true }: { tip: Tip; first?: boolean }) {
   return (
     <>
       {tip.body.split("\n\n").map((p, i) => (
-        <p key={i} style={{ margin: first && i === 0 ? 0 : "10px 0 0" }}><TipText text={p} /></p>
+        <p
+          key={i}
+          style={{
+            margin: first && i === 0 ? 0 : "10px 0 0",
+            // First paragraph clears the dismiss X (QA round 4).
+            ...(i === 0 ? { paddingRight: 16 } : {}),
+            // Parenthetical paragraphs render italic (mid-body caveats).
+            ...(p.startsWith("(") ? { fontStyle: "italic", opacity: 0.85 } : {}),
+          }}
+        >
+          <TipText text={p} />
+        </p>
       ))}
       {tip.aside && (
         <p style={{ margin: "8px 0 0", fontStyle: "italic", opacity: 0.85 }}><TipText text={tip.aside} /></p>

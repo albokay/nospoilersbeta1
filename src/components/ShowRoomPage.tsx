@@ -735,7 +735,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 fills (moved from header chrome per Alborz). The ONLY
                 re-askable "how does this work?" on the signed-in site. */}
             {tab === "friend" && !privateOnly && (
-              <div style={{ display: "flex", justifyContent: "center", margin: "36px 0 8px" }}>
+              <div style={{ display: "flex", justifyContent: "center", margin: "116px 0 8px" }}>
                 <button style={tourBtn} onClick={() => setTourOpen(true)}>how does this room work?</button>
               </div>
             )}

@@ -72,7 +72,11 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
         <div style={{ width: 44, height: 4, borderRadius: 2, background: "rgba(26,58,74,0.25)", margin: "0 auto 14px" }} />
         {tips.map((t, i) => (
           <div key={i} style={{ marginTop: i === 0 ? 0 : 14 }}>
-            <p style={tipText}><TipText text={t.body} /></p>
+            {t.body.split("\n\n").map((p, j) => (
+              <p key={j} style={{ ...tipText, ...(j > 0 ? { marginTop: 5 } : {}), ...(p.startsWith("(") ? { fontStyle: "italic", opacity: 0.85 } : {}) }}>
+                <TipText text={p} />
+              </p>
+            ))}
             {t.aside && <p style={{ ...tipText, marginTop: 5, fontStyle: "italic", opacity: 0.85 }}><TipText text={t.aside} /></p>}
           </div>
         ))}

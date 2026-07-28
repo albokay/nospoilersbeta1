@@ -45,10 +45,10 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
     aside: "(Missing answers in your column? Open the grid and tap the pencil to fill them in.)",
     tilt: 2, top: "80%", left: "71%",
   },
-  // Chat is LAST (QA round 3) — it doubles as the send-off.
+  // Chat is LAST (QA rounds 3–4) — it doubles as the send-off. The caveat
+  // sits mid-body ("("-paragraphs render italic); no trailing aside.
   {
-    body: "You can use this 💬 button to discuss what you want to watch with your friends.\n\nAnd…that's it! Welcome to Sidebar!",
-    aside: "(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)",
+    body: "You can use this 💬 button to discuss what you want to watch with your friends.\n\n(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)\n\nSidebar is for you and your friends! If they're not here yet, nudge them so you can all get going!",
     tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))",
   },
 ];

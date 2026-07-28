@@ -1302,7 +1302,9 @@ export default function DashboardPage() {
             title="tips"
             onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))}
           >
-            <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 18, lineHeight: 1, color: tipsOpen ? (inGroup ? C.midnight : CANON.cream) : C.sky }}>?</span>
+            {/* Off-state mark: sky in the group room, PERSONAL green on the
+                dashboard (QA round 4). */}
+            <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 18, lineHeight: 1, color: tipsOpen ? (inGroup ? C.midnight : CANON.cream) : (inGroup ? C.sky : C.green) }}>?</span>
           </button>
           <button style={topCircleBtn(inGroup)} title="account" onClick={() => setShowAccount(true)}>
             <UserCog size={18} color={inGroup ? C.midnight : CANON.cream} />
@@ -1787,18 +1789,22 @@ export default function DashboardPage() {
 
       {/* CP5b: group options (gear) — rename + leave, anchored near the gear */}
       {optionsFor && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(26,58,74,0.25)" }} onClick={() => setOptionsFor(null)}>
+        // zIndex above the tip stickies (60) — the gear is clickable while a
+        // note is up, and its panel must open ON TOP of it (QA round 4).
+        <div style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(26,58,74,0.25)" }} onClick={() => setOptionsFor(null)}>
           <div
             onClick={(e) => e.stopPropagation()}
-            // QA round 1: four cards → 2×2 grid (a single column got
-            // unwieldy). Row 1: contacts + rename; row 2: pending + leave.
+            // QA rounds 1+4: two independent 360px columns (contacts left;
+            // rename with leave pressed right under it on the right) — a
+            // grid tied leave's row to the tall contacts card, so flex.
             style={{
               position: "fixed",
               top: optionsAnchor?.y ?? 80,
               left: Math.min(optionsAnchor?.x ?? 28, (typeof window !== "undefined" ? window.innerWidth : 1024) - 760),
-              display: "grid", gridTemplateColumns: "360px 360px", gap: 16, alignItems: "start",
+              display: "flex", gap: 16, alignItems: "flex-start",
             }}
           >
+            <div style={gearCol}>
             {(() => {
               const others = (railGroups.find((r) => r.group.id === optionsFor)?.members ?? []).filter((m) => m.userId !== selfUserId);
               // QA round 3: pending friends live IN the contact list (the
@@ -1834,19 +1840,22 @@ export default function DashboardPage() {
                 </div>
               );
             })()}
+            </div>
+            {/* Right column: rename with leave pressed right under it
+                (QA round 4). */}
+            <div style={gearCol}>
             <div style={yellowCard}>
               <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
               <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight }} />
               <button style={{ ...startBtn, marginTop: 12 }} onClick={() => doRename(optionsFor)}>confirm name</button>
             </div>
-            {/* QA round 3: leave sits under Rename (column 2) now the
-                pending box is dissolved into the contact list. */}
-            <div style={{ ...yellowCard, gridColumn: 2 }}>
+            <div style={yellowCard}>
               <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this group?</div>
               <button style={dangerBtn} onClick={() => doLeave(optionsFor)}>yes, leave</button>
               <div style={yellowDivider} />
               <div style={{ color: CANON.cream, fontSize: 12, opacity: 0.9 }}>You can join again if someone sends you another invite.</div>
+            </div>
             </div>
           </div>
         </div>
@@ -2361,6 +2370,10 @@ function shelfLayout(count: number): React.CSSProperties {
 }
 const topBar: React.CSSProperties = {
   display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 28px",
+};
+// Gear-popover column: a 360px stack of yellow cards (QA round 4).
+const gearCol: React.CSSProperties = {
+  width: 360, display: "flex", flexDirection: "column", gap: 16,
 };
 const topCircleBtn = (inGroup: boolean): React.CSSProperties => ({
   width: 44, height: 44, borderRadius: "50%", background: "transparent",
