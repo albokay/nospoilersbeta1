@@ -744,35 +744,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
                   )}
                 </h2>
-                {/* Star: in the title row across both states. Read-only when
-                    the ticket is collapsed; interactive (uses expandedLikeState)
-                    when expanded. Hidden on tombstones. The like state lives
-                    in V2RoomFeed so the star doesn't move between collapsed
-                    and expanded — V2InlineThread reports the caller's
-                    likedByMe via onThreadLikeStateChange after its fetch. */}
-                {!entry.isDeleted && !entry.isInstructional && !mobileIdiom && (
-                  // TSP demo: guide entries have no star (the flag leads the
-                  // title instead). Mobile: starring is dropped entirely.
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {isExpanded && expandedLikeState ? (
-                      <LikeBadge
-                        count={expandedLikeState.count}
-                        userLiked={expandedLikeState.likedByMe}
-                        onClick={(ev) => {
-                          ev.stopPropagation();
-                          handleToggleExpandedLike();
-                        }}
-                        title={expandedLikeState.likedByMe ? "Unstar" : "Star this entry"}
-                      />
-                    ) : (
-                      <LikeBadge
-                        count={0}
-                        readOnly
-                        title="open post to vote"
-                      />
-                    )}
-                  </div>
-                )}
+                {/* Entry star RETIRED (help-system QA round 7): the surface
+                    starred entries populated is gone, so the button is too.
+                    The like plumbing (expandedLikeState etc.) stays dormant
+                    for a future revival. */}
               </div>
 
               <div

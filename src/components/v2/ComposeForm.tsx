@@ -288,11 +288,16 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   // [PROMPT: text] at cursor.
   function handlePromptBtn() {
     if (!show || !progress) return;
+    const zeroTag = tagPosition(progress);
     // Onboarding pool: ONLY the tagged batch, cycling when exhausted —
-    // never the regular pool (Alborz 2026-07-08). Empty batch (prompts not
-    // yet inserted) falls through to the normal flow below.
-    if (promptPoolTag) {
-      const pool = promptEntries.filter((p) => p.displayType === "prompt" && p.progressTags.includes(promptPoolTag));
+    // never the regular pool (Alborz 2026-07-08). QA round 7: a ZERO-
+    // progress writer gets the same treatment with the pre-watch batch
+    // ("onb-fresh" — why-this-show prompts): a not-started viewer should
+    // never draw prompts that assume they've watched. Empty batch
+    // (prompts not yet inserted) falls through to the normal flow below.
+    const poolTag = promptPoolTag ?? (zeroTag.s === 0 && zeroTag.e === 0 ? "onb-fresh" : undefined);
+    if (poolTag) {
+      const pool = promptEntries.filter((p) => p.displayType === "prompt" && p.progressTags.includes(poolTag));
       if (pool.length) {
         const fresh = pool.filter((p) => !shownPromptIds.includes(p.id));
         if (fresh.length) {
@@ -309,8 +314,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         return;
       }
     }
-    const tag = tagPosition(progress);
-    const next = getPromptSuggestion(show, { s: tag.s, e: tag.e }, shownPromptIds, promptEntries);
+    const next = getPromptSuggestion(show, { s: zeroTag.s, e: zeroTag.e }, shownPromptIds, promptEntries);
     if (next) {
       setShownPromptIds((prev) => [...prev, next.id]);
       setActivePrompt(next);

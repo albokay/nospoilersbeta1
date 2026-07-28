@@ -1292,7 +1292,11 @@ export default function DashboardPage() {
       <DashboardStyles />
 
       {/* Top bar: logo left · INVITE FRIENDS + sign-out + admin right */}
-      <div style={topBar}>
+      {/* QA round 7: while onboarding overlays are up, the top bar rides
+          ABOVE them (account gear + sign out stay clickable — the escape
+          for someone who made a mistake mid-flow; AccountModal portals at
+          max z, so it still opens on top). */}
+      <div style={{ ...topBar, ...(socialOnbActive ? { position: "relative" as const, zIndex: 1001 } : {}) }}>
         <div
           onClick={() => navigate("/dashboard")}
           style={{ cursor: "pointer" }}
@@ -1876,7 +1880,9 @@ export default function DashboardPage() {
       {chatGroupId && (() => {
         const cg = railGroups.find((r) => r.group.id === chatGroupId);
         const others = cg ? cg.members.filter((m) => m.userId !== selfUserId) : [];
-        const connected = others.length ? others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ") : "just you";
+        const connected: React.ReactNode = others.length
+          ? others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ")
+          : <em>(your friends haven&rsquo;t joined yet)</em>;
         return (
           <div style={chatPanel}>
             <div style={chatHeader}>

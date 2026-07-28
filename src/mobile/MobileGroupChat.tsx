@@ -133,7 +133,9 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
   // Given names, bare (naming arc: the "@" drops wherever a display name
   // renders; an unnamed person shows their handle).
   const others = members.filter((m) => m.userId !== selfUserId);
-  const connected = others.length ? others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ") : "just you";
+  const connected: React.ReactNode = others.length
+    ? others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ")
+    : <em>(your friends haven&rsquo;t joined yet)</em>;
 
   return (
     <div style={page}>
