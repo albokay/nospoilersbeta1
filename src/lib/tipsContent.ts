@@ -53,7 +53,7 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   },
 ];
 
-export function tipsFor(page: TipsPage, _idiom: "desktop" | "mobile"): Tip[] {
+export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
   if (page === "dashboard") {
     // QA round 3 copy (same on both platforms).
     return [
@@ -62,7 +62,13 @@ export function tipsFor(page: TipsPage, _idiom: "desktop" | "mobile"): Tip[] {
       { body: "While you wait for friends to join, you can still go inside to add shows or start writing. Everything you write will be waiting for them the moment they catch up." },
     ];
   }
-  return GROUP_ROOM_TIPS.map(({ body, aside }) => ({ body, aside }));
+  // Mobile's sheet doesn't POINT at the chat button the way the placed
+  // desktop sticky does, so "this 💬 button" reads as "the 💬 button"
+  // there (QA round 8).
+  return GROUP_ROOM_TIPS.map(({ body, aside }) => ({
+    body: idiom === "mobile" ? body.replace("use this 💬 button", "use the 💬 button") : body,
+    aside,
+  }));
 }
 
 export function tipsSeenKey(page: TipsPage): string {

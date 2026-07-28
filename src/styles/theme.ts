@@ -942,30 +942,33 @@ body.group-context .prompt-ref { color: rgba(26,58,74,0.72); }
 body.public-context .prompt-ref { color: #8a6420; }
 
 /* ── Prompt card (the floating suggestion card) ─────────────────────────── */
+/* Canon refresh (help-system QA round 8): sky paper, dark ink, business
+   outlines — the black-on-grey look was a leftover iteration. */
 .prompt-card {
+  position: relative;
   background: var(--canon-friend,#adc8d7);
   border: none;
   border-radius: 16px;
   padding: 16px 18px 14px;
-  color: #000;
+  color: var(--canon-dark,#1a3a4a);
   margin-bottom: 12px;
 }
 
 /* Buttons inside the prompt card */
 .prompt-card-btn {
   background: transparent;
-  border: 1.5px solid rgba(0,0,0,0.3);
+  border: 1.5px solid var(--canon-business,#8daaba);
   border-radius: 9999px;
   padding: 5px 12px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  color: #000;
+  color: var(--canon-business,#8daaba);
   font-family: inherit;
   transition: background 120ms;
 }
 .prompt-card-btn:hover {
-  background: rgba(0,0,0,0.08);
+  background: rgba(141,170,186,0.18);
 }
 .prompt-card-btn--use {
   background: var(--canon-identity,#355eb8);

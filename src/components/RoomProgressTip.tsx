@@ -7,11 +7,11 @@
  *
  * Desktop: a cream StickyNote to the RIGHT of the progress dropdown,
  * leading with a ← icon aligned to point at it. Mobile: the inline-card
- * idiom above the feed (no sticky layer on mobile), pointing ↑ since the
- * picker sits above.
+ * idiom, mounted ABOVE the picker row (below the roster — QA round 8),
+ * with a ↓ at its bottom right pointing at the picker beneath.
  */
 import { useState } from "react";
-import { ArrowLeft, ArrowUp, X } from "lucide-react";
+import { ArrowLeft, ArrowDown, X } from "lucide-react";
 import StickyNote from "./StickyNote";
 import { CANON } from "../styles/canon";
 import { ROOM_PROGRESS_TIP, ROOM_TIP_KEY } from "../lib/tipsContent";
@@ -53,11 +53,12 @@ export default function RoomProgressTip({ idiom }: { idiom: "desktop" | "mobile"
       padding: "12px 36px 12px 16px", marginBottom: 14,
       fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, color: CANON.dark,
     }}>
-      <p style={{ margin: 0 }}>
-        <ArrowUp size={14} style={{ display: "inline", verticalAlign: "-2px", marginRight: 4 }} />
-        {ROOM_PROGRESS_TIP.body}
-      </p>
+      <p style={{ margin: 0 }}>{ROOM_PROGRESS_TIP.body}</p>
       <p style={{ margin: "6px 0 0", fontStyle: "italic", opacity: 0.85 }}>{ROOM_PROGRESS_TIP.aside}</p>
+      {/* ↓ at the bottom right — the picker sits just beneath. */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+        <ArrowDown size={15} />
+      </div>
       <button
         aria-label="Dismiss"
         onClick={dismiss}

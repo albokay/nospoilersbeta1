@@ -573,10 +573,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
       {/* ── Chat: a right-edge tab (matches desktop; 2026-07-09) — the old
              shows/chat toggle wasn't a real toggle, just a link to chat. ── */}
-      <button style={chatTab} title="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
-        {chatNew && <span style={notifDotChat} />}
-        <MessageCircle size={24} color={C.green} />
-      </button>
+      {/* Chat moved IN-FLOW (QA round 8) — the fixed right-edge tab
+          overlapped page elements; it now renders between the shelves and
+          the action pills below. */}
 
       {/* ── Swipe-deck arc CP2 — the invitee's WAVE 2 on first entry into the
              group room (spec §12.2 step 5). Self-skipping once answered;
@@ -647,10 +646,20 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             </h1>
           )}
 
+          {/* QA round 8: the chat button, in-flow — below the shelves,
+              above the actions (was a fixed right-edge tab that overlapped
+              content). */}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: empty ? 24 : 40 }}>
+            <button style={chatPill} onClick={() => navigate(`/m/group/${groupId}/chat`)}>
+              {chatNew && <span style={notifDotChatInline} />}
+              <MessageCircle size={20} color={C.green} /> chat
+            </button>
+          </div>
+
           {/* The group room's two centered actions, set a little apart from
               the show rows above (desktop CP2 order + copy). Equal width via
               the stretch column (both sized to the wider "Add friends" label). */}
-          <div style={{ display: "flex", justifyContent: "center", marginTop: empty ? 24 : 40 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
             <div style={actionCol}>
               <button style={searchPill} onClick={() => setSearchOpen(true)}>Propose more shows?</button>
               <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
@@ -944,14 +953,17 @@ const headerMembers: React.CSSProperties = {
 };
 // Right-edge chat tab (matches desktop's chatTab): a cream tab off the right
 // of the screen at 60% height; MessageCircle green; new-chat dot on the curve.
-const chatTab: React.CSSProperties = {
-  position: "fixed", right: 0, top: "60%", background: C.cream, border: "none", cursor: "pointer",
-  borderTopLeftRadius: 48, borderBottomLeftRadius: 48, padding: "24px 20px 24px 30px",
-  display: "inline-flex", alignItems: "center", boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
+// In-flow chat pill (QA round 8 — replaced the fixed right-edge tab):
+// cream stadium, green icon + label, new-chat dot on the corner.
+const chatPill: React.CSSProperties = {
+  position: "relative", display: "inline-flex", alignItems: "center", gap: 8,
+  background: C.cream, color: C.green, border: "none", cursor: "pointer",
+  borderRadius: 65, padding: "12px 24px",
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
 };
-const notifDotChat: React.CSSProperties = {
-  position: "absolute", top: 10, left: 0, width: 16, height: 16, borderRadius: "50%",
-  background: C.blue, zIndex: 1,
+const notifDotChatInline: React.CSSProperties = {
+  position: "absolute", top: -4, right: -2, width: 14, height: 14, borderRadius: "50%",
+  background: C.blue,
 };
 const contentWrap: React.CSSProperties = { padding: "8px 16px 40px" };
 const shelfHeader: React.CSSProperties = {

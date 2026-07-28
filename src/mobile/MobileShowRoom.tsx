@@ -569,6 +569,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           </div>
         )}
 
+        {/* Help-system QA round 8: the progress-picker pointer sits ABOVE
+            the picker row (below the roster), its ↓ pointing at the picker
+            beneath; first-entrance, X-able, any progress. */}
+        {tab === "friend" && <RoomProgressTip idiom="mobile" />}
+
         {/* ── Toolbar: write · sort/filter · progress picker ── */}
         {/* Toolbar — two fixed rows so nothing wraps to a third:
             row 1: order dropdown (left) + progress (right) · row 2: write. */}
@@ -613,11 +618,6 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
           </div>
         </div>
-
-        {/* Help-system QA round 3: the progress-picker pointer — inline
-            card (mobile has no sticky layer), ↑ at the picker above;
-            first-entrance, X-able, any progress. */}
-        {tab === "friend" && <RoomProgressTip idiom="mobile" />}
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
         {tab === "friend" ? (
@@ -736,8 +736,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               <>
                 <div style={digestTitle}>Unsubscribe from email updates for this room?</div>
                 <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(true)}>unsubscribe</button>
-                <div style={digestDivider} />
-                <div style={digestSub}>You'll stop getting the daily digest for this room. You can resubscribe here anytime.</div>
+                {/* QA round 8: no divider before the explainer; one sentence
+                    per line. (The divider before "Leave…" below stays.) */}
+                <div style={{ ...digestSub, marginTop: 14 }}>
+                  You'll stop getting the daily email digest for this room.<br />
+                  You can resubscribe here anytime.
+                </div>
               </>
             )}
             {/* CP5: per-room leave lives here (the room's own gear) — mobile
