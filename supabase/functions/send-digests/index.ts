@@ -24,6 +24,12 @@
 // the recipient advanced their progress past an OLDER entry are intentionally
 // NOT included (lean v1 — no progress-history).
 //
+// Deck line (2026-07-26, swipe-deck deferred item): a digest ALSO carries one
+// line naming the recipient's groupmates who answered more "How We Watch TV"
+// questions in the window (deck_answers.created_at — first answers only,
+// grid edits don't count). It rides EXISTING digests; deck answers alone
+// never trigger an email.
+//
 // Environment variables required:
 //   SUPABASE_URL              (auto-injected)
 //   SUPABASE_SERVICE_ROLE_KEY (auto-injected)
@@ -103,7 +109,7 @@ async function sendResendEmail(
 type DigestEntry = { threadId: string; title: string; authorName: string };
 type RoomDigest = { groupId: string; roomName: string; entries: DigestEntry[]; authorNames: string[] };
 
-function buildDigestHtml(rooms: RoomDigest[], baseUrl: string): string {
+function buildDigestHtml(rooms: RoomDigest[], baseUrl: string, deckNames: string[] = []): string {
   const sections = rooms
     .map((r) => {
       const multiAuthor = r.authorNames.length > 1;
@@ -138,7 +144,8 @@ function buildDigestHtml(rooms: RoomDigest[], baseUrl: string): string {
   <h1 style="margin:0 0 28px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
     What your friends wrote today.
   </h1>
-  ${sections}
+  ${sections}${deckNames.length ? `
+  <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(deckNames))} answered more &ldquo;How We Watch TV&rdquo; questions.</p>` : ""}
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
     To stop getting emails about your friend rooms, open a room and click the &#9881;&#65039; next to its name, then choose &ldquo;unsubscribe.&rdquo;
   </p>
@@ -147,7 +154,7 @@ function buildDigestHtml(rooms: RoomDigest[], baseUrl: string): string {
 </html>`;
 }
 
-function buildDigestText(rooms: RoomDigest[], baseUrl: string): string {
+function buildDigestText(rooms: RoomDigest[], baseUrl: string, deckNames: string[] = []): string {
   const sections = rooms
     .map((r) => {
       const multiAuthor = r.authorNames.length > 1;
@@ -167,9 +174,12 @@ function buildDigestText(rooms: RoomDigest[], baseUrl: string): string {
     })
     .join("\n\n");
 
+  const deckLine = deckNames.length
+    ? `\n\n${formatNames(deckNames)} answered more "How We Watch TV" questions.`
+    : "";
   return `What your friends wrote today.
 
-${sections}
+${sections}${deckLine}
 
 To stop getting emails about your friend rooms, open a room and click the gear icon next to its name, then choose "unsubscribe."`;
 }
@@ -312,6 +322,56 @@ serve(async (req) => {
     }
   }
 
+  // 6c. Deck line (2026-07-26): per recipient, groupmates who ANSWERED more
+  //     deck questions in the window (created_at — new answers only). Names
+  //     resolve like entry authors: recipient's contact name → @handle;
+  //     seed profiles are dropped. Every read is tolerant — a failure just
+  //     means no deck line.
+  const deckNamesByRecipient = new Map<string, string[]>();
+  try {
+    const { data: deckRows } = await admin
+      .from("deck_answers")
+      .select("user_id, created_at")
+      .gte("created_at", since);
+    const answererIds = [...new Set((deckRows ?? []).map((r: any) => r.user_id as string))];
+    if (answererIds.length) {
+      const ids = [...new Set([...recipientIds, ...answererIds])];
+      const { data: pgm } = await admin
+        .from("people_group_members")
+        .select("group_id, user_id")
+        .in("user_id", ids);
+      const groupsOf = new Map<string, Set<string>>();
+      for (const m of pgm ?? []) {
+        if (!groupsOf.has(m.user_id)) groupsOf.set(m.user_id, new Set());
+        groupsOf.get(m.user_id)!.add(m.group_id);
+      }
+      const { data: ansProfs } = await admin
+        .from("profiles")
+        .select("id, username, is_seed")
+        .in("id", answererIds);
+      const ansUsername = new Map<string, string>(
+        (ansProfs ?? []).filter((p: any) => !p.is_seed).map((p: any) => [p.id, p.username]),
+      );
+      for (const rid of recipientIds) {
+        const rGroups = groupsOf.get(rid);
+        if (!rGroups || rGroups.size === 0) continue;
+        const names: string[] = [];
+        for (const aid of answererIds) {
+          if (aid === rid) continue;
+          const uname = ansUsername.get(aid);
+          if (!uname) continue;
+          const aGroups = groupsOf.get(aid);
+          if (!aGroups || ![...aGroups].some((g) => rGroups.has(g))) continue;
+          const given = contactByOwner.get(rid)?.get(aid);
+          names.push(given || `@${uname}`);
+        }
+        if (names.length) deckNamesByRecipient.set(rid, [...new Set(names)]);
+      }
+    }
+  } catch (err) {
+    console.warn("deck line skipped:", err);
+  }
+
   // 7. Build + send one email per recipient.
   let sent = 0;
   const report: any[] = [];
@@ -342,16 +402,17 @@ serve(async (req) => {
       })
       .sort((a, b) => a.roomName.localeCompare(b.roomName));
 
+    const deckNames = deckNamesByRecipient.get(userId) ?? [];
     if (dryRun) {
-      report.push({ userId, email, rooms: roomDigests.length, entries: roomDigests.reduce((n, r) => n + r.entries.length, 0), dryRun: true });
+      report.push({ userId, email, rooms: roomDigests.length, entries: roomDigests.reduce((n, r) => n + r.entries.length, 0), deckNames: deckNames.length, dryRun: true });
       continue;
     }
     const ok = await sendResendEmail(
       resendKey,
       email,
       "What your friends wrote today.",
-      buildDigestHtml(roomDigests, baseUrl),
-      buildDigestText(roomDigests, baseUrl),
+      buildDigestHtml(roomDigests, baseUrl, deckNames),
+      buildDigestText(roomDigests, baseUrl, deckNames),
     );
     if (ok) sent++;
     report.push({ userId, email, rooms: roomDigests.length, sent: ok });

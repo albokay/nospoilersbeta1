@@ -16,9 +16,14 @@
  *   (spec §7.5.8 hand-wrote one; the deck rows carry none). Pinned.
  * • Agreement counts only cards BOTH people answered (drip desync can't
  *   skew); pair/opposite lines need ≥4 cards in common to fire.
- * • Ties: renegade tie → no renegade (spec rule). Ally/opposite ties break
- *   deterministically (more cards in common, then label order) — dedicated
- *   tie copy is a spec TODO (§7.2).
+ * • Ties: renegade tie → no renegade (spec rule). Ally/opposite ties with
+ *   IDENTICAL stats (same ratio, agree, total) get dedicated tie copy
+ *   (Alborz 2026-07-26 — closes the §7.2 TODO); ties on ratio alone with
+ *   different counts still break deterministically (the copy quotes one
+ *   count, so only exact ties can share it). When there's NO spread at all
+ *   (your best and worst pairs have identical stats) the opposite line is
+ *   skipped — the same friends can't be both your soulmates and your
+ *   furthest apart.
  * • Backbone: zero hot takes + your LOWEST pairwise agreement rate is
  *   strictly the group's highest (nobody is far from you), min rate ≥ 55%.
  * • Aligned ending fires when nobody has a hot take AND every pair with
@@ -53,6 +58,14 @@ const T_PAIR_DUO_PROOF = (plural: string) => `You're the only two who ${plural}.
 const T_BACKBONE = `You're the backbone of the group. You have the most in common with everyone else in the group.`; // SPEC (§7.5.5)
 const T_OPPOSITE = (name: string, a: number, t: number) =>
   `You and ${name} are the furthest apart — ${a} of ${t}.`; // SPEC (§7.5.8)
+// Exact-tie variants (Alborz 2026-07-26): call out the tie, list everyone.
+const NUM_WORD: Record<number, string> = { 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven" };
+const T_PAIR_TIE = (names: string, count: number, n: number) =>
+  `You have ${NUM_WORD[count] ?? count} soulmates: ${names}. You agree on ${n} questions.`; // ALBORZ
+const T_OPPOSITE_TIE = (names: string, a: number, t: number) =>
+  `You're furthest apart from ${names} — you agree on ${a} of ${t} with each.`; // mirrors the soulmate tie call
+const joinLabels = (names: string[]): string =>
+  names.length <= 2 ? names.join(" and ") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 const T_SOLO = (singular: string) => `You're the only one who ${singular}.`; // SPEC (§7.2)
 const T_DUO = (name: string, plural: string) => `Only you and ${name} ${plural}.`; // SPEC (§7.2)
 const T_TRIO = (a: string, b: string, plural: string) => `Only you, ${a} and ${b} ${plural}.`; // SPEC (§7.5.3)
@@ -216,20 +229,36 @@ export function computeFindings(args: {
   }
 
   let pairCardId: string | null = null;
+  const bestSorted = [...viewerPairs].sort((x, y) => y.ratio - x.ratio || y.total - x.total || label(x.otherId).localeCompare(label(y.otherId)));
+  const best = bestSorted[0];
   if (isBackbone) {
     lines.push(T_BACKBONE);
   } else if (viewerPairs.length) {
-    const best = [...viewerPairs].sort((x, y) => y.ratio - x.ratio || y.total - x.total || label(x.otherId).localeCompare(label(y.otherId)))[0];
-    let line = T_PAIR_LINE(label(best.otherId), best.agree, best.total);
-    // The concrete shared against-the-grain answer: a card only these two said yes to.
-    const duoCard = findDuoCard(cards, byUser, memberIds, viewerId, best.otherId);
-    if (duoCard) { line += ` ${T_PAIR_DUO_PROOF(duoCard.plural)}`; pairCardId = duoCard.id; }
-    lines.push(line);
+    const tiedTop = bestSorted.filter((p) => p.ratio === best.ratio && p.agree === best.agree && p.total === best.total);
+    if (tiedTop.length > 1) {
+      lines.push(T_PAIR_TIE(joinLabels(tiedTop.map((p) => label(p.otherId))), tiedTop.length, best.agree));
+    } else {
+      let line = T_PAIR_LINE(label(best.otherId), best.agree, best.total);
+      // The concrete shared against-the-grain answer: a card only these two said yes to.
+      const duoCard = findDuoCard(cards, byUser, memberIds, viewerId, best.otherId);
+      if (duoCard) { line += ` ${T_PAIR_DUO_PROOF(duoCard.plural)}`; pairCardId = duoCard.id; }
+      lines.push(line);
+    }
   }
 
   if (viewerPairs.length >= 2 || (isBackbone && viewerPairs.length >= 1)) {
-    const worst = [...viewerPairs].sort((x, y) => x.ratio - y.ratio || y.total - x.total || label(x.otherId).localeCompare(label(y.otherId)))[0];
-    lines.push(T_OPPOSITE(label(worst.otherId), worst.agree, worst.total));
+    const worstSorted = [...viewerPairs].sort((x, y) => x.ratio - y.ratio || y.total - x.total || label(x.otherId).localeCompare(label(y.otherId)));
+    const worst = worstSorted[0];
+    // No spread → no opposite line (identical stats to the best pair would
+    // name your soulmates as your furthest apart).
+    if (worst.ratio < best.ratio) {
+      const tiedWorst = worstSorted.filter((p) => p.ratio === worst.ratio && p.agree === worst.agree && p.total === worst.total);
+      if (tiedWorst.length > 1) {
+        lines.push(T_OPPOSITE_TIE(joinLabels(tiedWorst.map((p) => label(p.otherId))), worst.agree, worst.total));
+      } else {
+        lines.push(T_OPPOSITE(label(worst.otherId), worst.agree, worst.total));
+      }
+    }
   }
 
   // §7.5.3 line 4 — solo → duo → smallest minority (skipping the pair's cited card).
