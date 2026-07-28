@@ -175,7 +175,16 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   if (status === "ready" && info && !user && !authLoading && !postSignin) {
     return (
       <>
-        <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth }} displayNameOverride={info.inviterDisplayName || undefined} />
+        {/* QA round 6: while the pre-wall wave is up, the background is
+            blank green (+ the wave's tint) — the pool behind collided with
+            the wave's heading. The pool reveals when the wave completes. */}
+        {prewallDone ? (
+          <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth }} displayNameOverride={info.inviterDisplayName || undefined} />
+        ) : (
+          <div style={page}>
+            <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
+          </div>
+        )}
         {!prewallDone && (
           <DeckWave anonymous wave={1} leadCardId="just-wait-ep4" heading="welcome" idiom="desktop" onComplete={() => setPrewallDone(true)} />
         )}

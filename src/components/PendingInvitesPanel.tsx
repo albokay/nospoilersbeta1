@@ -20,7 +20,7 @@
  */
 import React, { useState } from "react";
 import {
-  sendGroupInviteNudge, rescindPeopleGroupInvite, type MyPendingInvite,
+  sendGroupInviteNudge, sendGroupInviteNudgeById, rescindPeopleGroupInvite, type MyPendingInvite,
 } from "../lib/db";
 import { CANON } from "../styles/canon";
 import { preventLastWordOrphan } from "../lib/utils";
@@ -46,9 +46,10 @@ export function inviteAgePhrase(createdAt: number): string {
   return `${days} days ago`;
 }
 
-/** A co-member's pending invite, display-only (no token → no actions; who
- *  invited them is deliberately not shown). */
-export type OtherPendingInvite = { name: string; createdAt: number | null };
+/** A co-member's pending invite. QA round 6: any member may NUDGE (via the
+ *  invite's row id — never the accept token); rescind stays creator-only,
+ *  and who invited them is deliberately not shown. */
+export type OtherPendingInvite = { name: string; createdAt: number | null; inviteId?: string | null };
 
 function inviteeLabel(inv: MyPendingInvite): string {
   return inv.name || inv.email.split("@")[0];
@@ -94,6 +95,33 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
     setSentFor(inv.token);
     window.setTimeout(() => setSentFor((prev) => (prev === inv.token ? null : prev)), 2500);
     onRefresh(); // the silence clock reset → the dot clears
+  }
+
+  // Co-member nudge (QA round 6) — same flow, keyed by invite id; the
+  // prefill speaks as a groupmate rather than the inviter.
+  function openOtherNudge(inv: OtherPendingInvite) {
+    setActionError(null);
+    setRescindFor(null);
+    setNudgeFor(inv.inviteId!);
+    setNudgeText(`Hey ${inv.name || "there"}, still hoping you'll join us on Sidebar.`);
+  }
+
+  async function sendOtherNudge(inv: OtherPendingInvite) {
+    if (sending || !nudgeText.trim() || !inv.inviteId) return;
+    setSending(true);
+    setActionError(null);
+    const res = await sendGroupInviteNudgeById(inv.inviteId, nudgeText.trim());
+    setSending(false);
+    if (!res.ok) {
+      setActionError(res.reason === "email_send_failed" || !res.reason
+        ? "Sidebar couldn't send that just now. Try again in a minute."
+        : res.reason);
+      return;
+    }
+    setNudgeFor(null);
+    setSentFor(inv.inviteId);
+    window.setTimeout(() => setSentFor((prev) => (prev === inv.inviteId ? null : prev)), 2500);
+    onRefresh();
   }
 
   async function doRescind(inv: MyPendingInvite) {
@@ -165,9 +193,36 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
         </div>
       ))}
       {others.map((inv, i) => (
-        <div key={`o${i}`} style={{ ...fieldRow, marginBottom: 8 }}>
-          <span style={fieldName}>{inv.name || "A friend"}</span>
-          <span style={pendingNote}>(invite pending)</span>
+        <div key={`o${i}`} style={{ marginBottom: 8 }}>
+          <div style={fieldRow}>
+            <span style={fieldName}>{inv.name || "A friend"}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+              <span style={pendingNote}>(invite pending)</span>
+              {inv.inviteId && (sentFor === inv.inviteId ? (
+                <span style={{ ...pendingNote, opacity: 0.8 }}>nudge sent!</span>
+              ) : (
+                <button style={inFieldBtn} onClick={() => (nudgeFor === inv.inviteId ? setNudgeFor(null) : openOtherNudge(inv))}>nudge</button>
+              ))}
+            </span>
+          </div>
+
+          {inv.inviteId && nudgeFor === inv.inviteId && (
+            <div style={{ margin: "8px 0 4px" }}>
+              <textarea
+                value={nudgeText}
+                onChange={(e) => setNudgeText(e.target.value)}
+                rows={3}
+                maxLength={500}
+                style={nudgeBox}
+              />
+              <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 6 }}>
+                <button style={{ ...rowBtnSolid, opacity: sending || !nudgeText.trim() ? 0.6 : 1 }} disabled={sending || !nudgeText.trim()} onClick={() => sendOtherNudge(inv)}>
+                  {sending ? "sending…" : "send nudge"}
+                </button>
+                <button style={quietBtn} disabled={sending} onClick={() => setNudgeFor(null)}>cancel</button>
+              </div>
+            </div>
+          )}
         </div>
       ))}
       {actionError && (

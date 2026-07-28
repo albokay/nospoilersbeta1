@@ -94,12 +94,15 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => null);
     if (!body) return jsonError("invalid_body", 400);
-    const { token, appUrl, displayName, nudge, message } = body as Record<string, string | boolean>;
-    if (!token || typeof token !== "string") return jsonError("missing_fields", 400);
+    const { token, appUrl, displayName, nudge, message, inviteId } = body as Record<string, string | boolean>;
     // Nudge mode (pending-invites changeset): a follow-up email with the
-    // inviter's own (editable) text. Creator-only; resets the invite's
-    // silence clock + renews expiry on a successful send.
+    // sender's own (editable) text; resets the invite's silence clock +
+    // renews expiry on a successful send. ANY group member may nudge (QA
+    // round 6) — members reference the invite by its id (they never hold
+    // the accept token; only the creator's own RLS read carries tokens).
     const isNudge = nudge === true;
+    const byId = isNudge && (!token || typeof token !== "string") && typeof inviteId === "string" && inviteId;
+    if (!byId && (!token || typeof token !== "string")) return jsonError("missing_fields", 400);
     const nudgeMessage = typeof message === "string" ? message.trim().slice(0, 500) : "";
     if (isNudge && !nudgeMessage) return jsonError("missing_fields", 400, "A nudge needs a message.");
     // Legacy "hi, it's…" typed name — post-CP4 clients no longer send it; a
@@ -107,14 +110,17 @@ serve(async (req) => {
     // the inviter has no display_name (shouldn't happen post-backfill).
     const customName = (displayName || "").trim().slice(0, 40);
 
-    // ── Look up the invitation ───────────────────────────────────────────────
+    // ── Look up the invitation (by token, or by id for member nudges) ────────
     const { data: inv, error: invErr } = await admin
       .from("people_group_invitations")
-      .select("people_group_id, invitee_email, created_by, accepted_at, expires_at")
-      .eq("token", token)
+      .select("token, people_group_id, invitee_email, created_by, accepted_at, expires_at")
+      .eq(byId ? "id" : "token", byId ? (inviteId as string) : (token as string))
       .maybeSingle();
     if (invErr || !inv) return jsonError("invite_not_found", 404);
     if (inv.accepted_at) return jsonError("already_accepted", 409);
+    // The invite's own token — the emailed Join-in link (recipient-bound; it
+    // never travels back to the caller).
+    const invToken = inv.token as string;
 
     // Caller must be a member of the group the invite is for.
     const { data: membership } = await admin
@@ -125,8 +131,8 @@ serve(async (req) => {
       .maybeSingle();
     if (!membership) return jsonError("not_member", 403);
 
-    // Nudges are creator-only — you can only nudge YOUR invites (Alborz).
-    if (isNudge && inv.created_by !== user.id) return jsonError("not_yours", 403);
+    // Nudges: any member of the group (QA round 6 — friends can ping friends
+    // to join in). Rescind stays creator-only (the rescind RPC, not here).
 
     // ── Inviter's name (first-name identity CP4) ─────────────────────────────
     // The inviter is introduced by their self-chosen first name
@@ -134,10 +140,14 @@ serve(async (req) => {
     // pre-CP4 clients only) → @handle. NOTE: the profile is the INVITE
     // CREATOR's (inv.created_by), matching the name the accepter's contact
     // seeding attaches to.
+    // For a NUDGE the email speaks as the CALLER (any member may nudge, QA
+    // round 6); the initial send speaks as the invite's creator (who is the
+    // caller on that path anyway).
+    const senderId = isNudge ? user.id : inv.created_by;
     let inviterHandle = "";
     let inviterFirstName = "";
     try {
-      const { data: p } = await admin.from("profiles").select("username, display_name").eq("id", inv.created_by).maybeSingle();
+      const { data: p } = await admin.from("profiles").select("username, display_name").eq("id", senderId).maybeSingle();
       inviterHandle = p?.username ?? "";
       inviterFirstName = (p?.display_name ?? "").trim();
     } catch { /* generic fallback below */ }
@@ -146,16 +156,18 @@ serve(async (req) => {
     // Persist the resolved name on the invite so the welcome screen
     // (get_people_group_invitation) shows it and accept-time contact seeding
     // (accept_people_group_invitation) attaches it — both read
-    // inviter_display_name, unchanged. Never persist the bare-@ fallback.
+    // inviter_display_name, unchanged. Never persist the bare-@ fallback,
+    // and ONLY when the resolved name is the CREATOR's (a co-member's nudge
+    // must not overwrite the inviter's name).
     const persistName = inviterFirstName || customName;
-    if (persistName) {
-      await admin.from("people_group_invitations").update({ inviter_display_name: persistName }).eq("token", token);
+    if (persistName && user.id === inv.created_by) {
+      await admin.from("people_group_invitations").update({ inviter_display_name: persistName }).eq("token", invToken);
     }
 
     // ── Rate limit ───────────────────────────────────────────────────────────
     // Cap re-sends of this specific invite (3 / 24h) + a global per-user daily
     // email backstop (30 / 24h, shared key across all email-sending functions).
-    if (!(await rateOk(admin, user.id, `grp_invite_send:${token}`, 3, 86400))) {
+    if (!(await rateOk(admin, user.id, `grp_invite_send:${invToken}`, 3, 86400))) {
       return jsonError("rate_limit", 429, "You've re-sent this invite a few times today. Try again tomorrow.");
     }
     if (!(await dailyOk(admin, user.id, "email_action", 30))) {
@@ -183,7 +195,7 @@ serve(async (req) => {
     if (!resendKey) throw new Error("RESEND_API_KEY not configured");
 
     const baseUrl   = (typeof appUrl === "string" ? appUrl : "https://beta.sidebar.watch").replace(/\/$/, "");
-    const inviteUrl = `${baseUrl}/group-invite/${token}`;
+    const inviteUrl = `${baseUrl}/group-invite/${invToken}`;
     const email     = (inv.invitee_email as string).toLowerCase().trim();
     const subject   = isNudge
       ? `${senderName} still hopes you'll join them on Sidebar.`
@@ -271,7 +283,7 @@ serve(async (req) => {
           last_nudged_at: new Date().toISOString(),
           expires_at: new Date(Date.now() + 7 * 86400 * 1000).toISOString(),
         })
-        .eq("token", token);
+        .eq("token", invToken);
     }
     return jsonOk({});
 

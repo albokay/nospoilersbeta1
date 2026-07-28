@@ -145,7 +145,8 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
               (opted-in proposals) first, open-room shows second. */}
           {interested.length > 0 && (
             <>
-              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{ownerName}</span> is interested in starting these shows:</h2>
+              {/* QA round 6: invitee-facing framing, singular-safe. */}
+              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{ownerName}</span> wants to watch {interested.length === 1 ? "this show" : "these shows"} with you:</h2>
               <div style={inviteShelfLayout(interested.length)}>
                 {interested.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, ...pillWant }}><span style={pillName}>{show.name}</span></div>
@@ -171,8 +172,8 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
             </>
           )}
           <div style={{ textAlign: "center", marginTop: 72 }}>
-            <h2 style={{ ...heading, color: C.cream, margin: "0 0 4px" }}>Want to watch something with them?</h2>
-            <div style={{ color: C.cream, fontSize: 15, marginBottom: 28 }}>(or propose something else?)</div>
+            <h2 style={{ ...heading, color: C.cream, margin: "0 0 4px" }}>Join Sidebar so you can watch with them.</h2>
+            <div style={{ color: C.cream, fontSize: 15, marginBottom: 28 }}>(You can also propose other shows.)</div>
             <button style={signInPill} onClick={invite.onJoin}>JOIN IN</button>
           </div>
         </div>

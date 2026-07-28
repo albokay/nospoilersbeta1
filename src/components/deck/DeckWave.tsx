@@ -143,7 +143,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
       <div style={{ width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", maxHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
         {heading === "welcome" && (
           <div style={{ textAlign: "left", marginBottom: mobile ? 20 : 28 }}>
-            <h1 style={{ ...h1Style, fontSize: mobile ? 28 : 34 }}>Welcome to Sidebar.</h1>
+            <h1 style={{ ...h1Style, fontSize: mobile ? 28 : 34 }}>Welcome to Sidebar, a place for you and your friends to talk about TV, spoiler-free.</h1>
             <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: mobile ? 14 : 15, color: CANON.cream, marginTop: 10, lineHeight: 1.45 }}>
               Before you get set up, a few questions<br />to get you in the mood for TV.
             </div>

@@ -209,12 +209,15 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 12px) 16px 8px" }}>
           <SidebarLogo scale={0.5} blocksOpacity={1} />
         </div>
+        {/* QA round 6: shelves + JOIN IN stay hidden until the pre-wall wave
+            completes — blank green behind the wave's tint. */}
+        {prewallDone && (
         <div style={{ padding: "8px 16px 48px" }}>
-          {/* Same shelf copy as desktop + /pool (2026-07-07): interested-in-
-              starting (opted-in proposals) first, open-room shows second. */}
+          {/* Same shelf copy as desktop (QA round 6): invitee-facing framing,
+              singular-safe; open-room shows second. */}
           {interested.length > 0 && (
             <>
-              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{inviterShown}</span> is interested in starting these shows:</h2>
+              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{inviterShown}</span> wants to watch {interested.length === 1 ? "this show" : "these shows"} with you:</h2>
               <div style={shelfCol}>
                 {interested.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, background: C.cream, color: C.green }}><span style={pillName}>{show.name}</span></div>
@@ -240,11 +243,12 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
             </>
           )}
           <div style={{ textAlign: "center", marginTop: 56 }}>
-            <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, margin: "0 0 4px" }}>Want to watch something with them?</h2>
-            <div style={{ color: C.cream, fontSize: 15, marginBottom: 24 }}>(or propose something else?)</div>
+            <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, margin: "0 0 4px" }}>Join Sidebar so you can watch with them.</h2>
+            <div style={{ color: C.cream, fontSize: 15, marginBottom: 24 }}>(You can also propose other shows.)</div>
             <button style={joinPill} onClick={goAuth}>JOIN IN</button>
           </div>
         </div>
+        )}
       </div>
     );
   }

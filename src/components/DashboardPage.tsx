@@ -1812,7 +1812,7 @@ export default function DashboardPage() {
               // in-field nudge/rescind on the viewer's own invites.
               const othersPending: OtherPendingInvite[] = (railGroups.find((r) => r.group.id === optionsFor)?.pendingInvites ?? [])
                 .filter((p) => p.inviterId != null && p.inviterId !== selfUserId)
-                .map((p) => ({ name: p.name, createdAt: p.createdAt }));
+                .map((p) => ({ name: p.name, createdAt: p.createdAt, inviteId: p.inviteId }));
               if (!others.length && myGroupInvites.length === 0 && othersPending.length === 0) return null;
               return (
                 <div style={yellowCard}>

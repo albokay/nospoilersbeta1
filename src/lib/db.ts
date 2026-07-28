@@ -2747,6 +2747,9 @@ export type GroupPendingInvite = {
   inviterId: string | null;
   inviterName: string | null;
   createdAt: number | null;
+  /** The invite's row id (NOT the accept token) — lets any member nudge
+   *  (QA round 6). Null pre-migration. */
+  inviteId: string | null;
 };
 
 /** Pending invitees of a group — yellow avatars, labels, and per-person
@@ -2762,10 +2765,11 @@ export async function fetchGroupPendingInvites(groupId: string): Promise<GroupPe
       inviterId: r.inviter_id ?? null,
       inviterName: ((r.inviter_name as string | null) ?? "").trim() || null,
       createdAt: r.created_at ? new Date(r.created_at).getTime() : null,
+      inviteId: r.invite_id ?? null,
     }));
   }
   return ((data.handles ?? []) as string[]).map((h) => ({
-    name: h, inviterId: null, inviterName: null, createdAt: null,
+    name: h, inviterId: null, inviterName: null, createdAt: null, inviteId: null,
   }));
 }
 
@@ -5525,9 +5529,19 @@ export async function rescindPeopleGroupInvite(token: string): Promise<{ ok: boo
  * sendGroupInviteEmail's error surface.
  */
 export async function sendGroupInviteNudge(token: string, message: string): Promise<{ ok: boolean; reason?: string; status?: number }> {
+  return sendGroupInviteNudgeBody({ token, appUrl: window.location.origin, nudge: true, message });
+}
+
+/** Member nudge (QA round 6): references the invite by its row id — the
+ *  caller never holds the accept token. The edge fn gates on membership. */
+export async function sendGroupInviteNudgeById(inviteId: string, message: string): Promise<{ ok: boolean; reason?: string; status?: number }> {
+  return sendGroupInviteNudgeBody({ inviteId, appUrl: window.location.origin, nudge: true, message });
+}
+
+async function sendGroupInviteNudgeBody(body: Record<string, unknown>): Promise<{ ok: boolean; reason?: string; status?: number }> {
   try {
     const { data, error } = await supabase.functions.invoke("send-group-invite", {
-      body: { token, appUrl: window.location.origin, nudge: true, message },
+      body,
     });
     if (error) {
       let reason: string | undefined;
