@@ -11,8 +11,11 @@
  *
  * Answering: agree/disagree only, no skip, no dismissal (spec §2). Each
  * answer persists immediately (best-effort — a failed write is warned, not
- * blocking; the drip catch-up re-serves any card that didn't stick). Tap
- * targets only for now; drag-to-swipe is a flagged nice-to-have.
+ * blocking; the drip catch-up re-serves any card that didn't stick).
+ * Mobile ALSO supports drag-to-swipe (2026-07-26 — the flagged
+ * nice-to-have): the card follows the finger with a slight tilt, flies
+ * out past the commit threshold (right = YES, left = NOPE), springs back
+ * otherwise. Desktop stays tap-only.
  *
  * Tabs break the card's edges per the mockups: desktop NOPE/YES at
  * mid-height left/right; mobile diagonal (NOPE top-left, YES bottom-right).
@@ -63,6 +66,12 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
   // replaces the old vertical entrance motion).
   const [exit, setExit] = useState<"left" | "right" | null>(null);
   const doneRef = useRef(false);
+  // Mobile drag-to-swipe: dragX follows the finger; past the threshold the
+  // card is "flung" (transitioned off-screen) instead of keyframe-exited.
+  const SWIPE_COMMIT_PX = 80;
+  const [dragX, setDragX] = useState(0);
+  const [flung, setFlung] = useState<"left" | "right" | null>(null);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!anonymous && !user) return;
@@ -112,23 +121,27 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
   const card = queue[Math.min(idx, queue.length - 1)];
   const mobile = idiom === "mobile";
 
-  function answer(agreed: boolean) {
-    if ((!anonymous && !user) || doneRef.current || exit) return;
+  function answer(agreed: boolean, viaSwipe = false) {
+    if ((!anonymous && !user) || doneRef.current || exit || flung) return;
     if (anonymous) {
       addPendingDeckAnswer(card.id, agreed);
     } else {
       upsertDeckAnswer({ userId: user!.id, cardId: card.id, answer: agreed })
         .catch((e) => console.warn("[deck] answer write failed (drip will re-serve):", e));
     }
-    setExit(agreed ? "right" : "left");
+    // Swipe answers keep the drag transform and transition off-screen from
+    // where the finger left the card; tap answers use the keyframe exit.
+    if (viaSwipe) setFlung(agreed ? "right" : "left"); else setExit(agreed ? "right" : "left");
     window.setTimeout(() => {
       setExit(null);
+      setFlung(null);
+      setDragX(0);
       if (idx + 1 < queue!.length) { setIdx(idx + 1); return; }
       doneRef.current = true;
       // Drip batch completed → don't serve another this session (4 per login).
       if (wave === "drip") { try { sessionStorage.setItem(`ns_deck_drip_${user!.id}`, "1"); } catch { /* tolerate */ } }
       onComplete();
-    }, 220);
+    }, 240);
   }
 
   return (
@@ -161,12 +174,45 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
 
         <div
           key={card.id}
+          onTouchStart={mobile ? (e) => {
+            if (exit || flung) return;
+            dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          } : undefined}
+          onTouchMove={mobile ? (e) => {
+            if (!dragStart.current || flung) return;
+            setDragX(e.touches[0].clientX - dragStart.current.x);
+          } : undefined}
+          onTouchEnd={mobile ? () => {
+            if (!dragStart.current || flung) return;
+            dragStart.current = null;
+            if (Math.abs(dragX) > SWIPE_COMMIT_PX) answer(dragX > 0, true);
+            else setDragX(0); // under threshold → spring back
+          } : undefined}
+          onTouchCancel={mobile ? () => { dragStart.current = null; setDragX(0); } : undefined}
           style={{
             ...cardStyle,
             height: mobile ? "min(500px, 55dvh)" : "min(580px, 66vh)",
+            // Own the touch gesture — no scroll/rubber-band competition.
+            ...(mobile ? { touchAction: "none" as const } : {}),
+            // Swipe visuals: follow the finger with a slight tilt; flung
+            // cards transition off-screen FROM the drag position (the
+            // keyframe exit stays for tap answers).
+            transform: flung
+              ? `translateX(${flung === "right" ? "120vw" : "-120vw"}) rotate(${flung === "right" ? 14 : -14}deg)`
+              : dragX !== 0
+                ? `translateX(${dragX}px) rotate(${dragX / 18}deg)`
+                : undefined,
+            // Sticky when idle so the spring-back (transform removed on the
+            // reset render) still animates; "none" only while the finger is
+            // down so the card tracks it 1:1.
+            transition: flung
+              ? "transform .24s ease"
+              : dragStart.current != null ? "none" : "transform .18s ease",
             animation: exit
               ? `${exit === "right" ? "deckExitRight" : "deckExitLeft"} .22s ease forwards`
-              : "deckCardIn .24s ease",
+              : flung || dragX !== 0
+                ? undefined
+                : "deckCardIn .24s ease",
           }}
         >
           <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 38, lineHeight: 1.25, color: CANON.identity, textAlign: "center", maxWidth: mobile ? "82%" : "58%" }}>
