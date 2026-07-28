@@ -134,26 +134,38 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
       .map((f) => ({ name: f.name.trim(), email: f.email.trim().toLowerCase() }))
       .filter((f) => f.name && f.email.includes("@"));
     if (!boot.tokens) boot.tokens = {};
-    for (const f of invitees) {
-      if (!boot.tokens[f.email]) boot.tokens[f.email] = await createPeopleGroupInvite(boot.gid, f.email, f.name, boot.roomId);
-    }
-    // The seed entry, into the room — tagged exactly as the compose form
-    // would have tagged it.
-    if (!boot.threadId) {
-      const thread = await insertThread({
-        showId: show.id, season: data.season, episode: data.episode,
-        authorId: user.id, authorName: profile.username,
-        title: data.title, preview: data.preview, body: data.body,
-        isPublic: false,
-        isRewatch: data.isRewatch, rewatchSeason: data.rewatchSeason, rewatchEpisode: data.rewatchEpisode,
-      });
-      boot.threadId = thread.id;
-    }
-    if (!boot.attached) {
-      await addThreadToGroup(boot.threadId, boot.roomId);
-      boot.attached = true;
-      for (const pid of data.insertedPromptIds) logThreadPrompt(boot.threadId, pid).catch(() => {});
-    }
+    const tokens = boot.tokens;
+    const gid = boot.gid;
+    const roomId = boot.roomId;
+    // Perf (2026-07-26, desktop parity): parallel invite mints, overlapped
+    // with the seed entry's insert — the serial chain was most of the
+    // visible "posting…" wait. bootRef keeps resume-not-duplicate.
+    await Promise.all([
+      Promise.all(
+        invitees
+          .filter((f) => !tokens[f.email])
+          .map(async (f) => { tokens[f.email] = await createPeopleGroupInvite(gid, f.email, f.name, roomId); }),
+      ),
+      (async () => {
+        // The seed entry, into the room — tagged exactly as the compose form
+        // would have tagged it.
+        if (!boot.threadId) {
+          const thread = await insertThread({
+            showId: show.id, season: data.season, episode: data.episode,
+            authorId: user.id, authorName: profile.username,
+            title: data.title, preview: data.preview, body: data.body,
+            isPublic: false,
+            isRewatch: data.isRewatch, rewatchSeason: data.rewatchSeason, rewatchEpisode: data.rewatchEpisode,
+          });
+          boot.threadId = thread.id;
+        }
+        if (!boot.attached) {
+          await addThreadToGroup(boot.threadId, roomId);
+          boot.attached = true;
+          for (const pid of data.insertedPromptIds) logThreadPrompt(boot.threadId, pid).catch(() => {});
+        }
+      })(),
+    ]);
     // The onboarding sticky shows on THIS group's room after landing.
     try { localStorage.setItem("ns_onb_group", boot.gid); } catch { /* tolerate */ }
 
@@ -162,21 +174,19 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
     // the retry and the failed invites go straight to copy-the-link rows.
     let failed: { name: string; email: string; token: string }[] = [];
     let authFail = false;
-    for (const f of invitees) {
-      const r = await sendGroupInviteEmail(boot.tokens[f.email]);
+    // Perf (2026-07-26): concurrent sends (each is an edge-fn call); retry
+    // + copy-link fallback semantics unchanged.
+    const sends = await Promise.all(invitees.map(async (f) => ({ f, r: await sendGroupInviteEmail(tokens[f.email]) })));
+    for (const { f, r } of sends) {
       if (!r.ok) {
-        failed.push({ ...f, token: boot.tokens[f.email] });
+        failed.push({ ...f, token: tokens[f.email] });
         if (r.status === 401 || r.status === 403) authFail = true;
       }
     }
     if (failed.length && !authFail) {
       await new Promise((r) => setTimeout(r, 2500));
-      const still: typeof failed = [];
-      for (const f of failed) {
-        const r = await sendGroupInviteEmail(f.token);
-        if (!r.ok) still.push(f);
-      }
-      failed = still;
+      const retries = await Promise.all(failed.map(async (f) => ({ f, r: await sendGroupInviteEmail(f.token) })));
+      failed = retries.filter(({ r }) => !r.ok).map(({ f }) => f);
     }
     if (!failed.length) { setStep(4); return; }
     setFallbackLinks(failed.map((f) => ({ name: f.name, link: `${window.location.origin}/group-invite/${f.token}` })));

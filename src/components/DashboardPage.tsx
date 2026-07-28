@@ -478,10 +478,16 @@ export default function DashboardPage() {
   }, [user, authLoading, navigate, loadRail]);
 
   // ── Group dashboard load ───────────────────────────────────────────────────
+  // Last-render snapshot per group (perf round 2026-07-26): the shelves
+  // paint instantly from the previous visit while the live RPC refreshes —
+  // stale-while-revalidate, the mobile-dashboard pattern. Display-only
+  // staleness; every action still runs against live data.
+  const groupSnapKey = useCallback((groupId: string) => `ns_group_snap_${user?.id ?? "anon"}_${groupId}`, [user?.id]);
   const refreshGroup = useCallback(async (groupId: string) => {
     try {
       const rows = await fetchGroupDashboard(groupId);
       setGroupShows(rows);
+      try { sessionStorage.setItem(groupSnapKey(groupId), JSON.stringify(rows)); } catch { /* quota — instant paint just won't happen */ }
       // A group room exposes progress dropdowns for every show in the group —
       // including ones you haven't pooled yet — and they read the same catalog
       // (showsById). Keep those shows' episode lists fresh too (12h cadence).
@@ -498,7 +504,7 @@ export default function DashboardPage() {
       console.error("[dashboard] group load failed", e);
       setGroupShows([]);
     }
-  }, []);
+  }, [groupSnapKey]);
 
   // Active group is driven by the URL (?g=<id>) so it survives navigation —
   // e.g. the show room's × returns here with ?g set and re-enters the group.
@@ -509,8 +515,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!activeGroupId) { setGroupShows([]); return; }
+    // Instant paint from the last visit's snapshot; the live fetch replaces.
+    try {
+      const raw = sessionStorage.getItem(groupSnapKey(activeGroupId));
+      if (raw) setGroupShows(JSON.parse(raw));
+    } catch { /* corrupt/absent snapshot → normal load */ }
     refreshGroup(activeGroupId);
-  }, [activeGroupId, refreshGroup]);
+  }, [activeGroupId, refreshGroup, groupSnapKey]);
 
   // Contact names refresh with the rail (small owner-scoped read; tolerant
   // pre-migration → {}).

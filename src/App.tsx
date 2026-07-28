@@ -1268,6 +1268,26 @@ function AppShell() {
       {!showProfile && !showJournal && !roomGroupId && !composeShowId && !visitorUsername && !userAggregate && !showLegacyProfile && !legacyPublicProfileUsername && (
         <>
           {/* ── Homepage ── */}
+          {/* Post-sign-in bridge (perf round 2026-07-26): the moment a
+              signed-in non-admin is on /, cover the homepage with the
+              standard loading line — the profile fetch + /dashboard
+              redirect used to leave the homepage visibly "stuck" after
+              login/signup. Covers the profile-loading window too (an admin
+              sees a brief flash before the homepage returns — the
+              documented admin tradeoff). The quiet sign-out keeps the
+              escape hatch for a session whose profile never loads
+              (HANDOFF §6 item 15). */}
+          {isHomepage && user && !isAdmin && (
+            <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "var(--canon-personal,#7abd8e)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
+              <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: "var(--canon-cream,#FEF8EA)" }}>loading<LoadingDots /></span>
+              <button
+                onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } }}
+                style={{ border: "none", background: "transparent", color: "var(--canon-cream,#FEF8EA)", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12, opacity: 0.7, cursor: "pointer" }}
+              >
+                sign out
+              </button>
+            </div>
+          )}
           {isHomepage && (
             <>
               {/* ── Gradient fade-in overlay (fixed, tracks narrative scroll) ── */}
