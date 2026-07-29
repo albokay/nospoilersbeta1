@@ -34,7 +34,10 @@ import {
   fetchDeckCards, fetchMyDeckAnswers, fetchGroupDeckAnswers, upsertDeckAnswer,
   type DeckCard, type GroupDeckAnswer,
 } from "../../lib/db";
-import { pairHeaderLine, type DeckMember } from "../../lib/deckFindings";
+import { pairHeaderLine, computeCardFindings, type DeckMember } from "../../lib/deckFindings";
+import { joinNames } from "../../lib/groupNames";
+import { useAuth } from "../../lib/auth";
+import SidebarLogo from "../SidebarLogo";
 import { CANON } from "../../styles/canon";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
@@ -52,7 +55,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
 }) {
   const [cards, setCards] = useState<DeckCard[] | null>(null);
   const [answers, setAnswers] = useState<GroupDeckAnswer[]>([]);
-  const [ui, setUi] = useState<"docked" | "sheet" | "grid" | "edit">("docked");
+  const [ui, setUi] = useState<"docked" | "sheet" | "grid" | "edit" | "findings">("docked");
+  // The findings card names its owner once ("Al, with …") — the viewer's own
+  // first name, straight from the profile (contact names never apply to self).
+  const { profile } = useAuth();
   const [edits, setEdits] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   // Click bounce on own cells in edit mode — the room map's two-phase
@@ -124,6 +130,13 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
 
   const pairLine = mode === "group" && others.length === 1
     ? pairHeaderLine(others[0].label, answers, viewerId, others[0].id)
+    : null;
+
+  // The findings card (n≥4 shareable; Option B rev 3, 2026-07-28) — group
+  // mode with 4+ members and enough shared answers for the math to say
+  // something; otherwise the "see findings" route never appears.
+  const cardFindings = mode === "group" && others.length >= 3
+    ? computeCardFindings({ cards, answers, members: [{ id: viewerId, label: "you" }, ...others], viewerId })
     : null;
 
   function valueFor(userId: string, cardId: string): boolean | undefined {
@@ -254,6 +267,62 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                 see more answers <ArrowRight size={13} strokeWidth={2.5} />
               </button>
             )}
+            {cardFindings && (
+              <button
+                onClick={() => setUi("findings")}
+                style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", border: "none", background: "transparent", cursor: "pointer", padding: "4px 20px 12px", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 12, color: CANON.identity }}
+              >
+                see findings <ArrowRight size={13} strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── FINDINGS — the n≥4 shareable card (Option B rev 3, 2026-07-28) ────────
+  // Clean solid background (no page text behind — Alborz), close returns to
+  // the answers sheet. A screenshot is the share: no share button.
+  if (ui === "findings" && cardFindings) {
+    const quoteEnd = (t: string) => (t.startsWith("“") || t.startsWith('"')) ? t.indexOf(t[0] === '"' ? '"' : "”", 1) : -1;
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: CANON.friend }}>
+        <button onClick={() => setUi("sheet")} aria-label="close"
+          style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 8px)", right: 14, zIndex: 2, border: "none", background: "transparent", color: CANON.cream, cursor: "pointer", padding: 6 }}>
+          <X size={24} />
+        </button>
+        <div style={{ position: "absolute", left: 20, right: 20, top: "calc(env(safe-area-inset-top, 0px) + 72px)", background: CANON.cream, borderRadius: 20, boxShadow: "0 12px 32px rgba(0,0,0,0.3)", padding: "20px 20px 14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 20, color: CANON.identity, whiteSpace: "nowrap" }}>How We Watch TV</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.5, color: CANON.dark, margin: "4px 0 16px" }}>
+                {profile?.display_name ?? "Me"}, with {joinNames(others.map((o) => o.label))}
+              </div>
+            </div>
+            {/* The dynamic logo, on the card's own cream (surfaceBg keeps the
+                cream block visible on the cream surface). */}
+            <SidebarLogo scale={0.34} wordmarkTint={CANON.dark} surfaceBg={CANON.cream} />
+          </div>
+          <div style={{ fontFamily: LORA, fontWeight: 600, fontSize: 19, lineHeight: 1.35, color: CANON.identity, marginBottom: 16 }}>{cardFindings.headline}</div>
+          {cardFindings.lines.map((l, i) => {
+            // Emphasis: the ally/opposite name bolds Identity; a leading
+            // quoted statement renders italic (the rev-3 mockup treatment).
+            const bi = l.bold ? l.text.indexOf(l.bold) : -1;
+            const qe = quoteEnd(l.text);
+            return (
+              <div key={i} style={{ fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.55, marginBottom: 13, color: CANON.dark }}>
+                {bi >= 0 && l.bold ? (
+                  <>{l.text.slice(0, bi)}<b style={{ color: CANON.identity }}>{l.bold}</b>{l.text.slice(bi + l.bold.length)}</>
+                ) : qe > 0 ? (
+                  <><i>{l.text.slice(0, qe + 1)}</i>{l.text.slice(qe + 1)}</>
+                ) : l.text}
+              </div>
+            );
+          })}
+          <div style={{ borderTop: "1px solid rgba(141,170,186,0.4)", marginTop: 14, paddingTop: 10, fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 600, color: CANON.business, display: "flex", justifyContent: "space-between" }}>
+            <span>{answeredMine.length} questions answered</span>
+            <span>beta.sidebar.watch</span>
           </div>
         </div>
       </div>
@@ -261,9 +330,11 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
   }
 
   // ── GRID / EDIT — frozen panes (§11.6) ────────────────────────────────────
+  // Clean solid background behind the open grid (was the page dim — Alborz
+  // 2026-07-28: page text showing through caused confusion).
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,58,74,0.35)", display: "flex", flexDirection: "column" }}>
-      {ui === "grid" && (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: mode === "personal" ? CANON.personal : CANON.friend, display: "flex", flexDirection: "column" }}>
+      {ui !== "edit" && (
         <button onClick={() => setUi("sheet")} aria-label="close"
           style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 8px)", right: 14, zIndex: 2, border: "none", background: "transparent", color: CANON.cream, cursor: "pointer", padding: 6 }}>
           <X size={24} />

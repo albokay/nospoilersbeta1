@@ -5335,6 +5335,11 @@ export type DeckCard = {
   /** §7.5.7 stranger-legible restatement; null until authored. Renderers
    *  fall back cold → singular/plural. */
   cold: string | null;
+  /** The card's "NO form" (negations CP3, 2026-07-28) — third-person
+   *  singular/plural, same grammar slots as singular/plural. null = the
+   *  findings engine never fires a NO-based line for this card. */
+  singularNeg: string | null;
+  pluralNeg: string | null;
   /** -1 = "I'll watch anything", +1 = "impress me", 0 = off-axis */
   axisX: number;
   /** -1 = "NO spoilers", +1 = "meh", 0 = off-axis */
@@ -5354,6 +5359,8 @@ function rowToDeckCard(row: any): DeckCard {
     singular:   row.singular,
     plural:     row.plural,
     cold:       row.cold ?? null,
+    singularNeg: row.singular_neg ?? null,
+    pluralNeg:   row.plural_neg ?? null,
     axisX:      row.axis_x ?? 0,
     axisY:      row.axis_y ?? 0,
     cardType:   row.card_type,
@@ -5375,7 +5382,10 @@ export async function fetchDeckCards(): Promise<DeckCard[]> {
   try {
     const { data, error } = await supabase
       .from("deck_cards")
-      .select("id, statement, singular, plural, cold, axis_x, axis_y, card_type, wave, released_at, sort_order")
+      // select * (was an explicit column list) so the read works whether or
+      // not the 20260728 negation columns exist yet — rowToDeckCard nulls
+      // any missing field, and no deploy-before-SQL ordering can break it.
+      .select("*")
       .eq("is_active", true)
       .lte("released_at", new Date().toISOString())
       .order("sort_order");

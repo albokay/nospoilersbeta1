@@ -3,17 +3,22 @@
  * Pure client-side math over one group read; NO LLM, hand-authored templates.
  *
  * ── COPY TEMPLATES LIVE IN THIS FILE ──────────────────────────────────────
- * Every user-facing string the n=2 header and the Findings sticky can emit
- * is authored below (search "T_"). Copy pass COMPLETE (Alborz 2026-07-17):
- * SPEC = verbatim from the spec; ALBORZ = written/approved in the CP3
- * review. Future copy changes happen here and nowhere else.
+ * Every user-facing string the n=2 header, the Findings sticky and the
+ * mobile findings card can emit is authored below (search "T_"). Copy pass
+ * COMPLETE (Alborz 2026-07-17): SPEC = verbatim from the spec; ALBORZ =
+ * written/approved in the CP3 review. The findings-card templates (2026-07-28)
+ * ship as shown in the approved Option B rev-3 mockup — Alborz may still tune
+ * wording. Future copy changes happen here and nowhere else.
  *
  * ── DECISIONS BAKED IN (flagged for review) ───────────────────────────────
- * • A "hot take" = a solo YES: you answered yes, every other member who
- *   answered that card said no, and at least TWO others answered it. Solo
- *   NOs are EXCLUDED for now — rendering "she's the only one who DOESN'T…"
- *   needs a per-card negated restatement form that hasn't been authored
- *   (spec §7.5.8 hand-wrote one; the deck rows carry none). Pinned.
+ * • A "hot take" = a solo answer: you answered one way, every other member
+ *   who answered that card went the other way, and at least TWO others
+ *   answered it. Solo NOs are LIVE as of 2026-07-28 (negations CP3) — but
+ *   only on cards whose negated forms are authored (`singular_neg` /
+ *   `plural_neg`; NULL = that card never fires a NO-based line). The
+ *   renegade's QUOTED takes still list only their YES statements — a NO
+ *   can't be quoted verbatim; how to present a renegade's NO-takes is a
+ *   future copy call.
  * • Agreement counts only cards BOTH people answered (drip desync can't
  *   skew); pair/opposite lines need ≥4 cards in common to fire.
  * • Ties: renegade tie → no renegade (spec rule). Ally/opposite ties with
@@ -28,6 +33,10 @@
  *   strictly the group's highest (nobody is far from you), min rate ≥ 55%.
  * • Aligned ending fires when nobody has a hot take AND every pair with
  *   enough data agrees ≥ 70%.
+ * • The findings CARD (computeCardFindings) is the n≥4 shareable: viewer-
+ *   centric "you" voice (the owner is named once by the card chrome), the
+ *   viewer's own hottest take leads when they have one, shared headline
+ *   resolution otherwise (same order as the sticky).
  */
 import type { DeckCard, GroupDeckAnswer } from "./db";
 
@@ -54,7 +63,7 @@ const T_ALIGNED_HEAD = `Nobody here has a hot take.`; // SPEC (§8)
 const T_ALIGNED_SUB = `Friends, aligned. Go forth and watch.`; // SPEC (§8)
 const T_PAIR_LINE = (name: string, a: number, t: number) =>
   `You and ${name} watch TV the same way — you agree on ${a} of ${t}.`; // ALBORZ (approved)
-const T_PAIR_DUO_PROOF = (plural: string) => `You're the only two who ${plural}.`; // ALBORZ (approved)
+const T_PAIR_DUO_PROOF = (form: string) => `You're the only two who ${form}.`; // ALBORZ (approved)
 const T_BACKBONE = `You're the backbone of the group. You have the most in common with everyone else in the group.`; // SPEC (§7.5.5)
 const T_OPPOSITE = (name: string, a: number, t: number) =>
   `You and ${name} are the furthest apart — ${a} of ${t}.`; // SPEC (§7.5.8)
@@ -67,8 +76,17 @@ const T_OPPOSITE_TIE = (names: string, a: number, t: number) =>
 const joinLabels = (names: string[]): string =>
   names.length <= 2 ? names.join(" and ") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 const T_SOLO = (singular: string) => `You're the only one who ${singular}.`; // SPEC (§7.2)
-const T_DUO = (name: string, plural: string) => `Only you and ${name} ${plural}.`; // SPEC (§7.2)
-const T_TRIO = (a: string, b: string, plural: string) => `Only you, ${a} and ${b} ${plural}.`; // SPEC (§7.5.3)
+const T_DUO = (name: string, form: string) => `Only you and ${name} ${form}.`; // SPEC (§7.2)
+const T_TRIO = (a: string, b: string, form: string) => `Only you, ${a} and ${b} ${form}.`; // SPEC (§7.5.3)
+
+// Findings card (Option B rev-3 mockup, 2026-07-28 — see the copy note in
+// the file header).
+const T_CARD_SOLO_QUOTE = (statement: string) => `"${statement}" — you, and only you.`;
+const T_CARD_ALLY = (name: string, a: number, t: number) =>
+  `Your closest ally: ${name} — you agree on ${a} of ${t}.`;
+const T_CARD_ALLY_PROOF = (form: string) => ` You're the only two who ${form}.`;
+const T_CARD_OPPOSITE = (name: string, a: number, t: number) =>
+  `Your opposite: ${name} — you agree on ${a} of ${t}.`;
 
 // ── Tunables ────────────────────────────────────────────────────────────────
 const MIN_COMMON = 4;        // pair/opposite lines need this many shared cards
@@ -100,24 +118,202 @@ function pairCount(a: Map<string, boolean> | undefined, b: Map<string, boolean> 
   return { agree, total };
 }
 
-/** Solo-YES hot takes for one member (see file header for the solo-NO call). */
-function hotTakes(memberId: string, memberIds: string[], byUser: Map<string, Map<string, boolean>>, cards: DeckCard[]): DeckCard[] {
+type HotTake = { card: DeckCard; negated: boolean };
+
+/** Solo hot takes for one member — a solo YES, or (negations CP3) a solo NO
+ *  on a card whose negated forms are authored (see file header). */
+function hotTakes(memberId: string, memberIds: string[], byUser: Map<string, Map<string, boolean>>, cards: DeckCard[]): HotTake[] {
   const mine = byUser.get(memberId);
   if (!mine) return [];
-  const out: DeckCard[] = [];
+  const out: HotTake[] = [];
   for (const card of cards) {
-    if (mine.get(card.id) !== true) continue;
-    let others = 0, otherYes = 0;
+    const v = mine.get(card.id);
+    if (v === undefined) continue;
+    if (v === false && !card.singularNeg) continue; // unrenderable without the NO form
+    let others = 0, otherSame = 0;
     for (const id of memberIds) {
       if (id === memberId) continue;
-      const v = byUser.get(id)?.get(card.id);
-      if (v === undefined) continue;
+      const ov = byUser.get(id)?.get(card.id);
+      if (ov === undefined) continue;
       others++;
-      if (v === true) otherYes++;
+      if (ov === v) otherSame++;
     }
-    if (others >= MIN_OTHER_ANSWERS && otherYes === 0) out.push(card);
+    if (others >= MIN_OTHER_ANSWERS && otherSame === 0) out.push({ card, negated: !v });
   }
   return out;
+}
+
+/** T_SOLO with the right form for the take's direction. */
+function soloLine(t: HotTake): string {
+  return T_SOLO(t.negated ? (t.card.singularNeg ?? t.card.singular) : t.card.singular);
+}
+
+type PairStat = { otherId: string; agree: number; total: number; ratio: number };
+
+type Selection = {
+  byUser: Map<string, Map<string, boolean>>;
+  memberIds: string[];
+  label: (id: string) => string;
+  takes: Map<string, HotTake[]>;
+  scored: { a: string; b: string; agree: number; total: number }[];
+  viewerPairs: PairStat[];
+  viewerTakes: HotTake[];
+  isBackbone: boolean;
+};
+
+/** All the per-group + per-viewer selection state both renderers read. */
+function selectFacts(args: {
+  cards: DeckCard[];
+  answers: GroupDeckAnswer[];
+  members: DeckMember[];
+  viewerId: string;
+}): Selection | null {
+  const { cards, answers, members, viewerId } = args;
+  const byUser = buildAnswerMap(answers);
+  const memberIds = members.map((m) => m.id);
+  const label = (id: string) => members.find((m) => m.id === id)?.label ?? "someone";
+
+  const takes = new Map<string, HotTake[]>();
+  for (const id of memberIds) takes.set(id, hotTakes(id, memberIds, byUser, cards));
+  const pairs: { a: string; b: string; agree: number; total: number }[] = [];
+  for (let i = 0; i < memberIds.length; i++) {
+    for (let j = i + 1; j < memberIds.length; j++) {
+      const { agree, total } = pairCount(byUser.get(memberIds[i]), byUser.get(memberIds[j]));
+      pairs.push({ a: memberIds[i], b: memberIds[j], agree, total });
+    }
+  }
+  const scored = pairs.filter((p) => p.total >= MIN_COMMON);
+  if (!scored.length) return null; // not enough shared data for any read
+
+  const viewerPairs: PairStat[] = scored
+    .filter((p) => p.a === viewerId || p.b === viewerId)
+    .map((p) => ({ otherId: p.a === viewerId ? p.b : p.a, agree: p.agree, total: p.total, ratio: p.agree / p.total }));
+
+  // §7.5.5 backbone detection (swaps the pair slot).
+  const viewerTakes = takes.get(viewerId) ?? [];
+  let isBackbone = false;
+  if (viewerTakes.length === 0 && viewerPairs.length >= 2) {
+    const minRatioOf = (id: string) => {
+      const rs = scored.filter((p) => p.a === id || p.b === id).map((p) => p.agree / p.total);
+      return rs.length ? Math.min(...rs) : -1;
+    };
+    const mine = minRatioOf(viewerId);
+    isBackbone = mine >= BACKBONE_MIN_RATIO && memberIds.every((id) => id === viewerId || minRatioOf(id) < mine);
+  }
+
+  return { byUser, memberIds, label, takes, scored, viewerPairs, viewerTakes, isBackbone };
+}
+
+/** §7.5.4 shared headline resolution (renegade → aligned → unanimous →
+ *  sharpest split), identical for the sticky and the card. */
+function sharedHeadline(cards: DeckCard[], sel: Selection, memberCount: number):
+  | { kind: "headline"; headline: string; quotes: string[] }
+  | { kind: "aligned" }
+  | null {
+  const { byUser, memberIds, label, takes, scored } = sel;
+  const counts = memberIds.map((id) => ({ id, n: (takes.get(id) ?? []).length })).sort((x, y) => y.n - x.n);
+  const renegade = counts[0].n > 0 && (counts.length < 2 || counts[0].n > counts[1].n) ? counts[0].id : null;
+
+  if (renegade) {
+    // Quote, don't inflect (§9.1) — YES takes only; a NO take has no
+    // quotable statement (see file header).
+    const quotes = (takes.get(renegade) ?? []).filter((t) => !t.negated).slice(0, 3).map((t) => t.card.statement);
+    return { kind: "headline", headline: T_RENEGADE(label(renegade)), quotes };
+  }
+
+  // ALIGNED runs BEFORE the unanimous fallback (Alborz 2026-07-17): an
+  // aligned group almost always HAS a unanimous card, so the old order
+  // made the §8 ending unreachable in practice.
+  const anyTakes = memberIds.some((id) => (takes.get(id) ?? []).length > 0);
+  if (!anyTakes && scored.every((p) => p.agree / p.total >= ALIGNED_RATIO)) {
+    return { kind: "aligned" };
+  }
+  // Unanimous YES with everyone on the card; failing that, unanimous NO on a
+  // card with an authored negated form (negations CP3).
+  const unanimous = cards.find((c) => memberIds.every((id) => byUser.get(id)?.get(c.id) === true));
+  if (unanimous) return { kind: "headline", headline: T_UNANIMOUS(memberCount, unanimous.plural), quotes: [] };
+  const unanimousNo = cards.find((c) => c.pluralNeg && memberIds.every((id) => byUser.get(id)?.get(c.id) === false));
+  if (unanimousNo) return { kind: "headline", headline: T_UNANIMOUS(memberCount, unanimousNo.pluralNeg!), quotes: [] };
+
+  // Sharpest split: the most even yes/no divide with the most answers.
+  let best: { card: DeckCard; score: number } | null = null;
+  for (const c of cards) {
+    let yes = 0, no = 0;
+    for (const id of memberIds) {
+      const v = byUser.get(id)?.get(c.id);
+      if (v === true) yes++; else if (v === false) no++;
+    }
+    if (yes + no < 3 || yes === 0 || no === 0) continue;
+    const score = Math.min(yes, no) * 10 - Math.abs(yes - no);
+    if (!best || score > best.score) best = { card: c, score };
+  }
+  if (!best) return null;
+  return { kind: "headline", headline: T_CANT_AGREE(best.card.statement), quotes: [] };
+}
+
+/** Best/worst pairs + exact-tie sets, with the sticky's deterministic
+ *  tie-break sorts preserved. */
+function pickPairs(sel: Selection) {
+  const { viewerPairs, label } = sel;
+  const bestSorted = [...viewerPairs].sort((x, y) => y.ratio - x.ratio || y.total - x.total || label(x.otherId).localeCompare(label(y.otherId)));
+  const best = bestSorted[0];
+  const tiedTop = best ? bestSorted.filter((p) => p.ratio === best.ratio && p.agree === best.agree && p.total === best.total) : [];
+  const worstSorted = [...viewerPairs].sort((x, y) => x.ratio - y.ratio || y.total - x.total || label(x.otherId).localeCompare(label(y.otherId)));
+  const worst = worstSorted[0];
+  const tiedWorst = worst ? worstSorted.filter((p) => p.ratio === worst.ratio && p.agree === worst.agree && p.total === worst.total) : [];
+  return { best, tiedTop, worst, tiedWorst };
+}
+
+/** §7.5.3 line-4 walk — the smallest distinctive minority the viewer belongs
+ *  to (duo, then trio), in EITHER direction (a shared NO needs the card's
+ *  negated plural form). Skips the pair line's already-cited card. */
+function findDistinctiveMinority(cards: DeckCard[], sel: Selection, viewerId: string, skipCardId: string | null):
+  | { kind: "duo"; other: string; form: string }
+  | { kind: "trio"; others: string[]; form: string }
+  | null {
+  const { byUser, memberIds } = sel;
+  let duo: { other: string; form: string } | null = null;
+  let trio: { others: string[]; form: string } | null = null;
+  for (const c of cards) {
+    if (c.id === skipCardId) continue;
+    const v = byUser.get(viewerId)?.get(c.id);
+    if (v === undefined) continue;
+    if (v === false && !c.pluralNeg) continue;
+    const sameOthers: string[] = [];
+    let diffOthers = 0;
+    for (const id of memberIds) {
+      if (id === viewerId) continue;
+      const ov = byUser.get(id)?.get(c.id);
+      if (ov === v) sameOthers.push(id); else if (ov !== undefined) diffOthers++;
+    }
+    if (diffOthers === 0) continue; // not distinctive — nobody on the other side
+    const form = v ? c.plural : c.pluralNeg!;
+    if (sameOthers.length === 1 && !duo) duo = { other: sameOthers[0], form };
+    if (sameOthers.length === 2 && !trio) trio = { others: sameOthers, form };
+  }
+  if (duo) return { kind: "duo", ...duo };
+  if (trio) return { kind: "trio", ...trio };
+  return null;
+}
+
+/** The pair line's concrete proof: a card only these two answered the same
+ *  way on, against ≥1 dissenter (either direction; a shared NO needs the
+ *  negated plural form). */
+function findDuoCard(cards: DeckCard[], byUser: Map<string, Map<string, boolean>>, memberIds: string[], a: string, b: string):
+  { card: DeckCard; form: string } | null {
+  for (const c of cards) {
+    const av = byUser.get(a)?.get(c.id);
+    if (av === undefined || byUser.get(b)?.get(c.id) !== av) continue;
+    if (av === false && !c.pluralNeg) continue;
+    let othersSame = 0, othersDiff = 0;
+    for (const id of memberIds) {
+      if (id === a || id === b) continue;
+      const v = byUser.get(id)?.get(c.id);
+      if (v === av) othersSame++; else if (v !== undefined) othersDiff++;
+    }
+    if (othersSame === 0 && othersDiff >= 1) return { card: c, form: av ? c.plural : (c.pluralNeg ?? c.plural) };
+  }
+  return null;
 }
 
 // ── The n=2 header (§5) ─────────────────────────────────────────────────────
@@ -132,7 +328,7 @@ export function pairHeaderLine(otherLabel: string, answers: GroupDeckAnswer[], v
   return T_PAIR_PLAIN(otherLabel, agree, total);
 }
 
-// ── The Findings (n≥3, per-viewer; §7.5) ────────────────────────────────────
+// ── The Findings sticky (n≥3, per-viewer; §7.5) ─────────────────────────────
 
 export type Findings = {
   /** Bold first line. */
@@ -151,108 +347,42 @@ export function computeFindings(args: {
   members: DeckMember[]; // ALL members incl. the viewer
   viewerId: string;
 }): Findings | null {
-  const { cards, answers, members, viewerId } = args;
+  const { cards, members, viewerId } = args;
   if (members.length < 3) return null;
-  const byUser = buildAnswerMap(answers);
-  const memberIds = members.map((m) => m.id);
-  const label = (id: string) => members.find((m) => m.id === id)?.label ?? "someone";
-
-  // Everyone's hot takes + pairwise stats.
-  const takes = new Map<string, DeckCard[]>();
-  for (const id of memberIds) takes.set(id, hotTakes(id, memberIds, byUser, cards));
-  const pairs: { a: string; b: string; agree: number; total: number }[] = [];
-  for (let i = 0; i < memberIds.length; i++) {
-    for (let j = i + 1; j < memberIds.length; j++) {
-      const { agree, total } = pairCount(byUser.get(memberIds[i]), byUser.get(memberIds[j]));
-      pairs.push({ a: memberIds[i], b: memberIds[j], agree, total });
-    }
-  }
-  const scored = pairs.filter((p) => p.total >= MIN_COMMON);
-  if (!scored.length) return null; // not enough shared data for any read
-
-  const anyTakes = memberIds.some((id) => (takes.get(id) ?? []).length > 0);
+  const sel = selectFacts(args);
+  if (!sel) return null;
+  const { label, viewerPairs, viewerTakes, isBackbone } = sel;
 
   // §7.5.4 headline resolution.
-  let headline: string;
-  let quotes: string[] = [];
-  const counts = memberIds.map((id) => ({ id, n: (takes.get(id) ?? []).length })).sort((x, y) => y.n - x.n);
-  const renegade = counts[0].n > 0 && (counts.length < 2 || counts[0].n > counts[1].n) ? counts[0].id : null;
-
-  if (renegade) {
-    headline = T_RENEGADE(label(renegade));
-    quotes = (takes.get(renegade) ?? []).slice(0, 3).map((c) => c.statement); // quote, don't inflect (§9.1)
-  } else {
-    // ALIGNED runs BEFORE the unanimous fallback (Alborz 2026-07-17): an
-    // aligned group almost always HAS a unanimous card, so the old order
-    // made the §8 ending unreachable in practice.
-    if (!anyTakes && scored.every((p) => p.agree / p.total >= ALIGNED_RATIO)) {
-      return { headline: T_ALIGNED_HEAD, quotes: [], lines: [T_ALIGNED_SUB], aligned: true };
-    }
-    // Unanimous YES with everyone on the card. (All-NO unanimity is pinned
-    // with the solo-NO hot takes — both need the unauthored negated forms.)
-    const unanimous = cards.find((c) => memberIds.every((id) => byUser.get(id)?.get(c.id) === true));
-    if (unanimous) {
-      headline = T_UNANIMOUS(members.length, unanimous.plural);
-    } else {
-      // Sharpest split: the most even yes/no divide with the most answers.
-      let best: { card: DeckCard; score: number } | null = null;
-      for (const c of cards) {
-        let yes = 0, no = 0;
-        for (const id of memberIds) {
-          const v = byUser.get(id)?.get(c.id);
-          if (v === true) yes++; else if (v === false) no++;
-        }
-        if (yes + no < 3 || yes === 0 || no === 0) continue;
-        const score = Math.min(yes, no) * 10 - Math.abs(yes - no);
-        if (!best || score > best.score) best = { card: c, score };
-      }
-      if (!best) return null;
-      headline = T_CANT_AGREE(best.card.statement);
-    }
+  const shared = sharedHeadline(cards, sel, members.length);
+  if (!shared) return null;
+  if (shared.kind === "aligned") {
+    return { headline: T_ALIGNED_HEAD, quotes: [], lines: [T_ALIGNED_SUB], aligned: true };
   }
+  const { headline, quotes } = shared;
 
   const lines: string[] = [];
-  const viewerPairs = scored
-    .filter((p) => p.a === viewerId || p.b === viewerId)
-    .map((p) => ({ otherId: p.a === viewerId ? p.b : p.a, agree: p.agree, total: p.total, ratio: p.agree / p.total }));
-
-  // §7.5.5 backbone detection (swaps the pair slot).
-  const viewerTakes = takes.get(viewerId) ?? [];
-  let isBackbone = false;
-  if (viewerTakes.length === 0 && viewerPairs.length >= 2) {
-    const minRatioOf = (id: string) => {
-      const rs = scored.filter((p) => p.a === id || p.b === id).map((p) => p.agree / p.total);
-      return rs.length ? Math.min(...rs) : -1;
-    };
-    const mine = minRatioOf(viewerId);
-    isBackbone = mine >= BACKBONE_MIN_RATIO && memberIds.every((id) => id === viewerId || minRatioOf(id) < mine);
-  }
+  const { best, tiedTop, worst, tiedWorst } = pickPairs(sel);
 
   let pairCardId: string | null = null;
-  const bestSorted = [...viewerPairs].sort((x, y) => y.ratio - x.ratio || y.total - x.total || label(x.otherId).localeCompare(label(y.otherId)));
-  const best = bestSorted[0];
   if (isBackbone) {
     lines.push(T_BACKBONE);
   } else if (viewerPairs.length) {
-    const tiedTop = bestSorted.filter((p) => p.ratio === best.ratio && p.agree === best.agree && p.total === best.total);
     if (tiedTop.length > 1) {
       lines.push(T_PAIR_TIE(joinLabels(tiedTop.map((p) => label(p.otherId))), tiedTop.length, best.agree));
     } else {
       let line = T_PAIR_LINE(label(best.otherId), best.agree, best.total);
-      // The concrete shared against-the-grain answer: a card only these two said yes to.
-      const duoCard = findDuoCard(cards, byUser, memberIds, viewerId, best.otherId);
-      if (duoCard) { line += ` ${T_PAIR_DUO_PROOF(duoCard.plural)}`; pairCardId = duoCard.id; }
+      // The concrete shared against-the-grain answer: a card only these two share.
+      const duoCard = findDuoCard(cards, sel.byUser, sel.memberIds, viewerId, best.otherId);
+      if (duoCard) { line += ` ${T_PAIR_DUO_PROOF(duoCard.form)}`; pairCardId = duoCard.card.id; }
       lines.push(line);
     }
   }
 
   if (viewerPairs.length >= 2 || (isBackbone && viewerPairs.length >= 1)) {
-    const worstSorted = [...viewerPairs].sort((x, y) => x.ratio - y.ratio || y.total - x.total || label(x.otherId).localeCompare(label(y.otherId)));
-    const worst = worstSorted[0];
     // No spread → no opposite line (identical stats to the best pair would
     // name your soulmates as your furthest apart).
     if (worst.ratio < best.ratio) {
-      const tiedWorst = worstSorted.filter((p) => p.ratio === worst.ratio && p.agree === worst.agree && p.total === worst.total);
       if (tiedWorst.length > 1) {
         lines.push(T_OPPOSITE_TIE(joinLabels(tiedWorst.map((p) => label(p.otherId))), worst.agree, worst.total));
       } else {
@@ -263,42 +393,90 @@ export function computeFindings(args: {
 
   // §7.5.3 line 4 — solo → duo → smallest minority (skipping the pair's cited card).
   if (viewerTakes.length) {
-    lines.push(T_SOLO(viewerTakes[0].singular));
+    lines.push(soloLine(viewerTakes[0]));
   } else {
-    let duo: { card: DeckCard; other: string } | null = null;
-    let trio: { card: DeckCard; others: string[] } | null = null;
-    for (const c of cards) {
-      if (c.id === pairCardId) continue;
-      if (byUser.get(viewerId)?.get(c.id) !== true) continue;
-      const yesOthers: string[] = [];
-      let noOthers = 0;
-      for (const id of memberIds) {
-        if (id === viewerId) continue;
-        const v = byUser.get(id)?.get(c.id);
-        if (v === true) yesOthers.push(id); else if (v === false) noOthers++;
-      }
-      if (noOthers === 0) continue; // not distinctive — nobody on the other side
-      if (yesOthers.length === 1 && !duo) duo = { card: c, other: yesOthers[0] };
-      if (yesOthers.length === 2 && !trio) trio = { card: c, others: yesOthers };
-    }
-    if (duo) lines.push(T_DUO(label(duo.other), duo.card.plural));
-    else if (trio) lines.push(T_TRIO(label(trio.others[0]), label(trio.others[1]), trio.card.plural));
+    const minority = findDistinctiveMinority(cards, sel, viewerId, pairCardId);
+    if (minority?.kind === "duo") lines.push(T_DUO(label(minority.other), minority.form));
+    else if (minority?.kind === "trio") lines.push(T_TRIO(label(minority.others[0]), label(minority.others[1]), minority.form));
   }
 
   if (!lines.length && !quotes.length) return null;
   return { headline, quotes, lines, aligned: false };
 }
 
-function findDuoCard(cards: DeckCard[], byUser: Map<string, Map<string, boolean>>, memberIds: string[], a: string, b: string): DeckCard | null {
-  for (const c of cards) {
-    if (byUser.get(a)?.get(c.id) !== true || byUser.get(b)?.get(c.id) !== true) continue;
-    let othersNo = 0, othersYes = 0;
-    for (const id of memberIds) {
-      if (id === a || id === b) continue;
-      const v = byUser.get(id)?.get(c.id);
-      if (v === true) othersYes++; else if (v === false) othersNo++;
+// ── The findings card (n≥4 shareable; Option B rev 3, 2026-07-28) ───────────
+
+export type CardFindings = {
+  /** Lora headline — the viewer's own hottest take when they have one,
+   *  else the shared headline (renegade stays third person naturally). */
+  headline: string;
+  /** Body lines in order. `bold` (when set) is the substring the renderer
+   *  emphasizes — the ally/opposite name. */
+  lines: { text: string; bold?: string }[];
+};
+
+export function computeCardFindings(args: {
+  cards: DeckCard[];
+  answers: GroupDeckAnswer[];
+  members: DeckMember[]; // ALL members incl. the viewer
+  viewerId: string;
+}): CardFindings | null {
+  const { cards, members, viewerId } = args;
+  if (members.length < 4) return null; // the card is the n≥4 artifact
+  const sel = selectFacts(args);
+  if (!sel) return null;
+  const { label, viewerPairs, viewerTakes, isBackbone } = sel;
+
+  const lines: { text: string; bold?: string }[] = [];
+  let headline: string;
+  if (viewerTakes.length) {
+    headline = soloLine(viewerTakes[0]);
+    // A second solo take rides as a quote line (YES takes only — a NO has no
+    // quotable statement).
+    const second = viewerTakes.slice(1).find((t) => !t.negated);
+    if (second) lines.push({ text: T_CARD_SOLO_QUOTE(second.card.statement) });
+  } else {
+    const shared = sharedHeadline(cards, sel, members.length);
+    if (!shared) return null;
+    if (shared.kind === "aligned") {
+      return { headline: T_ALIGNED_HEAD, lines: [{ text: T_ALIGNED_SUB }] };
     }
-    if (othersYes === 0 && othersNo >= 1) return c;
+    headline = shared.headline;
   }
-  return null;
+
+  const { best, tiedTop, worst, tiedWorst } = pickPairs(sel);
+
+  let pairCardId: string | null = null;
+  if (isBackbone) {
+    lines.push({ text: T_BACKBONE });
+  } else if (viewerPairs.length) {
+    if (tiedTop.length > 1) {
+      lines.push({ text: T_PAIR_TIE(joinLabels(tiedTop.map((p) => label(p.otherId))), tiedTop.length, best.agree) });
+    } else {
+      let text = T_CARD_ALLY(label(best.otherId), best.agree, best.total);
+      const duoCard = findDuoCard(cards, sel.byUser, sel.memberIds, viewerId, best.otherId);
+      if (duoCard) { text += T_CARD_ALLY_PROOF(duoCard.form); pairCardId = duoCard.card.id; }
+      lines.push({ text, bold: label(best.otherId) });
+    }
+  }
+
+  if (viewerPairs.length >= 2 || (isBackbone && viewerPairs.length >= 1)) {
+    if (worst.ratio < best.ratio) {
+      if (tiedWorst.length > 1) {
+        lines.push({ text: T_OPPOSITE_TIE(joinLabels(tiedWorst.map((p) => label(p.otherId))), worst.agree, worst.total) });
+      } else {
+        lines.push({ text: T_CARD_OPPOSITE(label(worst.otherId), worst.agree, worst.total), bold: label(worst.otherId) });
+      }
+    }
+  }
+
+  // Without a solo take up top, the distinctive-minority line closes the card.
+  if (!viewerTakes.length) {
+    const minority = findDistinctiveMinority(cards, sel, viewerId, pairCardId);
+    if (minority?.kind === "duo") lines.push({ text: T_DUO(label(minority.other), minority.form) });
+    else if (minority?.kind === "trio") lines.push({ text: T_TRIO(label(minority.others[0]), label(minority.others[1]), minority.form) });
+  }
+
+  if (!lines.length) return null;
+  return { headline, lines };
 }

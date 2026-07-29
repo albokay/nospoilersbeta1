@@ -120,6 +120,14 @@ export interface SidebarLogoProps {
    * even though its body palette is sky). Default "green".
    */
   bg?: "green" | "sky";
+  /**
+   * The immediate SURFACE the logo sits on, when it isn't the page bg (e.g.
+   * the findings card puts the logo on cream inside a group-context page).
+   * Overrides the body-class-derived bg for the match-darkening rule, so the
+   * block matching the surface (cream, there) is darkened 10% instead of
+   * vanishing. Default: undefined (body class decides, as before).
+   */
+  surfaceBg?: string;
 }
 
 export default function SidebarLogo({
@@ -130,6 +138,7 @@ export default function SidebarLogo({
   wordmarkTint,
   arrangements,
   bg = "green",
+  surfaceBg,
 }: SidebarLogoProps) {
   const [layout, setLayout] = useState<Layout | null>(null);
   const [settled, setSettled] = useState(false);
@@ -216,10 +225,11 @@ export default function SidebarLogo({
             // GREEN on a sky background (the group room) and stays sky otherwise;
             // any other block that matches the context bg is darkened 10% so it
             // doesn't vanish against the page.
+            const matchBg = surfaceBg ?? contextBg; // the immediate surface wins over the body class
             const blockBg =
               block.id === "lightBlue"
                 ? (bg === "sky" ? CANON.personal : block.color) // sky cell: green on sky bg, sky on green bg
-                : contextBg && contextBg.toLowerCase() === block.color.toLowerCase()
+                : matchBg && matchBg.toLowerCase() === block.color.toLowerCase()
                   ? darken10(block.color)
                   : block.color;
             return (
