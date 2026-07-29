@@ -40,7 +40,6 @@ import RoomProgressTip from "./RoomProgressTip";
 import LoadingDots from "./LoadingDots";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
-import SIKWSticky from "./SIKWSticky";
 import { CANON } from "../styles/canon";
 
 const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark };
@@ -736,7 +735,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 re-askable "how does this work?" on the signed-in site. */}
             {tab === "friend" && !privateOnly && (
               <div style={{ display: "flex", justifyContent: "center", margin: "116px 0 8px" }}>
-                <button style={tourBtn} onClick={() => setTourOpen(true)}>how does this room work?</button>
+                <button style={tourBtn} onClick={() => setTourOpen(true)}>How does this room work?</button>
               </div>
             )}
           </div>
@@ -818,7 +817,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         <>
           <IncomingPingSticky groupId={roomId} currentUserId={user.id} />
           <PollSticky groupId={roomId} currentUserId={user.id} refreshKey={pollRefreshKey} />
-          {show && <SIKWSticky groupId={roomId} currentUserId={user.id} seasons={show.seasons} />}
+          {/* SIKW retired (2026-07-28) — SIKWSticky unmounted, component +
+              tables dormant. Polls are the room's one ask flow now. */}
         </>
       )}
 

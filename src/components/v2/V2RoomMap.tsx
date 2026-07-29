@@ -1,15 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CANON } from "../../styles/canon";
 import { createPortal } from "react-dom";
-import { CircleCheck, DoorClosed, DoorOpen, SquarePen } from "lucide-react";
+import { ChartBar, CircleCheck, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
 import StarFace from "./StarFace";
 import NudgePopover, { type NudgeDirection } from "../NudgePopover";
-import AskTheRoomPicker from "../AskTheRoomPicker";
 import PollComposer from "../PollComposer";
-import SIKWComposer from "../SIKWComposer";
 
 // V2 friend room — right-pane "season map".
 //
@@ -119,10 +117,11 @@ export type V2RoomMapProps = {
       Drives click-to-adjust on self-column state-2 cells: when the cell's
       entry is visible, click rotates rating; when off-screen, click scrolls. */
   visibleEntryIds?: Set<string>;
-  /** Friend room id. Required for the pings/polls/SIKW launcher mode —
-      header click opens NudgePopover for that recipient; door icon opens
-      AskTheRoomPicker → PollComposer / SIKWComposer. Without groupId,
-      launcher mode is suppressed (names render as plain non-clickable). */
+  /** Friend room id. Required for the pings/polls launcher mode — header
+      click opens NudgePopover for that recipient; the poll icon opens
+      PollComposer directly (SIKW retired 2026-07-28; the two-option
+      AskTheRoomPicker chooser went with it — both dormant). Without
+      groupId, launcher mode is suppressed (names render plain). */
   groupId?: string;
   /** Fires when a cell with an entry is clicked. */
   onEntryClick: (threadId: string) => void;
@@ -322,10 +321,7 @@ export default function V2RoomMap({
     count: number | null;
     anchorRect: DOMRect;
   } | null>(null);
-  const [askPickerRect, setAskPickerRect] = useState<DOMRect | null>(null);
   const [pollComposerOpen, setPollComposerOpen] = useState(false);
-  const [sikwComposerOpen, setSikwComposerOpen] = useState(false);
-  const [doorHover, setDoorHover] = useState(false);
   // Bounce animation — two-phase. Phase 'up' = INSTANT pop to scale(1.12)
   // with no transition; phase 'down' = animate back to scale(1) over 150ms
   // ease-out. Two requestAnimationFrames between phases guarantee the 'up'
@@ -606,20 +602,15 @@ export default function V2RoomMap({
           >
             {launcherMode && (
               <Tooltip
-                text="Question for the room?"
+                text="Poll the room?"
                 direction="above"
                 align="left"
                 width={180}
                 portal
               >
                 <button
-                  aria-label="Ask the room"
-                  onMouseEnter={() => setDoorHover(true)}
-                  onMouseLeave={() => setDoorHover(false)}
-                  onClick={(e) => {
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                    setAskPickerRect(rect);
-                  }}
+                  aria-label="Poll the room"
+                  onClick={() => setPollComposerOpen(true)}
                   style={{
                     background: "transparent",
                     border: "none",
@@ -630,7 +621,7 @@ export default function V2RoomMap({
                     alignItems: "center",
                   }}
                 >
-                  {doorHover ? <DoorOpen size={24} /> : <DoorClosed size={24} />}
+                  <ChartBar size={24} />
                 </button>
               </Tooltip>
             )}
@@ -1578,41 +1569,14 @@ export default function V2RoomMap({
           document.body,
         )}
 
-      {launcherMode && askPickerRect && groupId &&
-        createPortal(
-          <AskTheRoomPicker
-            anchorRect={askPickerRect}
-            anchorMode="from-anchor"
-            onClose={() => setAskPickerRect(null)}
-            onSelectPoll={() => {
-              setAskPickerRect(null);
-              setPollComposerOpen(true);
-            }}
-            onSelectSikw={() => {
-              setAskPickerRect(null);
-              setSikwComposerOpen(true);
-            }}
-          />,
-          document.body,
-        )}
-
+      {/* SIKW retired (2026-07-28): the poll icon opens PollComposer
+          directly — AskTheRoomPicker + SIKWComposer are dormant. */}
       {launcherMode && pollComposerOpen && groupId &&
         createPortal(
           <PollComposer
             groupId={groupId}
             onClose={() => setPollComposerOpen(false)}
             onOpened={() => onPollOpened?.()}
-          />,
-          document.body,
-        )}
-
-      {launcherMode && sikwComposerOpen && groupId &&
-        createPortal(
-          <SIKWComposer
-            groupId={groupId}
-            progressSeason={viewerProgress?.s ?? 0}
-            progressEpisode={viewerProgress?.e ?? 0}
-            onClose={() => setSikwComposerOpen(false)}
           />,
           document.body,
         )}
