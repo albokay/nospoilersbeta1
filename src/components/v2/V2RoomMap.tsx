@@ -1701,9 +1701,12 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
       borderRadius: "50%",
     };
   }
+  // Not reached: same outline COLOR as the reached-no-entry cell above
+  // (identity for the viewer, greyblue for others — 2026-07-28), so the
+  // two read as one family; only the DASH distinguishes them.
   return {
     background: "transparent",
-    border: "2px dashed var(--canon-cream,#fef8ea)",
+    border: `2px dashed ${outlineColor}`,
     borderRadius: "50%",
   };
 }
