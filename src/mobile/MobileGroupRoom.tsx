@@ -682,13 +682,18 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             </h1>
           )}
 
-          {/* QA round 8: the chat button, in-flow — below the shelves,
-              above the actions (was a fixed right-edge tab that overlapped
-              content). */}
-          <div style={{ display: "flex", justifyContent: "center", marginTop: empty ? 24 : 40 }}>
-            <button style={chatPill} onClick={() => navigate(`/m/group/${groupId}/chat`)}>
+          {/* The chat tab: desktop's right-edge tab shape (icon only, cream,
+              rounded on the left, breaking off the screen edge), but kept
+              IN-FLOW at this spot in the vertical order — below the shelves,
+              above the actions (Alborz 2026-07-29; QA round 8 had made it a
+              centered in-flow pill to stop the fixed tab overlapping
+              content — the flow position solves that, the shape returns).
+              The negative right margin cancels contentWrap's 16px padding so
+              the tab reaches the edge. */}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: empty ? 24 : 40, marginRight: -16 }}>
+            <button style={chatTab} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
               {chatNew && <span style={notifDotChatInline} />}
-              <MessageCircle size={20} color={C.green} /> chat
+              <MessageCircle size={24} color={C.green} />
             </button>
           </div>
 
@@ -994,15 +999,21 @@ const headerMembers: React.CSSProperties = {
 // of the screen at 60% height; MessageCircle green; new-chat dot on the curve.
 // In-flow chat pill (QA round 8 — replaced the fixed right-edge tab):
 // cream stadium, green icon + label, new-chat dot on the corner.
-const chatPill: React.CSSProperties = {
-  position: "relative", display: "inline-flex", alignItems: "center", gap: 8,
-  background: C.cream, color: C.green, border: "none", cursor: "pointer",
-  borderRadius: 65, padding: "12px 24px",
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
+// Desktop's chatTab, scaled for touch: icon only, cream, rounded on the LEFT
+// only so it reads as a tab breaking off the right screen edge. Rendered
+// in-flow (not fixed) — see the callsite.
+const chatTab: React.CSSProperties = {
+  position: "relative", display: "inline-flex", alignItems: "center",
+  background: C.cream, border: "none", cursor: "pointer",
+  borderTopLeftRadius: 48, borderBottomLeftRadius: 48,
+  padding: "18px 18px 18px 26px", minHeight: 48,
+  boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)",
 };
 const notifDotChatInline: React.CSSProperties = {
-  position: "absolute", top: -4, right: -2, width: 14, height: 14, borderRadius: "50%",
-  background: C.blue,
+  // Straddles the tab's rounded left edge — desktop's placement rule (the
+  // right edge is off-screen, so the dot can't live there).
+  position: "absolute", top: 10, left: 0, width: 14, height: 14, borderRadius: "50%",
+  background: C.blue, zIndex: 1,
 };
 const contentWrap: React.CSSProperties = { padding: "8px 16px 40px" };
 const shelfHeader: React.CSSProperties = {
