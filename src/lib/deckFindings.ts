@@ -16,9 +16,9 @@
  *   answered it. Solo NOs are LIVE as of 2026-07-28 (negations CP3) — but
  *   only on cards whose negated forms are authored (`singular_neg` /
  *   `plural_neg`; NULL = that card never fires a NO-based line). The
- *   renegade's QUOTED takes still list only their YES statements — a NO
- *   can't be quoted verbatim; how to present a renegade's NO-takes is a
- *   future copy call.
+ *   renegade's quoted takes include NO-takes as the verbatim statement plus
+ *   a "— {name} says NOPE." suffix outside the closing quote (Alborz
+ *   2026-07-28).
  * • Agreement counts only cards BOTH people answered (drip desync can't
  *   skew); pair/opposite lines need ≥4 cards in common to fire.
  * • Ties: renegade tie → no renegade (spec rule). Ally/opposite ties with
@@ -62,17 +62,20 @@ const T_CANT_AGREE = (statement: string) =>
 const T_ALIGNED_HEAD = `Nobody here has a hot take.`; // SPEC (§8)
 const T_ALIGNED_SUB = `Friends, aligned. Go forth and watch.`; // SPEC (§8)
 const T_PAIR_LINE = (name: string, a: number, t: number) =>
-  `You and ${name} watch TV the same way — you agree on ${a} of ${t}.`; // ALBORZ (approved)
+  `You and ${name} are TV soulmates — you agree on ${a} out of ${t} questions.`; // ALBORZ (2026-07-29 copy pass)
 const T_PAIR_DUO_PROOF = (form: string) => `You're the only two who ${form}.`; // ALBORZ (approved)
 const T_BACKBONE = `You're the backbone of the group. You have the most in common with everyone else in the group.`; // SPEC (§7.5.5)
 const T_OPPOSITE = (name: string, a: number, t: number) =>
-  `You and ${name} are the furthest apart — ${a} of ${t}.`; // SPEC (§7.5.8)
+  `You and ${name} are the furthest apart — you only agree on ${a} out of ${t}. But opposites attract…`; // ALBORZ (2026-07-29 copy pass)
 // Exact-tie variants (Alborz 2026-07-26): call out the tie, list everyone.
 const NUM_WORD: Record<number, string> = { 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven" };
 const T_PAIR_TIE = (names: string, count: number, n: number) =>
   `You have ${NUM_WORD[count] ?? count} soulmates: ${names}. You agree on ${n} questions.`; // ALBORZ
 const T_OPPOSITE_TIE = (names: string, a: number, t: number) =>
-  `You're furthest apart from ${names} — you agree on ${a} of ${t} with each.`; // mirrors the soulmate tie call
+  `You're furthest apart from ${names} — you only agree on ${a} out of ${t} with each. But opposites attract…`; // ALBORZ (2026-07-29 copy pass)
+// A renegade's NO-take, quoted with the twist (Alborz 2026-07-28): the
+// statement stays verbatim, the suffix lands OUTSIDE the closing quote.
+const T_NOPE_SUFFIX = (name: string) => ` — ${name} says NOPE.`; // ALBORZ
 const joinLabels = (names: string[]): string =>
   names.length <= 2 ? names.join(" and ") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 const T_SOLO = (singular: string) => `You're the only one who ${singular}.`; // SPEC (§7.2)
@@ -86,7 +89,7 @@ const T_CARD_ALLY = (name: string, a: number, t: number) =>
   `Your closest ally: ${name} — you agree on ${a} of ${t}.`;
 const T_CARD_ALLY_PROOF = (form: string) => ` You're the only two who ${form}.`;
 const T_CARD_OPPOSITE = (name: string, a: number, t: number) =>
-  `Your opposite: ${name} — you agree on ${a} of ${t}.`;
+  `Your opposite is ${name} — you only agree on ${a} out of ${t}. But opposites attract…`; // ALBORZ (2026-07-29 copy pass)
 
 // ── Tunables ────────────────────────────────────────────────────────────────
 const MIN_COMMON = 4;        // pair/opposite lines need this many shared cards
@@ -207,7 +210,7 @@ function selectFacts(args: {
 /** §7.5.4 shared headline resolution (renegade → aligned → unanimous →
  *  sharpest split), identical for the sticky and the card. */
 function sharedHeadline(cards: DeckCard[], sel: Selection, memberCount: number):
-  | { kind: "headline"; headline: string; quotes: string[] }
+  | { kind: "headline"; headline: string; quotes: FindingsQuote[] }
   | { kind: "aligned" }
   | null {
   const { byUser, memberIds, label, takes, scored } = sel;
@@ -215,9 +218,13 @@ function sharedHeadline(cards: DeckCard[], sel: Selection, memberCount: number):
   const renegade = counts[0].n > 0 && (counts.length < 2 || counts[0].n > counts[1].n) ? counts[0].id : null;
 
   if (renegade) {
-    // Quote, don't inflect (§9.1) — YES takes only; a NO take has no
-    // quotable statement (see file header).
-    const quotes = (takes.get(renegade) ?? []).filter((t) => !t.negated).slice(0, 3).map((t) => t.card.statement);
+    // Quote, don't inflect (§9.1). A NO-take quotes the statement verbatim
+    // too, with the "says NOPE" twist appended after the closing quote
+    // (Alborz 2026-07-28) — so a mostly-NO renegade reads fully.
+    const quotes = (takes.get(renegade) ?? []).slice(0, 3).map((t) => ({
+      text: t.card.statement,
+      suffix: t.negated ? T_NOPE_SUFFIX(label(renegade)) : undefined,
+    }));
     return { kind: "headline", headline: T_RENEGADE(label(renegade)), quotes };
   }
 
@@ -330,11 +337,18 @@ export function pairHeaderLine(otherLabel: string, answers: GroupDeckAnswer[], v
 
 // ── The Findings sticky (n≥3, per-viewer; §7.5) ─────────────────────────────
 
+export type FindingsQuote = {
+  /** The verbatim card statement — the renderer wraps it in quote marks. */
+  text: string;
+  /** NO-take twist, rendered AFTER the closing quote: " — {name} says NOPE." */
+  suffix?: string;
+};
+
 export type Findings = {
   /** Bold first line. */
   headline: string;
   /** Verbatim card statements quoted under the headline (renegade's takes). */
-  quotes: string[];
+  quotes: FindingsQuote[];
   /** The per-viewer lines (pair/backbone, opposite, duo). */
   lines: string[];
   /** §8 aligned ending — headline + sub only, no lines. */

@@ -299,7 +299,11 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
           <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Findings:</div>
           <div style={{ fontWeight: 700, marginBottom: findings.quotes.length ? 4 : 8 }}>{findings.headline}</div>
           {findings.quotes.map((q) => (
-            <div key={q} style={{ fontStyle: "italic", margin: "2px 0" }}>· &ldquo;{q}&rdquo;</div>
+            // A NO-take's suffix ("— {name} says NOPE.") lands outside the
+            // closing quote, upright against the italic statement.
+            <div key={q.text} style={{ fontStyle: "italic", margin: "2px 0" }}>
+              · &ldquo;{q.text}&rdquo;{q.suffix && <span style={{ fontStyle: "normal" }}>{q.suffix}</span>}
+            </div>
           ))}
           {findings.lines.map((l) => (
             <div key={l} style={{ marginTop: 8 }}>{l}</div>

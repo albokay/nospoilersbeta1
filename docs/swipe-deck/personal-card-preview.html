@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Swipe deck — findings card (Option B, rev 2)</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --personal:#7ABD8E; --friend:#ADC8D7; --identity:#355EB8; --accent:#DEA838;
+    --alert:#F45028; --cream:#FEF8EA; --dark:#1A3A4A; --business:#8DAABA;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#e8e6e1; font-family:Inter,sans-serif; padding:32px; color:var(--dark);}
+  h1{font-family:Lora,serif; font-size:22px; margin-bottom:6px;}
+  .note{font-size:13px; color:#666; max-width:980px; margin-bottom:28px; line-height:1.5;}
+  .row{display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start;}
+  .phone{width:360px; height:720px; border-radius:28px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.25); position:relative; flex-shrink:0; background:var(--friend);}
+  .cap{width:360px; font-size:12.5px; line-height:1.55; color:#444; margin-top:12px;}
+  .cap b{color:#111;}
+  .col{display:flex; flex-direction:column;}
+  .dim{position:absolute; inset:0; background:rgba(26,58,74,.35);}
+
+  .gr-head{padding:16px 18px 2px; text-align:center;}
+  .gr-title{font-family:Lora,serif; font-weight:700; font-size:20px; color:var(--cream);}
+  .gr-with{font-size:11px; color:var(--cream); font-weight:600; opacity:.85;}
+
+  .hw-title{font-family:Lora,serif; font-weight:700; color:var(--identity); font-size:22px; white-space:nowrap;}
+  .hw-sub{font-size:11.5px; color:var(--business); font-weight:600; margin-top:3px;}
+
+  .sheet-open{position:absolute; left:0; right:0; bottom:0; top:96px; background:var(--cream); border-radius:24px 24px 0 0; box-shadow:0 -8px 28px rgba(0,0,0,.28); display:flex; flex-direction:column; overflow:hidden;}
+  .sheet-open .hw-head{display:flex; justify-content:space-between; align-items:flex-start; padding:16px 20px 10px;}
+  .grabber{width:44px; height:4px; border-radius:2px; background:var(--business); opacity:.5; margin:10px auto 0;}
+
+  .rowline{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 20px; font-size:12.5px; line-height:1.35;}
+  .rowline:nth-child(odd){background:rgba(173,200,215,.45);}
+  svg.th{width:17px; height:17px; flex-shrink:0;}
+  svg.th.up{stroke:var(--personal);}
+  svg.th.down{stroke:var(--alert);}
+
+  .seemore{padding:8px 20px 0; font-size:12px; font-weight:600; color:var(--identity); text-align:right;}
+  .seemore.last{padding-bottom:12px;}
+
+  /* The findings card (Option B, rev 2) */
+  .clean-bg{position:absolute; inset:0; background:var(--friend);}
+  .close-x{position:absolute; top:14px; right:18px; font-size:22px; color:var(--cream); font-weight:700; z-index:2;}
+  .share-card{position:absolute; left:20px; right:20px; top:96px; background:var(--cream); border-radius:20px; box-shadow:0 12px 32px rgba(0,0,0,.3); padding:20px 20px 14px;}
+  .sc-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .sc-friends{font-size:13px; line-height:1.5; color:var(--dark); margin:4px 0 16px;}
+  .sc-head{font-family:Lora,serif; font-weight:600; font-size:19px; line-height:1.35; color:var(--identity); margin-bottom:16px;}
+  .sc-line{font-size:13px; line-height:1.55; margin-bottom:13px;}
+  .sc-line b{color:var(--identity);}
+  .sc-quote{font-style:italic;}
+  .sc-foot{border-top:1px solid rgba(141,170,186,.4); margin-top:14px; padding-top:10px; font-size:11px; font-weight:600; color:var(--business); display:flex; justify-content:space-between;}
+
+  /* Dynamic-logo stand-in (arrangement 1, scaled ~0.32; the real
+     <SidebarLogo/> component renders here in code). */
+  .logo-mini{position:relative; width:96px; height:64px; flex-shrink:0;}
+  .logo-mini .blk{position:absolute; width:17px; height:17px; border-radius:5px;}
+  .logo-mini .word{position:absolute; left:14px; bottom:0; font-family:Lora,serif; font-style:italic; font-weight:700; font-size:15px; color:var(--dark);}
+  .logo-mini .word i{color:var(--accent);}
+</style>
+</head>
+<body>
+<h1>The findings card — Option B, rev 3 ("you" voice, owner named once)</h1>
+<p class="note">Changes from rev 1: entry link is <b>"see findings →"</b> in the answers sheet · friend count dropped ·
+<b>"16 questions answered"</b> in sentence form, bottom-left · URL bottom-right, <b>same plain font</b>, <b>beta.sidebar.watch</b> ·
+the <b>dynamic Sidebar logo</b> sits in the card's top-right corner (drawn here as a stand-in; the real animated component renders in code) ·
+headline title is <b>"How We Watch TV"</b> with the friends listed under it in body font · no share button ·
+the background behind the open card is <b>clean</b> (solid, no page text) — and the full answer grid gets the same clean background.</p>
+
+<svg style="display:none">
+  <symbol id="thumb-up" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
+  </symbol>
+  <symbol id="thumb-down" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/>
+  </symbol>
+</svg>
+
+<div class="row">
+
+  <!-- Frame 1 — the entry point -->
+  <div class="col">
+    <div class="phone">
+      <div class="gr-head">
+        <div class="gr-title">Group 1</div>
+        <div class="gr-with">with Christine, Libby, Jill, Matt and Zoe</div>
+      </div>
+      <div class="dim"></div>
+      <div class="sheet-open">
+        <div class="grabber"></div>
+        <div class="hw-head">
+          <div>
+            <div class="hw-title">How We Watch TV</div>
+            <div class="hw-sub">everyone's latest answers</div>
+          </div>
+        </div>
+        <div>
+          <div class="rowline"><span>I check my phone during television.</span><svg class="th up"><use href="#thumb-up"/></svg></div>
+          <div class="rowline"><span>I proactively stay away from trailers.</span><svg class="th up"><use href="#thumb-up"/></svg></div>
+          <div class="rowline"><span>Three episodes is enough to judge a show.</span><svg class="th down"><use href="#thumb-down"/></svg></div>
+          <div class="rowline"><span>I've been spoiled by a thumbnail.</span><svg class="th up"><use href="#thumb-up"/></svg></div>
+          <div class="rowline"><span>I fall asleep during television regularly.</span><svg class="th up"><use href="#thumb-up"/></svg></div>
+        </div>
+        <div class="seemore">see more answers →</div>
+        <div class="seemore last">see findings →</div>
+      </div>
+    </div>
+    <p class="cap"><b>Entry point.</b> "see findings →" sits with "see more answers →" at the bottom of the answers sheet, same style. It appears once the group has 4+ members with enough shared answers for the findings math to say something.</p>
+  </div>
+
+  <!-- Frame 2 — the card, clean background -->
+  <div class="col">
+    <div class="phone">
+      <div class="clean-bg"></div>
+      <div class="close-x">×</div>
+      <div class="share-card">
+        <div class="sc-top">
+          <div>
+            <div class="hw-title" style="font-size:20px;">How We Watch TV</div>
+            <div class="sc-friends">Al, with Christine, Libby, Jill, Matt and&nbsp;Zoe</div>
+          </div>
+          <div class="logo-mini" aria-label="Sidebar logo (dynamic)">
+            <span class="blk" style="background:#e9dfd0; left:22px; top:2px;"></span>
+            <span class="blk" style="background:var(--alert); left:35px; top:14px;"></span>
+            <span class="blk" style="background:var(--friend); left:48px; top:8px;"></span>
+            <span class="blk" style="background:var(--identity); left:73px; top:1px;"></span>
+            <span class="blk" style="background:var(--accent); left:-2px; top:29px;"></span>
+            <span class="word">side<i>bar</i></span>
+          </div>
+        </div>
+        <div class="sc-head">You're the only one who falls asleep during television.</div>
+        <div class="sc-line"><span class="sc-quote">"I've lied about liking a show a friend loves."</span> — you, and only&nbsp;you.</div>
+        <div class="sc-line">Your closest ally: <b>Christine</b> — you agree on 13 of 16. You're the only two who text "no-spoilers" before a big episode.</div>
+        <div class="sc-line">Your opposite: <b>Zoe</b> — you agree on 5 of 16.</div>
+        <div class="sc-foot"><span>16 questions answered</span><span>beta.sidebar.watch</span></div>
+      </div>
+    </div>
+    <p class="cap"><b>The card, on a clean background.</b> The findings center the VIEWER (each member gets their own card from the same data), so the lines speak in "you" — the owner is named ONCE, first in the friends line ("Al, with …"), which anchors who "you" is when the screenshot leaves Sidebar. A shared renegade headline naming someone else would stay third person naturally. Solid color behind the card, no page text showing through (the full answer grid gets the same treatment). Dynamic logo top-right (the real component renders in code). Footer both sides in the same plain font. No share button — a screenshot is the share.</p>
+  </div>
+
+</div>
+</body>
+</html>
