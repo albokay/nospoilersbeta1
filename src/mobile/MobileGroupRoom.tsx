@@ -12,6 +12,7 @@ import MobileInviteSheet from "./MobileInviteSheet";
 import DeckWave from "../components/deck/DeckWave";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
 import MobileTipsSheet from "../components/MobileTipsSheet";
+import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 import PendingInvitesPanel, { isInviteStale, type OtherPendingInvite } from "../components/PendingInvitesPanel";
 import {
   fetchShows,
@@ -169,11 +170,21 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [gearOpen, setGearOpen] = useState(false);
+  // Swipe-down dismiss for the gear sheet (2026-07-28 rollout). The sheet
+  // scrolls, so the drag only engages when it's scrolled to the top.
+  const gearSwipe = useSheetSwipeDown(() => setGearOpen(false));
   const [renameValue, setRenameValue] = useState("");
   const [contactEdits, setContactEdits] = useState<Record<string, string>>({});
   const [contactsSaving, setContactsSaving] = useState(false);
 
   // ── Loads (same calls as desktop's group context) ─────────────────────────
+  // Last-visit snapshot for instant paint (stale-while-revalidate; the
+  // desktop group shelves + mobile dashboard pattern, mirrored here
+  // 2026-07-28). Unlike desktop, this page mounts fresh with no catalog in
+  // memory, so the snapshot carries BOTH the shelf rows and the slice of the
+  // show catalog they render from (names + seasons). Display-only staleness;
+  // every action still runs against live data.
+  const snapKey = `ns_m_group_snap_${user?.id ?? "anon"}_${groupId}`;
   const refreshGroup = useCallback(async () => {
     try {
       const rows = await fetchGroupDashboard(groupId);
@@ -198,7 +209,22 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     if (authLoading || !user) return;
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      // Instant paint from the last visit's snapshot; the live fetches
+      // replace everything underneath.
+      let snapshotUsed = false;
+      try {
+        const raw = sessionStorage.getItem(snapKey);
+        if (raw) {
+          const snap = JSON.parse(raw);
+          if (Array.isArray(snap?.rows) && Array.isArray(snap?.shows)) {
+            setGroupShows(snap.rows);
+            setShows(snap.shows);
+            snapshotUsed = true;
+          }
+        }
+      } catch { /* corrupt/absent snapshot → normal load */ }
+      if (!snapshotUsed) setLoading(true);
+      else setLoading(false);
       // Perf (2026-07-07): the personal core (catalog/progress/pool) and the
       // group's shows load CONCURRENTLY — neither depends on the other, and
       // serializing them doubled the first-paint wait.
@@ -243,7 +269,17 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         .catch(() => {});
     })();
     return () => { cancelled = true; };
-  }, [user, authLoading, groupId, refreshGroup]);
+  }, [user, authLoading, groupId, refreshGroup, snapKey]);
+
+  // Keep the instant-paint snapshot current: the live rows + just the
+  // catalog slice the shelves render from (an empty group writes empty, so
+  // removed shows can't ghost-paint on the next entry).
+  useEffect(() => {
+    if (loading || !user) return;
+    const ids = new Set(groupShows.map((r) => r.showId));
+    const slice = shows.filter((s) => ids.has(s.id));
+    try { sessionStorage.setItem(snapKey, JSON.stringify({ rows: groupShows, shows: slice })); } catch { /* quota — instant paint just won't happen */ }
+  }, [loading, groupShows, shows, user, snapKey]);
 
   // Live chat dot while you're on the shows side: a filtered, per-group
   // realtime listen that flips the toggle's new-message dot the instant
@@ -795,7 +831,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       {/* ── Gear: rename + leave (bottom sheet; desktop copy) ── */}
       {gearOpen && (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) setGearOpen(false); }}>
-          <div style={{ ...bottomSheet, background: C.yellow, maxHeight: "80dvh", overflowY: "auto" }}>
+          <div
+            {...gearSwipe.handlers}
+            style={{ ...bottomSheet, background: C.yellow, maxHeight: "80dvh", overflowY: "auto", overscrollBehavior: "none", ...gearSwipe.style }}
+          >
             {/* Bottom-sheet rule (Alborz 2026-07-03): bottom-of-screen panels
                 LEFT-justify their elements; full-screen panels center. */}
             {/* CP-C: the contacts card comes FIRST (desktop round-2 order +

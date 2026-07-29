@@ -26,9 +26,10 @@
  * Self-hiding like desktop: no released cards or no answers → nothing.
  * The artifact card is screenshot-safe: the Sidebar mark is baked in.
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pencil, CircleCheck, ThumbsUp, ThumbsDown, ArrowRight, X } from "lucide-react";
 import LoadingDots from "../LoadingDots";
+import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
 import {
   fetchDeckCards, fetchMyDeckAnswers, fetchGroupDeckAnswers, upsertDeckAnswer,
   type DeckCard, type GroupDeckAnswer,
@@ -57,6 +58,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
   // Click bounce on own cells in edit mode — the room map's two-phase
   // pattern (V2RoomMap): instant pop 'up', animate back 'down' over 150ms.
   const [bounce, setBounce] = useState<{ cardId: string; phase: "up" | "down" } | null>(null);
+  // Swipe-down dismisses the answers sheet back to docked (2026-07-28
+  // rollout); the rows list scrolls, so the drag only engages at its top.
+  const sheetListRef = useRef<HTMLDivElement | null>(null);
+  const sheetSwipe = useSheetSwipeDown(() => setUi("docked"), { scrollRef: sheetListRef });
   function triggerBounce(cardId: string) {
     setBounce({ cardId, phase: "up" });
     requestAnimationFrame(() => {
@@ -188,7 +193,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
         <div style={{ position: "absolute", inset: 0, background: "rgba(26,58,74,0.35)" }} onClick={() => setUi("docked")} />
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, top: 96, background: CANON.cream, borderRadius: "24px 24px 0 0", boxShadow: "0 -8px 28px rgba(0,0,0,0.28)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div {...sheetSwipe.handlers} style={{ position: "absolute", left: 0, right: 0, bottom: 0, top: 96, background: CANON.cream, borderRadius: "24px 24px 0 0", boxShadow: "0 -8px 28px rgba(0,0,0,0.28)", display: "flex", flexDirection: "column", overflow: "hidden", ...sheetSwipe.style }}>
           <div style={{ width: 44, height: 4, borderRadius: 2, background: CANON.business, opacity: 0.5, margin: "10px auto 0" }} />
           {/* Header + the vertical names SHARE this band (names bottom-
               aligned at the right) so they don't push the questions down
@@ -214,7 +219,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
               </div>
             )}
           </div>
-          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
+          <div ref={sheetListRef} style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "none", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
             {windowRows.map((card, i) => (
               <div key={card.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 20px", fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.35, color: CANON.dark, background: i % 2 === 0 ? "rgba(173,200,215,0.45)" : "transparent" }}>
                 <span>{card.statement}</span>

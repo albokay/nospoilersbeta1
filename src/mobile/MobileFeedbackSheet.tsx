@@ -5,6 +5,7 @@ import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import { insertFeedback } from "../lib/db";
 import LoadingDots from "../components/LoadingDots";
+import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 
 /**
  * MobileFeedbackSheet — the desktop FeedbackWidget's form as a bottom sheet.
@@ -61,12 +62,16 @@ export default function MobileFeedbackSheet({ onClose }: { onClose: () => void }
     }
   };
 
+  // Swipe-down dismiss (2026-07-28 rollout); drags starting in the textarea
+  // don't move the sheet, so typing/selection is untouched.
+  const swipe = useSheetSwipeDown(onClose);
+
   return (
     // pointerdown (not click) so the FIRST tap outside closes the sheet even
     // when the keyboard is up — iOS consumes the click that dismisses the
     // keyboard, which is why tap-outside used to need a scroll-to-top first.
     <div style={dim} onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={sheet}>
+      <div style={{ ...sheet, ...swipe.style }} {...swipe.handlers}>
         <button style={closeX} aria-label="Close" onClick={onClose}>
           <X size={18} color={C.midnight} />
         </button>

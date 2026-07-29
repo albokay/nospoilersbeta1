@@ -25,6 +25,7 @@ import OneSelectProgress from "../components/OneSelectProgress";
 import RatingCaptureModal from "../components/RatingCaptureModal";
 import MobilePool from "./MobilePool";
 import { CANON } from "../styles/canon";
+import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 
 /**
  * MobileShowRoom (CP6) — a single show's feed, the deepest drill-down level.
@@ -113,6 +114,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [digestModalOpen, setDigestModalOpen] = useState(false);
   const [digestOptOut, setDigestOptOut] = useState<boolean | null>(null);
   const [digestBusy, setDigestBusy] = useState(false);
+  // Swipe-down dismiss (2026-07-28 rollout); disabled while a save is in
+  // flight, matching each sheet's tap-outside guard.
+  const digestSwipe = useSheetSwipeDown(() => setDigestModalOpen(false), { enabled: !digestBusy });
   async function openDigestModal() {
     if (!roomId) return;
     setDigestOptOut(null);
@@ -140,6 +144,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // group, whose shelf now hides this room for the leaver only.
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [leaveBusy, setLeaveBusy] = useState(false);
+  const leaveSwipe = useSheetSwipeDown(() => setLeaveConfirmOpen(false), { enabled: !leaveBusy });
   async function doLeaveRoom() {
     if (!roomId || leaveBusy) return;
     setLeaveBusy(true);
@@ -722,7 +727,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       {/* ── Digest gear (bottom sheet; desktop copy) ── */}
       {digestModalOpen && roomId && (
         <div style={dim} onClick={() => { if (!digestBusy) setDigestModalOpen(false); }}>
-          <div style={{ ...bottomSheet, background: C.yellow, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ ...bottomSheet, background: C.yellow, textAlign: "center", ...digestSwipe.style }} {...digestSwipe.handlers} onClick={(e) => e.stopPropagation()}>
             {digestOptOut === null ? (
               <div style={{ color: C.cream, fontSize: 15, padding: "6px 0" }}>Loading…</div>
             ) : digestOptOut ? (
@@ -757,7 +762,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
              per the bottom-sheet rule) ── */}
       {leaveConfirmOpen && roomId && (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget && !leaveBusy) setLeaveConfirmOpen(false); }}>
-          <div style={{ ...bottomSheet, background: C.yellow }}>
+          <div style={{ ...bottomSheet, background: C.yellow, ...leaveSwipe.style }} {...leaveSwipe.handlers}>
             <div style={{ color: C.cream, fontWeight: 700, fontSize: 15, marginBottom: 12, letterSpacing: -0.3 }}>Leave this show room?</div>
             <div style={{ color: C.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>
               This takes you out of the <b>{show?.name ?? "show"}</b> room in this group and removes it from your list.

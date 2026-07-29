@@ -5,34 +5,31 @@
  * docked title (QA round 1 — was a bottom-left "tips" tab; the "?" mark
  * matches the desktop button but in Friend color). Open: a left-justified
  * bottom sheet with the page's tips. Dismiss = tap outside OR swipe down
- * on the sheet (the swipe gesture is built here first; rolling it out to
- * the app's other bottom sheets is a later arc — Alborz). Copy-only
- * pointers, no links inside tips (locked).
+ * on the sheet (built here first, now shared app-wide via
+ * useSheetSwipeDown — 2026-07-28 rollout). Copy-only pointers, no links
+ * inside tips (locked).
  *
  * First-visit auto-open for post-launch accounts, like desktop; dismissing
  * stamps the seen flag and the tab reopens the sheet anytime.
  */
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "../lib/auth";
 import TipText from "./TipText";
 import { CANON } from "../styles/canon";
+import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 import { tipsFor, tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 
 export default function MobileTipsSheet({ page }: { page: TipsPage }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(() => tipsDefaultOpen(page, user?.created_at));
-  // Swipe-down: track the drag so the sheet follows the finger; release past
-  // the threshold closes, otherwise it springs back.
-  const [dragY, setDragY] = useState(0);
-  const startY = useRef<number | null>(null);
   const tips = tipsFor(page, "mobile");
 
   function close() {
     markTipsSeen(page);
     setOpen(false);
-    setDragY(0);
-    startY.current = null;
   }
+
+  const swipe = useSheetSwipeDown(close);
 
   if (!open) {
     return <button onClick={() => setOpen(true)} aria-label="tips" style={tabStyle}>?</button>;
@@ -48,24 +45,13 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => { startY.current = e.touches[0].clientY; }}
-        onTouchMove={(e) => {
-          if (startY.current == null) return;
-          const d = e.touches[0].clientY - startY.current;
-          if (d > 0) setDragY(d);
-        }}
-        onTouchEnd={() => {
-          if (dragY > 80) { close(); return; }
-          setDragY(0);
-          startY.current = null;
-        }}
+        {...swipe.handlers}
         style={{
           position: "absolute", left: 0, right: 0, bottom: 0,
           background: CANON.cream, borderRadius: "24px 24px 0 0",
           boxShadow: "0 -8px 28px rgba(0,0,0,0.28)",
           padding: "16px 20px calc(env(safe-area-inset-bottom, 0px) + 22px)",
-          transform: `translateY(${dragY}px)`,
-          transition: startY.current == null ? "transform .18s ease" : "none",
+          ...swipe.style,
         }}
       >
         {/* Grab handle — signals the swipe-down affordance. */}
