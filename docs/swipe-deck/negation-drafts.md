@@ -76,9 +76,9 @@ between batches. Only the wording matters for this review; all 60 live cards are
 - singular_neg: `doesn't read about a show before starting it`
 - plural_neg: `don't read about a show before starting it`
 
-**two-episodes** — *I'll give a show two episodes to keep me watching.*
-- singular_neg: `doesn't give shows a two-episode deadline` ⚠️ *a NO here is direction-ambiguous (more patient OR less) — this draft stays neutral about which*
-- plural_neg: `don't give shows a two-episode deadline`
+**two-episodes** — *I'll give a show only two episodes to keep me watching.* *(statement + forms updated 2026-07-29, `20260729_two_episodes_copy.sql`)*
+- singular_neg: `gives a show more than two episodes to keep them watching`
+- plural_neg: `give a show more than two episodes to keep them watching`
 
 **lied-caught-up** — *I've lied about being caught up with a show...for whatever reason.*
 - singular_neg: `has never lied about being caught up`

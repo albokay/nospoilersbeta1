@@ -61,6 +61,11 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
   const { user } = useAuth();
   const [queue, setQueue] = useState<DeckCard[] | null>(null); // null = loading
   const [idx, setIdx] = useState(0);
+  // Cards answered during THIS mount. The queue is rebuilt from a fresh
+  // answers read whenever the load effect re-runs, and the immediate write
+  // is fire-and-forget — so without this, a re-run could re-serve a card the
+  // viewer just swiped (the 2026-07-29 duplicate-card report).
+  const answeredRef = useRef<Set<string>>(new Set());
   // Answering slides the card out toward the chosen tab (NOPE → left,
   // YES → right) before the next card fades in (Alborz QA 2026-07-18 —
   // replaces the old vertical entrance motion).
@@ -73,8 +78,14 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
   const [flung, setFlung] = useState<"left" | "right" | null>(null);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
 
+  const userId = user?.id;
+  const userCreatedAt = user?.created_at;
   useEffect(() => {
     if (!anonymous && !user) return;
+    // Finished waves stay finished. A rebuild after completion used to render
+    // a card whose clicks were swallowed by the doneRef guard in answer() —
+    // the "stuck card, had to refresh" half of the same report.
+    if (doneRef.current) return;
     let cancelled = false;
     (async () => {
       const [cards, answers] = await Promise.all([
@@ -93,21 +104,33 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
         // the grids. (All pre-deck accounts predate every release, so their
         // catch-up behavior is unchanged.)
         const joinedAt = user!.created_at ? new Date(user!.created_at).getTime() : 0;
-        setQueue(cards
+        install(cards
           .filter((c) => c.wave !== 2 && !(c.id in answers) && c.releasedAt > joinedAt)
           .slice(0, 4)); // fetchDeckCards is already in serve order (oldest first)
         return;
       }
       if (requirePriorWave && cards.some((c) => c.wave != null && c.wave < wave && !(c.id in answers))) {
-        setQueue([]);
+        install([]);
         return;
       }
       let q = cards.filter((c) => c.wave === wave && !(c.id in answers));
       if (leadCardId) q = [...q.filter((c) => c.id === leadCardId), ...q.filter((c) => c.id !== leadCardId)];
-      setQueue(q);
+      install(q);
+
+      /** Install a freshly-built queue: drop anything already answered this
+       *  mount, and restart the cursor (the old code left `idx` pointing into
+       *  the previous queue, which could skip or repeat a card). */
+      function install(next: DeckCard[]) {
+        const remaining = next.filter((c) => !answeredRef.current.has(c.id));
+        setQueue(remaining);
+        setIdx(0);
+      }
     })();
     return () => { cancelled = true; };
-  }, [user, wave, requirePriorWave, leadCardId, anonymous]);
+    // Keyed on the user's ID, not the user OBJECT — the object gets a new
+    // identity on every token refresh, which re-ran this mid-wave.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, userCreatedAt, wave, requirePriorWave, leadCardId, anonymous]);
 
   // Nothing to serve → complete silently (once).
   useEffect(() => {
@@ -123,6 +146,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
 
   function answer(agreed: boolean, viaSwipe = false) {
     if ((!anonymous && !user) || doneRef.current || exit || flung) return;
+    answeredRef.current.add(card.id);
     if (anonymous) {
       addPendingDeckAnswer(card.id, agreed);
     } else {
