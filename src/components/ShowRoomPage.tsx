@@ -815,8 +815,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           room only (no group context in the private-only standalone). */}
       {!privateOnly && roomId && user && (
         <>
-          <IncomingPingSticky groupId={roomId} currentUserId={user.id} />
-          <PollSticky groupId={roomId} currentUserId={user.id} refreshKey={pollRefreshKey} />
+          <IncomingPingSticky groupId={roomId} currentUserId={user.id} displayNames={displayNames} />
+          <PollSticky groupId={roomId} currentUserId={user.id} refreshKey={pollRefreshKey} displayNames={displayNames} />
           {/* SIKW retired (2026-07-28) — SIKWSticky unmounted, component +
               tables dormant. Polls are the room's one ask flow now. */}
         </>

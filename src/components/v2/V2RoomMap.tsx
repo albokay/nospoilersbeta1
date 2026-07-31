@@ -1512,7 +1512,7 @@ export default function V2RoomMap({
                           }}
                         />
                         <Tooltip
-                          text={`@${m.username} left the room`}
+                          text={`${dn(m.username)} left the room`}
                           direction="left"
                           portal
                           // The wrapper span IS the dot's box (same position +

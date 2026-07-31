@@ -38,6 +38,9 @@ interface Props {
   currentUserId: string;
   /** Show's seasons[] for episode-target dropdown options. */
   seasons: number[];
+  /** Naming arc: handle → the viewer's contact name. Without it the chain
+   *  still falls back to the person's first name, never the bare handle. */
+  displayNames?: Record<string, string>;
 }
 
 const ASK_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days, fixed for SIKW
@@ -71,7 +74,11 @@ function generateEpisodeOptions(seasons: number[]): EpisodeOption[] {
   return opts;
 }
 
-export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
+export default function SIKWSticky({ groupId, currentUserId, seasons, displayNames }: Props) {
+  // The name chain, identity-arc order: contact name → first name →
+  // fallback. The raw handle is NEVER rendered (auto-generated slug).
+  const nameOf = (username: string | null, displayName: string | null, fallback: string) =>
+    (username ? displayNames?.[username] : undefined) ?? displayName ?? fallback;
   const [wide, setWide] = useState(() =>
     typeof window !== "undefined" && window.innerWidth >= MIN_VIEWPORT_PX,
   );
@@ -135,7 +142,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
   if (closed && !data && !dismissedLocal) return renderClosedSticky();
   if (!data) return null;
 
-  const { ask, askerUsername, myReply, allReplies, eligibleCount } = data;
+  const { ask, askerUsername, askerDisplayName, myReply, allReplies, eligibleCount } = data;
   const isAsker = ask.askerId === currentUserId;
   const closesAt = ask.createdAt + ASK_DURATION_MS;
 
@@ -149,7 +156,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
         <div style={askerLineStyle()}>you asked:</div>
       ) : (
         <div style={askerLineStyle()}>
-          @{askerUsername || "a friend"} is at <strong style={{ fontStyle: "normal", fontWeight: 500 }}>
+          {nameOf(askerUsername, askerDisplayName, "a friend")} is at <strong style={{ fontStyle: "normal", fontWeight: 500 }}>
             {formatSE(ask.askerProgressSeason, ask.askerProgressEpisode)}
           </strong> and asks:
         </div>
@@ -163,7 +170,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
           you see them)") */}
       {!isAsker && (
         <div style={{ fontStyle: "italic", fontSize: 10, color: FADED_TEXT, opacity: 0.7, marginBottom: 12 }}>
-          only @{askerUsername || "the asker"} sees your reply
+          only {nameOf(askerUsername, askerDisplayName, "the asker")} sees your reply
         </div>
       )}
 
@@ -214,7 +221,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
             }}
           >
             <div style={{ fontStyle: "italic", color: "rgba(26,58,74,0.6)", marginBottom: 2 }}>
-              @{r.replierUsername || "(someone)"}
+              {nameOf(r.replierUsername, r.replierDisplayName, "(someone)")}
             </div>
             <div>{renderReplyContent(r)}</div>
           </div>
@@ -257,7 +264,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
       >
         {renderReplyContent(myReply)}
         <div style={{ fontSize: 10, fontStyle: "italic", color: "rgba(26,58,74,0.6)", marginTop: 4, fontWeight: 400 }}>
-          your reply has been sent to @{askerUsername || "the asker"}
+          your reply has been sent to {nameOf(askerUsername, askerDisplayName, "the asker")}
         </div>
       </div>
     );
@@ -419,7 +426,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
         >
           {!canSubmit ? null : submitting
             ? <>Sending<LoadingDots /></>
-            : <>Send to @{askerUsername || "the asker"} <ArrowRight size={12} /></>}
+            : <>Send to {nameOf(askerUsername, askerDisplayName, "the asker")} <ArrowRight size={12} /></>}
         </button>
       </>
     );
@@ -428,7 +435,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
   // ── Closed sticky ──────────────────────────────────────────────────────
   function renderClosedSticky() {
     if (!closed) return null;
-    const { ask: cAsk, askerUsername: cAsker, myReply: cMyReply, allReplies: cAllReplies, eligibleCount: cEligible } = closed;
+    const { ask: cAsk, askerUsername: cAsker, askerDisplayName: cAskerName, myReply: cMyReply, allReplies: cAllReplies, eligibleCount: cEligible } = closed;
     const cIsAsker = cAsk.askerId === currentUserId;
 
     async function handleDismiss() {
@@ -467,7 +474,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
         {cIsAsker ? (
           <div style={askerLineStyle()}>you asked:</div>
         ) : (
-          <div style={{ ...askerLineStyle(), display: "inline-flex", alignItems: "center", gap: 6 }}><SidebarAvatar userId={cAsk.askerId} username={cAsker} size={18} />{cAsker || "a friend"} asked:</div>
+          <div style={{ ...askerLineStyle(), display: "inline-flex", alignItems: "center", gap: 6 }}><SidebarAvatar userId={cAsk.askerId} username={cAsker} size={18} />{nameOf(cAsker, cAskerName, "a friend")} asked:</div>
         )}
 
         {/* Question */}
@@ -496,7 +503,7 @@ export default function SIKWSticky({ groupId, currentUserId, seasons }: Props) {
                   }}
                 >
                   <div style={{ fontStyle: "italic", color: "rgba(26,58,74,0.6)", marginBottom: 2 }}>
-                    @{r.replierUsername || "(someone)"}
+                    {nameOf(r.replierUsername, r.replierDisplayName, "(someone)")}
                   </div>
                   <div>{renderReplyContent(r)}</div>
                 </div>

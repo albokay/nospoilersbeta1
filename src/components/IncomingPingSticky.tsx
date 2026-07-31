@@ -11,9 +11,12 @@ import StickyNote from "./StickyNote";
 interface Props {
   groupId: string;
   currentUserId: string;
+  /** Naming arc: handle → the viewer's contact name. Without it the chain
+   *  still falls back to the sender's first name, never the bare handle. */
+  displayNames?: Record<string, string>;
 }
 
-export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
+export default function IncomingPingSticky({ groupId, currentUserId, displayNames }: Props) {
   const [ping, setPing] = useState<Ping | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -55,7 +58,11 @@ export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
 
   if (!loaded || !ping || hidden) return null;
 
-  const senderHandle = ping.senderUsername || "a friend";
+  // Contact name → first name → "a friend". The raw handle never renders.
+  const senderHandle =
+    (ping.senderUsername ? displayNames?.[ping.senderUsername] : undefined)
+    ?? ping.senderDisplayName
+    ?? "a friend";
 
   return (
     <StickyNote
@@ -69,7 +76,7 @@ export default function IncomingPingSticky({ groupId, currentUserId }: Props) {
       style={{ right: 32, bottom: 320, zIndex: 60 }}
     >
       <div style={{ fontSize: 12, marginBottom: 6, paddingRight: 16 }}>
-        <span style={{ fontWeight: 500 }}>@{senderHandle}</span>{" "}
+        <span style={{ fontWeight: 500 }}>{senderHandle}</span>{" "}
         <span style={{ opacity: 0.7 }}>pinged you:</span>
       </div>
       <div

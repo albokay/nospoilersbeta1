@@ -46,6 +46,10 @@ interface Props {
   /** Bumping this counter forces an immediate re-fetch — used so the asker
    *  sees their just-opened poll without a page nav. */
   refreshKey?: number;
+  /** Naming arc: handle → the viewer's contact name. The host page already
+   *  builds this map; without it the chain still falls back to the asker's
+   *  first name (never the bare handle). */
+  displayNames?: Record<string, string>;
 }
 
 function durationMs(d: PollDurationCode): number {
@@ -66,7 +70,11 @@ function closesInLabel(targetMs: number): string {
   return "<1m";
 }
 
-export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: Props) {
+export default function PollSticky({ groupId, currentUserId, refreshKey = 0, displayNames }: Props) {
+  // The name chain, identity-arc order: contact name → first name → "a
+  // friend". The raw handle is NEVER rendered (it's an auto-generated slug).
+  const askerLabel = (username: string | null, displayName: string | null, fallback: string) =>
+    (username ? displayNames?.[username] : undefined) ?? displayName ?? fallback;
   const [wide, setWide] = useState(() =>
     typeof window !== "undefined" && window.innerWidth >= MIN_VIEWPORT_PX,
   );
@@ -175,7 +183,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
 
   function renderActive() {
     if (!active) return null;
-    const { poll, options, askerUsername, myResponse } = active;
+    const { poll, options, askerUsername, askerDisplayName, myResponse } = active;
     const hasVoted = !!myResponse;
     const isAsker = poll.askerId === currentUserId;
     const closesAt = poll.createdAt + durationMs(poll.duration);
@@ -263,7 +271,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
           </button>
         )}
         <div style={askerLineStyle()}>
-          {isAsker ? "you asked:" : `@${askerUsername || "a friend"} asks:`}
+          {isAsker ? "you asked:" : `${askerLabel(askerUsername, askerDisplayName, "a friend")} asks:`}
         </div>
         <div style={questionStyle()}>{poll.question}</div>
 
@@ -366,19 +374,20 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
 
   function renderClosed() {
     if (!closed) return null;
-    const { poll, options, askerUsername, responses } = closed;
+    const { poll, options, askerUsername, askerDisplayName, responses } = closed;
     const isAsker = poll.askerId === currentUserId;
 
     // Aggregate per option
     const total = responses.length;
     const countByOption: Record<string, string[]> = {};
-    const writeIns: { responderUsername: string | null; text: string }[] = [];
+    const writeIns: { name: string; text: string }[] = [];
     for (const r of responses) {
+      const who = askerLabel(r.responderUsername, r.responderDisplayName, "(someone)");
       if (r.optionId) {
         if (!countByOption[r.optionId]) countByOption[r.optionId] = [];
-        countByOption[r.optionId].push(r.responderUsername || "(someone)");
+        countByOption[r.optionId].push(who);
       } else if (r.writeInText) {
-        writeIns.push({ responderUsername: r.responderUsername, text: r.writeInText });
+        writeIns.push({ name: who, text: r.writeInText });
       }
     }
 
@@ -418,7 +427,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
         </button>
 
         <div style={askerLineStyle()}>
-          {isAsker ? "you asked:" : `@${askerUsername || "a friend"} asked:`}
+          {isAsker ? "you asked:" : `${askerLabel(askerUsername, askerDisplayName, "a friend")} asked:`}
         </div>
         <div style={{ ...questionStyle(), marginBottom: 14 }}>{poll.question}</div>
 
@@ -442,7 +451,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
               <div style={{ fontStyle: "italic", fontSize: 11, color: FADED_TEXT, lineHeight: 1.5, marginBottom: 6, opacity: voters.length === 0 ? 0.55 : 1 }}>
                 {voters.length === 0
                   ? "no votes"
-                  : voters.map((u, i) => <div key={i}>@{u}</div>)}
+                  : voters.map((u, i) => <div key={i}>{u}</div>)}
               </div>
               <div
                 style={{
@@ -472,7 +481,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0 }: P
               <div key={i} style={{ fontSize: 12, color: TEXT_COLOR, marginBottom: 4 }}>
                 <span style={{ fontStyle: "italic" }}>"{w.text}"</span>
                 <span style={{ fontStyle: "italic", color: FADED_TEXT, marginLeft: 6 }}>
-                  — @{w.responderUsername || "(someone)"}
+                  &mdash; {w.name}
                 </span>
               </div>
             ))}

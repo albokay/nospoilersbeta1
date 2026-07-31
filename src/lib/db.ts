@@ -3814,7 +3814,7 @@ type PingRow = {
   dismissed_at:  string | null;
 };
 
-function rowToPing(row: PingRow, senderUsername?: string): Ping {
+function rowToPing(row: PingRow, senderUsername?: string, senderDisplayName?: string): Ping {
   return {
     id:            row.id,
     senderId:      row.sender_id,
@@ -3826,6 +3826,7 @@ function rowToPing(row: PingRow, senderUsername?: string): Ping {
     sentAt:        new Date(row.sent_at).getTime(),
     dismissedAt:   row.dismissed_at ? new Date(row.dismissed_at).getTime() : null,
     senderUsername,
+    senderDisplayName,
   };
 }
 
@@ -4014,11 +4015,14 @@ function rowToSikwReply(r: SikwReplyRow): SikwReply {
   };
 }
 
-export type SikwReplyWithUser = SikwReply & { replierUsername: string | null };
+export type SikwReplyWithUser = SikwReply & { replierUsername: string | null; replierDisplayName: string | null };
 
 export type ActiveAskData = {
   ask: SikwAsk;
+  /** Handle — a KEY (contact-name lookups), never display text on its own. */
   askerUsername: string | null;
+  /** profiles.display_name — the middle link of the name chain (identity arc). */
+  askerDisplayName: string | null;
   myReply: SikwReply | null;
   /** Populated only when caller is the asker (RLS allows asker to read all). */
   allReplies: SikwReplyWithUser[];
@@ -4049,12 +4053,14 @@ export async function fetchActiveRoomAsk(
   const isAsker = ask.askerId === callerId;
 
   let askerUsername: string | null = null;
+  let askerDisplayName: string | null = null;
   const { data: askerProfile } = await supabase
     .from("profiles")
-    .select("username")
+    .select("username, display_name")
     .eq("id", ask.askerId)
     .maybeSingle();
   if (askerProfile?.username) askerUsername = askerProfile.username;
+  if (askerProfile?.display_name) askerDisplayName = askerProfile.display_name;
 
   let myReply: SikwReply | null = null;
   if (!isAsker) {
@@ -4076,18 +4082,20 @@ export async function fetchActiveRoomAsk(
       .order("replied_at", { ascending: true });
     const ids = Array.from(new Set((replyRows ?? []).map((r: { replier_id: string }) => r.replier_id)));
     const userMap: Record<string, string> = {};
+    const nameMap: Record<string, string> = {};
     if (ids.length > 0) {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, username")
+        .select("id, username, display_name")
         .in("id", ids);
       for (const p of profiles ?? []) {
         if (p.username) userMap[p.id as string] = p.username as string;
+        if (p.display_name) nameMap[p.id as string] = p.display_name as string;
       }
     }
     allReplies = (replyRows ?? []).map((r) => {
       const base = rowToSikwReply(r as SikwReplyRow);
-      return { ...base, replierUsername: userMap[base.replierId] ?? null };
+      return { ...base, replierUsername: userMap[base.replierId] ?? null, replierDisplayName: nameMap[base.replierId] ?? null };
     });
   }
 
@@ -4098,7 +4106,7 @@ export async function fetchActiveRoomAsk(
     .eq("group_id", groupId);
   const eligibleCount = Math.max(0, (memberCount ?? 0) - 1);
 
-  return { ask, askerUsername, myReply, allReplies, eligibleCount };
+  return { ask, askerUsername, askerDisplayName, myReply, allReplies, eligibleCount };
 }
 
 export type ReplyToAskResult =
@@ -4132,7 +4140,10 @@ export async function replyToAsk(args: {
 
 export type ClosedAskData = {
   ask: SikwAsk;
+  /** Handle — a KEY (contact-name lookups), never display text on its own. */
   askerUsername: string | null;
+  /** profiles.display_name — the middle link of the name chain (identity arc). */
+  askerDisplayName: string | null;
   myReply: SikwReply | null;
   /** Populated only when caller is the asker. */
   allReplies: SikwReplyWithUser[];
@@ -4172,12 +4183,14 @@ export async function fetchMostRecentClosedRoomAsk(
   const isAsker = ask.askerId === callerId;
 
   let askerUsername: string | null = null;
+  let askerDisplayName: string | null = null;
   const { data: askerProfile } = await supabase
     .from("profiles")
-    .select("username")
+    .select("username, display_name")
     .eq("id", ask.askerId)
     .maybeSingle();
   if (askerProfile?.username) askerUsername = askerProfile.username;
+  if (askerProfile?.display_name) askerDisplayName = askerProfile.display_name;
 
   let myReply: SikwReply | null = null;
   if (!isAsker) {
@@ -4199,18 +4212,20 @@ export async function fetchMostRecentClosedRoomAsk(
       .order("replied_at", { ascending: true });
     const ids = Array.from(new Set((replyRows ?? []).map((r: { replier_id: string }) => r.replier_id)));
     const userMap: Record<string, string> = {};
+    const nameMap: Record<string, string> = {};
     if (ids.length > 0) {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, username")
+        .select("id, username, display_name")
         .in("id", ids);
       for (const p of profiles ?? []) {
         if (p.username) userMap[p.id as string] = p.username as string;
+        if (p.display_name) nameMap[p.id as string] = p.display_name as string;
       }
     }
     allReplies = (replyRows ?? []).map((r) => {
       const base = rowToSikwReply(r as SikwReplyRow);
-      return { ...base, replierUsername: userMap[base.replierId] ?? null };
+      return { ...base, replierUsername: userMap[base.replierId] ?? null, replierDisplayName: nameMap[base.replierId] ?? null };
     });
   }
 
@@ -4223,6 +4238,7 @@ export async function fetchMostRecentClosedRoomAsk(
   return {
     ask,
     askerUsername,
+    askerDisplayName,
     myReply,
     allReplies,
     eligibleCount,
@@ -4272,7 +4288,10 @@ type PollResponseRow = {
 export type ActivePollData = {
   poll: import("../types").Poll;
   options: import("../types").PollOption[];
+  /** Handle — a KEY (contact-name lookups), never display text on its own. */
   askerUsername: string | null;
+  /** profiles.display_name — the middle link of the name chain (identity arc). */
+  askerDisplayName: string | null;
   myResponse: import("../types").PollResponse | null;
 };
 
@@ -4342,14 +4361,17 @@ export async function fetchActiveRoomPoll(
   if (optErr) throw optErr;
   const options = (optionRows ?? []).map((r) => rowToPollOption(r as PollOptionRow));
 
-  // Best-effort asker @username
+  // Best-effort asker identity — the first name is what renders (the handle
+  // survives only as the key into a page's contact-name map).
   let askerUsername: string | null = null;
+  let askerDisplayName: string | null = null;
   const { data: profileRow } = await supabase
     .from("profiles")
-    .select("username")
+    .select("username, display_name")
     .eq("id", poll.askerId)
     .maybeSingle();
   if (profileRow?.username) askerUsername = profileRow.username;
+  if (profileRow?.display_name) askerDisplayName = profileRow.display_name;
 
   // Caller's own response (RLS allows reading own row)
   const { data: responseRow } = await supabase
@@ -4360,17 +4382,23 @@ export async function fetchActiveRoomPoll(
     .maybeSingle();
   const myResponse = responseRow ? rowToPollResponse(responseRow as PollResponseRow) : null;
 
-  return { poll, options, askerUsername, myResponse };
+  return { poll, options, askerUsername, askerDisplayName, myResponse };
 }
 
 export type PollResponseWithUser = import("../types").PollResponse & {
+  /** Handle — a KEY (contact-name lookups), never display text on its own. */
   responderUsername: string | null;
+  /** profiles.display_name — what actually renders. */
+  responderDisplayName: string | null;
 };
 
 export type ClosedPollData = {
   poll: import("../types").Poll;
   options: import("../types").PollOption[];
+  /** Handle — a KEY (contact-name lookups), never display text on its own. */
   askerUsername: string | null;
+  /** profiles.display_name — the middle link of the name chain (identity arc). */
+  askerDisplayName: string | null;
   responses: PollResponseWithUser[];
   eligibleCount: number;
   myDismissed: boolean;
@@ -4458,28 +4486,32 @@ export async function fetchMostRecentClosedRoomPoll(
     new Set((responseRows ?? []).map((r: { responder_id: string }) => r.responder_id)),
   );
   const userMap: Record<string, string> = {};
+  const nameMap: Record<string, string> = {};
   if (responderIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, username")
+      .select("id, username, display_name")
       .in("id", responderIds);
     for (const p of profiles ?? []) {
       if (p.username) userMap[p.id as string] = p.username as string;
+      if (p.display_name) nameMap[p.id as string] = p.display_name as string;
     }
   }
 
   const responses: PollResponseWithUser[] = (responseRows ?? []).map((r) => {
     const base = rowToPollResponse(r as PollResponseRow);
-    return { ...base, responderUsername: userMap[base.responderId] ?? null };
+    return { ...base, responderUsername: userMap[base.responderId] ?? null, responderDisplayName: nameMap[base.responderId] ?? null };
   });
 
   let askerUsername: string | null = null;
+  let askerDisplayName: string | null = null;
   const { data: askerProfile } = await supabase
     .from("profiles")
-    .select("username")
+    .select("username, display_name")
     .eq("id", poll.askerId)
     .maybeSingle();
   if (askerProfile?.username) askerUsername = askerProfile.username;
+  if (askerProfile?.display_name) askerDisplayName = askerProfile.display_name;
 
   // Eligible count for the "X of N weighed in" footer.
   const { count: eligibleCount } = await supabase
@@ -4491,6 +4523,7 @@ export async function fetchMostRecentClosedRoomPoll(
     poll,
     options,
     askerUsername,
+    askerDisplayName,
     responses,
     eligibleCount: eligibleCount ?? 0,
     myDismissed: false,
@@ -4640,17 +4673,19 @@ export async function fetchNextRoomPing(
   if (!data) return null;
   const row = data as PingRow;
 
-  // Resolve sender username (best-effort — display falls back to "@a friend"
-  // if the join misses).
+  // Resolve the sender's NAME (best-effort — display falls back to "a friend"
+  // if the read misses). Identity arc: the first name is what renders; the
+  // handle is an auto-generated slug, so it's a last resort only.
   let senderUsername: string | undefined;
   const { data: prof } = await supabase
     .from("profiles")
-    .select("username")
+    .select("username, display_name")
     .eq("id", row.sender_id)
     .maybeSingle();
   if (prof?.username) senderUsername = prof.username;
+  const senderDisplayName = (prof?.display_name ?? undefined) as string | undefined;
 
-  return rowToPing(row, senderUsername);
+  return rowToPing(row, senderUsername, senderDisplayName);
 }
 
 /**

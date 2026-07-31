@@ -240,9 +240,14 @@ serve(async (req) => {
   const recentAuthorIds = [...new Set([...threadById.values()].map((t) => t.author_id))];
   const { data: authorProfs } = await admin
     .from("profiles")
-    .select("id, username, is_seed")
+    .select("id, username, display_name, is_seed")
     .in("id", recentAuthorIds);
+  // Identity arc: the FIRST NAME is what a reader sees. The handle is an
+  // auto-generated slug and must never reach an email body.
   const usernameById = new Map<string, string>((authorProfs ?? []).map((p: any) => [p.id, p.username]));
+  const firstNameById = new Map<string, string>(
+    (authorProfs ?? []).filter((p: any) => p.display_name).map((p: any) => [p.id, p.display_name]),
+  );
   const seedAuthors = new Set<string>((authorProfs ?? []).filter((p: any) => p.is_seed).map((p: any) => p.id));
 
   // 3. Active rooms only (skip soft-deleted).
@@ -347,10 +352,15 @@ serve(async (req) => {
       }
       const { data: ansProfs } = await admin
         .from("profiles")
-        .select("id, username, is_seed")
+        .select("id, username, display_name, is_seed")
         .in("id", answererIds);
+      // The username map doubles as the real-account gate below; the name
+      // map is what actually renders (never the handle slug).
       const ansUsername = new Map<string, string>(
         (ansProfs ?? []).filter((p: any) => !p.is_seed).map((p: any) => [p.id, p.username]),
+      );
+      const ansFirstName = new Map<string, string>(
+        (ansProfs ?? []).filter((p: any) => !p.is_seed && p.display_name).map((p: any) => [p.id, p.display_name]),
       );
       for (const rid of recipientIds) {
         const rGroups = groupsOf.get(rid);
@@ -363,7 +373,7 @@ serve(async (req) => {
           const aGroups = groupsOf.get(aid);
           if (!aGroups || ![...aGroups].some((g) => rGroups.has(g))) continue;
           const given = contactByOwner.get(rid)?.get(aid);
-          names.push(given || `@${uname}`);
+          names.push(given || ansFirstName.get(aid) || `@${uname}`);
         }
         if (names.length) deckNamesByRecipient.set(rid, [...new Set(names)]);
       }
@@ -382,9 +392,12 @@ serve(async (req) => {
 
     const contacts = contactByOwner.get(userId);
     const authorName = (authorId: string): string => {
-      // Given name (recipient's contact) → @handle → graceful fallback.
+      // Given name (recipient's contact) → profile first name → @handle
+      // (effectively unreachable: every account has a name) → fallback.
       const given = contacts?.get(authorId);
       if (given) return given;
+      const first = firstNameById.get(authorId);
+      if (first) return first;
       const uname = usernameById.get(authorId);
       return uname ? `@${uname}` : "a friend";
     };

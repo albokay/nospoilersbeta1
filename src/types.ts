@@ -144,8 +144,11 @@ export type Ping = {
   sentAt: number;
   dismissedAt: number | null;
   // Resolved at fetch time when needed (e.g. for the in-room sticky which
-  // displays "@sender pinged you:"). Not always populated.
+  // displays "{sender} pinged you:"). Not always populated.
+  // The handle is a KEY (contact-name lookups); senderDisplayName is what
+  // renders (identity arc — the auto-generated slug is never shown).
   senderUsername?: string;
+  senderDisplayName?: string;
 };
 
 // Extended progress entry — carries rewatch metadata alongside the feed-filter position.

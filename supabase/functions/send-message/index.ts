@@ -289,10 +289,12 @@ async function handlePing(
 
   const { data: senderProfile } = await admin
     .from("profiles")
-    .select("username")
+    .select("username, display_name")
     .eq("id", user.id)
     .single();
-  const senderHandle = senderProfile?.username || "a friend";
+  // Identity arc: the FIRST NAME is the person's name everywhere. The handle
+  // is an auto-generated slug — a last-resort fallback only.
+  const senderHandle = (senderProfile?.display_name ?? "").trim() || senderProfile?.username || "a friend";
 
   const { data: showRow } = await admin
     .from("shows")
@@ -310,7 +312,7 @@ async function handlePing(
 
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
   const roomUrl = `${baseUrl}/room/${encodeURIComponent(group_id)}`;
-  const subject = `@${senderHandle} sent you a nudge about ${showName}`;
+  const subject = `${senderHandle} sent you a nudge about ${showName}`;
 
   const html = `
 <!DOCTYPE html>
@@ -318,10 +320,10 @@ async function handlePing(
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    @${escapeHtml(senderHandle)} wants you in the room.
+    ${escapeHtml(senderHandle)} wants you in the room.
   </h1>
   <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    Your friend room for <strong><em>${escapeHtml(showName)}</em></strong> &mdash; &ldquo;${escapeHtml(roomName)}&rdquo; &mdash; has been piling up takes. @${escapeHtml(senderHandle)} sent you a little nudge:
+    Your friend room for <strong><em>${escapeHtml(showName)}</em></strong> &mdash; &ldquo;${escapeHtml(roomName)}&rdquo; &mdash; has been piling up takes. ${escapeHtml(senderHandle)} sent you a little nudge:
   </p>
   <p style="margin:0 0 28px;padding:16px 20px;background:#f6f4ee;border-left:3px solid #1a2c3a;font-size:16px;color:#1a2c3a;font-style:italic;line-height:1.5">
     ${escapeHtml(trimmedMessage)}
@@ -333,15 +335,15 @@ async function handlePing(
     no rush. when you're ready.
   </p>
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
-    You're getting this because you're in a friend room with @${escapeHtml(senderHandle)} on Sidebar.
+    You're getting this because you're in a friend room with ${escapeHtml(senderHandle)} on Sidebar.
   </p>
 </div>
 </body>
 </html>`;
 
-  const text = `@${senderHandle} wants you in the room.
+  const text = `${senderHandle} wants you in the room.
 
-Your friend room for ${showName} — "${roomName}" — has been piling up takes. @${senderHandle} sent you a little nudge:
+Your friend room for ${showName} — "${roomName}" — has been piling up takes. ${senderHandle} sent you a little nudge:
 
   ${trimmedMessage}
 
@@ -349,7 +351,7 @@ Open the room: ${roomUrl}
 
 no rush. when you're ready.
 
-You're getting this because you're in a friend room with @${senderHandle} on Sidebar.`;
+You're getting this because you're in a friend room with ${senderHandle} on Sidebar.`;
 
   const sent = await sendResendEmail(resendKey, recipientEmail, subject, html, text);
   if (!sent) {
@@ -437,10 +439,10 @@ async function handlePollInvite(
 
   const { data: askerProfile } = await admin
     .from("profiles")
-    .select("username")
+    .select("username, display_name")
     .eq("id", poll.asker_id)
     .single();
-  const askerHandle = askerProfile?.username || "a friend";
+  const askerHandle = (askerProfile?.display_name ?? "").trim() || askerProfile?.username || "a friend";
 
   // Recipients = current members minus asker.
   const { data: members } = await admin
@@ -470,7 +472,7 @@ async function handlePollInvite(
 
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
   const roomUrl = `${baseUrl}/room/${encodeURIComponent(poll.group_id)}`;
-  const subject = `@${askerHandle} asked the room something about ${showName}`;
+  const subject = `${askerHandle} asked the room something about ${showName}`;
 
   let sentCount = 0;
   let failedCount = 0;
@@ -499,10 +501,10 @@ function pollInviteHtml(asker: string, room: string, question: string, closes: s
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    @${escapeHtml(asker)} has a question.
+    ${escapeHtml(asker)} has a question.
   </h1>
   <p style="margin:0 0 16px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    @${escapeHtml(asker)} opened a poll in &ldquo;${escapeHtml(room)}&rdquo;:
+    ${escapeHtml(asker)} opened a poll in &ldquo;${escapeHtml(room)}&rdquo;:
   </p>
   <p style="margin:0 0 24px;padding:16px 20px;background:#f6f4ee;border-left:3px solid #1a2c3a;font-size:16px;color:#1a2c3a;font-style:italic;line-height:1.5">
     "${escapeHtml(question)}"
@@ -525,9 +527,9 @@ function pollInviteHtml(asker: string, room: string, question: string, closes: s
 }
 
 function pollInviteText(asker: string, room: string, question: string, closes: string, url: string): string {
-  return `@${asker} has a question.
+  return `${asker} has a question.
 
-@${asker} opened a poll in "${room}":
+${asker} opened a poll in "${room}":
 
   "${question}"
 
@@ -662,10 +664,10 @@ async function handlePollVoteNotification(
   // Voter username.
   const { data: voterProfile } = await admin
     .from("profiles")
-    .select("username")
+    .select("username, display_name")
     .eq("id", user.id)
     .single();
-  const voterHandle = voterProfile?.username || "a friend";
+  const voterHandle = (voterProfile?.display_name ?? "").trim() || voterProfile?.username || "a friend";
 
   // Voter's choice — option text or write-in.
   let choiceLabel = "(write-in)";
@@ -690,7 +692,7 @@ async function handlePollVoteNotification(
 
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
   const roomUrl = `${baseUrl}/room/${encodeURIComponent(poll.group_id)}`;
-  const subject = `@${voterHandle} voted on your ${showName} poll`;
+  const subject = `${voterHandle} voted on your ${showName} poll`;
 
   const html = `
 <!DOCTYPE html>
@@ -698,7 +700,7 @@ async function handlePollVoteNotification(
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 16px;font-size:20px;color:#1a2c3a;font-weight:700;line-height:1.35">
-    @${escapeHtml(voterHandle)} voted on your ${escapeHtml(showName)} poll.
+    ${escapeHtml(voterHandle)} voted on your ${escapeHtml(showName)} poll.
   </h1>
   <p style="margin:0 0 24px;padding:14px 18px;background:#f6f4ee;border-left:3px solid #1a2c3a;font-size:15px;color:#1a2c3a;line-height:1.5">
     ${escapeHtml(choiceLabel)}
@@ -713,7 +715,7 @@ async function handlePollVoteNotification(
 </body>
 </html>`;
 
-  const text = `@${voterHandle} voted on your ${showName} poll.
+  const text = `${voterHandle} voted on your ${showName} poll.
 
   ${choiceLabel}
 
@@ -808,10 +810,10 @@ async function handleSikwAskInvite(
 
   const { data: askerProfile } = await admin
     .from("profiles")
-    .select("username")
+    .select("username, display_name")
     .eq("id", ask.asker_id)
     .single();
-  const askerHandle = askerProfile?.username || "a friend";
+  const askerHandle = (askerProfile?.display_name ?? "").trim() || askerProfile?.username || "a friend";
 
   const { data: members } = await admin
     .from("friend_group_members")
@@ -832,7 +834,7 @@ async function handleSikwAskInvite(
 
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
   const roomUrl = `${baseUrl}/room/${encodeURIComponent(ask.group_id)}`;
-  const subject = `@${askerHandle} is wondering whether to stick with ${showName}`;
+  const subject = `${askerHandle} is wondering whether to stick with ${showName}`;
   const progressLabel = formatSE(ask.asker_progress_season, ask.asker_progress_episode);
 
   let sentCount = 0;
@@ -860,10 +862,10 @@ function sikwAskInviteHtml(asker: string, show: string, room: string, progress: 
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    @${escapeHtml(asker)} needs your read.
+    ${escapeHtml(asker)} needs your read.
   </h1>
   <p style="margin:0 0 24px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    @${escapeHtml(asker)} is at <strong>${escapeHtml(progress)}</strong> of <strong><em>${escapeHtml(show)}</em></strong> and asking the room: should they keep watching? Head to &ldquo;${escapeHtml(room)}&rdquo; to weigh in &mdash; without spoilers, of course.
+    ${escapeHtml(asker)} is at <strong>${escapeHtml(progress)}</strong> of <strong><em>${escapeHtml(show)}</em></strong> and asking the room: should they keep watching? Head to &ldquo;${escapeHtml(room)}&rdquo; to weigh in &mdash; without spoilers, of course.
   </p>
   <a href="${url}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
     Help them out →
@@ -880,9 +882,9 @@ function sikwAskInviteHtml(asker: string, show: string, room: string, progress: 
 }
 
 function sikwAskInviteText(asker: string, show: string, room: string, progress: string, url: string): string {
-  return `@${asker} needs your read.
+  return `${asker} needs your read.
 
-@${asker} is at ${progress} of ${show} and asking the room: should they keep watching? Head to "${room}" to weigh in — without spoilers, of course.
+${asker} is at ${progress} of ${show} and asking the room: should they keep watching? Head to "${room}" to weigh in — without spoilers, of course.
 
 Help them out: ${url}
 
@@ -926,10 +928,10 @@ async function handleSikwReply(
 
   const { data: replierProfile } = await admin
     .from("profiles")
-    .select("username")
+    .select("username, display_name")
     .eq("id", user.id)
     .single();
-  const replierHandle = replierProfile?.username || "a friend";
+  const replierHandle = (replierProfile?.display_name ?? "").trim() || replierProfile?.username || "a friend";
 
   const { data: askerUser } = await admin.auth.admin.getUserById(ask.asker_id);
   const askerEmail = askerUser?.user?.email;
@@ -940,7 +942,7 @@ async function handleSikwReply(
 
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
   const roomUrl = `${baseUrl}/room/${encodeURIComponent(ask.group_id)}`;
-  const subject = `@${replierHandle} weighed in on ${showName}`;
+  const subject = `${replierHandle} weighed in on ${showName}`;
 
   const html = sikwReplyHtml(replierHandle, showName, roomName, roomUrl);
   const text = sikwReplyText(replierHandle, showName, roomName, roomUrl);
@@ -957,10 +959,10 @@ function sikwReplyHtml(replier: string, show: string, room: string, url: string)
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    @${escapeHtml(replier)} sent a reply.
+    ${escapeHtml(replier)} sent a reply.
   </h1>
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    You asked the room whether to stick with <strong><em>${escapeHtml(show)}</em></strong>. @${escapeHtml(replier)} got back to you &mdash; head to &ldquo;${escapeHtml(room)}&rdquo; to read it.
+    You asked the room whether to stick with <strong><em>${escapeHtml(show)}</em></strong>. ${escapeHtml(replier)} got back to you &mdash; head to &ldquo;${escapeHtml(room)}&rdquo; to read it.
   </p>
   <a href="${url}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
     Read the reply →
@@ -977,9 +979,9 @@ function sikwReplyHtml(replier: string, show: string, room: string, url: string)
 }
 
 function sikwReplyText(replier: string, show: string, room: string, url: string): string {
-  return `@${replier} sent a reply.
+  return `${replier} sent a reply.
 
-You asked the room whether to stick with ${show}. @${replier} got back to you — head to "${room}" to read it.
+You asked the room whether to stick with ${show}. ${replier} got back to you — head to "${room}" to read it.
 
 Read the reply: ${url}
 
@@ -1159,8 +1161,10 @@ async function computeMutualHint(
   }
   if (!mutualId || !sharedGroupId) return null;
 
-  const { data: mutualProfile } = await admin.from("profiles").select("username").eq("id", mutualId).single();
+  // The mutual is a FRIEND of the recipient — name them, never slug them.
+  const { data: mutualProfile } = await admin.from("profiles").select("username, display_name").eq("id", mutualId).single();
   if (!mutualProfile?.username) return null;
+  const mutualName = (mutualProfile.display_name ?? "").trim() || `@${mutualProfile.username}`;
 
   const { data: grp } = await admin.from("friend_groups").select("show_id").eq("id", sharedGroupId).single();
   let roomShow = "a";
@@ -1168,7 +1172,7 @@ async function computeMutualHint(
     const { data: s } = await admin.from("shows").select("name").eq("id", grp.show_id).single();
     roomShow = s?.name?.trim() || "a";
   }
-  return `${requesterName} is in a friend room with @${mutualProfile.username}, who is in your ${roomShow} friend room.`;
+  return `${requesterName} is in a friend room with ${mutualName}, who is in your ${roomShow} friend room.`;
 }
 
 // ── shared helpers ───────────────────────────────────────────────────────
