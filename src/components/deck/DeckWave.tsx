@@ -24,21 +24,56 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useAuth } from "../../lib/auth";
-import { fetchDeckCards, fetchMyDeckAnswers, upsertDeckAnswer, type DeckCard } from "../../lib/db";
+import { fetchDeckCards, fetchMyDeckAnswers, fetchMyLastDeckAnswerAt, upsertDeckAnswer, type DeckCard } from "../../lib/db";
 import { readPendingDeckAnswers, addPendingDeckAnswer } from "../../lib/deckPending";
 import { CANON } from "../../styles/canon";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
+/** PERSONAL SCHEDULE (Alborz, 2026-08-01). Your next batch is due this long
+ *  after you last answered new questions — your own clock, not a site-wide
+ *  calendar. A new account's anchor is its onboarding answers, so the first
+ *  drip naturally lands one interval after signup (no separate grace rule). */
+const DRIP_INTERVAL_DAYS = 14;
+const DRIP_INTERVAL_MS = DRIP_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
+
 export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadCardId, anonymous, onComplete }: {
   /** 1 | 2 = the fixed onboarding waves. "drip" (CP4) = the catch-up/drip
-   *  modal: up to 4 unanswered cards released SINCE THIS ACCOUNT SIGNED UP,
-   *  oldest first, at most once per session (sessionStorage flag). Cards
-   *  released before signup are never force-served — a new member joining an
-   *  established deck fills that backlog voluntarily via the answer grids'
-   *  edit pencil (help-system arc CP1). Wave-2 cards are EXCLUDED from the
-   *  drip — wave 2 always arrives through its reserved moments (onboarding
-   *  completion / first group-room click), so the drip can't preempt them. */
+   *  modal: up to 4 of the viewer's unanswered cards, oldest first, at most
+   *  once per session (sessionStorage flag).
+   *
+   *  PERSONAL SCHEDULE (Alborz, 2026-08-01 — replaces BOTH the global drip
+   *  calendar and help-system CP1's signup anchor). Everyone walks the SAME
+   *  ordered deck, but at their own pace: your next 4 are due
+   *  DRIP_INTERVAL_DAYS after you last answered new questions. Release dates
+   *  no longer pace anything — `released_at` survives only as a live/not-yet
+   *  flag on the card itself (fetchDeckCards filters it), so unfinished
+   *  questions can still be held back from everyone.
+   *
+   *  WHY (Alborz's call): under a global calendar the deck burns down on
+   *  wall-clock time — a day-0 member gets ~26 weeks of new-question
+   *  moments while someone joining after the calendar exhausts burns the
+   *  whole deck in a few weeks and is then dry forever. Personal pacing
+   *  makes the authored deck a full-length program for EVERY user who ever
+   *  joins, so the writing keeps paying off instead of expiring. Accepted
+   *  costs: no shared release moment, and a late joiner converges on their
+   *  friends' answers more slowly (their answers are a prefix of the same
+   *  ordered list, so findings still work — they just deepen over time).
+   *
+   *  Filling cells with the grid's edit pencil still removes those cards
+   *  from the drip — one answer record, wherever it was given — and also
+   *  moves your pacing anchor, since you just answered new questions.
+   *
+   *  Wave-2 cards are DRIPPABLE as of 2026-08-01 (Alborz). They used to be
+   *  excluded so the drip couldn't preempt wave 2's reserved moments
+   *  (onboarding completion / first group-room click) — but the interval
+   *  guard above now does that job on its own: a fresh account's anchor is
+   *  its signup/wave-1 answers, so the drip cannot fire during onboarding
+   *  (minutes) or anywhere near it. The only case that reaches a wave-2 card
+   *  through the drip is someone whose reserved moment never came AND who
+   *  has been idle a full interval — an invitee who never opened a group
+   *  room, or any account whose answers were wiped. Serving them beats
+   *  stranding the cards as blanks only the grid pencil could reach. */
   wave: 1 | 2 | "drip";
   /** "welcome" = the §12.4 Wave-1 copy block; "more" = the §12.5 "a few
    *  more…" H1; "none" = bare card (the drip modal, per mockup). */
@@ -88,9 +123,11 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
     if (doneRef.current) return;
     let cancelled = false;
     (async () => {
-      const [cards, answers] = await Promise.all([
+      const [cards, answers, lastAnsweredAt] = await Promise.all([
         fetchDeckCards(),
         anonymous ? Promise.resolve(readPendingDeckAnswers()) : fetchMyDeckAnswers(user!.id),
+        // Pacing anchor — only the drip needs it.
+        !anonymous && wave === "drip" ? fetchMyLastDeckAnswerAt(user!.id) : Promise.resolve(null),
       ]);
       if (cancelled) return;
       if (wave === "drip") {
@@ -99,14 +136,19 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
         // The once-per-session flag is stamped on COMPLETION (see answer()),
         // not on serve — a mid-batch refresh brings the cards back (there is
         // no dismissal, incl. by reload).
-        // Signup anchor: only cards released while this account existed are
-        // owed to the drip; pre-signup releases stay as fillable blanks in
-        // the grids. (All pre-deck accounts predate every release, so their
-        // catch-up behavior is unchanged.)
+        // Personal pacing: due one interval after you last answered new
+        // questions (or after signup, if you never have). A lapsed member
+        // resumes the normal rhythm rather than being flooded on return.
         const joinedAt = user!.created_at ? new Date(user!.created_at).getTime() : 0;
+        const anchor = lastAnsweredAt ?? joinedAt;
+        if (anchor && Date.now() - anchor < DRIP_INTERVAL_MS) { install([]); return; }
+        // Everyone walks the same ordered deck; take the next 4 you owe.
+        // Nothing is ever out of reach — a member who joins years in still
+        // gets the whole deck, just from their own starting line, and that
+        // now includes the onboarding-reserved cards (see below).
         install(cards
-          .filter((c) => c.wave !== 2 && !(c.id in answers) && c.releasedAt > joinedAt)
-          .slice(0, 4)); // fetchDeckCards is already in serve order (oldest first)
+          .filter((c) => !(c.id in answers))
+          .slice(0, 4)); // fetchDeckCards is already in serve order
         return;
       }
       if (requirePriorWave && cards.some((c) => c.wave != null && c.wave < wave && !(c.id in answers))) {

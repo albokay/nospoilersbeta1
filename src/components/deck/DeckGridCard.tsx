@@ -100,6 +100,15 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
   const title = isWe ? "How We Watch TV" : "How I Watch TV";
   const columns: DeckMember[] = mode === "group" ? others : [];
 
+  // The grid's rows = questions SOMEBODY here has answered (Alborz
+  // 2026-08-01). Was every live card, which under the personal-schedule
+  // model would present the whole deck as blank rows the moment it all goes
+  // live. The grid should grow with the group, not preview it — and it stays
+  // consistent with the sheet, which already worked this way.
+  const rowCards = mode === "group"
+    ? cards.filter((c) => answers.some((a) => a.cardId === c.id))
+    : cards.filter((c) => answers.some((a) => a.userId === viewerId && a.cardId === c.id));
+
   // §5 — the n=2 inline header (exactly one friend column).
   const pairLine = mode === "group" && others.length === 1
     ? pairHeaderLine(others[0].label, answers, viewerId, others[0].id)
@@ -244,7 +253,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
           {subRow}
         </div>
 
-        {cards.map((card, i) => {
+        {rowCards.map((card, i) => {
           const mine = valueFor(viewerId, card.id);
           // Edit mode shrinks the own-column color block into a rounded,
           // tappable chip (animated via the standing transition); clicks

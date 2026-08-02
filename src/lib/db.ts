@@ -5452,6 +5452,36 @@ export async function fetchMyDeckAnswers(userId: string): Promise<Record<string,
 }
 
 /**
+ * When this user last answered a NEW question (max created_at), or null if
+ * they never have. This is the pacing anchor for the personal drip schedule
+ * (2026-08-01): your next batch is due a fixed interval after your last one,
+ * measured from your own history rather than a site-wide calendar.
+ *
+ * created_at, not updated_at — changing an old answer in the grid is not
+ * "receiving new questions" and must not push your next batch away (the same
+ * distinction the digest's questions line makes).
+ *
+ * Pre-migration tolerant: any failure returns null, which reads as "never
+ * answered" and simply makes the drip eligible.
+ */
+export async function fetchMyLastDeckAnswerAt(userId: string): Promise<number | null> {
+  try {
+    const { data, error } = await supabase
+      .from("deck_answers")
+      .select("created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.created_at ? new Date(data.created_at).getTime() : null;
+  } catch (err) {
+    console.warn("fetchMyLastDeckAnswerAt failed (pre-migration or transient):", err);
+    return null;
+  }
+}
+
+/**
  * Record (or change) an answer. Global, not per-group — the same stored
  * answer feeds every group's grid. Mirrors upsertEpisodeRating: boolean-only
  * write, no rate limit, throws on failure so callers can revert optimistic

@@ -118,11 +118,12 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
     : answeredMine;
   const windowRows = [...anyAnswered].sort((a, b) => b.sortOrder - a.sortOrder).slice(0, WINDOW);
   const firstSet = answeredMine.length <= WINDOW; // §7.6.1 conditional copy
-  // A viewer with unanswered released cards (e.g. the pre-join backlog under
-  // the signup-anchored drip) needs the grid + its edit pencil to fill them —
-  // so the "see more answers" route also opens whenever blanks exist
-  // (help-system arc CP1; loosens the >8-answered gate, standing issue (h)).
-  const hasUnanswered = cards.some((c) => myAnswers[c.id] === undefined);
+  // Blanks the viewer can still fill — the "see more answers" route opens
+  // whenever any exist, not just past 8 answered (help-system CP1, standing
+  // issue (h)). Counted over the GRID's rows (what the group has answered)
+  // rather than the whole deck, so the route never promises a grid with
+  // nothing of theirs left to fill.
+  const hasUnanswered = anyAnswered.some((c) => myAnswers[c.id] === undefined);
   // No group subtitle (Alborz QA 2026-07-18 — "our answers on Sidebar" cut).
   const subtitle = mode === "group"
     ? null
@@ -369,7 +370,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
           ))}
         </div>
 
-        {cards.map((card, i) => {
+        {/* Rows = questions somebody here has answered (Alborz 2026-08-01),
+            matching the sheet — the grid grows with the group instead of
+            listing the entire deck as blanks once it's all live. */}
+        {anyAnswered.map((card, i) => {
           const mine = valueFor(viewerId, card.id);
           return (
             <div key={card.id} style={{ display: "flex", minHeight: 42, alignItems: "stretch", minWidth: ST_W + ME_W + FR_W * columns.length }}>
