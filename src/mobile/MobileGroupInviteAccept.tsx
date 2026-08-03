@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { CANON } from "../styles/canon";
 import SidebarLogo from "../components/SidebarLogo";
+import { markJoinedThisSession } from "../lib/joinSession";
 import DeckWave from "../components/deck/DeckWave";
 import YoureInCard from "../components/deck/YoureInCard";
 import { preventLastWordOrphan } from "../lib/utils";
@@ -190,7 +191,11 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
           leadCardId="just-wait-ep4"
           heading="welcome"
           idiom="mobile"
-          onComplete={() => navigate(info ? `/m/group/${info.groupId}` : "/m/dashboard", { replace: true })}
+          onComplete={() => {
+            // Standing issue (b) — see lib/joinSession.
+            markJoinedThisSession();
+            navigate(info ? `/m/group/${info.groupId}` : "/m/dashboard", { replace: true });
+          }}
         />
       </div>
     );

@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite, type GroupInviteInfo } from "../lib/db";
 import SidebarLogo from "./SidebarLogo";
+import { markJoinedThisSession } from "../lib/joinSession";
 import AuthModal from "./AuthModal";
 import PublicDashboardPage from "./PublicDashboardPage";
 import DeckWave from "./deck/DeckWave";
@@ -152,7 +153,12 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
           leadCardId="just-wait-ep4"
           heading="welcome"
           idiom="desktop"
-          onComplete={() => navigate(info ? `/dashboard?g=${info.groupId}` : "/dashboard", { replace: true })}
+          onComplete={() => {
+            // Standing issue (b): hold wave 2 for their NEXT session — the
+            // first visit is these 4 questions + the room itself.
+            markJoinedThisSession();
+            navigate(info ? `/dashboard?g=${info.groupId}` : "/dashboard", { replace: true });
+          }}
         />
       </div>
     );

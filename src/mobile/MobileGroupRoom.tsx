@@ -13,6 +13,7 @@ import DeckWave from "../components/deck/DeckWave";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
 import MobileTipsSheet from "../components/MobileTipsSheet";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
+import { joinedThisSession } from "../lib/joinSession";
 import PendingInvitesPanel, { isInviteStale, type OtherPendingInvite } from "../components/PendingInvitesPanel";
 import {
   fetchShows,
@@ -613,10 +614,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           overlapped page elements; it now renders between the shelves and
           the action pills below. */}
 
-      {/* ── Swipe-deck arc CP2 — the invitee's WAVE 2 on first entry into the
+      {/* ── Swipe-deck arc CP2 — the invitee's WAVE 2 on entry into the
              group room (spec §12.2 step 5). Self-skipping once answered;
-             requirePriorWave keeps wave order for pre-catch-up accounts. ── */}
-      {!groupWaveDone && (
+             requirePriorWave keeps wave order for pre-catch-up accounts.
+             NOT in the session they joined — see lib/joinSession (issue
+             (b)). ── */}
+      {!groupWaveDone && !joinedThisSession() && (
         <DeckWave wave={2} requirePriorWave heading="more" idiom="mobile" onComplete={() => setGroupWaveDone(true)} />
       )}
 

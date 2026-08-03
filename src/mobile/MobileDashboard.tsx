@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { LogOut, UserCog, MessageCircleWarning } from "lucide-react";
 import { CANON } from "../styles/canon";
+import { markJoinedThisSession } from "../lib/joinSession";
 import { useAuth } from "../lib/auth";
 import AccountModal from "../components/AccountModal";
 import MobileFeedbackSheet from "./MobileFeedbackSheet";
@@ -451,6 +452,8 @@ export default function MobileDashboard() {
           idiom="mobile"
           onComplete={() => {
             const gid = postAccept.groupId;
+            // Standing issue (b) — see lib/joinSession.
+            markJoinedThisSession();
             setPostAccept(null);
             navigate(`/m/group/${gid}`);
           }}

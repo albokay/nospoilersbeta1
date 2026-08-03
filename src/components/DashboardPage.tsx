@@ -21,6 +21,7 @@
  */
 import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "react";
 import { CANON } from "../styles/canon";
+import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
 import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -1968,16 +1969,19 @@ export default function DashboardPage() {
           idiom="desktop"
           onComplete={() => {
             const gid = postAccept.groupId;
+            // Standing issue (b): wave 2 waits for their NEXT session, so a
+            // brand-new invitee's first visit is 4 questions + the room.
+            markJoinedThisSession();
             setPostAccept(null);
             navigate(`/dashboard?g=${gid}`);
           }}
         />
       )}
 
-      {/* Swipe-deck arc CP2 — the invitee's WAVE 2 on first entry into a
-          group room (self-skipping; never over the accept sequence or
-          onboarding). */}
-      {inGroup && !groupWaveDone && !postAccept && !socialOnbActive && (
+      {/* Swipe-deck arc CP2 — the invitee's WAVE 2 on entry into a group
+          room (self-skipping; never over the accept sequence or onboarding).
+          NOT in the session they joined — see lib/joinSession (issue (b)). */}
+      {inGroup && !groupWaveDone && !postAccept && !socialOnbActive && !joinedThisSession() && (
         <DeckWave wave={2} requirePriorWave heading="more" idiom="desktop" onComplete={() => setGroupWaveDone(true)} />
       )}
 
