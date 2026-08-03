@@ -1,66 +1,83 @@
 -- ============================================================================
--- DECK RESET — wipe every answer, and put the whole deck in play
+-- DECK RESET — put the whole deck in play, and (optionally) wipe answers
 -- ============================================================================
--- Rewritten 2026-08-01 for the PERSONAL SCHEDULE model. NOT a migration to
--- apply blindly — a deliberate, destructive operation. Paste into the
--- Supabase SQL editor when you actually want the reset.
+-- Revised 2026-08-01 (second pass, after the personal-schedule + grid changes
+-- landed). NOT a migration to apply blindly. Paste into the Supabase SQL
+-- editor when you actually want this.
 --
--- ── WHAT CHANGED ABOUT "RESETTING THE CLOCK" ────────────────────────────────
--- There is no longer a clock to reset. Pacing is now PER PERSON: everyone
--- walks the same ordered deck and receives their next 4 questions two weeks
--- after they last answered new ones. Release dates no longer pace anything —
--- `released_at` is only a live / not-yet-live flag on the question itself.
+-- ── READ THIS FIRST: THE WIPE IS NOW OPTIONAL ───────────────────────────────
+-- Under the personal schedule there is no calendar to re-anchor, and NEW
+-- USERS ALREADY START FROM ZERO — they have no answers, so they walk the deck
+-- from question 1 whenever they join. Wiping answers therefore does nothing
+-- for the incoming cohort; it only resets YOU and the current testers.
 --
--- So a reset is now just two things:
---   1. Delete every answer. Everyone starts from the top of the deck.
---   2. Make the whole deck live, so each person's queue holds the full
---      runway instead of stopping at the old calendar's cut-off.
+--   STEP 1 (do this — it's the one that matters) ....... release the deck
+--   STEP 2 (only if you want existing testers reset) ... wipe answers
 --
--- ── WHAT TO EXPECT AFTERWARD ────────────────────────────────────────────────
---   • EXISTING accounts (you + current testers): eligible immediately (their
---     pacing anchor falls back to signup, long past), so the next visit
---     serves 4 questions — then every two weeks, 4 at a time.
---   • NEW users: the onboarding questions at signup, then their first batch
---     two weeks later, and onward at their own pace regardless of when they
---     joined. This is the point of the model — the deck is a full-length
---     program for everyone who ever joins, not a calendar that expires.
---   • Anyone impatient can clear as many as they like via the answer grid's
---     edit pencil; those questions leave their queue automatically.
---   • The findings + answer grids read empty until people re-answer.
---   • The invite email's opening line (which quotes the inviter's own answer
---     to "just wait till you see episode 4") falls back to its generic
---     version until the inviter answers that question again.
+-- ⚠️ BEFORE RUNNING STEP 2, know what it costs (this changed on 2026-08-01):
+-- the answer grid now shows only questions SOMEBODY IN THE GROUP has
+-- answered. After a full wipe nobody has answered anything, so the deck card
+-- disappears entirely and the edit pencil — the old "let me just fill these
+-- in" shortcut — has nothing to reach. The ONLY way back is the drip: 4
+-- questions, then 4 more two weeks later, for everyone including you. A full
+-- 60-question grid would take ~7 months to rebuild.
+--   • Testing before beta? Either skip Step 2, or temporarily lower
+--     DRIP_INTERVAL_DAYS in src/components/deck/DeckWave.tsx (deploy, fill up,
+--     put it back to 14).
+--   • Want new users to see a lively grid on arrival? SKIP Step 2 — existing
+--     testers' answers are exactly what makes the group grid worth looking at
+--     on day one.
 --
--- (The old "four reserved questions get stranded" gap is CLOSED as of
--- 2026-08-01 — every question is drip-reachable now, so a wipe leaves
--- nothing that only the grid pencil could fix.)
+-- ── WHAT TO EXPECT ──────────────────────────────────────────────────────────
+--   • NEW users (either way): onboarding questions at signup, then their
+--     first batch two weeks later, then onward at their own pace regardless
+--     of when they joined. The deck is a full-length program for everyone who
+--     ever joins, not a calendar that expires.
+--   • EXISTING accounts after Step 1 only: they keep their answers and simply
+--     become eligible for whatever they haven't answered yet.
+--   • EXISTING accounts after Step 2: pacing anchor falls back to signup
+--     (long past), so the next visit serves 4 — then every two weeks.
+--   • Step 2 also blanks the findings, and the invite email's opening line
+--     (which quotes the inviter's own answer to "just wait till you see
+--     episode 4") falls back to its generic version until the inviter
+--     answers that question again.
 --
 -- NOT AFFECTED: the questions themselves, their wording, the negation forms,
 -- group/room data, writing, invites, or anything outside the deck.
 --
--- Browser-side leftovers, for completeness — neither needs action:
---   • ns_deck_drip_<userId> (sessionStorage) — the once-per-session flag;
---     clears itself when the tab/session ends.
---   • ns_deck_pending (localStorage) — pre-signup answers awaiting claim on
---     a specific browser. If someone signs in on that browser after the
---     reset, those parked answers get written. Clear the site's storage in
---     that browser if you want a truly spotless slate.
+-- Browser-side leftovers, for completeness — none need action:
+--   • ns_deck_drip_<userId> (sessionStorage) — once-per-session drip flag.
+--   • ns_joined_this_session (sessionStorage) — defers an invitee's second
+--     wave to their next visit; matters only mid-invite.
+--   • ns_deck_pending (localStorage) — pre-signup answers awaiting claim on a
+--     specific browser. If someone signs in there after a wipe, those parked
+--     answers get written. Clear that browser's site storage for a spotless
+--     slate.
 -- ============================================================================
 
-BEGIN;
 
--- ── 1. Wipe every answer ────────────────────────────────────────────────────
-DELETE FROM public.deck_answers;
+-- ════════════════════════════════════════════════════════════════════════════
+-- STEP 1 — RELEASE THE WHOLE DECK  (the one that actually matters)
+-- ════════════════════════════════════════════════════════════════════════════
+-- The seeded batches run out to January 2027. Under personal pacing those
+-- dates no longer schedule anything — they just keep the later questions
+-- invisible, capping everyone at the first few. This puts all of them in
+-- play. Order comes from sort_order, so a shared timestamp changes nothing
+-- about sequence.
 
--- ── 2. Put the whole deck in play ───────────────────────────────────────────
--- Under personal pacing every live question belongs in everyone's queue; the
--- old future-dated batches would otherwise stay unreachable. Order comes from
--- sort_order, so a shared timestamp here changes nothing about sequence.
 UPDATE public.deck_cards
 SET released_at = now() - interval '1 minute'
 WHERE released_at > now();
 
-COMMIT;
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- STEP 2 — WIPE EVERY ANSWER  (OPTIONAL — read the warning at the top)
+-- ════════════════════════════════════════════════════════════════════════════
+-- Uncomment only if you want existing testers to start over. New users are
+-- unaffected either way — they already start from zero.
+--
+-- DELETE FROM public.deck_answers;
+
 
 -- ── Holding questions back (optional) ───────────────────────────────────────
 -- Anything you haven't finished writing can sit out of everyone's queue by
@@ -69,12 +86,13 @@ COMMIT;
 -- UPDATE public.deck_cards SET released_at = now() + interval '10 years'
 --  WHERE id IN ('some-unfinished-card');
 
--- ── Verify (run after committing) ───────────────────────────────────────────
--- Expect: 0 answers, and every card live.
---
--- SELECT count(*) AS answers_remaining FROM public.deck_answers;
+
+-- ── Verify ──────────────────────────────────────────────────────────────────
+-- Every card live, and (if you ran Step 2) zero answers.
 --
 -- SELECT count(*) FILTER (WHERE released_at <= now()) AS live,
 --        count(*) FILTER (WHERE released_at >  now()) AS held_back,
 --        count(*) AS total
 --   FROM public.deck_cards;
+--
+-- SELECT count(*) AS answers_remaining FROM public.deck_answers;
