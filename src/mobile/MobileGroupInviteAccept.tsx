@@ -4,6 +4,8 @@ import { useAuth } from "../lib/auth";
 import { CANON } from "../styles/canon";
 import SidebarLogo from "../components/SidebarLogo";
 import { markJoinedThisSession } from "../lib/joinSession";
+import { claimInvitePicks } from "../lib/invitePicks";
+import InviteShowSuggest from "../components/InviteShowSuggest";
 import DeckWave from "../components/deck/DeckWave";
 import YoureInCard from "../components/deck/YoureInCard";
 import { preventLastWordOrphan } from "../lib/utils";
@@ -129,7 +131,13 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
   async function join() {
     setStatus("joining");
     const res = await acceptPeopleGroupInvite(token);
-    if (res.ok) { setStatus("done"); return; }
+    if (res.ok) {
+      // Suggested-shows picks from the wall become proposals in the group —
+      // fire-and-forget while wave 1 plays, so they exist by room load.
+      if (user && info) claimInvitePicks(user.id, info.groupId, token).catch(() => {});
+      setStatus("done");
+      return;
+    }
     if (res.error === "wrong_recipient") { setMasked(res.maskedEmail); setStatus("wrong"); return; }
     if (res.error === "already_accepted") { setStatus("already"); return; }
     if (res.error === "expired") { setStatus("expired"); return; }
@@ -233,9 +241,10 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
           {watching.length > 0 && (
             <>
               <h2 style={{ ...inviteHeading, marginTop: interested.length ? 40 : 0 }}>
+                {/* Singular-safe (Alborz 2026-08-01 — matches the wants shelf). */}
                 {interested.length > 0
-                  ? "and is already watching these:"
-                  : <><span style={{ color: C.cream }}>{inviterShown}</span> is already watching these shows:</>}
+                  ? (watching.length === 1 ? "and is already watching this:" : "and is already watching these:")
+                  : <><span style={{ color: C.cream }}>{inviterShown}</span> is already watching {watching.length === 1 ? "this show" : "these shows"}:</>}
               </h2>
               <div style={shelfCol}>
                 {watching.map(({ show, entry }) => (
@@ -247,10 +256,13 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
               </div>
             </>
           )}
-          <div style={{ textAlign: "center", marginTop: 56 }}>
-            <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, margin: "0 0 4px" }}>Join Sidebar so you can watch with them.</h2>
-            <div style={{ color: C.cream, fontSize: 15, marginBottom: 24 }}>(You can also propose other shows.)</div>
-            <button style={joinPill} onClick={goAuth}>JOIN IN</button>
+          {/* Suggest-shows block (Alborz 2026-08-01) — picks park per-token,
+              claimed as proposals on accept. Replaces the "(You can also
+              propose other shows.)" parenthetical. */}
+          <InviteShowSuggest token={token} idiom="mobile" />
+          <div style={{ textAlign: "center", marginTop: 48 }}>
+            <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, margin: "0 0 24px" }}>Join Sidebar so you can watch with them.</h2>
+            <button style={joinPill} onClick={goAuth}>JOIN YOUR FRIEND</button>
           </div>
         </div>
         )}

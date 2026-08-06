@@ -261,9 +261,9 @@ export default function DashboardPage() {
   const tipsPage: TipsPage = activeGroupId ? "groupRoom" : "dashboard";
   const [tipsOpen, setTipsOpen] = useState(false);
   useEffect(() => {
-    setTipsOpen(tipsDefaultOpen(tipsPage, user?.created_at));
+    setTipsOpen(tipsDefaultOpen(tipsPage, user?.id, user?.created_at));
   }, [tipsPage, user]);
-  function closeTips() { markTipsSeen(tipsPage); setTipsOpen(false); }
+  function closeTips() { markTipsSeen(tipsPage, user?.id); setTipsOpen(false); }
 
   // §9 click-model popover (group context). mode captured at click time.
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
@@ -282,7 +282,11 @@ export default function DashboardPage() {
   // requirePriorWave keeps an account still owed wave 1 (existing user
   // pre-catch-up) from being served out of order. Re-arms per group entry;
   // DeckWave self-skips once answered, so it costs two tolerant reads.
-  const [groupWaveDone, setGroupWaveDone] = useState(false);
+  // Starts TRUE when this session is the one the user joined in — the
+  // deferred wave 2 (issue (b)) must still resolve everything gated on it
+  // (mobile tips, the deck card, the drip), or the invitee's first session
+  // has no tips and no docked card (Alborz's 2026-08-01 catch).
+  const [groupWaveDone, setGroupWaveDone] = useState(() => joinedThisSession());
   useEffect(() => { setGroupWaveDone(false); }, [activeGroupId]);
 
   // Pending-invites changeset CP2: the viewer's OWN pending invites for the
@@ -1971,7 +1975,10 @@ export default function DashboardPage() {
             const gid = postAccept.groupId;
             // Standing issue (b): wave 2 waits for their NEXT session, so a
             // brand-new invitee's first visit is 4 questions + the room.
+            // groupWaveDone set directly too — this path stays on the same
+            // mount, so the joinedThisSession() initializer already ran.
             markJoinedThisSession();
+            setGroupWaveDone(true);
             setPostAccept(null);
             navigate(`/dashboard?g=${gid}`);
           }}
@@ -1981,7 +1988,7 @@ export default function DashboardPage() {
       {/* Swipe-deck arc CP2 — the invitee's WAVE 2 on entry into a group
           room (self-skipping; never over the accept sequence or onboarding).
           NOT in the session they joined — see lib/joinSession (issue (b)). */}
-      {inGroup && !groupWaveDone && !postAccept && !socialOnbActive && !joinedThisSession() && (
+      {inGroup && !groupWaveDone && !postAccept && !socialOnbActive && (
         <DeckWave wave={2} requirePriorWave heading="more" idiom="desktop" onComplete={() => setGroupWaveDone(true)} />
       )}
 
@@ -2298,13 +2305,15 @@ function GroupClusters({
         // who this is, who invited them, how long ago — plus the nudge
         // pointer when the invite is the viewer's own.
         const pendingTip = (p: GroupPendingInvite): React.ReactNode => {
+          // Alborz's 2026-08-01 format: "{name} hasn't joined yet. {You/Name}
+          // invited them {today/N days ago}." — the nudge pointer is gone
+          // (the ⚙️ tip sticky covers that lesson).
           const mine = p.inviterId != null && p.inviterId === selfUserId;
           const who = p.inviterId == null ? null
-            : mine ? "you"
+            : mine ? "You"
             : personDisplayName(contactNames, p.inviterId, p.inviterName ?? "someone", p.inviterName);
           const age = p.createdAt != null ? ` ${inviteAgePhrase(p.createdAt)}` : "";
-          const line = `${p.name || "A friend"} hasn't joined yet${who ? ` — invited by ${who}${age}` : ""}.`;
-          return mine ? <>{line}<br />A nudge from the group&rsquo;s ⚙️ might help.</> : line;
+          return `${p.name || "A friend"} hasn't joined yet.${who ? ` ${who} invited them${age}.` : ""}`;
         };
         const avatars = [
           ...others.map((m) => <Avatar key={m.userId} letter={personDisplayName(contactNames, m.userId, m.username, m.displayName)[0]} state="accepted" />),

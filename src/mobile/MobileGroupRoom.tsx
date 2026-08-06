@@ -136,8 +136,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   const [chatNew, setChatNew] = useState(false);
   const [loading, setLoading] = useState(true);
-  // Swipe-deck arc CP2: the invitee's WAVE 2 fires on first entry here.
-  const [groupWaveDone, setGroupWaveDone] = useState(false);
+  // Swipe-deck arc CP2: the invitee's WAVE 2 fires on entry here — but NOT
+  // in the session they joined (issue (b)). Initializing TRUE from the
+  // session flag both skips the wave AND resolves everything gated on it
+  // (tips, the deck card, the drip) — otherwise the invitee's first session
+  // had no tips at all (Alborz's 2026-08-01 catch).
+  const [groupWaveDone, setGroupWaveDone] = useState(() => joinedThisSession());
 
   // Pending-invites changeset CP2: the viewer's OWN pending invites for
   // this group — the gear panel + the 3-day stale dot (no hover on touch,
@@ -619,7 +623,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
              requirePriorWave keeps wave order for pre-catch-up accounts.
              NOT in the session they joined — see lib/joinSession (issue
              (b)). ── */}
-      {!groupWaveDone && !joinedThisSession() && (
+      {!groupWaveDone && (
         <DeckWave wave={2} requirePriorWave heading="more" idiom="mobile" onComplete={() => setGroupWaveDone(true)} />
       )}
 

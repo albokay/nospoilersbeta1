@@ -2,7 +2,8 @@
  * RoomProgressTip — the show room's progress-picker pointer (help-system
  * QA round 3; replaced the zero-progress ticket at the top of the entry
  * column). Shows on room entrance REGARDLESS of progress, until X'd
- * (one site-wide flag — the lesson transfers between rooms). No "?"
+ * (one flag per ACCOUNT — the lesson transfers between rooms, but a new
+ * account on a shared browser still gets it; Alborz's 2026-08-01 catch). No "?"
  * toggle in the show room; once dismissed it's gone.
  *
  * Desktop: a cream StickyNote to the RIGHT of the progress dropdown,
@@ -14,16 +15,16 @@ import { useState } from "react";
 import { ArrowLeft, ArrowDown, X } from "lucide-react";
 import StickyNote from "./StickyNote";
 import { CANON } from "../styles/canon";
-import { ROOM_PROGRESS_TIP, ROOM_TIP_KEY } from "../lib/tipsContent";
+import { ROOM_PROGRESS_TIP, roomTipKey } from "../lib/tipsContent";
 
-export default function RoomProgressTip({ idiom }: { idiom: "desktop" | "mobile" }) {
+export default function RoomProgressTip({ idiom, userId }: { idiom: "desktop" | "mobile"; userId: string }) {
   const [dismissed, setDismissed] = useState<boolean>(() => {
-    try { return !!localStorage.getItem(ROOM_TIP_KEY); } catch { return false; }
+    try { return !!localStorage.getItem(roomTipKey(userId)); } catch { return false; }
   });
   if (dismissed) return null;
 
   function dismiss() {
-    try { localStorage.setItem(ROOM_TIP_KEY, "1"); } catch { /* tolerate */ }
+    try { localStorage.setItem(roomTipKey(userId), "1"); } catch { /* tolerate */ }
     setDismissed(true);
   }
 

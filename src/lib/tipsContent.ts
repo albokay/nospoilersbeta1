@@ -55,11 +55,12 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
 
 export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
   if (page === "dashboard") {
-    // QA round 3 copy (same on both platforms).
+    // Alborz's 2026-08-01 rewrite (replaces the QA round 3 copy; same on
+    // both platforms).
     return [
-      { body: "This is your home dashboard. When you have more than one friend group, this is where you access them." },
-      { body: "Yellow circles represent invited friends who haven't joined yet. Sidebar has emailed them their invite and if you're getting impatient, you can nudge them again from inside the group." },
-      { body: "While you wait for friends to join, you can still go inside to add shows or start writing. Everything you write will be waiting for them the moment they catch up." },
+      { body: "This is your home dashboard \u2014 where you access your friend groups." },
+      { body: "Yellow circles represent invited friends who haven't joined yet. Sidebar has emailed them their invite." },
+      { body: "While you wait for friends to join, you can still go inside to add more shows or start writing. Everything you write will be waiting for them the moment they catch up." },
     ];
   }
   // Mobile's sheet doesn't POINT at the chat button the way the placed
@@ -71,17 +72,26 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
   }));
 }
 
-export function tipsSeenKey(page: TipsPage): string {
-  return `ns_tips_seen_${page}`;
+// Seen flags are PER USER as of 2026-08-01 (Alborz's invitee-flow catch):
+// the old unscoped keys meant a browser that had ever dismissed tips
+// suppressed the auto-open for every LATER account created there — exactly
+// the invitee-testing case. Legacy unscoped keys are deliberately ignored:
+// honoring them would preserve the bug; the cost is post-launch accounts
+// seeing their tips auto-open once more.
+export function tipsSeenKey(page: TipsPage, userId: string): string {
+  return `ns_tips_seen_${page}_${userId}`;
 }
 
-export function markTipsSeen(page: TipsPage): void {
-  try { localStorage.setItem(tipsSeenKey(page), "1"); } catch { /* tolerate */ }
+export function markTipsSeen(page: TipsPage, userId: string | null | undefined): void {
+  if (!userId) return;
+  try { localStorage.setItem(tipsSeenKey(page, userId), "1"); } catch { /* tolerate */ }
 }
 
-/** First-visit auto-open: never-dismissed AND the account postdates launch. */
-export function tipsDefaultOpen(page: TipsPage, createdAtIso: string | null | undefined): boolean {
-  try { if (localStorage.getItem(tipsSeenKey(page))) return false; } catch { /* tolerate */ }
+/** First-visit auto-open: never-dismissed BY THIS ACCOUNT and the account
+ *  postdates launch. */
+export function tipsDefaultOpen(page: TipsPage, userId: string | null | undefined, createdAtIso: string | null | undefined): boolean {
+  if (!userId) return false;
+  try { if (localStorage.getItem(tipsSeenKey(page, userId))) return false; } catch { /* tolerate */ }
   if (!createdAtIso) return false;
   return new Date(createdAtIso).getTime() >= TIPS_LAUNCH_MS;
 }
@@ -94,4 +104,7 @@ export const ROOM_PROGRESS_TIP: Tip = {
   body: "This progress picker is the most important part of this room. Every time you enter the show room, make sure this matches your watch progress so that you can read any new writing your friends left you.",
   aside: "(And so that you don't accidentally spoil them with your own writing!)",
 };
-export const ROOM_TIP_KEY = "ns_tip_room_progress";
+/** Per-user, same 2026-08-01 reasoning as tipsSeenKey. */
+export function roomTipKey(userId: string): string {
+  return `ns_tip_room_progress_${userId}`;
+}

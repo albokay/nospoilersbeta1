@@ -859,7 +859,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
       {/* Help-system QA round 3: the progress-picker sticky — right of the
           dropdown, ← pointing at it; first-entrance, X-able, no toggle. */}
-      {tab === "friend" && !privateOnly && <RoomProgressTip idiom="desktop" />}
+      {tab === "friend" && !privateOnly && user && <RoomProgressTip idiom="desktop" userId={user.id} />}
 
       {/* Help-system arc CP3 — the guided sample-room tour, re-entry
           context (the header's "how does this room work?" button). */}

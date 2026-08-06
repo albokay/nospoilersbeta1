@@ -15,6 +15,7 @@ import { useAuth } from "../lib/auth";
 import { getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite, type GroupInviteInfo } from "../lib/db";
 import SidebarLogo from "./SidebarLogo";
 import { markJoinedThisSession } from "../lib/joinSession";
+import { claimInvitePicks } from "../lib/invitePicks";
 import AuthModal from "./AuthModal";
 import PublicDashboardPage from "./PublicDashboardPage";
 import DeckWave from "./deck/DeckWave";
@@ -106,7 +107,13 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   async function join() {
     setStatus("joining");
     const res = await acceptPeopleGroupInvite(token);
-    if (res.ok) { setStatus("done"); return; }
+    if (res.ok) {
+      // Suggested-shows picks from the wall become proposals in the group —
+      // fire-and-forget while wave 1 plays, so they exist by room load.
+      if (user && info) claimInvitePicks(user.id, info.groupId, token).catch(() => {});
+      setStatus("done");
+      return;
+    }
     if (res.error === "wrong_recipient") { setMasked(res.maskedEmail); setStatus("wrong"); return; }
     if (res.error === "already_accepted") { setStatus("already"); return; }
     if (res.error === "expired") { setStatus("expired"); return; }
@@ -185,7 +192,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
             blank green (+ the wave's tint) — the pool behind collided with
             the wave's heading. The pool reveals when the wave completes. */}
         {prewallDone ? (
-          <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth }} displayNameOverride={info.inviterDisplayName || undefined} />
+          <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth, token }} displayNameOverride={info.inviterDisplayName || undefined} />
         ) : (
           <div style={page}>
             <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>

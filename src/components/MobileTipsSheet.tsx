@@ -21,11 +21,11 @@ import { tipsFor, tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/ti
 
 export default function MobileTipsSheet({ page }: { page: TipsPage }) {
   const { user } = useAuth();
-  const [open, setOpen] = useState(() => tipsDefaultOpen(page, user?.created_at));
+  const [open, setOpen] = useState(() => tipsDefaultOpen(page, user?.id, user?.created_at));
   const tips = tipsFor(page, "mobile");
 
   function close() {
-    markTipsSeen(page);
+    markTipsSeen(page, user?.id);
     setOpen(false);
   }
 

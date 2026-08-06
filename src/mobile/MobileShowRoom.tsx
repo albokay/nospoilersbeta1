@@ -577,7 +577,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         {/* Help-system QA round 8: the progress-picker pointer sits ABOVE
             the picker row (below the roster), its ↓ pointing at the picker
             beneath; first-entrance, X-able, any progress. */}
-        {tab === "friend" && <RoomProgressTip idiom="mobile" />}
+        {tab === "friend" && user && <RoomProgressTip idiom="mobile" userId={user.id} />}
 
         {/* ── Toolbar: write · sort/filter · progress picker ── */}
         {/* Toolbar — two fixed rows so nothing wraps to a third:

@@ -17,6 +17,7 @@ import {
 } from "../lib/db";
 import type { ProgressEntry } from "../types";
 import SidebarLogo from "./SidebarLogo";
+import InviteShowSuggest from "./InviteShowSuggest";
 import FeedbackWidget from "./FeedbackWidget";
 import { CANON } from "../styles/canon";
 
@@ -27,7 +28,7 @@ const LORA = '"Lora", Georgia, serif';
 // "@X wants to watch these shows:" / "and is already watching these:" headings
 // (wants first), and a "Want to watch something with them? / JOIN IN" footer
 // instead of the watch-pool title + sign-in CTA. Same data + styling as /pool.
-export default function PublicDashboardPage({ username, invite, displayNameOverride }: { username: string; invite?: { onJoin: () => void }; displayNameOverride?: string }) {
+export default function PublicDashboardPage({ username, invite, displayNameOverride }: { username: string; invite?: { onJoin: () => void; token?: string }; displayNameOverride?: string }) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -157,9 +158,10 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
           {watching.length > 0 && (
             <>
               <h2 style={{ ...inviteHeading, marginTop: interested.length ? 64 : 0 }}>
+                {/* Singular-safe (Alborz 2026-08-01 — matches the wants shelf). */}
                 {interested.length > 0
-                  ? "and is already watching these:"
-                  : <><span style={{ color: C.cream }}>{ownerName}</span> is already watching these shows:</>}
+                  ? (watching.length === 1 ? "and is already watching this:" : "and is already watching these:")
+                  : <><span style={{ color: C.cream }}>{ownerName}</span> is already watching {watching.length === 1 ? "this show" : "these shows"}:</>}
               </h2>
               <div style={inviteShelfLayout(watching.length)}>
                 {watching.map(({ show, entry }) => (
@@ -171,10 +173,15 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
               </div>
             </>
           )}
-          <div style={{ textAlign: "center", marginTop: 72 }}>
-            <h2 style={{ ...heading, color: C.cream, margin: "0 0 4px" }}>Join Sidebar so you can watch with them.</h2>
-            <div style={{ color: C.cream, fontSize: 15, marginBottom: 28 }}>(You can also propose other shows.)</div>
-            <button style={signInPill} onClick={invite.onJoin}>JOIN IN</button>
+          {/* The invitee can suggest shows RIGHT HERE (Alborz 2026-08-01) —
+              picks park per-token and become proposals on accept. The old
+              "(You can also propose other shows.)" parenthetical retired
+              with it — the block's own "(You can also do this later.)"
+              carries that message now. */}
+          {invite.token && <InviteShowSuggest token={invite.token} idiom="desktop" />}
+          <div style={{ textAlign: "center", marginTop: 56 }}>
+            <h2 style={{ ...heading, color: C.cream, margin: "0 0 28px" }}>Join Sidebar so you can watch with them.</h2>
+            <button style={signInPill} onClick={invite.onJoin}>JOIN YOUR FRIEND</button>
           </div>
         </div>
       ) : (
