@@ -43,6 +43,7 @@ const HowItWorksV2 = lazy(() => import("./components/HowItWorksV2"));
 import HomepageNarrative from "./components/HomepageNarrative";
 const InviteAcceptPage = lazy(() => import("./components/InviteAcceptPage"));
 const AllowResponsePage = lazy(() => import("./components/AllowResponsePage"));
+const ConfirmEmailPage = lazy(() => import("./components/ConfirmEmailPage"));
 const MobileApp = lazy(() => import("./mobile/MobileApp"));
 // Promoted V2 surfaces (formerly /v2/...). Each chunked individually so the
 // main bundle stays lean for users who only visit one or two of these.
@@ -148,7 +149,7 @@ export default function App() {
   // email-confirmation token (implicit flow) isn't dropped by the redirect.
   // (The pre-flip MobileLockout screen + the ns_admin_device unlock are
   // retired; the component stays in src/components as the rollback surface.)
-  const MOBILE_PASSTHROUGH = ["m", "reset-password", "invite", "show-room", "group-invite", "pool"];
+  const MOBILE_PASSTHROUGH = ["m", "reset-password", "confirm", "invite", "show-room", "group-invite", "pool"];
   if (onMobile && !isAdmin && !MOBILE_PASSTHROUGH.includes(pathParts[0] ?? "")) {
     if (mobileGateAuthLoading) return null;
     if (mobileGateUser && !mobileGateProfile) return null;
@@ -251,6 +252,10 @@ export default function App() {
     return <Suspense fallback={<RouteFallback />}><V2ProfileVisitorPage username={username} /></Suspense>;
   }
   if (pathParts[0] === "reset-password") return <Suspense fallback={<RouteFallback />}><ResetPasswordPage /></Suspense>;
+  // /confirm — the email-confirmation landing (2026-08-01): verifies the
+  // token_hash itself and routes to ?next=. Must work signed-out on any
+  // viewport, like reset-password.
+  if (pathParts[0] === "confirm") return <Suspense fallback={<RouteFallback />}><ConfirmEmailPage /></Suspense>;
   // Restructure dashboard (groups + show rooms). Self-contained like the V2
   // surfaces; redirects to "/" when signed-out (handled inside DashboardPage).
   if (pathParts[0] === "dashboard" && !pathParts[1]) {

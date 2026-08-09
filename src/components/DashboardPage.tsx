@@ -127,8 +127,8 @@ const C = {
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
 // New-activity tooltip copy (matches the live site's room/feed notification text).
-const NOTIF_VISIBLE = "There is new writing in here for you.";
-const NOTIF_INVISIBLE = "There is new writing in here for you… for when you catch up.";
+const NOTIF_VISIBLE = "There is new writing for you in here.";
+const NOTIF_INVISIBLE = "There is new writing for you in here… for when you catch up.";
 
 type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: GroupPendingInvite[] };
 
@@ -1384,7 +1384,7 @@ export default function DashboardPage() {
                     {/* Show tooltip (progress/gap/notif) only once you've opted in
                         (watching or wrote). Non-opted-in shows another member
                         pooled get no show tooltip; the avatars keep their own. */}
-                    <div {...(r.selfProg || r.selfWrote ? watchingTipProps(r) : {})}>
+                    <div {...(r.selfProg || r.selfWrote ? watchingTipProps(r) : tipProps(undefined, roomNotif(r.pill.roomId)))}>
                       <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
                     </div>
                     {/* CP5: leave THIS room only — shown on rooms you're in. */}
@@ -1889,6 +1889,11 @@ export default function DashboardPage() {
           ? others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ")
           : <em>(your friends haven&rsquo;t joined yet)</em>;
         return (
+          <>
+            {/* Click-outside closes the chat (Alborz 2026-08-01) — an
+                invisible backdrop under the panel, above the page. No dim:
+                the room should stay readable beside the open chat. */}
+            <div style={{ position: "fixed", inset: 0, zIndex: 69 }} onClick={() => setChatGroupId(null)} />
           <div style={chatPanel}>
             <div style={chatHeader}>
               <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}><span style={{ color: C.blue }}>You're connected with:</span><br /><span style={{ color: C.green }}>{connected}</span></div>
@@ -1916,6 +1921,7 @@ export default function DashboardPage() {
               <button style={chatSend} onClick={sendChat}><ArrowUp size={18} color={CANON.cream} /></button>
             </div>
           </div>
+          </>
         );
       })()}
 
@@ -2220,13 +2226,14 @@ function OptInAvatars({ members, withTooltip, onTip, personalFill = false }: {
         const avStyle = isWriter
           ? { ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream }
           : { ...optInAvatar, border: `2px solid ${personalFill ? C.green : C.cream}` };
+        // The avatar tip is ONLY the watched line (Alborz 2026-08-01 — the
+        // old "They have writing in here." sub retired; new-writing news
+        // lives on the pill's own hover, and writer status stays visible
+        // via the avatar's green fill).
         const tip: React.ReactNode = watched
           ? `${m.username} has watched: S${m.s} E${m.e}`
-          // Not started watching → "hasn't started / watching yet." (two
-          // lines) — for writers too (a writer's own "They have writing in
-          // here." sub still clarifies they've written, not watched).
           : <>{m.username} hasn&rsquo;t started<br />watching yet.</>;
-        const sub = isWriter ? "They have writing in here." : undefined;
+        const sub = undefined;
         return (
           <span
             key={`${m.username}-${i}`}

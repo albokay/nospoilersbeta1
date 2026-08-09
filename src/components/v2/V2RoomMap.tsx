@@ -1385,7 +1385,15 @@ export default function V2RoomMap({
                             ...newOutlineOverride,
                           }}
                         >
-                          {isReached && rating && (
+                          {aboveViewer && entry && !rating ? (
+                            // Hidden-writing marker (Alborz 2026-08-01): a
+                            // Sky "?" inside the flat greyblue cell says
+                            // "there's writing here you can't read yet."
+                            // UNRATED cells only — a rating keeps its star
+                            // (Alborz's adjustment; ratings aren't spoilers,
+                            // so the star is the more informative mark).
+                            <span aria-hidden style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 16, lineHeight: 1, color: CANON.friend, userSelect: "none" }}>?</span>
+                          ) : isReached && rating && (
                             // Pass the CONTENT area size, not the cell's
                             // declared width. theme.ts sets a global
                             // box-sizing: border-box, so the cell's 2px

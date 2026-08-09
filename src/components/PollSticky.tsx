@@ -502,7 +502,9 @@ function stickyShellStyle(): React.CSSProperties {
   return {
     position: "fixed",
     left: 32,
-    top: 260,
+    // 260 → 284 (Alborz 2026-08-01): +24px so the sticky clears the show
+    // room's back tab comfortably.
+    top: 284,
     zIndex: 50,
     width: STICKY_WIDTH,
     transform: `rotate(${TILT_DEG}deg)`,

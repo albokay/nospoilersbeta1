@@ -357,6 +357,22 @@ export default function MobileAuth() {
             style={inputStyle}
           />
 
+          {/* Directly under the password field (Alborz 2026-08-01) — at the
+              old bottom-of-screen spot the keyboard hid it, so a first-time
+              invitee couldn't see how to create an account. */}
+          {mode === "signin" && (
+            <div style={{ marginTop: 2, textAlign: "center", fontSize: 14, color: CANON.cream }}>
+              No account?{" "}
+              <button
+                type="button"
+                onClick={() => { setMode("signup"); setError(null); }}
+                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
+              >
+                Create one
+              </button>
+            </div>
+          )}
+
           {error && (
             <div style={{
               color: CANON.cream,
@@ -412,19 +428,10 @@ export default function MobileAuth() {
           </div>
         )}
 
-        {/* ── Mode toggle ── */}
-        <div style={{ marginTop: 20, textAlign: "center", fontSize: 14 }}>
-          {mode === "signin" ? (
-            <>No account?{" "}
-              <button
-                type="button"
-                onClick={() => { setMode("signup"); setError(null); }}
-                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
-              >
-                Create one
-              </button>
-            </>
-          ) : (
+        {/* ── Mode toggle (sign-in's "No account?" line moved under the
+            password field, 2026-08-01) ── */}
+        {mode !== "signin" && (
+          <div style={{ marginTop: 20, textAlign: "center", fontSize: 14 }}>
             <>Already have an account?{" "}
               <button
                 type="button"
@@ -434,8 +441,8 @@ export default function MobileAuth() {
                 Sign in
               </button>
             </>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* ── Back link ── */}
         <div style={{ marginTop: "auto", paddingTop: 32, textAlign: "center" }}>

@@ -4,19 +4,20 @@
  * Docked: a cream "?" circle pinned bottom-RIGHT, above the deck card's
  * docked title (QA round 1 — was a bottom-left "tips" tab; the "?" mark
  * matches the desktop button but in Friend color). Open: a left-justified
- * bottom sheet with the page's tips. Dismiss = tap outside OR swipe down
- * on the sheet (built here first, now shared app-wide via
- * useSheetSwipeDown — 2026-07-28 rollout). Copy-only pointers, no links
- * inside tips (locked).
+ * bottom sheet with the page's tips. Dismiss = tap outside OR the "×"
+ * (Alborz 2026-08-01 — swipe-down and its grabber retired HERE so the tip
+ * TEXT can scroll instead; the sheet caps at ~55% of the viewport and
+ * scrolls past that, so long tip sets stop feeling like a wall). Copy-only
+ * pointers, no links inside tips (locked).
  *
  * First-visit auto-open for post-launch accounts, like desktop; dismissing
  * stamps the seen flag and the tab reopens the sheet anytime.
  */
 import React, { useState } from "react";
+import { X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import TipText from "./TipText";
 import { CANON } from "../styles/canon";
-import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 import { tipsFor, tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 
 export default function MobileTipsSheet({ page }: { page: TipsPage }) {
@@ -28,8 +29,6 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
     markTipsSeen(page, user?.id);
     setOpen(false);
   }
-
-  const swipe = useSheetSwipeDown(close);
 
   if (!open) {
     return <button onClick={() => setOpen(true)} aria-label="tips" style={tabStyle}>?</button>;
@@ -45,17 +44,21 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        {...swipe.handlers}
         style={{
           position: "absolute", left: 0, right: 0, bottom: 0,
           background: CANON.cream, borderRadius: "24px 24px 0 0",
           boxShadow: "0 -8px 28px rgba(0,0,0,0.28)",
-          padding: "16px 20px calc(env(safe-area-inset-bottom, 0px) + 22px)",
-          ...swipe.style,
+          padding: "18px 20px calc(env(safe-area-inset-bottom, 0px) + 22px)",
+          display: "flex", flexDirection: "column",
+          // Scroll threshold: past ~55% of the viewport the TIPS scroll
+          // (short sets never hit it and render exactly as before).
+          maxHeight: "55dvh",
         }}
       >
-        {/* Grab handle — signals the swipe-down affordance. */}
-        <div style={{ width: 44, height: 4, borderRadius: 2, background: "rgba(26,58,74,0.25)", margin: "0 auto 14px" }} />
+        <button onClick={close} aria-label="Close tips" style={closeX}>
+          <X size={18} color={CANON.dark} />
+        </button>
+        <div style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", paddingRight: 28 }}>
         {tips.map((t, i) => (
           <div key={i} style={{ marginTop: i === 0 ? 0 : 14 }}>
             {t.body.split("\n\n").map((p, j) => (
@@ -66,10 +69,17 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
             {t.aside && <p style={{ ...tipText, marginTop: 5, fontStyle: "italic", opacity: 0.85 }}><TipText text={t.aside} /></p>}
           </div>
         ))}
+        </div>
       </div>
     </div>
   );
 }
+
+const closeX: React.CSSProperties = {
+  position: "absolute", top: 8, right: 8, zIndex: 1,
+  width: 44, height: 44, border: "none", background: "transparent", cursor: "pointer",
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+};
 
 const tipText: React.CSSProperties = {
   margin: 0, fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5,

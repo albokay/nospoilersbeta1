@@ -187,20 +187,23 @@ export default function TSPDemoModal({ onClose, reentry }: {
           </div>
         </div>
 
-        {/* Footer: single exit control, fixed (doesn't scroll). Forward-framed,
-            two-state by whether E6 has been reached (§2). */}
+        {/* Footer: single exit control, fixed (doesn't scroll). One state
+            (Alborz 2026-08-01): the tour is an opt-in room feature now, so
+            the pre-E6 "skip the tour" ghost state is retired — the exit is
+            always the green forward-framed button. (reachedE6 still tracks
+            scroll for the fixture; only the button stopped reading it.) */}
         <div style={{ flex: "0 0 auto", padding: "14px 28px", display: "flex", justifyContent: "flex-end" }}>
           <button
             onClick={onClose}
             style={{
-              background: reachedE6 ? C.green : "transparent",
-              color: reachedE6 ? CANON.cream : INK_SOFT,
-              border: reachedE6 ? `2px solid ${C.green}` : `2px solid ${RULE}`,
+              background: C.green,
+              color: CANON.cream,
+              border: `2px solid ${C.green}`,
               borderRadius: 999, padding: "11px 22px", fontWeight: 700, fontSize: 14,
               cursor: "pointer", fontFamily: '"Inter", sans-serif',
             }}
           >
-            {reachedE6 ? (reentry ? "back to your room →" : "start finding shows →") : "skip the tour"}
+            {reentry ? "back to your room →" : "start finding shows →"}
           </button>
         </div>
       </div>
