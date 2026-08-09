@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X, ArrowRight } from "lucide-react";
+import { X, ArrowRight, ThumbsUp } from "lucide-react";
 import {
   fetchActiveRoomPoll,
   fetchPollCount,
@@ -378,7 +378,6 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
     const isAsker = poll.askerId === currentUserId;
 
     // Aggregate per option
-    const total = responses.length;
     const countByOption: Record<string, string[]> = {};
     const writeIns: { name: string; text: string }[] = [];
     for (const r of responses) {
@@ -390,9 +389,6 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
         writeIns.push({ name: who, text: r.writeInText });
       }
     }
-
-    const optionVoteCounts = options.map((opt) => (countByOption[opt.id] ?? []).length);
-    const maxVotes = optionVoteCounts.length > 0 ? Math.max(...optionVoteCounts) : 0;
 
     async function handleDismiss() {
       setDismissedLocal(true);
@@ -431,45 +427,38 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
         </div>
         <div style={{ ...questionStyle(), marginBottom: 14 }}>{poll.question}</div>
 
+        {/* Friend-centered results (Alborz 2026-08-01, approved mockup
+            docs/poll-results-preview.html): the bar graph is gone — with
+            2–7 friends the result IS who said what, so each choice lists
+            its voters as a cream thumbs-up with the first name beneath
+            (the mobile deck-results grammar). Empty choices read a quiet
+            "no votes". */}
         {options.map((opt) => {
           const voters = countByOption[opt.id] ?? [];
-          const isWinner = voters.length > 0 && voters.length === maxVotes;
-          const pct = total > 0 ? (voters.length / total) * 100 : 0;
           return (
-            <div key={opt.id} style={{ marginBottom: 4 }}>
+            <div key={opt.id} style={{ marginBottom: 6 }}>
               <div
                 style={{
                   fontSize: 13,
                   color: TEXT_COLOR,
-                  fontWeight: isWinner ? 500 : 400,
                   opacity: voters.length === 0 ? 0.7 : 1,
                   marginBottom: 4,
                 }}
               >
                 {opt.optionText}
               </div>
-              <div style={{ fontStyle: "italic", fontSize: 11, color: FADED_TEXT, lineHeight: 1.5, marginBottom: 6, opacity: voters.length === 0 ? 0.55 : 1 }}>
-                {voters.length === 0
-                  ? "no votes"
-                  : voters.map((u, i) => <div key={i}>{u}</div>)}
-              </div>
-              <div
-                style={{
-                  background: "rgba(253,248,236,0.25)",
-                  height: 2,
-                  marginBottom: 10,
-                  borderRadius: 1,
-                }}
-              >
-                <div
-                  style={{
-                    background: CANON.cream,
-                    height: "100%",
-                    width: `${pct}%`,
-                    borderRadius: 1,
-                  }}
-                />
-              </div>
+              {voters.length === 0 ? (
+                <div style={{ fontStyle: "italic", fontSize: 11, color: FADED_TEXT, opacity: 0.55, margin: "0 2px 12px" }}>no votes</div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 14, margin: "2px 2px 12px" }}>
+                  {voters.map((u, i) => (
+                    <span key={i} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                      <ThumbsUp size={16} strokeWidth={2} color={CANON.cream} />
+                      <span style={{ fontSize: 10, fontWeight: 700, color: CANON.cream }}>{u}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
