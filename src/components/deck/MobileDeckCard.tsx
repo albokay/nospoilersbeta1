@@ -9,12 +9,14 @@
  *   DOCKED  — title + the in-card Sidebar mark peeking at the viewport
  *             bottom (same grammar as desktop's docked cards).
  *   SHEET   — tap → slides up over the dimmed page: the latest answers as
- *             statement + Lucide thumb (personal-green up / alert-red down;
- *             group rows show one thumb per member, a business dot when a
- *             member hasn't answered that card). The n=2 header line sits
- *             under the title. First-set conditional copy (§7.6.1): with
- *             only the first 8 answered the subtitle drops "latest" and the
- *             "see all" tap is hidden.
+ *             statement + Lucide thumb (personal-green up / alert-red down).
+ *             Group rows show one slot per member — answer-to-reveal
+ *             (2026-08-01): a revealed thumb, a covered greyblue "?" (they
+ *             answered, you haven't — tap it for the tip), or plain empty
+ *             (unanswered; the old business dot is retired). The n=2 header
+ *             line sits under the title. First-set conditional copy
+ *             (§7.6.1): with only the first 8 answered the subtitle drops
+ *             "latest" and the "see all" tap is hidden.
  *   GRID    — the full grid behind a tap (§11.6 frozen panes: statements +
  *             (me) pinned left, header pinned top; friends scroll under the
  *             card's own horizontal scroll). Cells carry a cream thumb
@@ -63,6 +65,13 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
   // Click bounce on own cells in edit mode — the room map's two-phase
   // pattern (V2RoomMap): instant pop 'up', animate back 'down' over 150ms.
   const [bounce, setBounce] = useState<{ cardId: string; phase: "up" | "down" } | null>(null);
+  const [tapTip, setTapTip] = useState<{ plural: boolean; x: number; y: number } | null>(null);
+  const tapTipTimer = useRef<number | null>(null);
+  function showTapTip(cardId: string, e: React.MouseEvent) {
+    if (tapTipTimer.current) window.clearTimeout(tapTipTimer.current);
+    setTapTip({ plural: coveredCount(cardId) > 1, x: e.clientX, y: e.clientY });
+    tapTipTimer.current = window.setTimeout(() => setTapTip(null), 3500);
+  }
   function triggerBounce(cardId: string) {
     setBounce({ cardId, phase: "up" });
     requestAnimationFrame(() => {
@@ -95,7 +104,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
 
   const myAnswers = useMemo(() => {
     const m: Record<string, boolean> = {};
-    for (const a of answers) if (a.userId === viewerId) m[a.cardId] = a.answer;
+    for (const a of answers) if (a.userId === viewerId && a.answer != null) m[a.cardId] = a.answer;
     return m;
   }, [answers, viewerId]);
 
@@ -124,6 +133,29 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
     ? null
     : firstSet ? "my answers on Sidebar" : "my latest answers on Sidebar";
 
+  // Answer-to-reveal pull signal (Alborz §6.1): revealable answers exist —
+  // any friend row on a card the viewer hasn't answered.
+  const hasRevealable = mode === "group" && answers.some((a) => a.userId !== viewerId && myAnswers[a.cardId] === undefined);
+
+  // The tap-tip (mobile's hover equivalent, Alborz rev 2): tapping a "?"
+  // pops the same two-line copy near the tap; the next tap anywhere (the
+  // catcher below) or 3.5s dismisses it. Rendered by sheet AND grid.
+  const tapTipOverlay = tapTip ? (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1002 }} onClick={() => setTapTip(null)}>
+      <div style={{
+        position: "fixed",
+        left: Math.min(tapTip.x, (typeof window !== "undefined" ? window.innerWidth : 360) - 236),
+        top: Math.max(tapTip.y - 78, 12),
+        background: CANON.cream, color: CANON.dark, borderRadius: 10,
+        padding: "10px 14px", fontFamily: '"Inter", sans-serif', fontWeight: 500,
+        fontSize: 12.5, lineHeight: 1.5, whiteSpace: "nowrap", textAlign: "left",
+        boxShadow: "0 6px 18px rgba(0,0,0,0.3)",
+      }}>
+        Your {tapTip.plural ? "friends have" : "friend has"} answered<br />this one. What do you think?
+      </div>
+    </div>
+  ) : null;
+
   const pairLine = mode === "group" && others.length === 1
     ? pairHeaderLine(others[0].label, answers, viewerId, others[0].id)
     : null;
@@ -135,16 +167,27 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
     ? computeCardFindings({ cards, answers, members: [{ id: viewerId, label: "you" }, ...others], viewerId })
     : null;
 
-  function valueFor(userId: string, cardId: string): boolean | undefined {
+  /** undefined = no row (unanswered) · null = masked, answer-to-reveal's
+   *  covered mark · boolean = revealed. Own column can never be null. */
+  function valueFor(userId: string, cardId: string): boolean | null | undefined {
     if (userId === viewerId && cardId in edits) return edits[cardId];
     const row = answers.find((a) => a.userId === userId && a.cardId === cardId);
+    // Pre-migration the server still sends friends' answers concrete —
+    // derive covered-ness locally so the gate holds either side of the SQL.
+    if (row && userId !== viewerId && myAnswers[cardId] === undefined && !(cardId in edits)) return null;
     return row?.answer;
+  }
+
+  /** Covered answers waiting on a row — drives the tap tip's plural. */
+  function coveredCount(cardId: string): number {
+    if (myAnswers[cardId] !== undefined || cardId in edits) return 0;
+    return answers.filter((a) => a.userId !== viewerId && a.cardId === cardId).length;
   }
 
   function toggleOwn(cardId: string) {
     if (ui !== "edit" || saving) return;
     const cur = valueFor(viewerId, cardId);
-    setEdits((prev) => ({ ...prev, [cardId]: cur === undefined ? true : !cur }));
+    setEdits((prev) => ({ ...prev, [cardId]: cur == null ? true : !cur }));
     triggerBounce(cardId);
   }
 
@@ -165,6 +208,11 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
       });
       setEdits({});
       setUi("grid");
+      // Newly-answered cards unmask friends' answers server-side — re-read
+      // so the "?"s flip without a page nav.
+      if (mode === "group" && groupId) {
+        fetchGroupDeckAnswers(groupId).then((rows) => setAnswers(rows)).catch(() => {});
+      }
     } catch (e) {
       console.warn("[deck] edit save failed — keeping edit mode:", e);
     } finally {
@@ -189,6 +237,9 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
           display: "flex", alignItems: "flex-start", justifyContent: "space-between",
         }}
       >
+        {/* Answers are waiting behind "?"s — the show-pill dot grammar,
+            overlapping the card's top-left corner (Alborz rev 2). */}
+        {hasRevealable && <span style={{ position: "absolute", top: -6, left: 6, width: 16, height: 16, borderRadius: "50%", background: CANON.identity, zIndex: 6, pointerEvents: "none" }} />}
         {/* Docked title matches the page behind it: Personal green on the
             dashboard, Sky in the group room (Alborz QA 2026-07-20);
             Identity once opened. */}
@@ -245,9 +296,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                       const v = valueFor(m.id, card.id);
                       return (
                         <span key={m.id} style={{ width: 20, display: "flex", justifyContent: "center", alignItems: "center" }}>
-                          {v === undefined
-                            ? <span style={{ color: CANON.business, fontWeight: 700 }}>·</span>
-                            : <Th v={v} size={16} />}
+                          {v === undefined ? null
+                            : v === null
+                              ? <span onClick={(e) => { e.stopPropagation(); showTapTip(card.id, e); }} style={coveredMini}>?</span>
+                              : <Th v={v} size={16} />}
                         </span>
                       );
                     })}
@@ -278,6 +330,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
             )}
           </div>
         </div>
+        {tapTipOverlay}
       </div>
     );
   }
@@ -402,14 +455,20 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                     : undefined,
                   transition: bounce?.cardId === card.id && bounce.phase === "up" ? "none" : "transform .18s ease",
                 }}>
-                  {mine !== undefined && <Th v={mine} size={14} color={CANON.cream} />}
+                  {mine != null && <Th v={mine} size={14} color={CANON.cream} />}
                 </div>
               </div>
               {columns.map((m, ci) => {
                 const v = valueFor(m.id, card.id);
                 return (
-                  <div key={m.id} style={{ ...mCell(v, FR_W), opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}>
-                    {v !== undefined && <Th v={v} size={14} color={CANON.cream} />}
+                  <div
+                    key={m.id}
+                    style={{ ...mCell(v, FR_W), opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}
+                    onClick={v === null && ui !== "edit" ? (e) => showTapTip(card.id, e) : undefined}
+                  >
+                    {v === null
+                      ? <span aria-hidden style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 15, lineHeight: 1, color: CANON.friend, userSelect: "none" }}>?</span>
+                      : v !== undefined && <Th v={v} size={14} color={CANON.cream} />}
                   </div>
                 );
               })}
@@ -417,6 +476,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
           );
         })}
       </div>
+      {tapTipOverlay}
     </div>
   );
 }
@@ -429,11 +489,21 @@ function Th({ v, size, color }: { v: boolean; size: number; color?: string }) {
     : <ThumbsDown size={size} color={c} strokeWidth={2.2} style={{ flexShrink: 0 }} />;
 }
 
-function mCell(v: boolean | undefined, w: number): React.CSSProperties {
+function mCell(v: boolean | null | undefined, w: number): React.CSSProperties {
   return {
     width: w, minWidth: w, boxSizing: "border-box",
     display: "flex", alignItems: "center", justifyContent: "center",
-    background: v === undefined ? CANON.cream : v ? CANON.personal : CANON.alert,
+    // null = covered (answer-to-reveal): flat greyblue, the map's
+    // hidden-writing fill. undefined = plain empty (unanswered).
+    background: v === undefined ? CANON.cream : v === null ? CANON.business : v ? CANON.personal : CANON.alert,
     borderLeft: v === undefined ? "1px solid rgba(141,170,186,0.18)" : "none",
   };
 }
+
+// The sheet's covered mark — a mini cell of the same grammar.
+const coveredMini: React.CSSProperties = {
+  width: 18, height: 18, borderRadius: 4, background: CANON.business,
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 12, color: CANON.friend,
+  cursor: "pointer", userSelect: "none",
+};

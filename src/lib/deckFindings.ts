@@ -102,6 +102,7 @@ const BACKBONE_MIN_RATIO = 0.55;
 export function buildAnswerMap(answers: GroupDeckAnswer[]): Map<string, Map<string, boolean>> {
   const m = new Map<string, Map<string, boolean>>();
   for (const a of answers) {
+    if (a.answer == null) continue; // masked (answer-to-reveal) — unknown, not an answer
     let inner = m.get(a.userId);
     if (!inner) { inner = new Map(); m.set(a.userId, inner); }
     inner.set(a.cardId, a.answer);
@@ -171,8 +172,15 @@ function selectFacts(args: {
   members: DeckMember[];
   viewerId: string;
 }): Selection | null {
-  const { cards, answers, members, viewerId } = args;
+  const { answers, members, viewerId } = args;
   const byUser = buildAnswerMap(answers);
+  // Answer-to-reveal (spec §4): the engine only considers cards the VIEWER
+  // has answered — findings deepen with your own participation, and no line
+  // can reveal a friend's answer to a question you were never asked. (The
+  // masking RPC enforces the same server-side; this keeps pre-migration
+  // behavior identical and the scoping explicit.)
+  const viewerAnswered = byUser.get(viewerId);
+  const cards = args.cards.filter((c) => viewerAnswered?.get(c.id) !== undefined);
   const memberIds = members.map((m) => m.id);
   const label = (id: string) => members.find((m) => m.id === id)?.label ?? "someone";
 

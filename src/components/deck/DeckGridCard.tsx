@@ -56,6 +56,9 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
   // edit-mode scale.
   const [bounce, setBounce] = useState<{ cardId: string; phase: "up" | "down" } | null>(null);
   const [editTip, setEditTip] = useState(false);
+  // Answer-to-reveal hover (Alborz §6.3): per-ROW — any covered cell in the
+  // row shows the same two-line invitation; plural when 2+ answers wait.
+  const [coveredHover, setCoveredHover] = useState<string | null>(null);
   function triggerBounce(cardId: string) {
     setBounce({ cardId, phase: "up" });
     requestAnimationFrame(() => {
@@ -89,7 +92,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
 
   const myAnswers = useMemo(() => {
     const m: Record<string, boolean> = {};
-    for (const a of answers) if (a.userId === viewerId) m[a.cardId] = a.answer;
+    for (const a of answers) if (a.userId === viewerId && a.answer != null) m[a.cardId] = a.answer;
     return m;
   }, [answers, viewerId]);
 
@@ -120,10 +123,29 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
     ? computeFindings({ cards, answers, members: [{ id: viewerId, label: "you" }, ...others], viewerId })
     : null;
 
-  function valueFor(userId: string, cardId: string): boolean | undefined {
+  /** undefined = no row (unanswered) · null = masked, answer-to-reveal's
+   *  covered cell · boolean = revealed. Own column can never be null. */
+  function valueFor(userId: string, cardId: string): boolean | null | undefined {
     if (userId === viewerId && cardId in edits) return edits[cardId];
     const row = answers.find((a) => a.userId === userId && a.cardId === cardId);
+    // Pre-migration the server still sends friends' answers concrete —
+    // derive covered-ness locally so the gate holds either side of the SQL.
+    if (row && userId !== viewerId && myAnswers[cardId] === undefined && !(cardId in edits)) return null;
     return row?.answer;
+  }
+
+  // Answer-to-reveal pull signal (Alborz §6.1): revealable answers exist —
+  // any friend row on a card the viewer hasn't answered.
+  const hasRevealable = mode === "group" && answers.some((a) => a.userId !== viewerId && myAnswers[a.cardId] === undefined);
+
+  /** Covered answers waiting on a row (friend rows present, viewer unanswered). */
+  function coveredCount(cardId: string): number {
+    if (myAnswers[cardId] !== undefined || cardId in edits) return 0;
+    return answers.filter((a) => a.userId !== viewerId && a.cardId === cardId).length;
+  }
+  /** The bubble anchors on the row's FIRST covered column (one bubble per row). */
+  function firstCoveredCol(cardId: string): number {
+    return columns.findIndex((m) => valueFor(m.id, cardId) === null);
   }
 
   function toggleOwn(cardId: string) {
@@ -131,7 +153,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
     const cur = valueFor(viewerId, cardId);
     // Answered cells flip yes↔no; an unanswered own cell starts at yes
     // (the safety-net in-place answer — the forced modal is the real flow).
-    setEdits((prev) => ({ ...prev, [cardId]: cur === undefined ? true : !cur }));
+    setEdits((prev) => ({ ...prev, [cardId]: cur == null ? true : !cur }));
     triggerBounce(cardId);
   }
 
@@ -153,6 +175,11 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
       });
       setEdits({});
       setUi("open");
+      // Newly-answered cards unmask friends' answers server-side — re-read
+      // so the "?"s flip without a page nav.
+      if (mode === "group" && groupId) {
+        fetchGroupDeckAnswers(groupId).then((rows) => setAnswers(rows)).catch(() => {});
+      }
     } catch (e) {
       console.warn("[deck] edit save failed — keeping edit mode:", e);
     } finally {
@@ -226,9 +253,14 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
           position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
           width: cardW, zIndex: 40, cursor: "pointer",
           background: CANON.cream, borderRadius: "24px 24px 0 0",
-          boxShadow: "0 -6px 24px rgba(0,0,0,0.18)", overflow: "hidden",
+          // overflow:hidden dropped (2026-08-01) so the corner dot below can
+          // hang off the card edge; nothing inside ever bled anyway.
+          boxShadow: "0 -6px 24px rgba(0,0,0,0.18)",
         }}
       >
+        {/* Answers are waiting behind "?"s — the show-pill dot grammar,
+            overlapping the card's top-left corner (Alborz rev 2). */}
+        {hasRevealable && <span style={{ position: "absolute", top: -6, left: 6, width: 16, height: 16, borderRadius: "50%", background: CANON.identity, zIndex: 6, pointerEvents: "none" }} />}
         {/* Docked title matches the page behind it: Personal green on the
             dashboard, Sky in the group room (Alborz QA 2026-07-20);
             Identity once opened. */}
@@ -285,9 +317,28 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
                   transition: phase === "up" ? "none" : "transform .18s ease",
                 }} />
               </div>
-              {columns.map((m, ci) => (
-                <div key={m.id} style={{ ...cell(valueFor(m.id, card.id)), opacity: editing ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }} />
-              ))}
+              {columns.map((m, ci) => {
+                const v = valueFor(m.id, card.id);
+                return (
+                  <div
+                    key={m.id}
+                    style={{ ...cell(v), display: "flex", alignItems: "center", justifyContent: "center", opacity: editing ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}
+                    onMouseEnter={v === null && !editing ? () => setCoveredHover(card.id) : undefined}
+                    onMouseLeave={v === null && !editing ? () => setCoveredHover((prev) => (prev === card.id ? null : prev)) : undefined}
+                  >
+                    {v === null && (
+                      <span aria-hidden style={{ position: "relative", fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 18, lineHeight: 1, color: CANON.friend, userSelect: "none" }}>
+                        ?
+                        {coveredHover === card.id && !editing && ci === firstCoveredCol(card.id) && (
+                          <span style={coveredBubble}>
+                            Your {coveredCount(card.id) > 1 ? "friends have" : "friend has"} answered<br />this one. What do you think?
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -337,13 +388,23 @@ const colName: React.CSSProperties = {
   maxWidth: MEMBER_W - 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
 };
 
-function cell(v: boolean | undefined): React.CSSProperties {
+function cell(v: boolean | null | undefined): React.CSSProperties {
   return {
     width: MEMBER_W, minWidth: MEMBER_W, boxSizing: "border-box",
-    background: v === undefined ? CANON.cream : v ? CANON.personal : CANON.alert,
+    // null = covered (answer-to-reveal): flat greyblue, the map's
+    // hidden-writing fill. undefined = plain empty (unanswered).
+    background: v === undefined ? CANON.cream : v === null ? CANON.business : v ? CANON.personal : CANON.alert,
     borderLeft: v === undefined ? `1px solid ${withA(CANON.business, 0.18)}` : "none",
   };
 }
+
+const coveredBubble: React.CSSProperties = {
+  position: "absolute", left: 24, top: 26, zIndex: 6,
+  background: CANON.cream, color: CANON.dark, borderRadius: 10,
+  padding: "10px 14px", fontFamily: "Inter, sans-serif", fontWeight: 500,
+  fontSize: 12.5, lineHeight: 1.5, whiteSpace: "nowrap", textAlign: "left",
+  boxShadow: "0 6px 18px rgba(0,0,0,0.3)", pointerEvents: "none",
+};
 
 function withA(hex: string, a: number): string {
   const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);

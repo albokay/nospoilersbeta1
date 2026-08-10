@@ -5509,7 +5509,12 @@ export async function upsertDeckAnswer(args: {
 export type GroupDeckAnswer = {
   userId: string;
   cardId: string;
-  answer: boolean;
+  /** Answer-to-reveal (2026-08-01): NULL = a friend's answer the server
+   *  MASKED because the caller hasn't answered that card — the covered-"?"
+   *  cell. The caller's own rows are always concrete. (Pre-migration the
+   *  server sends everything concrete; the frontend derives covered-ness
+   *  itself, so either deploy order works.) */
+  answer: boolean | null;
   answeredAt: number;
 };
 
@@ -5529,7 +5534,7 @@ export async function fetchGroupDeckAnswers(groupId: string): Promise<GroupDeckA
     return ((data ?? []) as any[]).map((row) => ({
       userId:     row.user_id,
       cardId:     row.card_id,
-      answer:     row.answer,
+      answer:     row.answer ?? null,
       answeredAt: new Date(row.answered_at).getTime(),
     }));
   } catch (err) {

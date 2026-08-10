@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Answer-to-reveal — desktop grid states (rev 2)</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --personal:#7ABD8E; --friend:#ADC8D7; --identity:#355EB8; --accent:#DEA838;
+    --alert:#F45028; --cream:#FEF8EA; --dark:#1A3A4A; --business:#8DAABA;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#e8e6e1; font-family:Inter,sans-serif; padding:32px; color:var(--dark);}
+  h1{font-family:Lora,serif; font-size:22px; margin-bottom:6px;}
+  .note{font-size:13px; color:#666; max-width:960px; margin-bottom:28px; line-height:1.5;}
+  .cap{max-width:880px; font-size:12.5px; line-height:1.55; color:#444; margin:14px 0 34px;}
+  .cap b{color:#111;}
+
+  /* ── the desktop grid card (real proportions, scaled ~0.9) ── */
+  .grid-card{background:var(--cream); border-radius:24px; box-shadow:0 12px 36px rgba(0,0,0,.25); overflow:hidden; width:880px;}
+  .g-head{display:flex; align-items:baseline; padding:18px 0 10px;}
+  .g-title{font-family:Lora,serif; font-weight:700; color:var(--identity); font-size:22px; padding-left:24px; width:400px; min-width:400px;}
+  .g-name{width:96px; min-width:96px; text-align:center; font-size:12px; font-weight:700; color:var(--dark);}
+  .g-row{display:flex; min-height:48px; align-items:stretch;}
+  .g-st{width:400px; min-width:400px; padding:10px 16px 10px 24px; display:flex; align-items:center; font-size:14px; line-height:1.35;}
+  .g-row.odd .g-st{background:var(--friend);}
+  .cellb{width:96px; min-width:96px; display:flex; align-items:center; justify-content:center;}
+  .cellb.y{background:var(--personal);}
+  .cellb.n{background:var(--alert);}
+  .cellb.empty{background:var(--cream);}
+  .cellb.covered{background:var(--business);}
+  .cellb.covered .q{font-weight:800; font-size:18px; color:var(--friend); line-height:1;}
+
+  /* hover bubble */
+  .hoverwrap{position:relative;}
+  .bubble{position:absolute; left:70px; top:38px; background:var(--cream); color:var(--dark);
+          border-radius:10px; padding:10px 14px; font-size:12.5px; line-height:1.5; white-space:nowrap;
+          box-shadow:0 6px 18px rgba(0,0,0,.3); z-index:3; text-align:left;}
+  .bubble:after{content:""; position:absolute; left:18px; top:-5px; width:10px; height:10px; background:var(--cream); transform:rotate(45deg);}
+
+  /* the docked card (group room bottom edge) */
+  .sky-bg{background:var(--friend); padding:34px 26px 0; border-radius:16px; width:520px;}
+  .dock{position:relative; background:var(--cream); border-radius:24px 24px 0 0;
+        box-shadow:0 -6px 24px rgba(0,0,0,.18); padding:16px 24px 14px;}
+  .dock .t{font-family:Lora,serif; font-weight:700; font-size:22px; color:var(--friend);}
+  /* Alborz rev 2: the dot hangs off / overlaps the CARD's corner (the show-
+     pill notifDotButton grammar), not the title text. */
+  .dock .notif{position:absolute; top:-7px; left:14px; width:16px; height:16px; border-radius:50%; background:var(--identity);}
+
+  .legend{margin-top:18px; font-size:12.5px; line-height:2.2; color:#333;}
+  .legend .sw{display:inline-flex; vertical-align:middle; margin-right:8px; width:34px; height:22px; align-items:center; justify-content:center;}
+  .legend .sw.q{background:var(--business); font-weight:800; color:var(--friend); font-size:13px;}
+  .legend .sw.g{background:var(--personal);} .legend .sw.r{background:var(--alert);}
+  .legend .sw.e{background:var(--cream); border:1px solid rgba(141,170,186,.35);}
+</style>
+</head>
+<body>
+<h1>Answer-to-reveal — desktop grid (rev 2: your two changes in)</h1>
+<p class="note">Viewer = <b>Al</b>, with Zrobla, Salbo and Jill. Real desktop anatomy: full-width color bands per cell,
+statements striped sky/cream, names on the title's baseline. Rev 2 changes: <b>unanswered = plain empty cream, any
+column</b> (the dashed box and the "·" dot are gone — one meaning everywhere), and the dock's activity dot
+<b>overlaps the card edge</b>, not the text.</p>
+
+<div class="grid-card">
+  <div class="g-head">
+    <div class="g-title">How We Watch TV</div>
+    <div class="g-name">(me)</div><div class="g-name">Zrobla</div><div class="g-name">Salbo</div><div class="g-name">Jill</div>
+  </div>
+  <div class="g-row odd">
+    <div class="g-st">I check my phone during television.</div>
+    <div class="cellb y"></div><div class="cellb y"></div><div class="cellb n"></div><div class="cellb y"></div>
+  </div>
+  <div class="g-row">
+    <div class="g-st">I proactively stay away from trailers.</div>
+    <div class="cellb empty"></div>
+    <div class="cellb covered hoverwrap"><span class="q">?</span>
+      <span class="bubble">Your friends have answered<br>this one. What do you think?</span>
+    </div>
+    <div class="cellb covered"><span class="q">?</span></div>
+    <div class="cellb empty"></div>
+  </div>
+  <div class="g-row odd">
+    <div class="g-st">Three episodes is enough to judge a show.</div>
+    <div class="cellb n"></div><div class="cellb empty"></div><div class="cellb y"></div><div class="cellb empty"></div>
+  </div>
+  <div class="g-row">
+    <div class="g-st">I've been spoiled by a thumbnail.</div>
+    <div class="cellb empty"></div><div class="cellb covered"><span class="q">?</span></div><div class="cellb empty"></div><div class="cellb empty"></div>
+  </div>
+  <div class="g-row odd">
+    <div class="g-st">I'll give a show only two episodes to keep me watching.</div>
+    <div class="cellb y"></div><div class="cellb n"></div><div class="cellb n"></div><div class="cellb empty"></div>
+  </div>
+</div>
+<p class="cap"><b>Row by row.</b> Row 1: everyone answered — green/red bands, exactly today's look.
+Row 2: Zrobla and Salbo answered, Al hasn't — their cells go greyblue with the Sky "?"; Al's own cell and Jill's are
+both simply empty (one meaning: unanswered). The hover shows the plural copy in its two even lines; a row with a
+single covered cell reads "Your friend has answered / this one. What do you think?" Row 3: Al answered, Salbo too —
+Salbo's visible; Zrobla and Jill just empty. Row 4: one answer waiting. Row 5: a fully revealed split.
+Answering row 2 — drip, wave, or the edit pencil — flips both "?"s to their colors on the spot.</p>
+
+<div class="legend">
+  <div><span class="sw g"></span>/<span class="sw r" style="margin-left:8px"></span> revealed answer (both of you answered) — unchanged</div>
+  <div><span class="sw q">?</span> covered — they answered, you haven't (NEW)</div>
+  <div><span class="sw e"></span> unanswered — plain empty, same meaning in every column (rev 2: dashed box + "·" dot retired)</div>
+</div>
+
+<div style="margin-top:40px">
+  <div class="sky-bg">
+    <div class="dock">
+      <span class="notif"></span>
+      <div class="t">How We Watch TV</div>
+    </div>
+  </div>
+  <p class="cap" style="margin-top:14px"><b>The docked card's pull signal.</b> The standard blue new-activity dot,
+  hanging off the card's top-left corner — the show-pill dot grammar — whenever revealable answers exist.
+  Clears once you've answered the questions that were waiting.</p>
+</div>
+</body>
+</html>
