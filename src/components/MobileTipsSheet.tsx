@@ -13,7 +13,7 @@
  * First-visit auto-open for post-launch accounts, like desktop; dismissing
  * stamps the seen flag and the tab reopens the sheet anytime.
  */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import TipText from "./TipText";
@@ -22,7 +22,17 @@ import { tipsFor, tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/ti
 
 export default function MobileTipsSheet({ page }: { page: TipsPage }) {
   const { user } = useAuth();
-  const [open, setOpen] = useState(() => tipsDefaultOpen(page, user?.id, user?.created_at));
+  // First-visit auto-open ARRIVES, it doesn't preexist (Alborz 2026-08-01):
+  // the page paints tip-less first, then the sheet rises in after a beat —
+  // so the tip reads as an event, not furniture. Manual "?" opens stay
+  // instant (the keyframe still plays, which is fine).
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!tipsDefaultOpen(page, user?.id, user?.created_at)) return;
+    const t = window.setTimeout(() => setOpen(true), 700);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, user?.id]);
   const tips = tipsFor(page, "mobile");
 
   function close() {
@@ -50,6 +60,7 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
           boxShadow: "0 -8px 28px rgba(0,0,0,0.28)",
           padding: "18px 20px calc(env(safe-area-inset-bottom, 0px) + 22px)",
           display: "flex", flexDirection: "column",
+          animation: "mTipsRise .32s ease",
           // Scroll threshold: past ~55% of the viewport the TIPS scroll
           // (short sets never hit it and render exactly as before).
           maxHeight: "55dvh",
@@ -71,6 +82,7 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
         ))}
         </div>
       </div>
+      <style>{`@keyframes mTipsRise { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }`}</style>
     </div>
   );
 }

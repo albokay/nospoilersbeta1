@@ -49,16 +49,19 @@ export default function RoomProgressTip({ idiom, userId }: { idiom: "desktop" | 
   }
 
   return (
+    // Alert fill + Dark text (Alborz 2026-08-01): the cream card read as
+    // part of the page; this is an important instruction, not furniture.
     <div style={{
-      position: "relative", background: CANON.cream, borderRadius: 12,
+      position: "relative", background: CANON.alert, borderRadius: 12,
       padding: "12px 36px 12px 16px", marginBottom: 14,
       fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, color: CANON.dark,
     }}>
       <p style={{ margin: 0 }}>{ROOM_PROGRESS_TIP.body}</p>
       <p style={{ margin: "6px 0 0", fontStyle: "italic", opacity: 0.85 }}>{ROOM_PROGRESS_TIP.aside}</p>
-      {/* ↓ at the bottom right — the picker sits just beneath. */}
+      {/* ↓ at the bottom right — the picker sits just beneath. Large +
+          heavy (Alborz 2026-08-01): the pointer should be unmissable. */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
-        <ArrowDown size={15} />
+        <ArrowDown size={26} strokeWidth={2.8} />
       </div>
       <button
         aria-label="Dismiss"

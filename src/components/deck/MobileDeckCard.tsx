@@ -110,7 +110,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
 
   if (!cards || cards.length === 0 || answers.length === 0) return null;
 
-  const isWe = mode === "group" && others.length > 0;
+  // Group room = "We" even before anyone else joins (Alborz 2026-08-01):
+  // the dock is the group's object; a solo founder reading "I" made it look
+  // personal. (Desktop still flips on others.length — flagged, one word.)
+  const isWe = mode === "group";
   const title = isWe ? "How We Watch TV" : "How I Watch TV";
   const columns: DeckMember[] = mode === "group" ? others : [];
 

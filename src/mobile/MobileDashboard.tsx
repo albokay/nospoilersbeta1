@@ -127,7 +127,11 @@ export default function MobileDashboard() {
         if (groups.length > 0) { markSocialOnboarded(user.id).catch(() => {}); setOnbResolved(true); return; }
         setShowSocialOnb(true);
         setOnbResolved(true);
-      } catch { /* tolerant — never block the dashboard */ }
+      } catch {
+        // Tolerant — never block the dashboard (and never strand the new
+        // loading-until-resolved clause below on a failed gate read).
+        if (!cancelled) setOnbResolved(true);
+      }
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, forceSocialOnb]);
@@ -327,27 +331,38 @@ export default function MobileDashboard() {
         <div onClick={() => navigate("/m/dashboard")} role="button" aria-label="Home" style={{ cursor: "pointer" }}>
           <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button style={topCircleBtn} title="feedback" onClick={() => setFeedbackOpen(true)}>
-            <MessageCircleWarning size={18} color={C.cream} />
-          </button>
-          <button style={topCircleBtn} title="account" onClick={() => setShowAccount(true)}>
-            <UserCog size={18} color={C.cream} />
-          </button>
-          <button
-            style={topCircleBtn}
-            title="sign out"
-            onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/m", { replace: true }); }}
-          >
-            <LogOut size={18} color={C.cream} />
-          </button>
-        </div>
+        {/* The action circles HIDE during the onboarding/cards flow (Alborz
+            2026-08-01 — they read as clutter through the wave dim; the QA7
+            "account reachable mid-flow" escape is deliberately traded away
+            on mobile). The logo stays. */}
+        {!showSocialOnb && !postAccept && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button style={topCircleBtn} title="feedback" onClick={() => setFeedbackOpen(true)}>
+              <MessageCircleWarning size={18} color={C.cream} />
+            </button>
+            <button style={topCircleBtn} title="account" onClick={() => setShowAccount(true)}>
+              <UserCog size={18} color={C.cream} />
+            </button>
+            <button
+              style={topCircleBtn}
+              title="sign out"
+              onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/m", { replace: true }); }}
+            >
+              <LogOut size={18} color={C.cream} />
+            </button>
+          </div>
+        )}
       </div>
 
       {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
       {feedbackOpen && <MobileFeedbackSheet onClose={() => setFeedbackOpen(false)} />}
 
-      {loading ? (
+      {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
+        // The second clause (Alborz 2026-08-01): a BRAND-NEW account's
+        // dashboard stays on the loading line until the onboarding gate
+        // resolves — the welcome/first card must be the first thing seen,
+        // not a flash of empty dashboard. Established accounts (groups or
+        // invites present) never hit it.
         <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
       ) : (
         <>
@@ -469,7 +484,7 @@ export default function MobileDashboard() {
       )}
 
       {/* Help-system arc CP4: the docked "tips" tab + sheet. */}
-      {user && !showSocialOnb && !postAccept && (
+      {user && onbResolved && !showSocialOnb && !postAccept && (
         <MobileTipsSheet page="dashboard" />
       )}
 

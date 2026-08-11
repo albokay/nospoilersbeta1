@@ -59,7 +59,7 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
     // both platforms).
     return [
       { body: "This is your home dashboard \u2014 where you access your friend groups." },
-      { body: "Yellow circles represent invited friends who haven't joined yet. Sidebar has emailed them their invite." },
+      { body: "Yellow circles represent invited friends who haven't joined yet. Sidebar has emailed their invite. If you're getting impatient, you can nudge anyone from inside the group." },
       { body: "While you wait for friends to join, you can still go inside to add more shows or start writing. Everything you write will be waiting for them the moment they catch up." },
     ];
   }

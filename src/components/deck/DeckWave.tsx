@@ -217,7 +217,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
       zIndex: mobile ? 1000 : 900,
       // Mobile: anchor BELOW the page chrome so the heading can't overlap
       // the logo/top bar showing through the dim (Alborz QA 2026-07-18).
-      ...(mobile ? { alignItems: "flex-start", paddingTop: "calc(env(safe-area-inset-top, 0px) + 84px)" } : {}),
+      ...(mobile ? { alignItems: "flex-start", paddingTop: `calc(env(safe-area-inset-top, 0px) + ${heading === "welcome" ? 128 : 84}px)` } : {}),
     }}>
       <div style={{ width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", maxHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
         {heading === "welcome" && (
@@ -231,12 +231,8 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
             </div>
           </div>
         )}
-        {heading === "more" && (
-          <div style={{ textAlign: "left", marginBottom: mobile ? 16 : 20 }}>
-            {/* Header 2 styling (Inter bold 14) per Alborz QA 2026-07-18. */}
-            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>a few more&hellip;</div>
-          </div>
-        )}
+        {/* "a few more…" moved INSIDE the first card (Alborz 2026-08-01) —
+            see the in-card block below; the outside heading is gone. */}
 
         <div
           key={card.id}
@@ -281,6 +277,13 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
                 : "deckCardIn .24s ease",
           }}
         >
+          {/* Wave-2 heading, in-card (Alborz 2026-08-01): centered above the
+              statement, Header-2 font in Identity, FIRST card only. */}
+          {heading === "more" && idx === 0 && (
+            <div style={{ position: "absolute", top: mobile ? 24 : 32, left: 0, right: 0, textAlign: "center", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.identity }}>
+              a few more&hellip;
+            </div>
+          )}
           <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 38, lineHeight: 1.25, color: CANON.identity, textAlign: "center", maxWidth: mobile ? "82%" : "58%" }}>
             {card.statement}
           </div>

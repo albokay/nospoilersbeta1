@@ -261,7 +261,12 @@ export default function DashboardPage() {
   const tipsPage: TipsPage = activeGroupId ? "groupRoom" : "dashboard";
   const [tipsOpen, setTipsOpen] = useState(false);
   useEffect(() => {
-    setTipsOpen(tipsDefaultOpen(tipsPage, user?.id, user?.created_at));
+    // Auto-open ARRIVES after the page paints (Alborz 2026-08-01) — the
+    // sticky's own entrance animation plays when it mounts, so the delay is
+    // all this needs. Manual "?" opens stay instant.
+    if (!tipsDefaultOpen(tipsPage, user?.id, user?.created_at)) { setTipsOpen(false); return; }
+    const t = window.setTimeout(() => setTipsOpen(true), 700);
+    return () => window.clearTimeout(t);
   }, [tipsPage, user]);
   function closeTips() { markTipsSeen(tipsPage, user?.id); setTipsOpen(false); }
 

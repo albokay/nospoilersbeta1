@@ -44,7 +44,7 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
       style={{ ...dimWrap, background: mobile ? "rgba(26,58,74,0.35)" : "rgba(26,58,74,0.25)", zIndex: mobile ? 1000 : 900 }}
       onClick={(e) => { if (onDismiss && !busy && e.target === e.currentTarget) onDismiss(); }}
     >
-      <div style={{ ...cardStyle, width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", height: mobile ? "min(680px, 78dvh)" : "min(590px, 72vh)", padding: mobile ? "56px 28px 40px" : "72px 64px 56px" }}>
+      <div style={{ ...cardStyle, width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", height: mobile ? "min(680px, 78dvh)" : "min(590px, 72vh)", padding: mobile ? "56px 28px 40px" : "72px 64px 56px", ...(mobile ? { display: "flex", flexDirection: "column" } : {}) }}>
         <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 34, letterSpacing: 0, color: CANON.accent, margin: 0 }}>
           You&rsquo;re in!
         </h1>
@@ -71,25 +71,42 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
           )}
         </div>
 
-        <div style={{ position: "absolute", right: mobile ? 28 : 64, bottom: mobile ? 40 : 56, left: mobile ? 28 : "auto" }}>
-          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 34, lineHeight: 1.25, letterSpacing: 0, color: CANON.identity, textAlign: "right" }}>
-            Sidebar is for you and<br />your friends.
-          </div>
-        </div>
-
-        <button
-          style={{
-            ...goTab,
-            opacity: busy ? 0.7 : 1,
-            ...(mobile
-              ? { right: -20, top: "50%", transform: "translateY(-50%)", padding: "14px 24px", fontSize: 13.5, minHeight: 44 }
-              : { right: -36, top: 40 }),
-          }}
-          disabled={busy}
-          onClick={onDone}
-        >
-          {busy ? <>one moment<LoadingDots /></> : <><ArrowRight size={mobile ? 18 : 24} strokeWidth={2.5} /> GET STARTED!</>}
-        </button>
+        {/* Mobile layout (Alborz 2026-08-01): the card is a column — body,
+            then GET STARTED! vertically centered in the FREE band between
+            the body and the closer (it used to sit at 50% of the card and
+            could overlap the body text), closer at the bottom. Desktop
+            keeps its absolute layout. */}
+        {mobile ? (
+          <>
+            <div style={{ flex: 1, position: "relative" }}>
+              <button
+                style={{ ...goTab, opacity: busy ? 0.7 : 1, right: -48, top: "50%", transform: "translateY(-50%)", padding: "14px 24px", fontSize: 13.5, minHeight: 44 }}
+                disabled={busy}
+                onClick={onDone}
+              >
+                {busy ? <>one moment<LoadingDots /></> : <><ArrowRight size={18} strokeWidth={2.5} /> GET STARTED!</>}
+              </button>
+            </div>
+            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, lineHeight: 1.25, letterSpacing: 0, color: CANON.identity, textAlign: "right" }}>
+              Sidebar is for you and<br />your friends.
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ position: "absolute", right: 64, bottom: 56 }}>
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, lineHeight: 1.25, letterSpacing: 0, color: CANON.identity, textAlign: "right" }}>
+                Sidebar is for you and<br />your friends.
+              </div>
+            </div>
+            <button
+              style={{ ...goTab, opacity: busy ? 0.7 : 1, right: -36, top: 40 }}
+              disabled={busy}
+              onClick={onDone}
+            >
+              {busy ? <>one moment<LoadingDots /></> : <><ArrowRight size={24} strokeWidth={2.5} /> GET STARTED!</>}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

@@ -295,7 +295,14 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
     // ("onb-fresh" — why-this-show prompts): a not-started viewer should
     // never draw prompts that assume they've watched. Empty batch
     // (prompts not yet inserted) falls through to the normal flow below.
-    const poolTag = promptPoolTag ?? (zeroTag.s === 0 && zeroTag.e === 0 ? "onb-fresh" : undefined);
+    //
+    // LIVE (Alborz 2026-08-01): the tag follows the CURRENT picker value,
+    // not the mount-time prop — someone who declared "haven't started" and
+    // then set real progress mid-compose was still drawing pre-watch
+    // prompts (and vice versa). The prop now only marks the ONBOARDING
+    // context (which nonzero pool to use); zero-ness always re-derives.
+    const isZero = zeroTag.s === 0 && zeroTag.e === 0;
+    const poolTag = isZero ? "onb-fresh" : promptPoolTag !== undefined ? "onb-returning" : undefined;
     if (poolTag) {
       const pool = promptEntries.filter((p) => p.displayType === "prompt" && p.progressTags.includes(poolTag));
       if (pool.length) {
@@ -323,6 +330,18 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   function handlePromptShuffle() {
     handlePromptBtn();
   }
+  // Progress flipped between zero and real while a prompt card is OPEN →
+  // re-draw from the now-correct pool (Alborz 2026-08-01; the screenshot
+  // case was a "haven't started" prompt sitting under S03E09 progress).
+  const promptZero = progress ? (() => { const t = tagPosition(progress); return t.s === 0 && t.e === 0; })() : null;
+  const prevPromptZeroRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (promptZero === null) return;
+    const prev = prevPromptZeroRef.current;
+    prevPromptZeroRef.current = promptZero;
+    if (prev !== null && prev !== promptZero && activePrompt) handlePromptBtn();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promptZero]);
   function handlePromptInsert(text: string) {
     if (!activePrompt) return;
     const token = `[PROMPT: ${text}]`;
