@@ -1916,6 +1916,10 @@ export default function DashboardPage() {
               })}
             </div>
             <div style={chatInputRow}>
+              {/* Component-level rule: index.css never loads (index.tsx is
+                  the live entry, main.tsx the dead one), so the placeholder
+                  italic lives here. */}
+              <style>{`.chat-ph::placeholder { font-style: italic; }`}</style>
               <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -2538,8 +2542,10 @@ const chatBubbleMine: React.CSSProperties = {
   background: C.cream, color: C.midnight, padding: "10px 14px", borderRadius: 16, maxWidth: "78%", fontSize: 13, lineHeight: 1.4,
 };
 const chatInputRow: React.CSSProperties = { display: "flex", gap: 8, alignItems: "center", padding: "14px 16px", background: C.cream };
+// Sky-outlined field box, pill radius like the site's buttons (Alborz
+// 2026-08-11 — borderless it vanished against the cream input row).
 const chatInputBox: React.CSSProperties = {
-  flex: 1, border: "none", borderRadius: 65, padding: "12px 18px", fontFamily: '"Inter", sans-serif',
+  flex: 1, border: `2px solid ${C.sky}`, borderRadius: 65, padding: "10px 18px", fontFamily: '"Inter", sans-serif',
   fontSize: 13, color: C.midnight, background: CANON.cream, outline: "none",
 };
 const chatSend: React.CSSProperties = {

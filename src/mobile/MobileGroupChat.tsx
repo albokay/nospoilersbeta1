@@ -165,6 +165,9 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
 
       {/* ── Input row (pinned) ── */}
       <div style={inputRow}>
+        {/* index.css never loads (dead entry), so the placeholder italic
+            lives here. */}
+        <style>{`.chat-ph::placeholder { font-style: italic; }`}</style>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}

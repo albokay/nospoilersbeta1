@@ -191,20 +191,47 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
   // Row 1: title + "(me)" + friend names on the title's baseline. Row 2:
   // the n=2 summary line with the pen (→ confirm check, SAME spot, same
   // stroke width) aligned to it in the (me) column (Alborz QA 2026-07-18).
-  // Pencil (→ save check while editing) rides the TITLE (Alborz 2026-08-11
-  // — every answers pencil sits just right of the header, clear of the
-  // names). The hover tip stays with it.
+  // Desktop pencil lives UNDER "(me)" in the sub-row (Alborz 2026-08-11
+  // revision — beside the title its hover tip collided with the pair line;
+  // the mobile surfaces keep their beside-the-title pencils).
   const headerRow = (
     <div style={{ display: "flex", alignItems: "baseline", background: CANON.cream }}>
       <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "16px 8px 4px 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
         <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
+      </div>
+      <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, textAlign: "center", boxSizing: "border-box", ...(columns.length === 0 ? { flexGrow: 1 } : {}) }}>
+        {isWe && <span style={colName}>(me)</span>}
+      </div>
+      {columns.map((m, ci) => (
+        <div key={m.id} style={{ width: MEMBER_W, minWidth: MEMBER_W, textAlign: "center", boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}>
+          <span style={colName}>{m.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  // The n=2 pair line breaks at its em-dash (Alborz 2026-08-11) — "you
+  // agree on…" starts the second line instead of wrapping unevenly.
+  const pairDash = pairLine ? pairLine.indexOf("— ") : -1;
+  const subRow = (
+    <div style={{ display: "flex", alignItems: "center", background: CANON.cream, paddingBottom: 6 }}>
+      <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "0 8px 0 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
+        {pairLine && (
+          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.personal }}>
+            {pairDash > -1
+              ? <>{pairLine.slice(0, pairDash + 1)}<br />{pairLine.slice(pairDash + 2)}</>
+              : pairLine}
+          </span>
+        )}
+      </div>
+      <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, textAlign: "center", boxSizing: "border-box" }}>
         {ui === "edit" ? (
           <button title="save your answers" onClick={confirmEdits} disabled={saving}
-            style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "inline-flex", alignItems: "center", padding: 2, marginLeft: 10 }}>
+            style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "inline-flex", alignItems: "center", padding: 2 }}>
             {saving ? <LoadingDots /> : <CircleCheck size={18} strokeWidth={2} />}
           </button>
         ) : (
-          <span style={{ position: "relative", display: "inline-block", marginLeft: 10 }}>
+          <span style={{ position: "relative", display: "inline-block" }}>
             <button
               onClick={() => { setEdits({}); setUi("edit"); }}
               onMouseEnter={() => setEditTip(true)}
@@ -218,27 +245,6 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
           </span>
         )}
       </div>
-      <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, textAlign: "center", boxSizing: "border-box", ...(columns.length === 0 ? { flexGrow: 1 } : {}) }}>
-        {isWe && <span style={colName}>(me)</span>}
-      </div>
-      {columns.map((m, ci) => (
-        <div key={m.id} style={{ width: MEMBER_W, minWidth: MEMBER_W, textAlign: "center", boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}>
-          <span style={colName}>{m.label}</span>
-        </div>
-      ))}
-    </div>
-  );
-
-  const subRow = (
-    <div style={{ display: "flex", alignItems: "center", background: CANON.cream, paddingBottom: 6 }}>
-      <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "0 8px 0 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
-        {pairLine && (
-          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.personal }}>{pairLine}</span>
-        )}
-      </div>
-      {/* Pencil/check moved up beside the title (Alborz 2026-08-11); this
-          (me)-column slot stays only to keep the frozen-pane widths. */}
-      <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, textAlign: "center", boxSizing: "border-box" }} />
       <div style={{ flexGrow: 1 }} />
     </div>
   );
@@ -379,11 +385,10 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
   );
 }
 
-// The site's tipBubble look (DashboardPage). Anchored BELOW the pencil —
-// its 2026-08-11 spot beside the title sits at the card's top edge, and an
-// above-anchored bubble would clip against the card's scroll container.
+// The site's tipBubble look (DashboardPage), anchored above the pencil
+// (back in its sub-row spot, so the bubble opens over the header band).
 const editTipBubble: React.CSSProperties = {
-  position: "absolute", top: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
+  position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
   background: CANON.personal, color: CANON.cream, padding: "7px 12px", borderRadius: 12,
   fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 600, lineHeight: 1.3,
   whiteSpace: "nowrap", pointerEvents: "none", zIndex: 10, boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
