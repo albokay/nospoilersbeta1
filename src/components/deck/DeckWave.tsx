@@ -206,6 +206,11 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
       doneRef.current = true;
       // Drip batch completed → don't serve another this session (4 per login).
       if (wave === "drip") { try { sessionStorage.setItem(`ns_deck_drip_${user!.id}`, "1"); } catch { /* tolerate */ } }
+      // Self-hide (Alborz's 2026-08-11 stuck-card report): the drip mounts
+      // pass a no-op onComplete, so without this the last card stayed
+      // rendered with every tap/swipe swallowed by the doneRef guard —
+      // locked until refresh. Waves 1/2 unmount via their parents anyway.
+      setQueue([]);
       onComplete();
     }, 240);
   }

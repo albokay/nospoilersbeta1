@@ -106,7 +106,9 @@ export default function RatingCaptureModal({
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 12 }}>
           <button onClick={onCancel} disabled={locked} style={outlineStyle}>cancel</button>
           {onSkip && (
-            <button onClick={onSkip} disabled={locked} style={outlineStyle}>skip rating</button>
+            /* Alert outline + text (Alborz 2026-08-11) — skipping is the
+               "no rating" path, visually apart from the cream cancel. */
+            <button onClick={onSkip} disabled={locked} style={skipStyle}>skip rating</button>
           )}
         </div>
       </div>
@@ -141,4 +143,10 @@ const outlineStyle: React.CSSProperties = {
   fontSize: 13, // Body — Inter regular 13 (spec §16; −2 letter-spacing dropped)
   fontWeight: 400,
   cursor: "pointer",
+};
+
+const skipStyle: React.CSSProperties = {
+  ...outlineStyle,
+  color: CANON.alert,
+  border: `2px solid ${CANON.alert}`,
 };

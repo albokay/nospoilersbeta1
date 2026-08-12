@@ -15,6 +15,7 @@ import { Plus, X } from "lucide-react";
 import { fetchShows, type Show } from "../lib/db";
 import { tvmazeSearch, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import { readInvitePicks, parkInvitePicks, type InviteShowPick } from "../lib/invitePicks";
+import { preventLastWordOrphan } from "../lib/utils";
 import { CANON } from "../styles/canon";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
@@ -26,6 +27,18 @@ export default function InviteShowSuggest({ token, idiom }: { token: string; idi
   const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
   const [picks, setPicks] = useState<InviteShowPick[]>(() => readInvitePicks(token));
   const tvDebounceRef = useRef<number | null>(null);
+  // Mobile keyboard fix (Alborz 2026-08-11): results grow the page BELOW
+  // the keyboard while iOS pins the focused input near the visible bottom —
+  // so they rendered into the hidden zone. Scroll the search card to the
+  // top of the visible band on focus (and when results first land), so the
+  // input + the capped result list sit above the keyboard.
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  function ensureVisible() {
+    if (!mobile) return;
+    window.setTimeout(() => {
+      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 260); // after the keyboard animation settles
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -86,10 +99,18 @@ export default function InviteShowSuggest({ token, idiom }: { token: string; idi
     commit(picks.filter((_, j) => j !== i));
   }
 
+  const hasResults = catalogMatches.length > 0 || tvToAdd.length > 0;
+  useEffect(() => {
+    if (hasResults) ensureVisible();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasResults]);
+
   return (
-    <div style={{ textAlign: "center", marginTop: mobile ? 48 : 72 }}>
+    // Mobile marginTop 16 (was 48; Alborz 2026-08-11) — the shelves and this
+    // question read as one unit; the big gap moved up to logo→content.
+    <div style={{ textAlign: "center", marginTop: mobile ? 16 : 72 }}>
       <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 24 : 34, letterSpacing: 0, color: CANON.cream, margin: "0 0 4px" }}>
-        Do you want to suggest shows too?
+        {preventLastWordOrphan("Do you want to suggest shows too?")}
       </h2>
       <div style={{ color: CANON.cream, fontSize: mobile ? 13 : 15, marginBottom: 20 }}>(You can also do this later.)</div>
 
@@ -104,15 +125,18 @@ export default function InviteShowSuggest({ token, idiom }: { token: string; idi
         </div>
       )}
 
-      <div style={{ ...searchCard, width: mobile ? "min(340px, 88vw)" : 380 }}>
+      <div ref={cardRef} style={{ ...searchCard, width: mobile ? "min(340px, 88vw)" : 380, ...(mobile ? { scrollMarginTop: 12 } : {}) }}>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onFocus={ensureVisible}
           placeholder="find a show"
           style={searchInput}
         />
-        {(catalogMatches.length > 0 || tvToAdd.length > 0) && (
-          <div style={{ marginTop: 8, textAlign: "left" }}>
+        {hasResults && (
+          // Mobile: the list scrolls internally past ~a third of the screen
+          // so it can never outgrow the band above the keyboard.
+          <div style={{ marginTop: 8, textAlign: "left", ...(mobile ? { maxHeight: "34dvh", overflowY: "auto", WebkitOverflowScrolling: "touch" as const } : {}) }}>
             {catalogMatches.map((s) => (
               <button key={s.id} style={resultRow} onClick={() => addPick({ kind: "catalog", id: s.id, name: s.name })}>
                 <span style={resultName}>{s.name}</span><Plus size={16} strokeWidth={2.5} />

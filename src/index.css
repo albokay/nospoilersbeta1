@@ -3,3 +3,7 @@
 @tailwind utilities;
 
 :root { color-scheme: light dark; }
+
+/* The chat composers' spoiler-warning placeholder renders italic (Alborz
+   2026-08-11); typed text stays upright. */
+.chat-ph::placeholder { font-style: italic; }

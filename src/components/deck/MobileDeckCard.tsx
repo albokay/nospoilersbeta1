@@ -43,7 +43,9 @@ import { CANON } from "../../styles/canon";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const WINDOW = 8;   // §7.6.1 "latest N" window
-const ST_W = 150;   // statement column (grid view)
+const ST_W = 170;   // statement column (grid view) — wide enough for the
+                    // title + its pencil/save-check (Alborz 2026-08-11: the
+                    // check was clipping under the sticky (me) column at 150)
 const ME_W = 48;    // (me) column
 const FR_W = 56;    // friend columns
 
@@ -426,11 +428,15 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
           <div style={{ width: ME_W, minWidth: ME_W, position: "sticky", left: ST_W, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: 4, boxSizing: "border-box" }}>
             {isWe && <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 11, color: CANON.dark }}>(me)</span>}
           </div>
-          {columns.map((m, ci) => (
-            <div key={m.id} style={{ width: FR_W, minWidth: FR_W, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 6, boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}>
+          {/* Columns keep their FIXED width (Alborz 2026-08-11) — the old
+              stretch-the-last-column fill made a solo or 2-person grid
+              "oddly wide"; leftover space is a quiet filler instead. */}
+          {columns.map((m) => (
+            <div key={m.id} style={{ width: FR_W, minWidth: FR_W, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 6, boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1 }}>
               <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10.5, color: CANON.dark, maxWidth: FR_W - 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.label}</span>
             </div>
           ))}
+          <div style={{ flexGrow: 1 }} />
         </div>
 
         {/* Rows = questions somebody here has answered (Alborz 2026-08-01),
@@ -451,7 +457,6 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                   background: CANON.cream, display: "flex", alignItems: "stretch",
                   borderLeft: mine === undefined && ui !== "edit" ? "1px solid rgba(141,170,186,0.18)" : "none",
                   cursor: ui === "edit" ? "pointer" : "default",
-                  ...(columns.length === 0 ? { flexGrow: 1 } : {}),
                 }}
               >
                 {/* Edit mode shrinks the color block into a sharp-cornered
@@ -468,12 +473,12 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                   {mine != null && <Th v={mine} size={14} color={CANON.cream} />}
                 </div>
               </div>
-              {columns.map((m, ci) => {
+              {columns.map((m) => {
                 const v = valueFor(m.id, card.id);
                 return (
                   <div
                     key={m.id}
-                    style={{ ...mCell(v, FR_W), opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}
+                    style={{ ...mCell(v, FR_W), opacity: ui === "edit" ? 0.45 : 1 }}
                     onClick={v === null && ui !== "edit" ? (e) => showTapTip(card.id, e) : undefined}
                   >
                     {v === null
@@ -482,6 +487,9 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                   </div>
                 );
               })}
+              {/* Fixed-width columns (Alborz 2026-08-11): the filler carries
+                  the row's stripe across the leftover width. */}
+              <div style={{ flexGrow: 1, background: i % 2 === 0 ? CANON.friend : CANON.cream, opacity: ui === "edit" ? 0.45 : 1 }} />
             </div>
           );
         })}

@@ -225,12 +225,16 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         {/* QA round 6: shelves + JOIN IN stay hidden until the pre-wall wave
             completes — blank green behind the wave's tint. */}
         {prewallDone && (
-        <div style={{ padding: "8px 16px 48px" }}>
+        // Top padding 40 (Alborz 2026-08-11): logo→content gets the ~48px
+        // gap the shelves→suggest seam used to have (that seam tightened to
+        // 16 inside InviteShowSuggest so shows + question read as one unit).
+        <div style={{ padding: "40px 16px 48px" }}>
           {/* Same shelf copy as desktop (QA round 6): invitee-facing framing,
-              singular-safe; open-room shows second. */}
+              singular-safe; orphan-proofed (Alborz 2026-08-11 — no lone
+              "show:" lines). */}
           {interested.length > 0 && (
             <>
-              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{inviterShown}</span> wants to watch {interested.length === 1 ? "this show" : "these shows"} with you:</h2>
+              <h2 style={inviteHeading}><span style={{ color: C.cream }}>{inviterShown}</span>{preventLastWordOrphan(` wants to watch ${interested.length === 1 ? "this show" : "these shows"} with you:`)}</h2>
               <div style={shelfCol}>
                 {interested.map(({ show }) => (
                   <div key={show.id} style={{ ...pill, background: C.cream, color: C.green }}><span style={pillName}>{show.name}</span></div>
@@ -243,8 +247,8 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
               <h2 style={{ ...inviteHeading, marginTop: interested.length ? 40 : 0 }}>
                 {/* Singular-safe (Alborz 2026-08-01 — matches the wants shelf). */}
                 {interested.length > 0
-                  ? (watching.length === 1 ? "and is already watching this:" : "and is already watching these:")
-                  : <><span style={{ color: C.cream }}>{inviterShown}</span> is already watching {watching.length === 1 ? "this show" : "these shows"}:</>}
+                  ? (watching.length === 1 ? preventLastWordOrphan("and is already watching this:") : preventLastWordOrphan("and is already watching these:"))
+                  : <><span style={{ color: C.cream }}>{inviterShown}</span>{preventLastWordOrphan(` is already watching ${watching.length === 1 ? "this show" : "these shows"}:`)}</>}
               </h2>
               <div style={shelfCol}>
                 {watching.map(({ show, entry }) => (
@@ -260,9 +264,12 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
               claimed as proposals on accept. Replaces the "(You can also
               propose other shows.)" parenthetical. */}
           <InviteShowSuggest token={token} idiom="mobile" />
-          <div style={{ textAlign: "center", marginTop: 48 }}>
-            <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, margin: "0 0 24px" }}>Join Sidebar so you can watch with them.</h2>
+          {/* Button directly under the search bar, tail line under it so the
+              pair reads as one sentence (Alborz 2026-08-11; the "Join
+              Sidebar so you can watch with them." heading retired). */}
+          <div style={{ textAlign: "center", marginTop: 24 }}>
             <button style={joinPill} onClick={goAuth}>JOIN YOUR FRIEND</button>
+            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 20, color: C.cream, marginTop: 12 }}>&hellip;and start writing.</div>
           </div>
         </div>
         )}

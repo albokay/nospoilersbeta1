@@ -404,8 +404,13 @@ function cell(v: boolean | null | undefined): React.CSSProperties {
   };
 }
 
+// Opens to the LEFT of the "?" (Alborz 2026-08-11): anchored rightward it
+// overflowed the card's scroll container — clipped at the edge AND silently
+// widened the scrollable area, which is what made a 2-column grid
+// horizontally scrollable with rubber-band snap-back. Leftward it sits over
+// the statement column, always inside the card.
 const coveredBubble: React.CSSProperties = {
-  position: "absolute", left: 24, top: 26, zIndex: 6,
+  position: "absolute", right: 24, top: 26, zIndex: 6,
   background: CANON.cream, color: CANON.dark, borderRadius: 10,
   padding: "10px 14px", fontFamily: "Inter, sans-serif", fontWeight: 500,
   fontSize: 12.5, lineHeight: 1.5, whiteSpace: "nowrap", textAlign: "left",

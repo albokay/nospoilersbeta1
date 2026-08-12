@@ -59,8 +59,8 @@ export default function RoomProgressTip({ idiom, userId }: { idiom: "desktop" | 
       <p style={{ margin: 0 }}>{ROOM_PROGRESS_TIP.body}</p>
       <p style={{ margin: "6px 0 0", fontStyle: "italic", opacity: 0.85 }}>{ROOM_PROGRESS_TIP.aside}</p>
       {/* ↓ at the bottom right — the picker sits just beneath. Large +
-          heavy (Alborz 2026-08-01): the pointer should be unmissable. */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+          heavy (Alborz 2026-08-01); Cream (Alborz 2026-08-11). */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4, color: CANON.cream }}>
         <ArrowDown size={26} strokeWidth={2.8} />
       </div>
       <button

@@ -1920,7 +1920,8 @@ export default function DashboardPage() {
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }}
-                placeholder="message…"
+                placeholder="(remember, chat isn't spoiler-gated)"
+                className="chat-ph"
                 style={chatInputBox}
               />
               <button style={chatSend} onClick={sendChat}><ArrowUp size={18} color={CANON.cream} /></button>

@@ -169,9 +169,9 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }}
-          placeholder="message…"
+          placeholder="(remember, chat isn't spoiler-gated)"
           style={inputBox}
-          className="m-input"
+          className="m-input chat-ph"
         />
         <button style={sendBtn} onClick={sendChat}><ArrowUp size={18} color={C.cream} /></button>
       </div>

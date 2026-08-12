@@ -179,9 +179,12 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
               with it — the block's own "(You can also do this later.)"
               carries that message now. */}
           {invite.token && <InviteShowSuggest token={invite.token} idiom="desktop" />}
-          <div style={{ textAlign: "center", marginTop: 56 }}>
-            <h2 style={{ ...heading, color: C.cream, margin: "0 0 28px" }}>Join Sidebar so you can watch with them.</h2>
+          {/* Button directly under the search bar, tail line under it so the
+              pair reads as one sentence (Alborz 2026-08-11; the "Join
+              Sidebar so you can watch with them." heading retired). */}
+          <div style={{ textAlign: "center", marginTop: 28 }}>
             <button style={signInPill} onClick={invite.onJoin}>JOIN YOUR FRIEND</button>
+            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, marginTop: 14 }}>&hellip;and start writing.</div>
           </div>
         </div>
       ) : (
