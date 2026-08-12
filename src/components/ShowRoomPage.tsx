@@ -671,7 +671,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     onConfirm={onProgressConfirm}
                     onForwardPick={onForwardPick}
                     requireConfirm
-                    allowZero={(effectiveProgress(progressForShow)?.s ?? 1) === 0}
+                    allowZero
                   />
                 </div>
               )}

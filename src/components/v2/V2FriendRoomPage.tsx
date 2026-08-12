@@ -1144,7 +1144,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
                   onConfirm={handleProgressConfirm}
                   onForwardPick={handleForwardPick}
                   requireConfirm={true}
-                  allowZero={eff?.s === 0}
+                  allowZero
                   rewatchHighest={
                     progressForShow?.isRewatching &&
                     progressForShow.highestS != null &&

@@ -29,7 +29,7 @@ export const TIPS_LAUNCH_MS = Date.parse("2026-07-26T00:00:00Z");
  *  time, stepped with < > in THIS array order (welcome → gear → chat →
  *  deck) — all four at once was overwhelming. Positions are
  *  viewport-relative anchors for the centered StickyNote transform. */
-export type GroupRoomTipSticky = Tip & { tilt: number; top: string; left: string };
+export type GroupRoomTipSticky = Tip & { tilt: number; top: string; left: string; mobileOmit?: boolean };
 export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   {
     body: "Welcome to your group room. Shows you and your friends add accumulate here — you can propose more shows, vote on each others' picks, add more friends, and start a show room from this page.",
@@ -40,10 +40,13 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
     body: "Invited friends who haven't joined yet are listed in the ⚙️ — open it to see who's pending, nudge friends who need reminders, and do other group room maintenance.",
     tilt: 2, top: "14%", left: "54%",
   },
+  // DESKTOP-ONLY as of 2026-08-11 (Alborz sign-off): the mobile sheet drops
+  // this tip entirely — self-explanatory there, and it made the sheet too
+  // long. The desktop sticky is unchanged.
   {
     body: "“How We Watch TV” is a conversation starter for you and your friends. It grows as you all answer — you'll get more questions periodically.",
     aside: "(Missing answers in your column? Open the grid and tap the pencil to fill them in.)",
-    tilt: 2, top: "80%", left: "71%",
+    tilt: 2, top: "80%", left: "71%", mobileOmit: true,
   },
   // Chat is LAST (QA rounds 3–4) — it doubles as the send-off. The caveat
   // sits mid-body ("("-paragraphs render italic); no trailing aside.
@@ -66,10 +69,12 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
   // Mobile's sheet doesn't POINT at the chat button the way the placed
   // desktop sticky does, so "this 💬 button" reads as "the 💬 button"
   // there (QA round 8).
-  return GROUP_ROOM_TIPS.map(({ body, aside }) => ({
-    body: idiom === "mobile" ? body.replace("use this 💬 button", "use the 💬 button") : body,
-    aside,
-  }));
+  return GROUP_ROOM_TIPS
+    .filter((t) => !(idiom === "mobile" && t.mobileOmit))
+    .map(({ body, aside }) => ({
+      body: idiom === "mobile" ? body.replace("use this 💬 button", "use the 💬 button") : body,
+      aside,
+    }));
 }
 
 // Seen flags are PER USER as of 2026-08-01 (Alborz's invitee-flow catch):

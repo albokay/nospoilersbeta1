@@ -614,7 +614,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                   onConfirm={onProgressConfirm}
                   onForwardPick={onForwardPick}
                   requireConfirm
-                  allowZero={(effectiveProgress(progressForShow)?.s ?? 1) === 0}
+                  allowZero
                 />
               </div>
             )}

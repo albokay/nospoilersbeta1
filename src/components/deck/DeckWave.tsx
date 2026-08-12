@@ -216,17 +216,26 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
       background: mobile ? "rgba(26,58,74,0.35)" : "rgba(26,58,74,0.25)",
       zIndex: mobile ? 1000 : 900,
       // Mobile: anchor BELOW the page chrome so the heading can't overlap
-      // the logo/top bar showing through the dim (Alborz QA 2026-07-18).
-      ...(mobile ? { alignItems: "flex-start", paddingTop: `calc(env(safe-area-inset-top, 0px) + ${heading === "welcome" ? 128 : 84}px)` } : {}),
+      // the logo/top bar showing through the dim (Alborz QA 2026-07-18), and
+      // SCROLL when heading + card outrun the screen (Alborz 2026-08-11 —
+      // the card used to flex-shrink to fit, pushing the statement under the
+      // corner tabs).
+      ...(mobile ? { alignItems: "flex-start", paddingTop: `calc(env(safe-area-inset-top, 0px) + ${heading === "welcome" ? 128 : 84}px)`, overflowY: "auto" as const, WebkitOverflowScrolling: "touch" as const } : {}),
     }}>
-      <div style={{ width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", maxHeight: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div style={{ width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", display: "flex", flexDirection: "column", justifyContent: "center", ...(mobile ? {} : { maxHeight: "100%" }) }}>
+        {/* Welcome copy restructured 2026-08-11 (Alborz): H1 is just the
+            greeting; the tagline drops to Header 2 and the setup note to
+            Body (canon §16 sizes). Both platforms. */}
         {heading === "welcome" && (
-          <div style={{ textAlign: "left", marginBottom: mobile ? 20 : 28 }}>
-            <h1 style={{ ...h1Style, fontSize: mobile ? 28 : 34 }}>Welcome to Sidebar, a place for you and your friends to talk about TV, spoiler-free.</h1>
-            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: mobile ? 14 : 15, color: CANON.cream, marginTop: 10, lineHeight: 1.45 }}>
+          <div style={{ textAlign: "left", marginBottom: mobile ? 20 : 28, flexShrink: 0 }}>
+            <h1 style={{ ...h1Style, fontSize: mobile ? 28 : 34 }}>Welcome to Sidebar &ndash;</h1>
+            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream, marginTop: 10, lineHeight: 1.45 }}>
+              a place for you and your friends<br />to talk about TV, spoiler-free.
+            </div>
+            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, marginTop: 14, lineHeight: 1.5 }}>
               Before you get set up, a few questions<br />to get you in the mood for TV.
             </div>
-            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: CANON.cream, marginTop: 14 }}>
+            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, marginTop: 12 }}>
               (Your friends will answer these too.)
             </div>
           </div>
@@ -254,6 +263,10 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
           style={{
             ...cardStyle,
             height: mobile ? "min(500px, 55dvh)" : "min(580px, 66vh)",
+            // Never shrink to fit — the mobile wrapper scrolls instead
+            // (Alborz 2026-08-11; squeezing pushed the statement under the
+            // corner tabs on small screens).
+            flexShrink: 0,
             // Own the touch gesture — no scroll/rubber-band competition.
             ...(mobile ? { touchAction: "none" as const } : {}),
             // Swipe visuals: follow the finger with a slight tilt; flung
@@ -277,15 +290,24 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
                 : "deckCardIn .24s ease",
           }}
         >
-          {/* Wave-2 heading, in-card (Alborz 2026-08-01): centered above the
-              statement, Header-2 font in Identity, FIRST card only. */}
-          {heading === "more" && idx === 0 && (
-            <div style={{ position: "absolute", top: mobile ? 24 : 32, left: 0, right: 0, textAlign: "center", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.identity }}>
-              a few more&hellip;
+          <div style={{ maxWidth: mobile ? "82%" : "58%", textAlign: "center" }}>
+            {/* Wave-2 heading rides DIRECTLY above the question (Alborz
+                2026-08-11; was pinned to the card's top edge) — Header-2
+                font in Identity, FIRST card only. */}
+            {heading === "more" && idx === 0 && (
+              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.identity, marginBottom: mobile ? 12 : 16 }}>
+                a few more&hellip;
+              </div>
+            )}
+            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 38, lineHeight: 1.25, color: CANON.identity }}>
+              {card.statement}
             </div>
-          )}
-          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 38, lineHeight: 1.25, color: CANON.identity, textAlign: "center", maxWidth: mobile ? "82%" : "58%" }}>
-            {card.statement}
+          </div>
+
+          {/* Batch position, e.g. "2/4" (Alborz 2026-08-11) — small Identity
+              counter centered at the card's bottom, both platforms. */}
+          <div style={{ position: "absolute", bottom: mobile ? 16 : 20, left: 0, right: 0, textAlign: "center", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12, color: CANON.identity, pointerEvents: "none" }}>
+            {Math.min(idx, queue.length - 1) + 1}/{queue.length}
           </div>
 
           {/* Mobile tabs sit in the card's extreme corners, smaller — the

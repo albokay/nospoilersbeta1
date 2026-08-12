@@ -91,9 +91,12 @@ export default function OneSelectProgress({
 
   useEffect(() => { setSelectedId(currentId); setPending(null); setConfirmOpen(false); onPendingChange?.(false); }, [currentId]);
 
-  // Defense-in-depth: the zero option is monotonic. Once the user is past zero,
-  // it must never be offered again, even if a caller passes allowZero={true}.
-  const showZeroOption = allowZero && (forceZeroOption || (curS === 0 && curE === 0));
+  // "haven't started" is ALWAYS offered where allowZero is on (Alborz
+  // 2026-08-11) — the old monotonic rule (once past zero, never again) is
+  // retired along with the backward-progress warning: Sidebar is
+  // friends-only now, and progress moves freely in both directions.
+  // (forceZeroOption predates this and is now redundant, kept for callers.)
+  const showZeroOption = allowZero || forceZeroOption;
 
   // Prefix helper for an option label. Rewatching users see "you rewatched: "
   // for options within their previous highest, and "you've watched: " past it.
@@ -194,23 +197,17 @@ export default function OneSelectProgress({
             </select>
           </Modal>
         )}
+        {/* Backward moves get the SAME plain confirm as forward ones (Alborz
+            2026-08-11) — the red warning variant is retired; its copy is
+            preserved in HANDOFF.md in case it's reinstated. */}
         {requireConfirm && confirmOpen && (
-          <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: CANON.alert } : undefined}>
+          <Modal onClose={cancelSelection}>
             <div style={{ marginBottom: 12 }}>
               <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
             </div>
             <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>
               Your feed will only show posts up to your selected episode.
             </p>
-            {pending?.backwards && (
-              <>
-                <p style={{ marginTop: 12, marginBottom: 0, fontWeight: 700 }}>*HEADS UP BETA-TESTER*</p>
-                <p className="muted" style={{ marginTop: 4, marginBottom: 0 }}>
-                  In a live version of the site, users would not be able to turn their watch
-                  progress backward. But for beta-testing, you can flip back and forth at will.
-                </p>
-              </>
-            )}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
               <button className="btn" onClick={cancelSelection}>Cancel</button>
               <button className="btn" onClick={confirmSelection}>Confirm</button>
@@ -271,8 +268,11 @@ export default function OneSelectProgress({
         </span>
       )}
 
+      {/* Backward moves get the SAME plain confirm as forward ones (Alborz
+          2026-08-11) — the red warning variant is retired; its copy is
+          preserved in HANDOFF.md in case it's reinstated. */}
       {requireConfirm && confirmOpen && (
-        <Modal onClose={cancelSelection} cardStyle={pending?.backwards ? { background: CANON.alert } : undefined}>
+        <Modal onClose={cancelSelection}>
           <div style={{ marginBottom: 12 }}>
             <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
           </div>
@@ -280,16 +280,6 @@ export default function OneSelectProgress({
           <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>
             Your feed will only show posts up to your selected episode.
           </p>
-
-          {pending?.backwards && (
-            <>
-              <p style={{ marginTop: 12, marginBottom: 0, fontWeight: 700 }}>*HEADS UP BETA-TESTER*</p>
-              <p className="muted" style={{ marginTop: 4, marginBottom: 0 }}>
-                In a live version of the site, users would not be able to turn their watch
-                progress backward. But for beta-testing, you can flip back and forth at will.
-              </p>
-            </>
-          )}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
             <button className="btn" onClick={cancelSelection}>Cancel</button>

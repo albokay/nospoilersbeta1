@@ -1372,7 +1372,7 @@ export default function V3JournalPage({
                             onConfirm={(val) => updateProgressFor?.(activeTab, val)}
                             onForwardPick={handleRatingForwardPick(activeTab)}
                             requireConfirm={true}
-                            allowZero={postProgress?.s === 0}
+                            allowZero
                             rewatchHighest={postProgress?.isRewatching && postProgress.highestS != null && postProgress.highestE != null
                               ? { s: postProgress.highestS, e: postProgress.highestE }
                               : null}
@@ -1963,7 +1963,7 @@ export default function V3JournalPage({
                   value={postProgress}
                   onConfirm={(val) => updateProgressFor?.(activeTab, val)}
                   requireConfirm={true}
-                  allowZero={postProgress?.s === 0}
+                  allowZero
                   rewatchHighest={postProgress?.isRewatching && postProgress.highestS != null && postProgress.highestE != null
                     ? { s: postProgress.highestS, e: postProgress.highestE }
                     : null}

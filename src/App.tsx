@@ -1815,7 +1815,7 @@ function AppShell() {
                   onPendingChange={setHasPendingChange}
                   requireConfirm={false}
                   onChangeSelected={(val) => setFirstSel(val)}
-                  allowZero={progress[pickShow.id]?.s === 0}
+                  allowZero
                   rewatchHighest={progress[pickShow.id]?.isRewatching && progress[pickShow.id]?.highestS != null && progress[pickShow.id]?.highestE != null
                     ? { s: progress[pickShow.id]!.highestS!, e: progress[pickShow.id]!.highestE! }
                     : null}

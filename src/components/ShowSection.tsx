@@ -2155,7 +2155,7 @@ export default function ShowSection({
                   onConfirm={handleProgressConfirm}
                   requireConfirm={true}
                   compactLabel={effectiveProgress?.isRewatching ? "rewatch" : "progress"}
-                  allowZero={effectiveProgress?.s === 0}
+                  allowZero
                   rewatchHighest={effectiveProgress?.isRewatching && effectiveProgress.highestS != null && effectiveProgress.highestE != null
                     ? { s: effectiveProgress.highestS, e: effectiveProgress.highestE }
                     : null}
@@ -2272,7 +2272,7 @@ export default function ShowSection({
                     onConfirm={handleProgressConfirm}
                     requireConfirm={true}
                     compactLabel={undefined}
-                    allowZero={effectiveProgress?.s === 0}
+                    allowZero
                     rewatchHighest={effectiveProgress?.isRewatching && effectiveProgress.highestS != null && effectiveProgress.highestE != null
                       ? { s: effectiveProgress.highestS, e: effectiveProgress.highestE }
                       : null}
@@ -3205,7 +3205,7 @@ export default function ShowSection({
                 value={effectiveProgress || { s: 1, e: 1 }}
                 onConfirm={handleProgressConfirm}
                 requireConfirm={true}
-                allowZero={effectiveProgress?.s === 0}
+                allowZero
                 rewatchHighest={effectiveProgress?.isRewatching && effectiveProgress.highestS != null && effectiveProgress.highestE != null
                   ? { s: effectiveProgress.highestS, e: effectiveProgress.highestE }
                   : null}

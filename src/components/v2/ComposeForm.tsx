@@ -666,9 +666,9 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
             // A zero-progress writer (pre-watch note / onboarding at
             // "haven't started") must see their real position — without
             // allowZero the picker DISPLAYED S01 E01 while the spoiler tag
-            // was correctly 0,0. Same gate ShowRoomPage's picker uses; the
-            // zero option only renders while the value is actually zero.
-            allowZero={(progress.s ?? 0) === 0 && (progress.e ?? 0) === 0}
+            // was correctly 0,0. As of 2026-08-11 "haven't started" is
+            // always offered (backward moves are allowed, friends-only).
+            allowZero
             onConfirm={async (next) => {
               if (!user) return;
               try {

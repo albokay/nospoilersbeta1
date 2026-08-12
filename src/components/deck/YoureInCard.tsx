@@ -13,7 +13,7 @@
  * Two variants: inviter (post-onboarding — names the show + friend) and
  * invitee (post-accept — names the waiting friend).
  */
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import { CANON } from "../../styles/canon";
@@ -39,12 +39,56 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
   onDismiss?: () => void;
 }) {
   const mobile = idiom === "mobile";
+  // Mobile swipe = GET STARTED! (Alborz 2026-08-11): the card follows the
+  // finger like the question cards and a fling past the threshold — EITHER
+  // direction — proceeds, same as tapping the tab. Applies everywhere the
+  // card appears (incl. the invite-accept prompt — a swipe is no more
+  // accidental than a tap).
+  const SWIPE_COMMIT_PX = 80;
+  const [dragX, setDragX] = useState(0);
+  const [flung, setFlung] = useState<"left" | "right" | null>(null);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  // The invite-accept usage works async after onDone (busy dots, possible
+  // error line ON the card) — bring a flung card back so that state is
+  // visible. The onboarding usage unmounts before this matters.
+  useEffect(() => {
+    if (busy || errorText) { setFlung(null); setDragX(0); }
+  }, [busy, errorText]);
   return (
     <div
       style={{ ...dimWrap, background: mobile ? "rgba(26,58,74,0.35)" : "rgba(26,58,74,0.25)", zIndex: mobile ? 1000 : 900 }}
       onClick={(e) => { if (onDismiss && !busy && e.target === e.currentTarget) onDismiss(); }}
     >
-      <div style={{ ...cardStyle, width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", height: mobile ? "min(680px, 78dvh)" : "min(590px, 72vh)", padding: mobile ? "56px 28px 40px" : "72px 64px 56px", ...(mobile ? { display: "flex", flexDirection: "column" } : {}) }}>
+      <div
+        onTouchStart={mobile ? (e) => {
+          if (busy || flung) return;
+          dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } : undefined}
+        onTouchMove={mobile ? (e) => {
+          if (!dragStart.current || flung) return;
+          setDragX(e.touches[0].clientX - dragStart.current.x);
+        } : undefined}
+        onTouchEnd={mobile ? () => {
+          if (!dragStart.current || flung) return;
+          dragStart.current = null;
+          if (Math.abs(dragX) > SWIPE_COMMIT_PX && !busy) {
+            setFlung(dragX > 0 ? "right" : "left");
+            onDone();
+          } else setDragX(0); // under threshold → spring back
+        } : undefined}
+        onTouchCancel={mobile ? () => { dragStart.current = null; setDragX(0); } : undefined}
+        style={{
+          ...cardStyle, width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", height: mobile ? "min(680px, 78dvh)" : "min(590px, 72vh)", padding: mobile ? "56px 28px 40px" : "72px 64px 56px", ...(mobile ? { display: "flex", flexDirection: "column", touchAction: "none" as const } : {}),
+          transform: flung
+            ? `translateX(${flung === "right" ? "120vw" : "-120vw"}) rotate(${flung === "right" ? 14 : -14}deg)`
+            : dragX !== 0
+              ? `translateX(${dragX}px) rotate(${dragX / 18}deg)`
+              : undefined,
+          transition: flung
+            ? "transform .24s ease"
+            : dragStart.current != null ? "none" : "transform .18s ease",
+        }}
+      >
         <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 34, letterSpacing: 0, color: CANON.accent, margin: 0 }}>
           You&rsquo;re in!
         </h1>
@@ -87,8 +131,10 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
                 {busy ? <>one moment<LoadingDots /></> : <><ArrowRight size={18} strokeWidth={2.5} /> GET STARTED!</>}
               </button>
             </div>
+            {/* Three-line arrangement on mobile (Alborz 2026-08-11);
+                desktop keeps its two-line break. */}
             <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, lineHeight: 1.25, letterSpacing: 0, color: CANON.identity, textAlign: "right" }}>
-              Sidebar is for you and<br />your friends.
+              Sidebar is<br />for you and<br />your friends.
             </div>
           </>
         ) : (

@@ -260,16 +260,22 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
             its gesture retired here with the tips sheet's, so the rows can
             scroll without competing with a drag). */}
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, top: 96, background: CANON.cream, borderRadius: "24px 24px 0 0", boxShadow: "0 -8px 28px rgba(0,0,0,0.28)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <button onClick={() => setUi("docked")} aria-label="close" style={{ position: "absolute", top: 8, right: 8, zIndex: 2, width: 44, height: 44, border: "none", background: "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-            <X size={18} color={CANON.dark} />
-          </button>
+          {/* No "×" on THIS sheet (Alborz 2026-08-11 — it collided with the
+              name columns; tap-outside closes). The pencil rides the title
+              instead and jumps straight into the grid's edit mode. */}
           {/* Header + the vertical names SHARE this band (names bottom-
               aligned at the right) so they don't push the questions down
               with their own row (Alborz QA 2026-07-18). Name slot widths
               match the row thumbs below, so the columns line up. */}
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "16px 20px 8px" }}>
             <div>
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</div>
+                <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
+                  style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: "4px 6px", display: "inline-flex" }}>
+                  <Pencil size={15} />
+                </button>
+              </div>
               {subtitle && <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 11.5, color: CANON.business, marginTop: 3 }}>{subtitle}</div>}
               {pairLine && (
                 <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: CANON.personal, marginTop: 6 }}>{pairLine}</div>
@@ -400,24 +406,25 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
       <div style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 44px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: 20, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
         {/* Frozen top: title + (me) + names. */}
         <div style={{ display: "flex", position: "sticky", top: 0, zIndex: 4, background: CANON.cream, minWidth: ST_W + ME_W + FR_W * columns.length }}>
-          <div style={{ width: ST_W, minWidth: ST_W, position: "sticky", left: 0, background: CANON.cream, zIndex: 3, padding: "14px 8px 8px 14px", boxSizing: "border-box", display: "flex", alignItems: "flex-end" }}>
+          {/* Pencil (→ save check while editing) rides the TITLE, not the
+              (me) column (Alborz 2026-08-11 — every answers pencil sits just
+              right of the header). */}
+          <div style={{ width: ST_W, minWidth: ST_W, position: "sticky", left: 0, background: CANON.cream, zIndex: 3, padding: "14px 8px 8px 14px", boxSizing: "border-box", display: "flex", alignItems: "flex-end", gap: 6 }}>
             <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 13.5, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
-          </div>
-          <div style={{ width: ME_W, minWidth: ME_W, position: "sticky", left: ST_W, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: 4, boxSizing: "border-box" }}>
             {ui === "edit" ? (
               <button title="save your answers" onClick={confirmEdits} disabled={saving}
                 style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "flex", alignItems: "center", padding: 2 }}>
                 {saving ? <LoadingDots /> : <CircleCheck size={20} strokeWidth={2.5} />}
               </button>
             ) : (
-              <>
-                {isWe && <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 11, color: CANON.dark }}>(me)</span>}
-                <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
-                  style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "flex" }}>
-                  <Pencil size={12} />
-                </button>
-              </>
+              <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
+                style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "flex" }}>
+                <Pencil size={14} />
+              </button>
             )}
+          </div>
+          <div style={{ width: ME_W, minWidth: ME_W, position: "sticky", left: ST_W, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: 4, boxSizing: "border-box" }}>
+            {isWe && <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 11, color: CANON.dark }}>(me)</span>}
           </div>
           {columns.map((m, ci) => (
             <div key={m.id} style={{ width: FR_W, minWidth: FR_W, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 6, boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}>

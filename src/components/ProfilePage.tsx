@@ -1175,7 +1175,7 @@ export default function ProfilePage({
                             value={postProgress}
                             onConfirm={(val) => updateProgressFor?.(activeTab, val)}
                             requireConfirm={true}
-                            allowZero={postProgress?.s === 0}
+                            allowZero
                             rewatchHighest={postProgress?.isRewatching && postProgress.highestS != null && postProgress.highestE != null
                               ? { s: postProgress.highestS, e: postProgress.highestE }
                               : null}
@@ -1637,7 +1637,7 @@ export default function ProfilePage({
                   value={postProgress}
                   onConfirm={(val) => updateProgressFor?.(activeTab, val)}
                   requireConfirm={true}
-                  allowZero={postProgress?.s === 0}
+                  allowZero
                   rewatchHighest={postProgress?.isRewatching && postProgress.highestS != null && postProgress.highestE != null
                     ? { s: postProgress.highestS, e: postProgress.highestE }
                     : null}
