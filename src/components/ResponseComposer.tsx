@@ -267,10 +267,14 @@ export default function ResponseComposer({
   };
 
   return (
+    // Simplified 2026-08-13 (Alborz, approved mockup docs/
+    // response-composer-preview.html): the outer outlined card and its
+    // "Write a response" label are RETIRED — the cream textarea IS the
+    // composer (one outline, one prompt: the placeholder). The requestMode
+    // heading survives (its "Respond to @X" carries real context).
     <div
       ref={composerRef}
-      className="card"
-      style={{ marginTop: 16, border: "2px solid var(--dos-border)", borderRadius: 24 }}
+      style={{ marginTop: 16 }}
       id="response-composer"
     >
       {requestSent ? (
@@ -293,11 +297,11 @@ export default function ResponseComposer({
         </div>
       ) : (
        <>
-      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--dos-border)" }}>
-        {requestMode
-          ? (requestOwnerUsername ? `Respond to @${requestOwnerUsername}` : "Respond")
-          : "Write a response"}
-      </div>
+      {requestMode && (
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "var(--dos-border)" }}>
+          {requestOwnerUsername ? `Respond to @${requestOwnerUsername}` : "Respond"}
+        </div>
+      )}
 
       {/* Pending reference row */}
       {pendingReference && pendingReference.type === "quote" && !quoteInserted && (
@@ -331,8 +335,8 @@ export default function ResponseComposer({
           background: CANON.cream,
           color: "#000",
           border: "none",
-          borderRadius: 8,
-          padding: "8px 10px",
+          borderRadius: 15, // canon field radius (was 8; card retired 2026-08-13)
+          padding: "10px 12px",
           fontSize: 14,
           resize: "vertical",
           fontFamily: "inherit",
@@ -415,16 +419,9 @@ export default function ResponseComposer({
             {submitting ? "Sending…" : "Send request"}
           </button>
         ) : (() => {
-          // Three-way context resolves from (inGroupContext, threadIsPublic).
-          // Each context gets a white-fill submit button with its canon
-          // accent color as text + border, and a context-specific label.
-          // Canon palette: var(--canon-accent,#dea838) yellow (public), var(--canon-personal,#7abd8e) green
-          // (private / default), var(--canon-dark,#1a3a4a) navy (friend room).
-          const accent = inGroupContext
-            ? CANON.dark
-            : threadIsPublic
-              ? CANON.accent
-              : CANON.personal;
+          // Context-specific LABEL only (2026-08-13, Alborz): all three
+          // variants share ONE style — Cream fill + Cream outline, Sky
+          // text — replacing the old per-context accent border/text.
           const label = inGroupContext
             ? "Send to the room"
             : threadIsPublic
@@ -435,7 +432,7 @@ export default function ResponseComposer({
               className="btn"
               onClick={() => handleSubmit(false)}
               disabled={submitting || !body.trim()}
-              style={{ background: CANON.cream, border: `2px solid ${accent}`, color: accent }}
+              style={{ background: CANON.cream, border: `2px solid ${CANON.cream}`, color: CANON.friend, fontWeight: 700 }}
             >
               {submitting ? "Posting…" : label}
             </button>

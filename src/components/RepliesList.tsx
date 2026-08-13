@@ -1287,9 +1287,11 @@ export default function RepliesList({
                   )}
                   {!mobileIdiom && (
                     <div style={{ position: "relative", display: "inline-block" }}>
+                      {/* Business outline + text (Alborz 2026-08-13 button
+                          scheme — matches the entry-level Quote…). */}
                       <button
                         className="btn"
-                        style={{ fontSize: 13 }}
+                        style={{ fontSize: 13, border: "2px solid var(--canon-business,#8DAABA)", color: "var(--canon-business,#8DAABA)" }}
                         onClick={() => handleQuote(r)}
                         title="Quote this response"
                       >

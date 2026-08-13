@@ -717,10 +717,12 @@ export default function V2InlineThread({
             </button>
           )}
           {!mobileIdiom && (
+            // Business outline + text (Alborz 2026-08-13 button scheme;
+            // Highlight deliberately keeps its accent fill — option B).
             <button
               className="btn"
               onClick={handleQuoteThread}
-              style={{ fontSize: 13, padding: "3px 12px" }}
+              style={{ fontSize: 13, padding: "3px 12px", border: `2px solid ${CANON.business}`, color: CANON.business }}
             >
               Quote…
             </button>
@@ -844,10 +846,11 @@ export default function V2InlineThread({
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginTop: 12 }}>
         {collapseButton}
         {!isTombstone && !composerOpen && (
+          // Business outline + text (Alborz 2026-08-13 button scheme).
           <button
             className="btn"
             onClick={openComposer}
-            style={{ fontSize: 17, padding: "10px 22px" }}
+            style={{ fontSize: 17, padding: "10px 22px", border: `2px solid ${CANON.business}`, color: CANON.business }}
           >
             Write a response
           </button>
