@@ -274,7 +274,9 @@ export default function ResponseComposer({
     // heading survives (its "Respond to @X" carries real context).
     <div
       ref={composerRef}
-      style={{ marginTop: 16 }}
+      // marginLeft 8 lines the box up with the reply cards (their own
+      // marginLeft — Alborz 2026-08-13 tweak 2).
+      style={{ marginTop: 16, marginLeft: 8 }}
       id="response-composer"
     >
       {requestSent ? (
@@ -323,25 +325,33 @@ export default function ResponseComposer({
         </div>
       )}
 
-      <textarea
-        ref={textareaRef}
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder="Write your response…"
-        rows={8}
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          background: CANON.cream,
-          color: "#000",
-          border: "none",
-          borderRadius: 15, // canon field radius (was 8; card retired 2026-08-13)
-          padding: "10px 12px",
-          fontSize: 14,
-          resize: "vertical",
-          fontFamily: "inherit",
-        }}
-      />
+      {/* Cream shell + transparent textarea: the native resize handle sits
+          at the TEXTAREA's corner, so the 8px right/bottom shell padding
+          floats it 8px up-and-left of the visible corner (Alborz 2026-08-13
+          tweak 1 — it got lost flush in the corner). */}
+      <div style={{ background: CANON.cream, borderRadius: 15, padding: "0 8px 8px 0" }}>
+        <textarea
+          ref={textareaRef}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Write your response…"
+          rows={8}
+          style={{
+            display: "block",
+            width: "100%",
+            boxSizing: "border-box",
+            background: "transparent",
+            color: "#000",
+            border: "none",
+            borderRadius: 15, // canon field radius (card retired 2026-08-13)
+            padding: "10px 12px",
+            fontSize: 14,
+            resize: "vertical",
+            fontFamily: "inherit",
+            outline: "none",
+          }}
+        />
+      </div>
 
       {/* Permission-request section (public-room gate). The viewer writes
           their response above; here they add an optional note. Submitting
@@ -401,11 +411,12 @@ export default function ResponseComposer({
       )}
 
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 8 }}>
+        {/* btn-danger carries the base Alert outline AND the 2026-08-13
+            hover (Alert fill + Cream text) from theme.ts. */}
         <button
-          className="btn"
+          className="btn btn-danger"
           onClick={onCancel}
           disabled={submitting}
-          style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
         >
           Cancel
         </button>
@@ -428,11 +439,12 @@ export default function ResponseComposer({
               ? "Share response"
               : "Add your thoughts";
           return (
+            // sb-send (theme.ts): Cream fill/outline + Sky text; hover =
+            // Sky fill + Cream outline/text (Alborz 2026-08-13).
             <button
-              className="btn"
+              className="btn sb-send"
               onClick={() => handleSubmit(false)}
               disabled={submitting || !body.trim()}
-              style={{ background: CANON.cream, border: `2px solid ${CANON.cream}`, color: CANON.friend, fontWeight: 700 }}
             >
               {submitting ? "Posting…" : label}
             </button>

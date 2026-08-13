@@ -683,7 +683,7 @@ export default function V2InlineThread({
                   width={260}
                 >
                   <button
-                    className="btn"
+                    className="btn sb-edit-business"
                     onClick={openEdit}
                     style={{ fontSize: 13, padding: "3px 12px" }}
                   >
@@ -701,28 +701,24 @@ export default function V2InlineThread({
             </>
           )}
           {groupId && !mobileIdiom && (
+            // Accent fill kept (option B); hover = Sky fill + Accent
+            // outline via the sb-hl-entry class (theme.ts, 2026-08-13).
             <button
               ref={highlightBtnRef}
-              className="btn"
+              className="btn sb-hl-entry"
               onClick={handleHighlightClick}
-              style={{
-                fontSize: 13,
-                padding: "3px 12px",
-                background: CANON.accent,
-                color: CANON.cream,
-                border: "2px solid var(--canon-accent,#dea838)",
-              }}
+              style={{ fontSize: 13, padding: "3px 12px" }}
             >
               Highlight…
             </button>
           )}
           {!mobileIdiom && (
-            // Business outline + text (Alborz 2026-08-13 button scheme;
-            // Highlight deliberately keeps its accent fill — option B).
+            // Cream outline + text, cream-fill/Sky-text hover (Alborz
+            // 2026-08-13 tweak — the Business version got lost on sky).
             <button
-              className="btn"
+              className="btn sb-cream-outline"
               onClick={handleQuoteThread}
-              style={{ fontSize: 13, padding: "3px 12px", border: `2px solid ${CANON.business}`, color: CANON.business }}
+              style={{ fontSize: 13, padding: "3px 12px" }}
             >
               Quote…
             </button>
@@ -846,11 +842,12 @@ export default function V2InlineThread({
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginTop: 12 }}>
         {collapseButton}
         {!isTombstone && !composerOpen && (
-          // Business outline + text (Alborz 2026-08-13 button scheme).
+          // Cream outline + text, cream-fill/Sky-text hover (Alborz
+          // 2026-08-13 tweak).
           <button
-            className="btn"
+            className="btn sb-cream-outline"
             onClick={openComposer}
-            style={{ fontSize: 17, padding: "10px 22px", border: `2px solid ${CANON.business}`, color: CANON.business }}
+            style={{ fontSize: 17, padding: "10px 22px" }}
           >
             Write a response
           </button>

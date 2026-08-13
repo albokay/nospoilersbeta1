@@ -993,6 +993,31 @@ body.public-context .prompt-ref { color: #8a6420; }
   gap: 4px;
 }
 
+/* ── Entry/composer button scheme (Alborz 2026-08-13). Classes because the
+   hover specs can't live inline, and !important because the reply-card /
+   group-context rules above use it. Appended last so ties resolve here. ── */
+/* Entry-level Quote… + "Write a response" (sky surface): Cream outline +
+   Cream text; hover flips to Cream fill + Sky text. */
+body .btn.sb-cream-outline{ background:transparent !important; border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-cream,#fef8ea) !important; }
+body .btn.sb-cream-outline:hover{ background:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-friend,#adc8d7) !important; }
+/* Entry Edit: Business outline + Business text, static — no transparency
+   or hover wash. */
+body .btn.sb-edit-business, body .btn.sb-edit-business:hover{ background:transparent !important; border-color:var(--canon-business,#8daaba) !important; color:var(--canon-business,#8daaba) !important; opacity:1 !important; }
+/* Delete + composer Cancel hover: Alert fill + Alert outline + Cream text —
+   beats the group-context cream-border hover override. */
+body .btn.btn-danger:hover{ background:var(--danger) !important; border-color:var(--danger) !important; color:var(--canon-cream,#fef8ea) !important; }
+/* Entry Highlight… keeps its accent fill; hover = Sky fill, Accent outline,
+   Cream text. */
+body .btn.sb-hl-entry{ background:var(--canon-accent,#dea838) !important; border-color:var(--canon-accent,#dea838) !important; color:var(--canon-cream,#fef8ea) !important; }
+body .btn.sb-hl-entry:hover{ background:var(--canon-friend,#adc8d7) !important; border-color:var(--canon-accent,#dea838) !important; color:var(--canon-cream,#fef8ea) !important; }
+/* Composer submit: Cream fill + Cream outline + Sky text; hover = Sky fill,
+   Cream outline, Cream text. */
+body .btn.sb-send{ background:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-friend,#adc8d7) !important; font-weight:700; }
+body .btn.sb-send:hover{ background:var(--canon-friend,#adc8d7) !important; border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-cream,#fef8ea) !important; }
+/* Reply-card Highlight… (classless button, sky fill base): hover = Cream
+   fill, Sky outline, Accent text. */
+.sb-hl-reply:hover{ background:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-friend,#adc8d7) !important; color:var(--canon-accent,#dea838) !important; }
+
 `;
 
   const el = document.createElement("style"); el.id = id; el.textContent = css; document.head.appendChild(el);

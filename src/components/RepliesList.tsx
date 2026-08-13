@@ -1267,8 +1267,11 @@ export default function RepliesList({
                     </>
                   )}
                   {highlightsEnabled && !mobileIdiom && (
+                    // sb-hl-reply (theme.ts): hover = Cream fill + Sky
+                    // outline + Accent text (Alborz 2026-08-13).
                     <button
                       ref={el => { highlightBtnRefs.current[r.id] = el; }}
+                      className="sb-hl-reply"
                       onClick={() => handleHighlightClickReply(r.id)}
                       style={{
                         fontSize: 13,
@@ -1287,11 +1290,11 @@ export default function RepliesList({
                   )}
                   {!mobileIdiom && (
                     <div style={{ position: "relative", display: "inline-block" }}>
-                      {/* Business outline + text (Alborz 2026-08-13 button
-                          scheme — matches the entry-level Quote…). */}
+                      {/* Styled by the `.reply-card .btn` rules (theme.ts,
+                          !important) — inline colors here are dead weight. */}
                       <button
                         className="btn"
-                        style={{ fontSize: 13, border: "2px solid var(--canon-business,#8DAABA)", color: "var(--canon-business,#8DAABA)" }}
+                        style={{ fontSize: 13 }}
                         onClick={() => handleQuote(r)}
                         title="Quote this response"
                       >
