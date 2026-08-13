@@ -1,5 +1,6 @@
 import { CANON } from "../styles/canon";
-import React, { useState, Suspense, lazy } from "react";
+import React, { useState, Suspense } from "react";
+import lazyWithReload from "../lib/lazyWithReload";
 import { useLocation, useNavigate } from "react-router-dom";
 import HomepageNarrative from "../components/HomepageNarrative";
 import { preventLastWordOrphan } from "../lib/utils";
@@ -15,7 +16,7 @@ import {
   BETA_LETTER_PARAGRAPHS_MOBILE,
 } from "../lib/homepageCopy";
 
-const MobileHowItWorks = lazy(() => import("./MobileHowItWorks"));
+const MobileHowItWorks = lazyWithReload(() => import("./MobileHowItWorks"), "./MobileHowItWorks");
 
 // Mobile homepage narrative scroll for signed-out users (CP1 of the mobile
 // rebuild). The desktop homepage is the source of truth; this surface renders

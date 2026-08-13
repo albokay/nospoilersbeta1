@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef, Suspense, lazy } from "react";
+import React, { useState, useMemo, useEffect, useRef, Suspense } from "react";
+import lazyWithReload from "./lib/lazyWithReload";
 import LoadingDots from "./components/LoadingDots";
 import SidebarAvatar from "./components/SidebarAvatar";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
@@ -28,7 +29,7 @@ import SidebarLogo from "./components/SidebarLogo";
 // is fetched as its own chunk on first visit; main bundle excludes them.
 // V3JournalPage + ProfilePage + ShowSection stay eager — they're the
 // primary destinations for every signed-in user.
-const AdminPage = lazy(() => import("./components/AdminPage"));
+const AdminPage = lazyWithReload(() => import("./components/AdminPage"), "./components/AdminPage");
 import { Tv, EyeClosed, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowRight, ArrowDown, LogOut, UserPen } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
 import Tooltip from "./components/Tooltip";
@@ -37,28 +38,28 @@ import FeedbackWidget from "./components/FeedbackWidget";
 // non-/m/* path now redirect into the /m/* mobile app surface (which
 // itself handles signed-in vs signed-out routing). The component file
 // stays in src/components/ as a fallback if we ever want to revert.
-const HomepageLab = lazy(() => import("./components/HomepageLab"));
-const HowItWorks = lazy(() => import("./components/HowItWorks"));
-const HowItWorksV2 = lazy(() => import("./components/HowItWorksV2"));
+const HomepageLab = lazyWithReload(() => import("./components/HomepageLab"), "./components/HomepageLab");
+const HowItWorks = lazyWithReload(() => import("./components/HowItWorks"), "./components/HowItWorks");
+const HowItWorksV2 = lazyWithReload(() => import("./components/HowItWorksV2"), "./components/HowItWorksV2");
 import HomepageNarrative from "./components/HomepageNarrative";
-const InviteAcceptPage = lazy(() => import("./components/InviteAcceptPage"));
-const AllowResponsePage = lazy(() => import("./components/AllowResponsePage"));
-const ConfirmEmailPage = lazy(() => import("./components/ConfirmEmailPage"));
-const MobileApp = lazy(() => import("./mobile/MobileApp"));
+const InviteAcceptPage = lazyWithReload(() => import("./components/InviteAcceptPage"), "./components/InviteAcceptPage");
+const AllowResponsePage = lazyWithReload(() => import("./components/AllowResponsePage"), "./components/AllowResponsePage");
+const ConfirmEmailPage = lazyWithReload(() => import("./components/ConfirmEmailPage"), "./components/ConfirmEmailPage");
+const MobileApp = lazyWithReload(() => import("./mobile/MobileApp"), "./mobile/MobileApp");
 // Promoted V2 surfaces (formerly /v2/...). Each chunked individually so the
 // main bundle stays lean for users who only visit one or two of these.
-const V2FriendRoomPage = lazy(() => import("./components/v2/V2FriendRoomPage"));
-const V2ProfileSelfPage = lazy(() => import("./components/v2/V2ProfileSelfPage"));
-const V2ProfileVisitorPage = lazy(() => import("./components/v2/V2ProfileVisitorPage"));
-const V2UserAggregatePage = lazy(() => import("./components/v2/V2UserAggregatePage"));
-const V2ComposePage = lazy(() => import("./components/v2/V2ComposePage"));
-const ResetPasswordPage = lazy(() => import("./components/ResetPasswordPage"));
+const V2FriendRoomPage = lazyWithReload(() => import("./components/v2/V2FriendRoomPage"), "./components/v2/V2FriendRoomPage");
+const V2ProfileSelfPage = lazyWithReload(() => import("./components/v2/V2ProfileSelfPage"), "./components/v2/V2ProfileSelfPage");
+const V2ProfileVisitorPage = lazyWithReload(() => import("./components/v2/V2ProfileVisitorPage"), "./components/v2/V2ProfileVisitorPage");
+const V2UserAggregatePage = lazyWithReload(() => import("./components/v2/V2UserAggregatePage"), "./components/v2/V2UserAggregatePage");
+const V2ComposePage = lazyWithReload(() => import("./components/v2/V2ComposePage"), "./components/v2/V2ComposePage");
+const ResetPasswordPage = lazyWithReload(() => import("./components/ResetPasswordPage"), "./components/ResetPasswordPage");
 // Restructure (groups + show rooms): the new green home. Working route that
 // coexists with the live site until the gated cutover promotes it to home.
-const DashboardPage = lazy(() => import("./components/DashboardPage"));
-const GroupInviteAcceptPage = lazy(() => import("./components/GroupInviteAcceptPage"));
-const ShowRoomPage = lazy(() => import("./components/ShowRoomPage"));
-const PublicDashboardPage = lazy(() => import("./components/PublicDashboardPage"));
+const DashboardPage = lazyWithReload(() => import("./components/DashboardPage"), "./components/DashboardPage");
+const GroupInviteAcceptPage = lazyWithReload(() => import("./components/GroupInviteAcceptPage"), "./components/GroupInviteAcceptPage");
+const ShowRoomPage = lazyWithReload(() => import("./components/ShowRoomPage"), "./components/ShowRoomPage");
+const PublicDashboardPage = lazyWithReload(() => import("./components/PublicDashboardPage"), "./components/PublicDashboardPage");
 
 // Full-screen fallback for lazy chunks. Matches the canon palette so the
 // transition from main bundle → lazy chunk doesn't flash white. Only
