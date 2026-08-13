@@ -120,7 +120,9 @@ export default function TSPDemoModal({ onClose, reentry }: {
   }
 
   return (
-    <div role="dialog" aria-modal="true" style={{
+    // Clicking the dim outside the tour card exits, same as the button
+    // (Alborz 2026-08-14).
+    <div role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)",
       display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
     }}>

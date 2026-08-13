@@ -1938,8 +1938,9 @@ export default function DashboardPage() {
             <div style={chatInputRow}>
               {/* Component-level rule: index.css never loads (index.tsx is
                   the live entry, main.tsx the dead one), so the placeholder
-                  italic lives here. */}
-              <style>{`.chat-ph::placeholder { font-style: italic; }`}</style>
+                  style lives here. Sky (Alborz 2026-08-14 — the theme.ts
+                  default painted it grey). */}
+              <style>{`.chat-ph::placeholder { font-style: italic; color: var(--canon-friend,#ADC8D7) !important; opacity: 1 !important; }`}</style>
               <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}

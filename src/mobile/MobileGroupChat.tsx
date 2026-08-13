@@ -165,9 +165,11 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
 
       {/* ── Input row (pinned) ── */}
       <div style={inputRow}>
-        {/* index.css never loads (dead entry), so the placeholder italic
-            lives here. */}
-        <style>{`.chat-ph::placeholder { font-style: italic; }`}</style>
+        {/* index.css never loads (dead entry), so the placeholder style
+            lives here. Sky + !important (Alborz 2026-08-14): the mobile-wide
+            .m-input::placeholder is translucent CREAM — invisible on this
+            cream field, which is why the warning "wasn't there". */}
+        <style>{`.chat-ph::placeholder { font-style: italic; color: var(--canon-friend,#ADC8D7) !important; opacity: 1 !important; }`}</style>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}

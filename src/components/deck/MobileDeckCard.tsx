@@ -48,6 +48,7 @@ const ST_W = 170;   // statement column (grid view) — wide enough for the
                     // check was clipping under the sticky (me) column at 150)
 const ME_W = 48;    // (me) column
 const FR_W = 56;    // friend columns
+const SHEET_CW = 36; // sheet answer columns (air-tight grid, 2026-08-14)
 
 export default function MobileDeckCard({ mode, groupId, others = [], viewerId }: {
   mode: "personal" | "group";
@@ -268,8 +269,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
           {/* Header + the vertical names SHARE this band (names bottom-
               aligned at the right) so they don't push the questions down
               with their own row (Alborz QA 2026-07-18). Name slot widths
-              match the row thumbs below, so the columns line up. */}
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "16px 20px 8px" }}>
+              match the row cells below and run to the sheet's right EDGE
+              (no band padding on that side) so the columns line up with the
+              air-tight cells. */}
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "16px 0 8px 20px" }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</div>
@@ -284,9 +287,9 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
               )}
             </div>
             {mode === "group" && (
-              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+              <div style={{ display: "flex", flexShrink: 0 }}>
                 {[{ id: viewerId, label: "(me)" }, ...columns].map((m) => (
-                  <span key={m.id} style={{ width: 20, display: "flex", justifyContent: "center" }}>
+                  <span key={m.id} style={{ width: SHEET_CW, display: "flex", justifyContent: "center" }}>
                     <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10, color: CANON.dark, maxHeight: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {m.label}
                     </span>
@@ -296,33 +299,38 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
             )}
           </div>
           <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
-            {windowRows.map((card, i) => (
-              <div key={card.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 20px", fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.35, color: CANON.dark, background: i % 2 === 0 ? "rgba(173,200,215,0.45)" : "transparent" }}>
-                <span>{card.statement}</span>
-                {/* Grid-grammar mini cells (Alborz 2026-08-12): filled color
-                    block + cream thumb, matching the full grid; covered =
-                    the greyblue "?" cell; unanswered = plain empty. */}
-                {mode === "personal" ? (
-                  <span style={{ ...miniCell, background: myAnswers[card.id] ? CANON.personal : CANON.alert }}>
-                    <Th v={myAnswers[card.id]!} size={13} color={CANON.cream} />
-                  </span>
-                ) : (
-                  <span style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                    {[{ id: viewerId }, ...columns].map((m) => {
-                      const v = valueFor(m.id, card.id);
-                      return (
-                        <span key={m.id} style={{ width: 20, display: "flex", justifyContent: "center", alignItems: "center" }}>
-                          {v === undefined ? null
-                            : v === null
-                              ? <span onClick={(e) => { e.stopPropagation(); showTapTip(card.id, e); }} style={coveredMini}>?</span>
-                              : <span style={{ ...miniCell, background: v ? CANON.personal : CANON.alert }}><Th v={v} size={13} color={CANON.cream} /></span>}
-                        </span>
-                      );
-                    })}
-                  </span>
-                )}
-              </div>
-            ))}
+            {/* AIR-TIGHT grid grammar (Alborz 2026-08-14): full-height color
+                cells with cream thumbs tile edge-to-edge under the name
+                columns, exactly like the full grid — the floating mini-cells
+                are retired. Covered stays the greyblue "?" cell (tap for the
+                tip); unanswered continues the row stripe. */}
+            {windowRows.map((card, i) => {
+              const stripe = i % 2 === 0 ? "rgba(173,200,215,0.45)" : "transparent";
+              const cols = mode === "personal" ? [{ id: viewerId }] : [{ id: viewerId }, ...columns];
+              return (
+                <div key={card.id} style={{ display: "flex", alignItems: "stretch", minHeight: 44, fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.35, color: CANON.dark }}>
+                  <span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", padding: "11px 12px 11px 20px", background: stripe }}>{card.statement}</span>
+                  {cols.map((m) => {
+                    const v = mode === "personal" ? myAnswers[card.id] : valueFor(m.id, card.id);
+                    return (
+                      <span
+                        key={m.id}
+                        onClick={v === null ? (e) => { e.stopPropagation(); showTapTip(card.id, e); } : undefined}
+                        style={{
+                          width: SHEET_CW, minWidth: SHEET_CW, display: "flex", alignItems: "center", justifyContent: "center",
+                          background: v === undefined ? stripe : v === null ? CANON.business : v ? CANON.personal : CANON.alert,
+                          cursor: v === null ? "pointer" : "default",
+                        }}
+                      >
+                        {v === null
+                          ? <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 13, color: CANON.friend, userSelect: "none" }}>?</span>
+                          : v !== undefined && <Th v={v} size={15} color={CANON.cream} />}
+                      </span>
+                    );
+                  })}
+                </div>
+              );
+            })}
             {/* Right under the question list, not pinned to the screen
                 bottom. Appears once there's MORE than the sheet shows
                 (Alborz QA 2026-07-18 — at 8 answered the sheet already IS
@@ -522,18 +530,5 @@ function mCell(v: boolean | null | undefined, w: number): React.CSSProperties {
   };
 }
 
-// The sheet's covered mark — a mini cell of the same grammar.
-const coveredMini: React.CSSProperties = {
-  width: 18, height: 18, borderRadius: 4, background: CANON.business,
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-  fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 12, color: CANON.friend,
-  cursor: "pointer", userSelect: "none",
-};
-
-// A revealed answer in the sheet — the grid's cell grammar in miniature:
-// color fill + cream thumb (Alborz 2026-08-12).
-const miniCell: React.CSSProperties = {
-  width: 18, height: 18, borderRadius: 4,
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-  flexShrink: 0,
-};
+// (The sheet's floating mini-cells were retired 2026-08-14 — the sheet now
+// tiles full-height grid cells under the name columns, see the sheet rows.)
