@@ -13,6 +13,7 @@ import DeckWave from "../components/deck/DeckWave";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
 import MobileTipsSheet from "../components/MobileTipsSheet";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
+import { preventLastWordOrphan } from "../lib/utils";
 import { joinedThisSession } from "../lib/joinSession";
 import PendingInvitesPanel, { isInviteStale, type OtherPendingInvite } from "../components/PendingInvitesPanel";
 import {
@@ -88,14 +89,16 @@ const C = {
   greyblue: CANON.business,
 };
 
-/** Desktop's "haven't started" hover copy, moved inline (no hover on mobile). */
-function interestedLine(names: string[], showName: string, selfOpted: boolean): React.ReactNode {
+/** Parenthetical interest list (Alborz 2026-08-12): first names only, viewer
+ *  excluded, no show name — the sheet's headline already names the show.
+ *  "(A is interested.)" / "(A and B are interested.)" / "(A, B, and C are
+ *  interested.)" */
+function interestedLine(names: string[]): string | null {
   if (!names.length) return null;
-  const show = <i>{showName}</i>;
-  const also = selfOpted ? "also " : "";
-  if (names.length === 1) return <>{names[0]} is {also}interested in watching {show}.</>;
-  if (names.length === 2) return <>{names[0]} and {names[1]} are {also}interested in watching {show}.</>;
-  return <>{names.length} friends are {also}interested in watching {show}.</>;
+  const list = names.length === 1 ? names[0]
+    : names.length === 2 ? `${names[0]} and ${names[1]}`
+    : `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+  return `(${list} ${names.length === 1 ? "is" : "are"} interested.)`;
 }
 
 /** Same sliding yes/no control as desktop's vote modal. */
@@ -722,7 +725,6 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         // Opted-in = YOUR yes-vote in THIS group (2026-07-06, desktop parity):
         // the toggle reflects the per-group vote row, never the personal pool.
         const optedIn = !!gs?.members.find((m) => m.userId === selfUserId)?.voted;
-        const roomLabel = gs?.roomId ? "Open show room?" : "Start a show room?";
         const optedCount = gs?.members.length ?? 0;
         const cur = progress[clicked.showId];
         const curVal = cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 };
@@ -744,7 +746,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <button style={sheetClose} onClick={() => setClicked(null)}><X size={20} color={C.cream} /></button>
             <div style={sheetInner}>
               <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: C.cream, textAlign: "center", marginBottom: 20 }}>
-                {clicked.name}
+                {preventLastWordOrphan(clicked.name)}
               </div>
 
               {/* Not-started shows — solo-with-toggle and vote mode share ONE
@@ -761,11 +763,13 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   <>
                     {withToggle && (
                       <>
-                        <div style={sheetTitle}>Do you want to watch <b>{clicked.name}</b>?</div>
+                        {/* Copy pass (Alborz 2026-08-12): the title above
+                            names the show — don't restate it. "too" only
+                            when someone else is actually interested. */}
+                        <div style={sheetTitle}>Do you want to watch{interestedNames.length > 0 ? " too" : ""}?</div>
                         {interestedNames.length > 0 && (
-                          // Desktop's hover tooltip on "haven't started" pills, inline.
                           <div style={{ marginTop: 10, color: C.cream, fontSize: 13, fontWeight: 600, textAlign: "center", opacity: 0.9 }}>
-                            {interestedLine(interestedNames, clicked.name, optedIn)}
+                            {preventLastWordOrphan(interestedLine(interestedNames) ?? "")}
                           </div>
                         )}
                         <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
@@ -789,12 +793,17 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                           />
                         </div>
                         <div style={sheetDivider} />
-                        <div style={{ ...sheetTitle, fontSize: 13 }}>{showRead ? readText : gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : (
-                          <>Start a show room?<br />Your friends can join in when they&rsquo;re ready.</>
-                        )}</div>
-                        <div style={sheetBtnRow}>
-                          <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Yes"}</button>
-                          <button style={outlineBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
+                        {/* Verb model (Alborz 2026-08-12): room exists →
+                            "Enter show room"; no room → "Open a show room";
+                            visible friend writing keeps the Read pull. The
+                            old question-copy lines are retired. */}
+                        {showRead && <div style={{ ...sheetTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
+                        <div style={sheetBtnCol}>
+                          <button style={sheetRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
+                          {!gs?.roomId && optedCount <= 1 && (
+                            <div style={joinNote}>{preventLastWordOrphan("(Your friends can join in when they're ready.)")}</div>
+                          )}
+                          <button style={sheetConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
                         </div>
                       </>
                     )}
@@ -804,7 +813,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
               {clicked.mode === "watchq" && (
                 <>
-                  <div style={sheetTitle}>Are you also watching <b>{clicked.name}</b>?</div>
+                  {/* No show name here either (Alborz 2026-08-12) — the
+                      title above carries it. */}
+                  <div style={sheetTitle}>Are you also watching?</div>
                   <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                     <OneSelectProgress
                       show={showsById[clicked.showId] ?? { seasons: [] }}
@@ -817,10 +828,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                     />
                   </div>
                   <div style={sheetDivider} />
-                  <div style={{ ...sheetTitle, fontSize: 13 }}>{showRead ? readText : roomLabel}</div>
-                  <div style={sheetBtnRow}>
-                    <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Yes"}</button>
-                    <button style={outlineBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
+                  {showRead && <div style={{ ...sheetTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
+                  <div style={sheetBtnCol}>
+                    <button style={sheetRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
+                    <button style={sheetConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
                   </div>
                 </>
               )}
@@ -1080,16 +1091,25 @@ const sheetTitle: React.CSSProperties = {
   color: C.cream, fontSize: 15, fontWeight: 600, letterSpacing: -0.5, textAlign: "center",
 };
 const sheetDivider: React.CSSProperties = { height: 1, background: "rgba(253,248,236,0.5)", margin: "24px 0 16px" };
-const sheetBtnRow: React.CSSProperties = {
-  display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12, flexWrap: "wrap",
-};
 const startBtn: React.CSSProperties = {
   border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14,
   padding: "11px 38px", borderRadius: 65, cursor: "pointer", minHeight: 44,
 };
-const outlineBtn: React.CSSProperties = {
-  ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent",
-  color: C.cream, border: `2px solid ${C.cream}`,
+// Stacked room/confirm pair (Alborz 2026-08-12): blue action on top, both
+// the same size; the old side-by-side row + question copy retired.
+const sheetBtnCol: React.CSSProperties = {
+  display: "flex", flexDirection: "column", gap: 10, alignItems: "center", marginTop: 12,
+};
+const sheetRoomBtn: React.CSSProperties = {
+  ...startBtn, width: 270, padding: "11px 24px", boxSizing: "border-box", whiteSpace: "nowrap",
+};
+const sheetConfirmBtn: React.CSSProperties = {
+  ...sheetRoomBtn, background: "transparent", color: C.cream, border: `2px solid ${C.cream}`,
+};
+// The first-opter reassurance, Body styling (Alborz 2026-08-12 — replaces
+// the old "Your friends can join in…" second line of the room question).
+const joinNote: React.CSSProperties = {
+  color: C.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, textAlign: "center",
 };
 const dangerBtn: React.CSSProperties = {
   border: `2px solid ${C.red}`, background: "transparent", color: C.red, fontWeight: 700, fontSize: 14,

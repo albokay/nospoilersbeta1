@@ -404,12 +404,14 @@ export default function DashboardPage() {
     };
   }
   // "Haven't started yet" show button: tooltip lists the other friends who are
-  // also interested in the show; falls back to the standard progress/notif tip.
-  function interestedTipProps(opted: { username: string }[], showName: string, selfOpted: boolean, selfProgText?: string, notif?: string) {
+  // interested; falls back to the standard progress/notif tip. (showName /
+  // selfOpted params kept for the callers — the 2026-08-12 copy no longer
+  // uses them.)
+  function interestedTipProps(opted: { username: string }[], _showName: string, _selfOpted: boolean, selfProgText?: string, notif?: string) {
     if (!opted.length) return tipProps(selfProgText, notif);
     const names = opted.map((o) => o.username);
     return {
-      onMouseMove: (e: React.MouseEvent) => setTip({ text: interestedNode(names, showName, selfOpted), wrap: true, x: e.clientX, y: e.clientY }),
+      onMouseMove: (e: React.MouseEvent) => setTip({ text: preventLastWordOrphan(interestedNode(names) ?? ""), wrap: true, x: e.clientX, y: e.clientY }),
       onMouseLeave: () => setTip(null),
     };
   }
@@ -1678,9 +1680,13 @@ export default function DashboardPage() {
         // model): the toggle reflects the per-group vote row — proposals live
         // inside a group, so your personal pool never drives this modal.
         const optedIn = !!gs?.members.find((m) => m.userId === selfUserId)?.voted;
-        const roomLabel = gs?.roomId ? "Open show room?" : "Start a show room?";
         // "Solo" only when you're the sole opt-in; 2+ opted in → plain show room.
         const optedCount = gs?.members.length ?? 0;
+        // Interest list for the vote question's parenthetical (2026-08-12 —
+        // mirrors the mobile sheet; viewer excluded).
+        const interestedNames = (gs?.members ?? [])
+          .filter((m) => m.userId !== selfUserId)
+          .map((m) => memberNameById[m.userId] ?? "someone");
         const cur = progress[clicked.showId];
         const curVal = cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 };
         // "Read what … have written?" — other members whose earliest ENTRY is
@@ -1706,6 +1712,11 @@ export default function DashboardPage() {
             {/* solo + watchq are wider to fit the "Yes" + "just confirm my progress" row. */}
             <div style={{ ...yellowCard, ...(clicked.mode === "watchq" || clicked.mode === "solo" ? { width: "min(460px, 92vw)" } : {}) }}>
               <button style={modalClose} onClick={() => setClicked(null)}><X size={16} color={CANON.cream} /></button>
+              {/* Show-name title (2026-08-12, mobile parity) — the questions
+                  below no longer restate the name. */}
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: CANON.cream, textAlign: "center", marginBottom: 18 }}>
+                {preventLastWordOrphan(clicked.name)}
+              </div>
 
               {/* Not-started shows — solo-with-toggle and vote mode share ONE
                   shape (2026-07-03): the vote question leads, and the
@@ -1720,7 +1731,15 @@ export default function DashboardPage() {
                   <>
                     {withToggle && (
                       <>
-                        <div style={yellowTitle}>Do you want to watch <b>{clicked.name}</b>?</div>
+                        {/* Copy pass (Alborz 2026-08-12): the title above
+                            names the show; "too" only when someone else is
+                            actually interested. */}
+                        <div style={yellowTitle}>Do you want to watch{interestedNames.length > 0 ? " too" : ""}?</div>
+                        {interestedNames.length > 0 && (
+                          <div style={{ marginTop: 10, color: CANON.cream, fontSize: 13, fontWeight: 600, textAlign: "center", opacity: 0.9 }}>
+                            {preventLastWordOrphan(interestedNode(interestedNames) ?? "")}
+                          </div>
+                        )}
                         <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                           <YesNoToggle value={optedIn} onChange={(v) => doVote(clicked.showId, v)} />
                         </div>
@@ -1742,15 +1761,17 @@ export default function DashboardPage() {
                           />
                         </div>
                         <div style={yellowDivider} />
-                        <div style={{ ...yellowTitle, fontSize: 13 }}>{showRead ? readText : gs?.roomId ? "Open show room?" : optedCount > 1 ? "Start a show room?" : (
-                          <>Start a show room?<br />Your friends can join in when they&rsquo;re ready.</>
-                        )}</div>
-                        <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
-                          <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Yes"}</button>
-                          <button
-                            style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
-                            onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
-                          >just confirm my progress</button>
+                        {/* Verb model (Alborz 2026-08-12): room exists →
+                            "Enter show room"; no room → "Open a show room";
+                            visible friend writing keeps the Read pull. The
+                            old question-copy lines are retired. */}
+                        {showRead && <div style={{ ...yellowTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
+                        <div style={modalBtnCol}>
+                          <button style={modalRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
+                          {!gs?.roomId && optedCount <= 1 && (
+                            <div style={modalJoinNote}>{preventLastWordOrphan("(Your friends can join in when they're ready.)")}</div>
+                          )}
+                          <button style={modalConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
                         </div>
                       </>
                     )}
@@ -1760,7 +1781,9 @@ export default function DashboardPage() {
 
               {clicked.mode === "watchq" && (
                 <>
-                  <div style={yellowTitle}>Are you also watching <b>{clicked.name}</b>?</div>
+                  {/* No show name here either (Alborz 2026-08-12) — the
+                      title above carries it. */}
+                  <div style={yellowTitle}>Are you also watching?</div>
                   <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                     <OneSelectProgress
                       show={showsById[clicked.showId] ?? { seasons: [] }}
@@ -1773,13 +1796,10 @@ export default function DashboardPage() {
                     />
                   </div>
                   <div style={yellowDivider} />
-                  <div style={{ ...yellowTitle, fontSize: 13 }}>{showRead ? readText : roomLabel}</div>
-                  <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", marginTop: 12 }}>
-                    <button style={startBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Yes"}</button>
-                    <button
-                      style={{ ...startBtn, padding: "11px 24px", whiteSpace: "nowrap", background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
-                      onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}
-                    >just confirm my progress</button>
+                  {showRead && <div style={{ ...yellowTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
+                  <div style={modalBtnCol}>
+                    <button style={modalRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
+                    <button style={modalConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
                   </div>
                 </>
               )}
@@ -2162,17 +2182,17 @@ function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pendi
   return <span style={{ ...avatarCircle, background: bg, color: fg }}>{(letter ?? "?").toUpperCase()}</span>;
 }
 
-/** "Haven't started yet" tooltip: which other friends are interested in a show
- *  (show name italic). 1 → "X is also…", 2 → "X and Y are also…", 3+ → "N
- *  friends are also…". */
-function interestedNode(names: string[], showName: string, selfOpted: boolean): React.ReactNode {
-  const show = <i>{showName}</i>;
-  // "also" only when YOU've opted in too (the others are interested in addition
-  // to you); otherwise just state the others' interest.
-  const also = selfOpted ? "also " : "";
-  if (names.length === 1) return <>{names[0]} is {also}interested in watching {show}.</>;
-  if (names.length === 2) return <>{names[0]} and {names[1]} are {also}interested in watching {show}.</>;
-  return <>{names.length} friends are {also}interested in watching {show}.</>;
+/** Parenthetical interest list (Alborz 2026-08-12): first names only, viewer
+ *  excluded, no show name — the pill/headline already names the show.
+ *  "(A is interested.)" / "(A and B are interested.)" / "(A, B, and C are
+ *  interested.)" Serves both the pill tooltip and the vote modal's inline
+ *  line. */
+function interestedNode(names: string[]): string | null {
+  if (!names.length) return null;
+  const list = names.length === 1 ? names[0]
+    : names.length === 2 ? `${names[0]} and ${names[1]}`
+    : `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+  return `(${list} ${names.length === 1 ? "is" : "are"} interested.)`;
 }
 
 /** Per-count icon arrangement (rows, top→bottom), matching the spec's pyramid:
@@ -2566,6 +2586,23 @@ const trailerCenterColumn: React.CSSProperties = {
 };
 const yellowDivider: React.CSSProperties = {
   height: 1, background: "rgba(253,248,236,0.5)", margin: "20px 0 14px",
+};
+// Stacked room/confirm pair in the yellow show modal (Alborz 2026-08-12):
+// blue action on top, both the same size; the side-by-side row + question
+// copy retired. Mirrors the mobile sheet.
+const modalBtnCol: React.CSSProperties = {
+  display: "flex", flexDirection: "column", gap: 10, alignItems: "center", marginTop: 12,
+};
+const modalRoomBtn: React.CSSProperties = {
+  ...startBtn, width: 270, padding: "11px 24px", boxSizing: "border-box", whiteSpace: "nowrap",
+};
+const modalConfirmBtn: React.CSSProperties = {
+  ...modalRoomBtn, background: "transparent", color: CANON.cream, border: `2px solid ${CANON.cream}`,
+};
+// The first-opter reassurance, Body styling (replaces the old "Your friends
+// can join in…" second line of the room question).
+const modalJoinNote: React.CSSProperties = {
+  color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, textAlign: "center",
 };
 // Button-outline rule: solid fill = no contrasting outline; outlined = transparent fill.
 const dangerBtn: React.CSSProperties = {
