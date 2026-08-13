@@ -12,7 +12,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import {
   fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser, fetchContactNames,
-  fetchPublicPool, type PublicPoolShow,
+  fetchPublicPool, fetchInvitePool, type PublicPoolShow,
   type Show,
 } from "../lib/db";
 import type { ProgressEntry } from "../types";
@@ -55,7 +55,12 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
           fetchShows(),
           fetchPublicProgressForUser(prof.id),
           user ? fetchContactNames(user.id).catch(() => ({} as Record<string, string>)) : Promise.resolve({} as Record<string, string>),
-          fetchPublicPool(prof.id),
+          // Invite arrival: GROUP-scoped shelves (Alborz 2026-08-13) — the
+          // inviter's votes/rooms within the invited group only, not their
+          // whole cross-group pool. Falls back pre-migration.
+          invite?.token
+            ? fetchInvitePool(invite.token).then((p) => p ?? fetchPublicPool(prof.id))
+            : fetchPublicPool(prof.id),
         ]);
         if (cancelled) return;
         setShows(allShows);

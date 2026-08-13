@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { LogOut, UserCog, MessageCircleWarning } from "lucide-react";
+import { LogOut, UserPen, MessageCircleWarning } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { markJoinedThisSession } from "../lib/joinSession";
 import { useAuth } from "../lib/auth";
@@ -341,7 +341,7 @@ export default function MobileDashboard() {
               <MessageCircleWarning size={18} color={C.cream} />
             </button>
             <button style={topCircleBtn} title="account" onClick={() => setShowAccount(true)}>
-              <UserCog size={18} color={C.cream} />
+              <UserPen size={18} color={C.cream} />
             </button>
             <button
               style={topCircleBtn}

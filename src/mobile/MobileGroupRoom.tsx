@@ -591,28 +591,32 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
   return (
     <div style={page}>
-      {/* ── Header: back · group name (+ with members) · gear ── */}
+      {/* ── Header: back · group name + gear (+ with members) — the gear
+             sits right beside the name, desktop-style (Alborz 2026-08-13;
+             it used to hang at the bar's far right). ── */}
       <div style={topBar}>
         <button style={iconBtn} title="back to dashboard" onClick={() => navigate("/m/dashboard")}>
           <ArrowLeft size={22} color={C.cream} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={headerTitle}>{groupName}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
+            <h1 style={{ ...headerTitle, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{groupName}</h1>
+            <button style={{ ...iconBtn, position: "relative" }} title="group options" onClick={() => {
+              setRenameValue(group?.name ?? "");
+              // Seed the contact-rename inputs with the viewer's current names.
+              const edits: Record<string, string> = {};
+              for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
+              setContactEdits(edits);
+              setGearOpen(true);
+            }}>
+              {staleInviteCount > 0 && <span style={gearStaleDot} />}
+              <Settings size={22} color={C.cream} />
+            </button>
+          </div>
           {names && (
             <div style={headerMembers}><span style={{ color: C.greyblue }}>with</span> {names}</div>
           )}
         </div>
-        <button style={{ ...iconBtn, position: "relative" }} title="group options" onClick={() => {
-          setRenameValue(group?.name ?? "");
-          // Seed the contact-rename inputs with the viewer's current names.
-          const edits: Record<string, string> = {};
-          for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
-          setContactEdits(edits);
-          setGearOpen(true);
-        }}>
-          {staleInviteCount > 0 && <span style={gearStaleDot} />}
-          <Settings size={22} color={C.cream} />
-        </button>
       </div>
 
       {/* ── Chat: a right-edge tab (matches desktop; 2026-07-09) — the old
@@ -946,9 +950,6 @@ function ShowRow({ row, dot, line2, onClick }: {
   const isSelfWatching = pill.selfWatching;
   const isGreen = pill.fill === "green";
   const isCream = pill.fill === "cream";
-  // Personal-filled (green) row → the avatar outline is Personal (green) too
-  // (2026-07-09; matches desktop). Else cream (non-writer) / Friend-sky (writer).
-  const personalFill = isSelfWatching || isGreen;
   const bg = isSelfWatching || isGreen ? C.green : isCream ? C.cream : "transparent";
   const border = isSelfWatching ? `2px solid ${C.green}` : (isCream || isGreen ? "2px solid transparent" : `2px solid ${C.cream}`);
   const fg = isSelfWatching || isGreen ? CANON.cream : isCream ? C.green : CANON.cream;
@@ -966,13 +967,13 @@ function ShowRow({ row, dot, line2, onClick }: {
       {row.opted.length > 0 && (
         <span style={{ display: "inline-flex", flexShrink: 0 }}>
           {row.opted.map((m, i) => (
-            // Writer indicator (2026-07-08): the AVATAR restyles — Personal
-            // fill, Friend outline, Cream text — replacing the old pen badge.
+            // ONE style for every opted-in friend on MOBILE (Alborz
+            // 2026-08-13): Personal fill + Sky outline + Cream letter — the
+            // old writer-vs-not split was illegible without desktop's hover.
+            // Desktop keeps both styles (fill still means "writer" there).
             <span
               key={`${m.username}-${i}`}
-              style={m.wrote
-                ? { ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream }
-                : { ...optInAvatar, border: `2px solid ${personalFill ? C.green : C.cream}` }}
+              style={{ ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream }}
             >
               {m.resolved ? (m.username[0] ?? "?").toUpperCase() : ""}
             </span>

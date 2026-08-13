@@ -12,7 +12,7 @@ import { preventLastWordOrphan } from "../lib/utils";
 import {
   getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite,
   fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser,
-  fetchPublicPool, type PublicPoolShow,
+  fetchPublicPool, fetchInvitePool, type PublicPoolShow,
   type GroupInviteInfo, type Show,
 } from "../lib/db";
 import type { ProgressEntry } from "../types";
@@ -73,7 +73,11 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         const prof = await fetchPublicProfileByUsername(res.info.inviterName);
         if (!prof || cancelled) return;
         const [allShows, prog, pp] = await Promise.all([
-          fetchShows(), fetchPublicProgressForUser(prof.id), fetchPublicPool(prof.id),
+          fetchShows(), fetchPublicProgressForUser(prof.id),
+          // GROUP-scoped shelves (Alborz 2026-08-13): the inviter's votes/
+          // rooms within THIS group only — not their whole cross-group pool.
+          // Falls back pre-migration.
+          fetchInvitePool(token).then((p) => p ?? fetchPublicPool(prof.id)),
         ]);
         if (cancelled) return;
         setPoolShows(allShows);

@@ -2822,6 +2822,25 @@ export async function fetchPublicPool(userId: string): Promise<{ proposals: Publ
   } catch { return null; }
 }
 
+/** GROUP-scoped shelves for the invite arrival (Alborz 2026-08-13): the
+ *  INVITER's yes-votes and rooms WITHIN the invited group only — the invitee
+ *  shouldn't see the inviter's whole cross-group pool. Token-gated
+ *  (anon-callable; the token proves the right to look). Tolerant
+ *  pre-migration: RPC missing/error → null (callers fall back to
+ *  fetchPublicPool). */
+export async function fetchInvitePool(token: string): Promise<{ proposals: PublicPoolShow[]; rooms: PublicPoolShow[] } | null> {
+  try {
+    const { data, error } = await supabase.rpc("get_invite_pool", { invite_token: token });
+    if (error || !data) return null;
+    const proposals: PublicPoolShow[] = [];
+    const rooms: PublicPoolShow[] = [];
+    for (const r of data as any[]) {
+      (r.bucket === "room" ? rooms : proposals).push({ showId: r.show_id, s: r.season ?? 0, e: r.episode ?? 0 });
+    }
+    return { proposals, rooms };
+  } catch { return null; }
+}
+
 // ── Contact names (CP2 dual-mode group naming, 2026-07-06) ──────────────────
 
 /** The viewer's own joined_at per group (groupId → ms) in ONE query — drives

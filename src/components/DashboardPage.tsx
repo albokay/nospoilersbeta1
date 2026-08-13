@@ -26,7 +26,7 @@ import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, UserCog } from "lucide-react";
+import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, UserPen } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import AccountModal from "./AccountModal";
 import FeedbackWidget from "./FeedbackWidget";
@@ -1334,7 +1334,7 @@ export default function DashboardPage() {
             <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 18, lineHeight: 1, color: tipsOpen ? (inGroup ? C.midnight : CANON.cream) : (inGroup ? C.sky : C.green) }}>?</span>
           </button>
           <button style={topCircleBtn(inGroup)} title="account" onClick={() => setShowAccount(true)}>
-            <UserCog size={18} color={inGroup ? C.midnight : CANON.cream} />
+            <UserPen size={18} color={inGroup ? C.midnight : CANON.cream} />
           </button>
           <button style={topCircleBtn(inGroup)} title="sign out" onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}>
             <LogOut size={18} color={inGroup ? C.midnight : CANON.cream} />
