@@ -941,7 +941,7 @@ export default function DashboardPage() {
           const sent = await sendGroupInviteEmail(token);
           links.push({ email: row.email, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
         } catch (e: any) {
-          links.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
+          links.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : "Something went wrong. Please try again." });
         }
       }
       setInviteLinks(links);

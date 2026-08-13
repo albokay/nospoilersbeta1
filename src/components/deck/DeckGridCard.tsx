@@ -22,7 +22,7 @@
  * docked card at all (pre-seed / pre-catch-up accounts see nothing).
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, CircleCheck } from "lucide-react";
+import { Pencil, CircleCheck, ThumbsUp, ThumbsDown } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import StickyNote from "../StickyNote";
 import {
@@ -318,14 +318,18 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
                   ...(columns.length === 0 ? { flexGrow: 1 } : {}),
                 }}
               >
-                {/* Sharp corners on the edit chips (Alborz QA 2026-07-18). */}
+                {/* Sharp corners on the edit chips (Alborz QA 2026-07-18);
+                    cream thumb on the fill (Alborz 2026-08-12 — mobile-grid
+                    parity). */}
                 <div style={{
-                  flex: 1,
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
                   background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
                   border: editing && mine === undefined ? `1.5px dashed ${withA(CANON.business, 0.6)}` : "none",
                   transform: editing ? (phase === "up" ? "scale(0.94)" : "scale(0.82)") : undefined,
                   transition: phase === "up" ? "none" : "transform .18s ease",
-                }} />
+                }}>
+                  {mine != null && <Th v={mine} size={16} />}
+                </div>
               </div>
               {columns.map((m, ci) => {
                 const v = valueFor(m.id, card.id);
@@ -346,6 +350,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
                         )}
                       </span>
                     )}
+                    {typeof v === "boolean" && <Th v={v} size={16} />}
                   </div>
                 );
               })}
@@ -422,6 +427,13 @@ const coveredBubble: React.CSSProperties = {
   fontSize: 12.5, lineHeight: 1.5, whiteSpace: "nowrap", textAlign: "left",
   boxShadow: "0 6px 18px rgba(0,0,0,0.3)", pointerEvents: "none",
 };
+
+/** Cream Lucide thumb — the mobile grid's cell grammar (Alborz 2026-08-12). */
+function Th({ v, size }: { v: boolean; size: number }) {
+  return v
+    ? <ThumbsUp size={size} color={CANON.cream} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+    : <ThumbsDown size={size} color={CANON.cream} strokeWidth={2.2} style={{ flexShrink: 0 }} />;
+}
 
 function withA(hex: string, a: number): string {
   const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);

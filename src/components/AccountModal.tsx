@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { X } from "lucide-react";
 import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
@@ -76,7 +77,16 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal onClose={busy ? () => {} : onClose}>
+    <Modal onClose={busy ? () => {} : onClose} cardStyle={{ position: "relative" }}>
+      {/* "×" close (Alborz 2026-08-12) — in addition to tap-outside; same
+          busy guard so a mid-flight save/delete can't be interrupted. */}
+      <button
+        aria-label="close"
+        onClick={busy ? undefined : onClose}
+        style={{ position: "absolute", top: 10, right: 10, border: "none", background: "transparent", color: C.midnight, opacity: 0.6, cursor: "pointer", padding: 6, display: "flex" }}
+      >
+        <X size={18} />
+      </button>
       <h3 style={{ margin: "0 0 16px", fontSize: 20, color: C.midnight, fontWeight: 700 }}>Account</h3>
       {user?.email && (
         <p style={{ margin: "0 0 20px", fontSize: 14, color: C.midnight }}>

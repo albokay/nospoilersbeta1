@@ -6,6 +6,12 @@ import { buildProgressOptions, isZeroProgress } from "../lib/utils";
 
 const ZERO_ID = "0-0";
 const ZERO_LABEL = "haven't started";
+const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
+
+// Confirm-modal header: Header 1 (Lora bold 34, canon §16) in sentence case,
+// no trailing punctuation (Alborz 2026-08-12).
+const confirmHeader: React.CSSProperties = { fontFamily: LORA, fontWeight: 700, fontSize: 34, lineHeight: 1.2, margin: 0 };
+const sentenceCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function buildGroupedOptions(show: { seasons?: number[] }) {
   const seasons = show?.seasons || [];
@@ -203,7 +209,7 @@ export default function OneSelectProgress({
         {requireConfirm && confirmOpen && (
           <Modal onClose={cancelSelection}>
             <div style={{ marginBottom: 12 }}>
-              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
+              <h3 style={confirmHeader}>{pending ? sentenceCase(`${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}`) : ""}</h3>
             </div>
             <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>
               Your feed will only show posts up to your selected episode.
@@ -274,7 +280,7 @@ export default function OneSelectProgress({
       {requireConfirm && confirmOpen && (
         <Modal onClose={cancelSelection}>
           <div style={{ marginBottom: 12 }}>
-            <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{pending ? `${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}` : ""}</h3>
+            <h3 style={confirmHeader}>{pending ? sentenceCase(`${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}`) : ""}</h3>
           </div>
 
           <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>

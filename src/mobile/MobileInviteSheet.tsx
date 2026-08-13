@@ -170,14 +170,14 @@ export default function MobileInviteSheet({
           const sent = await sendGroupInviteEmail(token);
           out.push({ email: row.email, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
         } catch (e: any) {
-          out.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : (e?.message || "failed") });
+          out.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : "Something went wrong. Please try again." });
         }
       }
       setLinks(out);
       onSent?.();
     } catch (e) {
       console.error("[m-invite] invites failed", e);
-      setLinks([{ email: "", error: "Could not send invites." }]);
+      setLinks([{ email: "", error: "Something went wrong. Please try again." }]);
     } finally {
       setSending(false);
     }

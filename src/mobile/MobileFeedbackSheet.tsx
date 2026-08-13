@@ -18,7 +18,7 @@ import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 
 const MAX_CHARS = 2000;
 const PROMPT_LINES = [
-  "Let me know how things are working.",
+  "How are things working?",
   "Any suggestions?",
   "Anything confusing?",
   "Anything glitching?",

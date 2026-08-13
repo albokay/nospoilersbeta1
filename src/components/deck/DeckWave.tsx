@@ -237,11 +237,10 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
             <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream, marginTop: 10, lineHeight: 1.45 }}>
               a place for you and your friends<br />to talk about TV, spoiler-free.
             </div>
+            {/* One paragraph, natural wrap (Alborz 2026-08-12) — the shorter
+                block sits the card higher on mobile. */}
             <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, marginTop: 14, lineHeight: 1.5 }}>
-              Before you get set up, a few questions<br />to get you in the mood for TV.
-            </div>
-            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, marginTop: 12 }}>
-              (Your friends will answer these too.)
+              Before you get set up, a few questions to get you in the mood for TV. (Your friends will answer these too.)
             </div>
           </div>
         )}

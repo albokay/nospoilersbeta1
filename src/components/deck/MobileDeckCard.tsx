@@ -299,8 +299,13 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
             {windowRows.map((card, i) => (
               <div key={card.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 20px", fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.35, color: CANON.dark, background: i % 2 === 0 ? "rgba(173,200,215,0.45)" : "transparent" }}>
                 <span>{card.statement}</span>
+                {/* Grid-grammar mini cells (Alborz 2026-08-12): filled color
+                    block + cream thumb, matching the full grid; covered =
+                    the greyblue "?" cell; unanswered = plain empty. */}
                 {mode === "personal" ? (
-                  <Th v={myAnswers[card.id]!} size={18} />
+                  <span style={{ ...miniCell, background: myAnswers[card.id] ? CANON.personal : CANON.alert }}>
+                    <Th v={myAnswers[card.id]!} size={13} color={CANON.cream} />
+                  </span>
                 ) : (
                   <span style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                     {[{ id: viewerId }, ...columns].map((m) => {
@@ -310,7 +315,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                           {v === undefined ? null
                             : v === null
                               ? <span onClick={(e) => { e.stopPropagation(); showTapTip(card.id, e); }} style={coveredMini}>?</span>
-                              : <Th v={v} size={16} />}
+                              : <span style={{ ...miniCell, background: v ? CANON.personal : CANON.alert }}><Th v={v} size={13} color={CANON.cream} /></span>}
                         </span>
                       );
                     })}
@@ -397,6 +402,12 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
   // ── GRID / EDIT — frozen panes (§11.6) ────────────────────────────────────
   // Clean solid background behind the open grid (was the page dim — Alborz
   // 2026-07-28: page text showing through caused confusion).
+  // Columns sit FLUSH at the card's right edge (Alborz 2026-08-12): the
+  // statement column absorbs any leftover width — never an empty strip after
+  // the columns. With more columns than fit, statements keep their minimum
+  // and the grid scrolls.
+  const availW = (typeof window !== "undefined" ? window.innerWidth : 390) - 20;
+  const stW = Math.max(ST_W, availW - ME_W - FR_W * columns.length);
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: mode === "personal" ? CANON.personal : CANON.friend, display: "flex", flexDirection: "column" }}>
       {ui !== "edit" && (
@@ -407,11 +418,11 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
       )}
       <div style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 44px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: 20, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
         {/* Frozen top: title + (me) + names. */}
-        <div style={{ display: "flex", position: "sticky", top: 0, zIndex: 4, background: CANON.cream, minWidth: ST_W + ME_W + FR_W * columns.length }}>
+        <div style={{ display: "flex", position: "sticky", top: 0, zIndex: 4, background: CANON.cream, minWidth: stW + ME_W + FR_W * columns.length }}>
           {/* Pencil (→ save check while editing) rides the TITLE, not the
               (me) column (Alborz 2026-08-11 — every answers pencil sits just
               right of the header). */}
-          <div style={{ width: ST_W, minWidth: ST_W, position: "sticky", left: 0, background: CANON.cream, zIndex: 3, padding: "14px 8px 8px 14px", boxSizing: "border-box", display: "flex", alignItems: "flex-end", gap: 6 }}>
+          <div style={{ width: stW, minWidth: stW, position: "sticky", left: 0, background: CANON.cream, zIndex: 3, padding: "14px 8px 8px 14px", boxSizing: "border-box", display: "flex", alignItems: "flex-end", gap: 6 }}>
             <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 13.5, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
             {ui === "edit" ? (
               <button title="save your answers" onClick={confirmEdits} disabled={saving}
@@ -425,18 +436,14 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
               </button>
             )}
           </div>
-          <div style={{ width: ME_W, minWidth: ME_W, position: "sticky", left: ST_W, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: 4, boxSizing: "border-box" }}>
+          <div style={{ width: ME_W, minWidth: ME_W, position: "sticky", left: stW, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: 4, boxSizing: "border-box" }}>
             {isWe && <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 11, color: CANON.dark }}>(me)</span>}
           </div>
-          {/* Columns keep their FIXED width (Alborz 2026-08-11) — the old
-              stretch-the-last-column fill made a solo or 2-person grid
-              "oddly wide"; leftover space is a quiet filler instead. */}
           {columns.map((m) => (
             <div key={m.id} style={{ width: FR_W, minWidth: FR_W, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 6, boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1 }}>
               <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10.5, color: CANON.dark, maxWidth: FR_W - 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.label}</span>
             </div>
           ))}
-          <div style={{ flexGrow: 1 }} />
         </div>
 
         {/* Rows = questions somebody here has answered (Alborz 2026-08-01),
@@ -445,15 +452,15 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
         {anyAnswered.map((card, i) => {
           const mine = valueFor(viewerId, card.id);
           return (
-            <div key={card.id} style={{ display: "flex", minHeight: 42, alignItems: "stretch", minWidth: ST_W + ME_W + FR_W * columns.length }}>
-              <div style={{ width: ST_W, minWidth: ST_W, position: "sticky", left: 0, zIndex: 2, background: i % 2 === 0 ? CANON.friend : CANON.cream, padding: "6px 8px 6px 14px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 10.5, lineHeight: 1.3, color: CANON.dark }}>
+            <div key={card.id} style={{ display: "flex", minHeight: 42, alignItems: "stretch", minWidth: stW + ME_W + FR_W * columns.length }}>
+              <div style={{ width: stW, minWidth: stW, position: "sticky", left: 0, zIndex: 2, background: i % 2 === 0 ? CANON.friend : CANON.cream, padding: "6px 8px 6px 14px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 10.5, lineHeight: 1.3, color: CANON.dark }}>
                 {card.statement}
               </div>
               <div
                 onClick={() => toggleOwn(card.id)}
                 style={{
                   width: ME_W, minWidth: ME_W, boxSizing: "border-box",
-                  position: "sticky", left: ST_W, zIndex: 2,
+                  position: "sticky", left: stW, zIndex: 2,
                   background: CANON.cream, display: "flex", alignItems: "stretch",
                   borderLeft: mine === undefined && ui !== "edit" ? "1px solid rgba(141,170,186,0.18)" : "none",
                   cursor: ui === "edit" ? "pointer" : "default",
@@ -487,9 +494,6 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                   </div>
                 );
               })}
-              {/* Fixed-width columns (Alborz 2026-08-11): the filler carries
-                  the row's stripe across the leftover width. */}
-              <div style={{ flexGrow: 1, background: i % 2 === 0 ? CANON.friend : CANON.cream, opacity: ui === "edit" ? 0.45 : 1 }} />
             </div>
           );
         })}
@@ -524,4 +528,12 @@ const coveredMini: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",
   fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 12, color: CANON.friend,
   cursor: "pointer", userSelect: "none",
+};
+
+// A revealed answer in the sheet — the grid's cell grammar in miniature:
+// color fill + cream thumb (Alborz 2026-08-12).
+const miniCell: React.CSSProperties = {
+  width: 18, height: 18, borderRadius: 4,
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  flexShrink: 0,
 };
