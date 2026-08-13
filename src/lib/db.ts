@@ -5432,7 +5432,15 @@ function rowToDeckCard(row: any): DeckCard {
  * Pre-migration tolerant: any error returns [] so no deck surface can
  * break a page before the tables exist.
  */
+// Session cache (2026-08-14 perf): the deck is effectively static within a
+// session, and every wave / drip / grid / sheet mount was re-fetching it —
+// a visible beat before each onboarding wave painted. First successful
+// fetch wins for the session; a page reload clears it. FAILURES ARE NOT
+// CACHED (the catch below returns without populating), so a transient error
+// can't stick.
+let deckCardsCache: DeckCard[] | null = null;
 export async function fetchDeckCards(): Promise<DeckCard[]> {
+  if (deckCardsCache) return deckCardsCache;
   try {
     const { data, error } = await supabase
       .from("deck_cards")
@@ -5444,7 +5452,8 @@ export async function fetchDeckCards(): Promise<DeckCard[]> {
       .lte("released_at", new Date().toISOString())
       .order("sort_order");
     if (error) throw error;
-    return (data ?? []).map(rowToDeckCard);
+    deckCardsCache = (data ?? []).map(rowToDeckCard);
+    return deckCardsCache;
   } catch (err) {
     console.warn("fetchDeckCards failed (pre-migration or transient):", err);
     return [];

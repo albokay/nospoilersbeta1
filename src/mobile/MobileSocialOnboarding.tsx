@@ -59,7 +59,7 @@ const C = {
   midnight: CANON.dark,
 };
 
-type Boot = { gid?: string; roomId?: string; tokens?: Record<string, string>; threadId?: string; attached?: boolean };
+type Boot = { gid?: string; roomId?: string; tokens?: Record<string, string>; threadId?: string; attached?: boolean; warm?: Promise<void> };
 
 // Multi-friend onboarding (Alborz 2026-07-20): up to 7 friends in one pass —
 // the room cap is 8 MEMBERS including you (checked at invite-mint AND accept),
@@ -108,6 +108,22 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
     setAdvancing(true);
     try {
       await upsertRewatchStatus(user.id, show.id, { s: prog.s, e: prog.e, highestS: prog.s, highestE: prog.e });
+      // PRE-WARM the bootstrap (2026-08-14 perf): create the group + room in
+      // the background while the user writes — publish awaits this promise
+      // and bootRef keeps resume-not-duplicate, so the two serial round
+      // trips leave the visible "publish & invite" wait. Failures are
+      // swallowed; publish re-runs whatever's missing. Known trade: someone
+      // abandoning AT the writing screen now has a group+room already made,
+      // so onboarding won't re-fire for them (their dashboard shows the
+      // group instead — they can still write/invite from there).
+      const boot = bootRef.current;
+      if (!boot.warm) {
+        const showId = show.id;
+        boot.warm = (async () => {
+          if (!boot.gid) boot.gid = await createPeopleGroup();
+          if (!boot.roomId) boot.roomId = (await startShowRoom(boot.gid, showId)).roomId;
+        })().catch((e) => { console.warn("[m-onboarding] pre-warm failed (publish will retry):", e); });
+      }
       setStep(3);
     } catch (e) { console.error("[m-onboarding] progress write failed", e); }
     finally { setAdvancing(false); }
@@ -123,6 +139,9 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
   }) {
     if (!user || !profile?.username || !show) return;
     const boot = bootRef.current;
+    // The pre-warm (advanceToCompose) usually finished these while the user
+    // wrote; await it so a still-running warm can't race a duplicate create.
+    if (boot.warm) await boot.warm;
     // Group — left unnamed: the contact-name default names it after the friends.
     if (!boot.gid) boot.gid = await createPeopleGroup();
     // The show room, ALREADY STARTED (the "we went ahead" bootstrap).
@@ -378,7 +397,7 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
           // Onboarding-only prompt batch (2026-07-08), split on the
           // declared progress: fresh = s0e0 through s1e4, else returning.
           promptPoolTag={prog.s < 1 || (prog.s === 1 && prog.e <= 4) ? "onb-fresh" : "onb-returning"}
-          externalSubmit={{ label: "publish & invite", onSubmit: publishAndInvite }}
+          externalSubmit={{ label: "publish & invite", submittingLabel: "sending invites", onSubmit: publishAndInvite }}
         />
       </div>
     );

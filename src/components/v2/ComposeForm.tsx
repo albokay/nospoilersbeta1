@@ -118,6 +118,10 @@ type ComposeFormProps = {
    *  is byte-identical. */
   externalSubmit?: {
     label: React.ReactNode;
+    /** In-flight button text (2026-08-14): the onboarding publish waits on
+     *  invite emails, so "sending invites" reads as work, not a hang.
+     *  Default: "posting". */
+    submittingLabel?: string;
     onSubmit: (data: {
       title: string;
       body: string;
@@ -922,7 +926,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                   {!hasContent
                     ? null
                     : submitting
-                      ? <>posting<LoadingDots /></>
+                      ? <>{externalSubmit?.submittingLabel ?? "posting"}<LoadingDots /></>
                       : <>{externalSubmit ? externalSubmit.label : destination === "private" ? privateSubmitLabel : "share entry"}<ArrowRight size={14} /></>}
                 </button>
               );

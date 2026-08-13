@@ -337,7 +337,10 @@ export default function MobileDashboard() {
             on mobile). The logo stays. */}
         {!showSocialOnb && !postAccept && (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button style={topCircleBtn} title="feedback" onClick={() => setFeedbackOpen(true)}>
+            {/* Alert fill + Alert outline + Cream icon (Alborz 2026-08-14)
+                — the feedback circle stands out from the account/sign-out
+                pair. */}
+            <button style={{ ...topCircleBtn, background: C.red, border: `2px solid ${C.red}` }} title="feedback" onClick={() => setFeedbackOpen(true)}>
               <MessageCircleWarning size={18} color={C.cream} />
             </button>
             <button style={topCircleBtn} title="account" onClick={() => setShowAccount(true)}>

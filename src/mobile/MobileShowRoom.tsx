@@ -512,17 +512,21 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           <button style={iconBtn} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
             <ArrowLeft size={22} color={C.cream} />
           </button>
-          <h1 style={headerTitle}>
-            {show?.name ?? "Show"}
-            {/* "with …" matches desktop (naming arc): cream, Inter bold 14
-                (Body) — was blue. */}
-            {groupName && <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: C.cream }}> with {groupName}</span>}
-          </h1>
-          {!privateOnly && roomId ? (
-            <button style={iconBtn} aria-label="Email updates for this room" title="Email updates for this room" onClick={openDigestModal}>
-              <Settings size={20} color={C.cream} />
-            </button>
-          ) : <span style={{ width: 44, flexShrink: 0 }} />}
+          {/* Gear rides RIGHT BESIDE the title (Alborz 2026-08-14 —
+              group-room parity; was at the bar's far right). */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 2 }}>
+            <h1 style={{ ...headerTitle, flex: "0 1 auto" }}>
+              {show?.name ?? "Show"}
+              {/* "with …" matches desktop (naming arc): cream, Inter bold 14
+                  (Body) — was blue. */}
+              {groupName && <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: C.cream }}> with {groupName}</span>}
+            </h1>
+            {!privateOnly && roomId && (
+              <button style={iconBtn} aria-label="Email updates for this room" title="Email updates for this room" onClick={openDigestModal}>
+                <Settings size={20} color={C.cream} />
+              </button>
+            )}
+          </div>
         </div>
         {/* Tabs on the header/body boundary (same swap rule as desktop). */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "0 16px" }}>
