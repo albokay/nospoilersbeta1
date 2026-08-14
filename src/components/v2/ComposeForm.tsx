@@ -119,7 +119,7 @@ type ComposeFormProps = {
   externalSubmit?: {
     label: React.ReactNode;
     /** In-flight button text (2026-08-14): the onboarding publish waits on
-     *  invite emails, so "sending invites" reads as work, not a hang.
+     *  invite emails, so "sending invite" reads as work, not a hang.
      *  Default: "posting". */
     submittingLabel?: string;
     onSubmit: (data: {

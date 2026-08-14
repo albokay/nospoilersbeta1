@@ -217,6 +217,10 @@ export default function DashboardPage() {
   // Group context
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [groupShows, setGroupShows] = useState<GroupDashboardShow[]>([]);
+  // True while the active group's FIRST shelf read of the session is in
+  // flight (no snapshot to paint from) — the shelf area shows the standard
+  // loading line instead of a false empty room.
+  const [groupLoading, setGroupLoading] = useState(false);
 
   // Search + add-to-pool
   const [searchOpen, setSearchOpen] = useState(false);
@@ -255,21 +259,6 @@ export default function DashboardPage() {
   // CP5: leave-a-room confirm (the X on an active-room button).
   const [leaveConfirm, setLeaveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
 
-  // Help-system arc CP4: the "?" pointer-tips sticky. Page-scoped (dashboard
-  // vs group room); auto-opens on first visit for post-launch accounts, and
-  // any close stamps the seen flag so the auto-open never returns.
-  const tipsPage: TipsPage = activeGroupId ? "groupRoom" : "dashboard";
-  const [tipsOpen, setTipsOpen] = useState(false);
-  useEffect(() => {
-    // Auto-open ARRIVES after the page paints (Alborz 2026-08-01) — the
-    // sticky's own entrance animation plays when it mounts, so the delay is
-    // all this needs. Manual "?" opens stay instant.
-    if (!tipsDefaultOpen(tipsPage, user?.id, user?.created_at)) { setTipsOpen(false); return; }
-    const t = window.setTimeout(() => setTipsOpen(true), 700);
-    return () => window.clearTimeout(t);
-  }, [tipsPage, user]);
-  function closeTips() { markTipsSeen(tipsPage, user?.id); setTipsOpen(false); }
-
   // §9 click-model popover (group context). mode captured at click time.
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
   const [declaredProgress, setDeclaredProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
@@ -293,6 +282,28 @@ export default function DashboardPage() {
   // has no tips and no docked card (Alborz's 2026-08-01 catch).
   const [groupWaveDone, setGroupWaveDone] = useState(() => joinedThisSession());
   useEffect(() => { setGroupWaveDone(false); }, [activeGroupId]);
+
+  // Help-system arc CP4: the "?" pointer-tips sticky. Page-scoped (dashboard
+  // vs group room); auto-opens on first visit for post-launch accounts, and
+  // any close stamps the seen flag so the auto-open never returns.
+  // (Declared below postAccept — the auto-open gate reads it.)
+  const tipsPage: TipsPage = activeGroupId ? "groupRoom" : "dashboard";
+  const [tipsOpen, setTipsOpen] = useState(false);
+  useEffect(() => {
+    // Auto-open ARRIVES after the page paints (Alborz 2026-08-01) — the
+    // sticky's own entrance animation plays when it mounts, so the delay is
+    // all this needs. Manual "?" opens stay instant.
+    // The dashboard sticky waits for a SETTLED dashboard (Alborz 2026-08-14
+    // — it was appearing mid-onboarding): the gate must have resolved and no
+    // welcome overlay (onboarding flow or the invitee's "You're in!" card)
+    // may be up. Base-dashboard only — in the group room (?g=) the gate
+    // never resolves, and onboarding can't be on screen there anyway.
+    if (tipsPage === "dashboard" && (!onbResolved || showSocialOnb || postAccept)) { setTipsOpen(false); return; }
+    if (!tipsDefaultOpen(tipsPage, user?.id, user?.created_at)) { setTipsOpen(false); return; }
+    const t = window.setTimeout(() => setTipsOpen(true), 700);
+    return () => window.clearTimeout(t);
+  }, [tipsPage, user, onbResolved, showSocialOnb, postAccept]);
+  function closeTips() { markTipsSeen(tipsPage, user?.id); setTipsOpen(false); }
 
   // Pending-invites changeset CP2: the viewer's OWN pending invites for the
   // active group — drives the gear panel + the 3-day stale dot/tooltip.
@@ -526,13 +537,18 @@ export default function DashboardPage() {
   }, [location.search]);
 
   useEffect(() => {
-    if (!activeGroupId) { setGroupShows([]); return; }
+    if (!activeGroupId) { setGroupShows([]); setGroupLoading(false); return; }
     // Instant paint from the last visit's snapshot; the live fetch replaces.
+    // No snapshot (first entry this session) → the shelf area shows the
+    // standard loading line until the fetch lands (Alborz 2026-08-14 — the
+    // room was painting the EMPTY-group state while the shelves loaded).
+    let painted = false;
     try {
       const raw = sessionStorage.getItem(groupSnapKey(activeGroupId));
-      if (raw) setGroupShows(JSON.parse(raw));
+      if (raw) { setGroupShows(JSON.parse(raw)); painted = true; }
     } catch { /* corrupt/absent snapshot → normal load */ }
-    refreshGroup(activeGroupId);
+    setGroupLoading(!painted);
+    refreshGroup(activeGroupId).finally(() => setGroupLoading(false));
   }, [activeGroupId, refreshGroup, groupSnapKey]);
 
   // Contact names refresh with the rail (small owner-scoped read; tolerant
@@ -1381,6 +1397,15 @@ export default function DashboardPage() {
         // paddingTop 24 (= base 8 + 16) lowers the heading/shelves/show buttons
         // by 16px; the top banner + back/chat tabs are positioned separately.
         <div style={{ ...contentWrap, paddingTop: 24 }}>
+          {/* First entry per session: the shelves haven't loaded yet — the
+              standard loading line, NOT the empty-group prompt (which reads
+              as a broken/empty room while the fetch is in flight). */}
+          {groupLoading ? (
+            <div style={{ textAlign: "center", padding: 48 }}>
+              <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: C.cream }}>loading<LoadingDots /></span>
+            </div>
+          ) : (
+          <>
           {groupShelves.watching.length > 0 && (
             <>
               <h1 style={shelfHeader}>OPEN SHOW ROOMS:</h1>
@@ -1442,6 +1467,8 @@ export default function DashboardPage() {
               onClick={() => activeGroupId && openInvite(activeGroupId)}
             >Add more friends to this group?</button>
           </div>
+          </>
+          )}
         </div>
       ) : (
         // ── Groups-only dashboard (green, CP2) ────────────────────────────────
@@ -1616,10 +1643,10 @@ export default function DashboardPage() {
                     {(inviteCatalogMatches.length > 0 || inviteTvToAdd.length > 0) && (
                       <div style={{ marginTop: 8 }}>
                         {inviteCatalogMatches.map((s) => (
-                          <button key={s.id} className="dash-result" onClick={() => pickInviteShow(s)}>{s.name}</button>
+                          <button key={s.id} className="dash-result dash-result--onsky" onClick={() => pickInviteShow(s)}>{s.name}</button>
                         ))}
                         {inviteTvToAdd.map(({ tv, id }) => (
-                          <button key={id} className="dash-result" disabled={creatingShow} onClick={() => pickInviteTvShow(tv)}>
+                          <button key={id} className="dash-result dash-result--onsky" disabled={creatingShow} onClick={() => pickInviteTvShow(tv)}>
                             {tv.name}{networkLabel(tv) ? ` · ${networkLabel(tv)}` : ""}
                           </button>
                         ))}
@@ -2630,6 +2657,8 @@ function DashboardStyles() {
         font-size: 14px; font-weight: 600; color: ${C.green};
       }
       .dash-result:hover { background: rgba(122,189,142,0.14); }
+      .dash-result--onsky { color: ${C.cream}; }
+      .dash-result--onsky:hover { background: rgba(253,248,236,0.14); }
       .dash-result--inpool { cursor: default; opacity: 0.55; }
       .dash-result--inpool:hover { background: transparent; }
       .dash-pill-wrap { position: relative; }

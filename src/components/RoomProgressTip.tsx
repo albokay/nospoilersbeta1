@@ -63,16 +63,18 @@ export default function RoomProgressTip({ idiom, userId }: { idiom: "desktop" | 
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4, color: CANON.cream }}>
         <ArrowDown size={26} strokeWidth={2.8} />
       </div>
+      {/* "×" matches the ↓ — Cream, same size + weight (Alborz 2026-08-14;
+          was a small faded Dark mark). */}
       <button
         aria-label="Dismiss"
         onClick={dismiss}
         style={{
           position: "absolute", top: 6, right: 6, background: "transparent",
-          border: "none", color: CANON.dark, opacity: 0.6, cursor: "pointer",
+          border: "none", color: CANON.cream, cursor: "pointer",
           padding: 4, display: "flex",
         }}
       >
-        <X size={14} />
+        <X size={26} strokeWidth={2.8} />
       </button>
     </div>
   );

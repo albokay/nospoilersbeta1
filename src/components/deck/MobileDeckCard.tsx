@@ -276,10 +276,15 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</div>
-                <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
-                  style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: "4px 6px", display: "inline-flex" }}>
-                  <Pencil size={15} />
-                </button>
+                {/* Group mode's pencil sits over the (me) column (Alborz
+                    2026-08-14); personal has no (me), so it keeps the
+                    beside-the-title spot. */}
+                {mode === "personal" && (
+                  <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
+                    style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: "4px 6px", display: "inline-flex" }}>
+                    <Pencil size={15} />
+                  </button>
+                )}
               </div>
               {subtitle && <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 11.5, color: CANON.business, marginTop: 3 }}>{subtitle}</div>}
               {pairLine && (
@@ -289,7 +294,17 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
             {mode === "group" && (
               <div style={{ display: "flex", flexShrink: 0 }}>
                 {[{ id: viewerId, label: "(me)" }, ...columns].map((m) => (
-                  <span key={m.id} style={{ width: SHEET_CW, display: "flex", justifyContent: "center" }}>
+                  <span key={m.id} style={{ width: SHEET_CW, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 2 }}>
+                    {/* The edit pencil rides ON TOP of "(me)" (Alborz
+                        2026-08-14); the band grows to hold it — names stay
+                        bottom-aligned. Jumps straight into the grid's edit
+                        mode, as before. */}
+                    {m.id === viewerId && (
+                      <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
+                        style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "inline-flex" }}>
+                        <Pencil size={15} />
+                      </button>
+                    )}
                     <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10, color: CANON.dark, maxHeight: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {m.label}
                     </span>
@@ -427,12 +442,12 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
       <div style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 44px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: 20, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
         {/* Frozen top: title + (me) + names. */}
         <div style={{ display: "flex", position: "sticky", top: 0, zIndex: 4, background: CANON.cream, minWidth: stW + ME_W + FR_W * columns.length }}>
-          {/* Pencil (→ save check while editing) rides the TITLE, not the
-              (me) column (Alborz 2026-08-11 — every answers pencil sits just
-              right of the header). */}
+          {/* Pencil (→ save check while editing) rides ON TOP of "(me)" in
+              group grids (Alborz 2026-08-14); the personal grid has no (me)
+              column, so its pencil stays beside the title. */}
           <div style={{ width: stW, minWidth: stW, position: "sticky", left: 0, background: CANON.cream, zIndex: 3, padding: "14px 8px 8px 14px", boxSizing: "border-box", display: "flex", alignItems: "flex-end", gap: 6 }}>
             <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 13.5, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
-            {ui === "edit" ? (
+            {!isWe && (ui === "edit" ? (
               <button title="save your answers" onClick={confirmEdits} disabled={saving}
                 style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "flex", alignItems: "center", padding: 2 }}>
                 {saving ? <LoadingDots /> : <CircleCheck size={20} strokeWidth={2.5} />}
@@ -442,9 +457,20 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                 style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "flex" }}>
                 <Pencil size={14} />
               </button>
-            )}
+            ))}
           </div>
-          <div style={{ width: ME_W, minWidth: ME_W, position: "sticky", left: stW, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", paddingBottom: 4, boxSizing: "border-box" }}>
+          <div style={{ width: ME_W, minWidth: ME_W, position: "sticky", left: stW, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 2, paddingTop: 8, paddingBottom: 4, boxSizing: "border-box" }}>
+            {isWe && (ui === "edit" ? (
+              <button title="save your answers" onClick={confirmEdits} disabled={saving}
+                style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "flex", alignItems: "center", padding: 2 }}>
+                {saving ? <LoadingDots /> : <CircleCheck size={20} strokeWidth={2.5} />}
+              </button>
+            ) : (
+              <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
+                style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "flex" }}>
+                <Pencil size={14} />
+              </button>
+            ))}
             {isWe && <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 11, color: CANON.dark }}>(me)</span>}
           </div>
           {columns.map((m) => (

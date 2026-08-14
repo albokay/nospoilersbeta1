@@ -1,14 +1,19 @@
 /**
  * MobileTipsSheet — the mobile pointer-tips surface (help-system arc CP4).
  *
- * Docked: a cream "?" circle pinned bottom-RIGHT, above the deck card's
- * docked title (QA round 1 — was a bottom-left "tips" tab; the "?" mark
- * matches the desktop button but in Friend color). Open: a left-justified
- * bottom sheet with the page's tips. Dismiss = tap outside OR the "×"
- * (Alborz 2026-08-01 — swipe-down and its grabber retired HERE so the tip
- * TEXT can scroll instead; the sheet caps at ~55% of the viewport and
- * scrolls past that, so long tip sets stop feeling like a wall). Copy-only
- * pointers, no links inside tips (locked).
+ * The "?" circle renders IN PLACE (Alborz 2026-08-14 — it lives in the
+ * page's top chrome now and scrolls away with it; the old fixed bottom-
+ * right dock is retired): mount the component where the button belongs —
+ * the dashboard's top-right circle row / the group room's header corner —
+ * and it renders a static cream circle with the Friend-color "?" mark
+ * (matches the desktop button). `tabStyle` tweaks size to sit flush with
+ * sibling buttons. Open: a left-justified bottom sheet with the page's
+ * tips (the sheet itself is fixed, so the mount point doesn't matter to
+ * it). Dismiss = tap outside OR the "×" (Alborz 2026-08-01 — swipe-down
+ * and its grabber retired HERE so the tip TEXT can scroll instead; the
+ * sheet caps at ~55% of the viewport and scrolls past that, so long tip
+ * sets stop feeling like a wall). Copy-only pointers, no links inside
+ * tips (locked).
  *
  * First-visit auto-open for post-launch accounts, like desktop; dismissing
  * stamps the seen flag and the tab reopens the sheet anytime.
@@ -20,7 +25,7 @@ import TipText from "./TipText";
 import { CANON } from "../styles/canon";
 import { tipsFor, tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 
-export default function MobileTipsSheet({ page }: { page: TipsPage }) {
+export default function MobileTipsSheet({ page, tabStyle: tabOverride }: { page: TipsPage; tabStyle?: React.CSSProperties }) {
   const { user } = useAuth();
   // First-visit auto-open ARRIVES, it doesn't preexist (Alborz 2026-08-01):
   // the page paints tip-less first, then the sheet rises in after a beat —
@@ -41,7 +46,7 @@ export default function MobileTipsSheet({ page }: { page: TipsPage }) {
   }
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} aria-label="tips" style={tabStyle}>?</button>;
+    return <button onClick={() => setOpen(true)} aria-label="tips" style={{ ...tabStyle, ...tabOverride }}>?</button>;
   }
 
   return (
@@ -98,13 +103,13 @@ const tipText: React.CSSProperties = {
   color: CANON.dark, textAlign: "left",
 };
 
-// "?" circle, bottom-right above the deck card's docked title — cream fill,
-// Friend-color mark (matches the desktop "?" glyph).
+// "?" circle — cream fill, Friend-color mark (matches the desktop "?"
+// glyph). Static: it renders wherever the component is mounted (the page's
+// top chrome) and scrolls with it.
 const tabStyle: React.CSSProperties = {
-  position: "fixed", right: 14, bottom: "calc(env(safe-area-inset-bottom, 0px) + 76px)",
-  zIndex: 40, width: 44, height: 44, borderRadius: "50%",
+  width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
   background: CANON.cream, color: CANON.friend, border: "none",
   fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 18, lineHeight: 1,
   display: "flex", alignItems: "center", justifyContent: "center",
-  cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
+  cursor: "pointer",
 };

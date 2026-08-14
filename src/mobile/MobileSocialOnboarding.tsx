@@ -397,7 +397,7 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
           // Onboarding-only prompt batch (2026-07-08), split on the
           // declared progress: fresh = s0e0 through s1e4, else returning.
           promptPoolTag={prog.s < 1 || (prog.s === 1 && prog.e <= 4) ? "onb-fresh" : "onb-returning"}
-          externalSubmit={{ label: "publish & invite", submittingLabel: "sending invites", onSubmit: publishAndInvite }}
+          externalSubmit={{ label: "publish & invite", submittingLabel: "sending invite", onSubmit: publishAndInvite }}
         />
       </div>
     );

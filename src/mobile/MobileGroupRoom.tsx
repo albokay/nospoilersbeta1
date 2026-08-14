@@ -617,6 +617,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <div style={headerMembers}><span style={{ color: C.greyblue }}>with</span> {names}</div>
           )}
         </div>
+        {/* Tips "?" rides the header's right corner (Alborz 2026-08-14 —
+            moved up from the bottom-right dock; scrolls away with the bar).
+            Same wave gate as the old mount: no tips until wave 2 resolves. */}
+        {user && groupWaveDone && <MobileTipsSheet page="groupRoom" tabStyle={{ alignSelf: "flex-start" }} />}
       </div>
 
       {/* ── Chat: a right-edge tab (matches desktop; 2026-07-09) — the old
@@ -655,10 +659,6 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             .map((m) => ({ id: m.userId, label: personDisplayName(contactNames, m.userId, m.username, m.displayName) }))}
         />
       )}
-
-      {/* Help-system arc CP4: the docked "tips" tab + sheet (waits for the
-          wave gate so it can't float over an onboarding card). */}
-      {user && groupWaveDone && <MobileTipsSheet page="groupRoom" />}
 
       {loading ? (
         <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
