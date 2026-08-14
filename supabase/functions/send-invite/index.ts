@@ -183,7 +183,14 @@ serve(async (req) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not configured");
 
-    const baseUrl    = (appUrl ?? "https://beta.sidebar.watch").replace(/\/$/, "");
+    // SECURITY (2026-08-14): invite link derived SERVER-SIDE, never from the
+    // request's appUrl (phishing vector — see send-group-invite). No-op for
+    // real traffic (client sends beta.sidebar.watch); SITE_URL for future
+    // domain changes. NOTE: `sender` below is still the client-supplied
+    // inviterName — lower-severity (a real authed caller's chosen label, not
+    // a link); left as-is to keep this change zero-risk. Harden to a
+    // server-side profile lookup in a later pass if desired.
+    const baseUrl    = (Deno.env.get("SITE_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
     const inviteUrl  = `${baseUrl}/invite/${token}`;
     const sender     = inviterName ?? "Someone";
     // showName is looked up server-side above; fall back to generic phrasing

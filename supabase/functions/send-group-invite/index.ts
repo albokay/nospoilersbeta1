@@ -194,7 +194,13 @@ serve(async (req) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not configured");
 
-    const baseUrl   = (typeof appUrl === "string" ? appUrl : "https://beta.sidebar.watch").replace(/\/$/, "");
+    // SECURITY (2026-08-14): the invite link is derived SERVER-SIDE, never
+    // from the request's appUrl — a malicious client could otherwise point
+    // the email's CTA at any host (phishing from our own domain/DKIM). In
+    // prod the client already sends window.location.origin =
+    // beta.sidebar.watch, so this is a no-op for real traffic; SITE_URL lets
+    // a future domain change be config, not code.
+    const baseUrl   = (Deno.env.get("SITE_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
     const inviteUrl = `${baseUrl}/group-invite/${invToken}`;
     const email     = (inv.invitee_email as string).toLowerCase().trim();
     const subject   = isNudge
