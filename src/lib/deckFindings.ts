@@ -54,8 +54,13 @@ const T_PAIR_PLAIN = (name: string, n: number, t: number) =>
 
 // Findings sticky (§7.5 skeleton). Copy pass: Alborz 2026-07-17 (all
 // templates below are now his — none awaiting rewrite).
+// "between you." dropped + a "you" grammar variant (Alborz 2026-08-14 —
+// the viewer's label is the literal "you", which read "you says" / "they
+// have" when the renegade was the viewer).
 const T_RENEGADE = (name: string) =>
-  `Your group's renegade is ${name} — they have the most hot-takes between you.`; // ALBORZ
+  name === "you"
+    ? `Your group's renegade is you — you have the most hot-takes.` // ALBORZ
+    : `Your group's renegade is ${name} — they have the most hot-takes.`; // ALBORZ
 const T_UNANIMOUS = (n: number, plural: string) => `All ${n} of you ${plural}.`; // ALBORZ (approved)
 const T_CANT_AGREE = (statement: string) =>
   `No two of you watch TV the same way. The liveliest split: "${statement}"`; // ALBORZ
@@ -75,7 +80,8 @@ const T_OPPOSITE_TIE = (names: string, a: number, t: number) =>
   `You're furthest apart from ${names} — you only agree on ${a} out of ${t} with each. But opposites attract…`; // ALBORZ (2026-07-29 copy pass)
 // A renegade's NO-take, quoted with the twist (Alborz 2026-07-28): the
 // statement stays verbatim, the suffix lands OUTSIDE the closing quote.
-const T_NOPE_SUFFIX = (name: string) => ` — ${name} says NOPE.`; // ALBORZ
+const T_NOPE_SUFFIX = (name: string) =>
+  name === "you" ? ` — you said NOPE.` : ` — ${name} says NOPE.`; // ALBORZ (you-variant 2026-08-14)
 const joinLabels = (names: string[]): string =>
   names.length <= 2 ? names.join(" and ") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 const T_SOLO = (singular: string) => `You're the only one who ${singular}.`; // SPEC (§7.2)

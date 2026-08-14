@@ -369,6 +369,9 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
           fontSize={13}
           ignoreViewportGate={false}
           animateEntrance
+          // Same lift as the tips stickies (Alborz 2026-08-14) — the default
+          // hairline was invisible where the note overlaps the cream header.
+          boxShadow="0 4px 14px rgba(0,0,0,0.13)"
           style={{ left: `calc(50% + ${Math.min(cardW / 2, window.innerWidth * 0.46) - 60}px)`, top: "14%", zIndex: 910 }}
         >
           <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Findings:</div>
