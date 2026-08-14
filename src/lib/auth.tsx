@@ -5,23 +5,32 @@ import type { User } from "@supabase/supabase-js";
 
 type Profile = { id: string; username: string; display_name: string | null; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null };
 
-// Sign-out cleanup (security pass 2026-08-14). Default-CLEAR model: every
-// `ns_*` key is removed from both storages UNLESS explicitly kept — so any
-// future per-user data cache is wiped automatically without maintaining a
-// list. Kept: the beta gate (don't re-prompt after sign-out), the chunk-
-// reload guards (anti-loop safety), and the feedback cooldown (anti-spam).
-// Only visible effect: dismissed tips/hints show once more after a re-login.
-const KEEP_ON_SIGNOUT = new Set(["ns_beta_access_2", "ns_err_reload_at", "ns_fb_last"]);
-const KEEP_PREFIXES = ["ns_chunk_reload_"];
+// Sign-out cleanup (security pass 2026-08-14; refined 2026-08-15 after the
+// tips-reappear regression). Clear ONLY the DATA-bearing keys — cached
+// content, the snapshots holding friends' writing + contact names + invite
+// tokens, and the pre-signup deck answers the next sign-in would otherwise
+// claim into the new account. Per-user FLAGS (tips-seen, hints, dismissals,
+// read-state) are KEPT: they're uid-scoped booleans that leak nothing to the
+// app (the next account reads its OWN uid's keys), and clearing them re-nags
+// the same user — tips re-opening on every re-login (Alborz's catch). Grow
+// this list when a new key caches CONTENT or another person's data; flags
+// don't belong here.
+const CLEAR_PREFIXES = [
+  "ns_group_snap_",        // group-room snapshot: friends' watch positions + who wrote
+  "ns_m_group_snap_",      // mobile group-room snapshot (same)
+  "ns_m_dash_snap",        // mobile dashboard snapshot: contact names + pending-invite tokens
+  "ns_cache_progress_",    // journal cache (content)
+  "ns_cache_activity_",    // activity cache (content)
+  "ns_invite_show_picks_", // invite-token-keyed show picks
+  "ns_deck_pending",       // pre-signup deck answers — MUST clear (else next sign-in claims them)
+];
 function clearLocalUserState(): void {
   for (const store of [window.localStorage, window.sessionStorage]) {
     try {
       const doomed: string[] = [];
       for (let i = 0; i < store.length; i++) {
         const k = store.key(i);
-        if (!k || !k.startsWith("ns_")) continue;
-        if (KEEP_ON_SIGNOUT.has(k) || KEEP_PREFIXES.some((p) => k.startsWith(p))) continue;
-        doomed.push(k);
+        if (k && CLEAR_PREFIXES.some((p) => k.startsWith(p))) doomed.push(k);
       }
       doomed.forEach((k) => store.removeItem(k));
     } catch { /* tolerate private-mode / disabled storage */ }

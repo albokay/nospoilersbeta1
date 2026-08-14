@@ -32,6 +32,7 @@ import SidebarLogo from "./components/SidebarLogo";
 const AdminPage = lazyWithReload(() => import("./components/AdminPage"), "./components/AdminPage");
 import { Tv, EyeClosed, ListCheck, Globe, Search, Rocket, X, Settings, BookOpen, BookMarked, ArrowLeft, ArrowRight, ArrowDown, LogOut, UserPen } from "lucide-react";
 import PublicProfilePage from "./components/PublicProfilePage";
+import StuckSessionLoader from "./components/StuckSessionLoader";
 import Tooltip from "./components/Tooltip";
 import FeedbackWidget from "./components/FeedbackWidget";
 // MobileLockout component is no longer rendered — mobile users on any
@@ -1284,15 +1285,7 @@ function AppShell() {
               escape hatch for a session whose profile never loads
               (HANDOFF §6 item 15). */}
           {isHomepage && user && !isAdmin && (
-            <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "var(--canon-personal,#7abd8e)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
-              <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: "var(--canon-cream,#FEF8EA)" }}>loading<LoadingDots /></span>
-              <button
-                onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } }}
-                style={{ border: "none", background: "transparent", color: "var(--canon-cream,#FEF8EA)", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12, opacity: 0.7, cursor: "pointer" }}
-              >
-                sign out
-              </button>
-            </div>
+            <StuckSessionLoader onSignOut={async () => { try { await signOut?.(); } catch { /* ignore */ } }} />
           )}
           {isHomepage && (
             <>

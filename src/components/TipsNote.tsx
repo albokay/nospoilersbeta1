@@ -74,6 +74,8 @@ export default function TipsNote({ page, onDismiss }: {
         ignoreViewportGate
         animateEntrance={!stepped}
         entranceDelayMs={0}
+        // Subtle drop shadow (Alborz 2026-08-15) — lifts the tip off the page.
+        boxShadow="0 4px 14px rgba(0,0,0,0.13)"
         style={{ top: t.top, left: t.left }}
       >
         <TipBody tip={t} />
@@ -101,6 +103,8 @@ export default function TipsNote({ page, onDismiss }: {
       ariaLabel="Tips"
       ignoreViewportGate
       entranceDelayMs={0}
+      // Subtle drop shadow (Alborz 2026-08-15) — lifts the tip off the page.
+      boxShadow="0 4px 14px rgba(0,0,0,0.13)"
       // Adjacent to the avatar clusters (QA round 3) — just right of the
       // centered cluster row, ~1/3 down where the clusters rest.
       style={{ top: "36%", left: "min(calc(50% + 340px), calc(100vw - 180px))" }}
