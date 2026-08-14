@@ -69,6 +69,26 @@ serve(async (req) => {
     const { error: rpcErr } = await admin.rpc("anonymize_own_account", { p_user_id: user.id });
     if (rpcErr) return jsonError("anonymize_failed", 500, rpcErr.message);
 
+    // ── 1b. Best-effort privacy cleanup (security pass 2026-08-14) ──────────
+    // Two traces anonymize_own_account doesn't cover:
+    //   (a) contact_names rows OTHERS set for this user (contact_id = me) —
+    //       their real first name would keep rendering in friends' UI and in
+    //       digest emails (send-digests reads contact_names). CASCADE never
+    //       fires because we deliberately KEEP the auth.users row (step 2).
+    //   (b) their own profiles.display_name — the primary label since the
+    //       identity arc; the 2026-06-30 anonymize migration predates the
+    //       column, so it clears username/bio but not this.
+    // BEST-EFFORT by design: the core deletion already succeeded above, so a
+    // failure here is logged, never returned — it can't block or break
+    // deletion (worst case = the pre-existing lingering-name behavior, rarer).
+    // service_role bypasses RLS.
+    {
+      const { error: cnErr } = await admin.from("contact_names").delete().eq("contact_id", user.id);
+      if (cnErr) console.warn("delete-account: contact_names cleanup failed (non-blocking):", cnErr.message);
+      const { error: dnErr } = await admin.from("profiles").update({ display_name: null }).eq("id", user.id);
+      if (dnErr) console.warn("delete-account: display_name cleanup failed (non-blocking):", dnErr.message);
+    }
+
     // ── 2. Scrub the auth identity + disable login (Admin API) ──────────────
     // Runs AFTER anonymization so a failure here leaves a re-runnable state
     // (the function is idempotent) rather than a locked-out, un-anonymized one.

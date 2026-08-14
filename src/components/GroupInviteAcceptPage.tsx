@@ -82,8 +82,11 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
       const res = await getPeopleGroupInvite(token);
       if (cancelled) return;
       if (!res.ok) {
-        console.error("[group-invite] lookup failed", { token, error: res.error });
-        setDetail(`token=${token} · ${res.error}`);
+        // Don't log/paint the raw token (security pass 2026-08-14) — it lands
+        // in support screenshots + any future console-capturing tool. The
+        // error code is enough to diagnose; the token is already in the URL.
+        console.error("[group-invite] lookup failed", res.error);
+        setDetail(res.error ?? "");
         setStatus(res.error === "expired" ? "expired" : res.error === "already_accepted" ? "already" : "invalid");
         return;
       }

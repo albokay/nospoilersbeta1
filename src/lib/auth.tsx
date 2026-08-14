@@ -5,6 +5,29 @@ import type { User } from "@supabase/supabase-js";
 
 type Profile = { id: string; username: string; display_name: string | null; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null };
 
+// Sign-out cleanup (security pass 2026-08-14). Default-CLEAR model: every
+// `ns_*` key is removed from both storages UNLESS explicitly kept — so any
+// future per-user data cache is wiped automatically without maintaining a
+// list. Kept: the beta gate (don't re-prompt after sign-out), the chunk-
+// reload guards (anti-loop safety), and the feedback cooldown (anti-spam).
+// Only visible effect: dismissed tips/hints show once more after a re-login.
+const KEEP_ON_SIGNOUT = new Set(["ns_beta_access_2", "ns_err_reload_at", "ns_fb_last"]);
+const KEEP_PREFIXES = ["ns_chunk_reload_"];
+function clearLocalUserState(): void {
+  for (const store of [window.localStorage, window.sessionStorage]) {
+    try {
+      const doomed: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (!k || !k.startsWith("ns_")) continue;
+        if (KEEP_ON_SIGNOUT.has(k) || KEEP_PREFIXES.some((p) => k.startsWith(p))) continue;
+        doomed.push(k);
+      }
+      doomed.forEach((k) => store.removeItem(k));
+    } catch { /* tolerate private-mode / disabled storage */ }
+  }
+}
+
 // Result of a sign-up attempt. `needsConfirmation` is true when Supabase
 // "Confirm email" is enabled and the new account has no session yet (the user
 // must click the emailed link first). The caller shows a "check your email"
@@ -240,6 +263,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // intentionally empty
     }
+    // Clear every app cache/flag from this browser (security pass 2026-08-14).
+    // The old sign-out left ~50 ns_* keys behind — group snapshots (friends'
+    // watch positions + who wrote), the dashboard snapshot (contact names +
+    // pending-invite tokens), journal caches, reading history, and pre-signup
+    // deck answers the NEXT sign-in would silently claim into the new account.
+    // On a shared computer that handed the prior user's data to the next one.
+    clearLocalUserState();
   }
 
   return (

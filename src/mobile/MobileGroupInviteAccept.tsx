@@ -61,8 +61,10 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
       const res = await getPeopleGroupInvite(token);
       if (cancelled) return;
       if (!res.ok) {
-        console.error("[m-group-invite] lookup failed", { token, error: res.error });
-        setDetail(`token=${token} · ${res.error}`);
+        // Don't log/paint the raw token (security pass 2026-08-14) — see the
+        // desktop GroupInviteAcceptPage for the rationale.
+        console.error("[m-group-invite] lookup failed", res.error);
+        setDetail(res.error ?? "");
         setStatus(res.error === "expired" ? "expired" : res.error === "already_accepted" ? "already" : "invalid");
         return;
       }
