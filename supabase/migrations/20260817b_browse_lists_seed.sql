@@ -22,8 +22,9 @@ insert into public.browse_list_shows (list_id, tvmaze_id, name, image_url, sort_
 select l.id, v.tvmaze_id, v.name, v.image_url, v.sort_order
 from public.browse_lists l
 join (values
+  -- Succession moved to "Family is complicated:" only (Alborz 2026-08-17 —
+  -- the page-wide no-dupe rule would otherwise claim it for this row first).
   (179,   'The Wire',         'https://static.tvmaze.com/uploads/images/medium_portrait/504/1260189.jpg', 0),
-  (23470, 'Succession',       'https://static.tvmaze.com/uploads/images/medium_portrait/453/1134275.jpg', 1),
   (138,   'The Leftovers',    'https://static.tvmaze.com/uploads/images/medium_portrait/503/1259794.jpg', 2),
   (523,   'The West Wing',    'https://static.tvmaze.com/uploads/images/medium_portrait/4/11284.jpg',     3),
   (565,   'Deadwood',         'https://static.tvmaze.com/uploads/images/medium_portrait/4/11724.jpg',     4),
