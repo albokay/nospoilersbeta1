@@ -30,6 +30,14 @@ const ROW_LEN = 10;          // Alborz 2026-08-17: "start with 10 and see how it
 const CARD_W = 196;          // TVMaze medium posters are 210×295 (≈ 0.71)
 const CARD_H = 277;
 const GAP = 20;
+// The WINDOW (Alborz's mock, 2026-08-17): every row scrolls inside one
+// centered viewport of the same width, showing exactly 5½ posters at rest —
+// the half-card is the cue that there's more. Sky page shows on either side
+// (the "frame"), where the arrows sit; the row title's left edge = the
+// window's left edge. Positions snap to card boundaries ("locked-in").
+const VISIBLE = 5.5;
+const WINDOW_W = Math.round(VISIBLE * CARD_W + Math.floor(VISIBLE) * GAP); // 1178
+const ARROW_ZONE = 96;       // frame width reserved for each arrow at minimum
 
 type Row = { key: string; title: string; shows: BrowseShow[] };
 
@@ -106,12 +114,14 @@ function PosterRow({ row, onPick }: { row: Row; onPick: (s: BrowseShow) => void 
   function nudge(dir: -1 | 1) {
     const el = scroller.current;
     if (!el) return;
-    // A "page" = as many whole cards as fit.
+    // A "page" = the whole cards visible (5 of the 5½); snap keeps the
+    // landing position on a card boundary.
     const perPage = Math.max(1, Math.floor(el.clientWidth / (CARD_W + GAP)));
     el.scrollBy({ left: dir * perPage * (CARD_W + GAP), behavior: "smooth" });
   }
   return (
-    <div style={{ position: "relative", marginBottom: 36 }}>
+    // Window centered on the page; the frame on either side holds the arrows.
+    <div style={windowWrap}>
       <div style={rowTitle}>{row.title}</div>
       <div style={{ position: "relative" }}>
         <div ref={scroller} onScroll={measure} style={scrollerStyle} className="browse-scroller">
@@ -122,12 +132,12 @@ function PosterRow({ row, onPick }: { row: Row; onPick: (s: BrowseShow) => void 
           ))}
         </div>
         {canLeft && (
-          <button aria-label="scroll left" onClick={() => nudge(-1)} style={{ ...arrow, left: 8 }}>
+          <button aria-label="scroll left" onClick={() => nudge(-1)} style={{ ...arrow, right: "100%", marginRight: 16 }}>
             <ChevronLeft size={64} strokeWidth={1.4} />
           </button>
         )}
         {canRight && (
-          <button aria-label="scroll right" onClick={() => nudge(1)} style={{ ...arrow, right: 8 }}>
+          <button aria-label="scroll right" onClick={() => nudge(1)} style={{ ...arrow, left: "100%", marginLeft: 16 }}>
             <ChevronRight size={64} strokeWidth={1.4} />
           </button>
         )}
@@ -161,13 +171,23 @@ function seededShuffle<T>(arr: T[], seed: string): T[] {
   return out;
 }
 
+// The window: fixed width (5½ posters), centered, never wider than the page
+// minus room for both arrows — on a narrower screen the window shrinks and
+// simply shows fewer posters (cards keep their size).
+const windowWrap: React.CSSProperties = {
+  width: WINDOW_W, maxWidth: `calc(100vw - ${2 * ARROW_ZONE}px)`, margin: "0 auto 36px",
+  position: "relative",
+};
 const rowTitle: React.CSSProperties = {
   fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 17, color: CANON.cream,
-  padding: "0 96px", marginBottom: 12,
+  marginBottom: 12,
 };
 const scrollerStyle: React.CSSProperties = {
-  display: "flex", gap: GAP, overflowX: "auto", scrollSnapType: "x proximity",
-  padding: "4px 96px 8px", scrollbarWidth: "none", msOverflowStyle: "none",
+  display: "flex", gap: GAP, overflowX: "auto", scrollSnapType: "x mandatory",
+  // Vertical breathing room only — the row's left edge IS the window's edge.
+  // The card shadow bleeds a few px past the window on either side, which
+  // reads as depth, not misalignment.
+  padding: "4px 0 8px", scrollbarWidth: "none", msOverflowStyle: "none",
 };
 const card: React.CSSProperties = {
   flex: "0 0 auto", width: CARD_W, height: CARD_H, padding: 0, border: "none",
@@ -175,6 +195,8 @@ const card: React.CSSProperties = {
   scrollSnapAlign: "start", boxShadow: "0 4px 14px rgba(0,0,0,0.13)",
 };
 const poster: React.CSSProperties = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
+// Arrows live in the Sky frame OUTSIDE the window (positioned off the
+// scroller's edges), vertically centered on the posters.
 const arrow: React.CSSProperties = {
   position: "absolute", top: "50%", transform: "translateY(-50%)", zIndex: 2,
   border: "none", background: "transparent", color: CANON.cream, cursor: "pointer", padding: 0,
