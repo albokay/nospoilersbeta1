@@ -14,6 +14,7 @@ import DeckWave from "../components/deck/DeckWave";
 import YoureInCard from "../components/deck/YoureInCard";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
 import MobileTipsSheet from "../components/MobileTipsSheet";
+import MobileAddToHomeScreen from "./MobileAddToHomeScreen";
 import {
   markSocialOnboarded,
   fetchPeopleGroupsForUser,
@@ -433,6 +434,15 @@ export default function MobileDashboard() {
           {!showSocialOnb && (
             <div style={{ textAlign: "center", padding: "16px 16px 24px" }}>
               <button style={invitePill} onClick={() => setInviteOpen(true)}>Create another watch group?</button>
+            </div>
+          )}
+          {/* Home-screen app (2026-08-18): the "add Sidebar to your home
+              screen" button — an aside under the dashboard's one act, hidden
+              while onboarding owns the page (and hides itself once the app is
+              installed). Bottom room so it clears the docked deck card. */}
+          {!showSocialOnb && (
+            <div style={{ paddingBottom: 96 }}>
+              <MobileAddToHomeScreen />
             </div>
           )}
         </>

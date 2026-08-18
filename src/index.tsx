@@ -8,6 +8,9 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ComposeModalProvider } from "./components/v2/ComposeModal";
 import { startHeaderClickAudit } from "./lib/devHeaderAudit";
 import { initSentry } from "./lib/sentry";
+// Home-screen app (2026-08-18): parks Chrome/Edge's early install prompt for
+// the mobile dashboard's "add Sidebar to your home screen" button.
+import "./lib/installPrompt";
 
 initSentry();
 startHeaderClickAudit();
