@@ -114,10 +114,9 @@ function PosterRow({ row, onPick }: { row: Row; onPick: (s: BrowseShow) => void 
   function nudge(dir: -1 | 1) {
     const el = scroller.current;
     if (!el) return;
-    // A "page" = the whole cards visible (5 of the 5½); snap keeps the
-    // landing position on a card boundary.
-    const perPage = Math.max(1, Math.floor(el.clientWidth / (CARD_W + GAP)));
-    el.scrollBy({ left: dir * perPage * (CARD_W + GAP), behavior: "smooth" });
+    // One poster per press (Alborz 2026-08-17); snap keeps the landing
+    // position on a card boundary.
+    el.scrollBy({ left: dir * (CARD_W + GAP), behavior: "smooth" });
   }
   return (
     // Window centered on the page; the frame on either side holds the arrows.
@@ -185,14 +184,12 @@ const rowTitle: React.CSSProperties = {
 const scrollerStyle: React.CSSProperties = {
   display: "flex", gap: GAP, overflowX: "auto", scrollSnapType: "x mandatory",
   // Vertical breathing room only — the row's left edge IS the window's edge.
-  // The card shadow bleeds a few px past the window on either side, which
-  // reads as depth, not misalignment.
   padding: "4px 0 8px", scrollbarWidth: "none", msOverflowStyle: "none",
 };
 const card: React.CSSProperties = {
   flex: "0 0 auto", width: CARD_W, height: CARD_H, padding: 0, border: "none",
   borderRadius: 4, overflow: "hidden", cursor: "pointer", background: "rgba(253,248,236,0.12)",
-  scrollSnapAlign: "start", boxShadow: "0 4px 14px rgba(0,0,0,0.13)",
+  scrollSnapAlign: "start",
 };
 const poster: React.CSSProperties = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
 // Arrows live in the Sky frame OUTSIDE the window (positioned off the
