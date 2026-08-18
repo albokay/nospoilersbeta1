@@ -298,7 +298,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         {status === "wrong" && (
           <>
             <p style={title}>{preventLastWordOrphan("This invite was sent to a different email.")}</p>
-            <p style={muted}>It's addressed to {masked}. {preventLastWordOrphan("Sign in with that email to join.")}</p>
+            <p style={muted}>It's addressed to {masked}. {preventLastWordOrphan("Sign in with that email to join, or check your email and use the invite link.")}</p>
           </>
         )}
         {status === "already" && (

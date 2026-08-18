@@ -409,11 +409,17 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
     return <DeckWave wave={2} heading="more" idiom="mobile" onComplete={() => setStep(5)} />;
   }
 
-  // ── Screen 5: the "You're in!" card (§12.6, inviter variant). ─────────────
+  // ── Screen 5: the "You're in!" card (§12.6, inviter variant). Carries each
+  // friend's invite link (the email's own link, from the minted tokens) so
+  // the inviter can also text it (Alborz 2026-08-18). ──────────────────────
+  const inviteLinks = completeRows
+    .map((f) => ({ name: f.name.trim(), token: bootRef.current.tokens?.[f.email.trim().toLowerCase()] }))
+    .filter((f): f is { name: string; token: string } => !!f.token)
+    .map((f) => ({ name: f.name, link: `${window.location.origin}/group-invite/${f.token}` }));
   return (
     <YoureInCard
       idiom="mobile"
-      variant={{ kind: "inviter", showName: show?.name ?? "your show", friendName: invitedNames || "your friend" }}
+      variant={{ kind: "inviter", showName: show?.name ?? "your show", friendName: invitedNames || "your friend", inviteLinks }}
       onDone={() => onDone(bootRef.current.gid ?? null)}
     />
   );

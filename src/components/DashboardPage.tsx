@@ -97,6 +97,7 @@ import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
 import DeckGridCard from "./deck/DeckGridCard";
 import BrowseRows from "./BrowseRows";
+import InviteLinkRow from "./InviteLinkRow";
 import type { BrowseShow } from "../lib/db";
 import { linkifyText } from "../lib/linkify";
 
@@ -242,7 +243,7 @@ export default function DashboardPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteRows, setInviteRows] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
   const [inviteSending, setInviteSending] = useState(false);
-  const [inviteLinks, setInviteLinks] = useState<{ email: string; link?: string; error?: string; emailFailed?: boolean }[] | null>(null);
+  const [inviteLinks, setInviteLinks] = useState<{ email: string; name?: string; link?: string; error?: string; emailFailed?: boolean }[] | null>(null);
   // null = create a NEW group (friends + proposed shows, one act); set =
   // "add more friends" to this group.
   const [inviteTargetGroupId, setInviteTargetGroupId] = useState<string | null>(null);
@@ -1001,7 +1002,7 @@ export default function DashboardPage() {
           } catch (e) { console.error("[dashboard] propose into new group failed", e); }
         }
       }
-      const links: { email: string; link?: string; error?: string; emailFailed?: boolean }[] = [];
+      const links: { email: string; name?: string; link?: string; error?: string; emailFailed?: boolean }[] = [];
       for (const row of rows) {
         try {
           const token = await createPeopleGroupInvite(id, row.email, row.name || undefined);
@@ -1009,7 +1010,7 @@ export default function DashboardPage() {
           // rate limit) surfaces as a copy-the-link row instead of a false
           // "Invites sent!". The link works either way.
           const sent = await sendGroupInviteEmail(token);
-          links.push({ email: row.email, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
+          links.push({ email: row.email, name: row.name.trim() || undefined, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
         } catch (e: any) {
           links.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : "Something went wrong. Please try again." });
         }
@@ -1740,6 +1741,21 @@ export default function DashboardPage() {
                   <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
                     Invites sent!
                   </h1>
+                )}
+                {/* Text-a-link (Alborz 2026-08-18): the emailed invites' own
+                    links, one per friend, for the sender to text as well.
+                    Email-failed rows keep their copy-link treatment below. */}
+                {inviteLinks.some((r) => !r.error && !r.emailFailed && r.link) && (
+                  <div style={{ margin: "0 0 20px" }}>
+                    <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.5, color: C.cream, margin: "0 0 8px" }}>
+                      You can also text them an invite link.
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {inviteLinks.filter((r) => !r.error && !r.emailFailed && r.link).map((r) => (
+                        <InviteLinkRow key={r.link} name={r.name || r.email} link={r.link as string} tone="sky" />
+                      ))}
+                    </div>
+                  </div>
                 )}
                 {/* Invite minted but the email leg failed (stale session,
                     rate limit, Resend refusal) — the link still works, so

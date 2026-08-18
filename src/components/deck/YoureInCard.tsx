@@ -16,12 +16,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import LoadingDots from "../LoadingDots";
+import InviteLinkRow, { type InviteLink } from "../InviteLinkRow";
 import { CANON } from "../../styles/canon";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
 export type YoureInVariant =
-  | { kind: "inviter"; showName: string; friendName: string }
+  /** inviteLinks (2026-08-18): the just-sent invites' links, one per friend,
+   *  so the inviter can ALSO text them (same link as the email). */
+  | { kind: "inviter"; showName: string; friendName: string; inviteLinks?: InviteLink[] }
   | { kind: "invitee"; friendName: string };
 
 export default function YoureInCard({ variant, idiom, onDone, busy = false, errorText = null, onDismiss }: {
@@ -93,7 +96,16 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
           You&rsquo;re in!
         </h1>
 
-        <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 14, lineHeight: 1.6, color: CANON.identity, marginTop: 22, maxWidth: mobile ? "100%" : 460 }}>
+        {/* The body may now carry one link row per friend (up to 7), so it
+            scrolls past a cap instead of pushing GET STARTED! / the closer
+            off the card. On mobile the card itself is touchAction:none for
+            the swipe; pan-y here lets the body scroll under a finger. */}
+        <div style={{
+          fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 14, lineHeight: 1.6, color: CANON.identity, marginTop: 22,
+          maxWidth: mobile ? "100%" : 460,
+          overflowY: "auto", WebkitOverflowScrolling: "touch",
+          ...(mobile ? { flexShrink: 1, minHeight: 0, touchAction: "pan-y" as const } : { maxHeight: 380 }),
+        }}>
           {variant.kind === "inviter" ? (
             <>
               <p style={{ margin: 0 }}>
@@ -101,7 +113,19 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
                 invited <span style={alertSpan}>{variant.friendName}</span>, and{" "}
                 <span style={alertSpan}>left some writing</span> for them to read.
               </p>
-              <p style={{ margin: "16px 0 0" }}>Next, invite more friends you want to watch with.</p>
+              {/* Text-a-link (Alborz 2026-08-18): the same invite, offered as
+                  a link the inviter can send themselves. */}
+              {variant.inviteLinks && variant.inviteLinks.length > 0 && (
+                <>
+                  <p style={{ margin: "16px 0 0" }}>
+                    Sidebar has emailed your {variant.inviteLinks.length > 1 ? "friends" : "friend"}. You can also text them an invite link.
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                    {variant.inviteLinks.map((l) => <InviteLinkRow key={l.link} name={l.name} link={l.link} tone="cream" />)}
+                  </div>
+                </>
+              )}
+              <p style={{ margin: "16px 0 0" }}>Once you&rsquo;re in, you can invite more friends you want to watch with.</p>
             </>
           ) : (
             <p style={{ margin: 0 }}>
@@ -122,7 +146,9 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
             keeps its absolute layout. */}
         {mobile ? (
           <>
-            <div style={{ flex: 1, position: "relative" }}>
+            {/* minHeight keeps the tab's band alive when the body is long
+                (many invite-link rows) — the body scrolls instead. */}
+            <div style={{ flex: 1, minHeight: 88, position: "relative" }}>
               <button
                 style={{ ...goTab, opacity: busy ? 0.7 : 1, right: -48, top: "50%", transform: "translateY(-50%)", padding: "14px 24px", fontSize: 13.5, minHeight: 44 }}
                 disabled={busy}

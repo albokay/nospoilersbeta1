@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
+import InviteLinkRow from "../components/InviteLinkRow";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import { preventLastWordOrphan } from "../lib/utils";
@@ -59,7 +60,7 @@ export default function MobileInviteSheet({
 
   const [rows, setRows] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
   const [sending, setSending] = useState(false);
-  const [links, setLinks] = useState<{ email: string; link?: string; error?: string; emailFailed?: boolean }[] | null>(null);
+  const [links, setLinks] = useState<{ email: string; name?: string; link?: string; error?: string; emailFailed?: boolean }[] | null>(null);
   const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
 
   // Create-mode show picker (desktop's in-modal picker: catalog + TVMaze).
@@ -161,14 +162,14 @@ export default function MobileInviteSheet({
           } catch (e) { console.error("[m-invite] propose into new group failed", e); }
         }
       }
-      const out: { email: string; link?: string; error?: string; emailFailed?: boolean }[] = [];
+      const out: { email: string; name?: string; link?: string; error?: string; emailFailed?: boolean }[] = [];
       for (const row of list) {
         try {
           const token = await createPeopleGroupInvite(id, row.email, row.name || undefined);
           // Await the email leg so a silent refusal surfaces as a
           // copy-the-link row instead of a false "Invites sent!".
           const sent = await sendGroupInviteEmail(token);
-          out.push({ email: row.email, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
+          out.push({ email: row.email, name: row.name?.trim() || undefined, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
         } catch (e: any) {
           out.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : "Something went wrong. Please try again." });
         }
@@ -284,6 +285,20 @@ export default function MobileInviteSheet({
             )}
             {links.every((r) => !r.error && !r.emailFailed) && (
               <h1 style={title}>Invites sent!</h1>
+            )}
+            {/* Text-a-link (Alborz 2026-08-18): the emailed invites' own
+                links, one per friend, for the sender to text as well. */}
+            {links.some((r) => !r.error && !r.emailFailed && r.link) && (
+              <div style={{ margin: "0 0 20px" }}>
+                <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.5, color: C.cream, margin: "0 0 8px" }}>
+                  You can also text them an invite link.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {links.filter((r) => !r.error && !r.emailFailed && r.link).map((r) => (
+                    <InviteLinkRow key={r.link} name={r.name || r.email} link={r.link as string} tone="sky" />
+                  ))}
+                </div>
+              </div>
             )}
             {/* Invite minted but the email leg failed — the link still
                 works, so hand it to the sender (same copy as desktop). */}
