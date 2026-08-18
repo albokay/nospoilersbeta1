@@ -673,13 +673,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         </div>
         {/* Tips "?" + chat ride the header's right corner (Alborz 2026-08-14
             / 2026-08-17 — both moved up from lower on the page; they scroll
-            away with the bar). "?" keeps its wave-2 gate; chat is a matching
-            cream circle to its right (the in-flow right-edge tab is retired),
-            new-chat dot on its top-right. */}
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flexShrink: 0 }}>
+            away with the bar). "?" keeps its wave-2 gate; chat keeps its TAB
+            look — cream, rounded on the left, running off the right screen
+            edge — sized to the "?" (44 tall) and sitting just right of it.
+            The negative margin cancels the bar's 12px side padding so the
+            tab truly reaches the edge. New-chat dot straddles the curve. */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexShrink: 0, marginRight: -12 }}>
           {user && groupWaveDone && <MobileTipsSheet page="groupRoom" />}
-          <button style={chatCircle} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
-            {chatNew && <span style={notifDotChatCircle} />}
+          <button style={chatTab} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
+            {chatNew && <span style={notifDotChatInline} />}
             <MessageCircle size={20} color={C.green} />
           </button>
         </div>
@@ -1075,18 +1077,22 @@ const headerMembers: React.CSSProperties = {
   fontWeight: 700, fontSize: 12, color: C.cream, marginTop: 2,
   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
 };
-// Chat = a cream circle in the header, sized to match the tips "?" beside it
-// (Alborz 2026-08-17; the earlier shapes — fixed right-edge tab → in-flow pill
-// → in-flow right-edge tab — are all retired). Green MessageCircle, new-chat
-// dot on the top-right with a sky ring so it reads on cream.
-const chatCircle: React.CSSProperties = {
-  position: "relative", width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+// Desktop's chatTab, scaled to the header (Alborz 2026-08-17): icon only,
+// cream, rounded on the LEFT only so it reads as a tab breaking off the right
+// screen edge; 44 tall = the tips "?" beside it. Lives in the header now
+// (was in-flow below the shelves 2026-07-29 → 08-17).
+const chatTab: React.CSSProperties = {
+  position: "relative", display: "inline-flex", alignItems: "center", flexShrink: 0,
   background: C.cream, border: "none", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  borderTopLeftRadius: 44, borderBottomLeftRadius: 44,
+  height: 44, padding: "0 14px 0 18px",
+  boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)",
 };
-const notifDotChatCircle: React.CSSProperties = {
-  position: "absolute", top: -2, right: -2, width: 14, height: 14, borderRadius: "50%",
-  background: C.blue, border: `2px solid ${CANON.friend}`, boxSizing: "border-box", zIndex: 1,
+const notifDotChatInline: React.CSSProperties = {
+  // Straddles the tab's rounded left edge — desktop's placement rule (the
+  // right edge is off-screen, so the dot can't live there).
+  position: "absolute", top: 6, left: 0, width: 14, height: 14, borderRadius: "50%",
+  background: C.blue, zIndex: 1,
 };
 const contentWrap: React.CSSProperties = { padding: "8px 16px 40px" };
 const shelfHeader: React.CSSProperties = {
