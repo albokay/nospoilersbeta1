@@ -233,19 +233,23 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
         role="button"
         title={`open ${title}`}
         onClick={() => setUi("sheet")}
+        // Edge-to-edge (Alborz 2026-08-18): the dock runs to both screen
+        // edges (was inset 14px a side); the top curve stays, and the title +
+        // dot keep their exact screen positions (padding-left absorbs the
+        // removed gap) — the poster rows peek out beneath more cleanly.
         style={{
-          position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-          width: "calc(100% - 28px)", maxWidth: 520, zIndex: 40, cursor: "pointer",
+          position: "fixed", bottom: 0, left: 0, right: 0,
+          width: "100%", zIndex: 40, cursor: "pointer",
           background: CANON.cream, borderRadius: "24px 24px 0 0",
           boxShadow: "0 -6px 24px rgba(0,0,0,0.18)",
-          padding: "16px 20px calc(env(safe-area-inset-bottom, 0px) + 10px)",
+          padding: "16px 20px calc(env(safe-area-inset-bottom, 0px) + 10px) 34px",
           boxSizing: "border-box",
           display: "flex", alignItems: "flex-start", justifyContent: "space-between",
         }}
       >
         {/* Answers are waiting behind "?"s — the show-pill dot grammar,
             overlapping the card's top-left corner (Alborz rev 2). */}
-        {hasRevealable && <span style={{ position: "absolute", top: -6, left: 6, width: 16, height: 16, borderRadius: "50%", background: CANON.identity, zIndex: 6, pointerEvents: "none" }} />}
+        {hasRevealable && <span style={{ position: "absolute", top: -6, left: 20, width: 16, height: 16, borderRadius: "50%", background: CANON.identity, zIndex: 6, pointerEvents: "none" }} />}
         {/* Docked title matches the page behind it: Personal green on the
             dashboard, Sky in the group room (Alborz QA 2026-07-20);
             Identity once opened. */}
