@@ -671,10 +671,18 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <div style={headerMembers}><span style={{ color: C.greyblue }}>with</span> {names}</div>
           )}
         </div>
-        {/* Tips "?" rides the header's right corner (Alborz 2026-08-14 —
-            moved up from the bottom-right dock; scrolls away with the bar).
-            Same wave gate as the old mount: no tips until wave 2 resolves. */}
-        {user && groupWaveDone && <MobileTipsSheet page="groupRoom" tabStyle={{ alignSelf: "flex-start" }} />}
+        {/* Tips "?" + chat ride the header's right corner (Alborz 2026-08-14
+            / 2026-08-17 — both moved up from lower on the page; they scroll
+            away with the bar). "?" keeps its wave-2 gate; chat is a matching
+            cream circle to its right (the in-flow right-edge tab is retired),
+            new-chat dot on its top-right. */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flexShrink: 0 }}>
+          {user && groupWaveDone && <MobileTipsSheet page="groupRoom" />}
+          <button style={chatCircle} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
+            {chatNew && <span style={notifDotChatCircle} />}
+            <MessageCircle size={20} color={C.green} />
+          </button>
+        </div>
       </div>
 
       {/* ── Chat: a right-edge tab (matches desktop; 2026-07-09) — the old
@@ -750,25 +758,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             </h1>
           )}
 
-          {/* The chat tab: desktop's right-edge tab shape (icon only, cream,
-              rounded on the left, breaking off the screen edge), but kept
-              IN-FLOW at this spot in the vertical order — below the shelves,
-              above the actions (Alborz 2026-07-29; QA round 8 had made it a
-              centered in-flow pill to stop the fixed tab overlapping
-              content — the flow position solves that, the shape returns).
-              The negative right margin cancels contentWrap's 16px padding so
-              the tab reaches the edge. */}
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: empty ? 24 : 40, marginRight: -16 }}>
-            <button style={chatTab} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
-              {chatNew && <span style={notifDotChatInline} />}
-              <MessageCircle size={24} color={C.green} />
-            </button>
-          </div>
+          {/* The chat tab used to sit here in-flow (2026-07-29 → 2026-08-17);
+              it now lives in the header beside the "?", so the actions rise
+              into its space. */}
 
           {/* The group room's two centered actions, set a little apart from
               the show rows above (desktop CP2 order + copy). Equal width via
               the stretch column (both sized to the wider "Add friends" label). */}
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: empty ? 24 : 40 }}>
             <div style={actionCol}>
               <button style={searchPill} onClick={() => setSearchOpen(true)}>Propose more shows?</button>
               <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
@@ -1078,25 +1075,18 @@ const headerMembers: React.CSSProperties = {
   fontWeight: 700, fontSize: 12, color: C.cream, marginTop: 2,
   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
 };
-// Right-edge chat tab (matches desktop's chatTab): a cream tab off the right
-// of the screen at 60% height; MessageCircle green; new-chat dot on the curve.
-// In-flow chat pill (QA round 8 — replaced the fixed right-edge tab):
-// cream stadium, green icon + label, new-chat dot on the corner.
-// Desktop's chatTab, scaled for touch: icon only, cream, rounded on the LEFT
-// only so it reads as a tab breaking off the right screen edge. Rendered
-// in-flow (not fixed) — see the callsite.
-const chatTab: React.CSSProperties = {
-  position: "relative", display: "inline-flex", alignItems: "center",
+// Chat = a cream circle in the header, sized to match the tips "?" beside it
+// (Alborz 2026-08-17; the earlier shapes — fixed right-edge tab → in-flow pill
+// → in-flow right-edge tab — are all retired). Green MessageCircle, new-chat
+// dot on the top-right with a sky ring so it reads on cream.
+const chatCircle: React.CSSProperties = {
+  position: "relative", width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
   background: C.cream, border: "none", cursor: "pointer",
-  borderTopLeftRadius: 48, borderBottomLeftRadius: 48,
-  padding: "18px 18px 18px 26px", minHeight: 48,
-  boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)",
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
 };
-const notifDotChatInline: React.CSSProperties = {
-  // Straddles the tab's rounded left edge — desktop's placement rule (the
-  // right edge is off-screen, so the dot can't live there).
-  position: "absolute", top: 10, left: 0, width: 14, height: 14, borderRadius: "50%",
-  background: C.blue, zIndex: 1,
+const notifDotChatCircle: React.CSSProperties = {
+  position: "absolute", top: -2, right: -2, width: 14, height: 14, borderRadius: "50%",
+  background: C.blue, border: `2px solid ${CANON.friend}`, boxSizing: "border-box", zIndex: 1,
 };
 const contentWrap: React.CSSProperties = { padding: "8px 16px 40px" };
 const shelfHeader: React.CSSProperties = {
