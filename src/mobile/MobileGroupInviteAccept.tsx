@@ -220,9 +220,13 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
   //    opening on the email's quoted card; answers park locally and attach
   //    on sign-in. ─────────────────────────────────────────────────────────
   if (status === "ready" && info && !user && !authLoading) {
+    // The door questions are for STRANGERS: an invitee whose email already
+    // has an account skips them and lands on the wall (Alborz 2026-08-18;
+    // desktop parity) — the post-join wave self-skips for them anyway.
+    const wallReady = prewallDone || !!info.inviteeHasAccount;
     return (
       <div style={welcomePage}>
-        {!prewallDone && (
+        {!wallReady && (
           <DeckWave anonymous wave={1} leadCardId="just-wait-ep4" heading="welcome" idiom="mobile" onComplete={() => setPrewallDone(true)} />
         )}
         <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 12px) 16px 8px" }}>
@@ -230,7 +234,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         </div>
         {/* QA round 6: shelves + JOIN IN stay hidden until the pre-wall wave
             completes — blank green behind the wave's tint. */}
-        {prewallDone && (
+        {wallReady && (
         // Top padding 40 (Alborz 2026-08-11): logo→content gets the ~48px
         // gap the shelves→suggest seam used to have (that seam tightened to
         // 16 inside InviteShowSuggest so shows + question read as one unit).

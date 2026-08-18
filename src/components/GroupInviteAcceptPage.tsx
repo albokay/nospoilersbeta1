@@ -194,14 +194,19 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
         {/* QA round 6: while the pre-wall wave is up, the background is
             blank green (+ the wave's tint) — the pool behind collided with
             the wave's heading. The pool reveals when the wave completes. */}
-        {prewallDone ? (
+        {/* The door questions are for STRANGERS. An invitee whose email
+            already has an account (inviteeHasAccount from the invite lookup)
+            skips them and lands on the wall directly (Alborz 2026-08-18) —
+            they'd only be re-answering, and the post-join wave self-skips
+            for them anyway. */}
+        {(prewallDone || info.inviteeHasAccount) ? (
           <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth, token }} displayNameOverride={info.inviterDisplayName || undefined} />
         ) : (
           <div style={page}>
             <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
           </div>
         )}
-        {!prewallDone && (
+        {!prewallDone && !info.inviteeHasAccount && (
           <DeckWave anonymous wave={1} leadCardId="just-wait-ep4" heading="welcome" idiom="desktop" onComplete={() => setPrewallDone(true)} />
         )}
         {phase === "signup" && (
