@@ -291,7 +291,7 @@ export default function MobileInviteSheet({
             {links.some((r) => !r.error && !r.emailFailed && r.link) && (
               <div style={{ margin: "0 0 20px" }}>
                 <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.5, color: C.cream, margin: "0 0 8px" }}>
-                  You can also text them an invite link.
+                  {preventLastWordOrphan("You can also text them an invite link.")}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {links.filter((r) => !r.error && !r.emailFailed && r.link).map((r) => (

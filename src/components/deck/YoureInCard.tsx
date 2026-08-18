@@ -17,6 +17,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import InviteLinkRow, { type InviteLink } from "../InviteLinkRow";
+import { preventLastWordOrphan } from "../../lib/utils";
 import { CANON } from "../../styles/canon";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
@@ -118,14 +119,14 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
               {variant.inviteLinks && variant.inviteLinks.length > 0 && (
                 <>
                   <p style={{ margin: "16px 0 0" }}>
-                    Sidebar has emailed your {variant.inviteLinks.length > 1 ? "friends" : "friend"}. You can also text them an invite link.
+                    {preventLastWordOrphan(`Sidebar has emailed your ${variant.inviteLinks.length > 1 ? "friends" : "friend"}. You can also text them an invite link.`)}
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
                     {variant.inviteLinks.map((l) => <InviteLinkRow key={l.link} name={l.name} link={l.link} tone="cream" />)}
                   </div>
                 </>
               )}
-              <p style={{ margin: "16px 0 0" }}>Once you&rsquo;re in, you can invite more friends you want to watch with.</p>
+              <p style={{ margin: "16px 0 0" }}>{preventLastWordOrphan("Once you’re in, you can invite more friends you want to watch with.")}</p>
             </>
           ) : (
             <p style={{ margin: 0 }}>
