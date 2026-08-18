@@ -28,10 +28,10 @@ function svg(size, scale = 1) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="${GREEN}"/>${rects}</svg>`;
 }
 const jobs = [
-  ["icon-512.png", 512, 1],
+  ["icon-512.png", 512, 0.84],           // breathing room from the tile edges (Alborz 2026-08-18)
   ["icon-512-maskable.png", 512, 0.78], // keep the mark inside the central 80%
-  ["icon-192.png", 192, 1],
-  ["apple-touch-icon.png", 180, 1],
+  ["icon-192.png", 192, 0.84],
+  ["apple-touch-icon.png", 180, 0.84],
 ];
 for (const [name, size, scale] of jobs) {
   writeFileSync(`public/icons/${name}`, await sharp(Buffer.from(svg(size, scale))).png().toBuffer());
