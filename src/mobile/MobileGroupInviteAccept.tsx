@@ -269,7 +269,12 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
           {/* Suggest-shows block (Alborz 2026-08-01) — picks park per-token,
               claimed as proposals on accept. Replaces the "(You can also
               propose other shows.)" parenthetical. */}
-          <InviteShowSuggest token={token} idiom="mobile" />
+          <InviteShowSuggest
+            token={token}
+            idiom="mobile"
+            bleedX={16}
+            excludeTvmazeIds={new Set([...interested, ...watching].map(({ show }) => Number(show.tvmazeId)).filter((n) => !!n))}
+          />
           {/* Button directly under the search bar, tail line under it so the
               pair reads as one sentence (Alborz 2026-08-11; the "Join
               Sidebar so you can watch with them." heading retired). */}

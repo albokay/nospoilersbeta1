@@ -17,10 +17,22 @@ import { tvmazeSearch, networkLabel, slugify, type TVmazeShow } from "../lib/tvm
 import { readInvitePicks, parkInvitePicks, type InviteShowPick } from "../lib/invitePicks";
 import { preventLastWordOrphan } from "../lib/utils";
 import { CANON } from "../styles/canon";
+import BrowseRows from "./BrowseRows";
+import MobileBrowseRows from "../mobile/MobileBrowseRows";
+import type { BrowseShow } from "../lib/db";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
-export default function InviteShowSuggest({ token, idiom }: { token: string; idiom: "desktop" | "mobile" }) {
+export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, bleedX = 0 }: {
+  token: string;
+  idiom: "desktop" | "mobile";
+  /** The inviter's shows shown on the wall above (already on the table) —
+   *  hidden from the browse rows. */
+  excludeTvmazeIds?: Set<number>;
+  /** Mobile: the wall's horizontal padding to cancel so the poster strips
+   *  run edge-to-edge like the group room's. */
+  bleedX?: number;
+}) {
   const mobile = idiom === "mobile";
   const [shows, setShows] = useState<Show[]>([]);
   const [query, setQuery] = useState("");
@@ -99,6 +111,23 @@ export default function InviteShowSuggest({ token, idiom }: { token: string; idi
     commit(picks.filter((_, j) => j !== i));
   }
 
+  // Browse rows (2026-08-18): the group room's poster shelves, under the
+  // search — a tap adds a chip like a search hit (catalog pick when Sidebar
+  // already has the show, else a TVMaze pick claimed on accept). Hidden:
+  // the inviter's shows above + anything already picked.
+  const browseExclude = useMemo(() => {
+    const ids = new Set<number>(excludeTvmazeIds ?? []);
+    for (const p of picks) {
+      if (p.kind === "tv") ids.add(p.tvmazeId);
+      else { const tv = shows.find((s) => s.id === p.id)?.tvmazeId; if (tv) ids.add(Number(tv)); }
+    }
+    return ids;
+  }, [excludeTvmazeIds, picks, shows]);
+  function addFromBrowse(b: BrowseShow) {
+    const cat = shows.find((s) => s.tvmazeId === String(b.tvmazeId));
+    addPick(cat ? { kind: "catalog", id: cat.id, name: cat.name } : { kind: "tv", tvmazeId: b.tvmazeId, name: b.name });
+  }
+
   const hasResults = catalogMatches.length > 0 || tvToAdd.length > 0;
   useEffect(() => {
     if (hasResults) ensureVisible();
@@ -152,6 +181,15 @@ export default function InviteShowSuggest({ token, idiom }: { token: string; idi
         {query.trim().length >= 2 && catalogMatches.length === 0 && tvToAdd.length === 0 && (
           <div style={{ padding: "12px 16px", fontSize: 13, color: CANON.dark, opacity: 0.6, textAlign: "left" }}>searching&hellip;</div>
         )}
+      </div>
+
+      {/* The poster rows, rendered exactly as in the group room (Alborz
+          2026-08-18). Mobile strips cancel the wall's side padding so they
+          run to the screen edges. */}
+      <div style={{ textAlign: "left", marginTop: 12, ...(mobile && bleedX ? { marginLeft: -bleedX, marginRight: -bleedX } : {}) }}>
+        {mobile
+          ? <MobileBrowseRows excludeTvmazeIds={browseExclude} onPick={addFromBrowse} />
+          : <BrowseRows excludeTvmazeIds={browseExclude} onPick={addFromBrowse} />}
       </div>
     </div>
   );

@@ -46,6 +46,9 @@ import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
 import LoadingDots from "./LoadingDots";
+import BrowseRows from "./BrowseRows";
+import type { BrowseShow } from "../lib/db";
+import { ensureCatalogShow } from "../lib/browseCatalog";
 import { CANON } from "../styles/canon";
 import {
   overlay, searchCard, pickerCard, searchInput, invitePill, searchPill,
@@ -152,6 +155,20 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
     } catch (e) { console.error("[onboarding] add show from TVMaze failed", e); }
     finally { setCreatingShow(false); }
   }
+
+  // Browse-row poster (2026-08-18): same as a search hit — the show is
+  // selected and the progress picker follows (catalog-ensured first).
+  async function pickBrowseShow(b: BrowseShow) {
+    if (creatingShow) return;
+    setCreatingShow(true);
+    try {
+      const s = await ensureCatalogShow(shows, b);
+      setShows((prev) => (prev.some((x) => x.id === s.id) ? prev : [...prev, s]));
+      pickShow(s);
+    } catch (e) { console.error("[onboarding] browse pick failed", e); }
+    finally { setCreatingShow(false); }
+  }
+  const noExclusions = useMemo(() => new Set<number>(), []);
 
   // Screen 2 → 3: persist the declared progress so the REAL compose form
   // (which reads the progress row for its header picker + spoiler tag)
@@ -332,6 +349,14 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
                 {creatingShow ? "adding…" : "searching…"}
               </div>
             )}
+          </div>
+        )}
+        {/* Browse rows (2026-08-18): the group room's poster shelves, here for
+            the "I can't think of one" moment — below the search, until a show
+            is picked. A tap = the same as a search hit. */}
+        {!show && (
+          <div style={{ width: "100%" }}>
+            <BrowseRows excludeTvmazeIds={noExclusions} onPick={pickBrowseShow} />
           </div>
         )}
         {show && (

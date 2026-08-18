@@ -99,6 +99,7 @@ import DeckGridCard from "./deck/DeckGridCard";
 import BrowseRows from "./BrowseRows";
 import InviteLinkRow from "./InviteLinkRow";
 import type { BrowseShow } from "../lib/db";
+import { ensureCatalogShow } from "../lib/browseCatalog";
 import { linkifyText } from "../lib/linkify";
 
 // TSP onboarding demo (spec §9): the onboarding for the NEW /dashboard world.
@@ -870,23 +871,8 @@ export default function DashboardPage() {
     if (browseBusy || !activeGroupId) return;
     setBrowseBusy(true);
     try {
-      const tvId = String(b.tvmazeId);
-      let show = shows.find((s) => s.tvmazeId === tvId);
-      if (!show) {
-        const [seasons, rec] = await Promise.all([
-          tvmazeEpisodes(b.tvmazeId),
-          fetch(`https://api.tvmaze.com/shows/${b.tvmazeId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        ]);
-        // Slug collision guard: a DIFFERENT show already owning slugify(name)
-        // (e.g. a same-titled remake) must not have its seasons overwritten by
-        // createShow's conflict-UPDATE fallback — suffix the id instead.
-        let id = slugify(b.name);
-        const clash = shows.find((s) => s.id === id && s.tvmazeId && s.tvmazeId !== tvId);
-        if (clash) id = `${id}-${tvId}`;
-        show = await createShow({ id, name: rec?.name ?? b.name, seasons, tvmazeId: tvId, status: rec?.status });
-        const created = show;
-        setShows((prev) => (prev.some((s) => s.id === created.id) ? prev : [...prev, created]));
-      }
+      const show = await ensureCatalogShow(shows, b);
+      setShows((prev) => (prev.some((s) => s.id === show.id) ? prev : [...prev, show]));
       setDeclaredProgress({ s: 0, e: 0 });
       setClicked({ showId: show.id, name: show.name, mode: "vote", voteToggle: true, fromBrowse: true });
     } catch (e) {

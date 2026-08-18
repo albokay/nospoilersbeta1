@@ -146,7 +146,12 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
           We couldn&rsquo;t find that person.
         </div>
       ) : invite ? (
-        <div style={contentWrap}>
+        <>
+        {/* The shelves stay in the 1040 column; the suggest block (which now
+            carries the full-width browse rows, 2026-08-18) and the JOIN
+            cluster render OUTSIDE it — both are centered content anyway, and
+            the rows' 5½-poster window needs the whole viewport. */}
+        <div style={{ ...contentWrap, paddingBottom: 0 }}>
           {/* Same shelf copy as /pool (2026-07-07): interested-in-starting
               (opted-in proposals) first, open-room shows second. */}
           {interested.length > 0 && (
@@ -178,20 +183,28 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
               </div>
             </>
           )}
-          {/* The invitee can suggest shows RIGHT HERE (Alborz 2026-08-01) —
-              picks park per-token and become proposals on accept. The old
-              "(You can also propose other shows.)" parenthetical retired
-              with it — the block's own "(You can also do this later.)"
-              carries that message now. */}
-          {invite.token && <InviteShowSuggest token={invite.token} idiom="desktop" />}
-          {/* Button directly under the search bar, tail line under it so the
-              pair reads as one sentence (Alborz 2026-08-11; the "Join
-              Sidebar so you can watch with them." heading retired). */}
-          <div style={{ textAlign: "center", marginTop: 28 }}>
-            <button style={signInPill} onClick={invite.onJoin}>JOIN YOUR FRIEND</button>
-            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, marginTop: 14 }}>&hellip;and start writing.</div>
-          </div>
         </div>
+        {/* The invitee can suggest shows RIGHT HERE (Alborz 2026-08-01) —
+            picks park per-token and become proposals on accept. The old
+            "(You can also propose other shows.)" parenthetical retired
+            with it — the block's own "(You can also do this later.)"
+            carries that message now. The inviter's shows above are hidden
+            from the block's browse rows. */}
+        {invite.token && (
+          <InviteShowSuggest
+            token={invite.token}
+            idiom="desktop"
+            excludeTvmazeIds={new Set([...interested, ...watching].map(({ show }) => Number(show.tvmazeId)).filter((n) => !!n))}
+          />
+        )}
+        {/* Button directly under the search bar, tail line under it so the
+            pair reads as one sentence (Alborz 2026-08-11; the "Join
+            Sidebar so you can watch with them." heading retired). */}
+        <div style={{ textAlign: "center", marginTop: 28, paddingBottom: 80 }}>
+          <button style={signInPill} onClick={invite.onJoin}>JOIN YOUR FRIEND</button>
+          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, marginTop: 14 }}>&hellip;and start writing.</div>
+        </div>
+        </>
       ) : (
         <div style={contentWrap}>
           <h1 style={heading}><span style={{ color: C.cream }}>{ownerName}</span>&rsquo;s watch pool:</h1>

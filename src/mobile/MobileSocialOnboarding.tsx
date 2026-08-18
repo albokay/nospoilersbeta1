@@ -25,7 +25,7 @@
  * the retry and offers copy-the-link immediately. The declared progress is
  * persisted at screen 2→3 so the real compose form loads normally.
  */
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { CANON } from "../styles/canon";
@@ -47,7 +47,10 @@ import {
   addThreadToGroup,
   logThreadPrompt,
   type Show,
+  type BrowseShow,
 } from "../lib/db";
+import { ensureCatalogShow } from "../lib/browseCatalog";
+import MobileBrowseRows from "./MobileBrowseRows";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const C = {
@@ -82,6 +85,21 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
   const [show, setShow] = useState<Show | null>(null);
   const [prog, setProg] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
   const [searchOpen, setSearchOpen] = useState(false);
+  // Browse-row poster tap (2026-08-18): catalog-ensure, then select the show
+  // — the inline picker + "next" take over from there.
+  const [browseBusy, setBrowseBusy] = useState(false);
+  const noExclusions = useMemo(() => new Set<number>(), []);
+  async function pickBrowseShow(b: BrowseShow) {
+    if (browseBusy) return;
+    setBrowseBusy(true);
+    try {
+      const s = await ensureCatalogShow(shows, b);
+      setShows((prev) => (prev.some((x) => x.id === s.id) ? prev : [...prev, s]));
+      setShow(s);
+      setProg({ s: 0, e: 0 });
+    } catch (e) { console.error("[m-onboarding] browse pick failed", e); }
+    finally { setBrowseBusy(false); }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -242,6 +260,15 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
           </div>
           {!show && (
             <button style={{ ...accentPill, marginTop: 32 }} onClick={() => setSearchOpen(true)}>Find your show</button>
+          )}
+          {/* Browse rows (2026-08-18): the group room's poster strips, below
+              the search until a show is picked. A tap selects the show and
+              the inline "How much have you watched?" follows (same as
+              returning via "pick a different show"). */}
+          {!show && (
+            <div style={{ width: "100%", marginTop: 32 }}>
+              <MobileBrowseRows excludeTvmazeIds={noExclusions} onPick={pickBrowseShow} />
+            </div>
           )}
           {show && (
             <div style={{ textAlign: "center", marginTop: 32, padding: "0 24px", width: "100%", boxSizing: "border-box" }}>
