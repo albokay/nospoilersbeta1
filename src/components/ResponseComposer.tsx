@@ -61,6 +61,9 @@ interface ResponseComposerProps {
     episode: number;
     reference: PendingReference | null;
   }) => Promise<void>;
+  /** Mobile show room (2026-08-18): the box sits centered in the entry
+   *  card (no left indent) — mirrors RepliesList's mobileIdiom. */
+  mobileIdiom?: boolean;
 }
 
 export default function ResponseComposer({
@@ -90,6 +93,7 @@ export default function ResponseComposer({
   requestOwnerUsername,
   requestHasPending = false,
   onSubmitRequest,
+  mobileIdiom = false,
 }: ResponseComposerProps) {
   // Re-watchers tag replies at their highest prior progress; others use viewerSeason/Episode
   const replyTagS = postTagSeason ?? viewerSeason;
@@ -275,8 +279,9 @@ export default function ResponseComposer({
     <div
       ref={composerRef}
       // marginLeft 8 lines the box up with the reply cards (their own
-      // marginLeft — Alborz 2026-08-13 tweak 2).
-      style={{ marginTop: 16, marginLeft: 8 }}
+      // marginLeft — Alborz 2026-08-13 tweak 2); 0 on mobile, where both
+      // sit centered (Alborz 2026-08-18).
+      style={{ marginTop: 16, marginLeft: mobileIdiom ? 0 : 8 }}
       id="response-composer"
     >
       {requestSent ? (

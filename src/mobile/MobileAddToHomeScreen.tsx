@@ -84,9 +84,10 @@ function GuideBody({ path }: { path: InstallPath }) {
       <Step n={1}>{path === "ios-webview" ? "Then tap" : "Tap"} the share icon {shareGlyph} {where}.</Step>
       <Step n={2}>Scroll down and choose <b>Add to Home Screen</b>.</Step>
       <Step n={3}>Tap <b>Add</b>. Sidebar opens like an app from now on.</Step>
-      {path === "ios-safari" && (
-        <p style={foot}>(Not seeing it? Open this page in Safari itself first.)</p>
-      )}
+      {/* No "not seeing it?" hedge in the Safari guide (Alborz 2026-08-18).
+          Trade-off, eyes open: the Safari-flavored viewer some apps embed
+          (Twitter/Slack/Reddit) is UA-indistinguishable from real Safari and
+          lacks Add to Home Screen — those users get no hint. */}
       <p style={foot}>(You&rsquo;ll sign in once inside the app.)</p>
     </>
   );

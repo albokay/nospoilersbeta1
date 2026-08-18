@@ -743,7 +743,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
           {groupShelves.notStarted.length > 0 && (
             <>
-              <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: groupShelves.watching.length ? 40 : 0 }}>
+              {/* Vertical rhythm tightened from here down (Alborz 2026-08-18)
+                  so the first browse row peeks clearly above the docked deck
+                  card — an invitation to scroll, not a covered-up glitch. */}
+              <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: groupShelves.watching.length ? 28 : 0 }}>
                 Proposed shows:
               </h1>
               <div style={shelfCol}>
@@ -767,7 +770,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           {/* The group room's two centered actions, set a little apart from
               the show rows above (desktop CP2 order + copy). Equal width via
               the stretch column (both sized to the wider "Add friends" label). */}
-          <div style={{ display: "flex", justifyContent: "center", marginTop: empty ? 24 : 40 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: empty ? 24 : 28 }}>
             <div style={actionCol}>
               <button style={searchPill} onClick={() => setSearchOpen(true)}>Propose more shows?</button>
               <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
@@ -1094,7 +1097,8 @@ const notifDotChatInline: React.CSSProperties = {
   position: "absolute", top: 6, left: 0, width: 14, height: 14, borderRadius: "50%",
   background: C.blue, zIndex: 1,
 };
-const contentWrap: React.CSSProperties = { padding: "8px 16px 40px" };
+// Bottom 16 (was 40; Alborz 2026-08-18) — the browse rows follow directly.
+const contentWrap: React.CSSProperties = { padding: "8px 16px 16px" };
 const shelfHeader: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 24, letterSpacing: 0, color: C.cream,
   textAlign: "center", textTransform: "uppercase", margin: "0 0 16px",

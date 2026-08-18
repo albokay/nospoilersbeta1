@@ -829,6 +829,7 @@ export default function V2InlineThread({
                 ? (payload) => publicRoomGate.onSubmitRequest(thread.id, payload)
                 : undefined
             }
+            mobileIdiom={mobileIdiom}
           />
         </div>
       )}

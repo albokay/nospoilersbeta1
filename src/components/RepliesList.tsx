@@ -1073,7 +1073,10 @@ export default function RepliesList({
                     ? `${w}px solid #4b8f6c`
                     : `${w}px solid var(--dos-border)`;
                 })(),
-                marginLeft: 8,
+                // Desktop keeps the 8px left indent; on mobile the reply
+                // cards sit CENTERED in the entry box (Alborz 2026-08-18 —
+                // the indent read as nudged-right on a phone).
+                marginLeft: mobileIdiom ? 0 : 8,
                 position: "relative",
                 color: "var(--dos-bg)",
                 ["--dos-accent" as any]: "var(--dos-bg)",
