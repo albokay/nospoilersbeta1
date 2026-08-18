@@ -27,6 +27,13 @@ verify_jwt = false
 # header). See HANDOFF.md §"Edge function deploy notes".
 verify_jwt = false
 
+[functions.build-browse-rows]
+# Not user-invoked — called nightly by pg_cron (run_build_browse_rows) and
+# manually for testing. Gates on the SAME shared secret as send-digests
+# (DIGEST_CRON_SECRET via x-digest-secret) — same trust boundary, nothing new
+# to provision. Rebuilds the group room's auto poster rows from TVMaze.
+verify_jwt = false
+
 [functions.delete-account]
 # Self-serve account deletion. Same ES256 reason as the others — the function
 # verifies the JWT itself via admin.auth.getUser(jwt), then anonymizes via a
