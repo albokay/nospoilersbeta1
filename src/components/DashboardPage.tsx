@@ -96,6 +96,8 @@ import SocialOnboarding from "./SocialOnboarding";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
 import DeckGridCard from "./deck/DeckGridCard";
+import BrowseRows from "./BrowseRows";
+import type { BrowseShow } from "../lib/db";
 import { linkifyText } from "../lib/linkify";
 
 // TSP onboarding demo (spec §9): the onboarding for the NEW /dashboard world.
@@ -260,7 +262,10 @@ export default function DashboardPage() {
   const [leaveConfirm, setLeaveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
 
   // §9 click-model popover (group context). mode captured at click time.
-  const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
+  // fromBrowse (2026-08-17): opened from a poster row — a "yes" proposes and
+  // CLOSES the modal so the thumbnail is seen swapping out (the show is then
+  // on the Proposed shelf, where a click gives the full modal as usual).
+  const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean; fromBrowse?: boolean } | null>(null);
   const [declaredProgress, setDeclaredProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
 
   // CP5b: pending invites (rail "*you're invited"), group options (gear).
@@ -568,6 +573,17 @@ export default function DashboardPage() {
     return m;
   }, [shows]);
 
+  // Browse rows hide the group's OWN shows (open rooms + proposals) — those
+  // already live on the shelves above. Keyed by TVMaze id (what the rows use).
+  const groupTvmazeIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const gs of groupShows) {
+      const tv = showsById[gs.showId]?.tvmazeId;
+      if (tv) ids.add(Number(tv));
+    }
+    return ids;
+  }, [groupShows, showsById]);
+
   // Warm the trailer cache for the active group's NOT-STARTED shows so the
   // opt-in modal's trailer is already resolved before the viewer clicks (zero
   // resolution latency on click). Deferred to browser idle (timeout fallback)
@@ -843,6 +859,42 @@ export default function DashboardPage() {
     }
   }
 
+  // Browse-row poster click (2026-08-17): make sure the show is in Sidebar's
+  // catalog (same side effect as picking a TVMaze search result — a shared
+  // cache of TVMaze data, accepted by Alborz), then open the yellow modal in
+  // its plain vote form. Nothing is written to the GROUP until the toggle
+  // says yes; ×/no just closes.
+  const [browseBusy, setBrowseBusy] = useState(false);
+  async function pickBrowseShow(b: BrowseShow) {
+    if (browseBusy || !activeGroupId) return;
+    setBrowseBusy(true);
+    try {
+      const tvId = String(b.tvmazeId);
+      let show = shows.find((s) => s.tvmazeId === tvId);
+      if (!show) {
+        const [seasons, rec] = await Promise.all([
+          tvmazeEpisodes(b.tvmazeId),
+          fetch(`https://api.tvmaze.com/shows/${b.tvmazeId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        ]);
+        // Slug collision guard: a DIFFERENT show already owning slugify(name)
+        // (e.g. a same-titled remake) must not have its seasons overwritten by
+        // createShow's conflict-UPDATE fallback — suffix the id instead.
+        let id = slugify(b.name);
+        const clash = shows.find((s) => s.id === id && s.tvmazeId && s.tvmazeId !== tvId);
+        if (clash) id = `${id}-${tvId}`;
+        show = await createShow({ id, name: rec?.name ?? b.name, seasons, tvmazeId: tvId, status: rec?.status });
+        const created = show;
+        setShows((prev) => (prev.some((s) => s.id === created.id) ? prev : [...prev, created]));
+      }
+      setDeclaredProgress({ s: 0, e: 0 });
+      setClicked({ showId: show.id, name: show.name, mode: "vote", voteToggle: true, fromBrowse: true });
+    } catch (e) {
+      console.error("[dashboard] browse pick failed", e);
+    } finally {
+      setBrowseBusy(false);
+    }
+  }
+
   // In-group add = PROPOSE the show into THIS group (group-scoped model,
   // 2026-07-06): the vote is the proposal. A not-started pick stays off the
   // personal record's pool (a proposal lives only in its group); a real
@@ -1043,6 +1095,9 @@ export default function DashboardPage() {
         return { ...gs, members: [...gs.members, { userId: user.id, voted: true, s: cur?.s ?? 0, e: cur?.e ?? 0, wrote: false, wroteEntryMinS: null, wroteEntryMinE: null }] };
       }));
       if (!voted) setClicked((prev) => (prev && prev.showId === showId ? { ...prev, mode: "vote" } : prev));
+      // Browse-row origin (2026-08-17): a yes proposes and closes — the
+      // poster drops out of its row as the shelves refresh below.
+      if (voted) setClicked((prev) => (prev && prev.showId === showId && prev.fromBrowse ? null : prev));
       await refreshGroup(activeGroupId);
     } catch (e) { console.error("[dashboard] vote failed", e); }
   }
@@ -1396,6 +1451,7 @@ export default function DashboardPage() {
         // ── Group context (sky) ───────────────────────────────────────────────
         // paddingTop 24 (= base 8 + 16) lowers the heading/shelves/show buttons
         // by 16px; the top banner + back/chat tabs are positioned separately.
+        <>
         <div style={{ ...contentWrap, paddingTop: 24 }}>
           {/* First entry per session: the shelves haven't loaded yet — the
               standard loading line, NOT the empty-group prompt (which reads
@@ -1470,6 +1526,17 @@ export default function DashboardPage() {
           </>
           )}
         </div>
+        {/* Browse rows (2026-08-17): poster shelves — starting up, popular,
+            curated — spanning wider than the shelf column. Wait for the
+            group's shows so the exclusion is right on first paint. Bottom
+            clearance so the docked "How We Watch TV" card can't cover the
+            last row. */}
+        {!groupLoading && (
+          <div style={{ paddingBottom: 110 }}>
+            <BrowseRows excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} />
+          </div>
+        )}
+        </>
       ) : (
         // ── Groups-only dashboard (green, CP2) ────────────────────────────────
         // The personal shelves are gone: the dashboard is your groups (the

@@ -5671,3 +5671,59 @@ async function sendGroupInviteNudgeBody(body: Record<string, unknown>): Promise<
     return { ok: false };
   }
 }
+
+// ── Browse rows (group-room poster shelves, 2026-08-17) ─────────────────────
+// Public TV data, no user data. The AUTO rows (starting_up / popular) are
+// rebuilt nightly by the build-browse-rows edge function; the CURATED lists
+// are Alborz-authored (seeded via SQL for now; admin editor later). Both reads
+// are pre-migration tolerant ([] on any error) so the group room can never
+// break on their account.
+export type BrowseShow = {
+  tvmazeId: number;
+  name: string;
+  imageUrl: string | null;
+  channel: string | null;
+};
+export type BrowseAutoRows = { startingUp: BrowseShow[]; popular: BrowseShow[] };
+export type BrowseList = { id: string; title: string; shows: BrowseShow[] };
+
+export async function fetchBrowseAutoRows(): Promise<BrowseAutoRows> {
+  const empty: BrowseAutoRows = { startingUp: [], popular: [] };
+  try {
+    const { data, error } = await supabase
+      .from("browse_shows")
+      .select("row_key, tvmaze_id, rank, name, image_url, channel")
+      .order("rank", { ascending: true });
+    if (error || !data) return empty;
+    const out: BrowseAutoRows = { startingUp: [], popular: [] };
+    for (const r of data as any[]) {
+      const s: BrowseShow = { tvmazeId: Number(r.tvmaze_id), name: r.name, imageUrl: r.image_url ?? null, channel: r.channel ?? null };
+      if (r.row_key === "starting_up") out.startingUp.push(s);
+      else if (r.row_key === "popular") out.popular.push(s);
+    }
+    return out;
+  } catch {
+    return empty;
+  }
+}
+
+export async function fetchBrowseLists(): Promise<BrowseList[]> {
+  try {
+    const { data, error } = await supabase
+      .from("browse_lists")
+      .select("id, title, sort_order, browse_list_shows ( tvmaze_id, name, image_url, sort_order )")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    if (error || !data) return [];
+    return (data as any[]).map((l) => ({
+      id: l.id,
+      title: l.title,
+      shows: ((l.browse_list_shows ?? []) as any[])
+        .slice()
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((s) => ({ tvmazeId: Number(s.tvmaze_id), name: s.name, imageUrl: s.image_url ?? null, channel: null })),
+    }));
+  } catch {
+    return [];
+  }
+}

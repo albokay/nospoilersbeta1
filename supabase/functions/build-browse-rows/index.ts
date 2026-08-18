@@ -80,7 +80,9 @@ function passes(s: TvShow, ep: TvEpisode): boolean {
   if (s.language !== "English") return false;
   if (!CHANNELS.has(channelOf(s).toLowerCase())) return false;
   if ((s.genres ?? []).includes("Children")) return false;
-  if ((ep.season ?? 0) > 100 || (ep.number ?? 0) > 60) return false;
+  // Daily/soap + decades-long runners (Casualty S49 slipped past the first
+  // run): year-numbered seasons, 60+ episode seasons, or season ≥ 40.
+  if ((ep.season ?? 0) >= 40 || (ep.number ?? 0) > 60) return false;
   if (ep.type && ep.type !== "regular") return false;
   return true;
 }
