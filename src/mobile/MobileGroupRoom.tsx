@@ -45,7 +45,11 @@ import {
   type Show,
   type GroupDashboardShow,
   type RoomVisibility,
+  createShow,
+  type BrowseShow,
 } from "../lib/db";
+import { tvmazeEpisodes, slugify } from "../lib/tvmaze";
+import MobileBrowseRows from "./MobileBrowseRows";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { groupGenericName, personDisplayName } from "../lib/groupNames";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
@@ -173,7 +177,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     .map((p) => ({ name: p.name, createdAt: p.createdAt, inviteId: p.inviteId }));
 
   // Sheets
-  const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean } | null>(null);
+  // fromBrowse (2026-08-17, desktop parity): opened from a poster row — a
+  // "yes" proposes and CLOSES the sheet so the poster is seen swapping out.
+  const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean; fromBrowse?: boolean } | null>(null);
   const [declaredProgress, setDeclaredProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
   const [searchOpen, setSearchOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -329,6 +335,17 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     return m;
   }, [shows]);
 
+  // Browse rows hide the group's OWN shows (open rooms + proposals) — those
+  // already live on the shelves above. Keyed by TVMaze id (what the rows use).
+  const groupTvmazeIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const gs of groupShows) {
+      const tv = showsById[gs.showId]?.tvmazeId;
+      if (tv) ids.add(Number(tv));
+    }
+    return ids;
+  }, [groupShows, showsById]);
+
   // userId → display name (naming arc 2026-07-07, desktop parity): the name
   // the VIEWER gave each member, else their handle — drives the interested
   // lines, the "Read what … has written?" prompt, and avatar letters.
@@ -453,8 +470,45 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         return { ...gs, members: [...gs.members, { userId: user.id, voted: true, s: cur?.s ?? 0, e: cur?.e ?? 0, wrote: false, wroteEntryMinS: null, wroteEntryMinE: null }] };
       }));
       if (!voted) setClicked((prev) => (prev && prev.showId === showId ? { ...prev, mode: "vote" } : prev));
+      // Browse-row origin: a yes proposes and closes — the poster drops out
+      // of its row as the shelves refresh.
+      if (voted) setClicked((prev) => (prev && prev.showId === showId && prev.fromBrowse ? null : prev));
       await refreshGroup();
     } catch (e) { console.error("[m-group] vote failed", e); }
+  }
+
+  // Browse-row poster tap (2026-08-17, mirrors DashboardPage.pickBrowseShow):
+  // make sure the show is in Sidebar's catalog (same side effect as picking a
+  // TVMaze search result), then open the yellow sheet in its plain vote form.
+  // Nothing is written to the GROUP until the toggle says yes; ×/no closes.
+  const [browseBusy, setBrowseBusy] = useState(false);
+  async function pickBrowseShow(b: BrowseShow) {
+    if (browseBusy) return;
+    setBrowseBusy(true);
+    try {
+      const tvId = String(b.tvmazeId);
+      let show = shows.find((s) => s.tvmazeId === tvId);
+      if (!show) {
+        const [seasons, rec] = await Promise.all([
+          tvmazeEpisodes(b.tvmazeId),
+          fetch(`https://api.tvmaze.com/shows/${b.tvmazeId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        ]);
+        // Slug collision guard (a same-titled show must not have its seasons
+        // overwritten by createShow's conflict-UPDATE fallback).
+        let id = slugify(b.name);
+        const clash = shows.find((s) => s.id === id && s.tvmazeId && s.tvmazeId !== tvId);
+        if (clash) id = `${id}-${tvId}`;
+        show = await createShow({ id, name: rec?.name ?? b.name, seasons, tvmazeId: tvId, status: rec?.status });
+        const created = show;
+        setShows((prev) => (prev.some((s) => s.id === created.id) ? prev : [...prev, created]));
+      }
+      setDeclaredProgress({ s: 0, e: 0 });
+      setClicked({ showId: show.id, name: show.name, mode: "vote", voteToggle: true, fromBrowse: true });
+    } catch (e) {
+      console.error("[m-group] browse pick failed", e);
+    } finally {
+      setBrowseBusy(false);
+    }
   }
 
   async function goToRoom(showId: string) {
@@ -720,6 +774,16 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Browse rows (mobile mirror 2026-08-17): the same poster shelves as
+          desktop, as touch-swipe strips. Outside contentWrap so they can run
+          off the right screen edge; wait for the shelves so the exclusion is
+          right on first paint. Bottom clearance for the docked deck card. */}
+      {!loading && (
+        <div style={{ paddingBottom: 96 }}>
+          <MobileBrowseRows excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} />
         </div>
       )}
 

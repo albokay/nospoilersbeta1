@@ -18,8 +18,11 @@
  * renders nothing. Poster-less shows (a brand-new premiere before TVMaze has
  * art) are skipped rather than shown as a blank card.
  *
- * Desktop only (v1). Click → the parent's yellow opt-in modal in its plain
- * "Do you want to watch?" form (see DashboardPage.pickBrowseShow).
+ * Desktop rendering lives here; mobile renders the SAME rows (via the
+ * exported useBrowseRows hook) as touch-swipe strips in
+ * src/mobile/MobileBrowseRows.tsx. Click → the page's yellow opt-in
+ * modal/sheet in its plain "Do you want to watch?" form (see
+ * DashboardPage.pickBrowseShow / MobileGroupRoom.pickBrowseShow).
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -39,16 +42,16 @@ const VISIBLE = 5.5;
 const WINDOW_W = Math.round(VISIBLE * CARD_W + Math.floor(VISIBLE) * GAP); // 1178
 const ARROW_ZONE = 96;       // frame width reserved for each arrow at minimum
 
-type Row = { key: string; title: string; shows: BrowseShow[] };
+export type BrowseRow = { key: string; title: string; shows: BrowseShow[] };
 
-export default function BrowseRows({
-  excludeTvmazeIds,
-  onPick,
-}: {
-  /** TVMaze ids of the group's own shows (open rooms + proposals) — hidden everywhere. */
-  excludeTvmazeIds: Set<number>;
-  onPick: (show: BrowseShow) => void;
-}) {
+/**
+ * The row-building logic, shared by desktop (this file) and mobile
+ * (src/mobile/MobileBrowseRows.tsx) so the two can't drift: fetch once,
+ * then order → hide the group's shows → one appearance per show page-wide →
+ * date-seeded curated picks → ROW_LEN per row. Re-derives whenever the
+ * exclusion set changes (a proposal from a row drops that poster out).
+ */
+export function useBrowseRows(excludeTvmazeIds: Set<number>): BrowseRow[] {
   const [auto, setAuto] = useState<{ startingUp: BrowseShow[]; popular: BrowseShow[] } | null>(null);
   const [lists, setLists] = useState<BrowseList[]>([]);
   useEffect(() => {
@@ -61,7 +64,7 @@ export default function BrowseRows({
     return () => { cancelled = true; };
   }, []);
 
-  const rows = useMemo<Row[]>(() => {
+  return useMemo<BrowseRow[]>(() => {
     if (!auto) return [];
     const seen = new Set<number>();
     const take = (cands: BrowseShow[]): BrowseShow[] => {
@@ -77,14 +80,24 @@ export default function BrowseRows({
     };
     const today = new Date().toISOString().slice(0, 10);
     // Popular leads (Alborz 2026-08-17; was starting-up first).
-    const built: Row[] = [
+    const built: BrowseRow[] = [
       { key: "popular", title: "Popular right now:", shows: take(auto.popular) },
       { key: "starting_up", title: "About to start up:", shows: take(auto.startingUp) },
       ...lists.map((l) => ({ key: l.id, title: l.title, shows: take(seededShuffle(l.shows, `${today}|${l.id}`)) })),
     ];
     return built.filter((r) => r.shows.length > 0);
   }, [auto, lists, excludeTvmazeIds]);
+}
 
+export default function BrowseRows({
+  excludeTvmazeIds,
+  onPick,
+}: {
+  /** TVMaze ids of the group's own shows (open rooms + proposals) — hidden everywhere. */
+  excludeTvmazeIds: Set<number>;
+  onPick: (show: BrowseShow) => void;
+}) {
+  const rows = useBrowseRows(excludeTvmazeIds);
   if (rows.length === 0) return null;
   return (
     // 8px top (was 48 — Alborz 2026-08-17: 40px closer to the group's last button).
@@ -94,7 +107,7 @@ export default function BrowseRows({
   );
 }
 
-function PosterRow({ row, onPick }: { row: Row; onPick: (s: BrowseShow) => void }) {
+function PosterRow({ row, onPick }: { row: BrowseRow; onPick: (s: BrowseShow) => void }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
