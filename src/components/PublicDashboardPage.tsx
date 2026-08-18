@@ -195,15 +195,17 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
             token={invite.token}
             idiom="desktop"
             excludeTvmazeIds={new Set([...interested, ...watching].map(({ show }) => Number(show.tvmazeId)).filter((n) => !!n))}
-          />
+          >
+            {/* Button directly under the search bar, tail line under it so
+                the pair reads as one sentence (Alborz 2026-08-11); ABOVE the
+                browse rows (Alborz 2026-08-18). */}
+            <div style={{ textAlign: "center", marginTop: 28 }}>
+              <button style={signInPill} onClick={invite.onJoin}>JOIN YOUR FRIEND</button>
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, marginTop: 14 }}>&hellip;and start writing.</div>
+            </div>
+          </InviteShowSuggest>
         )}
-        {/* Button directly under the search bar, tail line under it so the
-            pair reads as one sentence (Alborz 2026-08-11; the "Join
-            Sidebar so you can watch with them." heading retired). */}
-        <div style={{ textAlign: "center", marginTop: 28, paddingBottom: 80 }}>
-          <button style={signInPill} onClick={invite.onJoin}>JOIN YOUR FRIEND</button>
-          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, marginTop: 14 }}>&hellip;and start writing.</div>
-        </div>
+        <div style={{ paddingBottom: 80 }} />
         </>
       ) : (
         <div style={contentWrap}>

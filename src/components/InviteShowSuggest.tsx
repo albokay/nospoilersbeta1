@@ -23,7 +23,7 @@ import type { BrowseShow } from "../lib/db";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
-export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, bleedX = 0 }: {
+export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, bleedX = 0, children }: {
   token: string;
   idiom: "desktop" | "mobile";
   /** The inviter's shows shown on the wall above (already on the table) —
@@ -32,6 +32,10 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
   /** Mobile: the wall's horizontal padding to cancel so the poster strips
    *  run edge-to-edge like the group room's. */
   bleedX?: number;
+  /** Rendered BETWEEN the search card and the browse rows — the walls pass
+   *  their JOIN YOUR FRIEND cluster here (Alborz 2026-08-18: the button and
+   *  "…and start writing." sit above the thumbnails). */
+  children?: React.ReactNode;
 }) {
   const mobile = idiom === "mobile";
   const [shows, setShows] = useState<Show[]>([]);
@@ -159,7 +163,7 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={ensureVisible}
-          placeholder="find a show"
+          placeholder="search"
           style={searchInput}
         />
         {hasResults && (
@@ -183,10 +187,12 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
         )}
       </div>
 
+      {children}
+
       {/* The poster rows, rendered exactly as in the group room (Alborz
           2026-08-18). Mobile strips cancel the wall's side padding so they
           run to the screen edges. */}
-      <div style={{ textAlign: "left", marginTop: 12, ...(mobile && bleedX ? { marginLeft: -bleedX, marginRight: -bleedX } : {}) }}>
+      <div style={{ textAlign: "left", marginTop: 28, ...(mobile && bleedX ? { marginLeft: -bleedX, marginRight: -bleedX } : {}) }}>
         {mobile
           ? <MobileBrowseRows excludeTvmazeIds={browseExclude} onPick={addFromBrowse} />
           : <BrowseRows excludeTvmazeIds={browseExclude} onPick={addFromBrowse} />}
