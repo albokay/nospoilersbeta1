@@ -1691,7 +1691,7 @@ export default function DashboardPage() {
                     <input
                       value={inviteShowQuery}
                       onChange={(e) => setInviteShowQuery(e.target.value)}
-                      placeholder="find a show"
+                      placeholder="find your show"
                       style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, marginBottom: 0 }}
                     />
                     {(inviteCatalogMatches.length > 0 || inviteTvToAdd.length > 0) && (

@@ -317,7 +317,7 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
           <div style={onbSubline}>(You can add more later.)</div>
         </div>
         {!show && !searchOpen && (
-          <button style={searchPill} onClick={() => setSearchOpen(true)}>Find your show</button>
+          <button style={searchPill} onClick={() => setSearchOpen(true)}>search</button>
         )}
         {!show && searchOpen && (
           <div style={searchCard}>

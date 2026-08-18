@@ -259,7 +259,7 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
             <div style={onbSubline}>(You can add more later.)</div>
           </div>
           {!show && (
-            <button style={{ ...accentPill, marginTop: 32 }} onClick={() => setSearchOpen(true)}>Find your show</button>
+            <button style={{ ...accentPill, marginTop: 32 }} onClick={() => setSearchOpen(true)}>search</button>
           )}
           {/* Browse rows (2026-08-18): the group room's poster strips, below
               the search until a show is picked. A tap selects the show and

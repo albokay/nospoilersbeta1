@@ -250,7 +250,7 @@ export default function MobileInviteSheet({
                 <input
                   value={showQuery}
                   onChange={(e) => setShowQuery(e.target.value)}
-                  placeholder="find a show"
+                  placeholder="find your show"
                   className="m-invite-input"
                   style={{ ...emailInput, marginBottom: 0 }}
                 />

@@ -163,7 +163,7 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={ensureVisible}
-          placeholder="search"
+          placeholder="find your show"
           style={searchInput}
         />
         {hasResults && (
