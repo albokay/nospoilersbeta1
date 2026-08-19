@@ -392,7 +392,7 @@ export default function MobileDashboard() {
                   // plate behind the outlined row; the no-op touchstart makes
                   // iOS honor :active. Pending-invite rows below are NOT
                   // pressable (they open a prompt, not a room).
-                  <span key={group.id} className="sb-press" style={{ borderRadius: 20, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
+                  <span key={group.id} className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
                     <span className="sb-plate" />
                   <button style={groupRow} onClick={() => navigate(`/m/group/${group.id}`)}>
                     <span style={avatarStrip}>
@@ -540,15 +540,19 @@ const topCircleBtn: React.CSSProperties = {
   border: `2px solid ${C.cream}`, cursor: "pointer",
   display: "inline-flex", alignItems: "center", justifyContent: "center",
 };
+// gap 16 (was 12; Alborz 2026-08-18) — the rows felt crowded once they
+// gained their pressable plates.
 const groupsWrap: React.CSSProperties = {
-  display: "flex", flexDirection: "column", gap: 12, padding: "8px 16px 24px",
+  display: "flex", flexDirection: "column", gap: 16, padding: "8px 16px 24px",
 };
 const groupRow: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: 12,
-  width: "100%", minHeight: 64, padding: "10px 16px", boxSizing: "border-box",
+  // Full pill like desktop (Alborz 2026-08-18; was radius 20) — side padding
+  // 20 keeps the avatars + name clear of the 32px round ends.
+  width: "100%", minHeight: 64, padding: "10px 20px", boxSizing: "border-box",
   // Page-green fill (was transparent) so the pressable plate behind the row
   // can't show through (2026-08-18).
-  borderRadius: 20, border: `2px solid ${C.cream}`, background: C.green,
+  borderRadius: 65, border: `2px solid ${C.cream}`, background: C.green,
   cursor: "pointer", textAlign: "left",
 };
 const avatarStrip: React.CSSProperties = { display: "inline-flex", flexShrink: 0 };

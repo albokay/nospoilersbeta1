@@ -1010,7 +1010,7 @@ function ShowRow({ row, dot, line2, onClick }: {
   // own color. The no-op touchstart makes iOS honor :active on the press.
   const plateColor = isSelfWatching || isGreen ? C.green : C.cream;
   return (
-    <span className="sb-press" style={{ borderRadius: 20, ["--sb-plate" as any]: plateColor }} onTouchStart={() => {}}>
+    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: plateColor }} onTouchStart={() => {}}>
       <span className="sb-plate" />
     <button onClick={onClick} style={{ ...rowBase, background: bg, border, color: fg }}>
       {dot && <span style={rowDot} />}
@@ -1103,12 +1103,16 @@ const shelfCol: React.CSSProperties = { display: "flex", flexDirection: "column"
 const rowBase: React.CSSProperties = {
   position: "relative",
   display: "flex", alignItems: "center", gap: 12,
-  width: "100%", minHeight: 64, padding: "12px 18px", boxSizing: "border-box",
-  borderRadius: 20, cursor: "pointer", textAlign: "left",
+  // Full pill like desktop (Alborz 2026-08-18; was radius 20) — side padding
+  // 22 keeps the name + avatars clear of the 32px round ends.
+  width: "100%", minHeight: 64, padding: "12px 22px", boxSizing: "border-box",
+  borderRadius: 65, cursor: "pointer", textAlign: "left",
   fontFamily: '"Inter", sans-serif',
 };
 const rowDot: React.CSSProperties = {
-  position: "absolute", top: -6, left: 6, width: 16, height: 16, borderRadius: "50%",
+  // On the pill shape the dot sits on the top-left curve (left 14; was 6
+  // on the squarer corner).
+  position: "absolute", top: -6, left: 14, width: 16, height: 16, borderRadius: "50%",
   background: C.blue, zIndex: 2,
 };
 const optInAvatar: React.CSSProperties = {

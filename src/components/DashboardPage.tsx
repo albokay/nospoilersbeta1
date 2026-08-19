@@ -2324,11 +2324,14 @@ function pyramidRows(n: number): number[] {
 }
 
 /** Stacks avatars into the pyramid arrangement, centered, rows tucked. */
-function AvatarPile({ avatars }: { avatars: React.ReactNode[] }) {
+// minHeight (Alborz 2026-08-18): every pile on a row gets the TALLEST pile's
+// height with its avatars bottom-aligned, so the cluster names' first lines
+// line up across clusters (was top-aligned piles → ragged names).
+function AvatarPile({ avatars, minHeight }: { avatars: React.ReactNode[]; minHeight?: number }) {
   const rows = pyramidRows(avatars.length);
   let idx = 0;
   return (
-    <div style={avatarPile}>
+    <div style={{ ...avatarPile, ...(minHeight ? { minHeight, justifyContent: "flex-end" } : {}) }}>
       {rows.map((size, r) => {
         const slice = avatars.slice(idx, idx + size);
         idx += size;
@@ -2438,6 +2441,14 @@ function GroupClusters({
   }
 
   // Green dashboard: every group you're in + every group you're invited to.
+  // Shared pile height = the tallest pile on the row (56px circles, 6px row
+  // gaps) so every cluster's name starts on the same line.
+  const pileCounts = [
+    ...groups.map(({ members, pendingInvites: gp }) => members.filter((m) => m.userId !== selfUserId).length + gp.length),
+    ...pendingInvites.map((inv) => pendingInviteMemberNames(inv, contactNames).length),
+  ];
+  const maxRows = Math.max(1, ...pileCounts.map((n) => pyramidRows(n).length));
+  const pileMinHeight = maxRows * 56 + (maxRows - 1) * 6;
   return (
     <div style={clustersRow}>
       {groups.map(({ group, members, pendingInvites: groupPending }) => {
@@ -2483,7 +2494,7 @@ function GroupClusters({
             onMouseMove={(e) => onTip({ text: notif ?? "open group", wrap: !!notif, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => onTip(null)}
           >
-            <AvatarPile avatars={avatars} />
+            <AvatarPile avatars={avatars} minHeight={pileMinHeight} />
             <div style={clusterName}>
               {dot && <span style={{ ...notifDotCluster, background: dot === "red" ? C.red : C.blue }} />}
               {groupDisplayName(group, others, contactNames, groupPending.map((p) => p.name || "a friend"), groupNumberById[group.id])}
@@ -2502,7 +2513,7 @@ function GroupClusters({
             onMouseMove={(e) => onTip({ text: <>You&rsquo;ve been invited by {pendingInviterLabel(inv, contactNames)}<br />to join a watch group.</>, wrap: true, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => onTip(null)}
           >
-            <AvatarPile avatars={names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)} />
+            <AvatarPile avatars={names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)} minHeight={pileMinHeight} />
             <div style={clusterName}>{label}</div>
           </button>
         );
