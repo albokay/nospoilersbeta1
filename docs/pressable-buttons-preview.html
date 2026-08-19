@@ -21,15 +21,15 @@
      wrapper = the button drops onto the plate (instant, no color change) and
      the plate hides underneath. ─────────────────────────────────────────── */
   .press { position: relative; display: inline-block; }
-  .plate { position: absolute; inset: 0; border-radius: inherit; transform: translate(-4px, 5px);
-           border: 2px solid var(--pl); box-sizing: border-box; pointer-events: none; }
+  .plate { position: absolute; inset: 0; border-radius: inherit; transform: translate(-2px, 6px);
+           border: 3px solid var(--pl); box-sizing: border-box; pointer-events: none; }
   .sb { position: relative; display: inline-flex; align-items: center; justify-content: space-between;
         box-sizing: border-box; border: none; cursor: pointer; font-family: Inter, sans-serif; font-weight: 700;
         -webkit-tap-highlight-color: transparent; user-select: none; outline: none; width: 100%; }
   /* Desktop hover: the button comes "out" 1px (up-right, away from the plate,
      which stays put). Pointer devices only; instant. */
-  @media (hover: hover) { .press:hover .sb { transform: translate(2px, -1px); } }
-  .press:active .sb { transform: translate(-4px, 5px); }
+  @media (hover: hover) { .press:hover .sb { transform: translate(1px, -1px); } }
+  .press:active .sb { transform: translate(-2px, 6px); }
   .press:active .plate { border-color: transparent; }
 
   .pill { height: 44px; padding: 0 22px; border-radius: 65px; font-size: 14px; letter-spacing: -.5px; width: 240px; }
@@ -39,8 +39,8 @@
 </style>
 </head>
 <body>
-  <h1>Pressable show &amp; group buttons — APPROVED (2026-08-18)</h1>
-  <p class="note">Hover (desktop): the button comes out 2px across / 1px up, away from the plate. Press and hold: it drops onto the plate instantly (no animation, no color change) and the plate disappears underneath; release and it pops back. The plate is a 2px outline in the button's own color, 4px left / 5px down. Only the show pills/rows and the mobile group rows get this — no other buttons, and desktop's dashboard clusters stay as they are.</p>
+  <h1>Pressable show &amp; group buttons — APPROVED rev 2 (2026-08-18)</h1>
+  <p class="note">Hover (desktop): the button comes out 1px/1px, away from the plate. Press and hold: it drops onto the plate instantly (no animation, no color change) and the plate disappears underneath; release and it pops back. The plate is a 3px outline in the button's own color, 2px left / 6px down (raised, not leaning). Only the show pills/rows and the mobile group rows get this — no other buttons, and desktop's dashboard clusters stay as they are.</p>
 
   <div class="panel" style="background:#ADC8D7">
     <p class="lbl">Desktop group room — show pills</p>
