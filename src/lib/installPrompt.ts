@@ -85,3 +85,9 @@ export function installPath(): InstallPath {
   if (!/Safari/.test(ua)) return "ios-webview";
   return "ios-safari";
 }
+
+/** Installed app: tag the body so CSS can flatten the page background
+ *  (theme.ts body.pwa-standalone). Call once at boot. */
+export function markStandaloneBody(): void {
+  try { if (isStandalone()) document.body.classList.add("pwa-standalone"); } catch { /* tolerate */ }
+}

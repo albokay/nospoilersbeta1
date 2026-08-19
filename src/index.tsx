@@ -11,10 +11,10 @@ import { initSentry } from "./lib/sentry";
 // Home-screen app (2026-08-18): parks Chrome/Edge's early install prompt for
 // the mobile dashboard's "add Sidebar to your home screen" button.
 import "./lib/installPrompt";
-import { applyStandaloneInsetFallback } from "./lib/standaloneInset";
+import { markStandaloneBody } from "./lib/installPrompt";
 
 initSentry();
-applyStandaloneInsetFallback();
+markStandaloneBody();
 startHeaderClickAudit();
 
 declare global {

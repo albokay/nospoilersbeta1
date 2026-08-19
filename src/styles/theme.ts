@@ -1034,10 +1034,12 @@ body .btn.sb-send:hover{ background:var(--canon-friend,#adc8d7) !important; bord
 .sb-press:active > button{ transform:translate(-2px,6px); }
 .sb-press:active > .sb-plate{ border-color:transparent; }
 
-/* Installed-app notch fallback (lib/standaloneInset, 2026-08-18): applied
-   only when iOS reports a zero safe-area inset in standalone mode (the
-   post-reload bug) — pads the page down by the real status-bar height. */
-body.pwa-inset-fallback{ padding-top:var(--pwa-inset-top,0px); }
+/* Installed (home-screen) app: the body paints a FLAT page color — the
+   desktop "frame top" gradient showed as a lighter band behind the status
+   bar / on pull-down once there was no browser chrome to hide it (Alborz
+   2026-08-18). The mobile pages cover the body anyway; only the status-bar
+   strip and rubber-band area change. Class set at boot (installPrompt). */
+body.pwa-standalone{ background-image:none !important; }
 
 `;
 

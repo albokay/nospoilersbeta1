@@ -38,8 +38,10 @@ export default function lazyWithReload<T extends ComponentType<any>>(
         if (!alreadyTried && (typeof navigator === "undefined" || navigator.onLine !== false)) {
           // Installed (standalone) app: re-enter the same URL as a fresh
           // navigation rather than a reload — iOS can drop the notch inset
-          // after an in-app reload (2026-08-18; lib/standaloneInset is the
-          // backstop if it happens anyway). Browsers: plain reload.
+          // after an in-app reload (2026-08-18). (A JS inset fallback was
+          // tried and REMOVED the same day: iOS reports the inset late at
+          // launch, so the probe read 0 and double-padded the page.)
+          // Browsers: plain reload.
           if (isStandalone()) window.location.replace(window.location.href);
           else window.location.reload();
           // Stay pending while the reload takes over — no error-boundary flash.
