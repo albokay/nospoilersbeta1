@@ -86,10 +86,18 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#f5f5f5" }}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12, width: 280 }}>
+        {/* Copy (Alborz 2026-08-19): testers were typing their ACCOUNT
+            password here. Deliberately plain — the gate doesn't match the
+            site's styling. */}
+        <div style={{ fontSize: 14, lineHeight: 1.5, color: "#333", fontFamily: "system-ui, sans-serif" }}>
+          Sidebar is in private beta. Enter the beta password you were given.
+          <br />
+          <span style={{ color: "#666" }}>(Not your account password — you'll sign in next.)</span>
+        </div>
         <input
           autoFocus
           type="password"
-          placeholder="password"
+          placeholder="beta password"
           value={input}
           onChange={e => { setInput(e.target.value); setError(false); }}
           style={{ padding: "10px 14px", fontSize: 15, border: "1px solid #ccc", borderRadius: 6, outline: "none" }}
