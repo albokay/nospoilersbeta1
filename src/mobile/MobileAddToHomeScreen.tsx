@@ -38,9 +38,13 @@ export default function MobileAddToHomeScreen() {
 
   return (
     <>
+      {/* The button IS the app icon (Alborz 2026-08-18, pass #2): the real
+          home-screen icon with a drop shadow so green-on-green reads, and a
+          small encircled "+" tucked over its bottom-left corner. */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 64, padding: "0 24px" }}>
-        <button onClick={onTap} aria-label="Add Sidebar to your home screen" style={circle}>
-          <Plus size={40} strokeWidth={1.5} color={CANON.personal} />
+        <button onClick={onTap} aria-label="Add Sidebar to your home screen" style={iconBtn}>
+          <img src="/icons/icon-192.png" alt="" draggable={false} style={iconImg} />
+          <span style={plusBadge}><Plus size={18} strokeWidth={1.6} color={CANON.personal} /></span>
         </button>
         <div style={caption}>add Sidebar to<br />your home screen</div>
       </div>
@@ -103,14 +107,23 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
-const circle: React.CSSProperties = {
-  width: 76, height: 76, borderRadius: "50%", border: "none", background: CANON.cream,
-  display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-  WebkitTapHighlightColor: "transparent", padding: 0,
+const iconBtn: React.CSSProperties = {
+  position: "relative", width: 88, height: 88, border: "none", background: "transparent",
+  padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent", display: "block",
+};
+const iconImg: React.CSSProperties = {
+  width: 88, height: 88, display: "block", borderRadius: 20,
+  boxShadow: "0 8px 22px rgba(0,0,0,0.28)",
+};
+// The encircled "+", overlapping the icon's bottom-left corner.
+const plusBadge: React.CSSProperties = {
+  position: "absolute", left: -12, bottom: -10, width: 32, height: 32, borderRadius: "50%",
+  background: CANON.cream, display: "inline-flex", alignItems: "center", justifyContent: "center",
+  boxShadow: "0 3px 10px rgba(0,0,0,0.18)",
 };
 const caption: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.25, letterSpacing: 0,
-  color: CANON.cream, textAlign: "center", marginTop: 18,
+  color: CANON.cream, textAlign: "center", marginTop: 26,
 };
 const dim: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,58,74,0.35)",
