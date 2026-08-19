@@ -20,6 +20,24 @@
     <meta name="apple-mobile-web-app-title" content="Sidebar" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 
+    <!-- Link previews (2026-08-18): texted/shared links (iMessage, WhatsApp,
+         Slack…) show the app icon as a compact card + this title/description.
+         One card for every URL (single-page site) — per-invite previews would
+         need a server piece. Absolute image URL: scrapers won't resolve
+         relative paths. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sidebar" />
+    <meta property="og:title" content="Sidebar" />
+    <meta property="og:description" content="A place for you and your friends to talk about TV, spoiler-free." />
+    <meta property="og:image" content="https://beta.sidebar.watch/icons/icon-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Sidebar" />
+    <meta name="twitter:description" content="A place for you and your friends to talk about TV, spoiler-free." />
+    <meta name="twitter:image" content="https://beta.sidebar.watch/icons/icon-512.png" />
+    <meta name="description" content="A place for you and your friends to talk about TV, spoiler-free." />
+
     <!-- Inter (body/UI) + Lora (editorial banners) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
