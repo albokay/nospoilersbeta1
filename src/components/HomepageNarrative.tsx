@@ -310,14 +310,16 @@ export default function HomepageNarrative({ headerHeight = 56, invitee }: {
   return (
     <>
       {invitee && (
-        <Screen extraTop={0}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 40 }}>
-            <Copy>{invitee.inviterName} wants you to join<br />them on Sidebar.</Copy>
-            <StaticLogo />
-            <Copy delay={0.15}>It&rsquo;s a place for you and your friends<br />to talk about TV, spoiler-free.</Copy>
-            <ArrowDown size={30} strokeWidth={2.4} color={CANON.cream} style={{ opacity: 0.85 }} />
-          </div>
-        </Screen>
+        <>
+          <Screen extraTop={0}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 40 }}>
+              <Copy>{invitee.inviterName} wants you to join<br />them on Sidebar.</Copy>
+              <StaticLogo />
+              <Copy delay={0.15}>It&rsquo;s a place for you and your friends<br />to talk about TV, spoiler-free.</Copy>
+            </div>
+          </Screen>
+          <ScrollCue />
+        </>
       )}
 
       {/* 1 — Opening blue bubble, centered */}
@@ -432,6 +434,37 @@ function HeroCopy() {
       <p style={{ fontSize: "clamp(16px, calc((100vw - 64px) / 17.6), 34px)", fontWeight: 800, color: CANON.cream, lineHeight: 1.3, margin: 0, whiteSpace: "nowrap" }}>
         {HERO_LINES[0]}<br />{HERO_LINES[1]}<br /><em>{HERO_EMPHASIS}</em>
       </p>
+    </div>
+  );
+}
+
+// The invitee opening's scroll cue — the HOMEPAGE arrow's exact treatment
+// (App.tsx: fixed bottom 8vh, centered, ArrowDown 49/2 cream, opacity 0.6
+// fading out over the first stretch of scrolling).
+function ScrollCue() {
+  const [opacity, setOpacity] = useState(0.6);
+  useEffect(() => {
+    let raf = 0;
+    function update() {
+      raf = 0;
+      setOpacity(Math.max(0.6 - (window.scrollY / (window.innerHeight * 0.35)) * 0.6, 0));
+    }
+    function onScroll() {
+      if (raf) return;
+      raf = requestAnimationFrame(update);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    update();
+    return () => { window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); };
+  }, []);
+  if (opacity <= 0) return null;
+  return (
+    <div style={{
+      position: "fixed", bottom: "8vh", left: "50%", transform: "translateX(-50%)",
+      opacity, pointerEvents: "none", zIndex: 10,
+      transition: "opacity 0.15s ease",
+    }}>
+      <ArrowDown size={49} color={CANON.cream} strokeWidth={2} />
     </div>
   );
 }
