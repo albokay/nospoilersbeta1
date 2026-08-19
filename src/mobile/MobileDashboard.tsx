@@ -542,8 +542,10 @@ const topCircleBtn: React.CSSProperties = {
 };
 // gap 16 (was 12; Alborz 2026-08-18) — the rows felt crowded once they
 // gained their pressable plates.
+// Top 40 (was 8; Alborz 2026-08-18): the first row sat too close to the top
+// chrome — dropped by ~half a row (32px); everything below flows down.
 const groupsWrap: React.CSSProperties = {
-  display: "flex", flexDirection: "column", gap: 16, padding: "8px 16px 24px",
+  display: "flex", flexDirection: "column", gap: 16, padding: "40px 16px 24px",
 };
 const groupRow: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: 12,
