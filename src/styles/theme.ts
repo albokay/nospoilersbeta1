@@ -1021,16 +1021,16 @@ body .btn.sb-send:hover{ background:var(--canon-friend,#adc8d7) !important; bord
 /* ── PRESSABLE show/group buttons (Alborz 2026-08-18; approved mockup
    docs/pressable-buttons-preview.html). Testers didn't read the show pills
    + group rows as clickable. .sb-press wraps the button; .sb-plate is the
-   same shape, a 3px outline in the button's own color (--sb-plate), sitting
-   2px left / 6px down BEHIND it (raised, not leaning — rev 2). Hover
-   (pointer devices only): the button comes out 1px/1px. Press: it drops
+   same shape, a 2px outline in the button's own color (--sb-plate), sitting
+   2px left / 6px down BEHIND it (raised, not leaning). Hover (pointer
+   devices only): the button comes out 1px across / 2px up. Press: it drops
    onto the plate and the
    plate hides. All INSTANT — no transitions, no color change. ONLY the
    desktop show pills, the mobile show rows and the mobile group rows. ── */
 .sb-press{ position:relative; display:block; }
-.sb-press > .sb-plate{ position:absolute; inset:0; border-radius:inherit; transform:translate(-2px,6px); border:3px solid var(--sb-plate,var(--canon-cream,#fef8ea)); box-sizing:border-box; pointer-events:none; }
+.sb-press > .sb-plate{ position:absolute; inset:0; border-radius:inherit; transform:translate(-2px,6px); border:2px solid var(--sb-plate,var(--canon-cream,#fef8ea)); box-sizing:border-box; pointer-events:none; }
 .sb-press > button{ position:relative; transition:none !important; }
-@media (hover:hover){ .sb-press:hover > button{ transform:translate(1px,-1px); } }
+@media (hover:hover){ .sb-press:hover > button{ transform:translate(1px,-2px); } }
 .sb-press:active > button{ transform:translate(-2px,6px); }
 .sb-press:active > .sb-plate{ border-color:transparent; }
 
