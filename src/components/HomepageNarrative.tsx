@@ -378,38 +378,61 @@ export default function HomepageNarrative({ headerHeight = 56, invitee }: {
         <CloudBubble src="/ns-you.svg"    top="77%" left="44vw" width="26vw" rate={0.24} />
       </section>
 
-      {/* 6 — Finale: whole unit pushed 250px lower via extra section height.
-          Invitee variant: the HERO lines instead of "talk freely" (which
-          moves to the landing below), and the static no-tagline logo. */}
-      <section style={{
-        minHeight: "calc(100svh + 250px)", display: "flex", flexDirection: "column",
-        padding: "48px 32px 64px", boxSizing: "border-box",
-        justifyContent: "flex-end",
-      }}>
-        <div style={{ marginBottom: 450, display: "flex", justifyContent: "center" }}>
-          {invitee ? (
-            <Copy size={38}>{HERO_LINES[0]}<br />{HERO_LINES[1]}<br /><em>{HERO_EMPHASIS}</em></Copy>
-          ) : (
+      {/* 6 — Finale. Homepage: unchanged (copy 450px above the docking logo).
+          Invitee: the HERO alone, centered on its own screen — exactly three
+          lines at every width (the responsive HeroCopy). */}
+      {invitee ? (
+        <Screen>
+          <HeroCopy />
+        </Screen>
+      ) : (
+        <section style={{
+          minHeight: "calc(100svh + 250px)", display: "flex", flexDirection: "column",
+          padding: "48px 32px 64px", boxSizing: "border-box",
+          justifyContent: "flex-end",
+        }}>
+          <div style={{ marginBottom: 450, display: "flex", justifyContent: "center" }}>
             <Copy size={38}>Sidebar is where<br />you can talk freely.</Copy>
-          )}
-        </div>
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          {invitee ? <StaticLogo /> : <AnimatedLogo />}
-        </div>
-      </section>
+          </div>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <AnimatedLogo />
+          </div>
+        </section>
+      )}
 
-      {/* 7 (invitee only) — the landing: the talk-freely line + Join. */}
+      {/* 7 (invitee only) — the landing: logo + copy + Join as ONE centered
+          unit mid-screen (Alborz 2026-08-19). */}
       {invitee && (
         <section style={{
-          minHeight: "70svh", display: "flex", flexDirection: "column",
+          minHeight: "100svh", display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center", gap: 44,
-          padding: "48px 32px calc(env(safe-area-inset-bottom, 0px) + 96px)", boxSizing: "border-box",
+          padding: "48px 32px calc(env(safe-area-inset-bottom, 0px) + 64px)", boxSizing: "border-box",
         }}>
-          <Copy size={38}>Sidebar is where<br />you can talk freely.</Copy>
+          <StaticLogo />
+          <Copy size={38}>Here, you can<br />talk freely.</Copy>
           <JoinButton name={invitee.inviterName} onClick={invitee.onJoin} />
         </section>
       )}
     </>
+  );
+}
+
+// The hero, three lines at EVERY width: font scales with the viewport
+// (longest line ≈ 32ch of Inter 800 → (100vw − 64px)/17.6 keeps it on one
+// line inside the section's 32px side padding), capped at the finale's 34.
+function HeroCopy() {
+  const { ref, visible } = useReveal(0.3);
+  return (
+    <div ref={ref} style={{
+      opacity: visible ? 1 : 0,
+      transform: visible ? "translateY(0)" : "translateY(32px)",
+      transition: "opacity 0.8s ease, transform 0.8s ease",
+      textAlign: "center", margin: "0 auto",
+    }}>
+      <p style={{ fontSize: "clamp(16px, calc((100vw - 64px) / 17.6), 34px)", fontWeight: 800, color: CANON.cream, lineHeight: 1.3, margin: 0, whiteSpace: "nowrap" }}>
+        {HERO_LINES[0]}<br />{HERO_LINES[1]}<br /><em>{HERO_EMPHASIS}</em>
+      </p>
+    </div>
   );
 }
 
