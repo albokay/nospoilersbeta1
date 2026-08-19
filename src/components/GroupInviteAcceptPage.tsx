@@ -20,6 +20,8 @@ import AuthModal from "./AuthModal";
 import PublicDashboardPage from "./PublicDashboardPage";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
+import HomepageNarrative from "./HomepageNarrative";
+import { readPendingDeckAnswers } from "../lib/deckPending";
 import { CANON } from "../styles/canon";
 import { preventLastWordOrphan } from "../lib/utils";
 
@@ -55,6 +57,14 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   // reveals the welcome page + JOIN IN (the wall). Self-skips for a visitor
   // who already answered at this door.
   const [prewallDone, setPrewallDone] = useState(false);
+  // The invite-arrival PROLOGUE (Alborz 2026-08-19): the homepage scroll's
+  // invitee variant, shown BEFORE the door questions to a brand-new invitee.
+  // One unit with the door: a visitor who already answered at this door
+  // (≥4 parked answers — the same store the wave self-skips from) skips the
+  // scroll too; existing-account invitees skip both via inviteeHasAccount.
+  const [prologueDone, setPrologueDone] = useState<boolean>(() => {
+    try { return Object.keys(readPendingDeckAnswers()).length >= 4; } catch { return false; }
+  });
 
   function openAuth() {
     // Brand-new invitee → create-account; flag App to route them to /dashboard
@@ -189,6 +199,22 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   // (Skipped once postSignin is set so a just-signed-in existing account falls
   // through to the join confirmation below, even before `user` propagates.)
   if (status === "ready" && info && !user && !authLoading && !postSignin) {
+    // The PROLOGUE (Alborz 2026-08-19): a brand-new invitee's first sight is
+    // the homepage scroll's invitee variant; "Join {name} →" hands off to
+    // the door questions. Normal document flow — the scroll IS the page.
+    if (!prologueDone && !info.inviteeHasAccount) {
+      return (
+        <div style={{ minHeight: "100svh" }}>
+          <HomepageNarrative
+            headerHeight={0}
+            invitee={{
+              inviterName: info.inviterDisplayName || info.inviterName || "Your friend",
+              onJoin: () => { window.scrollTo(0, 0); setPrologueDone(true); },
+            }}
+          />
+        </div>
+      );
+    }
     return (
       <>
         {/* QA round 6: while the pre-wall wave is up, the background is

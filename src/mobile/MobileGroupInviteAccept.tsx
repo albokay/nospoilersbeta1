@@ -8,6 +8,8 @@ import { claimInvitePicks } from "../lib/invitePicks";
 import InviteShowSuggest from "../components/InviteShowSuggest";
 import DeckWave from "../components/deck/DeckWave";
 import YoureInCard from "../components/deck/YoureInCard";
+import HomepageNarrative from "../components/HomepageNarrative";
+import { readPendingDeckAnswers } from "../lib/deckPending";
 import { preventLastWordOrphan } from "../lib/utils";
 import {
   getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite,
@@ -129,6 +131,11 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
   // Onboarding changeset §5: the pre-wall wave state (see the logged-out
   // welcome below).
   const [prewallDone, setPrewallDone] = useState(false);
+  // The invite-arrival PROLOGUE (Alborz 2026-08-19) — see the desktop page's
+  // note; one unit with the door questions (same skip store).
+  const [prologueDone, setPrologueDone] = useState<boolean>(() => {
+    try { return Object.keys(readPendingDeckAnswers()).length >= 4; } catch { return false; }
+  });
 
   // Reworked in QA 2026-07-18: the "You're in!" invitee card IS the accept
   // confirmation (replaces the old Yes/no). GET STARTED! accepts → WAVE 1
@@ -220,6 +227,21 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
   //    opening on the email's quoted card; answers park locally and attach
   //    on sign-in. ─────────────────────────────────────────────────────────
   if (status === "ready" && info && !user && !authLoading) {
+    // The PROLOGUE (Alborz 2026-08-19): the homepage scroll's invitee
+    // variant first; "Join {name} →" hands off to the door questions.
+    if (!prologueDone && !info.inviteeHasAccount) {
+      return (
+        <div style={{ minHeight: "100dvh", background: "var(--dos-bg, var(--canon-personal,#7abd8e))" }}>
+          <HomepageNarrative
+            headerHeight={0}
+            invitee={{
+              inviterName: info.inviterDisplayName || info.inviterName || "Your friend",
+              onJoin: () => { window.scrollTo(0, 0); setPrologueDone(true); },
+            }}
+          />
+        </div>
+      );
+    }
     // The door questions are for STRANGERS: an invitee whose email already
     // has an account skips them and lands on the wall (Alborz 2026-08-18;
     // desktop parity) — the post-join wave self-skips for them anyway.

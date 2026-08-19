@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowRight } from "lucide-react";
 import { CANON } from "../styles/canon";
 import SidebarLogo from "./SidebarLogo";
+import { HERO_LINES, HERO_EMPHASIS } from "../lib/homepageCopy";
 
 const BUBBLE_MAX = 560;
 
@@ -275,10 +277,49 @@ function AnimatedLogo() {
   );
 }
 
+// ── Static logo (invitee variant only) — the blocks settle when scrolled
+// into view (SidebarLogo animates on MOUNT, so we mount it on reveal inside
+// a reserved box). No tagline, no scroll-docking — the homepage's
+// AnimatedLogo is untouched. ─────────────────────────────────────────────────
+function StaticLogo() {
+  const { ref, visible } = useReveal(0.3);
+  return (
+    <div ref={ref} style={{ width: LOGO_W, height: LOGO_H, flexShrink: 0 }}>
+      {visible && <SidebarLogo scale={1} blocksOpacity={1} />}
+    </div>
+  );
+}
+
 // ── Narrative ─────────────────────────────────────────────────────────────────
-export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?: number }) {
+// `invitee` (2026-08-19, Alborz's invite-arrival prologue): a VARIANT of this
+// scroll shown to brand-new invitees before the door questions. Changes when
+// set — the homepage rendering (invitee undefined) is byte-identical:
+//   • an OPENING section on top: "{name} wants you to join them on Sidebar."
+//     → the dynamic logo settling → "It's a place for you and your friends
+//     to talk about TV, spoiler-free." → a ↓ cue;
+//   • the finale copy is the homepage HERO ("Watching TV with friends
+//     usually…") instead of "Sidebar is where you can talk freely.";
+//   • the logo lands WITHOUT the tagline and without the corner-docking
+//     (StaticLogo — "talk. together. whenever." is on its way out);
+//   • a LANDING section after the logo: "Sidebar is where you can talk
+//     freely." + the "Join {name} →" button (onJoin → the door questions).
+export default function HomepageNarrative({ headerHeight = 56, invitee }: {
+  headerHeight?: number;
+  invitee?: { inviterName: string; onJoin: () => void };
+}) {
   return (
     <>
+      {invitee && (
+        <Screen extraTop={0}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 40 }}>
+            <Copy>{invitee.inviterName} wants you to join<br />them on Sidebar.</Copy>
+            <StaticLogo />
+            <Copy delay={0.15}>It&rsquo;s a place for you and your friends<br />to talk about TV, spoiler-free.</Copy>
+            <ArrowDown size={30} strokeWidth={2.4} color={CANON.cream} style={{ opacity: 0.85 }} />
+          </div>
+        </Screen>
+      )}
+
       {/* 1 — Opening blue bubble, centered */}
       <Screen extraTop={headerHeight}>
         <Bubble src="/ns-you.svg" align="center" rate={0.08} />
@@ -337,19 +378,59 @@ export default function HomepageNarrative({ headerHeight = 56 }: { headerHeight?
         <CloudBubble src="/ns-you.svg"    top="77%" left="44vw" width="26vw" rate={0.24} />
       </section>
 
-      {/* 6 — Finale: whole unit pushed 250px lower via extra section height */}
+      {/* 6 — Finale: whole unit pushed 250px lower via extra section height.
+          Invitee variant: the HERO lines instead of "talk freely" (which
+          moves to the landing below), and the static no-tagline logo. */}
       <section style={{
         minHeight: "calc(100svh + 250px)", display: "flex", flexDirection: "column",
         padding: "48px 32px 64px", boxSizing: "border-box",
         justifyContent: "flex-end",
       }}>
         <div style={{ marginBottom: 450, display: "flex", justifyContent: "center" }}>
-          <Copy size={38}>Sidebar is where<br />you can talk freely.</Copy>
+          {invitee ? (
+            <Copy size={38}>{HERO_LINES[0]}<br />{HERO_LINES[1]}<br /><em>{HERO_EMPHASIS}</em></Copy>
+          ) : (
+            <Copy size={38}>Sidebar is where<br />you can talk freely.</Copy>
+          )}
         </div>
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <AnimatedLogo />
+          {invitee ? <StaticLogo /> : <AnimatedLogo />}
         </div>
       </section>
+
+      {/* 7 (invitee only) — the landing: the talk-freely line + Join. */}
+      {invitee && (
+        <section style={{
+          minHeight: "70svh", display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 44,
+          padding: "48px 32px calc(env(safe-area-inset-bottom, 0px) + 96px)", boxSizing: "border-box",
+        }}>
+          <Copy size={38}>Sidebar is where<br />you can talk freely.</Copy>
+          <JoinButton name={invitee.inviterName} onClick={invitee.onJoin} />
+        </section>
+      )}
     </>
+  );
+}
+
+// The invitee landing's CTA — accent stadium pill (the wall's JOIN grammar).
+function JoinButton({ name, onClick }: { name: string; onClick: () => void }) {
+  const { ref, visible } = useReveal(0.3);
+  return (
+    <div ref={ref} style={{ opacity: visible ? 1 : 0, transition: "opacity 0.8s ease 0.2s" }}>
+      <button
+        onClick={onClick}
+        style={{
+          border: "none", cursor: "pointer", borderRadius: 65,
+          background: CANON.accent, color: CANON.cream,
+          fontFamily: "inherit", fontWeight: 800, fontSize: 17,
+          padding: "16px 34px", minHeight: 52,
+          display: "inline-flex", alignItems: "center", gap: 10,
+          boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
+        }}
+      >
+        Join {name} <ArrowRight size={20} strokeWidth={2.6} />
+      </button>
+    </div>
   );
 }
