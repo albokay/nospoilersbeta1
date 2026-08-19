@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sidebar — pressable show/group buttons (mockup 2026-08-18, rev 2)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Lora:wght@700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; padding: 28px; background: #f1efe8; font-family: Inter, sans-serif; color: #1A3A4A; }
+  h1 { font-family: Lora, serif; font-size: 22px; margin: 0 0 6px; }
+  .note { font-size: 14px; line-height: 1.5; margin: 0 0 22px; max-width: 720px; }
+  .panel { border-radius: 16px; padding: 24px 26px 26px; margin-bottom: 16px; }
+  .lbl { font-size: 13px; font-weight: 600; margin: 0 0 16px; opacity: .9; }
+  .cap { font-size: 12px; margin: 10px 0 0; line-height: 1.4; opacity: .85; }
+  .rowwrap { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; padding-left: 8px; }
+
+  /* ── The treatment (rev 2) ──────────────────────────────────────────────
+     .press = wrapper. .plate = the same shape as the button, 2px outline in
+     the button's own color, sitting 4px left / 5px down BEHIND it (a real
+     element, so it paints correctly on any background). :active on the
+     wrapper = the button drops onto the plate (instant, no color change) and
+     the plate hides underneath. ─────────────────────────────────────────── */
+  .press { position: relative; display: inline-block; }
+  .plate { position: absolute; inset: 0; border-radius: inherit; transform: translate(-4px, 5px);
+           border: 2px solid var(--pl); box-sizing: border-box; pointer-events: none; }
+  .sb { position: relative; display: inline-flex; align-items: center; justify-content: space-between;
+        box-sizing: border-box; border: none; cursor: pointer; font-family: Inter, sans-serif; font-weight: 700;
+        -webkit-tap-highlight-color: transparent; user-select: none; outline: none; width: 100%; }
+  /* Desktop hover: the button comes "out" 1px (up-right, away from the plate,
+     which stays put). Pointer devices only; instant. */
+  @media (hover: hover) { .press:hover .sb { transform: translate(2px, -1px); } }
+  .press:active .sb { transform: translate(-4px, 5px); }
+  .press:active .plate { border-color: transparent; }
+
+  .pill { height: 44px; padding: 0 22px; border-radius: 65px; font-size: 14px; letter-spacing: -.5px; width: 240px; }
+  .row  { height: 56px; padding: 0 16px; border-radius: 20px; font-size: 14px; width: 290px; gap: 10px; justify-content: flex-start; }
+  .av   { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+          font-family: Lora, serif; font-size: 16px; font-weight: 700; margin-right: -6px; }
+</style>
+</head>
+<body>
+  <h1>Pressable show &amp; group buttons — APPROVED (2026-08-18)</h1>
+  <p class="note">Hover (desktop): the button comes out 2px across / 1px up, away from the plate. Press and hold: it drops onto the plate instantly (no animation, no color change) and the plate disappears underneath; release and it pops back. The plate is a 2px outline in the button's own color, 4px left / 5px down. Only the show pills/rows and the mobile group rows get this — no other buttons, and desktop's dashboard clusters stay as they are.</p>
+
+  <div class="panel" style="background:#ADC8D7">
+    <p class="lbl">Desktop group room — show pills</p>
+    <div class="rowwrap">
+      <div>
+        <span class="press" style="border-radius:65px;--pl:#7ABD8E"><span class="plate"></span>
+          <button class="sb pill" style="background:#7ABD8E;color:#FEF8EA"><span>Paradise</span><span style="font-weight:500">s2 e8</span></button></span>
+        <p class="cap">open room · green fill, green plate</p>
+      </div>
+      <div>
+        <span class="press" style="border-radius:65px;--pl:#FEF8EA"><span class="plate"></span>
+          <button class="sb pill" style="background:#FEF8EA;color:#7ABD8E"><span>Spider-Noir</span></button></span>
+        <p class="cap">proposed · cream fill, cream plate</p>
+      </div>
+      <div>
+        <span class="press" style="border-radius:65px;--pl:#FEF8EA"><span class="plate"></span>
+          <button class="sb pill" style="background:#ADC8D7;color:#FEF8EA;box-shadow:inset 0 0 0 2px #FEF8EA"><span>Succession</span></button></span>
+        <p class="cap">outlined tier · outline + plate (fill matches the page so the plate hides behind it)</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="background:#ADC8D7">
+    <p class="lbl">Mobile group room — show rows (the squarer buttons get the same plate)</p>
+    <div class="rowwrap">
+      <span class="press" style="border-radius:20px;--pl:#7ABD8E"><span class="plate"></span>
+        <button class="sb row" style="background:#7ABD8E;color:#FEF8EA;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px"><span>Paradise</span><span style="font-weight:500;font-size:12px;opacity:.9">s2 e8</span></button></span>
+      <span class="press" style="border-radius:20px;--pl:#FEF8EA"><span class="plate"></span>
+        <button class="sb row" style="background:#FEF8EA;color:#7ABD8E"><span>Spider-Noir</span></button></span>
+    </div>
+  </div>
+
+  <div class="panel" style="background:#7ABD8E">
+    <p class="lbl" style="color:#FEF8EA">Mobile dashboard — group rows (outlined; plate in cream)</p>
+    <div class="rowwrap">
+      <span class="press" style="border-radius:20px;--pl:#FEF8EA"><span class="plate"></span>
+        <button class="sb row" style="background:#7ABD8E;color:#FEF8EA;box-shadow:inset 0 0 0 2px #FEF8EA"><span style="display:inline-flex"><span class="av" style="background:#FEF8EA;color:#7ABD8E;border:2px solid #7ABD8E">C</span><span class="av" style="background:#FEF8EA;color:#7ABD8E;border:2px solid #7ABD8E">M</span></span><span style="margin-left:12px">Christine &amp; Matt</span></button></span>
+      <span class="press" style="border-radius:20px;--pl:#FEF8EA"><span class="plate"></span>
+        <button class="sb row" style="background:#7ABD8E;color:#FEF8EA;box-shadow:inset 0 0 0 2px #FEF8EA"><span class="av" style="background:#FEF8EA;color:#7ABD8E;border:2px solid #7ABD8E">J</span><span style="margin-left:12px">Smoke This</span></button></span>
+    </div>
+  </div>
+</body>
+</html>

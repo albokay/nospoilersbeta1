@@ -2225,12 +2225,20 @@ function GroupPill({ pill, name, furthestFriend, onClick }: { pill: PillData; na
     display: "flex", alignItems: "center", gap: 10, padding: "12px 18px",
     borderRadius: 65, fontFamily: '"Inter", sans-serif', fontWeight: 700,
     fontSize: 14, letterSpacing: -1, width: "100%", boxSizing: "border-box",
-    background: isGreen ? C.green : isCream ? C.cream : "transparent",
+    // Outlined tier is filled with the page's sky (was transparent) so the
+    // pressable plate behind it can't show through (2026-08-18).
+    background: isGreen ? C.green : isCream ? C.cream : C.sky,
     border: (isGreen || isCream) ? "2px solid transparent" : "2px solid var(--canon-cream,#fef8ea)",
     color: isGreen ? CANON.cream : isCream ? C.green : CANON.cream,
     cursor: "pointer", textAlign: "left",
   };
+  // Pressable (Alborz 2026-08-18; theme.ts .sb-press): plate in the pill's
+  // own color. The opt-in avatars / leave-X / dot live on the OUTER wrap, so
+  // they stay put while the pill lifts and presses.
+  const plateColor = isGreen ? C.green : C.cream;
   return (
+    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: plateColor }} onTouchStart={() => {}}>
+      <span className="sb-plate" />
     <button style={base} onClick={onClick}>
       {/* No left badge: opted-in avatars convey who's in, and a writer is shown
           by the pen badge on that writer's own avatar (every writer, any count). */}
@@ -2245,6 +2253,7 @@ function GroupPill({ pill, name, furthestFriend, onClick }: { pill: PillData; na
         <PillRightSide right={pill.right} />
       )}
     </button>
+    </span>
   );
 }
 

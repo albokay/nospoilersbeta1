@@ -388,7 +388,13 @@ export default function MobileDashboard() {
                 // toggle's dot). Per Alborz 2026-07-02: no separate chat icon here.
                 const anyNew = writingNewByGroup.has(group.id) || chatNewByGroup.has(group.id);
                 return (
-                  <button key={group.id} style={groupRow} onClick={() => navigate(`/m/group/${group.id}`)}>
+                  // Pressable (Alborz 2026-08-18; theme.ts .sb-press): cream
+                  // plate behind the outlined row; the no-op touchstart makes
+                  // iOS honor :active. Pending-invite rows below are NOT
+                  // pressable (they open a prompt, not a room).
+                  <span key={group.id} className="sb-press" style={{ borderRadius: 20, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
+                    <span className="sb-plate" />
+                  <button style={groupRow} onClick={() => navigate(`/m/group/${group.id}`)}>
                     <span style={avatarStrip}>
                       {others.map((m) => (
                         <span key={m.userId} style={{ ...avatarCircle, background: C.cream, color: C.green }}>
@@ -406,6 +412,7 @@ export default function MobileDashboard() {
                     </span>
                     {anyNew && <span style={writingDot} />}
                   </button>
+                  </span>
                 );
               })}
               {pendingInvites.map((inv) => {
@@ -539,7 +546,9 @@ const groupsWrap: React.CSSProperties = {
 const groupRow: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: 12,
   width: "100%", minHeight: 64, padding: "10px 16px", boxSizing: "border-box",
-  borderRadius: 20, border: `2px solid ${C.cream}`, background: "transparent",
+  // Page-green fill (was transparent) so the pressable plate behind the row
+  // can't show through (2026-08-18).
+  borderRadius: 20, border: `2px solid ${C.cream}`, background: C.green,
   cursor: "pointer", textAlign: "left",
 };
 const avatarStrip: React.CSSProperties = { display: "inline-flex", flexShrink: 0 };

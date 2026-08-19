@@ -1018,6 +1018,21 @@ body .btn.sb-send:hover{ background:var(--canon-friend,#adc8d7) !important; bord
    fill, Sky outline, Accent text. */
 .sb-hl-reply:hover{ background:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-friend,#adc8d7) !important; color:var(--canon-accent,#dea838) !important; }
 
+/* ── PRESSABLE show/group buttons (Alborz 2026-08-18; approved mockup
+   docs/pressable-buttons-preview.html). Testers didn't read the show pills
+   + group rows as clickable. .sb-press wraps the button; .sb-plate is the
+   same shape, a 2px outline in the button's own color (--sb-plate), sitting
+   4px left / 5px down BEHIND it. Hover (pointer devices only): the button
+   comes out 2px across / 1px up. Press: it drops onto the plate and the
+   plate hides. All INSTANT — no transitions, no color change. ONLY the
+   desktop show pills, the mobile show rows and the mobile group rows. ── */
+.sb-press{ position:relative; display:block; }
+.sb-press > .sb-plate{ position:absolute; inset:0; border-radius:inherit; transform:translate(-4px,5px); border:2px solid var(--sb-plate,var(--canon-cream,#fef8ea)); box-sizing:border-box; pointer-events:none; }
+.sb-press > button{ position:relative; transition:none !important; }
+@media (hover:hover){ .sb-press:hover > button{ transform:translate(2px,-1px); } }
+.sb-press:active > button{ transform:translate(-4px,5px); }
+.sb-press:active > .sb-plate{ border-color:transparent; }
+
 `;
 
   const el = document.createElement("style"); el.id = id; el.textContent = css; document.head.appendChild(el);

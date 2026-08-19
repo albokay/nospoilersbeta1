@@ -1001,10 +1001,17 @@ function ShowRow({ row, dot, line2, onClick }: {
   const isSelfWatching = pill.selfWatching;
   const isGreen = pill.fill === "green";
   const isCream = pill.fill === "cream";
-  const bg = isSelfWatching || isGreen ? C.green : isCream ? C.cream : "transparent";
+  // Outlined tier is filled with the page's sky (was transparent) so the
+  // pressable plate behind it can't show through (2026-08-18).
+  const bg = isSelfWatching || isGreen ? C.green : isCream ? C.cream : C.sky;
   const border = isSelfWatching ? `2px solid ${C.green}` : (isCream || isGreen ? "2px solid transparent" : `2px solid ${C.cream}`);
   const fg = isSelfWatching || isGreen ? CANON.cream : isCream ? C.green : CANON.cream;
+  // Pressable (Alborz 2026-08-18; theme.ts .sb-press): plate in the row's
+  // own color. The no-op touchstart makes iOS honor :active on the press.
+  const plateColor = isSelfWatching || isGreen ? C.green : C.cream;
   return (
+    <span className="sb-press" style={{ borderRadius: 20, ["--sb-plate" as any]: plateColor }} onTouchStart={() => {}}>
+      <span className="sb-plate" />
     <button onClick={onClick} style={{ ...rowBase, background: bg, border, color: fg }}>
       {dot && <span style={rowDot} />}
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -1032,6 +1039,7 @@ function ShowRow({ row, dot, line2, onClick }: {
         </span>
       )}
     </button>
+    </span>
   );
 }
 
