@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import lazyWithReload from "./lib/lazyWithReload";
+import { isStandalone } from "./lib/installPrompt";
 import LoadingDots from "./components/LoadingDots";
 import SidebarAvatar from "./components/SidebarAvatar";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
@@ -152,7 +153,12 @@ export default function App() {
   // (The pre-flip MobileLockout screen + the ns_admin_device unlock are
   // retired; the component stays in src/components as the rollback surface.)
   const MOBILE_PASSTHROUGH = ["m", "reset-password", "confirm", "invite", "show-room", "group-invite", "pool"];
-  if (onMobile && !isAdmin && !MOBILE_PASSTHROUGH.includes(pathParts[0] ?? "")) {
+  // The admin exemption is for QA-ing the DESKTOP site from a phone's
+  // browser. Inside the INSTALLED app (standalone, no browser chrome) the
+  // desktop pages draw under the notch/status bar — so there admins take
+  // the phone app like everyone else (Alborz 2026-08-18).
+  const adminExempt = isAdmin && !isStandalone();
+  if (onMobile && !adminExempt && !MOBILE_PASSTHROUGH.includes(pathParts[0] ?? "")) {
     if (mobileGateAuthLoading) return null;
     if (mobileGateUser && !mobileGateProfile) return null;
     return <Navigate to={`/m${location.hash || ""}`} replace />;

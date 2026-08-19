@@ -1034,6 +1034,11 @@ body .btn.sb-send:hover{ background:var(--canon-friend,#adc8d7) !important; bord
 .sb-press:active > button{ transform:translate(-2px,6px); }
 .sb-press:active > .sb-plate{ border-color:transparent; }
 
+/* Installed-app notch fallback (lib/standaloneInset, 2026-08-18): applied
+   only when iOS reports a zero safe-area inset in standalone mode (the
+   post-reload bug) — pads the page down by the real status-bar height. */
+body.pwa-inset-fallback{ padding-top:var(--pwa-inset-top,0px); }
+
 `;
 
   const el = document.createElement("style"); el.id = id; el.textContent = css; document.head.appendChild(el);
