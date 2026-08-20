@@ -634,16 +634,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
              sits right beside the name, desktop-style (Alborz 2026-08-13;
              it used to hang at the bar's far right). ── */}
       <div style={topBar}>
-        {/* Back = a cream tab off the LEFT screen edge mirroring the chat tab
-            (Alborz 2026-08-20; was a bare arrow), pressable (.sb-press--left
-            plate). The negative margin cancels the bar's 12px side padding so
-            the tab truly reaches the edge. */}
-        <span className="sb-press sb-press--left" style={backTabWrap} onTouchStart={() => {}}>
-          <span className="sb-plate" />
-          <button style={backTab} title="back to dashboard" onClick={() => navigate("/m/dashboard")}>
-            <ArrowLeft size={22} color={C.green} />
-          </button>
-        </span>
+        <button style={iconBtn} title="back to dashboard" onClick={() => navigate("/m/dashboard")}>
+          <ArrowLeft size={22} color={C.cream} />
+        </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
             <h1 style={{ ...headerTitle, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{groupName}</h1>
@@ -672,16 +665,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             tab truly reaches the edge. New-chat dot straddles the curve. */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexShrink: 0, marginRight: -12 }}>
           {user && groupWaveDone && <MobileTipsSheet page="groupRoom" />}
-          {/* Pressable (.sb-press plate, 2026-08-20 — the drop shadow retired).
-              The new-chat dot rides the WRAPPER so it stays put while the tab
-              lifts and presses (same rule as the pill dots). */}
-          <span className="sb-press" style={chatTabWrap} onTouchStart={() => {}}>
-            <span className="sb-plate" />
-            <button style={chatTab} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
-              <MessageCircle size={20} color={C.green} />
-            </button>
+          <button style={chatTab} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
             {chatNew && <span style={notifDotChatInline} />}
-          </span>
+            <MessageCircle size={20} color={C.green} />
+          </button>
         </div>
       </div>
 
@@ -1089,30 +1076,13 @@ const headerMembers: React.CSSProperties = {
 // Desktop's chatTab, scaled to the header (Alborz 2026-08-17): icon only,
 // cream, rounded on the LEFT only so it reads as a tab breaking off the right
 // screen edge; 44 tall = the tips "?" beside it. Lives in the header now
-// (was in-flow below the shelves 2026-07-29 → 08-17). Pressable wrappers
-// (2026-08-20): each carries its tab's radius (the .sb-plate inherits it);
-// shadows retired for the plate.
-const chatTabWrap: React.CSSProperties = {
-  flexShrink: 0, borderRadius: "44px 0 0 44px",
-};
+// (was in-flow below the shelves 2026-07-29 → 08-17).
 const chatTab: React.CSSProperties = {
-  // display:flex (block-level) so the .sb-press wrapper hugs the button with
-  // no inline baseline gap under the plate.
-  display: "flex", alignItems: "center",
+  position: "relative", display: "inline-flex", alignItems: "center", flexShrink: 0,
   background: C.cream, border: "none", cursor: "pointer",
   borderTopLeftRadius: 44, borderBottomLeftRadius: 44,
   height: 44, padding: "0 14px 0 18px",
-};
-// The back tab mirrors the chat tab off the LEFT edge (Alborz 2026-08-20):
-// rounded on the RIGHT only, same 44 height, green arrow on cream.
-const backTabWrap: React.CSSProperties = {
-  flexShrink: 0, marginLeft: -12, borderRadius: "0 44px 44px 0",
-};
-const backTab: React.CSSProperties = {
-  display: "flex", alignItems: "center",
-  background: C.cream, border: "none", cursor: "pointer",
-  borderTopRightRadius: 44, borderBottomRightRadius: 44,
-  height: 44, padding: "0 18px 0 14px",
+  boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)",
 };
 const notifDotChatInline: React.CSSProperties = {
   // Straddles the tab's rounded left edge — desktop's placement rule (the

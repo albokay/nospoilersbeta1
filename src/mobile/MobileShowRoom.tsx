@@ -509,16 +509,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       {/* ── Header: back · show name (+ with group) · digest gear ── */}
       <div style={{ background: tab === "friend" ? C.green : C.sky }}>
         <div style={topBar}>
-          {/* Back = a cream tab off the LEFT screen edge (Alborz 2026-08-20;
-              was a bare arrow — group-room parity), pressable (.sb-press--left
-              plate). The negative margin cancels the bar's 8px side padding so
-              the tab truly reaches the edge. */}
-          <span className="sb-press sb-press--left" style={backTabWrap} onTouchStart={() => {}}>
-            <span className="sb-plate" />
-            <button style={backTab} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
-              <ArrowLeft size={22} color={C.green} />
-            </button>
-          </span>
+          <button style={iconBtn} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
+            <ArrowLeft size={22} color={C.cream} />
+          </button>
           {/* Gear rides RIGHT BESIDE the title (Alborz 2026-08-14 —
               group-room parity; was at the bar's far right). */}
           <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 2 }}>
@@ -830,20 +823,6 @@ const topBar: React.CSSProperties = {
 const iconBtn: React.CSSProperties = {
   width: 44, height: 44, flexShrink: 0, border: "none", background: "transparent", cursor: "pointer",
   display: "inline-flex", alignItems: "center", justifyContent: "center",
-};
-// Back = a cream tab off the left edge, mirroring the group room's (Alborz
-// 2026-08-20): rounded on the RIGHT only, 44 tall, green arrow on cream,
-// pressable (the wrapper carries the radius — the .sb-plate inherits it).
-const backTabWrap: React.CSSProperties = {
-  flexShrink: 0, marginLeft: -8, borderRadius: "0 44px 44px 0",
-};
-const backTab: React.CSSProperties = {
-  // display:flex (block-level) so the .sb-press wrapper hugs the button with
-  // no inline baseline gap under the plate.
-  display: "flex", alignItems: "center",
-  background: C.cream, border: "none", cursor: "pointer",
-  borderTopRightRadius: 44, borderBottomRightRadius: 44,
-  height: 44, padding: "0 18px 0 14px",
 };
 const headerTitle: React.CSSProperties = {
   flex: 1, minWidth: 0, fontFamily: LORA, fontWeight: 700, fontSize: 20, letterSpacing: -0.5,

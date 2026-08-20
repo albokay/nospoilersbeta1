@@ -1026,21 +1026,13 @@ body .btn.sb-send:hover{ background:var(--canon-friend,#adc8d7) !important; bord
    devices only): the button comes out 1px across / 2px up. Press: it drops
    onto the plate and the
    plate hides. All INSTANT — no transitions, no color change. ONLY the
-   desktop show pills, the mobile show rows, the mobile group rows, and the
-   room edge tabs (back/chat, both platforms — 2026-08-20). ── */
+   desktop show pills, the mobile show rows and the mobile group rows. ── */
 .sb-press{ position:relative; display:block; }
 .sb-press > .sb-plate{ position:absolute; inset:0; border-radius:inherit; transform:translate(-2px,6px); border:2px solid var(--sb-plate,var(--canon-cream,#fef8ea)); box-sizing:border-box; pointer-events:none; }
 .sb-press > button{ position:relative; transition:none !important; }
 @media (hover:hover){ .sb-press:hover > button{ transform:translate(1px,-2px); } }
 .sb-press:active > button{ transform:translate(-2px,6px); }
 .sb-press:active > .sb-plate{ border-color:transparent; }
-/* Mirrored variant for LEFT-edge tabs (back-to-dashboard/back-to-group):
-   the plate peeks on the side facing INTO the screen — 2px right / 6px
-   down — and hover/press mirror to match. Right-edge tabs (chat) use the
-   standard rules above, whose -2px already faces inward there. */
-.sb-press--left > .sb-plate{ transform:translate(2px,6px); }
-@media (hover:hover){ .sb-press--left:hover > button{ transform:translate(-1px,-2px); } }
-.sb-press--left:active > button{ transform:translate(2px,6px); }
 
 /* Installed (home-screen) app: the body paints a FLAT page color — the
    desktop "frame top" gradient showed as a lighter band behind the status
