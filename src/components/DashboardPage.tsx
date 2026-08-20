@@ -83,7 +83,7 @@ import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { groupDisplayName, groupGenericName, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
-import { groupHeadingMembers } from "./dashboardChrome";
+import { groupHeadingMembers, EDGE_TAB_TOP } from "./dashboardChrome";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
@@ -1416,17 +1416,28 @@ export default function DashboardPage() {
       {inGroup && clustersEl}
 
       {/* Edge tabs (group context only): back-to-dashboard left · chat right.
-          Position-fixed, so DOM order relative to the heading is irrelevant. */}
+          Position-fixed, so DOM order relative to the heading is irrelevant.
+          Both at ONE height, centered on the first open-show pill row at rest
+          (Alborz 2026-08-20; they stay pinned while the page scrolls), and
+          pressable (.sb-press plate — no drop shadow; the plate/hover/press
+          mirror per edge). The chat dot rides the WRAPPER so it stays put
+          while the tab lifts and presses (same rule as the pill dots). */}
       {inGroup && (
-        <button style={backTab} title="back to dashboard" onClick={() => navigate("/dashboard")}>
-          <ArrowLeft size={24} color={C.green} />
-        </button>
+        <span className="sb-press sb-press--left" style={edgeTabWrapLeft} onTouchStart={() => {}}>
+          <span className="sb-plate" />
+          <button style={backTab} title="back to dashboard" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft size={24} color={C.green} />
+          </button>
+        </span>
       )}
       {inGroup && (
-        <button style={chatTab} title="open chat" onClick={() => activeGroupId && setChatGroupId(activeGroupId)}>
+        <span className="sb-press" style={edgeTabWrapRight} onTouchStart={() => {}}>
+          <span className="sb-plate" />
+          <button style={chatTab} title="open chat" onClick={() => activeGroupId && setChatGroupId(activeGroupId)}>
+            <MessageCircle size={24} color={C.green} />
+          </button>
           {!!activeGroupId && chatNewByGroup.get(activeGroupId) && <span style={notifDotChat} />}
-          <MessageCircle size={24} color={C.green} />
-        </button>
+        </span>
       )}
       {/* CP3: the bootstrap group gets the onboarding explainer instead of
           the generic one (its own copy + its own dismissal). */}
@@ -2647,17 +2658,29 @@ const gearStaleDot: React.CSSProperties = {
 const groupHeadingTitle: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: CANON.cream, margin: 0,
 };
+// Pressable wrappers (2026-08-20): the wrapper carries the fixed position +
+// the tab's radius (the .sb-plate inherits it); shadows retired for the plate.
+// Height = EDGE_TAB_TOP (dashboardChrome) — centered on the first open-show
+// pill row at rest, shared with the show room's back tab.
+const edgeTabWrapLeft: React.CSSProperties = {
+  position: "fixed", left: 0, top: EDGE_TAB_TOP, zIndex: 45, borderRadius: "0 48px 48px 0",
+};
+const edgeTabWrapRight: React.CSSProperties = {
+  position: "fixed", right: 0, top: EDGE_TAB_TOP, zIndex: 45, borderRadius: "48px 0 0 48px",
+};
 const backTab: React.CSSProperties = {
   // ~50% larger tab; padding/radius on the 8px grid (spec §16). Icon unchanged.
-  position: "fixed", left: 0, top: "18%", background: C.cream, border: "none", cursor: "pointer",
+  // display:flex (block-level) so the .sb-press wrapper hugs the button with
+  // no inline baseline gap under the plate.
+  background: C.cream, border: "none", cursor: "pointer",
   borderTopRightRadius: 48, borderBottomRightRadius: 48, padding: "32px 40px 32px 24px",
-  display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
+  display: "flex", alignItems: "center",
 };
 const chatTab: React.CSSProperties = {
   // ~50% larger tab; padding/radius on the 8px grid (spec §16). Icon unchanged.
-  position: "fixed", right: 0, top: "60%", background: C.cream, border: "none", cursor: "pointer",
+  background: C.cream, border: "none", cursor: "pointer",
   borderTopLeftRadius: 48, borderBottomLeftRadius: 48, padding: "32px 24px 32px 40px",
-  display: "inline-flex", alignItems: "center", boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
+  display: "flex", alignItems: "center",
 };
 const countCircle: React.CSSProperties = {
   minWidth: 22, height: 22, padding: "0 6px", borderRadius: 11, background: C.green, color: CANON.cream,

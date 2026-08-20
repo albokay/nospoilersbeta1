@@ -15,6 +15,16 @@ export const overlay: React.CSSProperties = {
   alignItems: "center", justifyContent: "center", zIndex: 50,
 };
 
+// Edge-tab top (2026-08-20): the room edge tabs (back left · chat right) sit
+// at ONE shared height, the tab's center on the group room's first open-show
+// pill row at rest. Layout sum there: top bar (16+74+16, the 0.5-scale logo)
+// + group heading (4+~41+28) + content paddingTop 24 + shelf header (~41+24)
+// + half a pill (~23) ≈ 291 → the 88px-tall tab tops out at 291 − 44 ≈ 248.
+// Fixed px (not %) — the content above is px-anchored, so the alignment holds
+// at any window height. The show room's back tab shares this value so the tab
+// doesn't jump between pages.
+export const EDGE_TAB_TOP = 248;
+
 export const searchCard: React.CSSProperties = { background: CANON.cream, borderRadius: 24, padding: 32, width: "min(560px, 86vw)" };
 
 export const pickerCard: React.CSSProperties = {

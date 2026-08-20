@@ -25,7 +25,7 @@ import {
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
 import { joinNames } from "../lib/groupNames";
-import { composeBackdrop, composeCardOuter, groupHeadingMembers } from "./dashboardChrome";
+import { composeBackdrop, composeCardOuter, groupHeadingMembers, EDGE_TAB_TOP } from "./dashboardChrome";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember } from "./v2/V2RoomMap";
@@ -579,10 +579,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
   return (
     <div ref={pageRef} style={{ ...page, background: bodyBg }}>
-      {/* ── Back-to-group tab — partial pill at the left edge (mirrors chat) ── */}
-      <button style={backTab} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
-        <ArrowLeft size={24} color={C.green} />
-      </button>
+      {/* ── Back-to-group tab — partial pill at the left edge (mirrors chat).
+            Pressable (.sb-press--left plate, 2026-08-20 — no drop shadow) at
+            the shared EDGE_TAB_TOP height, matching the group room's tabs. ── */}
+      <span className="sb-press sb-press--left" style={backTabWrap} onTouchStart={() => {}}>
+        <span className="sb-plate" />
+        <button style={backTab} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
+          <ArrowLeft size={24} color={C.green} />
+        </button>
+      </span>
 
       {/* ── Header strip: logo left · centered name · tabs on the boundary.
             Header + body colors swap by mode: friend = green header / sky body,
@@ -902,12 +907,18 @@ const tourBtn: React.CSSProperties = {
   padding: "10px 20px", borderRadius: 65, cursor: "pointer",
 };
 
+// Pressable wrapper (2026-08-20): carries the fixed position + the tab's
+// radius (the .sb-plate inherits it); the drop shadow retired for the plate.
+const backTabWrap: React.CSSProperties = {
+  position: "fixed", left: 0, top: EDGE_TAB_TOP, zIndex: 45, borderRadius: "0 48px 48px 0",
+};
 const backTab: React.CSSProperties = {
   // ~50% larger tab matching the dashboard's; padding/radius on the 8px grid
-  // (spec §16). Icon unchanged.
-  position: "fixed", left: 0, top: "18%", background: C.cream, border: "none", cursor: "pointer",
+  // (spec §16). Icon unchanged. display:flex (block-level) so the .sb-press
+  // wrapper hugs the button with no inline baseline gap under the plate.
+  background: C.cream, border: "none", cursor: "pointer",
   borderTopRightRadius: 48, borderBottomRightRadius: 48, padding: "32px 40px 32px 24px",
-  display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
+  display: "flex", alignItems: "center",
 };
 const writeBtn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: CANON.cream,
