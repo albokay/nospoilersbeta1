@@ -148,14 +148,18 @@ export type V2RoomFeedProps = {
       entry card — drives the A2 green-filled circle behind the expand
       chevron on collapsed cards. Yellow + red are map-only. */
   cellSignals?: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }>;
-  /** Per-thread red "hidden responses" dot on the entry card. Origin:
-      public-rooms scope (the single-user public room has no map to carry the
-      friend-room red signal); the MOBILE friend room adopted it 2026-08-21
-      (no map there either). count = responses hidden from the owner by
-      progress gating. onDismiss snoozes it (X-click); when absent the dot is
-      PASSIVE — no X, taps fall through to the card, and the owner clears it
-      by expanding the entry (the mobile rule). */
-  entryRedDots?: Record<string, { count: number; onDismiss?: () => void }>;
+  /** Per-thread red "hidden responses" dot on the entry card (public-rooms
+      scope, 2026). Used by the single-user public room, which has no map to
+      carry the friend-room red signal. count = responses hidden from the owner
+      by progress gating; onDismiss snoozes it (X-click). */
+  entryRedDots?: Record<string, { count: number; onDismiss: () => void }>;
+  /** Mobile friend rooms (2026-08-21): render cellSignals' RED (hidden
+      ahead-of-progress responses on the viewer's own entry) as the expand
+      chevron in an Alert-red 32px circle — the green new-responses badge's
+      exact grammar, red. No count, no X; expanding the entry clears it
+      (the caller stamps the dismissal). Desktop leaves this off — its red
+      lives on the season map. */
+  entryRedChevron?: boolean;
   /** Set of threadIds the user has expanded-and-collapsed at least once
       this session. Drives A4 (entry card dim to opacity 0.5). */
   engagedThreadIds?: Set<string>;
@@ -253,6 +257,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     isNewMap,
     cellSignals,
     entryRedDots,
+    entryRedChevron,
     engagedThreadIds,
     initialExpandedThreadId,
     initialFocusReplyId,
@@ -634,10 +639,13 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         // Notification-signal lookups (computed in V2FriendRoomPage).
         // isNew → A1 white card outline.
         // signal.kind === "green" → A2 canon-green circle behind chevron.
+        // signal.kind === "red" + entryRedChevron → the same circle in Alert
+        //   red (mobile friend rooms' hidden-responses signal, 2026-08-21).
         // engagedThreadIds.has(...) → A4 dim to 50% opacity.
         const isNew = !!isNewMap?.[entry.threadId];
         const signal = cellSignals?.[entry.threadId] ?? null;
         const showGreenChevron = signal?.kind === "green";
+        const showRedChevron = !!entryRedChevron && signal?.kind === "red";
         const redDot = entryRedDots?.[entry.threadId] ?? null;
         const isEngaged = !!engagedThreadIds?.has(entry.threadId);
         return (
@@ -905,15 +913,19 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   {(() => {
                     // A2 — when there are new visible responses, the
                     // chevron sits inside a 32px canon-green perfect
-                    // circle. Tooltip on hover with V1 copy.
+                    // circle. Tooltip on hover with V1 copy. The RED twin
+                    // (entryRedChevron surfaces, 2026-08-21): same circle
+                    // in Alert red = hidden ahead-of-progress responses on
+                    // your entry; expanding clears it.
+                    const circled = showGreenChevron || showRedChevron;
                     const chevronButton = (
                       <button
                         onClick={(e) => toggleExpand(entry.threadId, e)}
                         aria-label="Expand"
                         style={
-                          showGreenChevron
+                          circled
                             ? {
-                                background: CANON.personal,
+                                background: showGreenChevron ? CANON.personal : CANON.alert,
                                 border: "none",
                                 color: CANON.cream,
                                 cursor: "pointer",
@@ -941,10 +953,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                         <ChevronDown size={20} color={CANON.cream} />
                       </button>
                     );
-                    if (showGreenChevron) {
+                    if (circled) {
                       return (
                         <Tooltip
-                          text="There is new writing in here for you."
+                          text={showGreenChevron ? "There is new writing in here for you." : "There is new writing in here for when you catch up."}
                           direction="above"
                           align="right"
                           width={180}
@@ -1020,30 +1032,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   );
 });
 
-// Red "hidden responses" dot for the entry card corner. Mirrors the
+// Red "hidden responses" dot for the public room entry card. Mirrors the
 // friend-room map dot (canon-red, count, X-to-dismiss on hover) but rides the
-// card corner where there is no map (public rooms; mobile friend rooms since
-// 2026-08-21). Self-contained hover state. Without onDismiss the dot is
-// PASSIVE: always shows the count, never intercepts the tap (expanding the
-// entry is what clears it — the mobile rule).
-function EntryRedDot({ count, onDismiss }: { count: number; onDismiss?: () => void }) {
+// card corner since the public room has no map. Self-contained hover state.
+function EntryRedDot({ count, onDismiss }: { count: number; onDismiss: () => void }) {
   const [hover, setHover] = useState(false);
-  if (!onDismiss) {
-    return (
-      <div
-        style={{
-          position: "absolute", top: -8, right: -8, zIndex: 3,
-          minWidth: 20, height: 20, padding: "0 5px", borderRadius: 999,
-          background: "var(--danger)", color: CANON.cream,
-          display: "inline-flex", alignItems: "center", justifyContent: "center",
-          fontSize: 11, fontWeight: 800, lineHeight: 1,
-          boxSizing: "border-box", pointerEvents: "none",
-        }}
-      >
-        {count}
-      </div>
-    );
-  }
   return (
     <Tooltip
       text={<>There is new writing in here<br />for when you catch up.</>}

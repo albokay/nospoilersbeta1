@@ -45,9 +45,10 @@ import useSheetSwipeDown from "../lib/useSheetSwipeDown";
  *   • Notification signals — desktop's full set since 2026-08-21 (the red
  *     cut was reversed): white "new since last visit" outline (newly-visible
  *     entry), green (new response on your entry), yellow (new highlight on
- *     your writing), RED corner dot on your own entries with hidden
- *     ahead-of-progress responses (the map carries it on desktop; here it
- *     rides the entry card, is passive, and clears on EXPAND — not an X).
+ *     your writing), RED = the expand chevron's 32px circle in Alert red on
+ *     your own entries with hidden ahead-of-progress responses (the green
+ *     badge's grammar, red; desktop's map carries this signal instead) —
+ *     cleared by EXPANDING the entry, not an X.
  *     Same localStorage keys as desktop, so seen-state stays consistent
  *     across surfaces.
  *   • Pings / polls / SIKW stickies: cut (no launchers, no receive-side).
@@ -166,9 +167,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // ── Notification signals (desktop parity — the red-layer cut was reversed,
   //    Alborz 2026-08-21). Same localStorage keys as desktop so seen-state is
   //    shared across surfaces. Red = hidden (ahead-of-progress) responses on
-  //    the viewer's OWN entries, a corner dot on the entry card (no map on
-  //    mobile to carry it); cleared by EXPANDING the entry — unlike desktop's
-  //    map-dot X — or naturally when catching up reveals the responses.
+  //    the viewer's OWN entries, shown as the expand chevron's circle in
+  //    Alert red (no map on mobile to carry it); cleared by EXPANDING the
+  //    entry — unlike desktop's map-dot X — or naturally when catching up
+  //    reveals the responses.
   const prevVisibleThreadIdsRef = useRef<Set<string>>(new Set());
   const [lastOpenedAt, setLastOpenedAt] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem("ns_last_opened") || "{}"); } catch { return {}; }
@@ -442,16 +444,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     return out;
   }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, perThreadLatestHidden, redDismissedAt, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
 
-  // The red signal's render home: a passive corner dot on the entry card
-  // (V2RoomFeed's public-rooms mechanism; no onDismiss → no X, taps fall
-  // through to the card, expanding clears it).
-  const entryRedDots = useMemo(() => {
-    const out: Record<string, { count: number }> = {};
-    for (const [tid, sig] of Object.entries(cellSignals)) {
-      if (sig.kind === "red") out[tid] = { count: sig.redCount ?? 0 };
-    }
-    return out;
-  }, [cellSignals]);
+  // The red signal's render home: the expand chevron in an Alert-red 32px
+  // circle — the green new-responses badge's exact grammar, red (Alborz
+  // 2026-08-21, replacing a first-pass corner dot). V2RoomFeed derives it
+  // from cellSignals' red under the entryRedChevron flag.
 
   // ── White "new since last visit" outline (others' entries) ────────────────
   const isNewMap = useMemo(() => {
@@ -700,7 +696,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               onClickProfile={openPool}
               isNewMap={isNewMap}
               cellSignals={cellSignals}
-              entryRedDots={entryRedDots}
+              entryRedChevron
               engagedThreadIds={engagedSet}
               // CP4: stub audience decided at display time — exactly one OTHER
               // current room member → "you", 2+ → "the room" (departed members
