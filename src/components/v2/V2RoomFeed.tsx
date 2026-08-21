@@ -148,11 +148,14 @@ export type V2RoomFeedProps = {
       entry card — drives the A2 green-filled circle behind the expand
       chevron on collapsed cards. Yellow + red are map-only. */
   cellSignals?: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }>;
-  /** Per-thread red "hidden responses" dot on the entry card (public-rooms
-      scope, 2026). Used by the single-user public room, which has no map to
-      carry the friend-room red signal. count = responses hidden from the owner
-      by progress gating; onDismiss snoozes it (X-click). */
-  entryRedDots?: Record<string, { count: number; onDismiss: () => void }>;
+  /** Per-thread red "hidden responses" dot on the entry card. Origin:
+      public-rooms scope (the single-user public room has no map to carry the
+      friend-room red signal); the MOBILE friend room adopted it 2026-08-21
+      (no map there either). count = responses hidden from the owner by
+      progress gating. onDismiss snoozes it (X-click); when absent the dot is
+      PASSIVE — no X, taps fall through to the card, and the owner clears it
+      by expanding the entry (the mobile rule). */
+  entryRedDots?: Record<string, { count: number; onDismiss?: () => void }>;
   /** Set of threadIds the user has expanded-and-collapsed at least once
       this session. Drives A4 (entry card dim to opacity 0.5). */
   engagedThreadIds?: Set<string>;
@@ -1017,11 +1020,30 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   );
 });
 
-// Red "hidden responses" dot for the public room entry card. Mirrors the
+// Red "hidden responses" dot for the entry card corner. Mirrors the
 // friend-room map dot (canon-red, count, X-to-dismiss on hover) but rides the
-// card corner since the public room has no map. Self-contained hover state.
-function EntryRedDot({ count, onDismiss }: { count: number; onDismiss: () => void }) {
+// card corner where there is no map (public rooms; mobile friend rooms since
+// 2026-08-21). Self-contained hover state. Without onDismiss the dot is
+// PASSIVE: always shows the count, never intercepts the tap (expanding the
+// entry is what clears it — the mobile rule).
+function EntryRedDot({ count, onDismiss }: { count: number; onDismiss?: () => void }) {
   const [hover, setHover] = useState(false);
+  if (!onDismiss) {
+    return (
+      <div
+        style={{
+          position: "absolute", top: -8, right: -8, zIndex: 3,
+          minWidth: 20, height: 20, padding: "0 5px", borderRadius: 999,
+          background: "var(--danger)", color: CANON.cream,
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          fontSize: 11, fontWeight: 800, lineHeight: 1,
+          boxSizing: "border-box", pointerEvents: "none",
+        }}
+      >
+        {count}
+      </div>
+    );
+  }
   return (
     <Tooltip
       text={<>There is new writing in here<br />for when you catch up.</>}

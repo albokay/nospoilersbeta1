@@ -36,6 +36,7 @@ import {
   clearMigrationDormantForShow,
   fetchRoomActivityVisibility,
   roomHasNewActivity,
+  roomHasNewInvisibleActivity,
   fetchGroupChatActivity,
   chatHasNewActivity,
   fetchMyPendingInvitesForGroup,
@@ -386,11 +387,17 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     return { watching: watching.sort(byActivity), notStarted: notStarted.sort(byName) };
   }, [groupShows, showsById, selfUserId, memberNameById]);
 
-  // Blue dot per room — VISIBLE writing only (red layer cut on mobile).
+  // Per-room dot — desktop's grammar (the mobile red-layer cut was reversed,
+  // Alborz 2026-08-21): blue = new VISIBLE writing; red = new INVISIBLE
+  // (ahead-of-progress) writing with nothing new visible. Both clear when
+  // the room is entered (markRoomSeen stamps last_seen).
   const roomDotByRoomId = useMemo(() => {
-    const s = new Set<string>();
-    for (const v of roomVis) if (roomHasNewActivity(v)) s.add(v.groupId);
-    return s;
+    const m = new Map<string, "blue" | "red">();
+    for (const v of roomVis) {
+      if (roomHasNewActivity(v)) m.set(v.groupId, "blue");
+      else if (roomHasNewInvisibleActivity(v)) m.set(v.groupId, "red");
+    }
+    return m;
   }, [roomVis]);
 
   // The quiet line-2 gap text — desktop's hover tooltip copy, inline.
@@ -720,7 +727,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               <h1 style={shelfHeader}>OPEN SHOW ROOMS:</h1>
               <div style={shelfCol}>
                 {groupShelves.watching.map((r) => (
-                  <ShowRow key={r.pill.showId} row={r} dot={!!r.pill.roomId && roomDotByRoomId.has(r.pill.roomId)} line2={gapLine(r)} onClick={() => onRowClick(r.pill, r.name)} />
+                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={gapLine(r)} onClick={() => onRowClick(r.pill, r.name)} />
                 ))}
               </div>
             </>
@@ -736,7 +743,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               </h1>
               <div style={shelfCol}>
                 {groupShelves.notStarted.map((r) => (
-                  <ShowRow key={r.pill.showId} row={r} dot={!!r.pill.roomId && roomDotByRoomId.has(r.pill.roomId)} line2={null} onClick={() => onRowClick(r.pill, r.name)} />
+                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={null} onClick={() => onRowClick(r.pill, r.name)} />
                 ))}
               </div>
             </>
@@ -993,7 +1000,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 // ── Show row (full-width, two-line, opt-in avatars right) ───────────────────
 function ShowRow({ row, dot, line2, onClick }: {
   row: { pill: PillData; name: string; opted: { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean }[] };
-  dot: boolean;
+  dot: "blue" | "red" | undefined;
   line2: string | null;
   onClick: () => void;
 }) {
@@ -1013,7 +1020,7 @@ function ShowRow({ row, dot, line2, onClick }: {
     <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: plateColor }} onTouchStart={() => {}}>
       <span className="sb-plate" />
     <button onClick={onClick} style={{ ...rowBase, background: bg, border, color: fg }}>
-      {dot && <span style={rowDot} />}
+      {dot && <span style={{ ...rowDot, background: dot === "red" ? C.red : C.blue }} />}
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: -0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {row.name}

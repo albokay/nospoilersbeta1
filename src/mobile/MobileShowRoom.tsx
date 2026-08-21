@@ -42,12 +42,14 @@ import useSheetSwipeDown from "../lib/useSheetSwipeDown";
  *   • SEASON MAP CUT — replaced by an expandable ROSTER dropdown at the top:
  *     collapsed = member count + avatars; expanded = every member INCLUDING
  *     the viewer, ordered by watch progress, raw S/E (no relative math).
- *   • Notification signals are the VISIBLE-writing subset: white "new since
- *     last visit" outline (newly-visible entry), green (new response on your
- *     entry), yellow (new highlight on your writing). The RED invisible-
- *     writing layer is cut — its state isn't computed here at all. Same
- *     localStorage keys as desktop, so seen-state stays consistent across
- *     surfaces.
+ *   • Notification signals — desktop's full set since 2026-08-21 (the red
+ *     cut was reversed): white "new since last visit" outline (newly-visible
+ *     entry), green (new response on your entry), yellow (new highlight on
+ *     your writing), RED corner dot on your own entries with hidden
+ *     ahead-of-progress responses (the map carries it on desktop; here it
+ *     rides the entry card, is passive, and clears on EXPAND — not an X).
+ *     Same localStorage keys as desktop, so seen-state stays consistent
+ *     across surfaces.
  *   • Pings / polls / SIKW stickies: cut (no launchers, no receive-side).
  *   • Digest deep-links (?entry=) land here cold: the feed auto-expands the
  *     entry, and back walks up the real stack (group room → dashboard).
@@ -161,13 +163,20 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     }
   }
 
-  // ── Visible-writing notification signals (desktop's reduced subset) ───────
-  // Same localStorage keys as desktop so seen-state is shared across surfaces.
+  // ── Notification signals (desktop parity — the red-layer cut was reversed,
+  //    Alborz 2026-08-21). Same localStorage keys as desktop so seen-state is
+  //    shared across surfaces. Red = hidden (ahead-of-progress) responses on
+  //    the viewer's OWN entries, a corner dot on the entry card (no map on
+  //    mobile to carry it); cleared by EXPANDING the entry — unlike desktop's
+  //    map-dot X — or naturally when catching up reveals the responses.
   const prevVisibleThreadIdsRef = useRef<Set<string>>(new Set());
   const [lastOpenedAt, setLastOpenedAt] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem("ns_last_opened") || "{}"); } catch { return {}; }
   });
   const [perThreadLatestReply, setPerThreadLatestReply] = useState<Record<string, number>>({});
+  const [perThreadHiddenCount, setPerThreadHiddenCount] = useState<Record<string, number>>({});
+  const [perThreadLatestHidden, setPerThreadLatestHidden] = useState<Record<string, number>>({});
+  const [redDismissedAt, setRedDismissedAt] = useState<Record<string, number>>({});
   const [engagedSet, setEngagedSet] = useState<Set<string>>(new Set());
   const [latestHighlightOnViewerWriting, setLatestHighlightOnViewerWriting] = useState<Record<string, number>>({});
   const [lastHighlightSeenAt, setLastHighlightSeenAt] = useState<Record<string, number>>(() => {
@@ -311,6 +320,17 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       setMapMembers(members);
       setPrivateEntries(priv);
       setPerThreadLatestReply(gr.latestVisibleReplyAt ?? {});
+      // Red-layer data (2026-08-21): hidden-response counts per own entry +
+      // dismissals — desktop's ns_tdot_dismiss_<id> key, stamped here by
+      // EXPANDING the entry (desktop stamps it via the map dot's X).
+      setPerThreadHiddenCount(gr.hiddenCounts ?? {});
+      setPerThreadLatestHidden(gr.latestHiddenReplyAt ?? {});
+      const dismisses: Record<string, number> = {};
+      for (const t of gr.threads as Thread[]) {
+        const v = localStorage.getItem(`ns_tdot_dismiss_${t.id}`);
+        if (v) dismisses[t.id] = parseInt(v, 10);
+      }
+      setRedDismissedAt(dismisses);
     } catch (e) {
       console.error("[m-show-room] load failed", e);
     } finally {
@@ -401,7 +421,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     return () => { cancelled = true; };
   }, [user?.id, roomId, privateOnly, feedEntries, progressForShow, profile?.username]);
 
-  // ── Per-entry signals — GREEN > YELLOW only (red layer cut on mobile) ─────
+  // ── Per-entry signals — GREEN > YELLOW > RED, desktop's precedence (the
+  //    red layer joined mobile 2026-08-21). Red = hidden responses on the
+  //    viewer's OWN entry; suppressed once the entry is expanded (the stamp
+  //    below) until a NEWER hidden response lands. When catching up reveals
+  //    a response, green naturally takes over. ────────────────────────────
   const cellSignals = useMemo(() => {
     const out: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }> = {};
     for (const entry of feedEntries) {
@@ -409,10 +433,25 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       const tid = entry.threadId;
       const isOwn = !!profile?.username && entry.authorUsername === profile.username;
       if (isOwn && (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0)) { out[tid] = { kind: "green" }; continue; }
-      if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; }
+      if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
+      const hiddenCount = perThreadHiddenCount[tid] ?? 0;
+      const dismissedAt = redDismissedAt[tid] ?? 0;
+      const dismissed = dismissedAt > 0 && dismissedAt >= (perThreadLatestHidden[tid] ?? 0);
+      if (isOwn && hiddenCount > 0 && !dismissed) out[tid] = { kind: "red", redCount: hiddenCount };
     }
     return out;
-  }, [feedEntries, perThreadLatestReply, lastOpenedAt, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, perThreadLatestHidden, redDismissedAt, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
+
+  // The red signal's render home: a passive corner dot on the entry card
+  // (V2RoomFeed's public-rooms mechanism; no onDismiss → no X, taps fall
+  // through to the card, expanding clears it).
+  const entryRedDots = useMemo(() => {
+    const out: Record<string, { count: number }> = {};
+    for (const [tid, sig] of Object.entries(cellSignals)) {
+      if (sig.kind === "red") out[tid] = { count: sig.redCount ?? 0 };
+    }
+    return out;
+  }, [cellSignals]);
 
   // ── White "new since last visit" outline (others' entries) ────────────────
   const isNewMap = useMemo(() => {
@@ -439,6 +478,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       try { localStorage.setItem("ns_highlight_seen", JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
+    // Expanding clears the red hidden-responses dot (the mobile dismissal
+    // rule, 2026-08-21) — same ns_tdot_dismiss_<id> key desktop's map-X
+    // writes, so a dismissal on either surface holds on both. A newer
+    // hidden response than this stamp re-lights the dot.
+    try { localStorage.setItem(`ns_tdot_dismiss_${threadId}`, String(nowMs)); } catch { /* ignore */ }
+    setRedDismissedAt((prev) => ({ ...prev, [threadId]: nowMs }));
     setEngagedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
   }, [perThreadLatestReply]);
 
@@ -655,6 +700,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               onClickProfile={openPool}
               isNewMap={isNewMap}
               cellSignals={cellSignals}
+              entryRedDots={entryRedDots}
               engagedThreadIds={engagedSet}
               // CP4: stub audience decided at display time — exactly one OTHER
               // current room member → "you", 2+ → "the room" (departed members

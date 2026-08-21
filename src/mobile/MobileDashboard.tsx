@@ -27,6 +27,7 @@ import {
   type GroupPendingInvite,
   fetchRoomActivityVisibility,
   roomHasNewActivity,
+  roomHasNewInvisibleActivity,
   fetchGroupChatActivity,
   chatHasNewActivity,
   type PendingGroupInvite,
@@ -254,12 +255,22 @@ export default function MobileDashboard() {
     return m;
   }, [railGroups, selfUserId]);
 
-  // ── Per-group activity indicator — VISIBLE writing only (spec cut: no red
-  //    invisible-writing layer on mobile). ───────────────────────────────────
+  // ── Per-group activity indicator. Desktop's cluster grammar (the mobile
+  //    red-layer cut was reversed, Alborz 2026-08-21): blue = new VISIBLE
+  //    writing or new chat; red = new INVISIBLE (ahead-of-progress) writing
+  //    only when nothing visible is new. Both clear when the show room is
+  //    entered (markRoomSeen stamps last_seen). ────────────────────────────
   const writingNewByGroup = useMemo(() => {
     const s = new Set<string>();
     for (const v of roomVis) {
       if (v.parentGroupId && roomHasNewActivity(v)) s.add(v.parentGroupId);
+    }
+    return s;
+  }, [roomVis]);
+  const invisibleNewByGroup = useMemo(() => {
+    const s = new Set<string>();
+    for (const v of roomVis) {
+      if (v.parentGroupId && roomHasNewInvisibleActivity(v)) s.add(v.parentGroupId);
     }
     return s;
   }, [roomVis]);
@@ -386,7 +397,10 @@ export default function MobileDashboard() {
                 // ONE dot per group row: new visible writing OR new chat (the
                 // split shows up inside the group — show-row dots vs the chat
                 // toggle's dot). Per Alborz 2026-07-02: no separate chat icon here.
+                // Still one dot post-red-tier (2026-08-21): blue wins; red only
+                // when the group's only news is invisible writing.
                 const anyNew = writingNewByGroup.has(group.id) || chatNewByGroup.has(group.id);
+                const invisibleOnly = !anyNew && invisibleNewByGroup.has(group.id);
                 return (
                   // Pressable (Alborz 2026-08-18; theme.ts .sb-press): cream
                   // plate behind the outlined row; the no-op touchstart makes
@@ -411,6 +425,7 @@ export default function MobileDashboard() {
                       {groupDisplayName(group, others, contactNames, groupPending.map((p) => p.name || "a friend"), groupNumberById[group.id])}
                     </span>
                     {anyNew && <span style={writingDot} />}
+                    {invisibleOnly && <span style={{ ...writingDot, background: C.red }} />}
                   </button>
                   </span>
                 );
