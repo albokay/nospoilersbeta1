@@ -59,6 +59,12 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
   // Answer-to-reveal hover (Alborz §6.3): per-ROW — any covered cell in the
   // row shows the same two-line invitation; plural when 2+ answers wait.
   const [coveredHover, setCoveredHover] = useState<string | null>(null);
+  // Findings sticky drag (Alborz 2026-08-20): null = the default beside-the-
+  // card spot; once grabbed, the note follows the pointer and stays where
+  // dropped for the rest of the page visit (not persisted). offsetLeft/Top
+  // ignore the rotation transform, so the grab is jump-free.
+  const [findingsPos, setFindingsPos] = useState<{ x: number; y: number } | null>(null);
+  const findingsGrab = useRef<{ dx: number; dy: number } | null>(null);
   function triggerBounce(cardId: string) {
     setBounce({ cardId, phase: "up" });
     requestAnimationFrame(() => {
@@ -360,7 +366,11 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
       </div>
 
       {/* §7.6.2 — the Findings sticky, beside the card (n≥3; cleared while
-          editing; no dismiss X by design). */}
+          editing; no dismiss X by design). Default spot is fully OFF the
+          card's right edge over the page background (Alborz 2026-08-20 — it
+          used to overlap the last grid column); when the card is too wide to
+          leave room, the on-screen clamp lets it overlap again, and either
+          way the note is click-and-draggable to anywhere. */}
       {ui === "open" && findings && (
         <StickyNote
           tone="cream"
@@ -372,7 +382,24 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
           // Same lift as the tips stickies (Alborz 2026-08-14) — the default
           // hairline was invisible where the note overlaps the cream header.
           boxShadow="0 4px 14px rgba(0,0,0,0.13)"
-          style={{ left: `calc(50% + ${Math.min(cardW / 2, window.innerWidth * 0.46) - 60}px)`, top: "14%", zIndex: 910 }}
+          style={{
+            left: findingsPos ? findingsPos.x : `calc(50% + ${Math.min(cardW / 2 + 16, window.innerWidth / 2 - 290 - 12)}px)`,
+            top: findingsPos ? findingsPos.y : "14%",
+            zIndex: 910, cursor: "grab", touchAction: "none", userSelect: "none",
+          }}
+          containerProps={{
+            onPointerDown: (e) => {
+              const el = e.currentTarget;
+              findingsGrab.current = { dx: e.clientX - el.offsetLeft, dy: e.clientY - el.offsetTop };
+              el.setPointerCapture(e.pointerId);
+            },
+            onPointerMove: (e) => {
+              if (!findingsGrab.current) return;
+              setFindingsPos({ x: e.clientX - findingsGrab.current.dx, y: e.clientY - findingsGrab.current.dy });
+            },
+            onPointerUp: () => { findingsGrab.current = null; },
+            onPointerCancel: () => { findingsGrab.current = null; },
+          }}
         >
           <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Findings:</div>
           <div style={{ fontWeight: 700, marginBottom: findings.quotes.length ? 4 : 8 }}>{findings.headline}</div>

@@ -61,6 +61,10 @@ interface StickyNoteProps {
    *  stickies (let the page paint first); click-triggered stickies (the
    *  "?" tips) pass 0 so the animation starts immediately (QA round 3). */
   entranceDelayMs?: number;
+  /** Extra props spread onto the note's outer div — event handlers etc.
+   *  (Added 2026-08-20 for the draggable Findings sticky; `style` still
+   *  comes from the dedicated prop.) */
+  containerProps?: React.HTMLAttributes<HTMLDivElement>;
 }
 
 export default function StickyNote({
@@ -84,6 +88,7 @@ export default function StickyNote({
   ignoreViewportGate = false,
   animateEntrance = true,
   entranceDelayMs = STICKY.ENTRY_DELAY_MS,
+  containerProps,
 }: StickyNoteProps) {
   const [wide, setWide] = useState(
     () => ignoreViewportGate ||
@@ -116,6 +121,7 @@ export default function StickyNote({
 
   return (
     <div
+      {...containerProps}
       aria-label={ariaLabel}
       style={{
         position: "fixed",

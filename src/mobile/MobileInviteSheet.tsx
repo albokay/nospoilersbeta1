@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import InviteLinkRow from "../components/InviteLinkRow";
+import LoadingDots from "../components/LoadingDots";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import { preventLastWordOrphan } from "../lib/utils";
@@ -162,18 +163,19 @@ export default function MobileInviteSheet({
           } catch (e) { console.error("[m-invite] propose into new group failed", e); }
         }
       }
-      const out: { email: string; name?: string; link?: string; error?: string; emailFailed?: boolean }[] = [];
-      for (const row of list) {
+      // All rows in PARALLEL (Alborz 2026-08-20, desktop parity — the
+      // one-at-a-time loop made a multi-friend invite wait N× the single
+      // time). Each row still awaits its OWN email leg so a silent refusal
+      // surfaces as a copy-the-link row instead of a false "Invites sent!".
+      const out = await Promise.all(list.map(async (row): Promise<{ email: string; name?: string; link?: string; error?: string; emailFailed?: boolean }> => {
         try {
           const token = await createPeopleGroupInvite(id, row.email, row.name || undefined);
-          // Await the email leg so a silent refusal surfaces as a
-          // copy-the-link row instead of a false "Invites sent!".
           const sent = await sendGroupInviteEmail(token);
-          out.push({ email: row.email, name: row.name?.trim() || undefined, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
+          return { email: row.email, name: row.name?.trim() || undefined, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok };
         } catch (e: any) {
-          out.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : "Something went wrong. Please try again." });
+          return { email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : "Something went wrong. Please try again." };
         }
-      }
+      }));
       setLinks(out);
       onSent?.();
     } catch (e) {
@@ -271,8 +273,10 @@ export default function MobileInviteSheet({
             {/* "hi, it's…" removed (first-name identity CP4): the invite
                 email introduces the inviter by their first name. */}
             <div style={{ textAlign: "center", marginTop: 20 }}>
+              {/* In-flight label matches the act (Alborz 2026-08-20, desktop
+                  parity): animated dots like the site's other waits. */}
               <button style={{ ...sendBtn, opacity: sending || !ready ? 0.6 : 1 }} disabled={sending || !ready} onClick={sendInvites}>
-                {sending ? "creating…" : creating ? "create group" : "send invite"}
+                {sending ? (creating ? <>creating group<LoadingDots /></> : <>sending invite<LoadingDots /></>) : creating ? "create group" : "send invite"}
               </button>
             </div>
           </>

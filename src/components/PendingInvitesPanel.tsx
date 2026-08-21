@@ -154,7 +154,9 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
             ) : (
               <span style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 <button style={inFieldBtn} onClick={() => (nudgeFor === inv.token ? setNudgeFor(null) : openNudge(inv))}>nudge</button>
-                <button style={inFieldBtn} onClick={() => { setNudgeFor(null); setActionError(null); setRescindFor(rescindFor === inv.token ? null : inv.token); }}>rescind</button>
+                {/* Activated (its confirm row open) → Alert outline + text
+                    (Alborz 2026-08-20). */}
+                <button style={{ ...inFieldBtn, ...(rescindFor === inv.token ? { border: `2px solid ${CANON.alert}`, color: CANON.alert } : {}) }} onClick={() => { setNudgeFor(null); setActionError(null); setRescindFor(rescindFor === inv.token ? null : inv.token); }}>rescind</button>
               </span>
             )}
           </div>
@@ -182,11 +184,12 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
               <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 6 }}>
                 {preventLastWordOrphan("Rescind this invite? Their link will stop working.")}
               </div>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              {/* Confirm + cancel centered as a pair (Alborz 2026-08-20). */}
+              <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "center" }}>
                 <button style={{ ...dangerRowBtn, opacity: rescinding ? 0.6 : 1 }} disabled={rescinding} onClick={() => doRescind(inv)}>
                   {rescinding ? "rescinding…" : "yes, rescind"}
                 </button>
-                <button style={quietBtn} disabled={rescinding} onClick={() => setRescindFor(null)}>cancel</button>
+                <button style={rescindCancelBtn} disabled={rescinding} onClick={() => setRescindFor(null)}>cancel</button>
               </div>
             </div>
           )}
@@ -259,7 +262,15 @@ const rowBtnSolid: React.CSSProperties = {
   padding: "7px 16px", borderRadius: 65, cursor: "pointer",
 };
 const dangerRowBtn: React.CSSProperties = {
-  border: `2px solid ${CANON.alert}`, background: "transparent", color: CANON.alert,
+  // Alert fill + Cream text (Alborz 2026-08-20; was transparent + Alert text).
+  border: `2px solid ${CANON.alert}`, background: CANON.alert, color: CANON.cream,
+  fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12,
+  padding: "6px 16px", borderRadius: 65, cursor: "pointer",
+};
+// The rescind confirm's cancel: a Cream-outline pill (Alborz 2026-08-20; the
+// nudge rows keep the bare quietBtn cancel).
+const rescindCancelBtn: React.CSSProperties = {
+  border: `2px solid ${CANON.cream}`, background: "transparent", color: CANON.cream,
   fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12,
   padding: "6px 16px", borderRadius: 65, cursor: "pointer",
 };

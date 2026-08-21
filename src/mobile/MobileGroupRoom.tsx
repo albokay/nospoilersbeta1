@@ -1070,7 +1070,10 @@ const headerTitle: React.CSSProperties = {
   margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
 };
 const headerMembers: React.CSSProperties = {
-  fontWeight: 700, fontSize: 12, color: C.cream, marginTop: 2,
+  // Negative top margin pulls the line up under the name so they read as one
+  // unit (Alborz 2026-08-20) — the 44px-tall gear button inflates the title
+  // row, leaving ~9px of dead space below the 22px name before this line.
+  fontWeight: 700, fontSize: 12, color: C.cream, marginTop: -6,
   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
 };
 // Desktop's chatTab, scaled to the header (Alborz 2026-08-17): icon only,

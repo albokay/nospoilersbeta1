@@ -22,7 +22,6 @@
  * The page dims behind the card everywhere (Alborz, CP0 review).
  */
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { fetchDeckCards, fetchMyDeckAnswers, fetchMyLastDeckAnswerAt, upsertDeckAnswer, type DeckCard } from "../../lib/db";
 import { readPendingDeckAnswers, addPendingDeckAnswer } from "../../lib/deckPending";
@@ -321,13 +320,13 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
             style={{ ...tab, background: CANON.alert, ...(mobile ? { ...tabMobile, top: 20, left: -14 } : { top: "50%", transform: "translateY(-50%)", left: -30 }) }}
             onClick={() => answer(false)}
           >
-            NOPE <ArrowLeft size={mobile ? 18 : 22} strokeWidth={2.5} />
+            NOPE
           </button>
           <button
             style={{ ...tab, background: CANON.personal, ...(mobile ? { ...tabMobile, bottom: 24, right: -14 } : { top: "50%", transform: "translateY(-50%)", right: -30 }) }}
             onClick={() => answer(true)}
           >
-            <ArrowRight size={mobile ? 18 : 22} strokeWidth={2.5} /> YES
+            YES
           </button>
         </div>
       </div>

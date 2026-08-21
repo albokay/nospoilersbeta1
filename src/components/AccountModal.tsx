@@ -128,7 +128,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
           <p style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55, color: C.midnight }}>
             Permanently deletes your account and personal info, and erases your private notes.
             Your posts in shared rooms stay so your friends’ conversations aren’t broken — but they’ll
-            show as “[deleted]” and you’ll disappear from every room, map, and chat. This can’t be undone.
+            show as “(deleted user)” and you’ll disappear from every room, map, and chat. This can’t be undone.
           </p>
           <button onClick={() => setPhase("confirm")} style={dangerOutline}>Delete my account</button>
         </div>

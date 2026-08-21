@@ -122,13 +122,22 @@ export async function fetchShows(): Promise<Show[]> {
 
 // ── Threads ──────────────────────────────────────────────────────────────────
 
+// A deleted account's KEPT writing is stored with the literal author_name
+// '[deleted]' (anonymize model, 20260630 migration). Display it as a
+// friendlier label instead (Alborz 2026-08-20) — mapped here at the row
+// boundary so every byline surface (feeds, replies, highlights-via-threads)
+// picks it up; the stored value is unchanged.
+function displayAuthorName(name: string): string {
+  return name === "[deleted]" ? "(deleted user)" : name;
+}
+
 function rowToThread(row: any): Thread {
   return {
     id:             row.id,
     showId:         row.show_id,
     season:         row.season,
     episode:        row.episode,
-    author:         row.author_name,
+    author:         displayAuthorName(row.author_name),
     titleBase:      row.title,
     preview:        row.preview ?? "",
     body:           row.body ?? "",
@@ -476,7 +485,7 @@ function rowToReply(row: any): Reply {
     showId:             row.show_id,
     season:             row.season,
     episode:            row.episode,
-    author:             row.author_name,
+    author:             displayAuthorName(row.author_name),
     authorId:           row.author_id ?? null,
     body:               row.body,
     createdAt:          new Date(row.created_at).getTime(),

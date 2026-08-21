@@ -466,7 +466,11 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
       );
     }
     return (
-      <div style={composeBackdrop}>
+      // zIndex 1002 lifts the compose screen ABOVE the dashboard top bar
+      // (which rides at 1001 during onboarding as the QA-round-7 escape
+      // hatch) — the corner logo was painting over the card (Alborz
+      // 2026-08-20). On this one screen the card's own "← back" is the exit.
+      <div style={{ ...composeBackdrop, zIndex: 1002 }}>
         <div style={composeCardOuter}>
           {/* Back replaces the compose modal's "not now" exits (no skipping
               out) — routed through the form's discard check so typed writing

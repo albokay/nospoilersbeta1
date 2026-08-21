@@ -988,19 +988,20 @@ export default function DashboardPage() {
           } catch (e) { console.error("[dashboard] propose into new group failed", e); }
         }
       }
-      const links: { email: string; name?: string; link?: string; error?: string; emailFailed?: boolean }[] = [];
-      for (const row of rows) {
+      // All rows in PARALLEL (Alborz 2026-08-20 — the one-at-a-time loop made
+      // a multi-friend invite wait N× the single-invite time). Each row still
+      // awaits its OWN email leg so a silent refusal (stale token, Resend,
+      // rate limit) surfaces as a copy-the-link row instead of a false
+      // "Invites sent!". The link works either way. Promise.all keeps row order.
+      const links = await Promise.all(rows.map(async (row): Promise<{ email: string; name?: string; link?: string; error?: string; emailFailed?: boolean }> => {
         try {
           const token = await createPeopleGroupInvite(id, row.email, row.name || undefined);
-          // Await the email leg so a silent refusal (stale token, Resend,
-          // rate limit) surfaces as a copy-the-link row instead of a false
-          // "Invites sent!". The link works either way.
           const sent = await sendGroupInviteEmail(token);
-          links.push({ email: row.email, name: row.name.trim() || undefined, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok });
+          return { email: row.email, name: row.name.trim() || undefined, link: `${window.location.origin}/group-invite/${token}`, emailFailed: !sent.ok };
         } catch (e: any) {
-          links.push({ email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : "Something went wrong. Please try again." });
+          return { email: row.email, error: e?.message === "group_full" ? "This group is full (8 max)." : "Something went wrong. Please try again." };
         }
-      }
+      }));
       setInviteLinks(links);
       const rail = await loadRail(user.id);
       setRailGroups(rail);
@@ -1715,8 +1716,11 @@ export default function DashboardPage() {
                 {/* "hi, it's…" removed (first-name identity CP4): the invite
                     email now introduces the inviter by their first name. */}
                 <div style={{ textAlign: "center", marginTop: 28 }}>
+                  {/* In-flight label matches the act (Alborz 2026-08-20 —
+                      "creating…" while ADDING a friend read as confusing):
+                      animated dots like the site's other waits. */}
                   <button style={{ ...invitePill, opacity: inviteSending || !ready ? 0.6 : 1 }} disabled={inviteSending || !ready} onClick={sendInvites}>
-                    {inviteSending ? "creating…" : creating ? "create group" : "send invite"}
+                    {inviteSending ? (creating ? <>creating group<LoadingDots /></> : <>sending invite<LoadingDots /></>) : creating ? "create group" : "send invite"}
                   </button>
                 </div>
               </>
