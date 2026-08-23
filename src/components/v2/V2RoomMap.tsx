@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CANON } from "../../styles/canon";
 import { createPortal } from "react-dom";
-import { ChartBar, CircleCheck, SquarePen } from "lucide-react";
+import { ChartBar, ChevronDown, ChevronUp, CircleCheck, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
@@ -32,7 +32,9 @@ const HELPER_W = 140;     // helper-text column ("click a name to nudge a friend
 const DOOR_W = 48;        // door-icon column (ask the room launcher)
 const ROW_HEIGHT = CELL + GAP_BELOW; // 48px
 const COL_GAP = 16;
-const SEASON_LABEL_W = 80;
+// 112 (was 80, 2026-08-21): room for "Season 12" + the fold chevron + the
+// folded-season notification dot beside it.
+const SEASON_LABEL_W = 112;
 const EPISODE_LABEL_W = 24;
 const HEADER_HEIGHT = 120;
 
@@ -58,6 +60,15 @@ function measureUsernameWidth(displayed: string): number {
   ctx.font = "400 13px Inter, sans-serif";
   return ctx.measureText(displayed).width;
 }
+
+// Season fold control (2026-08-21): the label text + chevron, transparent,
+// inheriting the label's 14px cream type.
+const seasonToggleBtn: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 4,
+  background: "transparent", border: "none", padding: 0, margin: 0,
+  fontFamily: "inherit", fontSize: 14, whiteSpace: "nowrap", color: CANON.cream,
+  cursor: "pointer",
+};
 
 // Rating phrase copy — per spec §"The rating system" and the dice-display
 // spec (sidebar_spec_rating_dice_display.md). Integer scale ASCENDS with
@@ -448,6 +459,72 @@ export default function V2RoomMap({
   }, [members, seasons]);
 
   const rows = useMemo(() => flattenSeasons(touchedSeasons), [touchedSeasons]);
+  // Row-index span of each rendered season (for the fold strip's thread
+  // logic: a member's spine runs THROUGH a folded season when they've
+  // reached past its last row, INTO it when their last-reached row is
+  // inside it).
+  const seasonRowRange = useMemo(() => {
+    const out: Record<number, { first: number; last: number }> = {};
+    rows.forEach((r, i) => {
+      const cur = out[r.season];
+      if (!cur) out[r.season] = { first: i, last: i };
+      else cur.last = i;
+    });
+    return out;
+  }, [rows]);
+
+  // ── Collapsible seasons (Alborz 2026-08-21) ──────────────────────────────
+  // Any season folds/unfolds via its label or the chevron beside it. Default
+  // per visit (not persisted): the viewer's CURRENT season (raw progress .s —
+  // where they're watching right now, the same anchor as the auto-scroll)
+  // and the one before it open; every earlier season folded; seasons ahead
+  // open. A viewer who hasn't started folds nothing.
+  const defaultCollapsed = (vp: ProgressEntry | null, seasonCount: number): Set<number> => {
+    const out = new Set<number>();
+    if (!vp || vp.s < 1) return out;
+    for (let season = 1; season <= seasonCount; season++) {
+      if (season < vp.s - 1) out.add(season);
+    }
+    return out;
+  };
+  const [collapsedSeasons, setCollapsedSeasons] = useState<Set<number>>(() => defaultCollapsed(viewerProgress, touchedSeasons.length));
+  // Defaults are applied ONCE per mount — on mount when the data is already
+  // here (the normal case: the room renders the map after its load), else
+  // the first time seasons appear. Later data refreshes never undo the
+  // viewer's toggles.
+  const foldDefaultsAppliedRef = useRef(touchedSeasons.length > 0);
+  const [foldDefaultsReady, setFoldDefaultsReady] = useState(touchedSeasons.length > 0);
+  useEffect(() => {
+    if (foldDefaultsAppliedRef.current) return;
+    if (touchedSeasons.length === 0) return;
+    foldDefaultsAppliedRef.current = true;
+    setCollapsedSeasons(defaultCollapsed(viewerProgress, touchedSeasons.length));
+    setFoldDefaultsReady(true);
+  }, [touchedSeasons.length, viewerProgress]);
+  const toggleSeason = (season: number) => {
+    setCollapsedSeasons((prev) => {
+      const next = new Set(prev);
+      if (next.has(season)) next.delete(season); else next.add(season);
+      return next;
+    });
+  };
+  // A folded season's live cell signals surface as ONE dot beside its label
+  // (Alborz 2026-08-21) — same 16px as the cell dots, green over red (the
+  // cells' own precedence; yellow highlight signals don't surface here).
+  // Expanded seasons keep their per-cell dots; the strip dot is fold-only.
+  const seasonSignal = useMemo(() => {
+    const out: Record<number, "green" | "red"> = {};
+    if (!cellSignals) return out;
+    for (const m of members) {
+      for (const entry of m.entries) {
+        const sig = cellSignals[entry.threadId];
+        if (!sig) continue;
+        if (sig.kind === "green") out[entry.s] = "green";
+        else if (sig.kind === "red" && out[entry.s] !== "green") out[entry.s] = "red";
+      }
+    }
+    return out;
+  }, [cellSignals, members]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // Per-season ref map (key = season number) populated as season-label rows
   // render. Used by the on-mount scroll-to-viewer-season effect below.
@@ -474,17 +551,19 @@ export default function V2RoomMap({
     // (16). Subtracting GAP_BELOW from the row-aligned position reveals
     // exactly the spine area while keeping every visible row below the
     // header row-aligned.
-    let targetRowIdx = -1;
-    for (let i = 0; i < rows.length; i++) {
-      if (rows[i].season === targetSeason && rows[i].episode === 1) {
-        targetRowIdx = i;
-        break;
-      }
-    }
-    if (targetRowIdx < 0) return;
-    container.scrollTop = Math.max(0, targetRowIdx * ROW_HEIGHT - GAP_BELOW);
+    // Measured from the rendered season starts rather than row-index math
+    // (2026-08-21): folded seasons above the target shorten the map, so
+    // the index formula no longer lands on the right row. Δ = the target
+    // season's label offset from season 1's; the old formula resolved to
+    // Δ − 48 (one season-break spacer + one GAP_BELOW of breathing room).
+    if (!foldDefaultsReady) return;
+    const targetEl = seasonStartRefs.current[targetSeason];
+    const firstEl = seasonStartRefs.current[rows[0]?.season ?? 1];
+    if (!targetEl || !firstEl) return;
+    const delta = targetEl.getBoundingClientRect().top - firstEl.getBoundingClientRect().top;
+    container.scrollTop = Math.max(0, delta - (GAP_BELOW * 2 + GAP_BELOW));
     initialScrollDoneRef.current = true;
-  }, [viewerProgress, rows]);
+  }, [viewerProgress, rows, foldDefaultsReady]);
 
   // Pre-compute per-member: last reached row index (-1 if none), and a map
   // from `${s}-${e}` → entry / rating, for O(1) cell lookups.
@@ -911,53 +990,115 @@ export default function V2RoomMap({
         {rows.map((row, rowIdx) => {
           const rowKey = `${row.season}-${row.episode}`;
           const showSeasonBreak = row.isFirstOfSeason && rowIdx > 0;
+          // Season-break spacer (shared by expanded first rows and the fold
+          // strip): 2x GAP_BELOW of extra space before a new season — with
+          // the previous row's regular GAP_BELOW the inter-season gap is
+          // 48px. Spine continues through the break for members reached on
+          // both sides. Emits one child per grid column (season placeholder,
+          // episode placeholder, then N member spines) so nothing auto-places
+          // a column left.
+          const seasonBreak = showSeasonBreak && (
+            <>
+              <div style={{ height: GAP_BELOW * 2 }} />
+              <div /> {/* episode-label column placeholder */}
+              {members.map((m, mIdx) => {
+                const mMap = memberMaps[mIdx];
+                const prevReached = rowIdx - 1 <= mMap.lastReachedIdx;
+                const thisReached = rowIdx <= mMap.lastReachedIdx;
+                const drawSpine = prevReached && thisReached;
+                return (
+                  <div
+                    key={m.userId}
+                    style={{ width: CELL, height: GAP_BELOW * 2, position: "relative" }}
+                  >
+                    {drawSpine && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: CELL / 2 - 1,
+                          top: 0,
+                          width: 2,
+                          height: GAP_BELOW * 2,
+                          background: "var(--dos-border)",
+                          opacity: 0.55,
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          );
+
+          // ── Folded season (2026-08-21): the season's rows collapse into
+          //    ONE row-height strip — label + down chevron, and on every
+          //    member column a horizontal fold line in the thread color.
+          //    The vertical thread itself only appears where that member's
+          //    spine runs: full height when they've reached PAST the season,
+          //    top-to-fold-line when their last episode is INSIDE it (their
+          //    thread enters and stops; a departed member's end-dot folds
+          //    away with the cells), nothing when they haven't reached it.
+          if (collapsedSeasons.has(row.season)) {
+            if (!row.isFirstOfSeason) return null;
+            const range = seasonRowRange[row.season];
+            return (
+              <React.Fragment key={rowKey}>
+                {seasonBreak}
+                <div
+                  ref={(el) => { seasonStartRefs.current[row.season] = el; }}
+                  style={{ height: ROW_HEIGHT, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 8 }}
+                >
+                  <button
+                    onClick={() => toggleSeason(row.season)}
+                    aria-label={`Expand season ${row.season}`}
+                    aria-expanded={false}
+                    style={seasonToggleBtn}
+                  >
+                    Season {row.season}
+                    <ChevronDown size={14} color={CANON.cream} strokeWidth={2.5} />
+                    {seasonSignal[row.season] && (
+                      <span
+                        aria-hidden
+                        style={{
+                          width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
+                          background: seasonSignal[row.season] === "green" ? CANON.personal : CANON.alert,
+                        }}
+                      />
+                    )}
+                  </button>
+                </div>
+                <div style={{ height: ROW_HEIGHT }} /> {/* episode-label column placeholder */}
+                {members.map((m, mIdx) => {
+                  const mMap = memberMaps[mIdx];
+                  const through = range ? mMap.lastReachedIdx > range.last : false;
+                  const into = range ? !through && mMap.lastReachedIdx >= range.first : false;
+                  return (
+                    <div key={m.userId} style={{ width: CELL, height: ROW_HEIGHT, position: "relative" }}>
+                      {(through || into) && (
+                        <div
+                          style={{
+                            position: "absolute", left: CELL / 2 - 1, top: 0, width: 2,
+                            height: through ? ROW_HEIGHT : ROW_HEIGHT / 2,
+                            background: "var(--dos-border)", opacity: 0.55,
+                          }}
+                        />
+                      )}
+                      <div
+                        style={{
+                          position: "absolute", left: 0, top: ROW_HEIGHT / 2 - 1, width: CELL, height: 2,
+                          background: "var(--dos-border)", opacity: 0.55,
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            );
+          }
           return (
             <React.Fragment key={rowKey}>
-              {showSeasonBreak && (
-                <>
-                  {/* Season-break spacer: 2x GAP_BELOW of extra space before
-                      a new season — combined with the previous row's regular
-                      GAP_BELOW, the total inter-season gap is 48px. Spine
-                      continues through the break for members reached on
-                      both sides.
-
-                      Grid alignment: this Fragment emits one child per
-                      grid column (7 total: season placeholder, episode
-                      placeholder, then N member spines). Without the
-                      episode placeholder, every member spine would
-                      auto-place one column LEFT — self's spine would
-                      land in the episode-label column and the last
-                      member's spine would be dropped entirely. */}
-                  <div style={{ height: GAP_BELOW * 2 }} />
-                  <div /> {/* episode-label column placeholder */}
-                  {members.map((m, mIdx) => {
-                    const mMap = memberMaps[mIdx];
-                    const prevReached = rowIdx - 1 <= mMap.lastReachedIdx;
-                    const thisReached = rowIdx <= mMap.lastReachedIdx;
-                    const drawSpine = prevReached && thisReached;
-                    return (
-                      <div
-                        key={m.userId}
-                        style={{ width: CELL, height: GAP_BELOW * 2, position: "relative" }}
-                      >
-                        {drawSpine && (
-                          <div
-                            style={{
-                              position: "absolute",
-                              left: CELL / 2 - 1,
-                              top: 0,
-                              width: 2,
-                              height: GAP_BELOW * 2,
-                              background: "var(--dos-border)",
-                              opacity: 0.55,
-                            }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </>
-              )}
+              {/* Season-break spacer — built above (shared with the fold strip). */}
+              {seasonBreak}
 
               {/* Season label — only on the first row of each season */}
               <div
@@ -973,15 +1114,17 @@ export default function V2RoomMap({
                 }}
               >
                 {row.isFirstOfSeason && (
-                  <span
-                    style={{
-                      fontSize: 14,
-                      whiteSpace: "nowrap",
-                      color: CANON.cream,
-                    }}
+                  // Label + up chevron = the fold control (2026-08-21);
+                  // either part folds the season.
+                  <button
+                    onClick={() => toggleSeason(row.season)}
+                    aria-label={`Collapse season ${row.season}`}
+                    aria-expanded
+                    style={seasonToggleBtn}
                   >
                     Season {row.season}
-                  </span>
+                    <ChevronUp size={14} color={CANON.cream} strokeWidth={2.5} />
+                  </button>
                 )}
               </div>
 
