@@ -1019,8 +1019,10 @@ export default function V2RoomMap({
                           top: 0,
                           width: 2,
                           height: GAP_BELOW * 2,
-                          background: "var(--dos-border)",
-                          opacity: 0.55,
+                          // Flat canon greyblue (Alborz 2026-08-21; was
+                          // translucent --dos-border) — every map line is
+                          // opaque Business.
+                          background: CANON.business,
                         }}
                       />
                     )}
@@ -1079,14 +1081,14 @@ export default function V2RoomMap({
                           style={{
                             position: "absolute", left: CELL / 2 - 1, top: 0, width: 2,
                             height: through ? ROW_HEIGHT : ROW_HEIGHT / 2,
-                            background: "var(--dos-border)", opacity: 0.55,
+                            background: CANON.business,
                           }}
                         />
                       )}
                       <div
                         style={{
                           position: "absolute", left: 0, top: ROW_HEIGHT / 2 - 1, width: CELL, height: 2,
-                          background: "var(--dos-border)", opacity: 0.55,
+                          background: CANON.business,
                         }}
                       />
                     </div>
@@ -1636,8 +1638,8 @@ export default function V2RoomMap({
                           top: CELL,
                           width: 2,
                           height: GAP_BELOW,
-                          background: "var(--dos-border)",
-                          opacity: 0.55,
+                          // Flat canon greyblue (Alborz 2026-08-21).
+                          background: CANON.business,
                         }}
                       />
                     )}
