@@ -1043,6 +1043,12 @@ export default function V2RoomMap({
           if (collapsedSeasons.has(row.season)) {
             if (!row.isFirstOfSeason) return null;
             const range = seasonRowRange[row.season];
+            // Stacked folds read as crosses (Alborz 2026-08-21): when the
+            // season BELOW is folded too, this strip's marker is the
+            // departed-member-style 8px dot ON the line (not terminating
+            // it) instead of the dash; only the bottom season of each
+            // folded stack keeps the dash.
+            const stackedAbove = collapsedSeasons.has(row.season + 1) && !!seasonRowRange[row.season + 1];
             return (
               <React.Fragment key={rowKey}>
                 {seasonBreak}
@@ -1085,12 +1091,22 @@ export default function V2RoomMap({
                           }}
                         />
                       )}
-                      <div
-                        style={{
-                          position: "absolute", left: 0, top: ROW_HEIGHT / 2 - 1, width: CELL, height: 2,
-                          background: CANON.business,
-                        }}
-                      />
+                      {stackedAbove ? (
+                        <div
+                          style={{
+                            position: "absolute", left: CELL / 2 - 4, top: ROW_HEIGHT / 2 - 4,
+                            width: 8, height: 8, borderRadius: "50%",
+                            background: CANON.business,
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            position: "absolute", left: 0, top: ROW_HEIGHT / 2 - 1, width: CELL, height: 2,
+                            background: CANON.business,
+                          }}
+                        />
+                      )}
                     </div>
                   );
                 })}
