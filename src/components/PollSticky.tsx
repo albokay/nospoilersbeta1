@@ -260,15 +260,16 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
               background: "transparent",
               border: "none",
               padding: 6,
-              color: FADED_TEXT,
-              opacity: 0.6,
+              // Full-opacity cream + 16px (Alborz 2026-08-21; was 70%-cream
+              // at 0.6 opacity and 13px — too faint on the yellow).
+              color: TEXT_COLOR,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <X size={13} />
+            <X size={16} strokeWidth={2.5} />
           </button>
         )}
         <div style={askerLineStyle()}>
@@ -412,15 +413,16 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
             background: "transparent",
             border: "none",
             padding: 6,
-            color: FADED_TEXT,
-            opacity: 0.6,
+            // Full-opacity cream + 16px (Alborz 2026-08-21) — matches the
+            // answered-state X above.
+            color: TEXT_COLOR,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <X size={13} />
+          <X size={16} strokeWidth={2.5} />
         </button>
 
         <div style={askerLineStyle()}>
