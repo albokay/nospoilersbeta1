@@ -26,7 +26,7 @@ import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, UserPen } from "lucide-react";
+import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, Search, UserPen } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import AccountModal from "./AccountModal";
 import FeedbackWidget from "./FeedbackWidget";
@@ -135,6 +135,10 @@ const NOTIF_VISIBLE = "There is new writing for you in here.";
 const NOTIF_INVISIBLE = "There is new writing for you in here… for when you catch up.";
 
 type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: GroupPendingInvite[] };
+
+// Hover-tip state (2026-08-21): `key` identifies the hovered element so the
+// bubble pins at first hover instead of riding the cursor.
+type TipState = { key: string; text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number };
 
 export default function DashboardPage() {
   const { user, profile, loading: authLoading, signOut } = useAuth() as any;
@@ -356,7 +360,33 @@ export default function DashboardPage() {
   // `sub` adds a second line beneath a divider — used to hang the new-activity
   // notification copy under a show button's "You've watched…" line. `wrap`
   // lets the longer notification copy break instead of forcing a wide bubble.
-  const [tip, setTip] = useState<{ text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number } | null>(null);
+  const [tip, setTip] = useState<TipState | null>(null);
+  // Hover tips are POSITION-PINNED (Alborz 2026-08-21 — they used to ride
+  // the cursor, which read as distracting): the first event for a tip key
+  // pins the bubble where the cursor entered; further moves inside the same
+  // element keep it put. Crossing into a differently-keyed element re-pins
+  // once. Sites keep onMouseMove (not enter) so the existing nesting +
+  // stopPropagation semantics are untouched.
+  // Clicks always dismiss (Alborz 2026-08-21): any click hides the bubble,
+  // and the clicked element's key is SUPPRESSED until the pointer leaves it —
+  // otherwise the very next mouse move over the still-hovered element would
+  // re-pin the tip it just dismissed.
+  const tipSuppressedKey = useRef<string | null>(null);
+  const moveTip = useCallback((t: TipState | null) => {
+    if (t === null) {
+      tipSuppressedKey.current = null;
+      setTip(null);
+      return;
+    }
+    if (tipSuppressedKey.current === t.key) return;
+    setTip((prev) => (prev && prev.key === t.key ? prev : t));
+  }, []);
+  useEffect(() => {
+    if (!tip) return;
+    const onDocClick = () => { tipSuppressedKey.current = tip.key; setTip(null); };
+    document.addEventListener("click", onDocClick, true);
+    return () => document.removeEventListener("click", onDocClick, true);
+  }, [tip]);
   // A tooltip must never survive a navigation (QA 2026-07-20): clicking a
   // tipped element that navigates in-page (dashboard ↔ ?g= group) keeps this
   // component mounted, so no mouseLeave ever fires — clear on any location
@@ -371,8 +401,8 @@ export default function DashboardPage() {
     const sub = progress ? notif : undefined;
     const wrap = !!notif; // notification copy is long → allow it to wrap
     return {
-      onMouseMove: (e: React.MouseEvent) => setTip({ text: primary, sub, wrap, x: e.clientX, y: e.clientY }),
-      onMouseLeave: () => setTip(null),
+      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `t:${primary}`, text: primary, sub, wrap, x: e.clientX, y: e.clientY }),
+      onMouseLeave: () => moveTip(null),
     };
   }
   // New-activity notification copy for a room's dot (blue = visible writing,
@@ -417,7 +447,7 @@ export default function DashboardPage() {
       ? <>{rest.map((l, i) => <Fragment key={i}>{i > 0 && <div style={tipDivider} />}{l}</Fragment>)}</>
       : undefined;
     return {
-      onMouseMove: (e: React.MouseEvent) => setTip({ text: primary, sub, wrap: true, x: e.clientX, y: e.clientY }),
+      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `w:${String(primary)}`, text: primary, sub, wrap: true, x: e.clientX, y: e.clientY }),
       onMouseLeave: () => setTip(null),
     };
   }
@@ -429,7 +459,7 @@ export default function DashboardPage() {
     if (!opted.length) return tipProps(selfProgText, notif);
     const names = opted.map((o) => o.username);
     return {
-      onMouseMove: (e: React.MouseEvent) => setTip({ text: preventLastWordOrphan(interestedNode(names) ?? ""), wrap: true, x: e.clientX, y: e.clientY }),
+      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `i:${names.join(",")}`, text: preventLastWordOrphan(interestedNode(names) ?? ""), wrap: true, x: e.clientX, y: e.clientY }),
       onMouseLeave: () => setTip(null),
     };
   }
@@ -1353,7 +1383,7 @@ export default function DashboardPage() {
         for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
         setContactEdits(edits);
       }}
-      onTip={setTip}
+      onTip={moveTip}
     />
   );
 
@@ -1471,7 +1501,7 @@ export default function DashboardPage() {
                     {r.pill.inRoom && r.pill.roomId && (
                       <button className="dash-pill-x" title="leave this show room" onClick={() => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name })}>×</button>
                     )}
-                    <OptInAvatars members={r.opted} personalFill={r.pill.fill === "green"} withTooltip onTip={setTip} />
+                    <OptInAvatars members={r.opted} personalFill={r.pill.fill === "green"} withTooltip onTip={moveTip} />
                   </div>
                 ))}
               </div>
@@ -1493,7 +1523,7 @@ export default function DashboardPage() {
                   <div {...interestedTipProps(r.opted, r.name, r.selfOpted, r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
                     <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
-                  <OptInAvatars members={r.opted} withTooltip onTip={setTip} />
+                  <OptInAvatars members={r.opted} withTooltip onTip={moveTip} />
                 </div>
               ))}
             </div>
@@ -1507,7 +1537,7 @@ export default function DashboardPage() {
           {/* CP2: the group room's two centered actions — equal width, set a
               little apart from the show buttons above. */}
           <div style={{ textAlign: "center", marginTop: groupShelves.watching.length || groupShelves.notStarted.length ? 80 : 32 }}>
-            <button style={{ ...searchPill, width: 384 }} onClick={openSearch}>Propose more shows?</button>
+            <button style={{ ...searchPill, width: 384, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={openSearch}><Search size={16} color={CANON.cream} strokeWidth={2.5} />Propose more shows?</button>
           </div>
           <div style={{ textAlign: "center", marginTop: 20 }}>
             <button
@@ -2084,10 +2114,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Cursor-following tooltip bubble (opt-in avatars + watch progress;
-          optional new-activity line beneath a divider). */}
+      {/* Hover pill (opt-in avatars + watch progress + clusters): pinned
+          where the cursor entered, rising up-and-right — the show-room
+          highlight-hover bubble's grammar (cream, navy, 6° lean), no longer
+          cursor-following (Alborz 2026-08-21). */}
       {tip && createPortal(
-        <div style={{ ...tipBubble, ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x + 14, top: tip.y + 16 }}>
+        <div style={{ ...tipBubble, ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x, top: tip.y - 16 }}>
           {tip.text}
           {tip.sub && (<><div style={tipDivider} />{tip.sub}</>)}
         </div>,
@@ -2358,7 +2390,7 @@ function OptInAvatars({ members, withTooltip, onTip, personalFill = false }: {
   // On a Personal-filled (green) show pill, the avatar outline is Personal
   // (green) too (2026-07-09) — else cream (non-writer) / Friend-sky (writer).
   personalFill?: boolean;
-  onTip: (t: { text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number } | null) => void;
+  onTip: (t: TipState | null) => void;
 }) {
   if (!members.length) return null;
   return (
@@ -2385,7 +2417,7 @@ function OptInAvatars({ members, withTooltip, onTip, personalFill = false }: {
           <span
             key={`${m.username}-${i}`}
             style={avStyle}
-            onMouseMove={withTooltip ? (e) => onTip({ text: tip, sub, wrap: !!sub, x: e.clientX, y: e.clientY }) : undefined}
+            onMouseMove={withTooltip ? (e) => onTip({ key: `a:${m.username}`, text: tip, sub, wrap: !!sub, x: e.clientX, y: e.clientY }) : undefined}
             onMouseLeave={withTooltip ? () => onTip(null) : undefined}
           >
             {m.resolved === false ? "" : (m.username[0] ?? "?").toUpperCase()}
@@ -2412,7 +2444,7 @@ function GroupClusters({
   onEnter: (id: string) => void;
   onInviteClick: (inv: PendingGroupInvite) => void;
   onGearClick: (groupId: string, rect: DOMRect) => void;
-  onTip: (t: { text: React.ReactNode; wrap?: boolean; x: number; y: number } | null) => void;
+  onTip: (t: TipState | null) => void;
 }) {
   const active = groups.find((g) => g.group.id === activeGroupId);
 
@@ -2437,8 +2469,8 @@ function GroupClusters({
           style={{ ...headingIconBtn, position: "relative" }}
           title="group options"
           onClick={(e) => { onTip(null); onGearClick(active.group.id, e.currentTarget.getBoundingClientRect()); }}
-          onMouseEnter={(e) => { if (staleInviteCount > 0) onTip({ text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, x: e.clientX, y: e.clientY }); }}
-          onMouseMove={(e) => { if (staleInviteCount > 0) onTip({ text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, x: e.clientX, y: e.clientY }); }}
+          onMouseEnter={(e) => { if (staleInviteCount > 0) onTip({ key: "gear-stale", text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, x: e.clientX, y: e.clientY }); }}
+          onMouseMove={(e) => { if (staleInviteCount > 0) onTip({ key: "gear-stale", text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, x: e.clientX, y: e.clientY }); }}
           onMouseLeave={() => onTip(null)}
         >
           <Settings size={22} color={CANON.cream} />
@@ -2482,7 +2514,7 @@ function GroupClusters({
           ...groupPending.map((p, i) => (
             <span
               key={`p${i}`}
-              onMouseMove={(e) => { e.stopPropagation(); onTip({ text: pendingTip(p), wrap: true, x: e.clientX, y: e.clientY }); }}
+              onMouseMove={(e) => { e.stopPropagation(); onTip({ key: `p:${p.name}`, text: pendingTip(p), wrap: true, x: e.clientX, y: e.clientY }); }}
               onMouseLeave={(e) => { e.stopPropagation(); onTip(null); }}
             >
               <Avatar letter={p.name ? p.name[0] : undefined} state="pending" />
@@ -2499,7 +2531,7 @@ function GroupClusters({
             // round 5); "open group" rides the same onTip system instead,
             // and the pending-avatar tips stopPropagation over it.
             onClick={() => onEnter(group.id)}
-            onMouseMove={(e) => onTip({ text: notif ?? "open group", wrap: !!notif, x: e.clientX, y: e.clientY })}
+            onMouseMove={(e) => onTip({ key: `c:${group.id}`, text: notif ?? "open group", wrap: !!notif, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={avatars} minHeight={pileMinHeight} />
@@ -2518,7 +2550,7 @@ function GroupClusters({
             key={inv.token}
             style={clusterBtn}
             onClick={() => onInviteClick(inv)}
-            onMouseMove={(e) => onTip({ text: <>You&rsquo;ve been invited by {pendingInviterLabel(inv, contactNames)}<br />to join a watch group.</>, wrap: true, x: e.clientX, y: e.clientY })}
+            onMouseMove={(e) => onTip({ key: `inv:${inv.token}`, text: <>You&rsquo;ve been invited by {pendingInviterLabel(inv, contactNames)}<br />to join a watch group.</>, wrap: true, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)} minHeight={pileMinHeight} />
@@ -2626,13 +2658,18 @@ const notifDotCluster: React.CSSProperties = {
   background: C.blue, verticalAlign: "middle", marginRight: 8,
 };
 const tipBubble: React.CSSProperties = {
-  position: "fixed", background: C.green, color: CANON.cream, padding: "7px 12px", borderRadius: 12,
-  fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 600, lineHeight: 1.3,
-  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 9999, boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
+  // The highlight-hover bubble's styling (HighlightableBody 2026-08-21;
+  // was green + cursor-following): cream, navy, 6° lean rising up-right
+  // from the pinned point (transformOrigin bottom-left = the pin).
+  position: "fixed", background: CANON.cream, color: C.midnight, padding: "6px 10px", borderRadius: 12,
+  fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 500, lineHeight: 1.35,
+  transform: "translate(0, -100%) rotate(6deg)", transformOrigin: "bottom left",
+  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 9999, boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
 };
-// Divider between the "You've watched…" line and the new-activity line.
+// Divider between the "You've watched…" line and the new-activity line
+// (navy-tinted for the cream bubble).
 const tipDivider: React.CSSProperties = {
-  height: 1, background: "rgba(253,248,236,0.45)", margin: "7px 0",
+  height: 1, background: "rgba(26,58,74,0.2)", margin: "7px 0",
 };
 const clusterName: React.CSSProperties = {
   marginTop: 10, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 17, letterSpacing: -1,

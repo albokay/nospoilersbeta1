@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { X, ArrowLeft, Settings, MessageCircle } from "lucide-react";
+import { X, ArrowLeft, Settings, MessageCircle, Search } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
@@ -764,7 +764,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               the stretch column (both sized to the wider "Add friends" label). */}
           <div style={{ display: "flex", justifyContent: "center", marginTop: empty ? 24 : 28 }}>
             <div style={actionCol}>
-              <button style={searchPill} onClick={() => setSearchOpen(true)}>Propose more shows?</button>
+              <button style={{ ...searchPill, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={() => setSearchOpen(true)}><Search size={16} color={C.cream} strokeWidth={2.5} />Propose more shows?</button>
               <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
             </div>
           </div>

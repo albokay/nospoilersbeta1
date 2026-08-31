@@ -2,7 +2,7 @@
  * BrowseRows — the group room's poster shelves (browse-rows arc, 2026-08-17).
  *
  * Streaming-service-style rows of TVMaze posters (no captions — Alborz's
- * mock), under the group's own shelves. Order: "Popular right now:" →
+ * mock), under the group's own shelves. Order: "Browse popular right now:" →
  * "About to start up:" → the curated lists. Purely a REMEMBER-what-to-watch
  * surface — the group's OWN shows (open rooms + proposals) are already on the
  * shelves above, so every row hides them; a show appears in the FIRST row it
@@ -81,7 +81,7 @@ export function useBrowseRows(excludeTvmazeIds: Set<number>): BrowseRow[] {
     const today = new Date().toISOString().slice(0, 10);
     // Popular leads (Alborz 2026-08-17; was starting-up first).
     const built: BrowseRow[] = [
-      { key: "popular", title: "Popular right now:", shows: take(auto.popular) },
+      { key: "popular", title: "Browse popular right now:", shows: take(auto.popular) },
       { key: "starting_up", title: "About to start up:", shows: take(auto.startingUp) },
       ...lists.map((l) => ({ key: l.id, title: l.title, shows: take(seededShuffle(l.shows, `${today}|${l.id}`)) })),
     ];
