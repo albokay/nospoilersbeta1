@@ -15,6 +15,7 @@ import LoadingDots from "./LoadingDots";
 import CanonRadio from "./CanonRadio";
 import type { PollDurationCode } from "../types";
 import { CANON } from "../styles/canon";
+import { EDGE_TAB_TOP } from "./dashboardChrome";
 
 // ── Visual constants ─────────────────────────────────────────────────────
 const STICKY_BG       = CANON.accent;           // canon yellow
@@ -491,9 +492,11 @@ function stickyShellStyle(): React.CSSProperties {
   return {
     position: "fixed",
     left: 32,
-    // 260 → 284 (Alborz 2026-08-01): +24px so the sticky clears the show
-    // room's back tab comfortably.
-    top: 284,
+    // Derived from the back tab (2026-08-21; was a hardcoded 284 tuned to
+    // the tab's OLD height, which the edge-tab reposition broke): tab top
+    // + its 88px height (32+24+32) + 16px clearance — the sticky stays
+    // below the tab wherever the tab moves.
+    top: EDGE_TAB_TOP + 88 + 16,
     zIndex: 50,
     width: STICKY_WIDTH,
     transform: `rotate(${TILT_DEG}deg)`,
