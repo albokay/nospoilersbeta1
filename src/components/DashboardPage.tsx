@@ -139,6 +139,16 @@ type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvi
 // Hover-tip state (2026-08-21): `key` identifies the hovered element so the
 // bubble pins at first hover instead of riding the cursor.
 type TipState = { key: string; text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number };
+// Element-anchored bubble coords (Alborz 2026-08-21; approved mockup
+// docs/hover-pill-preview.html rev 6): the bubble straddles the element's
+// TOP-LEFT corner — anchor 12px right of it, bottom edge 2px INTO the
+// element. adjust: dashboard clusters +4 (sit lower); small icons (opt-in
+// avatars, the group gear) −8 (the −6° lean dips the bubble's left end,
+// which grazed the 32px circles at anything less).
+function tipAnchor(e: React.MouseEvent, adjust = 0): { x: number; y: number } {
+  const r = e.currentTarget.getBoundingClientRect();
+  return { x: r.left + 12, y: r.top + 2 + adjust };
+}
 
 export default function DashboardPage() {
   const { user, profile, loading: authLoading, signOut } = useAuth() as any;
@@ -401,7 +411,7 @@ export default function DashboardPage() {
     const sub = progress ? notif : undefined;
     const wrap = !!notif; // notification copy is long → allow it to wrap
     return {
-      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `t:${primary}`, text: primary, sub, wrap, x: e.clientX, y: e.clientY }),
+      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `t:${primary}`, text: primary, sub, wrap, ...tipAnchor(e) }),
       onMouseLeave: () => moveTip(null),
     };
   }
@@ -447,7 +457,7 @@ export default function DashboardPage() {
       ? <>{rest.map((l, i) => <Fragment key={i}>{i > 0 && <div style={tipDivider} />}{l}</Fragment>)}</>
       : undefined;
     return {
-      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `w:${String(primary)}`, text: primary, sub, wrap: true, x: e.clientX, y: e.clientY }),
+      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `w:${String(primary)}`, text: primary, sub, wrap: true, ...tipAnchor(e) }),
       onMouseLeave: () => setTip(null),
     };
   }
@@ -459,7 +469,7 @@ export default function DashboardPage() {
     if (!opted.length) return tipProps(selfProgText, notif);
     const names = opted.map((o) => o.username);
     return {
-      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `i:${names.join(",")}`, text: preventLastWordOrphan(interestedNode(names) ?? ""), wrap: true, x: e.clientX, y: e.clientY }),
+      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `i:${names.join(",")}`, text: preventLastWordOrphan(interestedNode(names) ?? ""), wrap: true, ...tipAnchor(e) }),
       onMouseLeave: () => setTip(null),
     };
   }
@@ -2114,12 +2124,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Hover pill (opt-in avatars + watch progress + clusters): pinned
-          where the cursor entered, rising up-and-right — the show-room
-          highlight-hover bubble's grammar (cream, navy, 6° lean), no longer
-          cursor-following (Alborz 2026-08-21). */}
+      {/* Hover pill (opt-in avatars + watch progress + clusters): anchored
+          to the ELEMENT's top-left corner (tipAnchor — approved mockup
+          docs/hover-pill-preview.html rev 6), a quarter of the bubble left
+          of the anchor, −6° lean, cream, subtle shadow. */}
       {tip && createPortal(
-        <div style={{ ...tipBubble, ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x, top: tip.y - 16 }}>
+        <div style={{ ...tipBubble, ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x, top: tip.y }}>
           {tip.text}
           {tip.sub && (<><div style={tipDivider} />{tip.sub}</>)}
         </div>,
@@ -2417,7 +2427,7 @@ function OptInAvatars({ members, withTooltip, onTip, personalFill = false }: {
           <span
             key={`${m.username}-${i}`}
             style={avStyle}
-            onMouseMove={withTooltip ? (e) => onTip({ key: `a:${m.username}`, text: tip, sub, wrap: !!sub, x: e.clientX, y: e.clientY }) : undefined}
+            onMouseMove={withTooltip ? (e) => onTip({ key: `a:${m.username}`, text: tip, sub, wrap: !!sub, ...tipAnchor(e, -8) }) : undefined}
             onMouseLeave={withTooltip ? () => onTip(null) : undefined}
           >
             {m.resolved === false ? "" : (m.username[0] ?? "?").toUpperCase()}
@@ -2469,8 +2479,8 @@ function GroupClusters({
           style={{ ...headingIconBtn, position: "relative" }}
           title="group options"
           onClick={(e) => { onTip(null); onGearClick(active.group.id, e.currentTarget.getBoundingClientRect()); }}
-          onMouseEnter={(e) => { if (staleInviteCount > 0) onTip({ key: "gear-stale", text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, x: e.clientX, y: e.clientY }); }}
-          onMouseMove={(e) => { if (staleInviteCount > 0) onTip({ key: "gear-stale", text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, x: e.clientX, y: e.clientY }); }}
+          onMouseEnter={(e) => { if (staleInviteCount > 0) onTip({ key: "gear-stale", text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, ...tipAnchor(e, -8) }); }}
+          onMouseMove={(e) => { if (staleInviteCount > 0) onTip({ key: "gear-stale", text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, ...tipAnchor(e, -8) }); }}
           onMouseLeave={() => onTip(null)}
         >
           <Settings size={22} color={CANON.cream} />
@@ -2514,7 +2524,7 @@ function GroupClusters({
           ...groupPending.map((p, i) => (
             <span
               key={`p${i}`}
-              onMouseMove={(e) => { e.stopPropagation(); onTip({ key: `p:${p.name}`, text: pendingTip(p), wrap: true, x: e.clientX, y: e.clientY }); }}
+              onMouseMove={(e) => { e.stopPropagation(); onTip({ key: `p:${p.name}`, text: pendingTip(p), wrap: true, ...tipAnchor(e, 4) }); }}
               onMouseLeave={(e) => { e.stopPropagation(); onTip(null); }}
             >
               <Avatar letter={p.name ? p.name[0] : undefined} state="pending" />
@@ -2531,7 +2541,7 @@ function GroupClusters({
             // round 5); "open group" rides the same onTip system instead,
             // and the pending-avatar tips stopPropagation over it.
             onClick={() => onEnter(group.id)}
-            onMouseMove={(e) => onTip({ key: `c:${group.id}`, text: notif ?? "open group", wrap: !!notif, x: e.clientX, y: e.clientY })}
+            onMouseMove={(e) => onTip({ key: `c:${group.id}`, text: notif ?? "open group", wrap: !!notif, ...tipAnchor(e, 4) })}
             onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={avatars} minHeight={pileMinHeight} />
@@ -2550,7 +2560,7 @@ function GroupClusters({
             key={inv.token}
             style={clusterBtn}
             onClick={() => onInviteClick(inv)}
-            onMouseMove={(e) => onTip({ key: `inv:${inv.token}`, text: <>You&rsquo;ve been invited by {pendingInviterLabel(inv, contactNames)}<br />to join a watch group.</>, wrap: true, x: e.clientX, y: e.clientY })}
+            onMouseMove={(e) => onTip({ key: `inv:${inv.token}`, text: <>You&rsquo;ve been invited by {pendingInviterLabel(inv, contactNames)}<br />to join a watch group.</>, wrap: true, ...tipAnchor(e, 4) })}
             onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)} minHeight={pileMinHeight} />
@@ -2658,13 +2668,14 @@ const notifDotCluster: React.CSSProperties = {
   background: C.blue, verticalAlign: "middle", marginRight: 8,
 };
 const tipBubble: React.CSSProperties = {
-  // The highlight-hover bubble's styling (HighlightableBody 2026-08-21;
-  // was green + cursor-following): cream, navy, 6° lean rising up-right
-  // from the pinned point (transformOrigin bottom-left = the pin).
+  // The highlight-hover bubble's grammar, element-anchored (approved mockup
+  // docs/hover-pill-preview.html rev 6, Alborz 2026-08-21): cream, navy,
+  // −6° lean, a QUARTER of the bubble left of the anchor point, and a very
+  // subtle shadow (was the highlight bubble's heavier 25%).
   position: "fixed", background: CANON.cream, color: C.midnight, padding: "6px 10px", borderRadius: 12,
   fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 500, lineHeight: 1.35,
-  transform: "translate(0, -100%) rotate(6deg)", transformOrigin: "bottom left",
-  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 9999, boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+  transform: "translate(-25%, -100%) rotate(-6deg)", transformOrigin: "bottom center",
+  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 9999, boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
 };
 // Divider between the "You've watched…" line and the new-activity line
 // (navy-tinted for the cream bubble).
