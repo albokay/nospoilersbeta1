@@ -165,6 +165,14 @@ export default function AdminPage({
 
   // ── Feedback state ───────────────────────────────────────────────────────
   const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
+  // Feedback "page" column: truncated by default (long URLs) — clicking a
+  // cell toggles the full, wrapped path (Alborz 2026-08-31).
+  const [expandedPageIds, setExpandedPageIds] = useState<Set<string>>(new Set());
+  const togglePageCell = (id: string) => setExpandedPageIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const [feedbackLoading, setFeedbackLoading] = useState(true);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -598,7 +606,13 @@ export default function AdminPage({
                       <td style={{ padding: "6px 10px", whiteSpace: "nowrap", color: "#555" }}>
                         {timeAgo(row.createdAt)}
                       </td>
-                      <td style={{ padding: "6px 10px", color: "#555", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <td
+                        onClick={() => row.pageUrl && togglePageCell(row.id)}
+                        title={expandedPageIds.has(row.id) ? "Collapse" : "Show full path"}
+                        style={expandedPageIds.has(row.id)
+                          ? { padding: "6px 10px", color: "#555", maxWidth: 240, whiteSpace: "normal", wordBreak: "break-all", cursor: "pointer" }
+                          : { padding: "6px 10px", color: "#555", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: row.pageUrl ? "pointer" : "default" }}
+                      >
                         {row.pageUrl ?? "—"}
                       </td>
                       <td style={{ padding: "6px 10px", whiteSpace: "nowrap" }}>
