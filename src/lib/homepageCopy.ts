@@ -27,12 +27,15 @@ export const HOW_IT_WORKS_TITLE = "Here’s how it works:";
 
 // QA 2026-07-26: the old #4 ("Everyone logs how far they've watched…", Eye
 // icon) was dropped and the rest renumber up — five steps now.
+// 2026-08-31 rewrite (Alborz, verbatim): steps 3–5 recast — agree-on-a-show
+// leads into writing, the shield explains the filter, pace closes; icons
+// reassigned to match (speech bubble → 3, shield → 4, road → 5).
 export const HOW_IT_WORKS_STEPS: { Icon: ElementType; text: string }[] = [
   { Icon: UsersRound,        text: "Start a group with the friends you love talking to." },
   { Icon: ListChecks,        text: "Each friend lists what they would like to watch together." },
-  { Icon: Road,              text: "Decide what you want to watch together. Or binge ahead… your writing will become breadcrumbs for your friends as they catch up." },
-  { Icon: MessageSquareText, text: "Post your thoughts without worrying about spoilers. Write as if everyone’s caught up to exactly where you are." },
+  { Icon: MessageSquareText, text: "Once you agree on a show, start a room and post your thoughts without worrying about spoilers. Write as if everyone’s caught up to exactly where you are." },
   { Icon: ShieldCheck,       text: "Sidebar filters every room to each person’s progress. Nothing you read is ever ahead of where you are." },
+  { Icon: Road,              text: "Watch at your own pace. If you binge ahead, your writing will become breadcrumbs for your friends. If you savor the episodes, you’ll always have something waiting for you from your friends." },
 ];
 
 export const CTA_JOIN_LABEL = "Join / sign in";
