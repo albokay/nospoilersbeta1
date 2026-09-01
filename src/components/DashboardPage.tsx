@@ -1547,7 +1547,7 @@ export default function DashboardPage() {
           {/* CP2: the group room's two centered actions — equal width, set a
               little apart from the show buttons above. */}
           <div style={{ textAlign: "center", marginTop: groupShelves.watching.length || groupShelves.notStarted.length ? 80 : 32 }}>
-            <button style={{ ...searchPill, width: 384, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={openSearch}><Search size={16} color={CANON.cream} strokeWidth={2.5} />Propose more shows?</button>
+            <button style={{ ...searchPill, width: 384, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 14 }} onClick={openSearch}><Search size={26} color={CANON.cream} strokeWidth={2} />Propose more shows?</button>
           </div>
           <div style={{ textAlign: "center", marginTop: 20 }}>
             <button
