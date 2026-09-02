@@ -90,7 +90,7 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
             setMessages((prev) => prev.some((m) => m.id === r.id) ? prev : [...prev, {
               id: r.id,
               authorId: r.author_id,
-              username: nameById[r.author_id] ?? "unknown",
+              username: nameById[r.author_id] ?? "…",
               displayName: null, // nameById above already resolved the chain
               body: r.body,
               createdAt: new Date(r.created_at).getTime(),

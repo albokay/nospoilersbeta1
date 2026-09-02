@@ -26,12 +26,13 @@ import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, Search, UserPen } from "lucide-react";
+import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, Plus, Search, UserPen } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import AccountModal from "./AccountModal";
 import FeedbackWidget from "./FeedbackWidget";
 import {
   fetchShows,
+  invalidateShowsCache,
   refreshStaleShows,
   createShow,
   fetchProgress,
@@ -138,7 +139,7 @@ type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvi
 
 // Hover-tip state (2026-08-21): `key` identifies the hovered element so the
 // bubble pins at first hover instead of riding the cursor.
-type TipState = { key: string; text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number };
+type TipState = { key: string; text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number; below?: boolean };
 // Element-anchored bubble coords (Alborz 2026-08-21; approved mockup
 // docs/hover-pill-preview.html rev 6): the bubble straddles the element's
 // TOP-LEFT corner — anchor 12px right of it, bottom edge 2px INTO the
@@ -148,6 +149,17 @@ type TipState = { key: string; text: React.ReactNode; sub?: React.ReactNode; wra
 function tipAnchor(e: React.MouseEvent, adjust = 0): { x: number; y: number } {
   const r = e.currentTarget.getBoundingClientRect();
   return { x: r.left + 12, y: r.top + 2 + adjust };
+}
+// Dashboard clusters (Alborz 2026-09-01): the bubble hangs BELOW the group's
+// text LABEL — the inverted twin of the standard anchor (same 12px inset and
+// 2px dip, mirrored to the label's bottom edge; the lean flips clockwise at
+// render). Anchored to the [data-cluster-label] div inside the cluster
+// button; falls back to the hovered element if it's ever missing.
+function tipAnchorBelowLabel(e: React.MouseEvent): { x: number; y: number; below: true } {
+  const host = (e.currentTarget.closest("button") ?? e.currentTarget) as HTMLElement;
+  const label = host.querySelector("[data-cluster-label]") as HTMLElement | null;
+  const r = (label ?? host).getBoundingClientRect();
+  return { x: r.left + 12, y: r.bottom - 2, below: true };
 }
 
 export default function DashboardPage() {
@@ -608,6 +620,29 @@ export default function DashboardPage() {
       .catch(() => { /* tolerant */ });
     return () => { cancelled = true; };
   }, [user, railGroups]);
+
+  // Self-heal (Alborz 2026-09-01): a show created THIS session (onboarding /
+  // invite-accept claims) can be missing from the mount-time shows state —
+  // shelf names then fall back to the raw id ("madmen" for "Mad Men") until
+  // a manual refresh. When the group references a show we can't name,
+  // refetch once per missing set (the module cache already holds shows
+  // created locally; invalidate+refetch covers rows created elsewhere).
+  const missingShowIdsRef = useRef("");
+  useEffect(() => {
+    const missing = groupShows.filter((gs) => !shows.some((s) => s.id === gs.showId)).map((gs) => gs.showId).sort().join(",");
+    if (!missing || missingShowIdsRef.current === missing) return;
+    missingShowIdsRef.current = missing;
+    (async () => {
+      try {
+        let fresh = await fetchShows();
+        if (groupShows.some((gs) => !fresh.some((s) => s.id === gs.showId))) {
+          invalidateShowsCache();
+          fresh = await fetchShows();
+        }
+        setShows(fresh);
+      } catch { /* tolerate — names heal on the next successful fetch */ }
+    })();
+  }, [groupShows, shows]);
 
   const showsById = useMemo(() => {
     const m: Record<string, Show> = {};
@@ -1281,11 +1316,15 @@ export default function DashboardPage() {
             setChatMessages((prev) => prev.some((m) => m.id === r.id) ? prev : [...prev, {
               id: r.id,
               authorId: r.author_id,
-              username: nameById[r.author_id] ?? "unknown",
+              username: nameById[r.author_id] ?? "…",
               displayName: null, // nameById above already resolved the chain
               body: r.body,
               createdAt: new Date(r.created_at).getTime(),
             }]);
+            // Author not in the rail's member list (they joined after it
+            // loaded — the "unknown" byline, Alborz 2026-09-01): re-pull the
+            // history, which resolves every author from profiles directly.
+            if (!nameById[r.author_id]) loadChat(chatGroupId);
           },
         )
         .subscribe((status) => {
@@ -1709,10 +1748,17 @@ export default function DashboardPage() {
                     />
                   </div>
                 ))}
-                <button
-                  onClick={() => setInviteRows((prev) => [...prev, { name: "", email: "" }])}
-                  style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.cream, color: C.midnight, fontSize: 20, cursor: "pointer", marginTop: 2 }}
-                >+</button>
+                {/* Onboarding's "+" look (Alborz 2026-09-01 — the text-glyph
+                    variant read as a different control) + a quiet Info-weight
+                    invitation beside it. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 2 }}>
+                  <button
+                    onClick={() => setInviteRows((prev) => [...prev, { name: "", email: "" }])}
+                    title="invite another friend"
+                    style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.cream, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
+                  ><Plus size={18} strokeWidth={2.5} color={CANON.friend} /></button>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontStyle: "italic", fontWeight: 400, fontSize: 13, color: C.cream }}>add more friends</span>
+                </div>
                 {/* CP2 create-a-group: pair the invite with ≥1 proposed show. */}
                 {creating && (
                   <>
@@ -2129,7 +2175,7 @@ export default function DashboardPage() {
           docs/hover-pill-preview.html rev 6), a quarter of the bubble left
           of the anchor, −6° lean, cream, subtle shadow. */}
       {tip && createPortal(
-        <div style={{ ...tipBubble, ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x, top: tip.y }}>
+        <div style={{ ...tipBubble, ...(tip.below ? { transform: "translate(-25%, 0) rotate(6deg)", transformOrigin: "top center" } : null), ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x, top: tip.y }}>
           {tip.text}
           {tip.sub && (<><div style={tipDivider} />{tip.sub}</>)}
         </div>,
@@ -2524,7 +2570,7 @@ function GroupClusters({
           ...groupPending.map((p, i) => (
             <span
               key={`p${i}`}
-              onMouseMove={(e) => { e.stopPropagation(); onTip({ key: `p:${p.name}`, text: pendingTip(p), wrap: true, ...tipAnchor(e, 4) }); }}
+              onMouseMove={(e) => { e.stopPropagation(); onTip({ key: `p:${p.name}`, text: pendingTip(p), wrap: true, ...tipAnchorBelowLabel(e) }); }}
               onMouseLeave={(e) => { e.stopPropagation(); onTip(null); }}
             >
               <Avatar letter={p.name ? p.name[0] : undefined} state="pending" />
@@ -2541,11 +2587,11 @@ function GroupClusters({
             // round 5); "open group" rides the same onTip system instead,
             // and the pending-avatar tips stopPropagation over it.
             onClick={() => onEnter(group.id)}
-            onMouseMove={(e) => onTip({ key: `c:${group.id}`, text: notif ?? "open group", wrap: !!notif, ...tipAnchor(e, 4) })}
+            onMouseMove={(e) => onTip({ key: `c:${group.id}`, text: notif ?? "open group", wrap: !!notif, ...tipAnchorBelowLabel(e) })}
             onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={avatars} minHeight={pileMinHeight} />
-            <div style={clusterName}>
+            <div style={clusterName} data-cluster-label>
               {dot && <span style={{ ...notifDotCluster, background: dot === "red" ? C.red : C.blue }} />}
               {groupDisplayName(group, others, contactNames, groupPending.map((p) => p.name || "a friend"), groupNumberById[group.id])}
             </div>
@@ -2560,11 +2606,11 @@ function GroupClusters({
             key={inv.token}
             style={clusterBtn}
             onClick={() => onInviteClick(inv)}
-            onMouseMove={(e) => onTip({ key: `inv:${inv.token}`, text: <>You&rsquo;ve been invited by {pendingInviterLabel(inv, contactNames)}<br />to join a watch group.</>, wrap: true, ...tipAnchor(e, 4) })}
+            onMouseMove={(e) => onTip({ key: `inv:${inv.token}`, text: <>You&rsquo;ve been invited by {pendingInviterLabel(inv, contactNames)}<br />to join a watch group.</>, wrap: true, ...tipAnchorBelowLabel(e) })}
             onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)} minHeight={pileMinHeight} />
-            <div style={clusterName}>{label}</div>
+            <div style={clusterName} data-cluster-label>{label}</div>
           </button>
         );
       })}

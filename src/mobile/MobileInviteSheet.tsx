@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import InviteLinkRow from "../components/InviteLinkRow";
 import LoadingDots from "../components/LoadingDots";
 import { CANON } from "../styles/canon";
@@ -224,11 +224,16 @@ export default function MobileInviteSheet({
                 />
               </div>
             ))}
-            <button
-              onClick={() => setRows((prev) => [...prev, { name: "", email: "" }])}
-              aria-label="Add another friend"
-              style={plusBtn}
-            >+</button>
+            {/* Onboarding's "+" look + the quiet Info-weight invitation
+                (Alborz 2026-09-01, desktop parity). */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button
+                onClick={() => setRows((prev) => [...prev, { name: "", email: "" }])}
+                aria-label="Add another friend"
+                style={plusBtn}
+              ><Plus size={20} strokeWidth={2.5} color={CANON.friend} /></button>
+              <span style={{ fontFamily: "Inter, sans-serif", fontStyle: "italic", fontWeight: 400, fontSize: 13, color: C.cream }}>add more friends</span>
+            </div>
             {/* CP2 create-a-group: pair the invite with ≥1 proposed show. */}
             {creating && (
               <>
@@ -373,8 +378,11 @@ const emailInput: React.CSSProperties = {
   minHeight: 44,
 };
 const plusBtn: React.CSSProperties = {
+  // Onboarding's cream-circle/Sky-plus look (2026-09-01; was a midnight
+  // text glyph); 44px tap size kept.
   width: 44, height: 44, borderRadius: "50%", border: "none", background: C.cream,
-  color: C.midnight, fontSize: 22, cursor: "pointer", marginTop: 2,
+  display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+  cursor: "pointer", marginTop: 2,
 };
 const explainer: React.CSSProperties = {
   fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal",

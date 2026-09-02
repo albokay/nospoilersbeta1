@@ -302,7 +302,6 @@ async function handlePing(
     .eq("id", grp.show_id)
     .single();
   const showName = showRow?.name?.trim() || "a show";
-  const roomName = grp.name?.trim() || "your room";
 
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) {
@@ -323,7 +322,7 @@ async function handlePing(
     ${escapeHtml(senderHandle)} wants you in the room.
   </h1>
   <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    Your friend room for <strong><em>${escapeHtml(showName)}</em></strong> &mdash; &ldquo;${escapeHtml(roomName)}&rdquo; &mdash; has been piling up takes. ${escapeHtml(senderHandle)} sent you a little nudge:
+    Your friend room for <strong><em>${escapeHtml(showName)}</em></strong> has been piling up takes. ${escapeHtml(senderHandle)} sent you a little nudge:
   </p>
   <p style="margin:0 0 28px;padding:16px 20px;background:#f6f4ee;border-left:3px solid #1a2c3a;font-size:16px;color:#1a2c3a;font-style:italic;line-height:1.5">
     ${escapeHtml(trimmedMessage)}
@@ -343,7 +342,7 @@ async function handlePing(
 
   const text = `${senderHandle} wants you in the room.
 
-Your friend room for ${showName} — "${roomName}" — has been piling up takes. ${senderHandle} sent you a little nudge:
+Your friend room for ${showName} has been piling up takes. ${senderHandle} sent you a little nudge:
 
   ${trimmedMessage}
 
@@ -485,8 +484,11 @@ async function handlePollInvite(
       continue;
     }
 
-    const html = pollInviteHtml(askerHandle, roomName, poll.question, closesLabel, roomUrl);
-    const text = pollInviteText(askerHandle, roomName, poll.question, closesLabel, roomUrl);
+    // The body names the SHOW (shows.name, formatted — same value as the
+    // subject); grp.name is the LEGACY raw room label ("bestmedicine"),
+    // which read as a broken show name (Alborz 2026-09-01).
+    const html = pollInviteHtml(askerHandle, showName, poll.question, closesLabel, roomUrl);
+    const text = pollInviteText(askerHandle, showName, poll.question, closesLabel, roomUrl);
     const sent = await sendResendEmail(resendKey, email, subject, html, text);
     if (sent) sentCount++; else failedCount++;
   }
@@ -494,7 +496,7 @@ async function handlePollInvite(
   return jsonOk({ sent_count: sentCount, failed_count: failedCount, channel: "email" });
 }
 
-function pollInviteHtml(asker: string, room: string, question: string, closes: string, url: string): string {
+function pollInviteHtml(asker: string, show: string, question: string, closes: string, url: string): string {
   return `
 <!DOCTYPE html>
 <html>
@@ -504,20 +506,17 @@ function pollInviteHtml(asker: string, room: string, question: string, closes: s
     ${escapeHtml(asker)} has a question.
   </h1>
   <p style="margin:0 0 16px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    ${escapeHtml(asker)} opened a poll in &ldquo;${escapeHtml(room)}&rdquo;:
+    ${escapeHtml(asker)} opened a poll in &ldquo;${escapeHtml(show)}&rdquo;:
   </p>
   <p style="margin:0 0 24px;padding:16px 20px;background:#f6f4ee;border-left:3px solid #1a2c3a;font-size:16px;color:#1a2c3a;font-style:italic;line-height:1.5">
     "${escapeHtml(question)}"
   </p>
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    Drop in and weigh in. Open until ${escapeHtml(closes)}.
+    Drop in and weigh in. The poll is open until ${escapeHtml(closes)}.
   </p>
   <a href="${url}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
     Answer the poll →
   </a>
-  <p style="margin:28px 0 0;font-size:14px;color:#1a2c3a;font-style:italic">
-    quick and easy.
-  </p>
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
     Results appear in the room when everyone weighs in — or when the poll closes, whichever comes first.
   </p>
@@ -526,18 +525,16 @@ function pollInviteHtml(asker: string, room: string, question: string, closes: s
 </html>`;
 }
 
-function pollInviteText(asker: string, room: string, question: string, closes: string, url: string): string {
+function pollInviteText(asker: string, show: string, question: string, closes: string, url: string): string {
   return `${asker} has a question.
 
-${asker} opened a poll in "${room}":
+${asker} opened a poll in "${show}":
 
   "${question}"
 
-Drop in and weigh in. Open until ${closes}.
+Drop in and weigh in. The poll is open until ${closes}.
 
 Answer the poll: ${url}
-
-quick and easy.
 
 Results appear in the room when everyone weighs in — or when the poll closes, whichever comes first.`;
 }
@@ -599,7 +596,7 @@ async function handlePollClose(
     Your poll's done.
   </h1>
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    Your poll in &ldquo;${escapeHtml(roomName)}&rdquo; closed. ${respN} of ${eligN} friends weighed in. Head over to see what they said.
+    Your poll in &ldquo;${escapeHtml(showName)}&rdquo; closed. ${respN} of ${eligN} friends weighed in. Head over to see what they said.
   </p>
   <a href="${roomUrl}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
     See the results →
@@ -616,7 +613,7 @@ async function handlePollClose(
 
   const text = `Your poll's done.
 
-Your poll in "${roomName}" closed. ${respN} of ${eligN} friends weighed in. Head over to see what they said.
+Your poll in "${showName}" closed. ${respN} of ${eligN} friends weighed in. Head over to see what they said.
 
 See the results: ${roomUrl}
 
