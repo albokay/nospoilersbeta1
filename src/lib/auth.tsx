@@ -18,6 +18,8 @@ type Profile = { id: string; username: string; display_name: string | null; is_s
 const CLEAR_PREFIXES = [
   "ns_group_snap_",        // group-room snapshot: friends' watch positions + who wrote
   "ns_m_group_snap_",      // mobile group-room snapshot (same)
+  "ns_room_snap_",         // show-room snapshot: friends' WRITING (2026-09-01 perf)
+  "ns_m_room_snap_",       // mobile show-room snapshot (same)
   "ns_m_dash_snap",        // mobile dashboard snapshot: contact names + pending-invite tokens
   "ns_cache_progress_",    // journal cache (content)
   "ns_cache_activity_",    // activity cache (content)

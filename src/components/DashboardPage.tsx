@@ -78,11 +78,11 @@ import {
   fetchMyPendingInvitesForGroup,
   type MyPendingInvite,
 } from "../lib/db";
-import PendingInvitesPanel, { isInviteStale, staleInviteLine, inviteAgePhrase, type OtherPendingInvite } from "./PendingInvitesPanel";
+import PendingInvitesPanel, { isInviteStale, staleInviteLine, type OtherPendingInvite } from "./PendingInvitesPanel";
 import TipsNote from "./TipsNote";
 import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { groupDisplayName, groupGenericName, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
+import { groupDisplayName, groupGenericName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
 import { groupHeadingMembers, EDGE_TAB_TOP } from "./dashboardChrome";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
@@ -139,7 +139,7 @@ type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvi
 
 // Hover-tip state (2026-08-21): `key` identifies the hovered element so the
 // bubble pins at first hover instead of riding the cursor.
-type TipState = { key: string; text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number; below?: boolean };
+type TipState = { key: string; text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number; below?: boolean; dividerColor?: string };
 // Element-anchored bubble coords (Alborz 2026-08-21; approved mockup
 // docs/hover-pill-preview.html rev 6): the bubble straddles the element's
 // TOP-LEFT corner — anchor 12px right of it, bottom edge 2px INTO the
@@ -1120,6 +1120,14 @@ export default function DashboardPage() {
   function onPillClick(pill: PillData, name: string) {
     if (!activeGroupId) return;
     // Already in the room → open it directly, no dropdown (§9 rule 1).
+    // Perf (2026-09-01): the pill KNOWS its room — navigate straight there
+    // (skipping the idempotent start RPC round trip) with the nav state
+    // that lets the room page skip its own lookup too.
+    if (pill.inRoom && pill.roomId) {
+      setClicked(null);
+      navigate(`/show-room/${pill.roomId}`, { state: { roomShowId: pill.showId, roomParentGroupId: activeGroupId } });
+      return;
+    }
     if (pill.inRoom) { goToRoom(pill.showId); return; }
     // Resolve the dropdown mode. Group-scoped model (2026-07-06): "yours"
     // means you've engaged with the show IN THIS GROUP — for a proposal
@@ -1187,7 +1195,9 @@ export default function DashboardPage() {
     try {
       const { roomId } = await startShowRoom(activeGroupId, showId);
       setClicked(null);
-      navigate(`/show-room/${roomId}`);
+      // Nav state (perf 2026-09-01): the room page skips its blocking
+      // room-row lookup when the show + parent group ride along.
+      navigate(`/show-room/${roomId}`, { state: { roomShowId: showId, roomParentGroupId: activeGroupId } });
     } catch (e) { console.error("[dashboard] start/open room failed", e); }
   }
 
@@ -2200,7 +2210,7 @@ export default function DashboardPage() {
       {tip && createPortal(
         <div style={{ ...tipBubble, ...(tip.below ? { transform: "translate(-25%, 0) rotate(6deg)", transformOrigin: "top left" } : null), ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x, top: tip.y }}>
           {tip.text}
-          {tip.sub && (<><div style={tipDivider} />{tip.sub}</>)}
+          {tip.sub && (<><div style={{ ...tipDivider, ...(tip.dividerColor ? { background: tip.dividerColor } : null) }} />{tip.sub}</>)}
         </div>,
         document.body,
       )}
@@ -2574,31 +2584,17 @@ function GroupClusters({
         // Cluster icons = the OTHER people (accepted cream, not-yet-accepted
         // invitees yellow). Never your own icon, even before anyone accepts.
         const others = members.filter((m) => m.userId !== selfUserId);
-        // Per-avatar status tooltip on the yellows (help-system arc CP2):
-        // who this is, who invited them, how long ago — plus the nudge
-        // pointer when the invite is the viewer's own.
-        const pendingTip = (p: GroupPendingInvite): React.ReactNode => {
-          // Alborz's 2026-08-01 format: "{name} hasn't joined yet. {You/Name}
-          // invited them {today/N days ago}." — the nudge pointer is gone
-          // (the ⚙️ tip sticky covers that lesson).
-          const mine = p.inviterId != null && p.inviterId === selfUserId;
-          const who = p.inviterId == null ? null
-            : mine ? "You"
-            : personDisplayName(contactNames, p.inviterId, p.inviterName ?? "someone", p.inviterName);
-          const age = p.createdAt != null ? ` ${inviteAgePhrase(p.createdAt)}` : "";
-          return `${p.name || "A friend"} hasn't joined yet.${who ? ` ${who} invited them${age}.` : ""}`;
-        };
+        // ONE bubble per cluster (Alborz 2026-09-01; the per-avatar pending
+        // tips are folded in): "open group" — or the new-writing line when
+        // one exists — and, under a Personal-green divider, who hasn't
+        // joined yet. Invite dates dropped; joined friends never named.
+        const pendingNames = groupPending.map((p) => p.name || "a friend");
+        const pendingLine = pendingNames.length
+          ? `${joinNames(pendingNames)} ${pendingNames.length > 1 ? "haven't" : "hasn't"} joined yet. You can nudge them from inside the room.`
+          : null;
         const avatars = [
           ...others.map((m) => <Avatar key={m.userId} letter={personDisplayName(contactNames, m.userId, m.username, m.displayName)[0]} state="accepted" />),
-          ...groupPending.map((p, i) => (
-            <span
-              key={`p${i}`}
-              onMouseMove={(e) => { e.stopPropagation(); onTip({ key: `p:${p.name}`, text: pendingTip(p), wrap: true, ...tipAnchorBelowLabel(e) }); }}
-              onMouseLeave={(e) => { e.stopPropagation(); onTip(null); }}
-            >
-              <Avatar letter={p.name ? p.name[0] : undefined} state="pending" />
-            </span>
-          )),
+          ...groupPending.map((p, i) => <Avatar key={`p${i}`} letter={p.name ? p.name[0] : undefined} state="pending" />),
         ];
         const dot = clusterDotByGroup.get(group.id);
         const notif = dot === "red" ? NOTIF_INVISIBLE : dot === "blue" ? NOTIF_VISIBLE : undefined;
@@ -2610,7 +2606,7 @@ function GroupClusters({
             // round 5); "open group" rides the same onTip system instead,
             // and the pending-avatar tips stopPropagation over it.
             onClick={() => onEnter(group.id)}
-            onMouseMove={(e) => onTip({ key: `c:${group.id}`, text: notif ?? "open group", wrap: !!notif, ...tipAnchorBelowLabel(e) })}
+            onMouseMove={(e) => onTip({ key: `c:${group.id}`, text: notif ?? "open group", sub: pendingLine ?? undefined, dividerColor: C.green, wrap: !!notif || !!pendingLine, ...tipAnchorBelowLabel(e) })}
             onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={avatars} minHeight={pileMinHeight} />

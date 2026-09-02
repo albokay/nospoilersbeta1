@@ -218,9 +218,38 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     }).catch(() => {});
   }, []);
 
+  // Perf (2026-09-01, desktop parity, plan 3b): the group room's row passes
+  // the room's show + parent group through navigation state, so entry from
+  // there skips the blocking room-row lookup (background verify catches
+  // deleted rooms). Cold URLs still do the lookup. Captured once.
+  const navRoomRef = useRef<{ roomShowId?: string; roomParentGroupId?: string | null } | null>((location.state as any) ?? null);
+  // Perf (plan 3a): last-render snapshot per room — re-entries paint the
+  // header/feed instantly while the live load refreshes (display-only
+  // staleness; the group room's stale-while-revalidate pattern).
+  const paintedFromSnapRef = useRef(false);
+  useEffect(() => {
+    if (privateOnly || !roomId || !user) return;
+    try {
+      const raw = sessionStorage.getItem(`ns_m_room_snap_${user.id}_${roomId}`);
+      if (!raw) return;
+      const snap = JSON.parse(raw);
+      if (!snap?.show) return;
+      setShow(snap.show);
+      setGroupName(snap.groupName ?? null);
+      setProgressForShow(snap.progress ?? null);
+      setFeedEntries(snap.feedEntries ?? []);
+      setMapMembers(snap.mapMembers ?? []);
+      setPrivateEntries(snap.privateEntries ?? []);
+      setParentGroupId(snap.parentGroupId ?? null);
+      paintedFromSnapRef.current = true;
+      setLoading(false);
+    } catch { /* corrupt snapshot — the live load paints */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const load = useCallback(async () => {
     if (!user) return;
-    setLoading(true);
+    if (!paintedFromSnapRef.current) setLoading(true);
     try {
       if (privateOnly && privateShowId) {
         const [allShows, progressMap] = await Promise.all([fetchShows(), fetchProgress(user.id)]);
@@ -236,30 +265,51 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         return;
       }
       if (!roomId) return;
-      const { data: roomRow, error: roomErr } = await supabase
-        .from("friend_groups")
-        .select("id, show_id, parent_group_id, deleted_at")
-        .eq("id", roomId)
-        .maybeSingle();
-      if (roomErr) throw roomErr;
-      if (!roomRow || roomRow.deleted_at) throw new Error("room not found");
-      const showId = roomRow.show_id as string;
-      setParentGroupId(roomRow.parent_group_id ?? null);
+      let showId: string;
+      let parentGid: string | null;
+      const navRoom = navRoomRef.current;
+      if (navRoom?.roomShowId) {
+        showId = navRoom.roomShowId;
+        parentGid = navRoom.roomParentGroupId ?? null;
+        // Background verify only — a deleted room bounces back out.
+        supabase.from("friend_groups").select("id, deleted_at").eq("id", roomId).maybeSingle()
+          .then(({ data }) => { if (!data || data.deleted_at) navigate(parentGid ? `/m/group/${parentGid}` : "/m/dashboard", { replace: true }); });
+      } else {
+        const { data: roomRow, error: roomErr } = await supabase
+          .from("friend_groups")
+          .select("id, show_id, parent_group_id, deleted_at")
+          .eq("id", roomId)
+          .maybeSingle();
+        if (roomErr) throw roomErr;
+        if (!roomRow || roomRow.deleted_at) throw new Error("room not found");
+        showId = roomRow.show_id as string;
+        parentGid = (roomRow.parent_group_id as string | null) ?? null;
+      }
+      setParentGroupId(parentGid);
       // Entering the room clears its new-activity dot up the tree.
       markRoomSeen(roomId).catch(() => { /* tolerate */ });
 
       // Perf (2026-07-07): the drafts fetch needs only the showId, so it
       // rides the main parallel batch instead of trailing the whole chain.
-      const [allShows, progressMap, roomMapData, myGroups, cn, mine] = await Promise.all([
-        fetchShows(), fetchProgress(user.id), fetchRoomMapData(roomId),
-        roomRow.parent_group_id ? fetchPeopleGroupsForUser(user.id).catch(() => []) : Promise.resolve([]),
+      // Perf (2026-09-01, plan 3c): the writing fetch chains off the
+      // progress promise INSIDE the batch instead of trailing it.
+      const emptyGr = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number>, latestVisibleReplyAt: {} as Record<string, number>, hiddenCounts: {} as Record<string, number>, latestHiddenReplyAt: {} as Record<string, number> };
+      const progressP = fetchProgress(user.id);
+      const grP: Promise<any> = progressP.then((pm) => {
+        const eff = effectiveProgress(pm[showId] ?? null);
+        return eff ? fetchGroupThreads(roomId, eff.s, eff.e, user.id) : (emptyGr as any);
+      });
+      const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr] = await Promise.all([
+        fetchShows(), progressP, fetchRoomMapData(roomId),
+        parentGid ? fetchPeopleGroupsForUser(user.id).catch(() => []) : Promise.resolve([]),
         fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
         fetchUserThreads(user.id, showId),
+        grP,
       ]);
       setRoomContactNames(cn);
       const showRow = allShows.find((s) => s.id === showId) ?? null;
       const progress = progressMap[showId] ?? null;
-      const pg = roomRow.parent_group_id ? myGroups.find((x) => x.id === roomRow.parent_group_id) : null;
+      const pg = parentGid ? myGroups.find((x) => x.id === parentGid) : null;
       // "with …" lists the members who OPTED INTO THIS SHOW — the room's
       // current (non-departed) members from roomMapData, NOT the whole group
       // (2026-07-09; matches desktop). Custom group name still wins; unnamed
@@ -277,10 +327,6 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           derivedGroupName = optedNames.length ? joinNames(optedNames) : null;
         }
       }
-      const eff = effectiveProgress(progress);
-
-      const empty = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number>, latestVisibleReplyAt: {} as Record<string, number>, hiddenCounts: {} as Record<string, number>, latestHiddenReplyAt: {} as Record<string, number> };
-      const gr: any = eff ? await fetchGroupThreads(roomId, eff.s, eff.e, user.id) : empty;
 
       const departed = new Set(roomMapData.filter((m) => m.isDeparted).map((m) => m.username ?? "").filter(Boolean));
       const u2id: Record<string, string> = {};
@@ -333,6 +379,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         if (v) dismisses[t.id] = parseInt(v, 10);
       }
       setRedDismissedAt(dismisses);
+      // Store the re-entry snapshot (plan 3a) — display-only staleness.
+      if (!privateOnly && roomId) {
+        try {
+          sessionStorage.setItem(`ns_m_room_snap_${user.id}_${roomId}`, JSON.stringify({
+            show: showRow, groupName: derivedGroupName, progress,
+            feedEntries: [...entries, ...gatedStubs], mapMembers: members,
+            privateEntries: priv, parentGroupId: parentGid,
+          }));
+        } catch { /* quota — instant paint just won't happen */ }
+      }
     } catch (e) {
       console.error("[m-show-room] load failed", e);
     } finally {

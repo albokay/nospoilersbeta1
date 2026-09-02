@@ -426,6 +426,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
   // ── Actions (same DB calls as desktop) ─────────────────────────────────────
   function onRowClick(pill: PillData, name: string) {
+    // Perf (2026-09-01, desktop parity): a row that KNOWS its room navigates
+    // straight there — no idempotent start RPC round trip.
+    if (pill.inRoom && pill.roomId) {
+      navigate(`/m/show-room/${pill.roomId}`, { state: { roomShowId: pill.showId, roomParentGroupId: groupId } });
+      return;
+    }
     if (pill.inRoom) { goToRoom(pill.showId); return; }
     // Group-scoped model (2026-07-06, desktop parity): "yours" means you've
     // engaged with the show IN THIS GROUP — for a proposal (no room yet)
@@ -507,7 +513,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     try {
       const { roomId } = await startShowRoom(groupId, showId);
       setClicked(null);
-      navigate(`/m/show-room/${roomId}`);
+      // Nav state (perf 2026-09-01): the room page skips its blocking
+      // room-row lookup when the show + parent group ride along.
+      navigate(`/m/show-room/${roomId}`, { state: { roomShowId: showId, roomParentGroupId: groupId } });
     } catch (e) { console.error("[m-group] start/open room failed", e); }
   }
 
