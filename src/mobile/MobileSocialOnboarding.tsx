@@ -38,6 +38,7 @@ import YoureInCard from "../components/deck/YoureInCard";
 import MobileSearchSheet from "./MobileSearchSheet";
 import {
   fetchShows,
+  fetchGroupDashboard,
   upsertRewatchStatus,
   createPeopleGroup,
   startShowRoom,
@@ -69,7 +70,7 @@ type Boot = { gid?: string; roomId?: string; tokens?: Record<string, string>; th
 // so an 8th invitee would bounce with "group full" when they tried to join.
 const MAX_FRIENDS = 7;
 
-export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: string | null) => void }) {
+export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone: (groupId: string | null) => void; onWarmRail?: () => void }) {
   const { user, profile } = useAuth();
   // Swipe-deck arc CP2 (spec §12.1): step 0 = WAVE 1 (4 question cards with
   // the welcome copy), steps 1–3 = the original show → friend → seed-entry
@@ -78,6 +79,11 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
   // Email backstop's last resort: bootstrap done, email(s) undeliverable →
   // copy-the-link panel (one row per failed invite), then step 4.
   const [fallbackLinks, setFallbackLinks] = useState<{ name: string; link: string }[] | null>(null);
+  // Background email sends (finale perf, Alborz 2026-09-01, desktop parity):
+  // "pending" while wave 2 covers them; "failed" → the copy-the-link card
+  // AFTER the wave.
+  const [sendState, setSendState] = useState<"idle" | "pending" | "ok" | "failed">("idle");
+  const [fallbackAcked, setFallbackAcked] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
   // Screen 1 — show + progress (the shared search sheet picks both).
@@ -205,29 +211,52 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
     ]);
     // The onboarding sticky shows on THIS group's room after landing.
     try { localStorage.setItem("ns_onb_group", boot.gid); } catch { /* tolerate */ }
+    // Cache warm (Alborz 2026-09-01, desktop parity): pre-store the mobile
+    // group-room snapshot (rows + the catalog slice they render from) so the
+    // FIRST entry paints instantly. Fire-and-forget, display-only staleness.
+    Promise.all([fetchGroupDashboard(gid), fetchShows()]).then(([rows, catalog]) => {
+      const ids = new Set(rows.map((r) => r.showId));
+      const slice = catalog.filter((s) => ids.has(s.id));
+      try { sessionStorage.setItem(`ns_m_group_snap_${user.id}_${gid}`, JSON.stringify({ rows, shows: slice })); } catch { /* quota */ }
+    }).catch(() => { /* tolerate */ });
 
-    // NOW the invite emails — held until the writing existed. Transient
-    // failures → one auto-retry after a short delay; an auth failure skips
-    // the retry and the failed invites go straight to copy-the-link rows.
-    let failed: { name: string; email: string; token: string }[] = [];
-    let authFail = false;
-    // Perf (2026-07-26): concurrent sends (each is an edge-fn call); retry
-    // + copy-link fallback semantics unchanged.
-    const sends = await Promise.all(invitees.map(async (f) => ({ f, r: await sendGroupInviteEmail(tokens[f.email]) })));
-    for (const { f, r } of sends) {
-      if (!r.ok) {
-        failed.push({ ...f, token: tokens[f.email] });
-        if (r.status === 401 || r.status === 403) authFail = true;
+    // Finale perf (Alborz 2026-09-01): the invite emails go out in the
+    // BACKGROUND while the user answers wave 2 (the publish button used to
+    // hold for the full email round trip). Failure semantics preserved,
+    // deferred: retry once; whatever still fails surfaces on the same
+    // copy-the-link card AFTER the wave; a speed-swiper gets a brief "one
+    // moment" gate. Accepted trade: closing the app mid-wave can leave an
+    // email unsent — the You're-in card's links + nudges cover it.
+    setSendState("pending");
+    (async () => {
+      let failed: { name: string; email: string; token: string }[] = [];
+      let authFail = false;
+      const sends = await Promise.all(invitees.map(async (f) => ({ f, r: await sendGroupInviteEmail(tokens[f.email]) })));
+      for (const { f, r } of sends) {
+        if (!r.ok) {
+          failed.push({ ...f, token: tokens[f.email] });
+          if (r.status === 401 || r.status === 403) authFail = true;
+        }
       }
-    }
-    if (failed.length && !authFail) {
-      await new Promise((r) => setTimeout(r, 2500));
-      const retries = await Promise.all(failed.map(async (f) => ({ f, r: await sendGroupInviteEmail(f.token) })));
-      failed = retries.filter(({ r }) => !r.ok).map(({ f }) => f);
-    }
-    if (!failed.length) { setStep(4); return; }
-    setFallbackLinks(failed.map((f) => ({ name: f.name, link: `${window.location.origin}/group-invite/${f.token}` })));
+      if (failed.length && !authFail) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const retries = await Promise.all(failed.map(async (f) => ({ f, r: await sendGroupInviteEmail(f.token) })));
+        failed = retries.filter(({ r }) => !r.ok).map(({ f }) => f);
+      }
+      if (failed.length) {
+        setFallbackLinks(failed.map((f) => ({ name: f.name, link: `${window.location.origin}/group-invite/${f.token}` })));
+        setSendState("failed");
+      } else {
+        setSendState("ok");
+      }
+    })();
+    setStep(4);
   }
+
+  // Rail warm (finale perf): once the wave starts, the host dashboard
+  // refreshes its rows in the background so GET STARTED lands instantly
+  // (the host's ref makes repeat calls no-ops).
+  useEffect(() => { if (step === 4 || step === 5) onWarmRail?.(); }, [step, onWarmRail]);
 
   async function copyLink(link: string, idx: number) {
     try { await navigator.clipboard.writeText(link); setCopiedIdx(idx); setTimeout(() => setCopiedIdx(null), 1500); } catch { /* tolerate */ }
@@ -376,27 +405,6 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
 
   // ── Screen 3: the REAL mobile compose (or the copy-link fallback panel) ──
   if (step === 3 && show) {
-    if (fallbackLinks) {
-      return (
-        <div style={{ ...fullScreen, background: C.yellow }}>
-          <div style={{ width: "100%", maxWidth: 420, padding: "0 24px", boxSizing: "border-box", textAlign: "center" }}>
-            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, marginBottom: 12 }}>Your writing is published!</div>
-            <div style={{ color: C.cream, fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
-              But Sidebar couldn&rsquo;t email {joinNames(fallbackLinks.map((f) => f.name)) || "your friends"} right now.
-              Copy the link{fallbackLinks.length > 1 ? "s" : ""} and send them yourself — they work the same.
-            </div>
-            {fallbackLinks.map((f, i) => (
-              <div key={f.link} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, background: "rgba(253,248,236,0.15)", borderRadius: 12, padding: "10px 12px" }}>
-                <div style={{ width: 72, fontSize: 12, fontWeight: 700, color: C.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>{f.name}</div>
-                <div style={{ flex: 1, fontSize: 12, color: C.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.link}</div>
-                <button style={{ ...bluePill, padding: "8px 20px", minHeight: 36 }} onClick={() => copyLink(f.link, i)}>{copiedIdx === i ? "copied!" : "copy"}</button>
-              </div>
-            ))}
-            <button style={{ ...bluePill, marginTop: 10 }} onClick={() => setStep(4)}>continue →</button>
-          </div>
-        </div>
-      );
-    }
     return (
       <div style={composeShell}>
         {/* Back replaces the compose exits (no skipping out) — routed through
@@ -436,6 +444,38 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
     return <DeckWave wave={2} heading="more" idiom="mobile" onComplete={() => setStep(5)} />;
   }
 
+  // ── Screen 5 gates (finale perf, 2026-09-01): the emails went out in the
+  // background during wave 2 — hold for a beat if a speed-swiper beat them;
+  // failures surface on the same copy-the-link card, now AFTER the wave. ────
+  if (sendState === "pending") {
+    return (
+      <div style={{ ...fullScreen, background: C.yellow }}>
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: C.cream }}>one moment<LoadingDots /></span>
+      </div>
+    );
+  }
+  if (fallbackLinks && !fallbackAcked) {
+    return (
+      <div style={{ ...fullScreen, background: C.yellow }}>
+        <div style={{ width: "100%", maxWidth: 420, padding: "0 24px", boxSizing: "border-box", textAlign: "center" }}>
+          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, marginBottom: 12 }}>Your writing is published!</div>
+          <div style={{ color: C.cream, fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
+            But Sidebar couldn&rsquo;t email {joinNames(fallbackLinks.map((f) => f.name)) || "your friends"} right now.
+            Copy the link{fallbackLinks.length > 1 ? "s" : ""} and send them yourself — they work the same.
+          </div>
+          {fallbackLinks.map((f, i) => (
+            <div key={f.link} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, background: "rgba(253,248,236,0.15)", borderRadius: 12, padding: "10px 12px" }}>
+              <div style={{ width: 72, fontSize: 12, fontWeight: 700, color: C.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>{f.name}</div>
+              <div style={{ flex: 1, fontSize: 12, color: C.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.link}</div>
+              <button style={{ ...bluePill, padding: "8px 20px", minHeight: 36 }} onClick={() => copyLink(f.link, i)}>{copiedIdx === i ? "copied!" : "copy"}</button>
+            </div>
+          ))}
+          <button style={{ ...bluePill, marginTop: 10 }} onClick={() => setFallbackAcked(true)}>continue →</button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Screen 5: the "You're in!" card (§12.6, inviter variant). Carries each
   // friend's invite link (the email's own link, from the minted tokens) so
   // the inviter can also text it (Alborz 2026-08-18). ──────────────────────
@@ -446,7 +486,12 @@ export default function MobileSocialOnboarding({ onDone }: { onDone: (groupId: s
   return (
     <YoureInCard
       idiom="mobile"
-      variant={{ kind: "inviter", showName: show?.name ?? "your show", friendName: invitedNames || "your friend", inviteLinks }}
+      variant={{
+        kind: "inviter", showName: show?.name ?? "your show", friendName: invitedNames || "your friend", inviteLinks,
+        emailFailure: sendState === "failed" && fallbackLinks?.length
+          ? { names: joinNames(fallbackLinks.map((f) => f.name)) || "your friend", count: fallbackLinks.length }
+          : undefined,
+      }}
       onDone={() => onDone(bootRef.current.gid ?? null)}
     />
   );

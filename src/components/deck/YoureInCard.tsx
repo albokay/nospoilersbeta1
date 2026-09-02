@@ -25,7 +25,10 @@ const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 export type YoureInVariant =
   /** inviteLinks (2026-08-18): the just-sent invites' links, one per friend,
    *  so the inviter can ALSO text them (same link as the email). */
-  | { kind: "inviter"; showName: string; friendName: string; inviteLinks?: InviteLink[] }
+  /** emailFailure (2026-09-01): set when some invite emails could not be
+   *  sent (background sends, finale perf) — swaps the "Sidebar has emailed…"
+   *  line for the couldn't-email copy. names = pre-joined display names. */
+  | { kind: "inviter"; showName: string; friendName: string; inviteLinks?: InviteLink[]; emailFailure?: { names: string; count: number } }
   | { kind: "invitee"; friendName: string };
 
 export default function YoureInCard({ variant, idiom, onDone, busy = false, errorText = null, onDismiss }: {
@@ -119,7 +122,9 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
               {variant.inviteLinks && variant.inviteLinks.length > 0 && (
                 <>
                   <p style={{ margin: "16px 0 0" }}>
-                    {preventLastWordOrphan(`Sidebar has emailed your ${variant.inviteLinks.length > 1 ? "friends" : "friend"}. You can also text them an invite link.`)}
+                    {preventLastWordOrphan(variant.emailFailure
+                      ? `Sidebar couldn’t email ${variant.emailFailure.names} right now. Copy the link${variant.emailFailure.count > 1 ? "s" : ""} below and send ${variant.emailFailure.count > 1 ? "them" : "it"} yourself — ${variant.emailFailure.count > 1 ? "they work" : "it works"} the same.`
+                      : `Sidebar has emailed your ${variant.inviteLinks.length > 1 ? "friends" : "friend"}. You can also text them an invite link.`)}
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
                     {variant.inviteLinks.map((l) => <InviteLinkRow key={l.link} name={l.name} link={l.link} tone="cream" />)}

@@ -238,7 +238,7 @@ export default function DashboardPage() {
   async function handleSocialOnbDone(_groupId: string | null) {
     setShowSocialOnb(false);
     if (!forceSocialOnb && user) markSocialOnboarded(user.id).catch(() => {});
-    if (user) { try { setRailGroups(await loadRail(user.id)); } catch { /* tolerant */ } }
+    if (!railWarmedRef.current) warmRail();
     // Swipe-deck arc CP2 (spec §12.1): onboarding lands on the DASHBOARD —
     // the new group's cluster is waiting there (was: straight into ?g=).
     navigate("/dashboard", { replace: true });
@@ -493,6 +493,9 @@ export default function DashboardPage() {
 
   // ── Rail (people-groups). Isolated + tolerant so the dashboard works before
   //    the CP1 migration is applied. ─────────────────────────────────────────
+  // First-rail-resolution flag (2026-09-01): gates the clusters area to
+  // loading dots instead of a false "no groups" empty flash.
+  const [railLoaded, setRailLoaded] = useState(false);
   const loadRail = useCallback(async (uid: string) => {
     try {
       const groups = await fetchPeopleGroupsForUser(uid);
@@ -503,6 +506,7 @@ export default function DashboardPage() {
           pendingInvites: await fetchGroupPendingInvites(g.id),
         }))
       );
+      setRailLoaded(true); // any successful rail fetch clears the clusters loading gate
       return withMembers;
     } catch (e) {
       console.warn("[dashboard] people-groups not loaded (CP1 migration applied?)", e);
@@ -511,6 +515,17 @@ export default function DashboardPage() {
   }, []);
 
   // ── Core load ────────────────────────────────────────────────────────────
+  // Finale perf (Alborz 2026-09-01): the rail refresh moved OFF the GET
+  // STARTED click — onboarding calls warmRail while the user reads the
+  // You're-in card, so landing is instant; the ref makes repeat calls no-ops
+  // and the done-handler only re-fires it if the warm never ran.
+  const railWarmedRef = useRef(false);
+  const warmRail = useCallback(() => {
+    if (railWarmedRef.current || !user) return;
+    railWarmedRef.current = true;
+    loadRail(user.id).then((rail) => { setRailGroups(rail); setRailLoaded(true); }).catch(() => { railWarmedRef.current = false; });
+  }, [user, loadRail]);
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) { navigate("/", { replace: true }); return; }
@@ -545,7 +560,7 @@ export default function DashboardPage() {
       // waterfall, so the rail / pending invites / activity dots no longer wait
       // in line behind each other. Each is independently tolerant.
       loadRail(user.id)
-        .then((rail) => { if (!cancelled) setRailGroups(rail); })
+        .then((rail) => { if (!cancelled) { setRailGroups(rail); setRailLoaded(true); } })
         .catch((e) => console.warn("[dashboard] rail not loaded", e));
       fetchMyPendingGroupInvites()
         .then((inv) => { if (!cancelled) setPendingInvites(inv); })
@@ -1623,7 +1638,13 @@ export default function DashboardPage() {
               and dead-center). Empty spacers shrink to 0 if content overflows,
               so the top stays reachable via page scroll. */}
           <div style={{ flex: 1 }} />
-          {clustersEl}
+          {/* Until the rail's first resolution, dots instead of a false
+              "no groups" empty flash (2026-09-01) — same arrival time. */}
+          {railLoaded ? clustersEl : (
+            <div style={{ textAlign: "center", padding: 32 }}>
+              <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>loading<LoadingDots /></span>
+            </div>
+          )}
           <div style={{ textAlign: "center", marginTop: 40 }}>
             {/* Hidden while the onboarding flow is up — its overlays own the
                 screen and this reads as a competing (and nonsensical) action. */}
@@ -2191,7 +2212,7 @@ export default function DashboardPage() {
       {/* CP3 social onboarding — strictly AFTER the demo (never both at once).
           Now opens with WAVE 1 and closes with WAVE 2 + the "You're in!" card
           (swipe-deck arc CP2). */}
-      {socialOnbActive && <SocialOnboarding onDone={handleSocialOnbDone} />}
+      {socialOnbActive && <SocialOnboarding onDone={handleSocialOnbDone} onWarmRail={warmRail} />}
 
       {/* Post-accept: WAVE 1, then straight into the just-joined group room
           (QA 2026-07-18 — the "You're in!" card already served as the

@@ -34,6 +34,7 @@ import {
   createPeopleGroupInvite,
   sendGroupInviteEmail,
   insertThread,
+  fetchGroupDashboard,
   addThreadToGroup,
   logThreadPrompt,
   type Show,
@@ -64,7 +65,7 @@ type Boot = { gid?: string; roomId?: string; tokens?: Record<string, string>; th
 // so an 8th invitee would bounce with "group full" when they tried to join.
 const MAX_FRIENDS = 7;
 
-export default function SocialOnboarding({ onDone }: { onDone: (groupId: string | null) => void }) {
+export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (groupId: string | null) => void; onWarmRail?: () => void }) {
   const { user, profile } = useAuth();
   // Swipe-deck arc CP2 (spec §12.1): step 0 = WAVE 1 (4 question cards with
   // the welcome copy), steps 1–3 = the original show → friend → seed-entry
@@ -73,6 +74,10 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   // Email backstop's last resort: bootstrap done, email(s) undeliverable →
   // copy-the-link card (one row per failed invite), then step 4.
   const [fallbackLinks, setFallbackLinks] = useState<{ name: string; link: string }[] | null>(null);
+  // Background email sends (finale perf, Alborz 2026-09-01): "pending" while
+  // wave 2 covers them; "failed" → the copy-the-link card AFTER the wave.
+  const [sendState, setSendState] = useState<"idle" | "pending" | "ok" | "failed">("idle");
+  const [fallbackAcked, setFallbackAcked] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
   // Screen 1 — show + progress (the site's real search + picker cards).
@@ -261,31 +266,52 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
     ]);
     // The onboarding sticky shows on THIS group's room after landing.
     try { localStorage.setItem("ns_onb_group", boot.gid); } catch { /* tolerate */ }
+    // Cache warm (Alborz 2026-09-01): pre-store the group-room snapshot so
+    // the user's FIRST entry paints instantly like a return visit would.
+    // Fire-and-forget; display-only staleness (stale-while-revalidate).
+    fetchGroupDashboard(gid).then((rows) => {
+      try { sessionStorage.setItem(`ns_group_snap_${user.id}_${gid}`, JSON.stringify(rows)); } catch { /* quota */ }
+    }).catch(() => { /* tolerate */ });
 
-    // NOW the invite emails — held until the writing existed. Transient
-    // failures → one auto-retry after a short delay (the button keeps its
-    // animated posting… ellipsis); an auth failure skips the retry and the
-    // failed invites go straight to copy-the-link rows.
-    let failed: { name: string; email: string; token: string }[] = [];
-    let authFail = false;
-    // Perf (2026-07-26): all invite emails go out CONCURRENTLY (each is an
-    // edge-fn call — the serial loop multiplied the slowest leg by the
-    // friend count). Retry + copy-link fallback semantics unchanged.
-    const sends = await Promise.all(invitees.map(async (f) => ({ f, r: await sendGroupInviteEmail(tokens[f.email]) })));
-    for (const { f, r } of sends) {
-      if (!r.ok) {
-        failed.push({ ...f, token: tokens[f.email] });
-        if (r.status === 401 || r.status === 403) authFail = true;
+    // Finale perf (Alborz 2026-09-01): the invite emails go out in the
+    // BACKGROUND while the user answers wave 2 — the publish button used to
+    // hold for the full email round trip (the app's longest wait, on its
+    // newest user). Failure semantics preserved, just deferred: transient
+    // failures retry once; whatever still fails surfaces on the SAME
+    // copy-the-link card as before, now right after the wave (a speed-
+    // swiper who beats the sends gets a brief "one moment" gate at the
+    // wave's end). Accepted trade (Alborz): closing the tab mid-wave can
+    // leave an email unsent — the You're-in card's links + nudges cover it.
+    setSendState("pending");
+    (async () => {
+      let failed: { name: string; email: string; token: string }[] = [];
+      let authFail = false;
+      const sends = await Promise.all(invitees.map(async (f) => ({ f, r: await sendGroupInviteEmail(tokens[f.email]) })));
+      for (const { f, r } of sends) {
+        if (!r.ok) {
+          failed.push({ ...f, token: tokens[f.email] });
+          if (r.status === 401 || r.status === 403) authFail = true;
+        }
       }
-    }
-    if (failed.length && !authFail) {
-      await new Promise((r) => setTimeout(r, 2500));
-      const retries = await Promise.all(failed.map(async (f) => ({ f, r: await sendGroupInviteEmail(f.token) })));
-      failed = retries.filter(({ r }) => !r.ok).map(({ f }) => f);
-    }
-    if (!failed.length) { setStep(4); return; }
-    setFallbackLinks(failed.map((f) => ({ name: f.name, link: `${window.location.origin}/group-invite/${f.token}` })));
+      if (failed.length && !authFail) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const retries = await Promise.all(failed.map(async (f) => ({ f, r: await sendGroupInviteEmail(f.token) })));
+        failed = retries.filter(({ r }) => !r.ok).map(({ f }) => f);
+      }
+      if (failed.length) {
+        setFallbackLinks(failed.map((f) => ({ name: f.name, link: `${window.location.origin}/group-invite/${f.token}` })));
+        setSendState("failed");
+      } else {
+        setSendState("ok");
+      }
+    })();
+    setStep(4);
   }
+
+  // Rail warm (finale perf): once the wave starts, the host dashboard
+  // refreshes its groups list in the background so GET STARTED can land
+  // instantly (the host's ref makes repeat calls no-ops).
+  useEffect(() => { if (step === 4 || step === 5) onWarmRail?.(); }, [step, onWarmRail]);
 
   async function copyLink(link: string, idx: number) {
     try { await navigator.clipboard.writeText(link); setCopiedIdx(idx); setTimeout(() => setCopiedIdx(null), 1500); } catch { /* tolerate */ }
@@ -445,31 +471,8 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
     );
   }
 
-  // ── Screen 3: the REAL compose modal (or the copy-link fallback card) ──────
+  // ── Screen 3: the REAL compose modal ───────────────────────────────────────
   if (step === 3 && show) {
-    if (fallbackLinks) {
-      return (
-        <div style={overlay}>
-          <div style={{ ...yellowCard, width: "min(460px, 88vw)", textAlign: "left" }}>
-            <div style={{ ...yellowTitle, marginBottom: 12 }}>Your writing is published!</div>
-            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>
-              But Sidebar couldn&rsquo;t email {joinNames(fallbackLinks.map((f) => f.name)) || "your friends"} right now.
-              Copy the link{fallbackLinks.length > 1 ? "s" : ""} and send them yourself — they work the same.
-            </div>
-            {fallbackLinks.map((f, i) => (
-              <div key={f.link} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
-                <div style={{ width: 90, fontSize: 12, fontWeight: 700, color: CANON.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</div>
-                <div style={{ flex: 1, fontSize: 12, color: CANON.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.link}</div>
-                <button style={{ ...startBtn, padding: "8px 20px" }} onClick={() => copyLink(f.link, i)}>{copiedIdx === i ? "copied!" : "copy"}</button>
-              </div>
-            ))}
-            <div style={{ textAlign: "center", marginTop: 16 }}>
-              <button style={startBtn} onClick={() => setStep(4)}>continue →</button>
-            </div>
-          </div>
-        </div>
-      );
-    }
     return (
       // zIndex 1002 lifts the compose screen ABOVE the dashboard top bar
       // (which rides at 1001 during onboarding as the QA-round-7 escape
@@ -516,6 +519,41 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
     return <DeckWave wave={2} heading="more" idiom="desktop" onComplete={() => setStep(5)} />;
   }
 
+  // ── Screen 5 gates (finale perf, 2026-09-01): the emails went out in the
+  // background during wave 2. A speed-swiper who beat them waits a beat;
+  // failures surface on the same copy-the-link card as before — now AFTER
+  // the wave — then the You're-in card (with the couldn't-email copy). ─────
+  if (sendState === "pending") {
+    return (
+      <div style={overlay}>
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>one moment<LoadingDots /></span>
+      </div>
+    );
+  }
+  if (fallbackLinks && !fallbackAcked) {
+    return (
+      <div style={overlay}>
+        <div style={{ ...yellowCard, width: "min(460px, 88vw)", textAlign: "left" }}>
+          <div style={{ ...yellowTitle, marginBottom: 12 }}>Your writing is published!</div>
+          <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>
+            But Sidebar couldn&rsquo;t email {joinNames(fallbackLinks.map((f) => f.name)) || "your friends"} right now.
+            Copy the link{fallbackLinks.length > 1 ? "s" : ""} and send them yourself — they work the same.
+          </div>
+          {fallbackLinks.map((f, i) => (
+            <div key={f.link} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
+              <div style={{ width: 90, fontSize: 12, fontWeight: 700, color: CANON.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</div>
+              <div style={{ flex: 1, fontSize: 12, color: CANON.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.link}</div>
+              <button style={{ ...startBtn, padding: "8px 20px" }} onClick={() => copyLink(f.link, i)}>{copiedIdx === i ? "copied!" : "copy"}</button>
+            </div>
+          ))}
+          <div style={{ textAlign: "center", marginTop: 16 }}>
+            <button style={startBtn} onClick={() => setFallbackAcked(true)}>continue →</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Screen 5: the "You're in!" card (§12.6, inviter variant). Carries each
   // friend's invite link (the email's own link, from the minted tokens) so
   // the inviter can also text it (Alborz 2026-08-18). ──────────────────────
@@ -526,7 +564,12 @@ export default function SocialOnboarding({ onDone }: { onDone: (groupId: string 
   return (
     <YoureInCard
       idiom="desktop"
-      variant={{ kind: "inviter", showName: show?.name ?? "your show", friendName: invitedNames || "your friend", inviteLinks }}
+      variant={{
+        kind: "inviter", showName: show?.name ?? "your show", friendName: invitedNames || "your friend", inviteLinks,
+        emailFailure: sendState === "failed" && fallbackLinks?.length
+          ? { names: joinNames(fallbackLinks.map((f) => f.name)) || "your friend", count: fallbackLinks.length }
+          : undefined,
+      }}
       onDone={() => onDone(bootRef.current.gid ?? null)}
     />
   );

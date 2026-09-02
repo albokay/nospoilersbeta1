@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { LogOut, UserPen, MessageCircleWarning } from "lucide-react";
 import { CANON } from "../styles/canon";
@@ -137,10 +137,19 @@ export default function MobileDashboard() {
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, forceSocialOnb]);
+  // Finale perf (Alborz 2026-09-01): the rail refresh moved OFF the GET
+  // STARTED click — onboarding calls warmRail while the user reads the
+  // You're-in card; the ref makes repeat calls no-ops.
+  const railWarmedRef = useRef(false);
+  function warmRail() {
+    if (railWarmedRef.current || !user) return;
+    railWarmedRef.current = true;
+    refreshRailAndInvites().catch(() => { railWarmedRef.current = false; });
+  }
   async function handleSocialOnbDone(_groupId: string | null) {
     setShowSocialOnb(false);
     if (!forceSocialOnb && user) markSocialOnboarded(user.id).catch(() => {});
-    await refreshRailAndInvites();
+    if (!railWarmedRef.current) refreshRailAndInvites();
     // Swipe-deck arc CP2 (spec §12.1): onboarding lands on the DASHBOARD —
     // the new group's row is waiting there (was: straight into the group).
   }
@@ -498,7 +507,7 @@ export default function MobileDashboard() {
       {/* ── CP3: the 3-screen first-run flow (over the plain green). Now
              opens with WAVE 1 and closes with WAVE 2 + the "You're in!" card
              (swipe-deck arc CP2). ── */}
-      {showSocialOnb && <MobileSocialOnboarding onDone={handleSocialOnbDone} />}
+      {showSocialOnb && <MobileSocialOnboarding onDone={handleSocialOnbDone} onWarmRail={warmRail} />}
 
       {/* ── Post-accept: WAVE 1, then straight into the just-joined group
              room (the "You're in!" card already served as the confirm). ── */}
