@@ -151,15 +151,17 @@ function tipAnchor(e: React.MouseEvent, adjust = 0): { x: number; y: number } {
   return { x: r.left + 12, y: r.top + 2 + adjust };
 }
 // Dashboard clusters (Alborz 2026-09-01): the bubble hangs BELOW the group's
-// text LABEL — the inverted twin of the standard anchor (same 12px inset and
-// 2px dip, mirrored to the label's bottom edge; the lean flips clockwise at
-// render). Anchored to the [data-cluster-label] div inside the cluster
-// button; falls back to the hovered element if it's ever missing.
+// text LABEL with a CONSTANT 4px gap (rev 2 — the first cut dipped 2px into
+// the label box and the clockwise lean dropped the right side further, which
+// cut across descender lines like "Letting it Marinate"; the render pins the
+// bubble's top-LEFT corner and leans away downward, so nothing ever rises
+// into the text). Anchored to the [data-cluster-label] div inside the
+// cluster button; falls back to the hovered element if it's ever missing.
 function tipAnchorBelowLabel(e: React.MouseEvent): { x: number; y: number; below: true } {
   const host = (e.currentTarget.closest("button") ?? e.currentTarget) as HTMLElement;
   const label = host.querySelector("[data-cluster-label]") as HTMLElement | null;
   const r = (label ?? host).getBoundingClientRect();
-  return { x: r.left + 12, y: r.bottom - 2, below: true };
+  return { x: r.left + 12, y: r.bottom + 4, below: true };
 }
 
 export default function DashboardPage() {
@@ -2175,7 +2177,7 @@ export default function DashboardPage() {
           docs/hover-pill-preview.html rev 6), a quarter of the bubble left
           of the anchor, −6° lean, cream, subtle shadow. */}
       {tip && createPortal(
-        <div style={{ ...tipBubble, ...(tip.below ? { transform: "translate(-25%, 0) rotate(6deg)", transformOrigin: "top center" } : null), ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x, top: tip.y }}>
+        <div style={{ ...tipBubble, ...(tip.below ? { transform: "translate(-25%, 0) rotate(6deg)", transformOrigin: "top left" } : null), ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x, top: tip.y }}>
           {tip.text}
           {tip.sub && (<><div style={tipDivider} />{tip.sub}</>)}
         </div>,
