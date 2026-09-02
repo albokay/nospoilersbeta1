@@ -139,7 +139,7 @@ type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvi
 
 // Hover-tip state (2026-08-21): `key` identifies the hovered element so the
 // bubble pins at first hover instead of riding the cursor.
-type TipState = { key: string; text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number; below?: boolean; dividerColor?: string };
+type TipState = { key: string; text: React.ReactNode; sub?: React.ReactNode; wrap?: boolean; x: number; y: number; below?: boolean };
 // Element-anchored bubble coords (Alborz 2026-08-21; approved mockup
 // docs/hover-pill-preview.html rev 6): the bubble straddles the element's
 // TOP-LEFT corner — anchor 12px right of it, bottom edge 2px INTO the
@@ -2210,7 +2210,7 @@ export default function DashboardPage() {
       {tip && createPortal(
         <div style={{ ...tipBubble, ...(tip.below ? { transform: "translate(-25%, 0) rotate(6deg)", transformOrigin: "top left" } : null), ...(tip.wrap ? { whiteSpace: "normal", maxWidth: 240 } : null), left: tip.x, top: tip.y }}>
           {tip.text}
-          {tip.sub && (<><div style={{ ...tipDivider, ...(tip.dividerColor ? { background: tip.dividerColor } : null) }} />{tip.sub}</>)}
+          {tip.sub && (<><div style={tipDivider} />{tip.sub}</>)}
         </div>,
         document.body,
       )}
@@ -2584,11 +2584,15 @@ function GroupClusters({
         // Cluster icons = the OTHER people (accepted cream, not-yet-accepted
         // invitees yellow). Never your own icon, even before anyone accepts.
         const others = members.filter((m) => m.userId !== selfUserId);
-        // ONE bubble per cluster (Alborz 2026-09-01; the per-avatar pending
-        // tips are folded in): "open group" — or the new-writing line when
-        // one exists — and, under a Personal-green divider, who hasn't
-        // joined yet. Invite dates dropped; joined friends never named.
-        const pendingNames = groupPending.map((p) => p.name || "a friend");
+        // ONE bubble, ONE message per cluster (Alborz 2026-09-01, rev 2 —
+        // the divider/stacked version is retired): the new-writing line when
+        // one exists, else the hasn't-joined line, else "open group". The
+        // hasn't-joined line waits until an invite is 24h OLD — a first-time
+        // user gets the uncluttered "open group"; fresher invites aren't
+        // named at all. Invite dates dropped; joined friends never named.
+        const DAY_MS = 24 * 60 * 60 * 1000;
+        const overduePending = groupPending.filter((p) => p.createdAt == null || Date.now() - p.createdAt > DAY_MS);
+        const pendingNames = overduePending.map((p) => p.name || "a friend");
         const pendingLine = pendingNames.length
           ? `${joinNames(pendingNames)} ${pendingNames.length > 1 ? "haven't" : "hasn't"} joined yet. You can nudge them from inside the room.`
           : null;
@@ -2606,7 +2610,7 @@ function GroupClusters({
             // round 5); "open group" rides the same onTip system instead,
             // and the pending-avatar tips stopPropagation over it.
             onClick={() => onEnter(group.id)}
-            onMouseMove={(e) => onTip({ key: `c:${group.id}`, text: notif ?? "open group", sub: pendingLine ?? undefined, dividerColor: C.green, wrap: !!notif || !!pendingLine, ...tipAnchorBelowLabel(e) })}
+            onMouseMove={(e) => onTip({ key: `c:${group.id}`, text: notif ?? pendingLine ?? "open group", wrap: !!notif || !!pendingLine, ...tipAnchorBelowLabel(e) })}
             onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={avatars} minHeight={pileMinHeight} />
