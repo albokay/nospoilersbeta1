@@ -505,6 +505,9 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
             // Onboarding-only prompt batch (2026-07-08), split on the
             // declared progress: fresh = s0e0 through s1e4, else returning.
             promptPoolTag={prog.s < 1 || (prog.s === 1 && prog.e <= 4) ? "onb-fresh" : "onb-returning"}
+            // First-message placeholder (Alborz 2026-09-02, verbatim) —
+            // friend/friends tracks how many they invited on screen 2.
+            bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${completeRows.length > 1 ? "friends" : "friend"}?`}
             externalSubmit={{ label: "publish & invite", submittingLabel: "sending invite", onSubmit: publishAndInvite }}
           />
         </div>

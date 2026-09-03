@@ -250,6 +250,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const load = useCallback(async () => {
     if (!user) return;
     if (!paintedFromSnapRef.current) setLoading(true);
+    // (paintedFromSnapRef flips true after any successful load below, so
+    // doorbell/live refetches never re-show the full-page spinner.)
     try {
       if (privateOnly && privateShowId) {
         const [allShows, progressMap] = await Promise.all([fetchShows(), fetchProgress(user.id)]);
@@ -389,6 +391,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           }));
         } catch { /* quota — instant paint just won't happen */ }
       }
+      paintedFromSnapRef.current = true; // painted (live) — spinner stands down
     } catch (e) {
       console.error("[m-show-room] load failed", e);
     } finally {
@@ -401,6 +404,51 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     if (!user) { navigate("/m", { replace: true }); return; }
     load();
   }, [authLoading, user, load, navigate]);
+  // ── In-room LIVE updates (Alborz 2026-09-02, green-lit scope) — the
+  //    DOORBELL pattern: subscribe to this room's new responses (replies —
+  //    already in the realtime publication) and new entries (group_threads —
+  //    silently inert until Alborz adds it to the publication), IGNORE the
+  //    payloads entirely (the live frame is not progress-gated), and re-run
+  //    the same spoiler-gated load, debounced. The snapshot/instant-paint
+  //    path is untouched: the subscription attaches after first paint and
+  //    refetches fire only when a friend actually writes. Dashboard/group
+  //    dots stay non-live — flagged for a later scope.
+  useEffect(() => {
+    if (privateOnly || !roomId || !user) return;
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let debounce: number | null = null;
+    const ding = () => {
+      if (cancelled) return;
+      if (debounce) window.clearTimeout(debounce);
+      debounce = window.setTimeout(() => { if (!cancelled) load(); }, 1200);
+    };
+    (async () => {
+      // Member-gated tables need the user token on the socket (the chat
+      // realtime's fix) or events silently never arrive.
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) supabase.realtime.setAuth(session.access_token);
+      } catch { /* tolerate */ }
+      if (cancelled) return;
+      channel = supabase
+        .channel(`room-live-${roomId}`)
+        // Own posts don't ring — the page already refreshes itself after
+        // posting (author_id is the only payload field read; never content).
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "replies", filter: `group_id=eq.${roomId}` }, (payload) => {
+          if ((payload.new as any)?.author_id === user.id) return;
+          ding();
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_threads", filter: `group_id=eq.${roomId}` }, ding)
+        .subscribe();
+    })();
+    return () => {
+      cancelled = true;
+      if (debounce) window.clearTimeout(debounce);
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [roomId, privateOnly, user, load]);
+
 
   // Back pops one drill-down level: room → its group (or dashboard when
   // private-only / groupless). Constructable from a bare URL (digest links).

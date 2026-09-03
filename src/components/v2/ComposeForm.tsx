@@ -147,6 +147,10 @@ type ComposeFormProps = {
    *  inserted) degrades to the normal suggestion flow so the button isn't
    *  dead. Default off → all other callers byte-identical. */
   promptPoolTag?: string;
+  /** Override for the body's empty-state placeholder (2026-09-02): the
+   *  onboarding compose swaps the site-wide line for a first-message-to-
+   *  your-friend prompt. The insert-a-prompt variant still wins. */
+  bodyPlaceholder?: string;
   /** Onboarding: prefill the title field (spec: "Let's do this!"). */
   initialTitle?: string;
   /** Onboarding: hide the action-row "not now" cancel (the flow provides its
@@ -166,7 +170,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, initialTitle, hideCancel = false, mobileIdiom = false },
+  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -766,7 +770,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           <textarea
             ref={bodyRef}
             className="v2-compose-paper-input"
-            placeholder={activePrompt ? "(insert a prompt below to get started, or just write)" : "What's something that's gonna stay with you?"}
+            placeholder={activePrompt ? "(insert a prompt below to get started, or just write)" : (bodyPlaceholder ?? "What's something that's gonna stay with you?")}
             value={postBody}
             onChange={(e) => setPostBody(e.target.value)}
             maxLength={10000}

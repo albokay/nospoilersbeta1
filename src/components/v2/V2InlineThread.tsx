@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
 import { CANON } from "../../styles/canon";
 import { ChevronUp, MessageSquare } from "lucide-react";
 import Modal from "../Modal";
@@ -123,6 +125,11 @@ export default function V2InlineThread({
   const [threadCitations, setThreadCitations] = useState<CitationEntry[]>([]);
 
   // ── Edit state ──────────────────────────────────────────────────────────
+  // Mobile highlight invitation (Alborz 2026-09-02): the Highlight… button
+  // is BACK on mobile, but highlighting is selection-based (needs a mouse) —
+  // tapping opens an informational bottom sheet pointing at desktop instead.
+  const [mobileHlInfoOpen, setMobileHlInfoOpen] = useState(false);
+  const mobileHlSwipe = useSheetSwipeDown(() => setMobileHlInfoOpen(false));
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(thread.titleBase);
   const [editBody, setEditBody] = useState(thread.body);
@@ -700,13 +707,15 @@ export default function V2InlineThread({
               </button>
             </>
           )}
-          {groupId && !mobileIdiom && (
+          {groupId && (
             // Accent fill kept (option B); hover = Sky fill + Accent
             // outline via the sb-hl-entry class (theme.ts, 2026-08-13).
+            // On mobile (2026-09-02) the button opens the desktop-only
+            // invitation sheet — the selection flow itself needs a mouse.
             <button
               ref={highlightBtnRef}
               className="btn sb-hl-entry"
-              onClick={handleHighlightClick}
+              onClick={mobileIdiom ? () => setMobileHlInfoOpen(true) : handleHighlightClick}
               style={{ fontSize: 13, padding: "3px 12px" }}
             >
               Highlight…
@@ -927,6 +936,35 @@ export default function V2InlineThread({
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Mobile highlight invitation (Alborz 2026-09-02): the standard
+          bottom sheet — Accent, cream text, left-justified (mobile sheet
+          rule), swipe-down or tap-outside to dismiss. */}
+      {mobileHlInfoOpen && createPortal(
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(26,58,74,0.35)", zIndex: 1200 }}
+          onClick={() => setMobileHlInfoOpen(false)}
+        >
+          <div
+            style={{
+              position: "fixed", left: 0, right: 0, bottom: 0,
+              background: CANON.accent, color: CANON.cream,
+              borderTopLeftRadius: 24, borderTopRightRadius: 24,
+              padding: "24px 24px calc(env(safe-area-inset-bottom, 0px) + 28px)",
+              textAlign: "left",
+              ...mobileHlSwipe.style,
+            }}
+            {...mobileHlSwipe.handlers}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 20, marginBottom: 10 }}>Highlights</div>
+            <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
+              This feature needs a mouse — on desktop you can highlight a portion of a friend&rsquo;s writing and leave a reaction right on it. Take a look next time you&rsquo;re at your computer!
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </>
   );
