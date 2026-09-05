@@ -39,3 +39,8 @@ verify_jwt = false
 # verifies the JWT itself via admin.auth.getUser(jwt), then anonymizes via a
 # user-scoped RPC and scrubs auth.users via the Admin API.
 verify_jwt = false
+
+[functions.build-show-reference]
+# Spoiler-gated reference builder (2026-09-05). Same ES256 reason as
+# send-invite — the function verifies the JWT itself via admin.auth.getUser.
+verify_jwt = false

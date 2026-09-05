@@ -33,6 +33,7 @@ import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import OneSelectProgress from "./OneSelectProgress";
 import RatingCaptureModal from "./RatingCaptureModal";
 import SidebarLogo from "./SidebarLogo";
+import ShowReference from "./reference/ShowReference";
 import FeedbackWidget from "./FeedbackWidget";
 import DeckWave from "./deck/DeckWave";
 import TSPDemoModal from "./TSPDemoModal";
@@ -45,7 +46,9 @@ import { CANON } from "../styles/canon";
 const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark };
 const LORA = '"Lora", Georgia, serif';
 const HEADER_H = 104;
-type Tab = "friend" | "private";
+// "reference" = the spoiler-gated reference (2026-09-05); its tab exists
+// only once the viewer's dial reaches S1E1 — no 0-state reference page.
+type Tab = "friend" | "private" | "reference";
 
 export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: string; privateShowId?: string }) {
   // Private-only standalone (dashboard "write by yourself"): no group/room,
@@ -656,6 +659,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     return m;
   }, [mapMembers, roomContactNames]);
 
+  // The reference exists once the dial reaches S1E1 (and the show can be
+  // bridged to the databases) — rewatch-aware. MUST sit above the loading
+  // early-return like displayNames (hooks run on every render).
+  const refEff = effectiveProgress(progressForShow);
+  const referenceAvailable = !!show?.tvmazeId && !!refEff && (refEff.s > 1 || (refEff.s === 1 && refEff.e >= 1));
+  useEffect(() => {
+    if (tab === "reference" && !referenceAvailable) setTab(privateOnly ? "private" : "friend");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, referenceAvailable]);
+
   if (authLoading || loading) {
     return (
       <div style={{ ...page, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
@@ -665,7 +678,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     );
   }
 
-  const bodyBg = tab === "friend" ? C.sky : C.green;
+  // Reference tab = the accent (look-things-up) world; drafts stay green.
+  const bodyBg = tab === "friend" ? C.sky : tab === "reference" ? C.yellow : C.green;
+
 
   // Private entries rendered through the same V2RoomFeed as the friend feed so
   // the cards have identical mechanics (expand/collapse, star, edit/delete).
@@ -694,7 +709,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {/* ── Header strip: logo left · centered name · tabs on the boundary.
             Header + body colors swap by mode: friend = green header / sky body,
             private = sky header / green body (the inactive tab shows through). ── */}
-      <div style={{ position: "relative", background: tab === "friend" ? C.green : C.sky, height: HEADER_H }}>
+      <div style={{ position: "relative", background: tab === "private" ? C.sky : C.green, height: HEADER_H }}>
         <div
           style={{ position: "absolute", left: 20, top: 12, cursor: "pointer" }}
           onClick={() => navigate("/dashboard")}
@@ -727,6 +742,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
         <div style={{ position: "absolute", left: 160, bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
           {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
+          {referenceAvailable && <RoomTab label="reference" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
           {/* CP6 (2026-07-06): solo journaling downgraded to DRAFTS — an
               author-only space; sharing is manual copy/paste, no convert. */}
           <RoomTab label="drafts" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
@@ -784,7 +800,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               )}
             </div>
 
-            {tab === "friend" ? (
+            {tab === "reference" && show && refEff ? (
+              <ShowReference showId={show.id} viewerProgress={refEff} />
+            ) : tab === "friend" ? (
               feedEntries.length === 0 ? (
                 <div style={{ maxWidth: 420 }}>
                   <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>

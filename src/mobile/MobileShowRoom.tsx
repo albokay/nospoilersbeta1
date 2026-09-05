@@ -24,6 +24,7 @@ import DeckWave from "../components/deck/DeckWave";
 import OneSelectProgress from "../components/OneSelectProgress";
 import RatingCaptureModal from "../components/RatingCaptureModal";
 import MobilePool from "./MobilePool";
+import ShowReference from "../components/reference/ShowReference";
 import { CANON } from "../styles/canon";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 
@@ -60,7 +61,9 @@ import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 
 const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, red: CANON.alert, cream: CANON.cream, midnight: CANON.dark, greyblue: CANON.business };
 const LORA = '"Lora", Georgia, serif';
-type Tab = "friend" | "private";
+// "reference" = the spoiler-gated reference (2026-09-05); its tab exists
+// only once the viewer's dial reaches S1E1 — no 0-state reference page.
+type Tab = "friend" | "private" | "reference";
 
 export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: string; privateShowId?: string }) {
   const privateOnly = !!privateShowId && !roomId;
@@ -606,6 +609,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     });
   }, []);
 
+  // The reference exists once the dial reaches S1E1 (and the show can be
+  // bridged to the databases) — rewatch-aware. MUST sit above the loading
+  // early-return (hooks run on every render).
+  const refEff = effectiveProgress(progressForShow);
+  const referenceAvailable = !!show?.tvmazeId && !!refEff && (refEff.s > 1 || (refEff.s === 1 && refEff.e >= 1));
+  useEffect(() => {
+    if (tab === "reference" && !referenceAvailable) setTab(privateOnly ? "private" : "friend");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, referenceAvailable]);
+
   if (authLoading || loading) {
     return (
       <div style={{ ...page, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
@@ -615,7 +628,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     );
   }
 
-  const bodyBg = tab === "friend" ? C.sky : C.green;
+  const bodyBg = tab === "friend" ? C.sky : tab === "reference" ? C.yellow : C.green;
   const visibleFriendEntries = userFilter ? feedEntries.filter((e) => e.authorId === userFilter) : feedEntries;
   const effectiveSortOrder = userFilter ? "desc" : sortOrder;
 
@@ -652,7 +665,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         .m-progress-cell select { max-width: 100%; text-overflow: ellipsis; }
       `}</style>
       {/* ── Header: back · show name (+ with group) · digest gear ── */}
-      <div style={{ background: tab === "friend" ? C.green : C.sky }}>
+      <div style={{ background: tab === "private" ? C.sky : C.green }}>
         <div style={topBar}>
           <button style={iconBtn} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
             <ArrowLeft size={22} color={C.cream} />
@@ -676,6 +689,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         {/* Tabs on the header/body boundary (same swap rule as desktop). */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "0 16px" }}>
           {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
+          {referenceAvailable && <RoomTab label="reference" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
           {/* CP6: solo → drafts (desktop parity) — just-for-you space. */}
           <RoomTab label="drafts" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
         </div>
@@ -774,7 +788,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         </div>
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
-        {tab === "friend" ? (
+        {tab === "reference" && show && refEff ? (
+          <ShowReference showId={show.id} viewerProgress={refEff} mobile />
+        ) : tab === "friend" ? (
           feedEntries.length === 0 ? (
             <div style={{ maxWidth: 420 }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
