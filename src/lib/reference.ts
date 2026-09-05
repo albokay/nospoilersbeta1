@@ -29,6 +29,9 @@ export type ShowReferenceData = {
   launchTrailerKey: string | null;
   seasons: RefSeason[];
   people: RefPerson[];
+  /** enwiki article the episode summaries came from (attribution link);
+   *  absent/null = no Wikipedia summaries in this blob. */
+  wikipediaTitle?: string | null;
 };
 
 // Per-session module cache — a show's reference is fetched once per visit.

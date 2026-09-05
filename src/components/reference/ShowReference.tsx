@@ -85,6 +85,12 @@ export default function ShowReference({
         (CC BY-SA) and{" "}
         <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer" style={{ color: CREAM }}>TMDB</a>.
         This product uses the TMDB API but is not endorsed or certified by TMDB.
+        {ref.wikipediaTitle && (
+          <>{" "}Episode summaries from{" "}
+            <a href={`https://en.wikipedia.org/wiki/${encodeURIComponent(ref.wikipediaTitle)}`} target="_blank" rel="noreferrer" style={{ color: CREAM }}>Wikipedia</a>{" "}
+            (CC BY-SA).
+          </>
+        )}
       </div>
 
       {/* ── Previously on: watched episodes in full; the rest folded ── */}

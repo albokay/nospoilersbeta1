@@ -17,8 +17,11 @@
 //   • Per-season trailer keys only — a show-level video list mixes in
 //     finale promos. The launch trailer uses the earliest-official rule
 //     ported from src/lib/trailers.ts.
-//   • Episode summaries: the MEATIER of TVMaze's blurb and TMDB's episode
-//     overview (TVMaze sometimes ships one-line taglines), HTML stripped.
+//   • Episode summaries: the MEATIEST of Wikipedia's episode-table summary
+//     (the only source that reliably carries real prose; CC BY-SA), TMDB's
+//     overview, and TVMaze's blurb (both often just marketing loglines).
+//     Wikipedia is reached via Wikidata BY IMDB ID — no name search, the
+//     wrong show can't resolve; a title-pattern fallback covers gaps.
 //
 // Bridge: shows.tvmaze_id → TVMaze externals (imdb → thetvdb) → TMDB /find.
 // No name search, so the wrong show can't resolve (trailers-spec rule).
@@ -75,6 +78,9 @@ type RefData = {
   launchTrailerKey: string | null;
   seasons: RefSeason[];
   people: RefPerson[];
+  /** enwiki article the episode summaries came from (attribution link);
+   *  null = no Wikipedia summaries in this blob. */
+  wikipediaTitle: string | null;
 };
 
 function stripHtml(s: string | null | undefined): string | null {
@@ -107,22 +113,187 @@ async function tmdbGet(path: string, token: string): Promise<any | null> {
   } catch { return null; }
 }
 
-// tvmazeId → TMDB tv id via externals (imdb preferred, then thetvdb).
-async function resolveTmdbTvId(tvmazeId: string, token: string): Promise<number | null> {
+// TVMaze externals — fetched ONCE; feed both the TMDB and Wikidata bridges.
+type Externals = { imdb: string | null; thetvdb: string | null };
+async function fetchExternals(tvmazeId: string): Promise<Externals> {
   try {
     const res = await fetch(`${TVMAZE_BASE}/shows/${encodeURIComponent(tvmazeId)}`);
-    if (!res.ok) return null;
-    const externals = (await res.json())?.externals ?? {};
-    const attempts: Array<{ id: string; source: string }> = [];
-    if (externals.imdb) attempts.push({ id: String(externals.imdb), source: "imdb_id" });
-    if (externals.thetvdb) attempts.push({ id: String(externals.thetvdb), source: "tvdb_id" });
-    for (const { id, source } of attempts) {
-      const data = await tmdbGet(`/find/${encodeURIComponent(id)}?external_source=${source}`, token);
-      const tvId = data?.tv_results?.[0]?.id;
-      if (typeof tvId === "number") return tvId;
-    }
-  } catch { /* fall through */ }
+    if (!res.ok) return { imdb: null, thetvdb: null };
+    const ex = (await res.json())?.externals ?? {};
+    return { imdb: ex.imdb ? String(ex.imdb) : null, thetvdb: ex.thetvdb ? String(ex.thetvdb) : null };
+  } catch { return { imdb: null, thetvdb: null }; }
+}
+
+// externals → TMDB tv id (imdb preferred, then thetvdb). No name search.
+async function resolveTmdbTvId(externals: Externals, token: string): Promise<number | null> {
+  const attempts: Array<{ id: string; source: string }> = [];
+  if (externals.imdb) attempts.push({ id: externals.imdb, source: "imdb_id" });
+  if (externals.thetvdb) attempts.push({ id: externals.thetvdb, source: "tvdb_id" });
+  for (const { id, source } of attempts) {
+    const data = await tmdbGet(`/find/${encodeURIComponent(id)}?external_source=${source}`, token);
+    const tvId = data?.tv_results?.[0]?.id;
+    if (typeof tvId === "number") return tvId;
+  }
   return null;
+}
+
+// ── Wikipedia episode summaries (CC BY-SA) ──────────────────────────────────
+// Wikimedia asks API clients to identify themselves.
+const WIKI_HEADERS = {
+  "Api-User-Agent": "SidebarReference/1.0 (https://beta.sidebar.watch)",
+  Accept: "application/json",
+};
+
+async function wikiGet(url: string): Promise<any | null> {
+  try {
+    const res = await fetch(url, { headers: WIKI_HEADERS });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+// IMDb id → Wikidata item → the show's enwiki article + its episode-list
+// article (property P1811 when present; "List of {show} episodes" fallback).
+async function resolveWikipediaPages(imdbId: string): Promise<{ show: string | null; list: string | null }> {
+  const out = { show: null as string | null, list: null as string | null };
+  const search = await wikiGet(
+    `https://www.wikidata.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(`haswbstatement:P345=${imdbId}`)}&format=json`);
+  const qid = search?.query?.search?.[0]?.title;
+  if (!qid) return out;
+  const ent = await wikiGet(
+    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qid}&props=sitelinks%7Cclaims&format=json`);
+  const entity = ent?.entities?.[qid];
+  out.show = entity?.sitelinks?.enwiki?.title ?? null;
+  const listQ = entity?.claims?.P1811?.[0]?.mainsnak?.datavalue?.value?.id;
+  if (listQ) {
+    const listEnt = await wikiGet(
+      `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${listQ}&props=sitelinks&format=json`);
+    out.list = listEnt?.entities?.[listQ]?.sitelinks?.enwiki?.title ?? null;
+  }
+  if (!out.list && out.show) out.list = `List of ${out.show} episodes`;
+  return out;
+}
+
+async function fetchWikitext(title: string): Promise<string | null> {
+  const data = await wikiGet(
+    `https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(title)}&prop=wikitext&redirects=1&format=json`);
+  return data?.parse?.wikitext?.["*"] ?? null;
+}
+
+// Brace-aware scan for {{Episode list}} / {{Episode list/sublist}} templates,
+// returning each one's top-level |field= pairs.
+function extractEpisodeTemplates(wt: string): Array<Record<string, string>> {
+  const out: Array<Record<string, string>> = [];
+  const re = /\{\{\s*Episode list(?:\/sublist)?\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(wt))) {
+    const start = m.index;
+    let depth = 0;
+    let i = start;
+    while (i < wt.length) {
+      if (wt.startsWith("{{", i)) { depth++; i += 2; continue; }
+      if (wt.startsWith("}}", i)) { depth--; i += 2; if (depth === 0) break; continue; }
+      i++;
+    }
+    const body = wt.slice(start + 2, Math.max(start + 2, i - 2));
+    const parts: string[] = [];
+    let d = 0;
+    let cur = "";
+    for (let j = 0; j < body.length; j++) {
+      const two = body.slice(j, j + 2);
+      if (two === "{{" || two === "[[") { d++; cur += two; j++; continue; }
+      if (two === "}}" || two === "]]") { d--; cur += two; j++; continue; }
+      if (body[j] === "|" && d === 0) { parts.push(cur); cur = ""; continue; }
+      cur += body[j];
+    }
+    parts.push(cur);
+    const fields: Record<string, string> = {};
+    for (const part of parts.slice(1)) {
+      const eq = part.indexOf("=");
+      if (eq === -1) continue;
+      fields[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
+    }
+    out.push(fields);
+    re.lastIndex = i;
+  }
+  return out;
+}
+
+// ShortSummary wikitext → plain prose: refs out, nested templates out,
+// [[links|label]] → label, quotes/tags/entities normalized.
+function cleanWikitext(raw: string): string | null {
+  let t = raw;
+  t = t.replace(/<ref[^>]*\/>/gi, "").replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, "");
+  for (let k = 0; k < 4; k++) t = t.replace(/\{\{[^{}]*\}\}/g, " ");
+  t = t.replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, "$1");
+  t = t.replace(/'''''|'''|''/g, "");
+  t = t.replace(/<[^>]*>/g, " ");
+  t = t.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+  return t || null;
+}
+
+const leadingInt = (v: string | undefined): number | null => {
+  const n = parseInt(String(v ?? "").trim(), 10);
+  return Number.isFinite(n) ? n : null;
+};
+
+// Apply Wikipedia summaries onto the skeleton — the MEATIER text always
+// wins, per episode. Strategy 1: per-season articles "{Show} (season N)"
+// (probe season 1; the convention holds per show). Strategy 2: the combined
+// list article (or the show article for miniseries), mapped by the
+// template's overall episode number, ordinal fallback on an exact count.
+async function applyWikipediaSummaries(imdbId: string | null, data: RefData): Promise<void> {
+  if (!imdbId) return;
+  const pages = await resolveWikipediaPages(imdbId);
+  if (!pages.show && !pages.list) return;
+  const flat: RefEpisode[] = [];
+  for (const season of data.seasons) flat.push(...season.episodes);
+  let applied = 0;
+  const meatier = (target: RefEpisode | undefined, summary: string | undefined) => {
+    if (!target || !summary) return;
+    const clean = cleanWikitext(summary);
+    if (clean && clean.length > (target.summary?.length ?? 0)) { target.summary = clean; applied++; }
+  };
+
+  let usedTitle: string | null = null;
+  if (pages.show) {
+    const seasonTitle = (n: number) => `${pages.show} (season ${n})`;
+    const probe = await fetchWikitext(seasonTitle(1));
+    if (probe && extractEpisodeTemplates(probe).length > 0) {
+      usedTitle = pages.show;
+      for (const season of data.seasons) {
+        const wt = season.n === 1 ? probe : await fetchWikitext(seasonTitle(season.n));
+        if (!wt) continue;
+        const tpls = extractEpisodeTemplates(wt);
+        tpls.forEach((f, i) => {
+          const inSeason = leadingInt(f.EpisodeNumber2);
+          const target = inSeason != null
+            ? season.episodes.find((x) => x.e === inSeason)
+            : (tpls.length === season.episodes.length ? season.episodes[i] : undefined);
+          meatier(target, f.ShortSummary);
+        });
+      }
+    }
+  }
+  if (!usedTitle) {
+    for (const title of [pages.list, pages.show]) {
+      if (!title) continue;
+      const wt = await fetchWikitext(title);
+      if (!wt) continue;
+      const tpls = extractEpisodeTemplates(wt);
+      if (!tpls.length) continue;
+      tpls.forEach((f, i) => {
+        const overall = leadingInt(f.EpisodeNumber);
+        const target = overall != null
+          ? flat[overall - 1]
+          : (tpls.length === flat.length ? flat[i] : undefined);
+        meatier(target, f.ShortSummary);
+      });
+      usedTitle = title;
+      break;
+    }
+  }
+  if (applied > 0) data.wikipediaTitle = usedTitle;
 }
 
 function crewNames(crew: any[], jobs: string[]): string[] {
@@ -167,10 +338,18 @@ async function buildReference(
     launchTrailerKey: null,
     seasons,
     people: [],
+    wikipediaTitle: null,
   };
 
+  const externals = await fetchExternals(tvmazeId);
+
+  // ── Wikipedia episode summaries — independent of the TMDB bridge, so a
+  //    TMDB miss still gets real prose. Best-effort; failures leave the
+  //    TVMaze blurbs in place. ──
+  try { await applyWikipediaSummaries(externals.imdb, data); } catch (e) { console.warn("[build-show-reference] wikipedia leg failed:", e); }
+
   // ── TMDB enrichment (tolerant — a bridge miss still ships the episode list) ──
-  const tmdbId = await resolveTmdbTvId(tvmazeId, token);
+  const tmdbId = await resolveTmdbTvId(externals, token);
   if (tmdbId == null) return data;
 
   const showDetail = await tmdbGet(`/tv/${tmdbId}?append_to_response=videos`, token);
