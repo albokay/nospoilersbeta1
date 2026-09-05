@@ -7,6 +7,7 @@
 // the dial reaches it — "no 0-state reference page").
 
 import React, { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, type ShowReferenceData } from "../../lib/reference";
@@ -27,11 +28,21 @@ export default function ShowReference({
   const { user } = useAuth();
   const [ref, setRef] = useState<ShowReferenceData | null>(null);
   const [failed, setFailed] = useState(false);
+  // Cast starts folded to ~two rows (Alborz 2026-09-05): the grid's fixed
+  // card widths make the per-row count predictable per idiom.
+  const [castExpanded, setCastExpanded] = useState(false);
+  // Previously-on seasons collapse like the map's (Alborz 2026-09-05):
+  // only the viewer's CURRENT season starts open; any watched season
+  // toggles via its header. null = untouched → the default tracks the
+  // dial; per-visit state, no persistence.
+  const [openSeasons, setOpenSeasons] = useState<Set<number> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setRef(null);
     setFailed(false);
+    setCastExpanded(false);
+    setOpenSeasons(null);
     ensureShowReference(showId)
       .then((r) => { if (!cancelled) setRef(r); })
       .catch(() => { if (!cancelled) setFailed(true); });
@@ -98,12 +109,26 @@ export default function ShowReference({
       {ref.seasons.filter((season) => season.n <= viewerProgress.s).map((season) => {
         const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx);
         const foldedCount = season.episodes.length - watched.length;
+        const isOpen = (openSeasons ?? new Set([viewerProgress.s])).has(season.n);
+        const toggleSeason = () => setOpenSeasons((prev) => {
+          const next = new Set(prev ?? [viewerProgress.s]);
+          if (next.has(season.n)) next.delete(season.n); else next.add(season.n);
+          return next;
+        });
         return (
-          <div key={season.n} style={{ marginBottom: 28 }}>
-            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, opacity: 0.95, marginBottom: 10 }}>
+          <div key={season.n} style={{ marginBottom: isOpen ? 28 : 14 }}>
+            <button
+              onClick={toggleSeason}
+              aria-expanded={isOpen}
+              aria-label={`${isOpen ? "Collapse" : "Expand"} season ${season.n}`}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, color: CREAM, opacity: 0.95, marginBottom: isOpen ? 10 : 0 }}
+            >
               Season {season.n}
-            </div>
-            {watched.map((ep) => (
+              {isOpen
+                ? <ChevronUp size={16} color={CREAM} strokeWidth={2.5} />
+                : <ChevronDown size={16} color={CREAM} strokeWidth={2.5} />}
+            </button>
+            {isOpen && watched.map((ep) => (
               <div key={ep.e} style={{ marginBottom: 16 }}>
                 <div style={{ fontWeight: 700, fontSize: mobile ? 14 : 15 }}>
                   S{ep.s} E{ep.e} · {ep.title}
@@ -125,7 +150,7 @@ export default function ShowReference({
                 )}
               </div>
             ))}
-            {foldedCount > 0 && <FoldedStrip count={foldedCount} />}
+            {isOpen && foldedCount > 0 && <FoldedStrip count={foldedCount} />}
           </div>
         );
       })}
@@ -144,7 +169,7 @@ export default function ShowReference({
         <>
           <h2 style={sectionH}>Cast so far:</h2>
           <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 14 : 18 }}>
-            {visiblePeople.map((p) => (
+            {(castExpanded ? visiblePeople : visiblePeople.slice(0, mobile ? 4 : 8)).map((p) => (
               <div key={p.name} style={{ width: mobile ? 132 : 150 }}>
                 {p.img ? (
                   <img
@@ -170,6 +195,17 @@ export default function ShowReference({
               </div>
             ))}
           </div>
+          {visiblePeople.length > (mobile ? 4 : 8) && (
+            <button
+              onClick={() => setCastExpanded((v) => !v)}
+              aria-label={castExpanded ? "Show fewer cast members" : `Show all ${visiblePeople.length} cast members`}
+              style={{ display: "block", margin: "14px auto 0", background: "transparent", border: "none", cursor: "pointer", padding: 6, lineHeight: 0 }}
+            >
+              {castExpanded
+                ? <ChevronUp size={26} color={CREAM} strokeWidth={2.5} />
+                : <ChevronDown size={26} color={CREAM} strokeWidth={2.5} />}
+            </button>
+          )}
         </>
       )}
 
