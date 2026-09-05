@@ -17,8 +17,8 @@
 //   • Per-season trailer keys only — a show-level video list mixes in
 //     finale promos. The launch trailer uses the earliest-official rule
 //     ported from src/lib/trailers.ts.
-//   • Episode summaries come from TVMaze (pre-air editorial voice), HTML
-//     stripped.
+//   • Episode summaries: the MEATIER of TVMaze's blurb and TMDB's episode
+//     overview (TVMaze sometimes ships one-line taglines), HTML stripped.
 //
 // Bridge: shows.tvmaze_id → TVMaze externals (imdb → thetvdb) → TMDB /find.
 // No name search, so the wrong show can't resolve (trailers-spec rule).
@@ -221,7 +221,14 @@ async function buildReference(
         target.writers = crewNames(ep?.crew, ["Writer", "Teleplay", "Story"]);
         target.directors = crewNames(ep?.crew, ["Director"]);
         target.dp = crewNames(ep?.crew, ["Director of Photography"]);
-        if (!target.summary) target.summary = stripHtml(ep?.overview);
+        // Keep the MEATIER of the two summaries (2026-09-05 rev): TVMaze's
+        // blurb is sometimes a one-line tagline ("It won't end the way you
+        // want it to.") — when TMDB's overview is longer, it's the real
+        // plot summary and wins; proper TVMaze paragraphs stay.
+        const tmdbSummary = stripHtml(ep?.overview);
+        if (tmdbSummary && (!target.summary || tmdbSummary.length > target.summary.length)) {
+          target.summary = tmdbSummary;
+        }
       }
       if (typeof e === "number") {
         for (const g of ep?.guest_stars ?? []) {
