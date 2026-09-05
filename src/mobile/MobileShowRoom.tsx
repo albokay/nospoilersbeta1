@@ -93,7 +93,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [feedEntries, setFeedEntries] = useState<V2RoomFeedEntry[]>([]);
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
   const [privateEntries, setPrivateEntries] = useState<Thread[]>([]);
-  const [tab, setTab] = useState<Tab>(privateOnly ? "private" : "friend");
+  // The dashboard band arrives ON the reference tab (nav state, CP2).
+  const [tab, setTab] = useState<Tab>(() =>
+    (location.state as { openReference?: boolean } | null)?.openReference
+      ? "reference"
+      : (privateOnly ? "private" : "friend"));
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
@@ -783,7 +787,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             )}
           </div>
           <div style={{ textAlign: "center" }}>
-            <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
+            {/* No write on the reference tab (Alborz 2026-09-05) — it's a
+                    lookup surface; the dial stays. */}
+                {tab !== "reference" && (
+                  <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
+                )}
           </div>
         </div>
 

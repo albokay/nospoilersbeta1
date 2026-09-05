@@ -108,7 +108,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // resolved into a username → display-name map for every room surface.
   const [roomContactNames, setRoomContactNames] = useState<Record<string, string>>({});
   const [privateEntries, setPrivateEntries] = useState<Thread[]>([]);
-  const [tab, setTab] = useState<Tab>(privateOnly ? "private" : "friend");
+  // The dashboard band arrives ON the reference tab (nav state, CP2).
+  const [tab, setTab] = useState<Tab>(() =>
+    (location.state as { openReference?: boolean } | null)?.openReference
+      ? "reference"
+      : (privateOnly ? "private" : "friend"));
   // Help-system arc CP3: the sample-room tour, reopened on demand.
   const [tourOpen, setTourOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -760,7 +764,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           <div style={{ flex: "0 1 672px", minWidth: 0, paddingBottom: 120 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
+                {/* No write on the reference tab (Alborz 2026-09-05) — it's a
+                    lookup surface; the dial stays. */}
+                {tab !== "reference" && (
+                  <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
+                )}
                 {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
                   <select
                     value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}

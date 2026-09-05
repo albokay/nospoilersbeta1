@@ -15,6 +15,7 @@ import YoureInCard from "../components/deck/YoureInCard";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
 import MobileTipsSheet from "../components/MobileTipsSheet";
 import MobileAddToHomeScreen from "./MobileAddToHomeScreen";
+import ReferenceLookupBand from "../components/reference/ReferenceLookupBand";
 import {
   markSocialOnboarded,
   fetchPeopleGroupsForUser,
@@ -465,6 +466,13 @@ export default function MobileDashboard() {
           {!showSocialOnb && (
             <div style={{ textAlign: "center", padding: "16px 16px 24px" }}>
               <button style={invitePill} onClick={() => setInviteOpen(true)}>Create another watch group?</button>
+            </div>
+          )}
+          {/* The spoiler-gated reference band (CP2, 2026-09-05) — the
+              personal lookup zone, BELOW the group world (Alborz). */}
+          {!showSocialOnb && (
+            <div style={{ padding: "8px 16px 0" }}>
+              <ReferenceLookupBand mobile />
             </div>
           )}
           {/* Home-screen app (2026-08-18): the "add Sidebar to your home

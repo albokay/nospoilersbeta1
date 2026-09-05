@@ -55,6 +55,21 @@ export async function tvmazeEpisodes(tvmazeId: number): Promise<number[]> {
 // record on demand. Tolerant: any failure → null (caller treats as a miss).
 export type TvmazeExternals = { imdb?: string | null; thetvdb?: number | null; tvrage?: number | null };
 
+// Show poster (medium) — module-cached; the reference band's recent-lookups
+// row resolves posters per show at render (2026-09-05). Misses cache too.
+const _posterCache = new Map<string, string | null>();
+export async function fetchTvmazePoster(tvmazeId: number | string): Promise<string | null> {
+  const key = String(tvmazeId);
+  if (_posterCache.has(key)) return _posterCache.get(key)!;
+  let url: string | null = null;
+  try {
+    const res = await fetch(`https://api.tvmaze.com/shows/${key}`);
+    if (res.ok) url = (await res.json())?.image?.medium ?? null;
+  } catch { /* miss */ }
+  _posterCache.set(key, url);
+  return url;
+}
+
 export async function fetchTvmazeExternals(tvmazeId: number | string): Promise<TvmazeExternals | null> {
   try {
     const res = await fetch(`https://api.tvmaze.com/shows/${tvmazeId}`);

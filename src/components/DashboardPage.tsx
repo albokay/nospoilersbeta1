@@ -91,6 +91,7 @@ import SidebarLogo from "./SidebarLogo";
 import LoadingDots from "./LoadingDots";
 import OneSelectProgress from "./OneSelectProgress";
 import TrailerCard from "./TrailerCard";
+import ReferenceLookupBand from "./reference/ReferenceLookupBand";
 import { prefetchTrailers } from "../lib/trailers";
 import TSPDemoModal from "./TSPDemoModal";
 import SocialOnboarding from "./SocialOnboarding";
@@ -1662,6 +1663,9 @@ export default function DashboardPage() {
               <button style={invitePill} onClick={() => openInvite()}>Create another watch group?</button>
             )}
           </div>
+          {/* The spoiler-gated reference band (CP2, 2026-09-05) — the
+              personal lookup zone, BELOW the group world (Alborz). */}
+          {!socialOnbActive && <ReferenceLookupBand />}
           <div style={{ flex: 2 }} />
         </div>
       )}

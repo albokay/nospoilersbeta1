@@ -58,6 +58,22 @@ export function ensureShowReference(showId: string): Promise<ShowReferenceData> 
   return p;
 }
 
+/** The viewer's recent lookups — cross-device (the last_looked_up_at stamp
+ *  on their own progress rows), newest first, capped at 8 (Alborz). */
+export async function fetchRecentLookups(userId: string): Promise<{ showId: string; s: number; e: number }[]> {
+  try {
+    const { data, error } = await supabase
+      .from("progress")
+      .select("show_id, season, episode")
+      .eq("user_id", userId)
+      .not("last_looked_up_at", "is", null)
+      .order("last_looked_up_at", { ascending: false })
+      .limit(8);
+    if (error) return [];
+    return (data ?? []).map((r: any) => ({ showId: r.show_id, s: r.season ?? 0, e: r.episode ?? 0 }));
+  } catch { return []; }
+}
+
 /** Stamp "you've looked this up" on the viewer's own progress row — feeds
  *  the dashboard band's cross-device recent-lookups row (capped at read
  *  time). Tolerant: pre-migration or rowless shows just don't stamp. */
