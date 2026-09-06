@@ -264,6 +264,14 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13, color: CREAM, marginBottom: 10 }}>
             You&rsquo;ve looked up:
           </div>
+          {/* Rest = cream outline, no fill; hover = Accent fill, no outline;
+              active returns to rest (Alborz 2026-09-05). The transparent
+              hover border keeps the chip's size stable. */}
+          <style>{`
+            .ref-lookup-x { background: transparent; border: 2px solid ${CREAM}; }
+            .ref-lookup-x:hover { background: ${CANON.accent}; border-color: transparent; }
+            .ref-lookup-x:active { background: transparent; border-color: ${CREAM}; }
+          `}</style>
           <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {recents.map((r) => {
               const show = shows.find((x) => x.id === r.showId);
@@ -287,13 +295,15 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                       {r.s >= 1 && r.e >= 1 ? `S${r.s} E${r.e}` : ""}
                     </div>
                   </button>
-                  {/* Per-show de-clutter X — dark chip so it reads over any
-                      poster art. */}
+                  {/* Per-show de-clutter X — cream outline chip; Accent fill
+                      on hover (styled via the class below: inline styles
+                      can't express hover/active). */}
                   <button
+                    className="ref-lookup-x"
                     onClick={() => removeLookup(r.showId)}
                     aria-label={`Remove ${show.name} from your lookups`}
                     title="Remove from your lookups"
-                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: "50%", background: "rgba(26,58,74,0.55)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
                   >
                     <X size={13} color={CREAM} />
                   </button>
