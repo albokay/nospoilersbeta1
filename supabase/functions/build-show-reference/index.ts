@@ -57,10 +57,16 @@ function corsHeaders(origin: string | null): Record<string, string> {
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const TVMAZE_BASE = "https://api.tvmaze.com";
 
+/** Crew credit w/ TMDB person id — the client resolves the exact IMDb page
+ *  from it on tap (2026-09-05 rev 3; pre-rev blobs stored bare strings). */
+type RefCredit = { name: string; tmdbId: number | null };
 type RefEpisode = {
   s: number; e: number; title: string;
   airDate: string | null; summary: string | null;
-  writers: string[]; directors: string[]; dp: string[];
+  writers: RefCredit[]; directors: RefCredit[]; dp: RefCredit[];
+  /** Small episode still (TVMaze medium, else TMDB w300) — full https URL,
+   *  null when neither source has one (2026-09-05 rev 3). */
+  still: string | null;
   /** Names credited in THIS episode (season regulars + its guest stars),
    *  in credit order — drives the per-episode cast view (2026-09-05 rev). */
   cast: string[];
@@ -302,10 +308,12 @@ async function applyWikipediaSummaries(imdbId: string | null, data: RefData): Pr
   if (applied > 0) data.wikipediaTitle = usedTitle;
 }
 
-function crewNames(crew: any[], jobs: string[]): string[] {
-  const out: string[] = [];
+function crewCredits(crew: any[], jobs: string[]): RefCredit[] {
+  const out: RefCredit[] = [];
   for (const c of crew ?? []) {
-    if (jobs.includes(c?.job) && c?.name && !out.includes(c.name)) out.push(c.name);
+    if (jobs.includes(c?.job) && c?.name && !out.some((x) => x.name === c.name)) {
+      out.push({ name: c.name, tmdbId: typeof c?.id === "number" ? c.id : null });
+    }
   }
   return out;
 }
@@ -329,6 +337,7 @@ async function buildReference(
       title: ep?.name ?? `Episode ${e}`,
       airDate: ep?.airdate || null,
       summary: stripHtml(ep?.summary),
+      still: typeof ep?.image?.medium === "string" ? ep.image.medium : null,
       writers: [], directors: [], dp: [], cast: [],
     });
   }
@@ -414,9 +423,14 @@ async function buildReference(
           if (g?.name && !cast.includes(g.name)) cast.push(g.name);
         }
         target.cast = cast;
-        target.writers = crewNames(ep?.crew, ["Writer", "Teleplay", "Story"]);
-        target.directors = crewNames(ep?.crew, ["Director"]);
-        target.dp = crewNames(ep?.crew, ["Director of Photography"]);
+        target.writers = crewCredits(ep?.crew, ["Writer", "Teleplay", "Story"]);
+        target.directors = crewCredits(ep?.crew, ["Director"]);
+        target.dp = crewCredits(ep?.crew, ["Director of Photography"]);
+        // TVMaze had no still for this episode → TMDB's (w300 is plenty for
+        // the small hero next to the description).
+        if (!target.still && typeof ep?.still_path === "string") {
+          target.still = `https://image.tmdb.org/t/p/w300${ep.still_path}`;
+        }
         // Keep the MEATIER of the two summaries (2026-09-05 rev): TVMaze's
         // blurb is sometimes a one-line tagline ("It won't end the way you
         // want it to.") — when TMDB's overview is longer, it's the real

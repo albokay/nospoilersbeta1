@@ -10,7 +10,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import LoadingDots from "../LoadingDots";
-import { ensureShowReference, stampReferenceLookup, type ShowReferenceData } from "../../lib/reference";
+import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
@@ -147,6 +147,16 @@ export default function ShowReference({
     margin: "36px 0 14px",
   };
   const small: React.CSSProperties = { fontSize: 12, color: CREAM, opacity: 0.85 };
+  // Crew names read exactly like the line always did, just underlined + tappable.
+  const crewLink: React.CSSProperties = {
+    background: "transparent", border: "none", padding: 0, cursor: "pointer",
+    color: CREAM, fontFamily: "inherit", fontSize: "inherit", fontWeight: "inherit" as const,
+    textDecoration: "underline",
+  };
+  // Episode stills (rev 3): small hero left of the description. Old cached
+  // blobs have no stills — those keep the plain text layout untouched.
+  const stillW = mobile ? 84 : 128, stillH = mobile ? 47 : 72;
+  const hasStills = ref.seasons.some((se) => se.episodes.some((ep) => ep.still));
 
   return (
     <div style={{ color: CREAM, fontFamily: '"Inter", sans-serif', paddingBottom: 80 }}>
@@ -156,8 +166,8 @@ export default function ShowReference({
 
       {/* ── Previously on: watched episodes only ── */}
       <h2 style={sectionH}>Previously on {ref.showName}:</h2>
-      {ref.seasons.filter((season) => season.n <= viewerProgress.s).map((season) => {
-        const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx);
+      {[...ref.seasons].filter((season) => season.n <= viewerProgress.s).sort((a, b) => b.n - a.n).map((season) => {
+        const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx).reverse();
         const isOpen = (openSeasons ?? new Set([viewerProgress.s])).has(season.n);
         const toggleSeason = () => setOpenSeasons((prev) => {
           const next = new Set(prev ?? [viewerProgress.s]);
@@ -178,25 +188,56 @@ export default function ShowReference({
                 : <ChevronDown size={16} color={CREAM} strokeWidth={2.5} />}
             </button>
             {isOpen && watched.map((ep) => (
-              <div key={ep.e} style={{ marginBottom: 16 }}>
-                <div style={{ fontWeight: 700, fontSize: mobile ? 14 : 15 }}>
-                  Episode {ep.e} · {ep.title}
-                  {ep.airDate && <span style={{ fontWeight: 500, opacity: 0.7 }}>  ·  {ep.airDate}</span>}
+              <div
+                key={ep.e}
+                style={{
+                  marginBottom: 16,
+                  ...(hasStills ? {
+                    display: "flex", gap: 14, alignItems: "flex-start",
+                    // Keep the [still + text] unit centered where the text
+                    // column sat: desktop shifts left by half the still's
+                    // footprint (mobile has no slack to shift into).
+                    ...(mobile ? {} : { marginLeft: -(stillW + 14) / 2 }),
+                  } : {}),
+                }}
+              >
+                {hasStills && (ep.still ? (
+                  <img src={ep.still} alt="" loading="lazy" style={{ flex: "0 0 auto", width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
+                ) : (
+                  // No still for this one — hold the slot so text stays aligned.
+                  <div aria-hidden style={{ flex: "0 0 auto", width: stillW, height: stillH }} />
+                ))}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: mobile ? 14 : 15 }}>
+                    Episode {ep.e} · {ep.title}
+                    {ep.airDate && <span style={{ fontWeight: 500, opacity: 0.7 }}>  ·  {ep.airDate}</span>}
+                  </div>
+                  {(ep.writers.length > 0 || ep.directors.length > 0 || ep.dp.length > 0) && (
+                    <div style={{ ...small, marginTop: 2 }}>
+                      {[
+                        { label: "written by", credits: ep.writers.map(toCredit) },
+                        { label: "directed by", credits: ep.directors.map(toCredit) },
+                        { label: "dp", credits: ep.dp.map(toCredit) },
+                      ].filter((g) => g.credits.length > 0).map((g, gi) => (
+                        <React.Fragment key={g.label}>
+                          {gi > 0 && " · "}
+                          {g.label}{" "}
+                          {g.credits.map((c, ci) => (
+                            <React.Fragment key={c.name}>
+                              {ci > 0 && ", "}
+                              <button onClick={() => openActorImdb(c)} title={`${c.name} on IMDb`} style={crewLink}>{c.name}</button>
+                            </React.Fragment>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                  {ep.summary && (
+                    <div style={{ fontSize: mobile ? 13 : 14, lineHeight: 1.55, marginTop: 4, opacity: 0.95, maxWidth: 620 }}>
+                      {ep.summary}
+                    </div>
+                  )}
                 </div>
-                {(ep.writers.length > 0 || ep.directors.length > 0 || ep.dp.length > 0) && (
-                  <div style={{ ...small, marginTop: 2 }}>
-                    {[
-                      ep.writers.length ? `written by ${ep.writers.join(", ")}` : null,
-                      ep.directors.length ? `directed by ${ep.directors.join(", ")}` : null,
-                      ep.dp.length ? `dp ${ep.dp.join(", ")}` : null,
-                    ].filter(Boolean).join(" · ")}
-                  </div>
-                )}
-                {ep.summary && (
-                  <div style={{ fontSize: mobile ? 13 : 14, lineHeight: 1.55, marginTop: 4, opacity: 0.95, maxWidth: 620 }}>
-                    {ep.summary}
-                  </div>
-                )}
               </div>
             ))}
           </div>

@@ -8,10 +8,17 @@
 
 import { supabase } from "./supabaseClient";
 
+/** Crew credit with TMDB person id (rev 3 blobs); pre-rev cached blobs
+ *  store bare name strings — normalize with toCredit(). */
+export type RefCredit = { name: string; tmdbId: number | null };
+export const toCredit = (x: RefCredit | string): RefCredit =>
+  typeof x === "string" ? { name: x, tmdbId: null } : x;
 export type RefEpisode = {
   s: number; e: number; title: string;
   airDate: string | null; summary: string | null;
-  writers: string[]; directors: string[]; dp: string[];
+  writers: (RefCredit | string)[]; directors: (RefCredit | string)[]; dp: (RefCredit | string)[];
+  /** Small episode still URL — absent on pre-rev cached blobs. */
+  still?: string | null;
   /** Names credited in THIS episode — absent on pre-rev cached blobs. */
   cast?: string[];
 };
