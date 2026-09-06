@@ -55,6 +55,12 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [recents, setRecents] = useState<{ showId: string; s: number; e: number }[]>([]);
+  // De-clutter X (Alborz 2026-09-05): hides the recents row for THIS visit
+  // (sessionStorage — it returns next visit; the viewer's own row, no friend
+  // content, so no sign-out scrub needed).
+  const [recentsClosed, setRecentsClosed] = useState(() => {
+    try { return sessionStorage.getItem("ns_ref_recents_closed") === "1"; } catch { return false; }
+  });
   const [posters, setPosters] = useState<Record<string, string | null>>({});
 
   // Search lives in an OVERLAY card (rev 2026-09-05 — the group room's
@@ -251,10 +257,20 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
 
       {/* "You've looked up:" — cross-device, newest first, capped at 8.
           Tapping goes STRAIGHT to the reference (no card — Alborz). */}
-      {recents.length > 0 && (
+      {recents.length > 0 && !recentsClosed && (
         <div style={{ marginTop: 28 }}>
-          <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13, color: CREAM, marginBottom: 10 }}>
-            You&rsquo;ve looked up:
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13, color: CREAM }}>
+              You&rsquo;ve looked up:
+            </div>
+            <button
+              onClick={() => { setRecentsClosed(true); try { sessionStorage.setItem("ns_ref_recents_closed", "1"); } catch { /* fine */ } }}
+              aria-label="Hide your lookups"
+              title="Hide your lookups"
+              style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, lineHeight: 0, opacity: 0.85 }}
+            >
+              <X size={16} color={CREAM} />
+            </button>
           </div>
           <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {recents.map((r) => {

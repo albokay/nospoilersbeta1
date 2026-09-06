@@ -39,6 +39,10 @@ export default function ShowReference({
   // toggles via its header. null = untouched → the default tracks the
   // dial; per-visit state, no persistence.
   const [openSeasons, setOpenSeasons] = useState<Set<number> | null>(null);
+  // Tapped episode still → lightbox (dim + a larger render; outside-click
+  // closes). Holds the SMALL url; the render upgrades it to the source's
+  // bigger size and falls back on a load error.
+  const [stillOpen, setStillOpen] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +51,7 @@ export default function ShowReference({
     setCastExpanded(false);
     setCastEpisode(null);
     setOpenSeasons(null);
+    setStillOpen(null);
     ensureShowReference(showId)
       .then((r) => { if (!cancelled) setRef(r); })
       .catch(() => { if (!cancelled) setFailed(true); });
@@ -202,7 +207,13 @@ export default function ShowReference({
                 }}
               >
                 {hasStills && (ep.still ? (
-                  <img src={ep.still} alt="" loading="lazy" style={{ flex: "0 0 auto", width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
+                  <button
+                    onClick={() => setStillOpen(ep.still!)}
+                    aria-label={`Enlarge the episode ${ep.e} still`}
+                    style={{ flex: "0 0 auto", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", lineHeight: 0 }}
+                  >
+                    <img src={ep.still} alt="" loading="lazy" style={{ width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
+                  </button>
                 ) : (
                   // No still for this one — hold the slot so text stays aligned.
                   <div aria-hidden style={{ flex: "0 0 auto", width: stillW, height: stillH }} />
@@ -278,8 +289,12 @@ export default function ShowReference({
                       maxWidth: mobile ? 210 : 320, textOverflow: "ellipsis",
                     }}
                   >
-                    {watchedEpisodes.map((ep) => (
-                      <option key={`${ep.s}-${ep.e}`} value={`${ep.s}-${ep.e}`}>S{ep.s} E{ep.e} · {ep.title}</option>
+                    {[...new Set(watchedEpisodes.map((ep) => ep.s))].map((sn) => (
+                      <optgroup key={sn} label={`Season ${sn}`}>
+                        {watchedEpisodes.filter(ep => ep.s === sn).map((ep) => (
+                          <option key={`${ep.s}-${ep.e}`} value={`${ep.s}-${ep.e}`}>S{ep.s} E{ep.e} · {ep.title}</option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                   <ChevronDown size={14} color={CREAM} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
@@ -372,8 +387,35 @@ export default function ShowReference({
           </>
         )}
       </div>
+
+      {/* ── Still lightbox: dim + a larger render; clicking outside closes ── */}
+      {stillOpen && (
+        <div
+          onClick={() => setStillOpen(null)}
+          role="button"
+          aria-label="Close"
+          style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(26,58,74,0.25)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box", cursor: "zoom-out" }}
+        >
+          <img
+            src={stillLarge(stillOpen)}
+            alt=""
+            onClick={(e) => e.stopPropagation()}
+            onError={(e) => { const img = e.currentTarget; if (!img.src.endsWith(stillOpen)) img.src = stillOpen; }}
+            style={{ maxWidth: "min(860px, 92vw)", maxHeight: "80vh", borderRadius: 14, cursor: "default", boxShadow: "0 12px 36px rgba(0,0,0,0.35)" }}
+          />
+        </div>
+      )}
     </div>
   );
+}
+
+// The stored still is deliberately small (list render) — the lightbox asks
+// its source for the bigger size (TVMaze original / TMDB w780); a 404 falls
+// back to the small one via the img's onError.
+function stillLarge(url: string): string {
+  if (url.includes("/medium_landscape/")) return url.replace("/medium_landscape/", "/original_untouched/");
+  if (url.includes("/t/p/w300")) return url.replace("/t/p/w300", "/t/p/w780");
+  return url;
 }
 
 
