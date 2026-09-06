@@ -1671,7 +1671,11 @@ export default function DashboardPage() {
             the yellow zone — visually part of the green/group world, and it
             naturally pushes the reference further down. ── */}
       {user && !socialOnbActive && !showTspDemo && !postAccept && !inGroup && (
-        <div style={{ position: "relative", zIndex: 1, marginTop: 48, marginBottom: -24, display: "flex", justifyContent: "center" }}>
+        <div style={{ marginTop: 140, marginBottom: -24, display: "flex", justifyContent: "center" }}>
+          {/* NO position/zIndex on this wrapper — a stacking context would
+              trap the open grid's fixed overlay below the yellow band (z 2);
+              the tuck-behind works purely off the band being positioned
+              later in the DOM. */}
           <DeckGridCard mode="personal" viewerId={user.id} dockInFlow />
         </div>
       )}

@@ -336,7 +336,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               </div>
               <div style={yellowTitle}>How far in are you?</div>
               <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 14px" }}>
-                (Set your episode. Your reference page will never go past it.)
+                (Set your episode. Your reference page<br />will never go past it.)
               </div>
               <div style={{ display: "flex", justifyContent: "center" }}>
                 {cardShow ? (

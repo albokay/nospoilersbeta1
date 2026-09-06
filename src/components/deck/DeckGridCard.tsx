@@ -262,8 +262,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
 
   // ── DOCKED — title only, peeking at the viewport bottom (no names /
   // (me) while docked; Alborz QA 2026-07-18) ────────────────────────────────
-  if (ui === "docked") {
-    return (
+  const dockedCard = (
       <div
         role="button"
         title={`open ${title}`}
@@ -293,11 +292,11 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
           <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: mode === "personal" ? CANON.personal : CANON.friend, whiteSpace: "nowrap" }}>{title}</span>
         </div>
       </div>
-    );
-  }
+  );
+  if (ui === "docked") return dockedCard;
 
   // ── OPEN / EDIT — centered card over the dimmed page ──────────────────────
-  return (
+  const openOverlay = (
     <div
       style={{ position: "fixed", inset: 0, zIndex: 900, background: "rgba(26,58,74,0.25)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box" }}
       onClick={(e) => { if (e.target === e.currentTarget && ui === "open") setUi("docked"); }}
@@ -427,6 +426,18 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
       <style>{`@keyframes deckGridIn { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }`}</style>
     </div>
   );
+  // dockInFlow (2026-09-05): an invisible copy of the docked card holds its
+  // in-flow footprint while the grid is open, so the yellow band below never
+  // jumps up; the overlay itself is fixed to the viewport above everything.
+  if (dockInFlow) {
+    return (
+      <>
+        <div style={{ visibility: "hidden" }} aria-hidden>{dockedCard}</div>
+        {openOverlay}
+      </>
+    );
+  }
+  return openOverlay;
 }
 
 // The site's tipBubble look (DashboardPage), anchored above the pencil
