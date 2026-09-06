@@ -28,12 +28,11 @@ export default function ShowReference({
   const { user } = useAuth();
   const [ref, setRef] = useState<ShowReferenceData | null>(null);
   const [failed, setFailed] = useState(false);
-  // Cast starts folded to ~two rows (Alborz 2026-09-05): the grid's fixed
-  // card widths make the per-row count predictable per idiom.
+  // Cast shows the SELECTED episode only (Alborz 2026-09-05 rev 2): 8 actors
+  // folded; "see whole cast" expands to that episode's full credit list.
   const [castExpanded, setCastExpanded] = useState(false);
-  // Per-episode cast view (Alborz 2026-09-05 rev): default = the viewer's
-  // current episode; a simple dropdown picks any WATCHED episode. "see
-  // whole cast" flips to the everything-so-far list.
+  // Default = the viewer's current episode; a simple dropdown picks any
+  // WATCHED episode (switching re-folds to 8).
   const [castEpisode, setCastEpisode] = useState<{ s: number; e: number } | null>(null);
   // Previously-on seasons collapse like the map's (Alborz 2026-09-05):
   // only the viewer's CURRENT season starts open; any watched season
@@ -159,7 +158,6 @@ export default function ShowReference({
       <h2 style={sectionH}>Previously on:</h2>
       {ref.seasons.filter((season) => season.n <= viewerProgress.s).map((season) => {
         const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx);
-        const foldedCount = season.episodes.length - watched.length;
         const isOpen = (openSeasons ?? new Set([viewerProgress.s])).has(season.n);
         const toggleSeason = () => setOpenSeasons((prev) => {
           const next = new Set(prev ?? [viewerProgress.s]);
@@ -201,34 +199,28 @@ export default function ShowReference({
                 )}
               </div>
             ))}
-            {isOpen && foldedCount > 0 && <FoldedStrip count={foldedCount} />}
           </div>
         );
       })}
-      {/* Future seasons — shape only. */}
-      {ref.seasons.filter((season) => season.n > viewerProgress.s).map((season) => (
-        <div key={season.n} style={{ marginBottom: 20 }}>
-          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, opacity: 0.55, marginBottom: 10 }}>
-            Season {season.n}
-          </div>
-          <FoldedStrip count={season.episodes.length} />
-        </div>
-      ))}
+      {/* Unwatched episodes/seasons render NOTHING at all (Alborz 2026-09-05
+          — the dial's dropdown already tells the viewer how much is left). */}
 
-      {/* ── Cast: the SELECTED episode's cast by default (own simple episode
-            dropdown, watched episodes only); "see whole cast" flips to the
-            everything-so-far list (Alborz 2026-09-05 rev). ── */}
+      {/* ── Cast: the SELECTED episode only (rev 2 — Alborz 2026-09-05):
+            8 actors by default, "see whole cast" expands to THAT EPISODE's
+            full credit list. Old cached blobs (no per-episode credits)
+            degrade to the so-far list until the cache rebuilds. ── */}
       {visiblePeople.length > 0 && (
         <>
           <h2 style={sectionH}>
-            {castExpanded || !episodeCast ? "Cast so far:" : `Cast for Season ${selCastEp.s} Episode ${selCastEp.e}:`}
+            {episodeCast ? `Cast for Season ${selCastEp.s} Episode ${selCastEp.e}:` : "Cast so far:"}
           </h2>
-          {!castExpanded && episodeCast && (
+          {episodeCast && (
             <select
               value={`${selCastEp.s}-${selCastEp.e}`}
               onChange={(ev) => {
                 const [ss, ee] = ev.target.value.split("-").map(Number);
                 setCastEpisode({ s: ss, e: ee });
+                setCastExpanded(false);
               }}
               aria-label="Pick an episode"
               style={{
@@ -245,7 +237,10 @@ export default function ShowReference({
             </select>
           )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 14 : 18 }}>
-            {(castExpanded || !episodeCast ? visiblePeople : episodeCast).map((p) => (
+            {(() => {
+              const list = episodeCast ?? visiblePeople;
+              return castExpanded ? list : list.slice(0, 8);
+            })().map((p) => (
               <button
                 key={p.name}
                 onClick={() => openActorImdb(p)}
@@ -276,14 +271,14 @@ export default function ShowReference({
               </button>
             ))}
           </div>
-          {episodeCast && (
+          {(episodeCast ?? visiblePeople).length > 8 && (
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
               <button
                 onClick={() => setCastExpanded((v) => !v)}
-                aria-label={castExpanded ? "Back to this episode's cast" : `Show all ${visiblePeople.length} cast members so far`}
+                aria-label={castExpanded ? "Show fewer" : "Show this episode's whole cast"}
                 style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", padding: 4, color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13 }}
               >
-                {castExpanded ? "see episode cast" : "see whole cast"}
+                {castExpanded ? "show fewer" : "see whole cast"}
                 {castExpanded
                   ? <ChevronUp size={20} color={CREAM} strokeWidth={2.5} />
                   : <ChevronDown size={20} color={CREAM} strokeWidth={2.5} />}
@@ -317,19 +312,6 @@ export default function ShowReference({
   );
 }
 
-// The folded shape-only cells — the map's disclosure grammar on this page:
-// one small cell per unwatched episode, a quiet dash inside, no contents.
-function FoldedStrip({ count }: { count: number }) {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} aria-hidden style={{ width: 22, height: 28, borderRadius: 6, border: `2px solid ${CANON.cream}`, opacity: 0.35, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ width: 10, height: 2, background: CANON.cream }} />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // Inline trailer facade (TrailerCard's thumbnail→iframe pattern, but for a
 // KNOWN key from the reference blob).

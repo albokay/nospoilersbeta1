@@ -38,12 +38,15 @@ const STATEMENT_W = 440;
 const MEMBER_W = 104;
 const ROW_MIN_H = 52;
 
-export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
+export default function DeckGridCard({ mode, groupId, others = [], viewerId, dockInFlow = false }: {
   mode: "personal" | "group";
   groupId?: string;
   /** Group mode: the OTHER members (viewer excluded), in display order. */
   others?: DeckMember[];
   viewerId: string;
+  /** Dock IN FLOW (relative) instead of fixed at the viewport bottom — the
+   *  personal dashboard anchors it to the reference band (2026-09-05). */
+  dockInFlow?: boolean;
 }) {
   const [cards, setCards] = useState<DeckCard[] | null>(null);
   const [answers, setAnswers] = useState<GroupDeckAnswer[]>([]);
@@ -266,8 +269,14 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId }: {
         title={`open ${title}`}
         onClick={() => setUi("open")}
         style={{
-          position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-          width: cardW, zIndex: 40, cursor: "pointer",
+          // dockInFlow (2026-09-05): the personal dashboard anchors the
+          // docked card IN FLOW at the reference band's top border (it
+          // peeks out from behind the yellow); the group room keeps the
+          // fixed viewport-bottom dock.
+          ...(dockInFlow
+            ? { position: "relative" as const }
+            : { position: "fixed" as const, bottom: 0, left: "50%", transform: "translateX(-50%)", zIndex: 40 }),
+          width: cardW, maxWidth: "92vw", cursor: "pointer",
           background: CANON.cream, borderRadius: "24px 24px 0 0",
           // overflow:hidden dropped (2026-08-01) so the corner dot below can
           // hang off the card edge; nothing inside ever bled anyway.

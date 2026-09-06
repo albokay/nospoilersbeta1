@@ -11,7 +11,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import { useAuth } from "../../lib/auth";
 import {
@@ -28,11 +28,24 @@ import MobileBrowseRows from "../../mobile/MobileBrowseRows";
 import OneSelectProgress from "../OneSelectProgress";
 import TrailerCard from "../TrailerCard";
 import LoadingDots from "../LoadingDots";
-import { overlay, searchCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn } from "../dashboardChrome";
+import { overlay, searchCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, searchPill } from "../dashboardChrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
 const EMPTY_EXCLUDE = new Set<number>();
+
+// The group opt-in modal's two-layer scrollable overlay (mirrors DashboardPage's
+// file-local trailerScrollOverlay/trailerCenterColumn): a fixed scrollable
+// backdrop + an inner column centering [card + 8px gap + trailer] as a pair,
+// scrolling on short viewports. Trailer miss → the card centers alone.
+const cardScrollOverlay: React.CSSProperties = {
+  position: "fixed", inset: 0, background: "rgba(26,58,74,0.25)", zIndex: 1100, overflowY: "auto",
+};
+const cardCenterColumn: React.CSSProperties = {
+  minHeight: "100%", display: "flex", flexDirection: "column",
+  alignItems: "center", justifyContent: "center", gap: 8,
+  padding: "24px 16px", boxSizing: "border-box",
+};
 
 export default function ReferenceLookupBand({ mobile = false }: { mobile?: boolean }) {
   const { user } = useAuth();
@@ -214,22 +227,19 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
       <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: 0, textAlign: "center" }}>
         Need to look something up without getting spoiled?
       </h2>
-      <p style={{ fontFamily: '"Inter", sans-serif', fontSize: mobile ? 13 : 14, color: CREAM, opacity: 0.9, lineHeight: 1.5, margin: "10px auto 18px", maxWidth: 520, textAlign: "center" }}>
-        Look up an actor, a plot point you missed, or crew detail — all of it, filtered to how far you&rsquo;ve watched.
+      <p style={{ fontFamily: '"Inter", sans-serif', fontSize: mobile ? 13 : 14, color: CREAM, opacity: 0.9, lineHeight: 1.5, margin: "10px auto 18px", maxWidth: 640, textAlign: "center" }}>
+        Look up an actor, a plot point you missed, or crew detail —<br />
+        all of it, filtered to how far you&rsquo;ve watched.
       </p>
 
-      {/* Search trigger — opens the group-room-style search OVERLAY
-          (rev 2026-09-05; inline results were pushing the page around). */}
-      <div style={{ maxWidth: 420, margin: "0 auto" }}>
+      {/* Search trigger — the group room's search-pill grammar (magnifying
+          glass + text), Personal green on the yellow band (rev 2 2026-09-05). */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
         <button
           onClick={() => { setSearchOpen(true); setQuery(""); setTvResults([]); }}
-          style={{
-            width: "100%", boxSizing: "border-box", border: "none", borderRadius: 65,
-            padding: "13px 22px", fontFamily: '"Inter", sans-serif', fontSize: 14,
-            background: CREAM, color: "#9a9a92", textAlign: "left", cursor: "text",
-          }}
+          style={{ ...searchPill, background: CANON.personal, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 14 }}
         >
-          find your show
+          <Search size={26} color={CREAM} strokeWidth={2} />find your show
         </button>
       </div>
 
@@ -302,57 +312,54 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         </div>
       )}
 
-      {/* ── The first-tap card (locked copy) — the group room's yellow-modal
-            grammar (yellowCard: centered, no outline). Paints INSTANTLY on a
-            pick; the picker fills in when the catalog show resolves. The
+      {/* ── The first-tap card (locked copy) — the group opt-in modal's EXACT
+            grammar (rev 2 2026-09-05): scrollable two-layer overlay centering
+            [yellowCard + 8px gap + TrailerCard] as a pair, Lora show-name
+            title, transparent progress pill, no outlines. Paints INSTANTLY on
+            a pick; the picker fills in when the catalog show resolves. The
             "look it up" button exists only once an episode is picked. ── */}
       {(cardShow || cardPending) && (
-        <div
-          style={{ ...overlay, zIndex: 1100 }}
-          onClick={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }}
-        >
-          <div
-            style={{ ...yellowCard, width: "min(400px, 92vw)", maxHeight: "88vh", overflowY: "auto", overflowX: "hidden" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }}
-              aria-label="Close"
-              style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", padding: 4, lineHeight: 0 }}
-            >
-              <X size={20} color={CREAM} />
-            </button>
-            <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, opacity: 0.9, marginBottom: 6 }}>
-              {cardTitle}
-            </div>
-            <div style={yellowTitle}>How far in are you?</div>
-            <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 14px" }}>
-              (Set your episode. Your reference page will never go past it.)
-            </div>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              {cardShow ? (
-                <OneSelectProgress
-                  show={cardShow}
-                  value={picked}
-                  allowZero
-                  requireConfirm={false}
-                  onChangeSelected={(v: { s: number; e: number }) => setPicked(v)}
-                  onConfirm={() => {}}
-                />
-              ) : (
-                <div style={{ color: CREAM, fontSize: 13, fontWeight: 700, padding: "10px 0" }}>loading episodes<LoadingDots /></div>
+        <div style={cardScrollOverlay} onClick={(e) => { if (e.target === e.currentTarget && !confirmBusy) { setCardShow(null); setCardPending(null); } }}>
+          <div style={cardCenterColumn} onClick={(e) => { if (e.target === e.currentTarget && !confirmBusy) { setCardShow(null); setCardPending(null); } }}>
+            <div style={yellowCard}>
+              <button
+                style={modalClose}
+                onClick={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }}
+                aria-label="Close"
+              >
+                <X size={16} color={CREAM} />
+              </button>
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: CREAM, textAlign: "center", marginBottom: 18 }}>
+                {cardTitle}
+              </div>
+              <div style={yellowTitle}>How far in are you?</div>
+              <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 14px" }}>
+                (Set your episode. Your reference page will never go past it.)
+              </div>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                {cardShow ? (
+                  <OneSelectProgress
+                    show={cardShow}
+                    value={picked}
+                    allowZero
+                    requireConfirm={false}
+                    pillBg="transparent"
+                    onChangeSelected={(v: { s: number; e: number }) => setPicked(v)}
+                    onConfirm={() => {}}
+                  />
+                ) : (
+                  <div style={{ color: CREAM, fontSize: 13, fontWeight: 700, padding: "10px 0" }}>loading episodes<LoadingDots /></div>
+                )}
+              </div>
+              {cardShow && pickedReady && (
+                <div style={{ marginTop: 18 }}>
+                  <button style={startBtn} disabled={confirmBusy} onClick={lookItUp}>
+                    {confirmBusy ? <>one moment<LoadingDots /></> : "look it up"}
+                  </button>
+                </div>
               )}
             </div>
-            {cardShow && pickedReady && (
-              <div style={{ marginTop: 18 }}>
-                <button style={startBtn} disabled={confirmBusy} onClick={lookItUp}>
-                  {confirmBusy ? <>one moment<LoadingDots /></> : "look it up"}
-                </button>
-              </div>
-            )}
-            <div style={{ marginTop: 16 }}>
-              <TrailerCard showId={cardShow?.id ?? `pending-${cardTvmazeId ?? "none"}`} tvmazeId={cardTvmazeId} />
-            </div>
+            <TrailerCard showId={cardShow?.id ?? `pending-${cardTvmazeId ?? "none"}`} tvmazeId={cardTvmazeId} />
           </div>
         </div>
       )}

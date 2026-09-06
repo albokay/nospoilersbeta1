@@ -1666,11 +1666,20 @@ export default function DashboardPage() {
           <div style={{ flex: 2 }} />
         </div>
       )}
+      {/* ── The "How I Watch TV" card anchors to the reference band's top
+            border (Alborz 2026-09-05): in-flow, its bottom sliding BEHIND
+            the yellow zone — visually part of the green/group world, and it
+            naturally pushes the reference further down. ── */}
+      {user && !socialOnbActive && !showTspDemo && !postAccept && !inGroup && (
+        <div style={{ position: "relative", zIndex: 1, marginTop: 48, marginBottom: -24, display: "flex", justifyContent: "center" }}>
+          <DeckGridCard mode="personal" viewerId={user.id} dockInFlow />
+        </div>
+      )}
       {/* ── The spoiler-gated reference band (CP2, rev 2026-09-05): its OWN
             Accent-yellow zone below the fold — clearly separated from the
             group world, matching the reference tab's world color. ── */}
       {!inGroup && !socialOnbActive && (
-        <div style={{ background: C.yellow, marginTop: 48, padding: "72px 24px 140px" }}>
+        <div style={{ background: C.yellow, position: "relative", zIndex: 2, padding: "72px 24px 140px" }}>
           <ReferenceLookupBand />
         </div>
       )}
@@ -2268,9 +2277,6 @@ export default function DashboardPage() {
           column); group room = "How We Watch TV" (everyone's columns +
           the n=2 header line / n≥3 Findings sticky). Hidden while any
           first-run overlay owns the page. */}
-      {user && !socialOnbActive && !showTspDemo && !postAccept && !inGroup && (
-        <DeckGridCard mode="personal" viewerId={user.id} />
-      )}
       {user && !socialOnbActive && !postAccept && inGroup && groupWaveDone && (
         <DeckGridCard
           key={activeGroupId}
