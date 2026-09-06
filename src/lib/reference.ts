@@ -12,6 +12,8 @@ export type RefEpisode = {
   s: number; e: number; title: string;
   airDate: string | null; summary: string | null;
   writers: string[]; directors: string[]; dp: string[];
+  /** Names credited in THIS episode — absent on pre-rev cached blobs. */
+  cast?: string[];
 };
 export type RefPerson = {
   name: string; character: string | null;
@@ -20,6 +22,8 @@ export type RefPerson = {
    *  false = season-level (series regular) → "since season 2". */
   exact: boolean;
   img: string | null;
+  /** TMDB person id (absent on pre-rev blobs) — resolves the IMDb page. */
+  tmdbId?: number | null;
 };
 export type RefSeason = { n: number; trailerKey: string | null; episodes: RefEpisode[] };
 export type ShowReferenceData = {

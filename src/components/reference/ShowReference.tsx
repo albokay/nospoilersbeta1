@@ -31,6 +31,10 @@ export default function ShowReference({
   // Cast starts folded to ~two rows (Alborz 2026-09-05): the grid's fixed
   // card widths make the per-row count predictable per idiom.
   const [castExpanded, setCastExpanded] = useState(false);
+  // Per-episode cast view (Alborz 2026-09-05 rev): default = the viewer's
+  // current episode; a simple dropdown picks any WATCHED episode. "see
+  // whole cast" flips to the everything-so-far list.
+  const [castEpisode, setCastEpisode] = useState<{ s: number; e: number } | null>(null);
   // Previously-on seasons collapse like the map's (Alborz 2026-09-05):
   // only the viewer's CURRENT season starts open; any watched season
   // toggles via its header. null = untouched → the default tracks the
@@ -42,6 +46,7 @@ export default function ShowReference({
     setRef(null);
     setFailed(false);
     setCastExpanded(false);
+    setCastEpisode(null);
     setOpenSeasons(null);
     ensureShowReference(showId)
       .then((r) => { if (!cancelled) setRef(r); })
@@ -57,6 +62,52 @@ export default function ShowReference({
     () => (ref?.people ?? []).filter((p) => idx(p.firstS, p.firstE) <= vIdx),
     [ref, vIdx],
   );
+
+  // Watched episodes (dropdown options) + the selected one, clamped to the
+  // dial. Old cached blobs lack per-episode cast — those degrade to the
+  // whole-cast view until the cache rebuilds.
+  const watchedEpisodes = useMemo(() => {
+    const out: { s: number; e: number; title: string }[] = [];
+    for (const season of ref?.seasons ?? []) {
+      for (const ep of season.episodes) {
+        if (idx(ep.s, ep.e) <= vIdx) out.push({ s: ep.s, e: ep.e, title: ep.title });
+      }
+    }
+    return out;
+  }, [ref, vIdx]);
+  const selCastEp = (castEpisode && idx(castEpisode.s, castEpisode.e) <= vIdx) ? castEpisode : viewerProgress;
+  const selEpData = useMemo(
+    () => ref?.seasons.find((se) => se.n === selCastEp.s)?.episodes.find((ep) => ep.e === selCastEp.e),
+    [ref, selCastEp.s, selCastEp.e],
+  );
+  const peopleByName = useMemo(() => {
+    const m = new Map<string, (typeof visiblePeople)[number]>();
+    for (const person of ref?.people ?? []) m.set(person.name, person);
+    return m;
+  }, [ref]);
+  const episodeCast = useMemo(() => {
+    if (!selEpData?.cast) return null; // pre-rev blob → whole-cast fallback
+    return selEpData.cast
+      .map((n) => peopleByName.get(n) ?? { name: n, character: null, firstS: selCastEp.s, firstE: selCastEp.e, exact: true, img: null, tmdbId: null })
+      .filter((person) => idx(person.firstS, person.firstE) <= vIdx);
+  }, [selEpData, peopleByName, selCastEp.s, selCastEp.e, vIdx]);
+
+  // Cast tap → the actor's IMDb page in a NEW tab. The tab opens
+  // synchronously (popup-blocker rule), then lands on the exact page once
+  // the person's IMDb id resolves; a resolve miss falls back to IMDb search.
+  const openActorImdb = (person: { name: string; tmdbId?: number | null }) => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const fallback = `https://www.imdb.com/find/?q=${encodeURIComponent(person.name)}&s=nm`;
+    const token = import.meta.env.VITE_TMDB_READ_TOKEN as string | undefined;
+    if (!person.tmdbId || !token) { win.location.href = fallback; return; }
+    fetch(`https://api.themoviedb.org/3/person/${person.tmdbId}/external_ids`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { win.location.href = d?.imdb_id ? `https://www.imdb.com/name/${d.imdb_id}/` : fallback; })
+      .catch(() => { win.location.href = fallback; });
+  };
 
   if (failed) {
     return (
@@ -164,22 +215,52 @@ export default function ShowReference({
         </div>
       ))}
 
-      {/* ── Cast so far ── */}
+      {/* ── Cast: the SELECTED episode's cast by default (own simple episode
+            dropdown, watched episodes only); "see whole cast" flips to the
+            everything-so-far list (Alborz 2026-09-05 rev). ── */}
       {visiblePeople.length > 0 && (
         <>
-          <h2 style={sectionH}>Cast so far:</h2>
+          <h2 style={sectionH}>
+            {castExpanded || !episodeCast ? "Cast so far:" : `Cast for Season ${selCastEp.s} Episode ${selCastEp.e}:`}
+          </h2>
+          {!castExpanded && episodeCast && (
+            <select
+              value={`${selCastEp.s}-${selCastEp.e}`}
+              onChange={(ev) => {
+                const [ss, ee] = ev.target.value.split("-").map(Number);
+                setCastEpisode({ s: ss, e: ee });
+              }}
+              aria-label="Pick an episode"
+              style={{
+                appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+                background: "transparent", border: `2px solid ${CREAM}`, color: CREAM,
+                borderRadius: 65, padding: "6px 16px", fontSize: 13, fontWeight: 700,
+                fontFamily: '"Inter", sans-serif', cursor: "pointer", outline: "none",
+                margin: "0 0 14px", maxWidth: "100%",
+              }}
+            >
+              {watchedEpisodes.map((ep) => (
+                <option key={`${ep.s}-${ep.e}`} value={`${ep.s}-${ep.e}`}>S{ep.s} E{ep.e} · {ep.title}</option>
+              ))}
+            </select>
+          )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 14 : 18 }}>
-            {(castExpanded ? visiblePeople : visiblePeople.slice(0, mobile ? 4 : 8)).map((p) => (
-              <div key={p.name} style={{ width: mobile ? 132 : 150 }}>
+            {(castExpanded || !episodeCast ? visiblePeople : episodeCast).map((p) => (
+              <button
+                key={p.name}
+                onClick={() => openActorImdb(p)}
+                title={`${p.name} on IMDb`}
+                style={{ width: mobile ? 132 : 150, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM, fontFamily: "inherit" }}
+              >
                 {p.img ? (
                   <img
                     src={`https://image.tmdb.org/t/p/w185${p.img}`}
                     alt=""
                     loading="lazy"
-                    style={{ width: mobile ? 64 : 72, height: mobile ? 64 : 72, borderRadius: "50%", objectFit: "cover", border: `2px solid ${CREAM}` }}
+                    style={{ width: mobile ? 64 : 72, height: mobile ? 64 : 72, borderRadius: "50%", objectFit: "cover" }}
                   />
                 ) : (
-                  <div style={{ width: mobile ? 64 : 72, height: mobile ? 64 : 72, borderRadius: "50%", border: `2px solid ${CREAM}`, opacity: 0.5, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 24 }}>
+                  <div style={{ width: mobile ? 64 : 72, height: mobile ? 64 : 72, borderRadius: "50%", background: "rgba(254,248,234,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 24 }}>
                     {p.name[0]}
                   </div>
                 )}
@@ -192,19 +273,22 @@ export default function ShowReference({
                     {p.exact ? `since S${p.firstS} E${p.firstE}` : `since season ${p.firstS}`}
                   </div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
-          {visiblePeople.length > (mobile ? 4 : 8) && (
-            <button
-              onClick={() => setCastExpanded((v) => !v)}
-              aria-label={castExpanded ? "Show fewer cast members" : `Show all ${visiblePeople.length} cast members`}
-              style={{ display: "block", margin: "14px auto 0", background: "transparent", border: "none", cursor: "pointer", padding: 6, lineHeight: 0 }}
-            >
-              {castExpanded
-                ? <ChevronUp size={26} color={CREAM} strokeWidth={2.5} />
-                : <ChevronDown size={26} color={CREAM} strokeWidth={2.5} />}
-            </button>
+          {episodeCast && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+              <button
+                onClick={() => setCastExpanded((v) => !v)}
+                aria-label={castExpanded ? "Back to this episode's cast" : `Show all ${visiblePeople.length} cast members so far`}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", padding: 4, color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13 }}
+              >
+                {castExpanded ? "see episode cast" : "see whole cast"}
+                {castExpanded
+                  ? <ChevronUp size={20} color={CREAM} strokeWidth={2.5} />
+                  : <ChevronDown size={20} color={CREAM} strokeWidth={2.5} />}
+              </button>
+            </div>
           )}
         </>
       )}

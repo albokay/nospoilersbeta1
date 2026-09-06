@@ -1663,10 +1663,15 @@ export default function DashboardPage() {
               <button style={invitePill} onClick={() => openInvite()}>Create another watch group?</button>
             )}
           </div>
-          {/* The spoiler-gated reference band (CP2, 2026-09-05) — the
-              personal lookup zone, BELOW the group world (Alborz). */}
-          {!socialOnbActive && <ReferenceLookupBand />}
           <div style={{ flex: 2 }} />
+        </div>
+      )}
+      {/* ── The spoiler-gated reference band (CP2, rev 2026-09-05): its OWN
+            Accent-yellow zone below the fold — clearly separated from the
+            group world, matching the reference tab's world color. ── */}
+      {!inGroup && !socialOnbActive && (
+        <div style={{ background: C.yellow, marginTop: 48, padding: "72px 24px 140px" }}>
+          <ReferenceLookupBand />
         </div>
       )}
 

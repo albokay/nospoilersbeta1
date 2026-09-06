@@ -619,9 +619,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const refEff = effectiveProgress(progressForShow);
   const referenceAvailable = !!show?.tvmazeId && !!refEff && (refEff.s > 1 || (refEff.s === 1 && refEff.e >= 1));
   useEffect(() => {
-    if (tab === "reference" && !referenceAvailable) setTab(privateOnly ? "private" : "friend");
+    // Only bounce AFTER the load has landed — on arrival from the dashboard
+    // band the progress row isn't fetched yet, and the pre-load bounce was
+    // kicking band arrivals onto the drafts tab (Alborz catch 2026-09-05).
+    if (!loading && tab === "reference" && !referenceAvailable) setTab(privateOnly ? "private" : "friend");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, referenceAvailable]);
+  }, [tab, referenceAvailable, loading]);
 
   if (authLoading || loading) {
     return (

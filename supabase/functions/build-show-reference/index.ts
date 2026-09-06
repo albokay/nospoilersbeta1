@@ -61,6 +61,9 @@ type RefEpisode = {
   s: number; e: number; title: string;
   airDate: string | null; summary: string | null;
   writers: string[]; directors: string[]; dp: string[];
+  /** Names credited in THIS episode (season regulars + its guest stars),
+   *  in credit order — drives the per-episode cast view (2026-09-05 rev). */
+  cast: string[];
 };
 type RefPerson = {
   name: string; character: string | null;
@@ -69,6 +72,9 @@ type RefPerson = {
    *  (series regular for that season — rendered "since season N"). */
   exact: boolean;
   img: string | null;
+  /** TMDB person id — the client resolves the actor's IMDb page from it
+   *  lazily on tap (2026-09-05 rev). */
+  tmdbId: number | null;
 };
 type RefSeason = { n: number; trailerKey: string | null; episodes: RefEpisode[] };
 type RefData = {
@@ -323,7 +329,7 @@ async function buildReference(
       title: ep?.name ?? `Episode ${e}`,
       airDate: ep?.airdate || null,
       summary: stripHtml(ep?.summary),
-      writers: [], directors: [], dp: [],
+      writers: [], directors: [], dp: [], cast: [],
     });
   }
   if (bySeason.size === 0) return null;
@@ -362,7 +368,7 @@ async function buildReference(
   const people = new Map<string, RefPerson>();
   const noteAppearance = (
     name: string | undefined, character: string | undefined, img: string | undefined,
-    s: number, e: number, exact: boolean,
+    s: number, e: number, exact: boolean, tmdbId?: number,
   ) => {
     if (!name) return;
     const prev = people.get(name);
@@ -371,9 +377,11 @@ async function buildReference(
       people.set(name, {
         name, character: character?.trim() || null,
         firstS: s, firstE: e, exact, img: img || null,
+        tmdbId: typeof tmdbId === "number" ? tmdbId : null,
       });
       return;
     }
+    if (prev.tmdbId == null && typeof tmdbId === "number") prev.tmdbId = tmdbId;
     // Keep the EARLIEST sighting; an exact guest credit beats a same-point
     // season-level one, and the first-credited character name sticks.
     const prevIdx = epIndex(prev.firstS, prev.firstE);
@@ -390,13 +398,22 @@ async function buildReference(
     season.trailerKey = pickTrailerKey(sd?.videos?.results ?? []);
     // Season regulars — credited for the season, first known at S{n} (not
     // an exact episode; rendered "since season N" and gated at S{n}E1).
+    const regularNames: string[] = [];
     for (const c of sd?.credits?.cast ?? []) {
-      noteAppearance(c?.name, c?.character, c?.profile_path, season.n, 1, false);
+      noteAppearance(c?.name, c?.character, c?.profile_path, season.n, 1, false, c?.id);
+      if (c?.name && !regularNames.includes(c.name)) regularNames.push(c.name);
     }
     for (const ep of sd?.episodes ?? []) {
       const e = ep?.episode_number;
       const target = typeof e === "number" ? season.episodes.find((x) => x.e === e) : undefined;
       if (target) {
+        // Per-episode cast = the season's regulars + this episode's guests,
+        // credit order, deduped.
+        const cast = [...regularNames];
+        for (const g of ep?.guest_stars ?? []) {
+          if (g?.name && !cast.includes(g.name)) cast.push(g.name);
+        }
+        target.cast = cast;
         target.writers = crewNames(ep?.crew, ["Writer", "Teleplay", "Story"]);
         target.directors = crewNames(ep?.crew, ["Director"]);
         target.dp = crewNames(ep?.crew, ["Director of Photography"]);
@@ -411,7 +428,7 @@ async function buildReference(
       }
       if (typeof e === "number") {
         for (const g of ep?.guest_stars ?? []) {
-          noteAppearance(g?.name, g?.character, g?.profile_path, season.n, e, true);
+          noteAppearance(g?.name, g?.character, g?.profile_path, season.n, e, true, g?.id);
         }
       }
     }

@@ -468,20 +468,22 @@ export default function MobileDashboard() {
               <button style={invitePill} onClick={() => setInviteOpen(true)}>Create another watch group?</button>
             </div>
           )}
-          {/* The spoiler-gated reference band (CP2, 2026-09-05) — the
-              personal lookup zone, BELOW the group world (Alborz). */}
-          {!showSocialOnb && (
-            <div style={{ padding: "8px 16px 0" }}>
-              <ReferenceLookupBand mobile />
-            </div>
-          )}
           {/* Home-screen app (2026-08-18): the "add Sidebar to your home
               screen" button — an aside under the dashboard's one act, hidden
               while onboarding owns the page (and hides itself once the app is
-              installed). Bottom room so it clears the docked deck card. */}
+              installed). */}
           {!showSocialOnb && (
-            <div style={{ paddingBottom: 96 }}>
+            <div style={{ paddingBottom: 24 }}>
               <MobileAddToHomeScreen />
+            </div>
+          )}
+          {/* ── The spoiler-gated reference band (CP2, rev 2026-09-05): its
+                OWN Accent-yellow zone at the page's end, matching the
+                reference tab's world color; bottom room clears the docked
+                deck card. ── */}
+          {!showSocialOnb && (
+            <div style={{ background: C.yellow, marginTop: 24, padding: "48px 16px 120px" }}>
+              <ReferenceLookupBand mobile />
             </div>
           )}
         </>

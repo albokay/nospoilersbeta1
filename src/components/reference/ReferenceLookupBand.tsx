@@ -21,14 +21,14 @@ import type { ProgressEntry } from "../../types";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster, type TVmazeShow } from "../../lib/tvmaze";
 import { ensureCatalogShow } from "../../lib/browseCatalog";
 import type { BrowseShow } from "../../lib/db";
-import { fetchRecentLookups, stampReferenceLookup } from "../../lib/reference";
+import { ensureShowReference, fetchRecentLookups, stampReferenceLookup } from "../../lib/reference";
 import { upsertRewatchStatus } from "../../lib/db";
 import BrowseRows from "../BrowseRows";
 import MobileBrowseRows from "../../mobile/MobileBrowseRows";
 import OneSelectProgress from "../OneSelectProgress";
 import TrailerCard from "../TrailerCard";
 import LoadingDots from "../LoadingDots";
-import { yellowCard, startBtn } from "../dashboardChrome";
+import { overlay, searchCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn } from "../dashboardChrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
@@ -44,12 +44,18 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   const [recents, setRecents] = useState<{ showId: string; s: number; e: number }[]>([]);
   const [posters, setPosters] = useState<Record<string, string | null>>({});
 
+  // Search lives in an OVERLAY card (rev 2026-09-05 — the group room's
+  // search grammar; inline results were pushing the page around).
+  const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
   const [busyAdd, setBusyAdd] = useState(false);
   const tvDebounceRef = useRef<number | null>(null);
 
-  // The first-tap card ("How far in are you?").
+  // The first-tap card ("How far in are you?"). cardPending paints the card
+  // INSTANTLY on a pick (name + trailer) while the catalog show resolves —
+  // the picker area shows dots until it lands (rev 2026-09-05 perf).
+  const [cardPending, setCardPending] = useState<{ name: string; tvmazeId: string | null } | null>(null);
   const [cardShow, setCardShow] = useState<Show | null>(null);
   const [picked, setPicked] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
   const [confirmBusy, setConfirmBusy] = useState(false);
@@ -116,6 +122,21 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     const existing = progress[show.id];
     setPicked(existing ? { s: existing.s, e: existing.e } : { s: 0, e: 0 });
     setCardShow(show);
+    setCardPending(null);
+    setSearchOpen(false);
+    setQuery("");
+    setTvResults([]);
+    // Warm the reference blob NOW — by "look it up" it's already in the
+    // module cache, so the reference tab paints without its own wait.
+    ensureShowReference(show.id).catch(() => { /* the tab retries */ });
+  }
+
+  // A pick paints the card immediately; the catalog resolve fills it in.
+  function openPending(name: string, tvmazeId: string | null) {
+    setPicked({ s: 0, e: 0 });
+    setCardShow(null);
+    setCardPending({ name, tvmazeId });
+    setSearchOpen(false);
     setQuery("");
     setTvResults([]);
   }
@@ -123,23 +144,25 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   async function pickTvShow(tv: TVmazeShow) {
     if (busyAdd) return;
     setBusyAdd(true);
+    openPending(tv.name, String(tv.id));
     try {
       const seasons = await tvmazeEpisodes(tv.id);
       const created = await createShow({ id: slugify(tv.name), name: tv.name, seasons, tvmazeId: String(tv.id), status: tv.status });
       setShows((prev) => (prev.some((s) => s.id === created.id) ? prev : [...prev, created]));
       openCard(created);
-    } catch (e) { console.error("[ref-band] add show failed", e); }
+    } catch (e) { console.error("[ref-band] add show failed", e); setCardPending(null); }
     finally { setBusyAdd(false); }
   }
 
   async function pickBrowseShow(b: BrowseShow) {
     if (busyAdd) return;
     setBusyAdd(true);
+    openPending(b.name, String(b.tvmazeId));
     try {
       const show = await ensureCatalogShow(shows, b);
       setShows((prev) => (prev.some((s) => s.id === show.id) ? prev : [...prev, show]));
       openCard(show);
-    } catch (e) { console.error("[ref-band] browse pick failed", e); }
+    } catch (e) { console.error("[ref-band] browse pick failed", e); setCardPending(null); }
     finally { setBusyAdd(false); }
   }
 
@@ -161,7 +184,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         highestE: keepCeiling ? exHE : picked.e,
       };
       await upsertRewatchStatus(user.id, cardShow.id, entry);
-      await stampReferenceLookup(user.id, cardShow.id);
+      stampReferenceLookup(user.id, cardShow.id); // fire-and-forget
       navigate(`${pathPrefix}/${cardShow.id}`, { state: { openReference: true } });
     } catch (e) {
       console.error("[ref-band] look-it-up failed", e);
@@ -171,16 +194,22 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
 
   if (!user) return null;
 
+  // Result rows inside the cream search overlay — Personal-green text
+  // (the group-room search-card result grammar).
   const resultBtn: React.CSSProperties = {
     display: "block", width: "100%", textAlign: "left", border: "none", cursor: "pointer",
-    background: CREAM, color: CANON.personal, fontWeight: 700, fontSize: 14,
-    padding: "10px 16px", borderRadius: 12, marginTop: 6,
+    background: "transparent", color: CANON.personal, fontWeight: 700, fontSize: 14,
+    padding: "10px 12px", borderRadius: 10,
   };
 
+  const cardTitle = cardShow?.name ?? cardPending?.name ?? "";
+  const cardTvmazeId = cardShow?.tvmazeId ?? cardPending?.tvmazeId ?? null;
+
   return (
-        // Desktop width matches the browse window (1178) — heading/sub/search
+    // The band lives in its own Accent-yellow zone (the hosts paint it);
+    // desktop width matches the browse window (1178) — heading/sub/search
     // self-cap narrower and center inside.
-    <div style={{ width: "100%", maxWidth: mobile ? undefined : 1178, margin: mobile ? "40px 0 0" : "56px auto 0" }}>
+    <div style={{ width: "100%", maxWidth: mobile ? undefined : 1178, margin: "0 auto" }}>
       {/* Locked copy (Alborz 2026-09-05). */}
       <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: 0, textAlign: "center" }}>
         Need to look something up without getting spoiled?
@@ -189,31 +218,19 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         Look up an actor, a plot point you missed, or crew detail — all of it, filtered to how far you&rsquo;ve watched.
       </p>
 
-      {/* Search — the site's standard placeholder. */}
+      {/* Search trigger — opens the group-room-style search OVERLAY
+          (rev 2026-09-05; inline results were pushing the page around). */}
       <div style={{ maxWidth: 420, margin: "0 auto" }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="find your show"
+        <button
+          onClick={() => { setSearchOpen(true); setQuery(""); setTvResults([]); }}
           style={{
             width: "100%", boxSizing: "border-box", border: "none", borderRadius: 65,
             padding: "13px 22px", fontFamily: '"Inter", sans-serif', fontSize: 14,
-            background: CREAM, color: CANON.dark, outline: "none",
+            background: CREAM, color: "#9a9a92", textAlign: "left", cursor: "text",
           }}
-        />
-        {(catalogMatches.length > 0 || tvToAdd.length > 0 || busyAdd) && query.trim() && (
-          <div style={{ marginTop: 4 }}>
-            {busyAdd && <div style={{ color: CREAM, fontSize: 13, fontWeight: 700, padding: "8px 4px" }}>adding<LoadingDots /></div>}
-            {catalogMatches.map((s) => (
-              <button key={s.id} style={resultBtn} disabled={busyAdd} onClick={() => openCard(s)}>{s.name}</button>
-            ))}
-            {tvToAdd.map(({ tv, id }) => (
-              <button key={id} style={resultBtn} disabled={busyAdd} onClick={() => pickTvShow(tv)}>
-                {tv.name}{networkLabel(tv) ? <span style={{ fontWeight: 500, opacity: 0.75 }}> · {networkLabel(tv)}</span> : null}
-              </button>
-            ))}
-          </div>
-        )}
+        >
+          find your show
+        </button>
       </div>
 
       {/* "You've looked up:" — cross-device, newest first, capped at 8.
@@ -225,7 +242,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           </div>
           <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {recents.map((r) => {
-              const show = shows.find((s) => s.id === r.showId);
+              const show = shows.find((x) => x.id === r.showId);
               if (!show) return null;
               const poster = posters[r.showId];
               const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
@@ -259,52 +276,82 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           : <BrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} />}
       </div>
 
-      {/* ── The first-tap card (locked copy): yellow, trailer, picker,
-            "look it up" disabled until S1E1+. ── */}
-      {cardShow && (
+      {/* ── The search overlay — the group room's search grammar: dim +
+            cream card, input, results list scrolling inside the card. ── */}
+      {searchOpen && (
+        <div style={overlay} onClick={() => setSearchOpen(false)}>
+          <div style={{ ...searchCard, maxHeight: "80vh", overflowY: "auto", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+            <button style={modalClose} onClick={() => setSearchOpen(false)} aria-label="Close">×</button>
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="find your show"
+              style={searchInput}
+            />
+            {busyAdd && <div style={{ color: CANON.personal, fontSize: 13, fontWeight: 700, padding: "8px 4px" }}>adding<LoadingDots /></div>}
+            {catalogMatches.map((show) => (
+              <button key={show.id} style={resultBtn} disabled={busyAdd} onClick={() => openCard(show)}>{show.name}</button>
+            ))}
+            {tvToAdd.map(({ tv, id }) => (
+              <button key={id} style={resultBtn} disabled={busyAdd} onClick={() => pickTvShow(tv)}>
+                {tv.name}{networkLabel(tv) ? <span style={{ fontWeight: 500, opacity: 0.75 }}> · {networkLabel(tv)}</span> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── The first-tap card (locked copy) — the group room's yellow-modal
+            grammar (yellowCard: centered, no outline). Paints INSTANTLY on a
+            pick; the picker fills in when the catalog show resolves. The
+            "look it up" button exists only once an episode is picked. ── */}
+      {(cardShow || cardPending) && (
         <div
-          style={{ position: "fixed", inset: 0, background: "rgba(26,58,74,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: 16 }}
-          onClick={() => { if (!confirmBusy) setCardShow(null); }}
+          style={{ ...overlay, zIndex: 1100 }}
+          onClick={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }}
         >
           <div
-            style={{ ...yellowCard, width: "min(480px, 92vw)", maxHeight: "88vh", overflowY: "auto", position: "relative", textAlign: "left" }}
+            style={{ ...yellowCard, width: "min(400px, 92vw)", maxHeight: "88vh", overflowY: "auto", overflowX: "hidden" }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => { if (!confirmBusy) setCardShow(null); }}
+              onClick={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }}
               aria-label="Close"
-              style={{ position: "absolute", top: 14, right: 14, background: "transparent", border: "none", cursor: "pointer", padding: 4, lineHeight: 0 }}
+              style={{ position: "absolute", top: 12, right: 12, background: "transparent", border: "none", cursor: "pointer", padding: 4, lineHeight: 0 }}
             >
               <X size={20} color={CREAM} />
             </button>
-            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CREAM, marginBottom: 4 }}>
-              {cardShow.name}
+            <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, opacity: 0.9, marginBottom: 6 }}>
+              {cardTitle}
             </div>
-            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 18, color: CREAM, margin: "10px 0 4px" }}>
-              How far in are you?
-            </div>
-            <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, marginBottom: 12 }}>
+            <div style={yellowTitle}>How far in are you?</div>
+            <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 14px" }}>
               (Set your episode. Your reference page will never go past it.)
             </div>
-            <OneSelectProgress
-              show={cardShow}
-              value={picked}
-              allowZero
-              requireConfirm={false}
-              onChangeSelected={(v: { s: number; e: number }) => setPicked(v)}
-              onConfirm={() => {}}
-            />
-            <div style={{ textAlign: "center", marginTop: 18 }}>
-              <button
-                style={{ ...startBtn, opacity: pickedReady && !confirmBusy ? 1 : 0.5, cursor: pickedReady ? "pointer" : "default" }}
-                disabled={!pickedReady || confirmBusy}
-                onClick={lookItUp}
-              >
-                {confirmBusy ? <>one moment<LoadingDots /></> : "look it up"}
-              </button>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              {cardShow ? (
+                <OneSelectProgress
+                  show={cardShow}
+                  value={picked}
+                  allowZero
+                  requireConfirm={false}
+                  onChangeSelected={(v: { s: number; e: number }) => setPicked(v)}
+                  onConfirm={() => {}}
+                />
+              ) : (
+                <div style={{ color: CREAM, fontSize: 13, fontWeight: 700, padding: "10px 0" }}>loading episodes<LoadingDots /></div>
+              )}
             </div>
+            {cardShow && pickedReady && (
+              <div style={{ marginTop: 18 }}>
+                <button style={startBtn} disabled={confirmBusy} onClick={lookItUp}>
+                  {confirmBusy ? <>one moment<LoadingDots /></> : "look it up"}
+                </button>
+              </div>
+            )}
             <div style={{ marginTop: 16 }}>
-              <TrailerCard showId={cardShow.id} tvmazeId={cardShow.tvmazeId} />
+              <TrailerCard showId={cardShow?.id ?? `pending-${cardTvmazeId ?? "none"}`} tvmazeId={cardTvmazeId} />
             </div>
           </div>
         </div>
