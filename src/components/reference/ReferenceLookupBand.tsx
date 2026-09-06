@@ -21,7 +21,7 @@ import type { ProgressEntry } from "../../types";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster, type TVmazeShow } from "../../lib/tvmaze";
 import { ensureCatalogShow } from "../../lib/browseCatalog";
 import type { BrowseShow } from "../../lib/db";
-import { ensureShowReference, fetchRecentLookups, stampReferenceLookup } from "../../lib/reference";
+import { ensureShowReference, fetchRecentLookups, stampReferenceLookup, clearReferenceLookup } from "../../lib/reference";
 import { upsertRewatchStatus } from "../../lib/db";
 import BrowseRows from "../BrowseRows";
 import MobileBrowseRows from "../../mobile/MobileBrowseRows";
@@ -55,12 +55,14 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [recents, setRecents] = useState<{ showId: string; s: number; e: number }[]>([]);
-  // De-clutter X (Alborz 2026-09-05): hides the recents row for THIS visit
-  // (sessionStorage — it returns next visit; the viewer's own row, no friend
-  // content, so no sign-out scrub needed).
-  const [recentsClosed, setRecentsClosed] = useState(() => {
-    try { return sessionStorage.getItem("ns_ref_recents_closed") === "1"; } catch { return false; }
-  });
+
+  // De-clutter X per SHOW (Alborz rev 2026-09-05): drops that show from the
+  // row optimistically and clears its cross-device stamp; a fresh lookup
+  // brings it back.
+  function removeLookup(showId: string) {
+    setRecents((prev) => prev.filter((r) => r.showId !== showId));
+    if (user) clearReferenceLookup(user.id, showId); // fire-and-forget
+  }
   const [posters, setPosters] = useState<Record<string, string | null>>({});
 
   // Search lives in an OVERLAY card (rev 2026-09-05 — the group room's
@@ -257,20 +259,10 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
 
       {/* "You've looked up:" — cross-device, newest first, capped at 8.
           Tapping goes STRAIGHT to the reference (no card — Alborz). */}
-      {recents.length > 0 && !recentsClosed && (
+      {recents.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13, color: CREAM }}>
-              You&rsquo;ve looked up:
-            </div>
-            <button
-              onClick={() => { setRecentsClosed(true); try { sessionStorage.setItem("ns_ref_recents_closed", "1"); } catch { /* fine */ } }}
-              aria-label="Hide your lookups"
-              title="Hide your lookups"
-              style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, lineHeight: 0, opacity: 0.85 }}
-            >
-              <X size={16} color={CREAM} />
-            </button>
+          <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13, color: CREAM, marginBottom: 10 }}>
+            You&rsquo;ve looked up:
           </div>
           <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {recents.map((r) => {
@@ -279,22 +271,33 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               const poster = posters[r.showId];
               const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
               return (
-                <button
-                  key={r.showId}
-                  onClick={() => navigate(`${pathPrefix}/${r.showId}`, { state: { openReference: true } })}
-                  style={{ flexShrink: 0, width: w, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
-                >
-                  {poster ? (
-                    <img src={poster} alt={show.name} loading="lazy" style={{ width: w, height: h, objectFit: "cover", borderRadius: 12, display: "block" }} />
-                  ) : (
-                    <div style={{ width: w, height: h, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
-                      <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                <div key={r.showId} style={{ position: "relative", flexShrink: 0, width: w }}>
+                  <button
+                    onClick={() => navigate(`${pathPrefix}/${r.showId}`, { state: { openReference: true } })}
+                    style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+                  >
+                    {poster ? (
+                      <img src={poster} alt={show.name} loading="lazy" style={{ width: w, height: h, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                    ) : (
+                      <div style={{ width: w, height: h, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                      </div>
+                    )}
+                    <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 700, color: CREAM, marginTop: 6 }}>
+                      {r.s >= 1 && r.e >= 1 ? `S${r.s} E${r.e}` : ""}
                     </div>
-                  )}
-                  <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 700, color: CREAM, marginTop: 6 }}>
-                    {r.s >= 1 && r.e >= 1 ? `S${r.s} E${r.e}` : ""}
-                  </div>
-                </button>
+                  </button>
+                  {/* Per-show de-clutter X — dark chip so it reads over any
+                      poster art. */}
+                  <button
+                    onClick={() => removeLookup(r.showId)}
+                    aria-label={`Remove ${show.name} from your lookups`}
+                    title="Remove from your lookups"
+                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: "50%", background: "rgba(26,58,74,0.55)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                  >
+                    <X size={13} color={CREAM} />
+                  </button>
+                </div>
               );
             })}
           </div>

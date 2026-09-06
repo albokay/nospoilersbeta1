@@ -85,6 +85,19 @@ export async function fetchRecentLookups(userId: string): Promise<{ showId: stri
   } catch { return []; }
 }
 
+/** Remove one show from the viewer's "You've looked up:" row — nulls the
+ *  stamp on their own progress row (cross-device; a fresh lookup re-stamps).
+ *  Tolerant like the stamp. */
+export async function clearReferenceLookup(userId: string, showId: string): Promise<void> {
+  try {
+    await supabase
+      .from("progress")
+      .update({ last_looked_up_at: null })
+      .eq("user_id", userId)
+      .eq("show_id", showId);
+  } catch { /* tolerate */ }
+}
+
 /** Stamp "you've looked this up" on the viewer's own progress row — feeds
  *  the dashboard band's cross-device recent-lookups row (capped at read
  *  time). Tolerant: pre-migration or rowless shows just don't stamp. */
