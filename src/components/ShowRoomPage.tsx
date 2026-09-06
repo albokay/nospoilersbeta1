@@ -26,6 +26,7 @@ import {
 import { effectiveProgress } from "../lib/utils";
 import { joinNames } from "../lib/groupNames";
 import { composeBackdrop, composeCardOuter, groupHeadingMembers, EDGE_TAB_TOP } from "./dashboardChrome";
+import { ensureShowReference } from "../lib/reference";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember } from "./v2/V2RoomMap";
@@ -676,6 +677,20 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, referenceAvailable, loading]);
 
+  // "created by …" swaps in for the "with …" members line while the viewer
+  // is ON the reference tab. Resolved from the reference blob only then (a
+  // first-ever fetch builds it server-side); module-cached, so the tab
+  // body's own call is free. MUST sit above the loading early-return.
+  const [refCreatedBy, setRefCreatedBy] = useState<string[]>([]);
+  useEffect(() => {
+    if (tab !== "reference" || !referenceAvailable || !show?.id) return;
+    let cancelled = false;
+    ensureShowReference(show.id)
+      .then((r) => { if (!cancelled) setRefCreatedBy(r.createdBy ?? []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [tab, referenceAvailable, show?.id]);
+
   if (authLoading || loading) {
     return (
       <div style={{ ...page, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
@@ -732,9 +747,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           {/* Naming arc (2026-07-07): the "with …" line matches the group
               room's members line — same font, same greyblue "with", given
               names (cluster rule: given-names until a custom group name). */}
-          {groupName && (
+          {tab === "reference" && refCreatedBy.length > 0 ? (
+            <span style={groupHeadingMembers}>created by {refCreatedBy.join(" & ")}</span>
+          ) : groupName ? (
             <span style={groupHeadingMembers}>with {groupName}</span>
-          )}
+          ) : null}
           {!privateOnly && roomId && (
             <button
               onClick={openDigestModal}

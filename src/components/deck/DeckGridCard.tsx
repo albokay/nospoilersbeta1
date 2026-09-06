@@ -289,7 +289,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
         {/* Docked title matches the page behind it: Personal green on the
             dashboard, Sky in the group room (Alborz QA 2026-07-20);
             Identity once opened. */}
-        <div style={{ padding: "16px 24px 14px" }}>
+        <div style={{ padding: dockInFlow ? "16px 24px 46px" : "16px 24px 14px" }}>
           <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: mode === "personal" ? CANON.personal : CANON.friend, whiteSpace: "nowrap" }}>{title}</span>
         </div>
       </div>

@@ -289,9 +289,11 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
       {/* ── The search overlay — the group room's search grammar: dim +
             cream card, input, results list scrolling inside the card. ── */}
       {searchOpen && (
-        <div style={overlay} onClick={() => setSearchOpen(false)}>
-          <div style={{ ...searchCard, maxHeight: "80vh", overflowY: "auto", position: "relative" }} onClick={(e) => e.stopPropagation()}>
-            <button style={modalClose} onClick={() => setSearchOpen(false)} aria-label="Close">×</button>
+        // Center is BIASED DOWN (paddingTop shifts the flex center ~10vh) so
+        // the card reads as part of the reference world below; no X — the
+        // dim-click closes (Alborz 2026-09-05).
+        <div style={{ ...overlay, paddingTop: "20vh", boxSizing: "border-box" }} onClick={() => setSearchOpen(false)}>
+          <div style={{ ...searchCard, maxHeight: "64vh", overflowY: "auto", position: "relative" }} onClick={(e) => e.stopPropagation()}>
             <input
               autoFocus
               value={query}

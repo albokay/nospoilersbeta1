@@ -25,6 +25,7 @@ import OneSelectProgress from "../components/OneSelectProgress";
 import RatingCaptureModal from "../components/RatingCaptureModal";
 import MobilePool from "./MobilePool";
 import ShowReference from "../components/reference/ShowReference";
+import { ensureShowReference } from "../lib/reference";
 import { CANON } from "../styles/canon";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 
@@ -626,6 +627,19 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, referenceAvailable, loading]);
 
+  // "created by …" swaps in for the "with …" line on the reference tab
+  // (desktop parity). Fetched only while ON the tab; module-cached. MUST
+  // sit above the loading early-return.
+  const [refCreatedBy, setRefCreatedBy] = useState<string[]>([]);
+  useEffect(() => {
+    if (tab !== "reference" || !referenceAvailable || !show?.id) return;
+    let cancelled = false;
+    ensureShowReference(show.id)
+      .then((r) => { if (!cancelled) setRefCreatedBy(r.createdBy ?? []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [tab, referenceAvailable, show?.id]);
+
   if (authLoading || loading) {
     return (
       <div style={{ ...page, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
@@ -684,7 +698,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               {show?.name ?? "Show"}
               {/* "with …" matches desktop (naming arc): cream, Inter bold 14
                   (Body) — was blue. */}
-              {groupName && <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: C.cream }}> with {groupName}</span>}
+              {tab === "reference" && refCreatedBy.length > 0
+                ? <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: C.cream }}> created by {refCreatedBy.join(" & ")}</span>
+                : groupName ? <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: C.cream }}> with {groupName}</span> : null}
             </h1>
             {!privateOnly && roomId && (
               <button style={iconBtn} aria-label="Email updates for this room" title="Email updates for this room" onClick={openDigestModal}>

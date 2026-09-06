@@ -90,6 +90,20 @@ export default function ShowReference({
       .map((n) => peopleByName.get(n) ?? { name: n, character: null, firstS: selCastEp.s, firstE: selCastEp.e, exact: true, img: null, tmdbId: null })
       .filter((person) => idx(person.firstS, person.firstE) <= vIdx);
   }, [selEpData, peopleByName, selCastEp.s, selCastEp.e, vIdx]);
+  // The folded 8 (Alborz catch 2026-09-05): the data sources only know
+  // season REGULARS (the same list for every episode of a season — verified
+  // against TMDB's per-episode credits endpoint) plus THIS EPISODE's guest
+  // stars. A plain first-8 was all regulars, so switching episodes changed
+  // nothing visible. The fold reserves slots for the guests — up to 4
+  // regulars, the rest this episode's guest cast; credit order preserved.
+  const foldedCast = useMemo(() => {
+    const list = episodeCast ?? visiblePeople;
+    if (!episodeCast) return list.slice(0, 8);
+    const regs = list.filter((person) => !person.exact);
+    const guests = list.filter((person) => person.exact);
+    const nRegs = Math.min(regs.length, Math.max(4, 8 - guests.length));
+    return [...regs.slice(0, nRegs), ...guests.slice(0, 8 - nRegs)];
+  }, [episodeCast, visiblePeople]);
 
   // Cast tap → the actor's IMDb page in a NEW tab. The tab opens
   // synchronously (popup-blocker rule), then lands on the exact page once
@@ -136,26 +150,12 @@ export default function ShowReference({
 
   return (
     <div style={{ color: CREAM, fontFamily: '"Inter", sans-serif', paddingBottom: 80 }}>
-      {ref.createdBy.length > 0 && (
-        <div style={{ fontSize: 13, opacity: 0.9 }}>created by {ref.createdBy.join(" & ")}</div>
-      )}
-      {/* Attribution — on the page, per the idea doc (not a footer). */}
-      <div style={{ ...small, marginTop: 6, lineHeight: 1.5 }}>
-        Episode and cast data from{" "}
-        <a href="https://www.tvmaze.com" target="_blank" rel="noreferrer" style={{ color: CREAM }}>TVMaze</a>{" "}
-        (CC BY-SA) and{" "}
-        <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer" style={{ color: CREAM }}>TMDB</a>.
-        This product uses the TMDB API but is not endorsed or certified by TMDB.
-        {ref.wikipediaTitle && (
-          <>{" "}Episode summaries from{" "}
-            <a href={`https://en.wikipedia.org/wiki/${encodeURIComponent(ref.wikipediaTitle)}`} target="_blank" rel="noreferrer" style={{ color: CREAM }}>Wikipedia</a>{" "}
-            (CC BY-SA).
-          </>
-        )}
-      </div>
+      {/* "created by …" renders in the SHOW PAGE HEADER next to the show
+          name (rev 3 — swaps with the "with …" members line per tab);
+          attribution moved to the page bottom. */}
 
-      {/* ── Previously on: watched episodes in full; the rest folded ── */}
-      <h2 style={sectionH}>Previously on:</h2>
+      {/* ── Previously on: watched episodes only ── */}
+      <h2 style={sectionH}>Previously on {ref.showName}:</h2>
       {ref.seasons.filter((season) => season.n <= viewerProgress.s).map((season) => {
         const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx);
         const isOpen = (openSeasons ?? new Set([viewerProgress.s])).has(season.n);
@@ -180,7 +180,7 @@ export default function ShowReference({
             {isOpen && watched.map((ep) => (
               <div key={ep.e} style={{ marginBottom: 16 }}>
                 <div style={{ fontWeight: 700, fontSize: mobile ? 14 : 15 }}>
-                  S{ep.s} E{ep.e} · {ep.title}
+                  Episode {ep.e} · {ep.title}
                   {ep.airDate && <span style={{ fontWeight: 500, opacity: 0.7 }}>  ·  {ep.airDate}</span>}
                 </div>
                 {(ep.writers.length > 0 || ep.directors.length > 0 || ep.dp.length > 0) && (
@@ -211,36 +211,44 @@ export default function ShowReference({
             degrade to the so-far list until the cache rebuilds. ── */}
       {visiblePeople.length > 0 && (
         <>
-          <h2 style={sectionH}>
-            {episodeCast ? `Cast for Season ${selCastEp.s} Episode ${selCastEp.e}:` : "Cast so far:"}
+          {/* "Cast for (picker):" — the picker mirrors the yellow modal's
+              progress pill (cream text + outline, yellow fill, overlay
+              chevron; OneSelectProgress's non-plain grammar). */}
+          <h2 style={{ ...sectionH, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            {episodeCast ? (
+              <>
+                Cast for
+                <span style={{ position: "relative", display: "inline-block" }}>
+                  <select
+                    value={`${selCastEp.s}-${selCastEp.e}`}
+                    onChange={(ev) => {
+                      const [ss, ee] = ev.target.value.split("-").map(Number);
+                      setCastEpisode({ s: ss, e: ee });
+                      setCastExpanded(false);
+                    }}
+                    aria-label="Pick an episode"
+                    style={{
+                      appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+                      background: "transparent", border: `2px solid ${CREAM}`, color: CREAM,
+                      borderRadius: 9999, height: 40, boxSizing: "border-box",
+                      padding: "8px 28px 8px 14px", fontSize: 12, fontWeight: 700,
+                      fontFamily: '"Inter", sans-serif', cursor: "pointer", outline: "none",
+                      textAlign: "center", textAlignLast: "center",
+                      maxWidth: mobile ? 210 : 320, textOverflow: "ellipsis",
+                    }}
+                  >
+                    {watchedEpisodes.map((ep) => (
+                      <option key={`${ep.s}-${ep.e}`} value={`${ep.s}-${ep.e}`}>S{ep.s} E{ep.e} · {ep.title}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} color={CREAM} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                </span>
+                :
+              </>
+            ) : "Cast so far:"}
           </h2>
-          {episodeCast && (
-            <select
-              value={`${selCastEp.s}-${selCastEp.e}`}
-              onChange={(ev) => {
-                const [ss, ee] = ev.target.value.split("-").map(Number);
-                setCastEpisode({ s: ss, e: ee });
-                setCastExpanded(false);
-              }}
-              aria-label="Pick an episode"
-              style={{
-                appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
-                background: "transparent", border: `2px solid ${CREAM}`, color: CREAM,
-                borderRadius: 65, padding: "6px 16px", fontSize: 13, fontWeight: 700,
-                fontFamily: '"Inter", sans-serif', cursor: "pointer", outline: "none",
-                margin: "0 0 14px", maxWidth: "100%",
-              }}
-            >
-              {watchedEpisodes.map((ep) => (
-                <option key={`${ep.s}-${ep.e}`} value={`${ep.s}-${ep.e}`}>S{ep.s} E{ep.e} · {ep.title}</option>
-              ))}
-            </select>
-          )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 14 : 18 }}>
-            {(() => {
-              const list = episodeCast ?? visiblePeople;
-              return castExpanded ? list : list.slice(0, 8);
-            })().map((p) => (
+            {(castExpanded ? (episodeCast ?? visiblePeople) : foldedCast).map((p) => (
               <button
                 key={p.name}
                 onClick={() => openActorImdb(p)}
@@ -307,6 +315,21 @@ export default function ShowReference({
           }
           return null;
         })}
+      </div>
+
+      {/* ── Attribution — page footer (rev 3; was up top) ── */}
+      <div style={{ ...small, marginTop: 48, lineHeight: 1.5, maxWidth: 620 }}>
+        Episode and cast data from{" "}
+        <a href="https://www.tvmaze.com" target="_blank" rel="noreferrer" style={{ color: CREAM }}>TVMaze</a>{" "}
+        (CC BY-SA) and{" "}
+        <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer" style={{ color: CREAM }}>TMDB</a>.
+        This product uses the TMDB API but is not endorsed or certified by TMDB.
+        {ref.wikipediaTitle && (
+          <>{" "}Episode summaries from{" "}
+            <a href={`https://en.wikipedia.org/wiki/${encodeURIComponent(ref.wikipediaTitle)}`} target="_blank" rel="noreferrer" style={{ color: CREAM }}>Wikipedia</a>{" "}
+            (CC BY-SA).
+          </>
+        )}
       </div>
     </div>
   );
