@@ -227,9 +227,15 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
       <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: 0, textAlign: "center" }}>
         Need to look something up without getting spoiled?
       </h2>
-      <p style={{ fontFamily: '"Inter", sans-serif', fontSize: mobile ? 13 : 14, color: CREAM, opacity: 0.9, lineHeight: 1.5, margin: "10px auto 18px", maxWidth: 640, textAlign: "center" }}>
-        Look up an actor, a plot point you missed, or crew detail —<br />
-        all of it, filtered to how far you&rsquo;ve watched.
+      {/* Sub-head split (Alborz): desktop breaks after "detail —"; mobile
+          can't fit that line, so it balance-wraps instead — near-equal
+          lines, never an orphan word. */}
+      <p style={{ fontFamily: '"Inter", sans-serif', fontSize: mobile ? 13 : 14, color: CREAM, opacity: 0.9, lineHeight: 1.5, margin: "10px auto 18px", maxWidth: 640, textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
+        {mobile ? (
+          <>Look up an actor, a plot point you missed, or crew detail — all of it, filtered to how far you&rsquo;ve watched.</>
+        ) : (
+          <>Look up an actor, a plot point you missed, or crew detail —<br />all of it, filtered to how far you&rsquo;ve watched.</>
+        )}
       </p>
 
       {/* Search trigger — the group room's search-pill grammar (magnifying
