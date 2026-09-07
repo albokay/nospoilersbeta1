@@ -21,7 +21,7 @@ import type { ProgressEntry } from "../../types";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster, type TVmazeShow } from "../../lib/tvmaze";
 import { ensureCatalogShow } from "../../lib/browseCatalog";
 import type { BrowseShow } from "../../lib/db";
-import { ensureShowReference, stampReferenceLookup, hideFromWatchingShelf } from "../../lib/reference";
+import { ensureShowReference, stampReferenceLookup, hideFromWatchingShelf, markWantToWatch, clearWantToWatch } from "../../lib/reference";
 import { upsertRewatchStatus } from "../../lib/db";
 import BrowseRows from "../BrowseRows";
 import MobileBrowseRows from "../../mobile/MobileBrowseRows";
@@ -79,6 +79,37 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         return act(b.id) - act(a.id);
       });
   }, [shows, progress]);
+
+  // "You want to watch:" (CP2) — wanted_at stamped + still below S1E1
+  // (starting the show migrates it to Watching automatically), newest first.
+  const wantList = useMemo(() => {
+    return shows
+      .filter((show) => {
+        const p = progress[show.id];
+        return p?.wantedAt && !(p.s > 1 || (p.s === 1 && p.e >= 1));
+      })
+      .sort((a, b) => (progress[b.id]?.wantedAt ?? 0) - (progress[a.id]?.wantedAt ?? 0));
+  }, [shows, progress]);
+
+  const [wantBusy, setWantBusy] = useState(false);
+  async function wantIt() {
+    if (!user || !cardShow || wantBusy) return;
+    setWantBusy(true);
+    try {
+      await markWantToWatch(user.id, cardShow.id);
+      setProgress((prev) => ({ ...prev, [cardShow.id]: { ...(prev[cardShow.id] ?? { s: 0, e: 0 }), wantedAt: Date.now() } }));
+      setCardShow(null);
+      setCardPending(null);
+    } catch (e) { console.error("[ref-band] want-to-watch failed", e); }
+    finally { setWantBusy(false); }
+  }
+  function unwantShow(showId: string) {
+    setProgress((prev) => {
+      const entry = prev[showId];
+      return entry ? { ...prev, [showId]: { ...entry, wantedAt: undefined } } : prev;
+    });
+    if (user) clearWantToWatch(user.id, showId); // fire-and-forget
+  }
   const [posters, setPosters] = useState<Record<string, string | null>>({});
 
   // Search lives in an OVERLAY card (rev 2026-09-05 — the group room's
@@ -108,7 +139,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   // Posters for the watching shelf (TVMaze medium, module-cached).
   useEffect(() => {
     let cancelled = false;
-    for (const show of watching) {
+    for (const show of [...watching, ...wantList]) {
       if (!show.tvmazeId || posters[show.id] !== undefined) continue;
       fetchTvmazePoster(show.tvmazeId).then((url) => {
         if (!cancelled) setPosters((prev) => ({ ...prev, [show.id]: url }));
@@ -116,7 +147,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watching]);
+  }, [watching, wantList]);
 
   // Search — the established catalog + debounced-TVMaze pattern.
   const catalogMatches = useMemo(() => {
@@ -338,6 +369,47 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         </div>
       )}
 
+      {/* "You want to watch:" (CP2) — poster-only tiles; tap reopens the
+          card (trailer + set your episode); X clears the stamp. */}
+      {wantList.length > 0 && (
+        <div style={{ marginTop: 34 }}>
+          <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
+            You want to watch:
+          </div>
+          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+            {wantList.map((show) => {
+              const poster = posters[show.id];
+              const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
+              return (
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: w }}>
+                  <button
+                    onClick={() => openCard(show)}
+                    style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+                  >
+                    {poster ? (
+                      <img src={poster} alt={show.name} loading="lazy" style={{ width: w, height: h, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                    ) : (
+                      <div style={{ width: w, height: h, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                      </div>
+                    )}
+                  </button>
+                  <button
+                    className="ref-lookup-x"
+                    onClick={() => unwantShow(show.id)}
+                    aria-label={`Remove ${show.name} from your want-to-watch list`}
+                    title="Remove from this list"
+                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                  >
+                    <X size={13} color={CREAM} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Browse rows — the dashboard asks the PERSONAL question. The
           umbrella heading ties them to YOUR lists (CP1); row names drop a
           tier beneath it. */}
@@ -402,7 +474,9 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 14px" }}>
                 (Set your episode. Your reference page<br />will never go past it.)
               </div>
-              <div style={{ display: "flex", justifyContent: "center" }}>
+              {/* The pill + the want button share one width (Alborz mock). */}
+              <style>{`.ref-card-pick select{width:210px;box-sizing:border-box;text-overflow:ellipsis}`}</style>
+              <div className="ref-card-pick" style={{ display: "flex", justifyContent: "center" }}>
                 {cardShow ? (
                   <OneSelectProgress
                     show={cardShow}
@@ -421,6 +495,17 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                 <div style={{ marginTop: 18 }}>
                   <button style={startBtn} disabled={confirmBusy} onClick={lookItUp}>
                     {confirmBusy ? <>one moment<LoadingDots /></> : "look it up"}
+                  </button>
+                </div>
+              )}
+              {/* "haven't started" is no longer a dead end (CP2): the add is
+                  the declaration itself. Hidden once the show's already on
+                  the want shelf (the card then just offers the trailer /
+                  progress). Never a proposal to any group. */}
+              {cardShow && !pickedReady && !progress[cardShow.id]?.wantedAt && (
+                <div style={{ marginTop: 18 }}>
+                  <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={wantBusy} onClick={wantIt}>
+                    {wantBusy ? <>one moment<LoadingDots /></> : "want to watch"}
                   </button>
                 </div>
               )}

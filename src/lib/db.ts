@@ -1273,7 +1273,7 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
   {
     const res = await supabase
       .from("progress")
-      .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason, shelf_override, shelf_position, updated_at, last_looked_up_at, shelf_hidden_at")
+      .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason, shelf_override, shelf_position, updated_at, last_looked_up_at, shelf_hidden_at, wanted_at")
       .eq("user_id", userId);
     if (res.error) {
       // Fallback WITHOUT the newer columns (updated_at / shelf_*) so a missing
@@ -1314,6 +1314,7 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
       progressUpdatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
       lastLookedUpAt:  row.last_looked_up_at ? new Date(row.last_looked_up_at).getTime() : undefined,
       shelfHiddenAt:   row.shelf_hidden_at ? new Date(row.shelf_hidden_at).getTime() : undefined,
+      wantedAt:        row.wanted_at ? new Date(row.wanted_at).getTime() : undefined,
     };
   }
   return result;

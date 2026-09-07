@@ -186,6 +186,10 @@ export type ProgressEntry = {
   // fetch fallback omits them.
   lastLookedUpAt?: number;
   shelfHiddenAt?: number;
+  // CP2 (2026-09-07): "want to watch" stamp — the dashboard's want shelf is
+  // wanted_at set AND progress still below S1E1 (starting the show migrates
+  // it to the watching shelf automatically).
+  wantedAt?: number;
 };
 
 // "Thoughts on..." pieces — show-agnostic reflective writing that lives on

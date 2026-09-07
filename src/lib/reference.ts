@@ -69,6 +69,38 @@ export function ensureShowReference(showId: string): Promise<ShowReferenceData> 
   return p;
 }
 
+/** "want to watch" (CP2 2026-09-07): stamps the viewer's own progress row
+ *  WITHOUT touching the dial — update-first so an existing row's progress
+ *  can never be lowered; only a rowless show gets a fresh S0E0 row. Never
+ *  a proposal to any group. */
+export async function markWantToWatch(userId: string, showId: string): Promise<void> {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("progress")
+    .update({ wanted_at: now })
+    .eq("user_id", userId)
+    .eq("show_id", showId)
+    .select("show_id");
+  if (error) throw error;
+  if ((data ?? []).length === 0) {
+    const { error: insErr } = await supabase
+      .from("progress")
+      .insert({ user_id: userId, show_id: showId, season: 0, episode: 0, wanted_at: now });
+    if (insErr) throw insErr;
+  }
+}
+
+/** The want-shelf tile's X — clears the stamp (cross-device). */
+export async function clearWantToWatch(userId: string, showId: string): Promise<void> {
+  try {
+    await supabase
+      .from("progress")
+      .update({ wanted_at: null })
+      .eq("user_id", userId)
+      .eq("show_id", showId);
+  } catch { /* tolerate */ }
+}
+
 /** De-clutter X on the "You're watching:" shelf (CP1 2026-09-07): hides
  *  the show from the shelf cross-device. Progress is untouched; a fresh
  *  lookup (stamp below) clears the flag and brings the show back. */
