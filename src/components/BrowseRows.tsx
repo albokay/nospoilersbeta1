@@ -92,22 +92,26 @@ export function useBrowseRows(excludeTvmazeIds: Set<number>): BrowseRow[] {
 export default function BrowseRows({
   excludeTvmazeIds,
   onPick,
+  subLabels = false,
 }: {
   /** TVMaze ids of the group's own shows (open rooms + proposals) — hidden everywhere. */
   excludeTvmazeIds: Set<number>;
   onPick: (show: BrowseShow) => void;
+  /** Under a section heading ("Find something to watch:") the row titles
+   *  drop a tier so they read as sub-rows (dashboard, 2026-09-07). */
+  subLabels?: boolean;
 }) {
   const rows = useBrowseRows(excludeTvmazeIds);
   if (rows.length === 0) return null;
   return (
     // 8px top (was 48 — Alborz 2026-08-17: 40px closer to the group's last button).
     <div style={{ padding: "8px 0 40px" }}>
-      {rows.map((r) => <PosterRow key={r.key} row={r} onPick={onPick} />)}
+      {rows.map((r) => <PosterRow key={r.key} row={r} onPick={onPick} subLabels={subLabels} />)}
     </div>
   );
 }
 
-function PosterRow({ row, onPick }: { row: BrowseRow; onPick: (s: BrowseShow) => void }) {
+function PosterRow({ row, onPick, subLabels }: { row: BrowseRow; onPick: (s: BrowseShow) => void; subLabels?: boolean }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
@@ -136,7 +140,7 @@ function PosterRow({ row, onPick }: { row: BrowseRow; onPick: (s: BrowseShow) =>
   return (
     // Window centered on the page; the frame on either side holds the arrows.
     <div style={windowWrap}>
-      <div style={rowTitle}>{row.title}</div>
+      <div style={subLabels ? { ...rowTitle, fontWeight: 600, fontStyle: "italic", fontSize: 13 } : rowTitle}>{row.title}</div>
       <div style={{ position: "relative" }}>
         <div ref={scroller} onScroll={measure} style={scrollerStyle} className="browse-scroller">
           {row.shows.map((s) => (

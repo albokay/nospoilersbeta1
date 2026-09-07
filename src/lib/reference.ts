@@ -69,43 +69,27 @@ export function ensureShowReference(showId: string): Promise<ShowReferenceData> 
   return p;
 }
 
-/** The viewer's recent lookups — cross-device (the last_looked_up_at stamp
- *  on their own progress rows), newest first, capped at 8 (Alborz). */
-export async function fetchRecentLookups(userId: string): Promise<{ showId: string; s: number; e: number }[]> {
-  try {
-    const { data, error } = await supabase
-      .from("progress")
-      .select("show_id, season, episode")
-      .eq("user_id", userId)
-      .not("last_looked_up_at", "is", null)
-      .order("last_looked_up_at", { ascending: false })
-      .limit(8);
-    if (error) return [];
-    return (data ?? []).map((r: any) => ({ showId: r.show_id, s: r.season ?? 0, e: r.episode ?? 0 }));
-  } catch { return []; }
-}
-
-/** Remove one show from the viewer's "You've looked up:" row — nulls the
- *  stamp on their own progress row (cross-device; a fresh lookup re-stamps).
- *  Tolerant like the stamp. */
-export async function clearReferenceLookup(userId: string, showId: string): Promise<void> {
+/** De-clutter X on the "You're watching:" shelf (CP1 2026-09-07): hides
+ *  the show from the shelf cross-device. Progress is untouched; a fresh
+ *  lookup (stamp below) clears the flag and brings the show back. */
+export async function hideFromWatchingShelf(userId: string, showId: string): Promise<void> {
   try {
     await supabase
       .from("progress")
-      .update({ last_looked_up_at: null })
+      .update({ shelf_hidden_at: new Date().toISOString() })
       .eq("user_id", userId)
       .eq("show_id", showId);
   } catch { /* tolerate */ }
 }
 
 /** Stamp "you've looked this up" on the viewer's own progress row — feeds
- *  the dashboard band's cross-device recent-lookups row (capped at read
- *  time). Tolerant: pre-migration or rowless shows just don't stamp. */
+ *  the watching shelf's recency sort, and un-hides a shelf-hidden show.
+ *  Tolerant: pre-migration or rowless shows just don't stamp. */
 export async function stampReferenceLookup(userId: string, showId: string): Promise<void> {
   try {
     await supabase
       .from("progress")
-      .update({ last_looked_up_at: new Date().toISOString() })
+      .update({ last_looked_up_at: new Date().toISOString(), shelf_hidden_at: null })
       .eq("user_id", userId)
       .eq("show_id", showId);
   } catch { /* tolerate */ }

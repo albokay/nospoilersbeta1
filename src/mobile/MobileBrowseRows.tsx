@@ -24,9 +24,12 @@ const EDGE = 16;             // = the mobile page's content padding
 export default function MobileBrowseRows({
   excludeTvmazeIds,
   onPick,
+  subLabels = false,
 }: {
   excludeTvmazeIds: Set<number>;
   onPick: (show: BrowseShow) => void;
+  /** Row titles drop a tier under a section heading (dashboard 2026-09-07). */
+  subLabels?: boolean;
 }) {
   const rows = useBrowseRows(excludeTvmazeIds);
   if (rows.length === 0) return null;
@@ -34,7 +37,7 @@ export default function MobileBrowseRows({
     <div style={{ padding: "8px 0 24px" }}>
       {rows.map((r) => (
         <div key={r.key} style={{ marginBottom: 26 }}>
-          <div style={rowTitle}>{r.title}</div>
+          <div style={subLabels ? { ...rowTitle, fontWeight: 600, fontStyle: "italic", fontSize: 13 } : rowTitle}>{r.title}</div>
           <div style={strip} className="m-browse-strip">
             {r.shows.map((s) => (
               <button key={s.tvmazeId} onClick={() => onPick(s)} title={s.name} aria-label={s.name} style={card}>

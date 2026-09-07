@@ -1644,6 +1644,19 @@ export default function DashboardPage() {
         // the space below the top bar so a sparse dashboard doesn't cling to
         // the top of the page (flex:1 fills the remaining height; content taller
         // than the space grows naturally and the page scrolls).
+        <>
+        {/* Page headlines ("Your shows" arc CP1, 2026-09-07): H1 + the
+            watch-groups section label, above the centered cluster block. */}
+        {!socialOnbActive && !postAccept && (
+          <>
+            <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: CANON.cream, textAlign: "center", margin: "26px 0 6px" }}>
+              Your dashboard
+            </h1>
+            <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CANON.cream, textAlign: "center", marginTop: 26 }}>
+              Your watch groups:
+            </div>
+          </>
+        )}
         <div style={dashboardCenter}>
           {/* 1:2 spacer ratio → content rests ~⅓ down (split between top-pinned
               and dead-center). Empty spacers shrink to 0 if content overflows,
@@ -1665,6 +1678,7 @@ export default function DashboardPage() {
           </div>
           <div style={{ flex: 2 }} />
         </div>
+        </>
       )}
       {/* ── The "How I Watch TV" card anchors to the reference band's top
             border (Alborz 2026-09-05): in-flow, its bottom sliding BEHIND

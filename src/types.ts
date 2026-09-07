@@ -180,6 +180,12 @@ export type ProgressEntry = {
   // ms — progress row's last update time. Used to order dashboard show buttons
   // by most-recently-updated. Optional (legacy fetches may omit it).
   progressUpdatedAt?: number;
+  // "Your shows" arc CP1 (2026-09-07): ms of the viewer's last reference
+  // lookup (drives the watching shelf's recency sort) and of the shelf-hide
+  // X (hidden while set; a fresh lookup clears it). Optional — legacy
+  // fetch fallback omits them.
+  lastLookedUpAt?: number;
+  shelfHiddenAt?: number;
 };
 
 // "Thoughts on..." pieces — show-agnostic reflective writing that lives on

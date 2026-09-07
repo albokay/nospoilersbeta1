@@ -399,6 +399,17 @@ export default function MobileDashboard() {
         <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
       ) : (
         <>
+          {/* Page headlines ("Your shows" arc CP1, 2026-09-07). */}
+          {!showSocialOnb && !postAccept && (
+            <>
+              <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 28, letterSpacing: -1, color: C.cream, textAlign: "center", margin: "18px 0 4px" }}>
+                Your dashboard
+              </h1>
+              <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: C.cream, textAlign: "center", margin: "18px 0 8px" }}>
+                Your watch groups:
+              </div>
+            </>
+          )}
           {/* ── Groups + pending invites ── */}
           {(railGroups.length > 0 || pendingInvites.length > 0) && (
             <div style={groupsWrap}>

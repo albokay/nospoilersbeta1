@@ -21,7 +21,7 @@ import type { ProgressEntry } from "../../types";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster, type TVmazeShow } from "../../lib/tvmaze";
 import { ensureCatalogShow } from "../../lib/browseCatalog";
 import type { BrowseShow } from "../../lib/db";
-import { ensureShowReference, fetchRecentLookups, stampReferenceLookup, clearReferenceLookup } from "../../lib/reference";
+import { ensureShowReference, stampReferenceLookup, hideFromWatchingShelf } from "../../lib/reference";
 import { upsertRewatchStatus } from "../../lib/db";
 import BrowseRows from "../BrowseRows";
 import MobileBrowseRows from "../../mobile/MobileBrowseRows";
@@ -54,15 +54,31 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
 
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
-  const [recents, setRecents] = useState<{ showId: string; s: number; e: number }[]>([]);
-
-  // De-clutter X per SHOW (Alborz rev 2026-09-05): drops that show from the
-  // row optimistically and clears its cross-device stamp; a fresh lookup
+  // De-clutter X per SHOW (CP1 2026-09-07): hides it from the watching
+  // shelf optimistically + cross-device. Progress untouched; a fresh lookup
   // brings it back.
-  function removeLookup(showId: string) {
-    setRecents((prev) => prev.filter((r) => r.showId !== showId));
-    if (user) clearReferenceLookup(user.id, showId); // fire-and-forget
+  function hideShow(showId: string) {
+    setProgress((prev) => {
+      const entry = prev[showId];
+      return entry ? { ...prev, [showId]: { ...entry, shelfHiddenAt: Date.now() } } : prev;
+    });
+    if (user) hideFromWatchingShelf(user.id, showId); // fire-and-forget
   }
+
+  // "You're watching:" (CP1 — replaces the You've-looked-up row): every show
+  // with the viewer's own progress at S1E1+, minus shelf-hidden ones, most
+  // recent activity first (lookup stamp, else progress update).
+  const watching = useMemo(() => {
+    return shows
+      .filter((show) => {
+        const p = progress[show.id];
+        return p && (p.s > 1 || (p.s === 1 && p.e >= 1)) && !p.shelfHiddenAt;
+      })
+      .sort((a, b) => {
+        const act = (id: string) => Math.max(progress[id]?.lastLookedUpAt ?? 0, progress[id]?.progressUpdatedAt ?? 0);
+        return act(b.id) - act(a.id);
+      });
+  }, [shows, progress]);
   const [posters, setPosters] = useState<Record<string, string | null>>({});
 
   // Search lives in an OVERLAY card (rev 2026-09-05 — the group room's
@@ -86,23 +102,21 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     let cancelled = false;
     fetchShows().then((rows) => { if (!cancelled) setShows(rows); }).catch(() => {});
     fetchProgress(user.id).then((p) => { if (!cancelled) setProgress(p); }).catch(() => {});
-    fetchRecentLookups(user.id).then((r) => { if (!cancelled) setRecents(r); }).catch(() => {});
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  // Posters for the recent row (TVMaze medium, module-cached).
+  // Posters for the watching shelf (TVMaze medium, module-cached).
   useEffect(() => {
     let cancelled = false;
-    for (const r of recents) {
-      const show = shows.find((s) => s.id === r.showId);
-      if (!show?.tvmazeId || posters[r.showId] !== undefined) continue;
+    for (const show of watching) {
+      if (!show.tvmazeId || posters[show.id] !== undefined) continue;
       fetchTvmazePoster(show.tvmazeId).then((url) => {
-        if (!cancelled) setPosters((prev) => ({ ...prev, [r.showId]: url }));
+        if (!cancelled) setPosters((prev) => ({ ...prev, [show.id]: url }));
       });
     }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recents, shows]);
+  }, [watching]);
 
   // Search — the established catalog + debounced-TVMaze pattern.
   const catalogMatches = useMemo(() => {
@@ -231,9 +245,20 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     // desktop width matches the browse window (1178) — heading/sub/search
     // self-cap narrower and center inside.
     <div style={{ width: "100%", maxWidth: mobile ? undefined : 1178, margin: "0 auto" }}>
-      {/* Locked copy (Alborz 2026-09-05). */}
-      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: 0, textAlign: "center" }}>
-        Need to look something up without getting spoiled?
+      {/* "Your shows:" — the zone's section heading + locked subhead (Alborz
+          2026-09-07): centered Header 2 over the whole personal-shows world. */}
+      <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center", margin: 0 }}>
+        Your shows:
+      </div>
+      <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 12, color: CREAM, opacity: 0.9, textAlign: "center", margin: "6px auto 0", maxWidth: 520 }}>
+        Your space to collect, log, and remember your TV. This becomes the profile your friends see.
+      </div>
+      {/* Locked pitch (Alborz 2026-09-07 rev): desktop breaks evenly after
+          "shows"; mobile balance-wraps (no orphans at any width). */}
+      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: "30px 0 0", textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
+        {mobile
+          ? <>Need to look something up about the shows you&rsquo;re watching without getting spoiled?</>
+          : <>Need to look something up about the shows<br />you&rsquo;re watching without getting spoiled?</>}
       </h2>
       {/* Sub-head split (Alborz): desktop breaks after "detail —"; mobile
           can't fit that line, so it balance-wraps instead — near-equal
@@ -257,12 +282,12 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         </button>
       </div>
 
-      {/* "You've looked up:" — cross-device, newest first, capped at 8.
+      {/* "You're watching:" — your S1E1+ shows, recent activity first.
           Tapping goes STRAIGHT to the reference (no card — Alborz). */}
-      {recents.length > 0 && (
-        <div style={{ marginTop: 28 }}>
-          <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13, color: CREAM, marginBottom: 10 }}>
-            You&rsquo;ve looked up:
+      {watching.length > 0 && (
+        <div style={{ marginTop: 34 }}>
+          <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
+            You&rsquo;re watching:
           </div>
           {/* Rest = cream outline, no fill; hover = Accent fill, no outline;
               active returns to rest (Alborz 2026-09-05). The transparent
@@ -273,15 +298,14 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
             .ref-lookup-x:active { background: transparent; border-color: ${CREAM}; }
           `}</style>
           <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
-            {recents.map((r) => {
-              const show = shows.find((x) => x.id === r.showId);
-              if (!show) return null;
-              const poster = posters[r.showId];
+            {watching.map((show) => {
+              const r = progress[show.id]!;
+              const poster = posters[show.id];
               const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
               return (
-                <div key={r.showId} style={{ position: "relative", flexShrink: 0, width: w }}>
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: w }}>
                   <button
-                    onClick={() => navigate(`${pathPrefix}/${r.showId}`, { state: { openReference: true } })}
+                    onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })}
                     style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
                   >
                     {poster ? (
@@ -300,9 +324,9 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                       can't express hover/active). */}
                   <button
                     className="ref-lookup-x"
-                    onClick={() => removeLookup(r.showId)}
-                    aria-label={`Remove ${show.name} from your lookups`}
-                    title="Remove from your lookups"
+                    onClick={() => hideShow(show.id)}
+                    aria-label={`Hide ${show.name} from this shelf`}
+                    title="Hide from this shelf"
                     style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
                   >
                     <X size={13} color={CREAM} />
@@ -314,11 +338,16 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         </div>
       )}
 
-      {/* Browse rows — the dashboard asks the PERSONAL question. */}
-      <div style={{ marginTop: 28 }}>
+      {/* Browse rows — the dashboard asks the PERSONAL question. The
+          umbrella heading ties them to YOUR lists (CP1); row names drop a
+          tier beneath it. */}
+      <div style={{ marginTop: 44 }}>
+        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 4 }}>
+          Find something to watch:
+        </div>
         {mobile
-          ? <MobileBrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} />
-          : <BrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} />}
+          ? <MobileBrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels />
+          : <BrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels />}
       </div>
 
       {/* ── The search overlay — the group room's search grammar: dim +
