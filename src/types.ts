@@ -190,6 +190,9 @@ export type ProgressEntry = {
   // wanted_at set AND progress still below S1E1 (starting the show migrates
   // it to the watching shelf automatically).
   wantedAt?: number;
+  // CP4 (2026-09-07): the owner's essential episodes for a canon show —
+  // epIndex ints (s*10000+e), starred on the reference page.
+  essentialEps?: number[];
 };
 
 // "Thoughts on..." pieces — show-agnostic reflective writing that lives on

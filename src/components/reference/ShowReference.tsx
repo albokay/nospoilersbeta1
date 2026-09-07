@@ -7,13 +7,13 @@
 // the dial reaches it — "no 0-state reference page").
 
 import React, { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Star } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setCanonPin, setShelfBlurb } from "../../lib/db";
+import { setCanonPin, setShelfBlurb, setEssentialEps } from "../../lib/db";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
@@ -53,6 +53,8 @@ export default function ShowReference({
   const [takeDraft, setTakeDraft] = useState("");
   const [editingTake, setEditingTake] = useState(false);
   const [canonBusy, setCanonBusy] = useState(false);
+  // CP4: the owner's essential-episode stars (canon shows only) — epIndex set.
+  const [essentials, setEssentials] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +67,7 @@ export default function ShowReference({
     setCanonOn(null);
     setCanonTake("");
     setEditingTake(false);
+    setEssentials(new Set());
     ensureShowReference(showId)
       .then((r) => { if (!cancelled) setRef(r); })
       .catch(() => { if (!cancelled) setFailed(true); });
@@ -78,7 +81,7 @@ export default function ShowReference({
     let cancelled = false;
     supabase
       .from("progress")
-      .select("canon_pin, canon_take")
+      .select("canon_pin, canon_take, essential_eps")
       .eq("user_id", user.id)
       .eq("show_id", showId)
       .maybeSingle()
@@ -86,6 +89,7 @@ export default function ShowReference({
         if (cancelled) return;
         setCanonOn(!!data?.canon_pin);
         setCanonTake(data?.canon_take ?? "");
+        setEssentials(new Set(Array.isArray(data?.essential_eps) ? data.essential_eps : []));
       });
     return () => { cancelled = true; };
   }, [showId, user?.id]);
@@ -114,6 +118,15 @@ export default function ShowReference({
     } catch (e) { console.error("[reference] remove-from-canon failed", e); }
     finally { setCanonBusy(false); }
   }
+  function toggleEssential(s: number, e: number) {
+    if (!user || !canonOn) return;
+    const key = idx(s, e);
+    const next = new Set(essentials);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    setEssentials(next);
+    setEssentialEps(user.id, showId, [...next]).catch(() => { /* tolerate */ });
+  }
+
   async function saveTake() {
     if (!user || canonBusy) return;
     setCanonBusy(true);
@@ -263,6 +276,11 @@ export default function ShowReference({
                 )}
                 <button style={canonLink} onClick={removeFromCanon} disabled={canonBusy}>remove</button>
               </div>
+              {essentials.size === 0 && !editingTake && (
+                <div style={{ fontStyle: "italic", fontSize: 12, opacity: 0.85, marginTop: 6 }}>
+                  (star episodes below to build your essentials list)
+                </div>
+              )}
               {editingTake ? (
                 <div style={{ marginTop: 10, maxWidth: 480 }}>
                   <textarea
@@ -342,6 +360,16 @@ export default function ShowReference({
                 ))}
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: mobile ? 14 : 15 }}>
+                    {user && canonOn && (
+                      <button
+                        onClick={() => toggleEssential(ep.s, ep.e)}
+                        aria-pressed={essentials.has(idx(ep.s, ep.e))}
+                        title={essentials.has(idx(ep.s, ep.e)) ? "Un-star this essential" : "Star as an essential episode"}
+                        style={{ background: "transparent", border: "none", padding: 2, marginRight: 6, cursor: "pointer", lineHeight: 0, verticalAlign: "middle" }}
+                      >
+                        <Star size={15} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
+                      </button>
+                    )}
                     Episode {ep.e} · {ep.title}
                     {ep.airDate && <span style={{ fontWeight: 500, opacity: 0.7 }}>  ·  {ep.airDate}</span>}
                   </div>

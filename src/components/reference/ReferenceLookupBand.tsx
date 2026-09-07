@@ -21,7 +21,7 @@ import type { ProgressEntry } from "../../types";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster, type TVmazeShow } from "../../lib/tvmaze";
 import { ensureCatalogShow } from "../../lib/browseCatalog";
 import type { BrowseShow } from "../../lib/db";
-import { ensureShowReference, stampReferenceLookup, hideFromWatchingShelf, markWantToWatch, clearWantToWatch } from "../../lib/reference";
+import { ensureShowReference, stampReferenceLookup, hideFromWatchingShelf, markWantToWatch, clearWantToWatch, type ShowReferenceData } from "../../lib/reference";
 import { upsertRewatchStatus, setCanonPin } from "../../lib/db";
 import BrowseRows from "../BrowseRows";
 import MobileBrowseRows from "../../mobile/MobileBrowseRows";
@@ -48,7 +48,7 @@ const cardCenterColumn: React.CSSProperties = {
 };
 
 export default function ReferenceLookupBand({ mobile = false }: { mobile?: boolean }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const pathPrefix = mobile ? "/m/show-room/private" : "/show-room/private";
 
@@ -130,6 +130,17 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     });
     // Pin off only — the blurb stays stored (re-adding restores it).
     if (user) setCanonPin(user.id, showId, false).catch(() => {});
+  }
+
+  // The shareable "{Name}'s TV Canon" card (CP4) — opens from a canon
+  // card's essentials line; screenshot-friendly. Episode titles resolve
+  // from the module-cached reference blob.
+  const [shareShow, setShareShow] = useState<Show | null>(null);
+  const [shareRef, setShareRef] = useState<ShowReferenceData | null>(null);
+  function openShare(show: Show) {
+    setShareShow(show);
+    setShareRef(null);
+    ensureShowReference(show.id).then((r) => setShareRef(r)).catch(() => {});
   }
   const [posters, setPosters] = useState<Record<string, string | null>>({});
 
@@ -444,27 +455,41 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               const take = progress[show.id]?.canonTake;
               const pw = mobile ? 96 : 110, ph = mobile ? 136 : 156;
               return (
-                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: mobile ? 300 : 400 }}>
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: mobile ? 300 : 400, display: "flex", gap: 14, alignItems: "flex-start" }}>
                   <button
                     onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })}
-                    style={{ display: "flex", gap: 14, alignItems: "flex-start", width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM }}
+                    style={{ flex: "0 0 auto", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
                   >
                     {poster ? (
-                      <img src={poster} alt={show.name} loading="lazy" style={{ flex: "0 0 auto", width: pw, height: ph, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                      <img src={poster} alt={show.name} loading="lazy" style={{ width: pw, height: ph, objectFit: "cover", borderRadius: 12, display: "block" }} />
                     ) : (
-                      <div style={{ flex: "0 0 auto", width: pw, height: ph, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+                      <div style={{ width: pw, height: ph, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
                         <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
                       </div>
                     )}
-                    <div style={{ minWidth: 0, paddingRight: 20 }}>
+                  </button>
+                  <div style={{ minWidth: 0, paddingRight: 20, color: CREAM }}>
+                    <button
+                      onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })}
+                      style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM }}
+                    >
                       <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, lineHeight: 1.2, margin: "2px 0 6px" }}>{show.name}</div>
                       {take && (
                         <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, lineHeight: 1.5, opacity: 0.95 }}>
                           &ldquo;{take}&rdquo;
                         </div>
                       )}
-                    </div>
-                  </button>
+                    </button>
+                    {(progress[show.id]?.essentialEps?.length ?? 0) > 0 && (
+                      <button
+                        onClick={() => openShare(show)}
+                        title="Open your shareable essentials card"
+                        style={{ background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline" }}
+                      >
+                        ★ {progress[show.id]!.essentialEps!.length} essential episode{progress[show.id]!.essentialEps!.length === 1 ? "" : "s"}
+                      </button>
+                    )}
+                  </div>
                   <button
                     className="ref-lookup-x"
                     onClick={() => removeCanon(show.id)}
@@ -520,6 +545,57 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           </div>
         </div>
       )}
+
+      {/* ── The shareable "{Name}'s TV Canon" card (CP4) — cream, centered,
+            screenshot-friendly; outside-click closes. ── */}
+      {shareShow && (() => {
+        const entry = progress[shareShow.id];
+        const eps = [...(entry?.essentialEps ?? [])].sort((a, b) => a - b);
+        const shareName = (profile?.display_name || profile?.username || "My").trim();
+        return (
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(26,58,74,0.25)", overflowY: "auto" }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShareShow(null); }}
+          >
+            <div
+              style={{ minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 16px", boxSizing: "border-box" }}
+              onClick={(e) => { if (e.target === e.currentTarget) setShareShow(null); }}
+            >
+              <div style={{ background: CREAM, borderRadius: 24, padding: "32px 36px", width: "min(420px, 92vw)", boxSizing: "border-box", boxShadow: "0 12px 36px rgba(0,0,0,0.25)" }}>
+                <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CANON.dark }}>{shareName}&rsquo;s TV Canon</div>
+                <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, color: CANON.identity, margin: "2px 0 10px" }}>{shareShow.name}</div>
+                {entry?.canonTake && (
+                  <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 14, color: CANON.dark, lineHeight: 1.5, marginBottom: 18 }}>
+                    &ldquo;{entry.canonTake}&rdquo;
+                  </div>
+                )}
+                <div style={{ borderTop: "1px solid rgba(26,58,74,0.15)", paddingTop: 14 }}>
+                  <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CANON.dark, marginBottom: 10 }}>
+                    essential episodes according to {shareName}:
+                  </div>
+                  {eps.map((k) => {
+                    const es = Math.floor(k / 10000), ee = k % 10000;
+                    const title = shareRef?.seasons.find((se) => se.n === es)?.episodes.find((ep) => ep.e === ee)?.title;
+                    return (
+                      <div key={k} style={{ display: "flex", gap: 10, alignItems: "baseline", fontFamily: '"Inter", sans-serif', fontSize: 14, color: CANON.dark, marginBottom: 8 }}>
+                        <span style={{ color: CANON.accent, fontSize: 13 }}>★</span>
+                        <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>S{es} E{ee}</span>
+                        {title ? <span>{title}</span> : (!shareRef ? <LoadingDots /> : null)}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 20 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 4, background: CANON.accent, display: "inline-block" }} />
+                  <span style={{ width: 12, height: 12, borderRadius: 4, background: CANON.alert, display: "inline-block", marginLeft: -4 }} />
+                  <span style={{ width: 12, height: 12, borderRadius: 4, background: CANON.identity, display: "inline-block", marginLeft: -4 }} />
+                  <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontStyle: "italic", fontSize: 13, color: CANON.dark }}>sidebar</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── The first-tap card (locked copy) — the group opt-in modal's EXACT
             grammar (rev 2 2026-09-05): scrollable two-layer overlay centering

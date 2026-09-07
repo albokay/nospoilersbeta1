@@ -1273,7 +1273,7 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
   {
     const res = await supabase
       .from("progress")
-      .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason, shelf_override, shelf_position, updated_at, last_looked_up_at, shelf_hidden_at, wanted_at")
+      .select("show_id, season, episode, is_rewatching, rewatch_season, rewatch_episode, highest_season, highest_episode, stopped_watching, canon_pin, watching_quote, want_reason, canon_take, stopped_reason, shelf_override, shelf_position, updated_at, last_looked_up_at, shelf_hidden_at, wanted_at, essential_eps")
       .eq("user_id", userId);
     if (res.error) {
       // Fallback WITHOUT the newer columns (updated_at / shelf_*) so a missing
@@ -1315,6 +1315,7 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
       lastLookedUpAt:  row.last_looked_up_at ? new Date(row.last_looked_up_at).getTime() : undefined,
       shelfHiddenAt:   row.shelf_hidden_at ? new Date(row.shelf_hidden_at).getTime() : undefined,
       wantedAt:        row.wanted_at ? new Date(row.wanted_at).getTime() : undefined,
+      essentialEps:    Array.isArray(row.essential_eps) ? row.essential_eps : undefined,
     };
   }
   return result;
@@ -1422,6 +1423,21 @@ export async function removeShowFromProfile(
   const { error } = await supabase
     .from("progress")
     .delete()
+    .eq("user_id", userId)
+    .eq("show_id", showId);
+  if (error) throw error;
+}
+
+// CP4 (2026-09-07): the owner's essential-episode stars for a canon show —
+// epIndex ints (s*10000+e) on their own progress row. Empty → NULL.
+export async function setEssentialEps(
+  userId: string,
+  showId: string,
+  eps: number[]
+): Promise<void> {
+  const { error } = await supabase
+    .from("progress")
+    .update({ essential_eps: eps.length ? [...eps].sort((a, b) => a - b) : null })
     .eq("user_id", userId)
     .eq("show_id", showId);
   if (error) throw error;
