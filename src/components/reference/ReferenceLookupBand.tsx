@@ -22,7 +22,7 @@ import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster,
 import { ensureCatalogShow } from "../../lib/browseCatalog";
 import type { BrowseShow } from "../../lib/db";
 import { ensureShowReference, stampReferenceLookup, hideFromWatchingShelf, markWantToWatch, clearWantToWatch } from "../../lib/reference";
-import { upsertRewatchStatus } from "../../lib/db";
+import { upsertRewatchStatus, setCanonPin } from "../../lib/db";
 import BrowseRows from "../BrowseRows";
 import MobileBrowseRows from "../../mobile/MobileBrowseRows";
 import OneSelectProgress from "../OneSelectProgress";
@@ -110,6 +110,27 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     });
     if (user) clearWantToWatch(user.id, showId); // fire-and-forget
   }
+
+  // "Your canon:" (CP3) — canon-pinned shows (curated on the reference page;
+  // this shelf displays). Old-profile ordering honored, then alphabetical.
+  const canonList = useMemo(() => {
+    return shows
+      .filter((show) => progress[show.id]?.canonPin)
+      .sort((a, b) => {
+        const pa = progress[a.id]?.shelfPosition ?? Infinity;
+        const pb = progress[b.id]?.shelfPosition ?? Infinity;
+        if (pa !== pb) return pa - pb;
+        return a.name.localeCompare(b.name);
+      });
+  }, [shows, progress]);
+  function removeCanon(showId: string) {
+    setProgress((prev) => {
+      const entry = prev[showId];
+      return entry ? { ...prev, [showId]: { ...entry, canonPin: false } } : prev;
+    });
+    // Pin off only — the blurb stays stored (re-adding restores it).
+    if (user) setCanonPin(user.id, showId, false).catch(() => {});
+  }
   const [posters, setPosters] = useState<Record<string, string | null>>({});
 
   // Search lives in an OVERLAY card (rev 2026-09-05 — the group room's
@@ -139,7 +160,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   // Posters for the watching shelf (TVMaze medium, module-cached).
   useEffect(() => {
     let cancelled = false;
-    for (const show of [...watching, ...wantList]) {
+    for (const show of [...watching, ...wantList, ...canonList]) {
       if (!show.tvmazeId || posters[show.id] !== undefined) continue;
       fetchTvmazePoster(show.tvmazeId).then((url) => {
         if (!cancelled) setPosters((prev) => ({ ...prev, [show.id]: url }));
@@ -147,7 +168,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watching, wantList]);
+  }, [watching, wantList, canonList]);
 
   // Search — the established catalog + debounced-TVMaze pattern.
   const catalogMatches = useMemo(() => {
@@ -276,6 +297,14 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     // desktop width matches the browse window (1178) — heading/sub/search
     // self-cap narrower and center inside.
     <div style={{ width: "100%", maxWidth: mobile ? undefined : 1178, margin: "0 auto" }}>
+      {/* Tile-X chip grammar (all three shelves): rest = cream outline, no
+          fill; hover = Accent fill, no outline; active returns to rest
+          (Alborz 2026-09-05). Transparent hover border keeps the size stable. */}
+      <style>{`
+        .ref-lookup-x { background: transparent; border: 2px solid ${CREAM}; }
+        .ref-lookup-x:hover { background: ${CANON.accent}; border-color: transparent; }
+        .ref-lookup-x:active { background: transparent; border-color: ${CREAM}; }
+      `}</style>
       {/* "Your shows:" — the zone's section heading + locked subhead (Alborz
           2026-09-07): centered Header 2 over the whole personal-shows world. */}
       <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center", margin: 0 }}>
@@ -320,14 +349,6 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
             You&rsquo;re watching:
           </div>
-          {/* Rest = cream outline, no fill; hover = Accent fill, no outline;
-              active returns to rest (Alborz 2026-09-05). The transparent
-              hover border keeps the chip's size stable. */}
-          <style>{`
-            .ref-lookup-x { background: transparent; border: 2px solid ${CREAM}; }
-            .ref-lookup-x:hover { background: ${CANON.accent}; border-color: transparent; }
-            .ref-lookup-x:active { background: transparent; border-color: ${CREAM}; }
-          `}</style>
           <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {watching.map((show) => {
               const r = progress[show.id]!;
@@ -400,6 +421,56 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                     aria-label={`Remove ${show.name} from your want-to-watch list`}
                     title="Remove from this list"
                     style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                  >
+                    <X size={13} color={CREAM} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* "Your canon:" (CP3) — poster + blurb cards (curation lives on the
+          reference page; tap goes there). X un-pins; the blurb survives. */}
+      {canonList.length > 0 && (
+        <div style={{ marginTop: 34 }}>
+          <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
+            Your canon:
+          </div>
+          <div style={{ display: "flex", gap: 18, overflowX: "auto", paddingBottom: 6 }}>
+            {canonList.map((show) => {
+              const poster = posters[show.id];
+              const take = progress[show.id]?.canonTake;
+              const pw = mobile ? 96 : 110, ph = mobile ? 136 : 156;
+              return (
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: mobile ? 300 : 400 }}>
+                  <button
+                    onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })}
+                    style={{ display: "flex", gap: 14, alignItems: "flex-start", width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM }}
+                  >
+                    {poster ? (
+                      <img src={poster} alt={show.name} loading="lazy" style={{ flex: "0 0 auto", width: pw, height: ph, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                    ) : (
+                      <div style={{ flex: "0 0 auto", width: pw, height: ph, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                      </div>
+                    )}
+                    <div style={{ minWidth: 0, paddingRight: 20 }}>
+                      <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, lineHeight: 1.2, margin: "2px 0 6px" }}>{show.name}</div>
+                      {take && (
+                        <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, lineHeight: 1.5, opacity: 0.95 }}>
+                          &ldquo;{take}&rdquo;
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                  <button
+                    className="ref-lookup-x"
+                    onClick={() => removeCanon(show.id)}
+                    aria-label={`Remove ${show.name} from your canon`}
+                    title="Remove from your canon"
+                    style={{ position: "absolute", top: 6, left: pw - 28, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
                   >
                     <X size={13} color={CREAM} />
                   </button>

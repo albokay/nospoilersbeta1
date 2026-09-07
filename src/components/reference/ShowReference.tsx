@@ -12,6 +12,8 @@ import { CANON } from "../../styles/canon";
 import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
+import { supabase } from "../../lib/supabaseClient";
+import { setCanonPin, setShelfBlurb } from "../../lib/db";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
@@ -43,6 +45,14 @@ export default function ShowReference({
   // closes). Holds the SMALL url; the render upgrades it to the source's
   // bigger size and falls back on a load error.
   const [stillOpen, setStillOpen] = useState<string | null>(null);
+  // Canon (CP3 2026-09-07): the owner's add-to-canon + blurb controls live
+  // HERE — the dashboard's canon shelf only displays. Reuses the old
+  // profile's columns, so pre-restructure canon picks resurface.
+  const [canonOn, setCanonOn] = useState<boolean | null>(null); // null = loading
+  const [canonTake, setCanonTake] = useState("");
+  const [takeDraft, setTakeDraft] = useState("");
+  const [editingTake, setEditingTake] = useState(false);
+  const [canonBusy, setCanonBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +62,9 @@ export default function ShowReference({
     setCastEpisode(null);
     setOpenSeasons(null);
     setStillOpen(null);
+    setCanonOn(null);
+    setCanonTake("");
+    setEditingTake(false);
     ensureShowReference(showId)
       .then((r) => { if (!cancelled) setRef(r); })
       .catch(() => { if (!cancelled) setFailed(true); });
@@ -59,6 +72,58 @@ export default function ShowReference({
     if (user) stampReferenceLookup(user.id, showId);
     return () => { cancelled = true; };
   }, [showId, user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    supabase
+      .from("progress")
+      .select("canon_pin, canon_take")
+      .eq("user_id", user.id)
+      .eq("show_id", showId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setCanonOn(!!data?.canon_pin);
+        setCanonTake(data?.canon_take ?? "");
+      });
+    return () => { cancelled = true; };
+  }, [showId, user?.id]);
+
+  async function addToCanon() {
+    if (!user || canonBusy) return;
+    setCanonBusy(true);
+    try {
+      await setCanonPin(user.id, showId, true);
+      setCanonOn(true);
+      // Invite the blurb right away — the moment of adding is when the
+      // "why" is freshest.
+      setTakeDraft(canonTake);
+      setEditingTake(true);
+    } catch (e) { console.error("[reference] add-to-canon failed", e); }
+    finally { setCanonBusy(false); }
+  }
+  async function removeFromCanon() {
+    if (!user || canonBusy) return;
+    setCanonBusy(true);
+    try {
+      // Pin off only — the blurb stays stored, so re-adding restores it.
+      await setCanonPin(user.id, showId, false);
+      setCanonOn(false);
+      setEditingTake(false);
+    } catch (e) { console.error("[reference] remove-from-canon failed", e); }
+    finally { setCanonBusy(false); }
+  }
+  async function saveTake() {
+    if (!user || canonBusy) return;
+    setCanonBusy(true);
+    try {
+      await setShelfBlurb(user.id, showId, "canon_take", takeDraft);
+      setCanonTake(takeDraft.trim());
+      setEditingTake(false);
+    } catch (e) { console.error("[reference] canon blurb save failed", e); }
+    finally { setCanonBusy(false); }
+  }
 
   const vIdx = idx(viewerProgress.s, viewerProgress.e);
 
@@ -152,6 +217,12 @@ export default function ShowReference({
     margin: "36px 0 14px",
   };
   const small: React.CSSProperties = { fontSize: 12, color: CREAM, opacity: 0.85 };
+  // Canon control links (edit/remove/cancel) — the crew-link grammar.
+  const canonLink: React.CSSProperties = {
+    background: "transparent", border: "none", padding: 0, cursor: "pointer",
+    color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic",
+    fontWeight: 400, fontSize: 13, textDecoration: "underline",
+  };
   // Crew names read exactly like the line always did, just underlined + tappable.
   const crewLink: React.CSSProperties = {
     background: "transparent", border: "none", padding: 0, cursor: "pointer",
@@ -168,6 +239,57 @@ export default function ShowReference({
       {/* "created by …" renders in the SHOW PAGE HEADER next to the show
           name (rev 3 — swaps with the "with …" members line per tab);
           attribution moved to the page bottom. */}
+
+      {/* ── Canon controls (owner-only surface — this page IS the curation
+            spot; the dashboard shelf displays). ── */}
+      {user && canonOn !== null && (
+        <div style={{ marginBottom: 32 }}>
+          {!canonOn ? (
+            <button
+              onClick={addToCanon}
+              disabled={canonBusy}
+              style={{ background: "transparent", border: `2px solid ${CREAM}`, color: CREAM, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              add to your canon
+            </button>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 14, fontWeight: 700, fontSize: 14 }}>
+                <span>★ in your canon</span>
+                {!editingTake && (
+                  <button style={canonLink} onClick={() => { setTakeDraft(canonTake); setEditingTake(true); }}>
+                    {canonTake ? "edit your line" : "add your line"}
+                  </button>
+                )}
+                <button style={canonLink} onClick={removeFromCanon} disabled={canonBusy}>remove</button>
+              </div>
+              {editingTake ? (
+                <div style={{ marginTop: 10, maxWidth: 480 }}>
+                  <textarea
+                    value={takeDraft}
+                    onChange={(ev) => setTakeDraft(ev.target.value)}
+                    maxLength={280}
+                    rows={2}
+                    autoFocus
+                    placeholder="Why this show? One or two lines for your profile."
+                    style={{ width: "100%", boxSizing: "border-box", border: "none", borderRadius: 12, padding: "10px 12px", fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, resize: "vertical" }}
+                  />
+                  <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 8 }}>
+                    <button onClick={saveTake} disabled={canonBusy} style={{ border: "none", background: CANON.identity, color: CREAM, fontWeight: 700, fontSize: 13, padding: "8px 26px", borderRadius: 65, cursor: "pointer", fontFamily: '"Inter", sans-serif' }}>
+                      save
+                    </button>
+                    <button style={canonLink} onClick={() => setEditingTake(false)}>cancel</button>
+                  </div>
+                </div>
+              ) : canonTake ? (
+                <div style={{ fontStyle: "italic", fontSize: 13, lineHeight: 1.5, marginTop: 8, maxWidth: 480, opacity: 0.95 }}>
+                  &ldquo;{canonTake}&rdquo;
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      )}
 
       {/* ── Previously on: watched episodes only ── */}
       <h2 style={sectionH}>Previously on {ref.showName}:</h2>
