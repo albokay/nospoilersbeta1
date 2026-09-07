@@ -22,7 +22,7 @@ import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster,
 import { ensureCatalogShow } from "../../lib/browseCatalog";
 import type { BrowseShow } from "../../lib/db";
 import { ensureShowReference, stampReferenceLookup, hideFromWatchingShelf, markWantToWatch, clearWantToWatch, type ShowReferenceData } from "../../lib/reference";
-import { upsertRewatchStatus, setCanonPin } from "../../lib/db";
+import { upsertRewatchStatus, setCanonPin, setShelfBlurb } from "../../lib/db";
 import BrowseRows from "../BrowseRows";
 import MobileBrowseRows from "../../mobile/MobileBrowseRows";
 import OneSelectProgress from "../OneSelectProgress";
@@ -65,14 +65,25 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     if (user) hideFromWatchingShelf(user.id, showId); // fire-and-forget
   }
 
+  // At the show's last catalog episode = finished (Alborz 2026-09-07: airing
+  // status doesn't matter — caught-up-and-waiting counts as finished; a new
+  // episode landing in the catalog moves the show back to Watching on its own).
+  const atLatest = (show: Show) => {
+    const p = progress[show.id];
+    const seasons = (show as any).seasons as number[] | undefined;
+    if (!p || !seasons?.length) return false;
+    const ls = seasons.length, le = seasons[ls - 1] ?? 1;
+    return p.s > ls || (p.s === ls && p.e >= le);
+  };
+
   // "You're watching:" (CP1 — replaces the You've-looked-up row): every show
-  // with the viewer's own progress at S1E1+, minus shelf-hidden ones, most
-  // recent activity first (lookup stamp, else progress update).
+  // with the viewer's own progress at S1E1+ and BELOW the latest episode,
+  // minus shelf-hidden ones, most recent activity first.
   const watching = useMemo(() => {
     return shows
       .filter((show) => {
         const p = progress[show.id];
-        return p && (p.s > 1 || (p.s === 1 && p.e >= 1)) && !p.shelfHiddenAt;
+        return p && (p.s > 1 || (p.s === 1 && p.e >= 1)) && !p.shelfHiddenAt && !atLatest(show);
       })
       .sort((a, b) => {
         const act = (id: string) => Math.max(progress[id]?.lastLookedUpAt ?? 0, progress[id]?.progressUpdatedAt ?? 0);
@@ -132,6 +143,68 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     if (user) setCanonPin(user.id, showId, false).catch(() => {});
   }
 
+  // "You've finished:" (2026-09-07) — at the latest catalog episode, not yet
+  // canon (canon graduates a show OFF this shelf), not hidden; recent first.
+  const finishedList = useMemo(() => {
+    return shows
+      .filter((show) => {
+        const p = progress[show.id];
+        return p && (p.s > 1 || (p.s === 1 && p.e >= 1)) && !p.shelfHiddenAt && !p.canonPin && atLatest(show);
+      })
+      .sort((a, b) => (progress[b.id]?.progressUpdatedAt ?? 0) - (progress[a.id]?.progressUpdatedAt ?? 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shows, progress]);
+
+  // The canon card modal (2026-09-07) — canon is curated from the dashboard
+  // too: add (from the canon +/search or a finished tile's graduate line) or
+  // edit an existing card's blurb. ADDING also sets progress to the show's
+  // latest catalog episode (canon means you've seen it all — the card says
+  // so); editing never touches progress.
+  const [canonCard, setCanonCard] = useState<{ show: Show | null; name: string; adding: boolean } | null>(null);
+  const [canonDraft, setCanonDraft] = useState("");
+  const [canonBusy, setCanonBusy] = useState(false);
+  function openCanonCard(show: Show) {
+    const entry = progress[show.id];
+    setCanonDraft(entry?.canonTake ?? "");
+    setCanonCard({ show, name: show.name, adding: !entry?.canonPin });
+    setSearchOpen(false);
+    setQuery("");
+    setTvResults([]);
+  }
+  async function confirmCanon() {
+    if (!user || !canonCard?.show || canonBusy) return;
+    const show = canonCard.show;
+    setCanonBusy(true);
+    try {
+      let jumped: { s: number; e: number } | null = null;
+      if (canonCard.adding) {
+        const seasons = (show as any).seasons as number[] | undefined;
+        if (seasons?.length) {
+          const ls = seasons.length, le = seasons[ls - 1] ?? 1;
+          const p = progress[show.id];
+          const cur = p ? p.s * 10000 + p.e : 0;
+          if (ls * 10000 + le > cur) {
+            jumped = { s: ls, e: le };
+            await upsertRewatchStatus(user.id, show.id, { s: ls, e: le, highestS: ls, highestE: le });
+          }
+        }
+        await setCanonPin(user.id, show.id, true);
+      }
+      await setShelfBlurb(user.id, show.id, "canon_take", canonDraft);
+      setProgress((prev) => ({
+        ...prev,
+        [show.id]: {
+          ...(prev[show.id] ?? { s: 0, e: 0 }),
+          ...(jumped ? { s: jumped.s, e: jumped.e, highestS: jumped.s, highestE: jumped.e } : {}),
+          canonPin: true,
+          canonTake: canonDraft.trim() || undefined,
+        },
+      }));
+      setCanonCard(null);
+    } catch (e) { console.error("[ref-band] canon card failed", e); }
+    finally { setCanonBusy(false); }
+  }
+
   // The shareable "{Name}'s TV Canon" card (CP4) — opens from a canon
   // card's essentials line; screenshot-friendly. Episode titles resolve
   // from the module-cached reference blob.
@@ -145,8 +218,11 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   const [posters, setPosters] = useState<Record<string, string | null>>({});
 
   // Search lives in an OVERLAY card (rev 2026-09-05 — the group room's
-  // search grammar; inline results were pushing the page around).
+  // search grammar; inline results were pushing the page around). "canon"
+  // mode (opened from the canon shelf's +) routes picks to the canon card
+  // instead of the how-far card.
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchMode, setSearchMode] = useState<"lookup" | "canon">("lookup");
   const [query, setQuery] = useState("");
   const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
   const [busyAdd, setBusyAdd] = useState(false);
@@ -171,7 +247,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   // Posters for the watching shelf (TVMaze medium, module-cached).
   useEffect(() => {
     let cancelled = false;
-    for (const show of [...watching, ...wantList, ...canonList]) {
+    for (const show of [...watching, ...wantList, ...canonList, ...finishedList]) {
       if (!show.tvmazeId || posters[show.id] !== undefined) continue;
       fetchTvmazePoster(show.tvmazeId).then((url) => {
         if (!cancelled) setPosters((prev) => ({ ...prev, [show.id]: url }));
@@ -179,7 +255,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
     }
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watching, wantList, canonList]);
+  }, [watching, wantList, canonList, finishedList]);
 
   // Search — the established catalog + debounced-TVMaze pattern.
   const catalogMatches = useMemo(() => {
@@ -242,13 +318,21 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   async function pickTvShow(tv: TVmazeShow) {
     if (busyAdd) return;
     setBusyAdd(true);
-    openPending(tv.name, String(tv.id));
+    if (searchMode === "canon") {
+      // Canon mode: the canon card paints pending, then fills in.
+      setCanonDraft("");
+      setCanonCard({ show: null, name: tv.name, adding: true });
+      setSearchOpen(false); setQuery(""); setTvResults([]);
+    } else {
+      openPending(tv.name, String(tv.id));
+    }
     try {
       const seasons = await tvmazeEpisodes(tv.id);
       const created = await createShow({ id: slugify(tv.name), name: tv.name, seasons, tvmazeId: String(tv.id), status: tv.status });
       setShows((prev) => (prev.some((s) => s.id === created.id) ? prev : [...prev, created]));
-      openCard(created);
-    } catch (e) { console.error("[ref-band] add show failed", e); setCardPending(null); }
+      if (searchMode === "canon") setCanonCard({ show: created, name: created.name, adding: true });
+      else openCard(created);
+    } catch (e) { console.error("[ref-band] add show failed", e); setCardPending(null); setCanonCard(null); }
     finally { setBusyAdd(false); }
   }
 
@@ -346,11 +430,103 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           glass + text), Personal green on the yellow band (rev 2 2026-09-05). */}
       <div style={{ display: "flex", justifyContent: "center" }}>
         <button
-          onClick={() => { setSearchOpen(true); setQuery(""); setTvResults([]); }}
+          onClick={() => { setSearchMode("lookup"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
           style={{ ...searchPill, background: CANON.personal, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 14 }}
         >
           <Search size={26} color={CREAM} strokeWidth={2} />find your show
         </button>
+      </div>
+
+      {/* "Your canon:" — FIRST shelf, always present (empty = invitation;
+          Alborz 2026-09-07). Curated here AND on reference pages: + opens
+          the search in canon mode → the canon card; cards carry edit +
+          essentials + the graduate X. Tap → reference (or the how-far card
+          for a pre-progress legacy canon row). */}
+      <div style={{ marginTop: 34 }}>
+        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
+          Your canon:
+        </div>
+        {canonList.length === 0 ? (
+          <div>
+            <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13, color: CREAM, opacity: 0.9, marginBottom: 12, maxWidth: 480, lineHeight: 1.5 }}>
+              The shows you&rsquo;d put your name behind. That mean something to you. That you think about regularly.
+            </div>
+            <button
+              onClick={() => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
+              style={{ background: "transparent", border: `2px solid ${CREAM}`, color: CREAM, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              + add a show
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 18, overflowX: "auto", paddingBottom: 6 }}>
+            {canonList.map((show) => {
+              const poster = posters[show.id];
+              const entry = progress[show.id];
+              const take = entry?.canonTake;
+              const hasProgress = !!entry && (entry.s > 1 || (entry.s === 1 && entry.e >= 1));
+              const goto = () => (hasProgress
+                ? navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })
+                : openCard(show));
+              const pw = mobile ? 96 : 110, ph = mobile ? 136 : 156;
+              return (
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: mobile ? 300 : 400, display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <button onClick={goto} style={{ flex: "0 0 auto", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
+                    {poster ? (
+                      <img src={poster} alt={show.name} loading="lazy" style={{ width: pw, height: ph, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                    ) : (
+                      <div style={{ width: pw, height: ph, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                      </div>
+                    )}
+                  </button>
+                  <div style={{ minWidth: 0, paddingRight: 20, color: CREAM }}>
+                    <button onClick={goto} style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM }}>
+                      <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, lineHeight: 1.2, margin: "2px 0 6px" }}>{show.name}</div>
+                      {take && (
+                        <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, lineHeight: 1.5, opacity: 0.95 }}>
+                          &ldquo;{take}&rdquo;
+                        </div>
+                      )}
+                    </button>
+                    {(entry?.essentialEps?.length ?? 0) > 0 && (
+                      <button
+                        onClick={() => openShare(show)}
+                        title="Open your shareable essentials card"
+                        style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
+                      >
+                        ★ {entry!.essentialEps!.length} essential episode{entry!.essentialEps!.length === 1 ? "" : "s"}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => openCanonCard(show)}
+                      style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 6, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
+                    >
+                      {take ? "edit your line" : "add your line"}
+                    </button>
+                  </div>
+                  <button
+                    className="ref-lookup-x"
+                    onClick={() => removeCanon(show.id)}
+                    aria-label={`Remove ${show.name} from your canon`}
+                    title="Remove from your canon"
+                    style={{ position: "absolute", top: 6, left: pw - 28, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                  >
+                    <X size={13} color={CREAM} />
+                  </button>
+                </div>
+              );
+            })}
+            {/* Trailing + tile keeps adding one tap away. */}
+            <button
+              onClick={() => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
+              title="Add a show to your canon"
+              style={{ flexShrink: 0, width: mobile ? 96 : 110, height: mobile ? 136 : 156, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 32, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              +
+            </button>
+          </div>
+        )}
       </div>
 
       {/* "You're watching:" — your S1E1+ shows, recent activity first.
@@ -442,60 +618,45 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         </div>
       )}
 
-      {/* "Your canon:" (CP3) — poster + blurb cards (curation lives on the
-          reference page; tap goes there). X un-pins; the blurb survives. */}
-      {canonList.length > 0 && (
+      {/* "You've finished:" (2026-09-07) — at the latest available episode
+          (airing status irrelevant); graduate to canon from here. A new
+          episode in the catalog moves a show back to Watching by itself. */}
+      {finishedList.length > 0 && (
         <div style={{ marginTop: 34 }}>
           <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
-            Your canon:
+            You&rsquo;ve finished:
           </div>
-          <div style={{ display: "flex", gap: 18, overflowX: "auto", paddingBottom: 6 }}>
-            {canonList.map((show) => {
+          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+            {finishedList.map((show) => {
               const poster = posters[show.id];
-              const take = progress[show.id]?.canonTake;
-              const pw = mobile ? 96 : 110, ph = mobile ? 136 : 156;
+              const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
               return (
-                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: mobile ? 300 : 400, display: "flex", gap: 14, alignItems: "flex-start" }}>
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: w }}>
                   <button
                     onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })}
-                    style={{ flex: "0 0 auto", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+                    style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
                   >
                     {poster ? (
-                      <img src={poster} alt={show.name} loading="lazy" style={{ width: pw, height: ph, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                      <img src={poster} alt={show.name} loading="lazy" style={{ width: w, height: h, objectFit: "cover", borderRadius: 12, display: "block" }} />
                     ) : (
-                      <div style={{ width: pw, height: ph, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+                      <div style={{ width: w, height: h, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
                         <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
                       </div>
                     )}
                   </button>
-                  <div style={{ minWidth: 0, paddingRight: 20, color: CREAM }}>
-                    <button
-                      onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })}
-                      style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM }}
-                    >
-                      <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, lineHeight: 1.2, margin: "2px 0 6px" }}>{show.name}</div>
-                      {take && (
-                        <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, lineHeight: 1.5, opacity: 0.95 }}>
-                          &ldquo;{take}&rdquo;
-                        </div>
-                      )}
-                    </button>
-                    {(progress[show.id]?.essentialEps?.length ?? 0) > 0 && (
-                      <button
-                        onClick={() => openShare(show)}
-                        title="Open your shareable essentials card"
-                        style={{ background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline" }}
-                      >
-                        ★ {progress[show.id]!.essentialEps!.length} essential episode{progress[show.id]!.essentialEps!.length === 1 ? "" : "s"}
-                      </button>
-                    )}
-                  </div>
+                  <button
+                    onClick={() => openCanonCard(show)}
+                    title={`Add ${show.name} to your canon`}
+                    style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 6, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
+                  >
+                    ★ add to canon
+                  </button>
                   <button
                     className="ref-lookup-x"
-                    onClick={() => removeCanon(show.id)}
-                    aria-label={`Remove ${show.name} from your canon`}
-                    title="Remove from your canon"
-                    style={{ position: "absolute", top: 6, left: pw - 28, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                    onClick={() => hideShow(show.id)}
+                    aria-label={`Hide ${show.name} from this shelf`}
+                    title="Hide from this shelf"
+                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
                   >
                     <X size={13} color={CREAM} />
                   </button>
@@ -535,13 +696,55 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
             />
             {busyAdd && <div style={{ color: CANON.personal, fontSize: 13, fontWeight: 700, padding: "8px 4px" }}>adding<LoadingDots /></div>}
             {catalogMatches.map((show) => (
-              <button key={show.id} style={resultBtn} disabled={busyAdd} onClick={() => openCard(show)}>{show.name}</button>
+              <button key={show.id} style={resultBtn} disabled={busyAdd} onClick={() => (searchMode === "canon" ? openCanonCard(show) : openCard(show))}>{show.name}</button>
             ))}
             {tvToAdd.map(({ tv, id }) => (
               <button key={id} style={resultBtn} disabled={busyAdd} onClick={() => pickTvShow(tv)}>
                 {tv.name}{networkLabel(tv) ? <span style={{ fontWeight: 500, opacity: 0.75 }}> · {networkLabel(tv)}</span> : null}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── The canon card (2026-09-07) — add/edit from the dashboard: the
+            yellow-card grammar; ADD also sets progress to the latest episode
+            (stated on the card); EDIT saves the blurb only. ── */}
+      {canonCard && (
+        <div style={cardScrollOverlay} onClick={(e) => { if (e.target === e.currentTarget && !canonBusy) setCanonCard(null); }}>
+          <div style={cardCenterColumn} onClick={(e) => { if (e.target === e.currentTarget && !canonBusy) setCanonCard(null); }}>
+            <div style={yellowCard}>
+              <button style={modalClose} onClick={() => { if (!canonBusy) setCanonCard(null); }} aria-label="Close">
+                <X size={16} color={CREAM} />
+              </button>
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: CREAM, textAlign: "center", marginBottom: 18 }}>
+                {canonCard.name}
+              </div>
+              <div style={yellowTitle}>Why this show?</div>
+              <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 14px" }}>
+                {canonCard.adding
+                  ? <>(One or two lines for your profile. Adding a show<br />to your canon sets your progress to its latest episode.)</>
+                  : <>(One or two lines for your profile.)</>}
+              </div>
+              <textarea
+                value={canonDraft}
+                onChange={(ev) => setCanonDraft(ev.target.value)}
+                maxLength={280}
+                rows={3}
+                autoFocus
+                placeholder="Your line — why it's canon."
+                style={{ width: "100%", boxSizing: "border-box", border: "none", borderRadius: 12, padding: "10px 12px", fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, resize: "vertical", textAlign: "left" }}
+              />
+              <div style={{ marginTop: 16 }}>
+                {canonCard.show ? (
+                  <button style={{ ...startBtn, minWidth: 210, boxSizing: "border-box" }} disabled={canonBusy} onClick={confirmCanon}>
+                    {canonBusy ? <>one moment<LoadingDots /></> : canonCard.adding ? "add to your canon" : "save"}
+                  </button>
+                ) : (
+                  <div style={{ color: CREAM, fontSize: 13, fontWeight: 700 }}>one moment<LoadingDots /></div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -640,7 +843,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               </div>
               {cardShow && pickedReady && (
                 <div style={{ marginTop: 18 }}>
-                  <button style={startBtn} disabled={confirmBusy} onClick={lookItUp}>
+                  <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={confirmBusy} onClick={lookItUp}>
                     {confirmBusy ? <>one moment<LoadingDots /></> : "look it up"}
                   </button>
                 </div>

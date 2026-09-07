@@ -13,7 +13,7 @@ import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setCanonPin, setShelfBlurb, setEssentialEps } from "../../lib/db";
+import { setCanonPin, setShelfBlurb, setEssentialEps, upsertRewatchStatus } from "../../lib/db";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
@@ -55,6 +55,11 @@ export default function ShowReference({
   const [canonBusy, setCanonBusy] = useState(false);
   // CP4: the owner's essential-episode stars (canon shows only) — epIndex set.
   const [essentials, setEssentials] = useState<Set<number>>(new Set());
+  // Canon rule (Alborz 2026-09-07): adding a show to your canon SETS YOUR
+  // PROGRESS to the latest catalog episode — canon means you've seen it all
+  // (as of now). This local override reflects the jump immediately; the
+  // host page's own copy refreshes on its next load.
+  const [progressOverride, setProgressOverride] = useState<{ s: number; e: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +73,7 @@ export default function ShowReference({
     setCanonTake("");
     setEditingTake(false);
     setEssentials(new Set());
+    setProgressOverride(null);
     ensureShowReference(showId)
       .then((r) => { if (!cancelled) setRef(r); })
       .catch(() => { if (!cancelled) setFailed(true); });
@@ -99,6 +105,14 @@ export default function ShowReference({
     setCanonBusy(true);
     try {
       await setCanonPin(user.id, showId, true);
+      // Canon ⇒ progress at the latest episode (never lowers — only jumps
+      // forward). The reference ungates fully right away via the override.
+      const lastSeason = ref?.seasons[ref.seasons.length - 1];
+      const lastEp = lastSeason?.episodes[lastSeason.episodes.length - 1];
+      if (lastEp && idx(lastEp.s, lastEp.e) > vIdx) {
+        await upsertRewatchStatus(user.id, showId, { s: lastEp.s, e: lastEp.e, highestS: lastEp.s, highestE: lastEp.e });
+        setProgressOverride({ s: lastEp.s, e: lastEp.e });
+      }
       setCanonOn(true);
       // Invite the blurb right away — the moment of adding is when the
       // "why" is freshest.
@@ -138,7 +152,9 @@ export default function ShowReference({
     finally { setCanonBusy(false); }
   }
 
-  const vIdx = idx(viewerProgress.s, viewerProgress.e);
+  // The effective dial: the prop, unless a canon-add just jumped it.
+  const prog = progressOverride ?? viewerProgress;
+  const vIdx = idx(prog.s, prog.e);
 
   const visiblePeople = useMemo(
     () => (ref?.people ?? []).filter((p) => idx(p.firstS, p.firstE) <= vIdx),
@@ -157,7 +173,7 @@ export default function ShowReference({
     }
     return out;
   }, [ref, vIdx]);
-  const selCastEp = (castEpisode && idx(castEpisode.s, castEpisode.e) <= vIdx) ? castEpisode : viewerProgress;
+  const selCastEp = (castEpisode && idx(castEpisode.s, castEpisode.e) <= vIdx) ? castEpisode : prog;
   const selEpData = useMemo(
     () => ref?.seasons.find((se) => se.n === selCastEp.s)?.episodes.find((ep) => ep.e === selCastEp.e),
     [ref, selCastEp.s, selCastEp.e],
@@ -258,13 +274,18 @@ export default function ShowReference({
       {user && canonOn !== null && (
         <div style={{ marginBottom: 32 }}>
           {!canonOn ? (
-            <button
-              onClick={addToCanon}
-              disabled={canonBusy}
-              style={{ background: "transparent", border: `2px solid ${CREAM}`, color: CREAM, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-            >
-              add to your canon
-            </button>
+            <>
+              <button
+                onClick={addToCanon}
+                disabled={canonBusy}
+                style={{ background: "transparent", border: `2px solid ${CREAM}`, color: CREAM, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+              >
+                add to your canon
+              </button>
+              <div style={{ fontStyle: "italic", fontSize: 12, opacity: 0.85, marginTop: 6 }}>
+                (also sets your progress to the latest episode)
+              </div>
+            </>
           ) : (
             <>
               <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 14, fontWeight: 700, fontSize: 14 }}>
@@ -311,11 +332,11 @@ export default function ShowReference({
 
       {/* ── Previously on: watched episodes only ── */}
       <h2 style={sectionH}>Previously on {ref.showName}:</h2>
-      {[...ref.seasons].filter((season) => season.n <= viewerProgress.s).sort((a, b) => b.n - a.n).map((season) => {
+      {[...ref.seasons].filter((season) => season.n <= prog.s).sort((a, b) => b.n - a.n).map((season) => {
         const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx).reverse();
-        const isOpen = (openSeasons ?? new Set([viewerProgress.s])).has(season.n);
+        const isOpen = (openSeasons ?? new Set([prog.s])).has(season.n);
         const toggleSeason = () => setOpenSeasons((prev) => {
-          const next = new Set(prev ?? [viewerProgress.s]);
+          const next = new Set(prev ?? [prog.s]);
           if (next.has(season.n)) next.delete(season.n); else next.add(season.n);
           return next;
         });
@@ -512,7 +533,7 @@ export default function ShowReference({
           const unlocked = !!prevLast && vIdx >= idx(prevLast.s, prevLast.e);
           if (unlocked) return <RefTrailer key={season.n} label={`season ${season.n}`} trailerKey={season.trailerKey!} />;
           // Only the NEXT locked one is teased; deeper seasons stay silent.
-          if (season.n === viewerProgress.s + 1) {
+          if (season.n === prog.s + 1) {
             return (
               <div key={season.n} style={{ ...small, fontStyle: "italic" }}>
                 the season {season.n} trailer unlocks when you finish season {season.n - 1}
