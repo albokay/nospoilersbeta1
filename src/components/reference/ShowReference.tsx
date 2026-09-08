@@ -7,7 +7,9 @@
 // the dial reaches it — "no 0-state reference page").
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Star } from "lucide-react";
+import StickyNote from "../StickyNote";
 import { CANON } from "../../styles/canon";
 import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
@@ -20,14 +22,18 @@ const CREAM = CANON.cream;
 const idx = (s: number, e: number) => s * 10000 + e;
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false,
+  showId, viewerProgress, mobile = false, nudgeEssentials = false,
 }: {
   showId: string;
   /** The viewer's EFFECTIVE progress (rewatch-aware ceiling) — ≥ S1E1. */
   viewerProgress: { s: number; e: number };
   mobile?: boolean;
+  /** Arrived via the dashboard's "pick its essential episodes" prompt —
+   *  always re-show the essentials sticky, even if it was X'd out. */
+  nudgeEssentials?: boolean;
 }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [ref, setRef] = useState<ShowReferenceData | null>(null);
   const [failed, setFailed] = useState(false);
   // Cast shows the SELECTED episode only (Alborz 2026-09-05 rev 2): 8 actors
@@ -50,6 +56,14 @@ export default function ShowReference({
   // profile's columns, so pre-restructure canon picks resurface.
   const [canonOn, setCanonOn] = useState<boolean | null>(null); // null = loading
   const [canonBusy, setCanonBusy] = useState(false);
+  // The canon is capped at FOUR shows (Alborz 2026-09-07) — the add pill
+  // gives way to a note once the cap is reached elsewhere.
+  const [canonCount, setCanonCount] = useState<number | null>(null);
+  // The essentials sticky (Alborz 2026-09-07 — the star feature read as
+  // plain reference to new users): dismissible per show; the dashboard's
+  // "pick its essential episodes" prompt always re-summons it.
+  const stickyKey = `ns_ess_sticky_x_${showId}`;
+  const [stickyVisible, setStickyVisible] = useState(false);
   // CP4: the owner's essential-episode stars (canon shows only) — epIndex set.
   const [essentials, setEssentials] = useState<Set<number>>(new Set());
   // Canon rule (Alborz 2026-09-07): adding a show to your canon SETS YOUR
@@ -69,6 +83,10 @@ export default function ShowReference({
     setCanonOn(null);
     setEssentials(new Set());
     setProgressOverride(null);
+    try {
+      if (nudgeEssentials) localStorage.removeItem(stickyKey);
+      setStickyVisible(nudgeEssentials || localStorage.getItem(stickyKey) !== "1");
+    } catch { setStickyVisible(true); }
     ensureShowReference(showId)
       .then((r) => { if (!cancelled) setRef(r); })
       .catch(() => { if (!cancelled) setFailed(true); });
@@ -91,6 +109,12 @@ export default function ShowReference({
         setCanonOn(!!data?.canon_pin);
         setEssentials(new Set(Array.isArray(data?.essential_eps) ? data.essential_eps : []));
       });
+    supabase
+      .from("progress")
+      .select("show_id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("canon_pin", true)
+      .then(({ count }) => { if (!cancelled) setCanonCount(count ?? 0); });
     return () => { cancelled = true; };
   }, [showId, user?.id]);
 
@@ -222,7 +246,7 @@ export default function ShowReference({
   };
   // Episode stills (rev 4 — Alborz 2026-09-07): the thumbnail sits directly
   // ABOVE the episode summary, back in one column with the season headers.
-  const stillW = mobile ? 132 : 168, stillH = mobile ? 74 : 95;
+  const stillW = mobile ? 132 : 200, stillH = mobile ? 74 : 113;
 
   return (
     <div style={{ color: CREAM, fontFamily: '"Inter", sans-serif', paddingBottom: 80 }}>
@@ -231,9 +255,9 @@ export default function ShowReference({
           (right-justified against the column); narrower windows keep them
           in-flow. */}
       <style>{`
-        @media (min-width: 1720px) {
-          .ref-ep-media { position: absolute; right: 100%; top: 2px; margin: 0 16px 0 0; width: ${stillW}px; }
-          .ref-gutter-note { position: absolute; right: 100%; top: 4px; margin: 0 16px 0 0; width: ${stillW}px; text-align: right; }
+        @media (min-width: 1840px) {
+          .ref-ep-media { position: absolute; right: 100%; top: 2px; margin: 0 16px 0 0; width: ${stillW + 33}px; }
+          .ref-gutter-sticky { position: absolute; right: 100%; top: 0; margin: 0 12px 0 0; }
         }
       `}</style>
       {/* "created by …" renders in the SHOW PAGE HEADER next to the show
@@ -246,30 +270,61 @@ export default function ShowReference({
       {user && canonOn !== null && (
         <div style={{ marginBottom: 32 }}>
           {!canonOn ? (
-            <>
-              <button
-                onClick={addToCanon}
-                disabled={canonBusy}
-                style={{ background: "transparent", border: `2px solid ${CREAM}`, color: CREAM, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-              >
-                add to your canon
-              </button>
-              <div style={{ fontStyle: "italic", fontSize: 12, opacity: 0.85, marginTop: 6 }}>
-                (also sets your progress to the latest episode)
+            (canonCount ?? 0) >= 4 ? (
+              <div style={{ fontStyle: "italic", fontSize: 13, opacity: 0.9 }}>
+                (your canon is full &mdash; four shows; make room from your dashboard)
               </div>
-            </>
+            ) : (
+              <>
+                <button
+                  onClick={addToCanon}
+                  disabled={canonBusy}
+                  style={{ background: "transparent", border: `2px solid ${CREAM}`, color: CREAM, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                >
+                  add to your canon
+                </button>
+                <div style={{ fontStyle: "italic", fontSize: 12, opacity: 0.85, marginTop: 6 }}>
+                  (also sets your progress to the latest episode)
+                </div>
+              </>
+            )
           ) : (
-            <div style={{ fontWeight: 700, fontSize: 14 }}>★ in your canon</div>
+            // No star here (stars = essentials); cream pill in Accent text.
+            // Tap → the dashboard, scrolled to the canon section.
+            <button
+              onClick={() => navigate(mobile ? "/m/dashboard" : "/dashboard", { state: { scrollToCanon: true } })}
+              title="See your canon on the dashboard"
+              style={{ background: CREAM, border: "none", color: CANON.accent, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+            >
+              in your canon
+            </button>
           )}
         </div>
       )}
 
       {/* ── Previously on: watched episodes only ── */}
       <h2 style={sectionH}>Previously on {ref.showName}:</h2>
-      {user && canonOn && (
+      {/* The essentials sticky — a real StickyNote, tilted LEFT, in the
+          gutter area on wide windows / in-flow otherwise; X'd out per show,
+          re-summoned by the dashboard prompt. */}
+      {user && canonOn && stickyVisible && (
         <div style={{ position: "relative" }}>
-          <div className="ref-gutter-note" style={{ fontStyle: "italic", fontSize: 12, opacity: 0.85, margin: "-6px 0 16px" }}>
-            Mark your essential episodes with a star.
+          <div className="ref-gutter-sticky" style={{ margin: "0 0 20px" }}>
+            <StickyNote
+              tone="cream"
+              tilt={-3}
+              width={170}
+              fontSize={13}
+              ignoreViewportGate
+              onDismiss={() => {
+                setStickyVisible(false);
+                try { localStorage.setItem(stickyKey, "1"); } catch { /* fine */ }
+              }}
+              dismissLabel="Dismiss"
+              style={{ position: "relative", zIndex: 5, display: "inline-block" }}
+            >
+              Mark your essential episodes with a star.
+            </StickyNote>
           </div>
         </div>
       )}
@@ -335,7 +390,17 @@ export default function ShowReference({
                       living in the LEFT MARGIN on wide windows (the CSS below)
                       and in-flow above the summary where no margin exists. */}
                   {(ep.still || (user && canonOn && !mobile)) && !mobile && (
-                    <div className="ref-ep-media" style={{ marginTop: 8 }}>
+                    <div className="ref-ep-media" style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
+                      {user && canonOn && (
+                        <button
+                          onClick={() => toggleEssential(ep.s, ep.e)}
+                          aria-pressed={essentials.has(idx(ep.s, ep.e))}
+                          title={essentials.has(idx(ep.s, ep.e)) ? "Un-star this essential" : "Star as an essential episode"}
+                          style={{ background: "transparent", border: "none", padding: 2, cursor: "pointer", lineHeight: 0, flexShrink: 0 }}
+                        >
+                          <Star size={17} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
+                        </button>
+                      )}
                       {ep.still && (
                         <button
                           onClick={() => setStillOpen(ep.still!)}
@@ -344,18 +409,6 @@ export default function ShowReference({
                         >
                           <img src={ep.still} alt="" loading="lazy" style={{ width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
                         </button>
-                      )}
-                      {user && canonOn && (
-                        <div style={{ display: "flex", justifyContent: "flex-end", width: stillW, marginTop: 6 }}>
-                          <button
-                            onClick={() => toggleEssential(ep.s, ep.e)}
-                            aria-pressed={essentials.has(idx(ep.s, ep.e))}
-                            title={essentials.has(idx(ep.s, ep.e)) ? "Un-star this essential" : "Star as an essential episode"}
-                            style={{ background: "transparent", border: "none", padding: 2, cursor: "pointer", lineHeight: 0 }}
-                          >
-                            <Star size={16} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
-                          </button>
-                        </div>
                       )}
                     </div>
                   )}

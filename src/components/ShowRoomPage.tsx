@@ -829,7 +829,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             </div>
 
             {tab === "reference" && show && refEff ? (
-              <ShowReference showId={show.id} viewerProgress={refEff} />
+              <ShowReference showId={show.id} viewerProgress={refEff} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
             ) : tab === "friend" ? (
               feedEntries.length === 0 ? (
                 <div style={{ maxWidth: 420 }}>

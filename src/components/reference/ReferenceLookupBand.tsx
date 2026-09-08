@@ -10,7 +10,7 @@
 // dashboard's own fetches free), so both hosts mount it identically.
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import { useAuth } from "../../lib/auth";
@@ -51,6 +51,16 @@ const cardCenterColumn: React.CSSProperties = {
 export default function ReferenceLookupBand({ mobile = false }: { mobile?: boolean }) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Arriving from a reference page's "in your canon" pill → scroll the canon
+  // section into view once the band has painted.
+  const canonAnchorRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if ((location.state as any)?.scrollToCanon) {
+      const t = window.setTimeout(() => canonAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 350);
+      return () => window.clearTimeout(t);
+    }
+  }, [location.state]);
   const pathPrefix = mobile ? "/m/show-room/private" : "/show-room/private";
 
   const [shows, setShows] = useState<Show[]>([]);
@@ -174,6 +184,8 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   }
   async function confirmCanon() {
     if (!user || !canonCard?.show || canonBusy) return;
+    // Hard cap (Alborz 2026-09-07): the canon is four shows, full stop.
+    if (canonCard.adding && canonList.length >= 4) { setCanonCard(null); return; }
     const show = canonCard.show;
     setCanonBusy(true);
     try {
@@ -400,22 +412,17 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         .ref-lookup-x { background: transparent; border: 2px solid ${CREAM}; }
         .ref-lookup-x:hover { background: ${CANON.accent}; border-color: transparent; }
         .ref-lookup-x:active { background: transparent; border-color: ${CREAM}; }
-        /* Center-out shelf fill (Alborz 2026-09-07): auto margins on the end
-           tiles center the row while it fits, and degrade to a normal
-           left-anchored scroll the moment it overflows. */
-        .ref-shelf-row > :first-child { margin-left: auto; }
-        .ref-shelf-row > :last-child { margin-right: auto; }
       `}</style>
 
       {/* "Your canon" — the zone's FEATURED opener (Alborz 2026-09-07 rev 2):
           Heading 1 + centered Header-2 subhead, always present. Empty = four
           placeholder slots as the invitation. Curated here AND on reference
           pages; cards carry edit + essentials + the graduate X. */}
-      <div>
+      <div ref={canonAnchorRef} style={{ scrollMarginTop: 24 }}>
         <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 28 : 34, letterSpacing: -1, color: CREAM, margin: 0, textAlign: "center" }}>
           Your canon
         </h2>
-        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center", margin: "10px auto 24px", maxWidth: 560, lineHeight: 1.5 }}>
+        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center", margin: "10px auto 44px", maxWidth: 560, lineHeight: 1.5 }}>
           The shows you&rsquo;d put your name behind. The shows that mean something to you. The ones you think about regularly.
         </div>
         {/* Four fixed slots per row (Alborz rev): placeholders sit exactly
@@ -466,7 +473,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                       // feature was too hidden): straight to the reference
                       // page, where the stars live.
                       <button
-                        onClick={goto}
+                        onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true, essentialsNudge: true } })}
                         title="Star this show's essential episodes on its reference page"
                         style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
                       >
@@ -492,7 +499,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                 </div>
               );
             })}
-            {Array.from({ length: canonList.length < 4 ? 4 - canonList.length : 1 }).map((_, i) => (
+            {Array.from({ length: Math.max(0, 4 - canonList.length) }).map((_, i) => (
               <button
                 key={`ph-${i}`}
                 onClick={() => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
@@ -540,11 +547,12 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
       {/* "You're watching:" — your S1E1+ shows, recent activity first.
           Tapping goes STRAIGHT to the reference (no card — Alborz). */}
       {watching.length > 0 && (
-        <div style={{ marginTop: 34 }}>
+        <div style={{ marginTop: 34, display: "flex", justifyContent: "center" }}>
+          <div style={{ maxWidth: "100%", minWidth: 0 }}>
           <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
             You&rsquo;re watching:
           </div>
-          <div className="ref-shelf-row" style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {watching.map((show) => {
               const r = progress[show.id]!;
               const poster = posters[show.id];
@@ -582,17 +590,19 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               );
             })}
           </div>
+          </div>
         </div>
       )}
 
       {/* "You want to watch:" (CP2) — poster-only tiles; tap reopens the
           card (trailer + set your episode); X clears the stamp. */}
       {wantList.length > 0 && (
-        <div style={{ marginTop: 34 }}>
+        <div style={{ marginTop: 34, display: "flex", justifyContent: "center" }}>
+          <div style={{ maxWidth: "100%", minWidth: 0 }}>
           <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
             You want to watch:
           </div>
-          <div className="ref-shelf-row" style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {wantList.map((show) => {
               const poster = posters[show.id];
               const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
@@ -623,6 +633,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               );
             })}
           </div>
+          </div>
         </div>
       )}
 
@@ -630,11 +641,12 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           (airing status irrelevant); graduate to canon from here. A new
           episode in the catalog moves a show back to Watching by itself. */}
       {finishedList.length > 0 && (
-        <div style={{ marginTop: 34 }}>
+        <div style={{ marginTop: 34, display: "flex", justifyContent: "center" }}>
+          <div style={{ maxWidth: "100%", minWidth: 0 }}>
           <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
             You&rsquo;ve finished:
           </div>
-          <div className="ref-shelf-row" style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {finishedList.map((show) => {
               const poster = posters[show.id];
               const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
@@ -652,13 +664,15 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                       </div>
                     )}
                   </button>
-                  <button
-                    onClick={() => openCanonCard(show)}
-                    title={`Add ${show.name} to your canon`}
-                    style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 6, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
-                  >
-                    ★ add to canon
-                  </button>
+                  {canonList.length < 4 && (
+                    <button
+                      onClick={() => openCanonCard(show)}
+                      title={`Add ${show.name} to your canon`}
+                      style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 6, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
+                    >
+                      ★ add to canon
+                    </button>
+                  )}
                   <button
                     className="ref-lookup-x"
                     onClick={() => hideShow(show.id)}
@@ -672,13 +686,15 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               );
             })}
           </div>
+          </div>
         </div>
       )}
 
       {/* Browse rows — the dashboard asks the PERSONAL question. The
           umbrella heading ties them to YOUR lists (CP1); row names drop a
           tier beneath it. */}
-      <div style={{ marginTop: 44 }}>
+      <div style={{ textAlign: "center", color: CREAM, opacity: 0.7, fontSize: 16, letterSpacing: 8, marginTop: 72 }}>***</div>
+      <div style={{ marginTop: 36 }}>
         <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 4 }}>
           Find something to watch:
         </div>
