@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Settings, SquarePen, X } from "lucide-react";
+import { ArrowLeft, Minus, Settings, SquarePen, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
@@ -128,6 +128,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const [tourOpen, setTourOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
+  // Compose minimize (Alborz 2026-09-08): hide the modal WITHOUT unmounting
+  // it so a half-written entry survives a guide/room check; a docked
+  // "continue writing" chip brings it back.
+  const [composeMinimized, setComposeMinimized] = useState(false);
+  useEffect(() => { if (!composeOpen) setComposeMinimized(false); }, [composeOpen]);
 
   // CP4b: progress picker + rating capture.
   const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
@@ -838,10 +843,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               )}
             </div>
 
-            {tab === "reference" && show && refEff ? (
+            {tab === "reference" && show && refEff && (
               <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
-            ) : tab === "friend" ? (
-              feedEntries.length === 0 ? (
+            )}
+            {/* Friend + drafts columns stay MOUNTED (display:none) on the
+                other tabs, so in-progress replies/drafts survive a guide
+                check (Alborz 2026-09-08). */}
+            {!privateOnly && (
+            <div style={{ display: tab === "friend" ? undefined : "none" }}>
+              {feedEntries.length === 0 ? (
                 <div style={{ maxWidth: 420 }}>
                   <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
                   <p style={emptyCopy}>You're the first one in here. Start writing so that your friends have your thoughts ready when they finish episodes.</p>
@@ -872,9 +882,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   engagedThreadIds={engagedSet}
                   onReplyAdded={(tid) => setFeedEntries((prev) => prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)))}
                 />
-              )
-            ) : (
-              <>
+              )}
+            </div>
+            )}
+            <div style={{ display: tab === "private" ? undefined : "none" }}>
                 {privateFeedEntries.length > 0 && (
                   <V2RoomFeed
                     displayNames={displayNames}
@@ -889,8 +900,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "0 0 12px" }}>Sidebar is best with friends.</p>
                   <p style={{ ...emptyCopy, maxWidth: 460 }}>But this drafts space is just for you — no one will ever see what you write here. Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
                 </div>
-              </>
-            )}
+            </div>
 
             {/* Help-system arc CP3/CP4: the tour entry point — centered in
                 the entry column, scrolling below the writing as the room
@@ -935,9 +945,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
       {/* ── Compose: the existing ComposeForm, constrained to this room + private ── */}
       {composeOpen && createPortal(
-        <div style={composeBackdrop}>
+        <>
+        <div style={{ ...composeBackdrop, ...(composeMinimized ? { display: "none" } : {}) }}>
           <div style={composeCardOuter}>
             <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={16} color={CANON.alert} /></button>
+            <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" title="Minimize — check the room or show guide; your draft stays" style={{ ...composeCloseX, right: 66, border: `2px solid ${CANON.identity}` }}><Minus size={16} color={CANON.identity} /></button>
             <ComposeForm
               ref={composeFormRef}
               showId={show?.id}
@@ -959,7 +971,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               }}
             />
           </div>
-        </div>,
+        </div>
+        {composeMinimized && (
+          <button onClick={() => setComposeMinimized(false)} style={continueChip}>
+            <SquarePen size={16} /> continue writing
+          </button>
+        )}
+        </>,
         document.body,
       )}
 
@@ -1084,6 +1102,16 @@ const sortSelect: React.CSSProperties = {
   fontFamily: '"Inter", system-ui, sans-serif', cursor: "pointer", outline: "none",
 };
 const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 };
+// The minimized-compose dock (Alborz 2026-09-08) — Identity pill, fixed
+// bottom-right, above everything; tapping restores the modal mid-sentence.
+const continueChip: React.CSSProperties = {
+  position: "fixed", bottom: 24, right: 24, zIndex: 1001,
+  display: "inline-flex", alignItems: "center", gap: 8,
+  background: CANON.identity, color: CANON.cream, border: "none",
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
+  padding: "12px 24px", borderRadius: 65, cursor: "pointer",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+};
 const composeCloseX: React.CSSProperties = {
   position: "absolute", top: 20, right: 24, background: "transparent", border: "2px solid var(--canon-alert,#f45028)",
   color: CANON.alert, borderRadius: "50%", width: 34, height: 34, padding: 0,

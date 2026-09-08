@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronDown, ChevronUp, Settings, SquarePen, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Minus, Settings, SquarePen, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
@@ -111,6 +111,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   }, [location.pathname]);
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
+  // Compose minimize (Alborz 2026-09-08): hide the sheet WITHOUT unmounting
+  // it so a half-written entry survives a guide/room check.
+  const [composeMinimized, setComposeMinimized] = useState(false);
+  useEffect(() => { if (!composeOpen) setComposeMinimized(false); }, [composeOpen]);
   const [rosterOpen, setRosterOpen] = useState(false);
   // Byline tap → the member's pool as an OVERLAY on the still-mounted room
   // (stable back swipe): opening pushes a same-path history entry, so the
@@ -825,10 +829,15 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         </div>
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
-        {tab === "reference" && show && refEff ? (
+        {tab === "reference" && show && refEff && (
           <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
-        ) : tab === "friend" ? (
-          feedEntries.length === 0 ? (
+        )}
+        {/* Friend + drafts columns stay MOUNTED (display:none) on the other
+            tabs, so in-progress replies/drafts survive a guide check
+            (Alborz 2026-09-08). */}
+        {!privateOnly && (
+        <div style={{ display: tab === "friend" ? undefined : "none" }}>
+          {feedEntries.length === 0 ? (
             <div style={{ maxWidth: 420 }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
               <p style={emptyCopy}>You're the first one in here. Start writing so that your friends have your thoughts ready when they finish episodes.</p>
@@ -861,9 +870,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
               onReplyAdded={(tid) => setFeedEntries((prev) => prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)))}
             />
-          )
-        ) : (
-          <>
+          )}
+        </div>
+        )}
+        <div style={{ display: tab === "private" ? undefined : "none" }}>
             {privateFeedEntries.length > 0 && (
               <V2RoomFeed
                 mobileIdiom
@@ -879,14 +889,15 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "0 0 12px" }}>Sidebar is best with friends.</p>
               <p style={{ ...emptyCopy, maxWidth: 460 }}>But this drafts space is just for you — no one will ever see what you write here. Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
             </div>
-          </>
-        )}
+        </div>
       </div>
 
       {/* ── Compose — full-screen (mobile idiom of desktop's centered card) ── */}
       {composeOpen && createPortal(
-        <div style={composeShell}>
+        <>
+        <div style={{ ...composeShell, ...(composeMinimized ? { display: "none" } : {}) }}>
           <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={16} color={CANON.alert} /></button>
+          <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" style={{ ...composeCloseX, right: 60, border: `2px solid ${CANON.identity}` }}><Minus size={16} color={CANON.identity} /></button>
           <ComposeForm
             ref={composeFormRef}
             mobileIdiom
@@ -906,7 +917,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               });
             }}
           />
-        </div>,
+        </div>
+        {composeMinimized && (
+          <button onClick={() => setComposeMinimized(false)} style={continueChip}>
+            <SquarePen size={14} /> continue writing
+          </button>
+        )}
+        </>,
         document.body,
       )}
 
@@ -1058,6 +1075,16 @@ const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize
 const composeShell: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, background: C.cream, overflowY: "auto",
   WebkitOverflowScrolling: "touch",
+};
+// The minimized-compose dock — Identity pill above the page chrome;
+// tapping restores the sheet mid-sentence (Alborz 2026-09-08).
+const continueChip: React.CSSProperties = {
+  position: "fixed", bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)", right: 16, zIndex: 1001,
+  display: "inline-flex", alignItems: "center", gap: 8,
+  background: CANON.identity, color: CANON.cream, border: "none",
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13,
+  padding: "11px 20px", borderRadius: 65, cursor: "pointer",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
 };
 const composeCloseX: React.CSSProperties = {
   position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 12,
