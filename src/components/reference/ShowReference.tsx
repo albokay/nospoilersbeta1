@@ -250,16 +250,7 @@ export default function ShowReference({
 
   return (
     <div style={{ color: CREAM, fontFamily: '"Inter", sans-serif', paddingBottom: 80 }}>
-      {/* On windows wide enough for the page frame to leave a real left
-          margin, the episode media unit + the essentials note hang OUT there
-          (right-justified against the column); narrower windows keep them
-          in-flow. */}
-      <style>{`
-        @media (min-width: 1840px) {
-          .ref-ep-media { position: absolute; right: 100%; top: 2px; margin: 0 16px 0 0; width: ${stillW + 33}px; }
-          .ref-gutter-sticky { position: absolute; right: 100%; top: 0; margin: 0 12px 0 0; }
-        }
-      `}</style>
+
       {/* "created by …" renders in the SHOW PAGE HEADER next to the show
           name (rev 3 — swaps with the "with …" members line per tab);
           attribution moved to the page bottom. */}
@@ -304,134 +295,154 @@ export default function ShowReference({
 
       {/* ── Previously on: watched episodes only ── */}
       <h2 style={sectionH}>Previously on {ref.showName}:</h2>
-      {/* The essentials sticky — a real StickyNote, tilted LEFT, in the
-          gutter area on wide windows / in-flow otherwise; X'd out per show,
-          re-summoned by the dashboard prompt. */}
-      {user && canonOn && stickyVisible && (
-        <div style={{ position: "relative" }}>
-          <div className="ref-gutter-sticky" style={{ margin: "0 0 20px" }}>
-            <StickyNote
-              tone="cream"
-              tilt={-3}
-              width={170}
-              fontSize={13}
-              ignoreViewportGate
-              onDismiss={() => {
-                setStickyVisible(false);
-                try { localStorage.setItem(stickyKey, "1"); } catch { /* fine */ }
-              }}
-              dismissLabel="Dismiss"
-              style={{ position: "relative", zIndex: 5, display: "inline-block" }}
-            >
-              Mark your essential episodes with a star.
-            </StickyNote>
-          </div>
+      {/* The essentials sticky (mobile: in-flow; desktop: first rail cell of
+          the grid below) — X'd out per show, re-summoned by the dashboard's
+          pick-essentials prompt. */}
+      {user && canonOn && stickyVisible && mobile && (
+        <div style={{ margin: "0 0 24px" }}>
+          <StickyNote
+            tone="cream" tilt={-3} width={190} fontSize={13} ignoreViewportGate
+            onDismiss={() => { setStickyVisible(false); try { localStorage.setItem(stickyKey, "1"); } catch { /* fine */ } }}
+            dismissLabel="Dismiss"
+            style={{ position: "relative", zIndex: 5, display: "inline-block" }}
+          >
+            Mark your essential episodes with a star.
+          </StickyNote>
         </div>
       )}
-      {[...ref.seasons].filter((season) => season.n <= prog.s).sort((a, b) => b.n - a.n).map((season) => {
-        const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx).reverse();
-        const isOpen = (openSeasons ?? new Set([prog.s])).has(season.n);
-        const toggleSeason = () => setOpenSeasons((prev) => {
+      {(() => {
+        // Rev 6 (Alborz mock): on desktop the reference column is CENTERED,
+        // leaving a real gutter on its left — the media rail ([star][still])
+        // and the sticky live there as a structural grid column, each row
+        // top-aligned with its episode's text. Mobile stays single-column.
+        const seasonsVisible = [...ref.seasons].filter((season) => season.n <= prog.s).sort((a, b) => b.n - a.n);
+        const openSet = openSeasons ?? new Set([prog.s]);
+        const toggleSeason = (n: number) => setOpenSeasons((prev) => {
           const next = new Set(prev ?? [prog.s]);
-          if (next.has(season.n)) next.delete(season.n); else next.add(season.n);
+          if (next.has(n)) next.delete(n); else next.add(n);
           return next;
         });
-        return (
-          <div key={season.n} style={{ marginBottom: isOpen ? 28 : 14 }}>
-            <button
-              onClick={toggleSeason}
-              aria-expanded={isOpen}
-              aria-label={`${isOpen ? "Collapse" : "Expand"} season ${season.n}`}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, color: CREAM, opacity: 0.95, marginBottom: isOpen ? 10 : 0 }}
-            >
-              Season {season.n}
-              {isOpen
-                ? <ChevronUp size={16} color={CREAM} strokeWidth={2.5} />
-                : <ChevronDown size={16} color={CREAM} strokeWidth={2.5} />}
-            </button>
-            {isOpen && watched.map((ep) => (
-              <div key={ep.e} className="ref-ep" style={{ marginBottom: 20, position: "relative" }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: mobile ? 14 : 15 }}>
-                    {user && canonOn && mobile && (
-                      <button
-                        onClick={() => toggleEssential(ep.s, ep.e)}
-                        aria-pressed={essentials.has(idx(ep.s, ep.e))}
-                        title={essentials.has(idx(ep.s, ep.e)) ? "Un-star this essential" : "Star as an essential episode"}
-                        style={{ background: "transparent", border: "none", padding: 2, marginRight: 6, cursor: "pointer", lineHeight: 0, verticalAlign: "middle" }}
-                      >
-                        <Star size={15} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
-                      </button>
-                    )}
-                    Episode {ep.e} · {ep.title}
-                    {ep.airDate && <span style={{ fontWeight: 500, opacity: 0.7 }}>  ·  {ep.airDate}</span>}
-                  </div>
-                  {(ep.writers.length > 0 || ep.directors.length > 0 || ep.dp.length > 0) && (
-                    <div style={{ ...small, marginTop: 2 }}>
-                      {[
-                        { label: "written by", credits: ep.writers.map(toCredit) },
-                        { label: "directed by", credits: ep.directors.map(toCredit) },
-                        { label: "dp", credits: ep.dp.map(toCredit) },
-                      ].filter((g) => g.credits.length > 0).map((g, gi) => (
-                        <React.Fragment key={g.label}>
-                          {gi > 0 && " · "}
-                          {g.label}{" "}
-                          {g.credits.map((c, ci) => (
-                            <React.Fragment key={c.name}>
-                              {ci > 0 && ", "}
-                              <button onClick={() => openActorImdb(c)} title={`${c.name} on IMDb`} style={crewLink}>{c.name}</button>
-                            </React.Fragment>
-                          ))}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  )}
-                  {/* Media unit (rev 5): thumbnail with the star BENEATH it,
-                      living in the LEFT MARGIN on wide windows (the CSS below)
-                      and in-flow above the summary where no margin exists. */}
-                  {(ep.still || (user && canonOn && !mobile)) && !mobile && (
-                    <div className="ref-ep-media" style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
-                      {user && canonOn && (
-                        <button
-                          onClick={() => toggleEssential(ep.s, ep.e)}
-                          aria-pressed={essentials.has(idx(ep.s, ep.e))}
-                          title={essentials.has(idx(ep.s, ep.e)) ? "Un-star this essential" : "Star as an essential episode"}
-                          style={{ background: "transparent", border: "none", padding: 2, cursor: "pointer", lineHeight: 0, flexShrink: 0 }}
-                        >
-                          <Star size={17} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
-                        </button>
-                      )}
-                      {ep.still && (
-                        <button
-                          onClick={() => setStillOpen(ep.still!)}
-                          aria-label={`Enlarge the episode ${ep.e} still`}
-                          style={{ padding: 0, border: "none", background: "transparent", cursor: "zoom-in", lineHeight: 0, display: "block" }}
-                        >
-                          <img src={ep.still} alt="" loading="lazy" style={{ width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {mobile && ep.still && (
-                    <button
-                      onClick={() => setStillOpen(ep.still!)}
-                      aria-label={`Enlarge the episode ${ep.e} still`}
-                      style={{ padding: 0, border: "none", background: "transparent", cursor: "zoom-in", lineHeight: 0, display: "block", marginTop: 8 }}
-                    >
-                      <img src={ep.still} alt="" loading="lazy" style={{ width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
-                    </button>
-                  )}
-                  {ep.summary && (
-                    <div style={{ fontSize: mobile ? 13 : 14, lineHeight: 1.55, marginTop: 8, opacity: 0.95, maxWidth: 620 }}>
-                      {ep.summary}
-                    </div>
-                  )}
-                </div>
+        type Season = (typeof seasonsVisible)[number];
+        type Ep = Season["episodes"][number];
+        const headerBtn = (season: Season, isOpen: boolean) => (
+          <button
+            onClick={() => toggleSeason(season.n)}
+            aria-expanded={isOpen}
+            aria-label={`${isOpen ? "Collapse" : "Expand"} season ${season.n}`}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, color: CREAM, opacity: 0.95 }}
+          >
+            Season {season.n}
+            {isOpen
+              ? <ChevronUp size={16} color={CREAM} strokeWidth={2.5} />
+              : <ChevronDown size={16} color={CREAM} strokeWidth={2.5} />}
+          </button>
+        );
+        const starBtn = (ep: Ep, size: number, inline: boolean) => (
+          <button
+            onClick={() => toggleEssential(ep.s, ep.e)}
+            aria-pressed={essentials.has(idx(ep.s, ep.e))}
+            title={essentials.has(idx(ep.s, ep.e)) ? "Un-star this essential" : "Star as an essential episode"}
+            style={{ background: "transparent", border: "none", padding: 2, cursor: "pointer", lineHeight: 0, flexShrink: 0, ...(inline ? { marginRight: 6, verticalAlign: "middle" } : {}) }}
+          >
+            <Star size={size} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
+          </button>
+        );
+        const stillBtn = (ep: Ep) => (
+          <button
+            onClick={() => setStillOpen(ep.still!)}
+            aria-label={`Enlarge the episode ${ep.e} still`}
+            style={{ padding: 0, border: "none", background: "transparent", cursor: "zoom-in", lineHeight: 0, display: "block" }}
+          >
+            <img src={ep.still!} alt="" loading="lazy" style={{ width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
+          </button>
+        );
+        const epText = (ep: Ep) => (
+          <>
+            <div style={{ fontWeight: 700, fontSize: mobile ? 14 : 15 }}>
+              {user && canonOn && mobile && starBtn(ep, 15, true)}
+              Episode {ep.e} · {ep.title}
+              {ep.airDate && <span style={{ fontWeight: 500, opacity: 0.7 }}>  ·  {ep.airDate}</span>}
+            </div>
+            {(ep.writers.length > 0 || ep.directors.length > 0 || ep.dp.length > 0) && (
+              <div style={{ ...small, marginTop: 2 }}>
+                {[
+                  { label: "written by", credits: ep.writers.map(toCredit) },
+                  { label: "directed by", credits: ep.directors.map(toCredit) },
+                  { label: "dp", credits: ep.dp.map(toCredit) },
+                ].filter((g) => g.credits.length > 0).map((g, gi) => (
+                  <React.Fragment key={g.label}>
+                    {gi > 0 && " · "}
+                    {g.label}{" "}
+                    {g.credits.map((c, ci) => (
+                      <React.Fragment key={c.name}>
+                        {ci > 0 && ", "}
+                        <button onClick={() => openActorImdb(c)} title={`${c.name} on IMDb`} style={crewLink}>{c.name}</button>
+                      </React.Fragment>
+                    ))}
+                  </React.Fragment>
+                ))}
               </div>
-            ))}
+            )}
+            {mobile && ep.still && (
+              <div style={{ marginTop: 8 }}>{stillBtn(ep)}</div>
+            )}
+            {ep.summary && (
+              <div style={{ fontSize: mobile ? 13 : 14, lineHeight: 1.55, marginTop: mobile ? 8 : 4, opacity: 0.95, maxWidth: 620 }}>
+                {ep.summary}
+              </div>
+            )}
+          </>
+        );
+        if (mobile) {
+          return seasonsVisible.map((season) => {
+            const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx).reverse();
+            const isOpen = openSet.has(season.n);
+            return (
+              <div key={season.n} style={{ marginBottom: isOpen ? 28 : 14 }}>
+                <div style={{ marginBottom: isOpen ? 10 : 0 }}>{headerBtn(season, isOpen)}</div>
+                {isOpen && watched.map((ep) => (
+                  <div key={ep.e} style={{ marginBottom: 20 }}>{epText(ep)}</div>
+                ))}
+              </div>
+            );
+          });
+        }
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", columnGap: 24, marginLeft: -264, alignItems: "start" }}>
+            {seasonsVisible.map((season, si) => {
+              const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx).reverse();
+              const isOpen = openSet.has(season.n);
+              return (
+                <React.Fragment key={season.n}>
+                  {/* Season row: sticky rides the FIRST season's rail cell. */}
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    {si === 0 && user && canonOn && stickyVisible && (
+                      <StickyNote
+                        tone="cream" tilt={-3} width={170} fontSize={13} ignoreViewportGate
+                        onDismiss={() => { setStickyVisible(false); try { localStorage.setItem(stickyKey, "1"); } catch { /* fine */ } }}
+                        dismissLabel="Dismiss"
+                        style={{ position: "relative", zIndex: 5, display: "inline-block", marginBottom: 16 }}
+                      >
+                        Mark your essential episodes with a star.
+                      </StickyNote>
+                    )}
+                  </div>
+                  <div style={{ marginBottom: isOpen ? 12 : 14 }}>{headerBtn(season, isOpen)}</div>
+                  {isOpen && watched.map((ep) => (
+                    <React.Fragment key={`${season.n}-${ep.e}`}>
+                      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, paddingTop: 2, marginBottom: 20 }}>
+                        {user && canonOn && starBtn(ep, 17, false)}
+                        {ep.still && stillBtn(ep)}
+                      </div>
+                      <div style={{ minWidth: 0, marginBottom: 20 }}>{epText(ep)}</div>
+                    </React.Fragment>
+                  ))}
+                </React.Fragment>
+              );
+            })}
           </div>
         );
-      })}
+      })()}
       {/* Unwatched episodes/seasons render NOTHING at all (Alborz 2026-09-05
           — the dial's dropdown already tells the viewer how much is left). */}
 
