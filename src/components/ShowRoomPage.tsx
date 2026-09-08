@@ -973,8 +973,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           </div>
         </div>
         {composeMinimized && (
-          <button onClick={() => setComposeMinimized(false)} style={continueChip}>
-            <SquarePen size={16} /> continue writing
+          <button onClick={() => setComposeMinimized(false)} style={{ ...continueChip, color: bodyBg }}>
+            <SquarePen size={16} color={bodyBg} /> continue writing
           </button>
         )}
         </>,
@@ -1102,15 +1102,17 @@ const sortSelect: React.CSSProperties = {
   fontFamily: '"Inter", system-ui, sans-serif', cursor: "pointer", outline: "none",
 };
 const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 };
-// The minimized-compose dock (Alborz 2026-09-08) — Identity pill, fixed
-// bottom-right, above everything; tapping restores the modal mid-sentence.
+// The minimized-compose dock (Alborz 2026-09-08 rev): the deck card's
+// docked-tab grammar — cream, rounded-top, flush to the page bottom, text
+// in the current tab's body color; nudged left toward the entry column.
+// Small type so the tab stays modest (the label color is set inline).
 const continueChip: React.CSSProperties = {
-  position: "fixed", bottom: 24, right: 24, zIndex: 1001,
+  position: "fixed", bottom: 0, right: 120, zIndex: 1001,
   display: "inline-flex", alignItems: "center", gap: 8,
-  background: CANON.identity, color: CANON.cream, border: "none",
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
-  padding: "12px 24px", borderRadius: 65, cursor: "pointer",
-  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+  background: CANON.cream, border: "none",
+  fontFamily: LORA, fontWeight: 700, fontSize: 14,
+  padding: "12px 24px 14px", borderRadius: "24px 24px 0 0", cursor: "pointer",
+  boxShadow: "0 -6px 24px rgba(0,0,0,0.18)",
 };
 const composeCloseX: React.CSSProperties = {
   position: "absolute", top: 20, right: 24, background: "transparent", border: "2px solid var(--canon-alert,#f45028)",

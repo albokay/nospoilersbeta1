@@ -919,8 +919,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           />
         </div>
         {composeMinimized && (
-          <button onClick={() => setComposeMinimized(false)} style={continueChip}>
-            <SquarePen size={14} /> continue writing
+          <button onClick={() => setComposeMinimized(false)} style={{ ...continueChip, color: bodyBg }}>
+            <SquarePen size={14} color={bodyBg} /> continue writing
           </button>
         )}
         </>,
@@ -1076,15 +1076,17 @@ const composeShell: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, background: C.cream, overflowY: "auto",
   WebkitOverflowScrolling: "touch",
 };
-// The minimized-compose dock — Identity pill above the page chrome;
-// tapping restores the sheet mid-sentence (Alborz 2026-09-08).
+// The minimized-compose dock (rev): the deck card's docked-tab grammar —
+// cream, rounded-top, flush to the page bottom (safe-area padded), label in
+// the current tab's body color (set inline).
 const continueChip: React.CSSProperties = {
-  position: "fixed", bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)", right: 16, zIndex: 1001,
+  position: "fixed", bottom: 0, right: 16, zIndex: 1001,
   display: "inline-flex", alignItems: "center", gap: 8,
-  background: CANON.identity, color: CANON.cream, border: "none",
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13,
-  padding: "11px 20px", borderRadius: 65, cursor: "pointer",
-  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+  background: CANON.cream, border: "none",
+  fontFamily: LORA, fontWeight: 700, fontSize: 13,
+  padding: "11px 20px", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 13px)",
+  borderRadius: "24px 24px 0 0", cursor: "pointer",
+  boxShadow: "0 -6px 24px rgba(0,0,0,0.18)",
 };
 const composeCloseX: React.CSSProperties = {
   position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 12,
