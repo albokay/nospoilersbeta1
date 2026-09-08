@@ -919,8 +919,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           />
         </div>
         {composeMinimized && (
-          <button onClick={() => setComposeMinimized(false)} style={{ ...continueChip, color: bodyBg }}>
-            <SquarePen size={14} color={bodyBg} /> continue writing
+          <button onClick={() => setComposeMinimized(false)} style={{ ...continueChip, color: CANON.identity }}>
+            <SquarePen size={14} color={CANON.identity} /> continue writing
           </button>
         )}
         </>,
@@ -1080,9 +1080,9 @@ const composeShell: React.CSSProperties = {
 // cream, rounded-top, flush to the page bottom (safe-area padded), label in
 // the current tab's body color (set inline).
 const continueChip: React.CSSProperties = {
-  position: "fixed", bottom: 0, right: 16, zIndex: 1001,
-  display: "inline-flex", alignItems: "center", gap: 8,
-  background: CANON.cream, border: "none",
+  position: "fixed", bottom: 0, right: 32, zIndex: 1001,
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+  background: CANON.cream, border: "none", minWidth: 210,
   fontFamily: LORA, fontWeight: 700, fontSize: 13,
   padding: "11px 20px", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 13px)",
   borderRadius: "24px 24px 0 0", cursor: "pointer",

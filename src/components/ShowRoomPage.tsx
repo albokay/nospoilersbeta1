@@ -973,8 +973,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           </div>
         </div>
         {composeMinimized && (
-          <button onClick={() => setComposeMinimized(false)} style={{ ...continueChip, color: bodyBg }}>
-            <SquarePen size={16} color={bodyBg} /> continue writing
+          <button onClick={() => setComposeMinimized(false)} style={{ ...continueChip, color: CANON.identity }}>
+            <SquarePen size={16} color={CANON.identity} /> continue writing
           </button>
         )}
         </>,
@@ -1107,11 +1107,11 @@ const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize
 // in the current tab's body color; nudged left toward the entry column.
 // Small type so the tab stays modest (the label color is set inline).
 const continueChip: React.CSSProperties = {
-  position: "fixed", bottom: 0, right: 120, zIndex: 1001,
-  display: "inline-flex", alignItems: "center", gap: 8,
-  background: CANON.cream, border: "none",
+  position: "fixed", bottom: 0, right: 220, zIndex: 1001,
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+  background: CANON.cream, border: "none", minWidth: 240,
   fontFamily: LORA, fontWeight: 700, fontSize: 14,
-  padding: "12px 24px 14px", borderRadius: "24px 24px 0 0", cursor: "pointer",
+  padding: "12px 32px 14px", borderRadius: "24px 24px 0 0", cursor: "pointer",
   boxShadow: "0 -6px 24px rgba(0,0,0,0.18)",
 };
 const composeCloseX: React.CSSProperties = {
