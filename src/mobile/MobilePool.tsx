@@ -106,11 +106,16 @@ const page: React.CSSProperties = {
   fontFamily: '"Inter", system-ui, sans-serif',
   paddingBottom: "env(safe-area-inset-bottom, 0px)",
 };
+// The standard mobile header bar + back arrow (mirrors MobileShowRoom —
+// identical position, so the overlay's arrow lands exactly where the room's
+// was; Alborz 2026-09-08).
 const topBar: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 4, padding: "12px 8px 4px",
+  display: "flex", alignItems: "center", gap: 4,
+  padding: "calc(env(safe-area-inset-top, 0px) + 8px) 8px 4px",
 };
 const iconBtn: React.CSSProperties = {
-  background: "transparent", border: "none", cursor: "pointer", padding: 10, lineHeight: 0,
+  width: 44, height: 44, flexShrink: 0, border: "none", background: "transparent", cursor: "pointer",
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
 };
 const signInPill: React.CSSProperties = {
   border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14,

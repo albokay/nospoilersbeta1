@@ -17,6 +17,7 @@ import LoadingDots from "./LoadingDots";
 import FeedbackWidget from "./FeedbackWidget";
 import FriendProfile from "./profile/FriendProfile";
 import { CANON } from "../styles/canon";
+import { EDGE_TAB_TOP } from "./dashboardChrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
@@ -54,24 +55,21 @@ export default function FriendProfilePage({ username }: { username: string }) {
 
   return (
     <div style={page}>
+      {/* Standard left-edge back tab — the same cream partial pill at
+          EDGE_TAB_TOP as the show room + group dashboard (Alborz 2026-09-08:
+          identical position everywhere; replaces the bare arrow). */}
+      <button style={backTab} title="back" onClick={() => navigate(-1)}>
+        <ArrowLeft size={24} color={CANON.personal} />
+      </button>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "16px 24px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button
-            onClick={() => navigate(-1)}
-            title="back"
-            style={{ background: "transparent", border: "none", cursor: "pointer", padding: 6, lineHeight: 0 }}
-          >
-            <ArrowLeft size={24} color={CANON.cream} />
-          </button>
-          <div
-            onClick={() => navigate(user ? "/dashboard" : "/")}
-            role="button"
-            aria-label="Home"
-            title="Home"
-            style={{ cursor: "pointer" }}
-          >
-            <SidebarLogo scale={0.45} blocksOpacity={1} surfaceBg={CANON.accent} />
-          </div>
+        <div
+          onClick={() => navigate(user ? "/dashboard" : "/")}
+          role="button"
+          aria-label="Home"
+          title="Home"
+          style={{ cursor: "pointer" }}
+        >
+          <SidebarLogo scale={0.45} blocksOpacity={1} surfaceBg={CANON.accent} />
         </div>
         {!user && (
           <button
@@ -100,3 +98,11 @@ export default function FriendProfilePage({ username }: { username: string }) {
     </div>
   );
 }
+
+const backTab: React.CSSProperties = {
+  // Identical to the show room / group dashboard back tab (spec §16 tab; one
+  // shared height via EDGE_TAB_TOP).
+  position: "fixed", left: 0, top: EDGE_TAB_TOP, background: CANON.cream, border: "none", cursor: "pointer",
+  borderTopRightRadius: 48, borderBottomRightRadius: 48, padding: "32px 40px 32px 24px",
+  display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
+};

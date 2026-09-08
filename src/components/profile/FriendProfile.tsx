@@ -28,8 +28,11 @@ import { CANON } from "../../styles/canon";
 import { useAuth } from "../../lib/auth";
 import {
   fetchShows, fetchProgress, fetchPublicProgressForUser, upsertRewatchStatus,
-  fetchPeopleGroupsForUser, fetchPeopleGroupMembers, type Show,
+  fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames,
+  fetchGroupShowVotes, fetchFriendGroupsForUser, setShowVote, ensureProgressRow,
+  type Show,
 } from "../../lib/db";
+import { groupDisplayName } from "../../lib/groupNames";
 import type { ProgressEntry } from "../../types";
 import { fetchTvmazePoster } from "../../lib/tvmaze";
 import { ensureShowReference, stampReferenceLookup, markWantToWatch, type ShowReferenceData } from "../../lib/reference";
@@ -65,9 +68,16 @@ export default function FriendProfile({
   const [theirProg, setTheirProg] = useState<Record<string, ProgressEntry>>({});
   const [myProg, setMyProg] = useState<Record<string, ProgressEntry>>({});
   const [posters, setPosters] = useState<Record<string, string | null>>({});
-  // A people-group the viewer SHARES with the owner (any — show-agnostic;
-  // Alborz correction 2026-09-08) — powers the gated-canon chat invitation.
-  const [sharedGroupId, setSharedGroupId] = useState<string | null>(null);
+  // The people-groups the viewer SHARES with the owner (any — show-agnostic;
+  // Alborz correction 2026-09-08) — power the gated-canon chat invitation AND
+  // the per-show "want to watch it with {group}" actions (2026-09-08 pt 2).
+  // Per group: its display label, the shows anyone there wants (the pool),
+  // the viewer's own yeses, and the viewer's rooms under it (showId → roomId).
+  const [sharedGroups, setSharedGroups] = useState<{
+    id: string; label: string; myVotes: Set<string>; rooms: Record<string, string>;
+  }[]>([]);
+  // `${groupId}:${showId}` while a group-want is saving.
+  const [voteBusy, setVoteBusy] = useState<string | null>(null);
   // Tilted gap bubble: which tile + its line.
   const [bubble, setBubble] = useState<{ showId: string; text: string } | null>(null);
   // The log/want card for shows the viewer doesn't have yet.
@@ -137,30 +147,62 @@ export default function FriendProfile({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canonList, watching, wantList, finishedList]);
 
-  // Find ANY people-group the viewer shares with the owner — the chat
-  // invitation on gated canon cards points at that group's chat box.
+  // Find EVERY people-group the viewer shares with the owner — the chat
+  // invitation on gated canon cards points at the first one's chat box, and
+  // each carries its own "want to watch it with {label}" action per show.
   useEffect(() => {
-    if (!user || user.id === ownerId) return;
+    if (!user || user.id === ownerId) { setSharedGroups([]); return; }
     let cancelled = false;
     (async () => {
       try {
-        const groups = await fetchPeopleGroupsForUser(user.id);
+        const [groups, contactNames, myRooms] = await Promise.all([
+          fetchPeopleGroupsForUser(user.id),
+          fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
+          fetchFriendGroupsForUser(user.id).catch(() => []),
+        ]);
+        const shared: { id: string; label: string; myVotes: Set<string>; rooms: Record<string, string> }[] = [];
         for (const g of groups) {
           const members = await fetchPeopleGroupMembers(g.id);
           if (cancelled) return;
-          if (members.some((m) => m.userId === ownerId)) { setSharedGroupId(g.id); return; }
+          if (!members.some((m) => m.userId === ownerId)) continue;
+          const others = members.filter((m) => m.userId !== user.id);
+          const label = groupDisplayName(g, others, contactNames);
+          const votes = await fetchGroupShowVotes(g.id).catch(() => []);
+          if (cancelled) return;
+          const myVotes = new Set(votes.filter((v) => v.userId === user.id).map((v) => v.showId));
+          const rooms: Record<string, string> = {};
+          for (const r of myRooms) if (r.parentGroupId === g.id && r.showId) rooms[r.showId] = r.id;
+          shared.push({ id: g.id, label, myVotes, rooms });
         }
-        if (!cancelled) setSharedGroupId(null);
-      } catch { if (!cancelled) setSharedGroupId(null); }
+        if (!cancelled) setSharedGroups(shared);
+      } catch { if (!cancelled) setSharedGroups([]); }
     })();
     return () => { cancelled = true; };
   }, [user?.id, ownerId]);
 
   const openChat = () => {
-    if (!sharedGroupId) return;
-    if (mobile) navigate(`/m/group/${sharedGroupId}/chat`);
-    else navigate(`/dashboard?g=${sharedGroupId}`, { state: { openChat: true } });
+    const gid = sharedGroups[0]?.id;
+    if (!gid) return;
+    if (mobile) navigate(`/m/group/${gid}/chat`);
+    else navigate(`/dashboard?g=${gid}`, { state: { openChat: true } });
   };
+
+  // "want to watch it with {group}" — the same interest signal as the group
+  // dashboard's "Do you want to watch too?" yes. Group-only: it does NOT put
+  // the show on the viewer's personal shelves (dashboard proposal rules — a
+  // not-started row is quietly created off-pool so the room can work later).
+  async function wantWithGroup(g: { id: string }, show: Show) {
+    if (!user || voteBusy) return;
+    setVoteBusy(`${g.id}:${show.id}`);
+    try {
+      await setShowVote(g.id, show.id, true);
+      if (!myProg[show.id]) await ensureProgressRow(user.id, show.id);
+      setSharedGroups((prev) => prev.map((x) =>
+        x.id === g.id ? { ...x, myVotes: new Set(x.myVotes).add(show.id) } : x));
+    } catch (e) { console.error("[friend-profile] group want failed", e); }
+    finally { setVoteBusy(null); }
+  }
+  const openRoom = (roomId: string) => navigate(`${mobile ? "/m" : ""}/show-room/${roomId}`);
 
   // The tilted gap bubble's line — null when the show isn't on the
   // viewer's own shelves (then the tap opens the log/want card instead).
@@ -227,23 +269,86 @@ export default function FriendProfile({
   // ── styles ──
   const shelfLabel: React.CSSProperties = { fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 };
   const tileW = mobile ? 96 : 120, tileH = mobile ? 136 : 170;
-  const bubbleStyle: React.CSSProperties = {
-    position: "absolute", bottom: "calc(100% + 6px)", left: "50%",
-    transform: "translateX(-50%) rotate(-2deg)", width: "max-content", maxWidth: 210,
+  // The bubble is INTERACTIVE since the group-want rows (2026-09-08 pt 2):
+  // the wrap's bottom padding bridges the visual gap so a desktop mouse can
+  // travel from poster to bubble without a mouseleave killing it.
+  const bubbleWrap: React.CSSProperties = {
+    position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)",
+    paddingBottom: 6, zIndex: 8,
+  };
+  const bubbleBox: React.CSSProperties = {
+    transform: "rotate(-2deg)", width: "max-content", maxWidth: 210,
     background: CREAM, color: CANON.identity, fontFamily: '"Inter", sans-serif',
     fontWeight: 600, fontSize: 13, lineHeight: 1.35, padding: "10px 12px",
-    boxShadow: "0 4px 14px rgba(0,0,0,0.18)", zIndex: 8, pointerEvents: "none", textAlign: "left",
+    boxShadow: "0 4px 14px rgba(0,0,0,0.18)", textAlign: "left",
   };
+
+  // One shared group's row for a show — three states: your room exists →
+  // open it; you've already said yes → inert ✓; else the want action.
+  function groupRow(g: { id: string; label: string; myVotes: Set<string>; rooms: Record<string, string> }, show: Show, surface: "bubble" | "card") {
+    const roomId = g.rooms[show.id];
+    const busy = voteBusy === `${g.id}:${show.id}`;
+    if (surface === "bubble") {
+      const link: React.CSSProperties = {
+        display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer",
+        color: CANON.identity, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12,
+        textDecoration: "underline", textAlign: "left",
+      };
+      if (roomId) return <button key={g.id} style={link} onClick={() => openRoom(roomId)}>open your room with {g.label}</button>;
+      if (g.myVotes.has(show.id)) return (
+        <div key={g.id} style={{ color: CANON.identity, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, opacity: 0.75 }}>
+          in {g.label}&rsquo;s pool ✓
+        </div>
+      );
+      return (
+        <button key={g.id} style={link} disabled={busy} onClick={() => wantWithGroup(g, show)}>
+          {busy ? <>one moment<LoadingDots /></> : <>want to watch it with {g.label}</>}
+        </button>
+      );
+    }
+    // card — outlined siblings under the primary personal action.
+    const outline: React.CSSProperties = {
+      ...startBtn, background: "transparent", border: `2px solid ${CREAM}`, color: CREAM,
+      width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0,
+    };
+    if (roomId) return <button key={g.id} style={outline} onClick={() => openRoom(roomId)}>open your room with {g.label}</button>;
+    if (g.myVotes.has(show.id)) return (
+      <div key={g.id} style={{ color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12 }}>
+        in {g.label}&rsquo;s pool ✓
+      </div>
+    );
+    return (
+      <button key={g.id} style={outline} disabled={busy} onClick={() => wantWithGroup(g, show)}>
+        {busy ? <>one moment<LoadingDots /></> : `want to watch it with ${g.label}`}
+      </button>
+    );
+  }
+
+  const renderBubble = (show: Show) => (
+    <div style={bubbleWrap}>
+      <div style={bubbleBox}>
+        {bubble?.text}
+        {sharedGroups.length > 0 && (
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+            {sharedGroups.map((g) => groupRow(g, show, "bubble"))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   const tile = (show: Show, caption?: string) => {
     const poster = posters[show.id];
     return (
-      <div key={show.id} style={{ position: "relative", flexShrink: 0, width: tileW }}>
-        {bubble?.showId === show.id && <div style={bubbleStyle}>{bubble.text}</div>}
+      <div
+        key={show.id}
+        style={{ position: "relative", flexShrink: 0, width: tileW }}
+        onMouseEnter={() => onTileHover(show)}
+        onMouseLeave={() => setBubble((prev) => (prev?.showId === show.id ? null : prev))}
+      >
+        {bubble?.showId === show.id && renderBubble(show)}
         <button
           onClick={() => onTileTap(show)}
-          onMouseEnter={() => onTileHover(show)}
-          onMouseLeave={() => setBubble((prev) => (prev?.showId === show.id ? null : prev))}
           style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: bubbleTextFor(show) && !mobile ? "default" : "pointer", textAlign: "left" }}
         >
           {poster ? (
@@ -302,12 +407,14 @@ export default function FriendProfile({
             const unlocked = atLatest(show, myProg[show.id]); // viewer finished it
             const poster = posters[show.id];
             const posterEl = (w: number, h: number) => (
-              <div style={{ position: "relative", flexShrink: 0, width: w }}>
-                {bubble?.showId === show.id && <div style={bubbleStyle}>{bubble.text}</div>}
+              <div
+                style={{ position: "relative", flexShrink: 0, width: w }}
+                onMouseEnter={() => onTileHover(show)}
+                onMouseLeave={() => setBubble((prev) => (prev?.showId === show.id ? null : prev))}
+              >
+                {bubble?.showId === show.id && renderBubble(show)}
                 <button
                   onClick={() => onTileTap(show)}
-                  onMouseEnter={() => onTileHover(show)}
-                  onMouseLeave={() => setBubble((prev) => (prev?.showId === show.id ? null : prev))}
                   style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: bubbleTextFor(show) && !mobile ? "default" : "pointer" }}
                 >
                   {poster ? (
@@ -349,7 +456,7 @@ export default function FriendProfile({
                     <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 12, color: CANON.dark, opacity: 0.9, marginTop: 4, lineHeight: 1.45 }}>
                       {ownerName}&rsquo;s take could spoil what&rsquo;s ahead.
                     </div>
-                    {sharedGroupId && (
+                    {sharedGroups.length > 0 && (
                       <button
                         onClick={openChat}
                         style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CANON.identity, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
@@ -480,6 +587,14 @@ export default function FriendProfile({
                   <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={cardBusy} onClick={wantIt}>
                     {cardBusy ? <>one moment<LoadingDots /></> : "want to watch"}
                   </button>
+                </div>
+              )}
+              {/* Shared-group actions (2026-09-08 pt 2): one outlined row per
+                  group you share with the owner — group interest only, the
+                  personal buttons above stay independent. */}
+              {sharedGroups.length > 0 && (
+                <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                  {sharedGroups.map((g) => groupRow(g, cardShow, "card"))}
                 </div>
               )}
             </div>
