@@ -557,17 +557,18 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                 {[0, 1, 2, 3].map((i) => {
                   const show = canonList[i];
                   if (!show) {
+                    // The placeholder spans its whole [thumb + text] section
+                    // and centers, so empty/part-filled states stay symmetric
+                    // instead of leaning left (Alborz 2026-09-08).
                     return (
-                      <React.Fragment key={`ph-${i}`}>
-                        <button
-                          onClick={openCanonSearch}
-                          title="Add a show to your canon"
-                          style={{ width: TW, height: TH, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 34, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                        >
-                          +
-                        </button>
-                        <div />
-                      </React.Fragment>
+                      <button
+                        key={`ph-${i}`}
+                        onClick={openCanonSearch}
+                        title="Add a show to your canon"
+                        style={{ gridColumn: "span 2", justifySelf: "center", width: TW, height: TH, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 34, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      >
+                        +
+                      </button>
                     );
                   }
                   const poster = posters[show.id];
@@ -905,7 +906,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                     the type masked to Personal green per the provided
                     logotype. */}
                 <div style={{ marginTop: 16 }}>
-                  <SidebarLogo scale={0.4} blocksOpacity={1} surfaceBg={CANON.cream} wordmarkTint={CANON.personal} />
+                  <SidebarLogo scale={0.4} blocksOpacity={1} surfaceBg={CANON.cream} wordmarkTint={CANON.accent} wordmarkTintOverBlocks={CANON.cream} />
                 </div>
               </div>
             </div>

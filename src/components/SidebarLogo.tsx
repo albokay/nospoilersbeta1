@@ -106,6 +106,13 @@ export interface SidebarLogoProps {
    */
   wordmarkTint?: string;
   /**
+   * With wordmarkTint set: wherever the wordmark OVERLAPS a block, repaint
+   * that portion of the type in this color (per-block clipped copies, faded
+   * in after the blocks settle). Used by the essentials share card — yellow
+   * type on the cream card, cream type over the blocks (Alborz 2026-09-08).
+   */
+  wordmarkTintOverBlocks?: string;
+  /**
    * Override the pool of block arrangements the logo randomly picks from.
    * Default: the built-in ARRANGEMENTS (4). The OnboardingModal passes a
    * 2-arrangement pool whose blocks never overlap the wordmark.
@@ -136,6 +143,7 @@ export default function SidebarLogo({
   stagger = 40,
   blocksOpacity = 1,
   wordmarkTint,
+  wordmarkTintOverBlocks,
   arrangements,
   bg = "green",
   surfaceBg,
@@ -281,7 +289,35 @@ export default function SidebarLogo({
               maskPosition: "left bottom",
             }}
           />
-        ) : (
+        ) : null}
+        {/* Per-block overlap repaint: a clipped copy of the tinted wordmark
+            per intersecting block, above everything (z7), fading in once the
+            blocks have landed so the clips match their resting spots. */}
+        {wordmarkTint && wordmarkTintOverBlocks && layout && BLOCKS.map((block, i) => {
+          const bx = layout[block.id].x, by = layout[block.id].y;
+          // Wordmark box in canvas coords: left 45, top H-52=96, 165x52.
+          const l = bx - 45, t = by - 96;
+          if (l >= 165 || t >= 52 || l + BLOCK <= 0 || t + BLOCK <= 0) return null; // no overlap
+          const inset = `inset(${Math.max(0, t)}px ${Math.max(0, 165 - l - BLOCK)}px ${Math.max(0, 52 - t - BLOCK)}px ${Math.max(0, l)}px round 15px)`;
+          return (
+            <div
+              key={`${block.id}-wm`}
+              aria-hidden
+              style={{
+                position: "absolute", left: 45, bottom: 0, height: 52, width: 165, zIndex: 7,
+                background: wordmarkTintOverBlocks,
+                WebkitMaskImage: "url(/sidebar-logo.png)", maskImage: "url(/sidebar-logo.png)",
+                WebkitMaskSize: "contain", maskSize: "contain",
+                WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat",
+                WebkitMaskPosition: "left bottom", maskPosition: "left bottom",
+                clipPath: inset, WebkitClipPath: inset,
+                opacity: settled ? blocksOpacity : 0,
+                transition: `opacity 300ms ease ${duration + i * stagger}ms`,
+              }}
+            />
+          );
+        })}
+        {!wordmarkTint && (
           <img
             src="/sidebar-logo.png"
             alt="sidebar"
