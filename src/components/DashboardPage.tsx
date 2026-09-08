@@ -612,6 +612,14 @@ export default function DashboardPage() {
     const g = new URLSearchParams(location.search).get("g");
     setActiveGroupId(g);
   }, [location.search]);
+  // A friend-profile chat link arrives as /dashboard?g={id} + openChat state
+  // (2026-09-08) — pop the group's chat panel once the group is active.
+  useEffect(() => {
+    if ((location.state as { openChat?: boolean } | null)?.openChat && activeGroupId) {
+      setChatGroupId(activeGroupId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeGroupId, location.state]);
 
   useEffect(() => {
     if (!activeGroupId) { setGroupShows([]); setGroupLoading(false); return; }

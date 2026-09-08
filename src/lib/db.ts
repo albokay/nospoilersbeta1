@@ -1861,6 +1861,12 @@ export async function fetchPublicProgressForUser(
       wantReason:      row.want_reason ?? undefined,
       canonTake:       row.canon_take ?? undefined,
       stoppedReason:   row.stopped_reason ?? undefined,
+      // "Your shows" profile columns (2026-09-08) — undefined until the
+      // get_public_progress RPC is re-created with them.
+      essentialEps:    Array.isArray(row.essential_eps) ? row.essential_eps : undefined,
+      wantedAt:        row.wanted_at ? new Date(row.wanted_at).getTime() : undefined,
+      shelfHiddenAt:   row.shelf_hidden_at ? new Date(row.shelf_hidden_at).getTime() : undefined,
+      progressUpdatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
       // v2 profile-display columns (2026-05-11). undefined when the RPC is
       // still on the pre-v3 shape; default to null in that case.
       shelfOverride:   (row.shelf_override ?? null) as ("watching" | "want" | "finished" | "stopped" | null),
