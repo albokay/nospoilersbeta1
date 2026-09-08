@@ -28,6 +28,7 @@ import MobileBrowseRows from "../../mobile/MobileBrowseRows";
 import OneSelectProgress from "../OneSelectProgress";
 import TrailerCard from "../TrailerCard";
 import LoadingDots from "../LoadingDots";
+import SidebarLogo from "../SidebarLogo";
 import { overlay, searchCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, searchPill } from "../dashboardChrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
@@ -400,63 +401,30 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         .ref-lookup-x:hover { background: ${CANON.accent}; border-color: transparent; }
         .ref-lookup-x:active { background: transparent; border-color: ${CREAM}; }
       `}</style>
-      {/* "Your shows:" — the zone's section heading + locked subhead (Alborz
-          2026-09-07): centered Header 2 over the whole personal-shows world. */}
-      <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center", margin: 0 }}>
-        Your shows:
-      </div>
-      <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 12, color: CREAM, opacity: 0.9, textAlign: "center", margin: "6px auto 0", maxWidth: 520 }}>
-        Your space to collect, log, and remember your TV. This becomes the profile your friends see.
-      </div>
-      {/* Locked pitch (Alborz 2026-09-07 rev): desktop breaks evenly after
-          "shows"; mobile balance-wraps (no orphans at any width). */}
-      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: "30px 0 0", textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
-        {mobile
-          ? <>Need to look something up about the shows you&rsquo;re watching without getting spoiled?</>
-          : <>Need to look something up about the shows<br />you&rsquo;re watching without getting spoiled?</>}
-      </h2>
-      {/* Sub-head split (Alborz): desktop breaks after "detail —"; mobile
-          can't fit that line, so it balance-wraps instead — near-equal
-          lines, never an orphan word. */}
-      <p style={{ fontFamily: '"Inter", sans-serif', fontSize: mobile ? 13 : 14, color: CREAM, opacity: 0.9, lineHeight: 1.5, margin: "10px auto 18px", maxWidth: 640, textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
-        {mobile ? (
-          <>Look up an actor, a plot point you missed, or crew detail — all of it, filtered to how far you&rsquo;ve watched.</>
-        ) : (
-          <>Look up an actor, a plot point you missed, or crew detail —<br />all of it, filtered to how far you&rsquo;ve watched.</>
-        )}
-      </p>
 
-      {/* Search trigger — the group room's search-pill grammar (magnifying
-          glass + text), Personal green on the yellow band (rev 2 2026-09-05). */}
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <button
-          onClick={() => { setSearchMode("lookup"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
-          style={{ ...searchPill, background: CANON.personal, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 14 }}
-        >
-          <Search size={26} color={CREAM} strokeWidth={2} />find your show
-        </button>
-      </div>
-
-      {/* "Your canon:" — FIRST shelf, always present (empty = invitation;
-          Alborz 2026-09-07). Curated here AND on reference pages: + opens
-          the search in canon mode → the canon card; cards carry edit +
-          essentials + the graduate X. Tap → reference (or the how-far card
-          for a pre-progress legacy canon row). */}
-      <div style={{ marginTop: 34 }}>
-        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
-          Your canon:
+      {/* "Your canon" — the zone's FEATURED opener (Alborz 2026-09-07 rev 2):
+          Heading 1 + centered Header-2 subhead, always present. Empty = four
+          placeholder slots as the invitation. Curated here AND on reference
+          pages; cards carry edit + essentials + the graduate X. */}
+      <div>
+        <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 28 : 34, letterSpacing: -1, color: CREAM, margin: 0, textAlign: "center" }}>
+          Your canon
+        </h2>
+        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center", margin: "10px auto 24px", maxWidth: 560, lineHeight: 1.5 }}>
+          The shows you&rsquo;d put your name behind. The shows that mean something to you. The ones you think about regularly.
         </div>
         {canonList.length === 0 ? (
-          <div>
-            <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13, color: CREAM, opacity: 0.9, marginBottom: 12, maxWidth: 480, lineHeight: 1.5 }}>
-              The shows you&rsquo;d put your name behind. That mean something to you. That you think about regularly.
-            </div>
-            <button
-              onClick={() => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
-              style={{ background: "transparent", border: `2px solid ${CREAM}`, color: CREAM, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-            >
-              + add a show
-            </button>
+          <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap" }}>
+            {[0, 1, 2, 3].map((i) => (
+              <button
+                key={i}
+                onClick={() => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
+                title="Add a show to your canon"
+                style={{ width: mobile ? 74 : 110, height: mobile ? 105 : 156, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 28, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                +
+              </button>
+            ))}
           </div>
         ) : (
           <div style={{ display: "flex", gap: 18, overflowX: "auto", paddingBottom: 6 }}>
@@ -489,13 +457,24 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                         </div>
                       )}
                     </button>
-                    {(entry?.essentialEps?.length ?? 0) > 0 && (
+                    {(entry?.essentialEps?.length ?? 0) > 0 ? (
                       <button
                         onClick={() => openShare(show)}
                         title="Open your shareable essentials card"
                         style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
                       >
                         ★ {entry!.essentialEps!.length} essential episode{entry!.essentialEps!.length === 1 ? "" : "s"}
+                      </button>
+                    ) : (
+                      // The essentials PROMPT (Alborz 2026-09-07 — the star
+                      // feature was too hidden): straight to the reference
+                      // page, where the stars live.
+                      <button
+                        onClick={goto}
+                        title="Star this show's essential episodes on its reference page"
+                        style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
+                      >
+                        ★ pick its essential episodes
                       </button>
                     )}
                     <button
@@ -527,6 +506,35 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
             </button>
           </div>
         )}
+      </div>
+
+      {/* Locked pitch (Alborz 2026-09-07 rev): desktop breaks evenly after
+          "shows"; mobile balance-wraps (no orphans at any width). */}
+      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: "44px 0 0", textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
+        {mobile
+          ? <>Need to look something up about the shows you&rsquo;re watching without getting spoiled?</>
+          : <>Need to look something up about the shows<br />you&rsquo;re watching without getting spoiled?</>}
+      </h2>
+      {/* Sub-head split (Alborz): desktop breaks after "detail —"; mobile
+          can't fit that line, so it balance-wraps instead — near-equal
+          lines, never an orphan word. */}
+      <p style={{ fontFamily: '"Inter", sans-serif', fontSize: mobile ? 13 : 14, color: CREAM, opacity: 0.9, lineHeight: 1.5, margin: "10px auto 18px", maxWidth: 640, textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
+        {mobile ? (
+          <>Look up an actor, a plot point you missed, or crew detail — all of it, filtered to how far you&rsquo;ve watched.</>
+        ) : (
+          <>Look up an actor, a plot point you missed, or crew detail —<br />all of it, filtered to how far you&rsquo;ve watched.</>
+        )}
+      </p>
+
+      {/* Search trigger — the group room's search-pill grammar (magnifying
+          glass + text), Personal green on the yellow band (rev 2 2026-09-05). */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <button
+          onClick={() => { setSearchMode("lookup"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
+          style={{ ...searchPill, background: CANON.personal, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 14 }}
+        >
+          <Search size={26} color={CREAM} strokeWidth={2} />find your show
+        </button>
       </div>
 
       {/* "You're watching:" — your S1E1+ shows, recent activity first.
@@ -720,20 +728,20 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: CREAM, textAlign: "center", marginBottom: 18 }}>
                 {canonCard.name}
               </div>
-              <div style={yellowTitle}>Why this show?</div>
-              <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 14px" }}>
-                {canonCard.adding
-                  ? <>(One or two lines for your profile. Adding a show<br />to your canon sets your progress to its latest episode.)</>
-                  : <>(One or two lines for your profile.)</>}
-              </div>
+              <div style={yellowTitle}>Why is this in your canon?</div>
+              {canonCard.adding && (
+                <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 0" }}>
+                  (Adding a show to your canon sets your<br />progress to its latest episode.)
+                </div>
+              )}
               <textarea
                 value={canonDraft}
                 onChange={(ev) => setCanonDraft(ev.target.value)}
                 maxLength={280}
-                rows={3}
+                rows={5}
                 autoFocus
-                placeholder="Your line — why it's canon."
-                style={{ width: "100%", boxSizing: "border-box", border: "none", borderRadius: 12, padding: "10px 12px", fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, resize: "vertical", textAlign: "left" }}
+                placeholder="Your take — as short or long as you like."
+                style={{ width: "100%", boxSizing: "border-box", border: "none", borderRadius: 12, padding: "10px 12px", marginTop: 14, fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, resize: "vertical", textAlign: "left" }}
               />
               <div style={{ marginTop: 16 }}>
                 {canonCard.show ? (
@@ -788,11 +796,11 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                     );
                   })}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 20 }}>
-                  <span style={{ width: 12, height: 12, borderRadius: 4, background: CANON.accent, display: "inline-block" }} />
-                  <span style={{ width: 12, height: 12, borderRadius: 4, background: CANON.alert, display: "inline-block", marginLeft: -4 }} />
-                  <span style={{ width: 12, height: 12, borderRadius: 4, background: CANON.identity, display: "inline-block", marginLeft: -4 }} />
-                  <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontStyle: "italic", fontSize: 13, color: CANON.dark }}>sidebar</span>
+                {/* The REAL dynamic logo (Alborz 2026-09-07) — surfaceBg keeps
+                    the cream block visible on the cream card (findings-card
+                    precedent). */}
+                <div style={{ marginTop: 16 }}>
+                  <SidebarLogo scale={0.4} blocksOpacity={1} surfaceBg={CANON.cream} />
                 </div>
               </div>
             </div>

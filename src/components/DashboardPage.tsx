@@ -26,7 +26,7 @@ import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, Plus, Search, UserPen } from "lucide-react";
+import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, Plus, Search, UserPen, CornerRightUp, CornerRightDown } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import AccountModal from "./AccountModal";
 import FeedbackWidget from "./FeedbackWidget";
@@ -1648,14 +1648,9 @@ export default function DashboardPage() {
         {/* Page headlines ("Your shows" arc CP1, 2026-09-07): H1 + the
             watch-groups section label, above the centered cluster block. */}
         {!socialOnbActive && !postAccept && (
-          <>
-            <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: CANON.cream, textAlign: "center", margin: "26px 0 6px" }}>
-              Your dashboard
-            </h1>
-            <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CANON.cream, textAlign: "center", marginTop: 26 }}>
-              Your watch groups:
-            </div>
-          </>
+          <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: CANON.cream, textAlign: "center", margin: "26px 0 6px" }}>
+            Your dashboard
+          </h1>
         )}
         <div style={dashboardCenter}>
           {/* 1:2 spacer ratio → content rests ~⅓ down (split between top-pinned
@@ -1698,6 +1693,16 @@ export default function DashboardPage() {
             group world, matching the reference tab's world color. ── */}
       {!inGroup && !socialOnbActive && (
         <div style={{ background: C.yellow, position: "relative", zIndex: 2, padding: "72px 24px 140px" }}>
+          {/* Border signposts (Alborz 2026-09-07): Body copy + 1px corner
+              arrows hugging the green/yellow border, LEFT of the centered
+              deck card. left:24 keeps them on-screen at narrow widths. */}
+          <div style={{ position: "absolute", top: -36, left: 24, right: "calc(50% + 370px)", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, whiteSpace: "nowrap" }}>
+            Your friend groups <CornerRightUp size={20} strokeWidth={1} />
+          </div>
+          <div style={{ position: "absolute", top: 14, left: 24, right: "calc(50% + 370px)", display: "flex", justifyContent: "flex-end", alignItems: "flex-start", gap: 8, color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.4, textAlign: "right" }}>
+            <span>Your space to collect, log, and remember your TV.<br />This becomes the profile your friends see.</span>
+            <CornerRightDown size={20} strokeWidth={1} style={{ marginTop: 3, flexShrink: 0 }} />
+          </div>
           <ReferenceLookupBand />
         </div>
       )}

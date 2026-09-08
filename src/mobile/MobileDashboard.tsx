@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { LogOut, UserPen, MessageCircleWarning } from "lucide-react";
+import { LogOut, UserPen, MessageCircleWarning, CornerRightUp, CornerRightDown } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { markJoinedThisSession } from "../lib/joinSession";
 import { useAuth } from "../lib/auth";
@@ -401,14 +401,9 @@ export default function MobileDashboard() {
         <>
           {/* Page headlines ("Your shows" arc CP1, 2026-09-07). */}
           {!showSocialOnb && !postAccept && (
-            <>
-              <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 28, letterSpacing: -1, color: C.cream, textAlign: "center", margin: "18px 0 4px" }}>
-                Your dashboard
-              </h1>
-              <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: C.cream, textAlign: "center", margin: "18px 0 8px" }}>
-                Your watch groups:
-              </div>
-            </>
+            <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 28, letterSpacing: -1, color: C.cream, textAlign: "center", margin: "18px 0 8px" }}>
+              Your dashboard
+            </h1>
           )}
           {/* ── Groups + pending invites ── */}
           {(railGroups.length > 0 || pendingInvites.length > 0) && (
@@ -493,7 +488,17 @@ export default function MobileDashboard() {
                 reference tab's world color; bottom room clears the docked
                 deck card. ── */}
           {!showSocialOnb && (
-            <div style={{ background: C.yellow, marginTop: 24, padding: "48px 16px 120px" }}>
+            <div style={{ background: C.yellow, marginTop: 36, padding: "44px 16px 120px", position: "relative" }}>
+              {/* Border signposts (Alborz 2026-09-07) — centered on mobile
+                  (no side slack): green-side label above the border, the
+                  collect/log/remember copy just below it. */}
+              <div style={{ position: "absolute", top: -30, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 6, color: C.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, whiteSpace: "nowrap" }}>
+                Your friend groups <CornerRightUp size={18} strokeWidth={1} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 6, color: C.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.4, textAlign: "right", margin: "-28px 0 32px" }}>
+                <span>Your space to collect, log, and remember your TV.<br />This becomes the profile your friends see.</span>
+                <CornerRightDown size={18} strokeWidth={1} style={{ marginTop: 2, flexShrink: 0 }} />
+              </div>
               <ReferenceLookupBand mobile />
             </div>
           )}

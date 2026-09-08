@@ -258,10 +258,9 @@ export default function ShowReference({
     color: CREAM, fontFamily: "inherit", fontSize: "inherit", fontWeight: "inherit" as const,
     textDecoration: "underline",
   };
-  // Episode stills (rev 3): small hero left of the description. Old cached
-  // blobs have no stills — those keep the plain text layout untouched.
-  const stillW = mobile ? 84 : 128, stillH = mobile ? 47 : 72;
-  const hasStills = ref.seasons.some((se) => se.episodes.some((ep) => ep.still));
+  // Episode stills (rev 4 — Alborz 2026-09-07): the thumbnail sits directly
+  // ABOVE the episode summary, back in one column with the season headers.
+  const stillW = mobile ? 132 : 168, stillH = mobile ? 74 : 95;
 
   return (
     <div style={{ color: CREAM, fontFamily: '"Inter", sans-serif', paddingBottom: 80 }}>
@@ -310,7 +309,7 @@ export default function ShowReference({
                     maxLength={280}
                     rows={2}
                     autoFocus
-                    placeholder="Why this show? One or two lines for your profile."
+                    placeholder="Your take — as short or long as you like."
                     style={{ width: "100%", boxSizing: "border-box", border: "none", borderRadius: 12, padding: "10px 12px", fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, resize: "vertical" }}
                   />
                   <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 8 }}>
@@ -332,6 +331,11 @@ export default function ShowReference({
 
       {/* ── Previously on: watched episodes only ── */}
       <h2 style={sectionH}>Previously on {ref.showName}:</h2>
+      {user && canonOn && (
+        <div style={{ fontStyle: "italic", fontSize: 12, opacity: 0.85, margin: "-6px 0 16px" }}>
+          ★ marks an episode as one of this show&rsquo;s essentials — tap to toggle
+        </div>
+      )}
       {[...ref.seasons].filter((season) => season.n <= prog.s).sort((a, b) => b.n - a.n).map((season) => {
         const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx).reverse();
         const isOpen = (openSeasons ?? new Set([prog.s])).has(season.n);
@@ -354,34 +358,23 @@ export default function ShowReference({
                 : <ChevronDown size={16} color={CREAM} strokeWidth={2.5} />}
             </button>
             {isOpen && watched.map((ep) => (
-              <div
-                key={ep.e}
-                style={{
-                  marginBottom: 16,
-                  ...(hasStills ? {
-                    display: "flex", gap: 14, alignItems: "flex-start",
-                    // Keep the [still + text] unit centered where the text
-                    // column sat: desktop shifts left by half the still's
-                    // footprint (mobile has no slack to shift into).
-                    ...(mobile ? {} : { marginLeft: -(stillW + 14) / 2 }),
-                  } : {}),
-                }}
-              >
-                {hasStills && (ep.still ? (
+              <div key={ep.e} style={{ marginBottom: 20, position: "relative" }}>
+                {/* The essentials star hangs in the LEFT MARGIN, right-justified
+                    against the content column (rev 4); mobile has no gutter, so
+                    it rides inline before the heading there. */}
+                {user && canonOn && !mobile && (
                   <button
-                    onClick={() => setStillOpen(ep.still!)}
-                    aria-label={`Enlarge the episode ${ep.e} still`}
-                    style={{ flex: "0 0 auto", padding: 0, border: "none", background: "transparent", cursor: "zoom-in", lineHeight: 0 }}
+                    onClick={() => toggleEssential(ep.s, ep.e)}
+                    aria-pressed={essentials.has(idx(ep.s, ep.e))}
+                    title={essentials.has(idx(ep.s, ep.e)) ? "Un-star this essential" : "Star as an essential episode"}
+                    style={{ position: "absolute", right: "100%", top: 1, marginRight: 12, background: "transparent", border: "none", padding: 2, cursor: "pointer", lineHeight: 0 }}
                   >
-                    <img src={ep.still} alt="" loading="lazy" style={{ width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
+                    <Star size={16} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
                   </button>
-                ) : (
-                  // No still for this one — hold the slot so text stays aligned.
-                  <div aria-hidden style={{ flex: "0 0 auto", width: stillW, height: stillH }} />
-                ))}
-                <div style={{ minWidth: 0, flex: 1 }}>
+                )}
+                <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: mobile ? 14 : 15 }}>
-                    {user && canonOn && (
+                    {user && canonOn && mobile && (
                       <button
                         onClick={() => toggleEssential(ep.s, ep.e)}
                         aria-pressed={essentials.has(idx(ep.s, ep.e))}
@@ -414,8 +407,17 @@ export default function ShowReference({
                       ))}
                     </div>
                   )}
+                  {ep.still && (
+                    <button
+                      onClick={() => setStillOpen(ep.still!)}
+                      aria-label={`Enlarge the episode ${ep.e} still`}
+                      style={{ padding: 0, border: "none", background: "transparent", cursor: "zoom-in", lineHeight: 0, display: "block", marginTop: 8 }}
+                    >
+                      <img src={ep.still} alt="" loading="lazy" style={{ width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
+                    </button>
+                  )}
                   {ep.summary && (
-                    <div style={{ fontSize: mobile ? 13 : 14, lineHeight: 1.55, marginTop: 4, opacity: 0.95, maxWidth: 620 }}>
+                    <div style={{ fontSize: mobile ? 13 : 14, lineHeight: 1.55, marginTop: 8, opacity: 0.95, maxWidth: 620 }}>
                       {ep.summary}
                     </div>
                   )}
