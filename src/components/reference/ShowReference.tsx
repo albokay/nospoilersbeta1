@@ -13,7 +13,7 @@ import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setCanonPin, setShelfBlurb, setEssentialEps, upsertRewatchStatus } from "../../lib/db";
+import { setCanonPin, setEssentialEps, upsertRewatchStatus } from "../../lib/db";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
@@ -49,9 +49,6 @@ export default function ShowReference({
   // HERE — the dashboard's canon shelf only displays. Reuses the old
   // profile's columns, so pre-restructure canon picks resurface.
   const [canonOn, setCanonOn] = useState<boolean | null>(null); // null = loading
-  const [canonTake, setCanonTake] = useState("");
-  const [takeDraft, setTakeDraft] = useState("");
-  const [editingTake, setEditingTake] = useState(false);
   const [canonBusy, setCanonBusy] = useState(false);
   // CP4: the owner's essential-episode stars (canon shows only) — epIndex set.
   const [essentials, setEssentials] = useState<Set<number>>(new Set());
@@ -70,8 +67,6 @@ export default function ShowReference({
     setOpenSeasons(null);
     setStillOpen(null);
     setCanonOn(null);
-    setCanonTake("");
-    setEditingTake(false);
     setEssentials(new Set());
     setProgressOverride(null);
     ensureShowReference(showId)
@@ -87,14 +82,13 @@ export default function ShowReference({
     let cancelled = false;
     supabase
       .from("progress")
-      .select("canon_pin, canon_take, essential_eps")
+      .select("canon_pin, essential_eps")
       .eq("user_id", user.id)
       .eq("show_id", showId)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
         setCanonOn(!!data?.canon_pin);
-        setCanonTake(data?.canon_take ?? "");
         setEssentials(new Set(Array.isArray(data?.essential_eps) ? data.essential_eps : []));
       });
     return () => { cancelled = true; };
@@ -114,22 +108,7 @@ export default function ShowReference({
         setProgressOverride({ s: lastEp.s, e: lastEp.e });
       }
       setCanonOn(true);
-      // Invite the blurb right away — the moment of adding is when the
-      // "why" is freshest.
-      setTakeDraft(canonTake);
-      setEditingTake(true);
     } catch (e) { console.error("[reference] add-to-canon failed", e); }
-    finally { setCanonBusy(false); }
-  }
-  async function removeFromCanon() {
-    if (!user || canonBusy) return;
-    setCanonBusy(true);
-    try {
-      // Pin off only — the blurb stays stored, so re-adding restores it.
-      await setCanonPin(user.id, showId, false);
-      setCanonOn(false);
-      setEditingTake(false);
-    } catch (e) { console.error("[reference] remove-from-canon failed", e); }
     finally { setCanonBusy(false); }
   }
   function toggleEssential(s: number, e: number) {
@@ -139,17 +118,6 @@ export default function ShowReference({
     if (next.has(key)) next.delete(key); else next.add(key);
     setEssentials(next);
     setEssentialEps(user.id, showId, [...next]).catch(() => { /* tolerate */ });
-  }
-
-  async function saveTake() {
-    if (!user || canonBusy) return;
-    setCanonBusy(true);
-    try {
-      await setShelfBlurb(user.id, showId, "canon_take", takeDraft);
-      setCanonTake(takeDraft.trim());
-      setEditingTake(false);
-    } catch (e) { console.error("[reference] canon blurb save failed", e); }
-    finally { setCanonBusy(false); }
   }
 
   // The effective dial: the prop, unless a canon-add just jumped it.
@@ -246,12 +214,6 @@ export default function ShowReference({
     margin: "36px 0 14px",
   };
   const small: React.CSSProperties = { fontSize: 12, color: CREAM, opacity: 0.85 };
-  // Canon control links (edit/remove/cancel) — the crew-link grammar.
-  const canonLink: React.CSSProperties = {
-    background: "transparent", border: "none", padding: 0, cursor: "pointer",
-    color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic",
-    fontWeight: 400, fontSize: 13, textDecoration: "underline",
-  };
   // Crew names read exactly like the line always did, just underlined + tappable.
   const crewLink: React.CSSProperties = {
     background: "transparent", border: "none", padding: 0, cursor: "pointer",
@@ -264,12 +226,23 @@ export default function ShowReference({
 
   return (
     <div style={{ color: CREAM, fontFamily: '"Inter", sans-serif', paddingBottom: 80 }}>
+      {/* On windows wide enough for the page frame to leave a real left
+          margin, the episode media unit + the essentials note hang OUT there
+          (right-justified against the column); narrower windows keep them
+          in-flow. */}
+      <style>{`
+        @media (min-width: 1720px) {
+          .ref-ep-media { position: absolute; right: 100%; top: 2px; margin: 0 16px 0 0; width: ${stillW}px; }
+          .ref-gutter-note { position: absolute; right: 100%; top: 4px; margin: 0 16px 0 0; width: ${stillW}px; text-align: right; }
+        }
+      `}</style>
       {/* "created by …" renders in the SHOW PAGE HEADER next to the show
           name (rev 3 — swaps with the "with …" members line per tab);
           attribution moved to the page bottom. */}
 
-      {/* ── Canon controls (owner-only surface — this page IS the curation
-            spot; the dashboard shelf displays). ── */}
+      {/* ── Canon controls (rev 5 — Alborz 2026-09-07): the reference page
+            only ADDS; the blurb, edit and remove all live on the dashboard's
+            canon shelf now. ── */}
       {user && canonOn !== null && (
         <div style={{ marginBottom: 32 }}>
           {!canonOn ? (
@@ -286,45 +259,7 @@ export default function ShowReference({
               </div>
             </>
           ) : (
-            <>
-              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 14, fontWeight: 700, fontSize: 14 }}>
-                <span>★ in your canon</span>
-                {!editingTake && (
-                  <button style={canonLink} onClick={() => { setTakeDraft(canonTake); setEditingTake(true); }}>
-                    {canonTake ? "edit your line" : "add your line"}
-                  </button>
-                )}
-                <button style={canonLink} onClick={removeFromCanon} disabled={canonBusy}>remove</button>
-              </div>
-              {essentials.size === 0 && !editingTake && (
-                <div style={{ fontStyle: "italic", fontSize: 12, opacity: 0.85, marginTop: 6 }}>
-                  (star episodes below to build your essentials list)
-                </div>
-              )}
-              {editingTake ? (
-                <div style={{ marginTop: 10, maxWidth: 480 }}>
-                  <textarea
-                    value={takeDraft}
-                    onChange={(ev) => setTakeDraft(ev.target.value)}
-                    maxLength={280}
-                    rows={2}
-                    autoFocus
-                    placeholder="Your take — as short or long as you like."
-                    style={{ width: "100%", boxSizing: "border-box", border: "none", borderRadius: 12, padding: "10px 12px", fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, resize: "vertical" }}
-                  />
-                  <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 8 }}>
-                    <button onClick={saveTake} disabled={canonBusy} style={{ border: "none", background: CANON.identity, color: CREAM, fontWeight: 700, fontSize: 13, padding: "8px 26px", borderRadius: 65, cursor: "pointer", fontFamily: '"Inter", sans-serif' }}>
-                      save
-                    </button>
-                    <button style={canonLink} onClick={() => setEditingTake(false)}>cancel</button>
-                  </div>
-                </div>
-              ) : canonTake ? (
-                <div style={{ fontStyle: "italic", fontSize: 13, lineHeight: 1.5, marginTop: 8, maxWidth: 480, opacity: 0.95 }}>
-                  &ldquo;{canonTake}&rdquo;
-                </div>
-              ) : null}
-            </>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>★ in your canon</div>
           )}
         </div>
       )}
@@ -332,8 +267,10 @@ export default function ShowReference({
       {/* ── Previously on: watched episodes only ── */}
       <h2 style={sectionH}>Previously on {ref.showName}:</h2>
       {user && canonOn && (
-        <div style={{ fontStyle: "italic", fontSize: 12, opacity: 0.85, margin: "-6px 0 16px" }}>
-          ★ marks an episode as one of this show&rsquo;s essentials — tap to toggle
+        <div style={{ position: "relative" }}>
+          <div className="ref-gutter-note" style={{ fontStyle: "italic", fontSize: 12, opacity: 0.85, margin: "-6px 0 16px" }}>
+            Mark your essential episodes with a star.
+          </div>
         </div>
       )}
       {[...ref.seasons].filter((season) => season.n <= prog.s).sort((a, b) => b.n - a.n).map((season) => {
@@ -358,20 +295,7 @@ export default function ShowReference({
                 : <ChevronDown size={16} color={CREAM} strokeWidth={2.5} />}
             </button>
             {isOpen && watched.map((ep) => (
-              <div key={ep.e} style={{ marginBottom: 20, position: "relative" }}>
-                {/* The essentials star hangs in the LEFT MARGIN, right-justified
-                    against the content column (rev 4); mobile has no gutter, so
-                    it rides inline before the heading there. */}
-                {user && canonOn && !mobile && (
-                  <button
-                    onClick={() => toggleEssential(ep.s, ep.e)}
-                    aria-pressed={essentials.has(idx(ep.s, ep.e))}
-                    title={essentials.has(idx(ep.s, ep.e)) ? "Un-star this essential" : "Star as an essential episode"}
-                    style={{ position: "absolute", right: "100%", top: 1, marginRight: 12, background: "transparent", border: "none", padding: 2, cursor: "pointer", lineHeight: 0 }}
-                  >
-                    <Star size={16} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
-                  </button>
-                )}
+              <div key={ep.e} className="ref-ep" style={{ marginBottom: 20, position: "relative" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: mobile ? 14 : 15 }}>
                     {user && canonOn && mobile && (
@@ -407,7 +331,35 @@ export default function ShowReference({
                       ))}
                     </div>
                   )}
-                  {ep.still && (
+                  {/* Media unit (rev 5): thumbnail with the star BENEATH it,
+                      living in the LEFT MARGIN on wide windows (the CSS below)
+                      and in-flow above the summary where no margin exists. */}
+                  {(ep.still || (user && canonOn && !mobile)) && !mobile && (
+                    <div className="ref-ep-media" style={{ marginTop: 8 }}>
+                      {ep.still && (
+                        <button
+                          onClick={() => setStillOpen(ep.still!)}
+                          aria-label={`Enlarge the episode ${ep.e} still`}
+                          style={{ padding: 0, border: "none", background: "transparent", cursor: "zoom-in", lineHeight: 0, display: "block" }}
+                        >
+                          <img src={ep.still} alt="" loading="lazy" style={{ width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
+                        </button>
+                      )}
+                      {user && canonOn && (
+                        <div style={{ display: "flex", justifyContent: "flex-end", width: stillW, marginTop: 6 }}>
+                          <button
+                            onClick={() => toggleEssential(ep.s, ep.e)}
+                            aria-pressed={essentials.has(idx(ep.s, ep.e))}
+                            title={essentials.has(idx(ep.s, ep.e)) ? "Un-star this essential" : "Star as an essential episode"}
+                            style={{ background: "transparent", border: "none", padding: 2, cursor: "pointer", lineHeight: 0 }}
+                          >
+                            <Star size={16} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {mobile && ep.still && (
                     <button
                       onClick={() => setStillOpen(ep.still!)}
                       aria-label={`Enlarge the episode ${ep.e} still`}

@@ -492,12 +492,12 @@ export default function MobileDashboard() {
               {/* Border signposts (Alborz 2026-09-07) — centered on mobile
                   (no side slack): green-side label above the border, the
                   collect/log/remember copy just below it. */}
-              <div style={{ position: "absolute", top: -30, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 6, color: C.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, whiteSpace: "nowrap" }}>
-                Your friend groups <CornerRightUp size={18} strokeWidth={1} />
+              <div style={{ position: "absolute", top: -24, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 6, color: C.cream, opacity: 0.6, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, whiteSpace: "nowrap" }}>
+                Your friend groups <CornerRightUp size={18} strokeWidth={1} style={{ transform: "translateY(-6px)" }} />
               </div>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 6, color: C.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.4, textAlign: "right", margin: "-28px 0 32px" }}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 6, color: C.cream, opacity: 0.6, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.4, textAlign: "right", margin: "-36px 0 32px" }}>
                 <span>Your space to collect, log, and remember your TV.<br />This becomes the profile your friends see.</span>
-                <CornerRightDown size={18} strokeWidth={1} style={{ marginTop: 2, flexShrink: 0 }} />
+                <CornerRightDown size={18} strokeWidth={1} style={{ marginTop: 5, flexShrink: 0 }} />
               </div>
               <ReferenceLookupBand mobile />
             </div>

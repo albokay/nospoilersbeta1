@@ -400,6 +400,11 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         .ref-lookup-x { background: transparent; border: 2px solid ${CREAM}; }
         .ref-lookup-x:hover { background: ${CANON.accent}; border-color: transparent; }
         .ref-lookup-x:active { background: transparent; border-color: ${CREAM}; }
+        /* Center-out shelf fill (Alborz 2026-09-07): auto margins on the end
+           tiles center the row while it fits, and degrade to a normal
+           left-anchored scroll the moment it overflows. */
+        .ref-shelf-row > :first-child { margin-left: auto; }
+        .ref-shelf-row > :last-child { margin-right: auto; }
       `}</style>
 
       {/* "Your canon" — the zone's FEATURED opener (Alborz 2026-09-07 rev 2):
@@ -413,21 +418,12 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center", margin: "10px auto 24px", maxWidth: 560, lineHeight: 1.5 }}>
           The shows you&rsquo;d put your name behind. The shows that mean something to you. The ones you think about regularly.
         </div>
-        {canonList.length === 0 ? (
-          <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap" }}>
-            {[0, 1, 2, 3].map((i) => (
-              <button
-                key={i}
-                onClick={() => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
-                title="Add a show to your canon"
-                style={{ width: mobile ? 74 : 110, height: mobile ? 105 : 156, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 28, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                +
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 18, overflowX: "auto", paddingBottom: 6 }}>
+        {/* Four fixed slots per row (Alborz rev): placeholders sit exactly
+            where the shows will land and stay put as the shelf fills; a full
+            row grows one + slot. Mobile keeps the scroll row. */}
+          <div style={mobile
+            ? { display: "flex", gap: 18, overflowX: "auto", paddingBottom: 6 }
+            : { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
             {canonList.map((show) => {
               const poster = posters[show.id];
               const entry = progress[show.id];
@@ -436,9 +432,9 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               const goto = () => (hasProgress
                 ? navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })
                 : openCard(show));
-              const pw = mobile ? 96 : 110, ph = mobile ? 136 : 156;
+              const pw = 96, ph = 136;
               return (
-                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: mobile ? 300 : 400, display: "flex", gap: 14, alignItems: "flex-start" }}>
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: mobile ? 300 : "auto", minWidth: 0, display: "flex", gap: 14, alignItems: "flex-start" }}>
                   <button onClick={goto} style={{ flex: "0 0 auto", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
                     {poster ? (
                       <img src={poster} alt={show.name} loading="lazy" style={{ width: pw, height: ph, objectFit: "cover", borderRadius: 12, display: "block" }} />
@@ -496,21 +492,25 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                 </div>
               );
             })}
-            {/* Trailing + tile keeps adding one tap away. */}
-            <button
-              onClick={() => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
-              title="Add a show to your canon"
-              style={{ flexShrink: 0, width: mobile ? 96 : 110, height: mobile ? 136 : 156, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 32, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
-              +
-            </button>
+            {Array.from({ length: canonList.length < 4 ? 4 - canonList.length : 1 }).map((_, i) => (
+              <button
+                key={`ph-${i}`}
+                onClick={() => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
+                title="Add a show to your canon"
+                style={{ flexShrink: 0, width: mobile ? 96 : 96, height: mobile ? 136 : 136, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 30, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", justifySelf: "start" }}
+              >
+                +
+              </button>
+            ))}
           </div>
-        )}
       </div>
 
+      {/* Divider + breathing room between the canon world and the lookup
+          world (Alborz 2026-09-07). */}
+      <div style={{ textAlign: "center", color: CREAM, opacity: 0.7, fontSize: 16, letterSpacing: 8, marginTop: 72 }}>***</div>
       {/* Locked pitch (Alborz 2026-09-07 rev): desktop breaks evenly after
           "shows"; mobile balance-wraps (no orphans at any width). */}
-      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: "44px 0 0", textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
+      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: "36px 0 0", textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
         {mobile
           ? <>Need to look something up about the shows you&rsquo;re watching without getting spoiled?</>
           : <>Need to look something up about the shows<br />you&rsquo;re watching without getting spoiled?</>}
@@ -544,7 +544,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
             You&rsquo;re watching:
           </div>
-          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+          <div className="ref-shelf-row" style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {watching.map((show) => {
               const r = progress[show.id]!;
               const poster = posters[show.id];
@@ -592,7 +592,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
             You want to watch:
           </div>
-          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+          <div className="ref-shelf-row" style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {wantList.map((show) => {
               const poster = posters[show.id];
               const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
@@ -634,7 +634,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
             You&rsquo;ve finished:
           </div>
-          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+          <div className="ref-shelf-row" style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {finishedList.map((show) => {
               const poster = posters[show.id];
               const w = mobile ? 96 : 120, h = mobile ? 136 : 170;

@@ -1696,12 +1696,16 @@ export default function DashboardPage() {
           {/* Border signposts (Alborz 2026-09-07): Body copy + 1px corner
               arrows hugging the green/yellow border, LEFT of the centered
               deck card. left:24 keeps them on-screen at narrow widths. */}
-          <div style={{ position: "absolute", top: -36, left: 24, right: "calc(50% + 370px)", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, whiteSpace: "nowrap" }}>
-            Your friend groups <CornerRightUp size={20} strokeWidth={1} />
+          {/* Arrow tails align with the text line's middle: the up-corner's
+              tail sits at the icon's bottom (shift up ~7px from center); the
+              down-corner's tail at its top (drop ~6px to the first line's
+              middle). 60% opacity (Alborz rev). */}
+          <div style={{ position: "absolute", top: -26, left: 24, right: "calc(50% + 370px)", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, color: CANON.cream, opacity: 0.6, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, whiteSpace: "nowrap" }}>
+            Your friend groups <CornerRightUp size={20} strokeWidth={1} style={{ transform: "translateY(-7px)" }} />
           </div>
-          <div style={{ position: "absolute", top: 14, left: 24, right: "calc(50% + 370px)", display: "flex", justifyContent: "flex-end", alignItems: "flex-start", gap: 8, color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.4, textAlign: "right" }}>
+          <div style={{ position: "absolute", top: 6, left: 24, right: "calc(50% + 370px)", display: "flex", justifyContent: "flex-end", alignItems: "flex-start", gap: 8, color: CANON.cream, opacity: 0.6, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.4, textAlign: "right" }}>
             <span>Your space to collect, log, and remember your TV.<br />This becomes the profile your friends see.</span>
-            <CornerRightDown size={20} strokeWidth={1} style={{ marginTop: 3, flexShrink: 0 }} />
+            <CornerRightDown size={20} strokeWidth={1} style={{ marginTop: 6, flexShrink: 0 }} />
           </div>
           <ReferenceLookupBand />
         </div>
