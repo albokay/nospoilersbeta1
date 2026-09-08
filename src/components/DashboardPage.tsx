@@ -1700,12 +1700,12 @@ export default function DashboardPage() {
               tail sits at the icon's bottom (shift up ~7px from center); the
               down-corner's tail at its top (drop ~6px to the first line's
               middle). 60% opacity (Alborz rev). */}
-          <div style={{ position: "absolute", top: -26, left: 24, right: "calc(50% + 370px)", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, color: CANON.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, whiteSpace: "nowrap" }}>
+          <div style={{ position: "absolute", top: -26, left: 24, right: "calc(50% + 348px)", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, color: CANON.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, whiteSpace: "nowrap" }}>
             Your friend groups <CornerRightUp size={20} strokeWidth={1} style={{ transform: "translateY(-7px)" }} />
           </div>
           {/* Mirrored to the RIGHT of the deck card (equidistant from center),
               left-justified, corner-LEFT-down arrow leading (Alborz rev). */}
-          <div style={{ position: "absolute", top: 6, left: "calc(50% + 370px)", right: 24, display: "flex", justifyContent: "flex-start", alignItems: "flex-start", gap: 8, color: CANON.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.4, textAlign: "left" }}>
+          <div style={{ position: "absolute", top: 6, left: "calc(50% + 348px)", right: 24, display: "flex", justifyContent: "flex-start", alignItems: "flex-start", gap: 8, color: CANON.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.4, textAlign: "left" }}>
             <CornerLeftDown size={20} strokeWidth={1} style={{ marginTop: 6, flexShrink: 0 }} />
             <span>Your space to collect, log, and remember your TV.<br />This becomes the profile your friends see.</span>
           </div>

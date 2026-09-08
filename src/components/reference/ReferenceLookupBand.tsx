@@ -456,90 +456,142 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         {/* Four fixed slots per row (Alborz rev): placeholders sit exactly
             where the shows will land and stay put as the shelf fills; a full
             row grows one + slot. Mobile keeps the scroll row. */}
-          {/* Mobile: vertical stack with a SINGLE next-slot placeholder
-              (Alborz 2026-09-08); desktop keeps the four spread slots. */}
-          <div style={mobile
-            ? { display: "flex", flexDirection: "column", gap: 18 }
-            : { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
-            {canonList.map((show) => {
-              const poster = posters[show.id];
+          {/* Desktop (Alborz 2026-09-08): a 4x2 grid of equal browse-thumb-
+              sized sections — [thumb][text][thumb][text] per row, two shows
+              per row, placeholders holding unfilled thumb sections. Mobile:
+              vertical stack with a single next-slot placeholder. */}
+          {(() => {
+            const openCanonSearch = () => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); };
+            const gotoShow = (show: Show) => {
+              const entry = progress[show.id];
+              const hasProgress = !!entry && (entry.s > 1 || (entry.s === 1 && entry.e >= 1));
+              if (hasProgress) navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } });
+              else openCard(show);
+            };
+            const body = (show: Show) => {
               const entry = progress[show.id];
               const take = entry?.canonTake;
-              const hasProgress = !!entry && (entry.s > 1 || (entry.s === 1 && entry.e >= 1));
-              const goto = () => (hasProgress
-                ? navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })
-                : openCard(show));
-              const pw = 96, ph = 136;
               return (
-                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: mobile ? "100%" : "auto", minWidth: 0, display: "flex", gap: 14, alignItems: "flex-start" }}>
-                  <button onClick={goto} style={{ flex: "0 0 auto", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
-                    {poster ? (
-                      <img src={poster} alt={show.name} loading="lazy" style={{ width: pw, height: ph, objectFit: "cover", borderRadius: 12, display: "block" }} />
-                    ) : (
-                      <div style={{ width: pw, height: ph, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
-                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                <>
+                  <button onClick={() => gotoShow(show)} style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM }}>
+                    <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, lineHeight: 1.2, margin: "2px 0 6px" }}>{show.name}</div>
+                    {take && (
+                      <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, lineHeight: 1.5, opacity: 0.95 }}>
+                        &ldquo;{take}&rdquo;
                       </div>
                     )}
                   </button>
-                  <div style={{ minWidth: 0, paddingRight: 20, color: CREAM }}>
-                    <button onClick={goto} style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM }}>
-                      <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, lineHeight: 1.2, margin: "2px 0 6px" }}>{show.name}</div>
-                      {take && (
-                        <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, lineHeight: 1.5, opacity: 0.95 }}>
-                          &ldquo;{take}&rdquo;
-                        </div>
-                      )}
-                    </button>
-                    {(entry?.essentialEps?.length ?? 0) > 0 ? (
-                      <button
-                        onClick={() => openShare(show)}
-                        title="Open your shareable essentials card"
-                        style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
-                      >
-                        ★ {entry!.essentialEps!.length} essential episode{entry!.essentialEps!.length === 1 ? "" : "s"}
-                      </button>
-                    ) : (
-                      // The essentials PROMPT (Alborz 2026-09-07 — the star
-                      // feature was too hidden): straight to the reference
-                      // page, where the stars live.
-                      <button
-                        onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true, essentialsNudge: true } })}
-                        title="Star this show's essential episodes on its show guide"
-                        style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
-                      >
-                        ★ pick its essential episodes
-                      </button>
-                    )}
+                  {(entry?.essentialEps?.length ?? 0) > 0 ? (
                     <button
-                      onClick={() => openCanonCard(show)}
-                      style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 6, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
+                      onClick={() => openShare(show)}
+                      title="Open your shareable essentials card"
+                      style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
                     >
-                      {take ? "edit your line" : "add your line"}
+                      ★ {entry!.essentialEps!.length} essential episode{entry!.essentialEps!.length === 1 ? "" : "s"}
                     </button>
-                  </div>
+                  ) : (
+                    <button
+                      onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true, essentialsNudge: true } })}
+                      title="Star this show's essential episodes on its show guide"
+                      style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
+                    >
+                      ★ pick its essential episodes
+                    </button>
+                  )}
                   <button
-                    className="ref-lookup-x"
-                    onClick={() => removeCanon(show.id)}
-                    aria-label={`Remove ${show.name} from your canon`}
-                    title="Remove from your canon"
-                    style={{ position: "absolute", top: 6, left: pw - 28, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                    onClick={() => openCanonCard(show)}
+                    style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 6, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
                   >
-                    <X size={13} color={CREAM} />
+                    {take ? "edit your line" : "add your line"}
                   </button>
+                </>
+              );
+            };
+            const xBtn = (show: Show, style: React.CSSProperties) => (
+              <button
+                className="ref-lookup-x"
+                onClick={() => removeCanon(show.id)}
+                aria-label={`Remove ${show.name} from your canon`}
+                title="Remove from your canon"
+                style={{ width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, ...style }}
+              >
+                <X size={13} color={CREAM} />
+              </button>
+            );
+            if (mobile) {
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  {canonList.map((show) => {
+                    const poster = posters[show.id];
+                    return (
+                      <div key={show.id} style={{ position: "relative", width: "100%", minWidth: 0, display: "flex", gap: 14, alignItems: "flex-start" }}>
+                        <button onClick={() => gotoShow(show)} style={{ flex: "0 0 auto", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
+                          {poster ? (
+                            <img src={poster} alt={show.name} loading="lazy" style={{ width: 96, height: 136, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                          ) : (
+                            <div style={{ width: 96, height: 136, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+                              <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                            </div>
+                          )}
+                        </button>
+                        <div style={{ minWidth: 0, paddingRight: 20, color: CREAM }}>{body(show)}</div>
+                        {xBtn(show, { position: "absolute", top: 6, left: 96 - 28 })}
+                      </div>
+                    );
+                  })}
+                  {canonList.length < 4 && (
+                    <button
+                      onClick={openCanonSearch}
+                      title="Add a show to your canon"
+                      style={{ flexShrink: 0, width: 96, height: 136, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 30, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >
+                      +
+                    </button>
+                  )}
                 </div>
               );
-            })}
-            {Array.from({ length: mobile ? (canonList.length < 4 ? 1 : 0) : Math.max(0, 4 - canonList.length) }).map((_, i) => (
-              <button
-                key={`ph-${i}`}
-                onClick={() => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
-                title="Add a show to your canon"
-                style={{ flexShrink: 0, width: mobile ? 96 : 96, height: mobile ? 136 : 136, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 30, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", justifySelf: "start" }}
-              >
-                +
-              </button>
-            ))}
-          </div>
+            }
+            const TW = 196, TH = 277; // = the browse-row card size
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(2, ${TW}px ${TW}px)`, columnGap: 20, rowGap: 36, justifyContent: "center" }}>
+                {[0, 1, 2, 3].map((i) => {
+                  const show = canonList[i];
+                  if (!show) {
+                    return (
+                      <React.Fragment key={`ph-${i}`}>
+                        <button
+                          onClick={openCanonSearch}
+                          title="Add a show to your canon"
+                          style={{ width: TW, height: TH, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 34, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        >
+                          +
+                        </button>
+                        <div />
+                      </React.Fragment>
+                    );
+                  }
+                  const poster = posters[show.id];
+                  return (
+                    <React.Fragment key={show.id}>
+                      <div style={{ position: "relative", width: TW, height: TH }}>
+                        <button onClick={() => gotoShow(show)} style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
+                          {poster ? (
+                            <img src={poster} alt={show.name} loading="lazy" style={{ width: TW, height: TH, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                          ) : (
+                            <div style={{ width: TW, height: TH, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
+                              <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 17, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                            </div>
+                          )}
+                        </button>
+                        {xBtn(show, { position: "absolute", top: 6, right: 6 })}
+                      </div>
+                      <div style={{ minWidth: 0, padding: "2px 8px 0 4px", color: CREAM }}>{body(show)}</div>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            );
+          })()}
       </div>
 
       {/* Divider + breathing room between the canon world and the lookup
@@ -848,11 +900,12 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                     );
                   })}
                 </div>
-                {/* The REAL dynamic logo (Alborz 2026-09-07) — surfaceBg keeps
-                    the cream block visible on the cream card (findings-card
-                    precedent). */}
+                {/* The dynamic logo with the GREEN wordmark (Alborz 2026-09-08):
+                    blocks as normal (cream block darkened on the cream card),
+                    the type masked to Personal green per the provided
+                    logotype. */}
                 <div style={{ marginTop: 16 }}>
-                  <SidebarLogo scale={0.4} blocksOpacity={1} surfaceBg={CANON.cream} />
+                  <SidebarLogo scale={0.4} blocksOpacity={1} surfaceBg={CANON.cream} wordmarkTint={CANON.personal} />
                 </div>
               </div>
             </div>
