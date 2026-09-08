@@ -497,7 +497,7 @@ export default function MobileDashboard() {
               </div>
               <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 6, color: C.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.4, textAlign: "left", whiteSpace: "nowrap", margin: "-36px 0 32px" }}>
                 <CornerLeftDown size={18} strokeWidth={1} style={{ marginTop: 5, flexShrink: 0 }} />
-                <span>Your space to collect and log.<br />This becomes the profile your friends see.</span>
+                <span>Your space to collect and log.<br />This becomes the profile your<br />friends see.</span>
               </div>
               <ReferenceLookupBand mobile />
             </div>

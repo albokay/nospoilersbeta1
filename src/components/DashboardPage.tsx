@@ -1709,7 +1709,7 @@ export default function DashboardPage() {
               left-justified, corner-LEFT-down arrow leading (Alborz rev). */}
           <div style={{ position: "absolute", top: 6, left: "calc(50% + 370px)", display: "flex", justifyContent: "flex-start", alignItems: "flex-start", gap: 8, color: CANON.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.4, textAlign: "left", whiteSpace: "nowrap" }}>
             <CornerLeftDown size={20} strokeWidth={1} style={{ marginTop: 6, flexShrink: 0 }} />
-            <span>Your space to collect and log.<br />This becomes the profile your friends see.</span>
+            <span>Your space to collect and log.<br />This becomes the profile your<br />friends see.</span>
           </div>
           <ReferenceLookupBand />
         </div>
