@@ -99,6 +99,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     (location.state as { openReference?: boolean } | null)?.openReference
       ? "reference"
       : (privateOnly ? "private" : "friend"));
+  // Cross-room navigation reuses this mounted page (the guide's room pills
+  // navigate /show-room/private/... → /show-room/{roomId}) — the tab state
+  // survives, so re-derive it whenever the path actually changes (2026-09-08:
+  // arriving from a guide should land on the friend room).
+  useEffect(() => {
+    setTab((location.state as { openReference?: boolean } | null)?.openReference
+      ? "reference"
+      : (privateOnly ? "private" : "friend"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);

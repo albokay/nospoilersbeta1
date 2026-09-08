@@ -114,6 +114,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     (location.state as { openReference?: boolean } | null)?.openReference
       ? "reference"
       : (privateOnly ? "private" : "friend"));
+  // Cross-room navigation reuses this mounted page (the guide's room pills
+  // navigate /show-room/private/... → /show-room/{roomId}) — the tab state
+  // survives, so re-derive it whenever the path actually changes (2026-09-08:
+  // arriving from a guide should land on the friend room).
+  useEffect(() => {
+    setTab((location.state as { openReference?: boolean } | null)?.openReference
+      ? "reference"
+      : (privateOnly ? "private" : "friend"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
   // Help-system arc CP3: the sample-room tour, reopened on demand.
   const [tourOpen, setTourOpen] = useState(false);
   const [loading, setLoading] = useState(true);

@@ -25,11 +25,15 @@ export default function MobileBrowseRows({
   excludeTvmazeIds,
   onPick,
   subLabels = false,
+  flush = false,
 }: {
   excludeTvmazeIds: Set<number>;
   onPick: (show: BrowseShow) => void;
   /** Row titles drop a tier under a section heading (dashboard 2026-09-07). */
   subLabels?: boolean;
+  /** Host already pads the edges (the dashboard band) — drop the built-in
+   *  EDGE indent so rows align with the section heading (2026-09-08). */
+  flush?: boolean;
 }) {
   const rows = useBrowseRows(excludeTvmazeIds);
   if (rows.length === 0) return null;
@@ -37,8 +41,8 @@ export default function MobileBrowseRows({
     <div style={{ padding: "8px 0 24px" }}>
       {rows.map((r) => (
         <div key={r.key} style={{ marginBottom: 26 }}>
-          <div style={subLabels ? { ...rowTitle, fontWeight: 600, fontStyle: "italic", fontSize: 13 } : rowTitle}>{r.title}</div>
-          <div style={strip} className="m-browse-strip">
+          <div style={{ ...(subLabels ? { ...rowTitle, fontWeight: 600, fontStyle: "italic", fontSize: 13 } : rowTitle), ...(flush ? { paddingLeft: 0, paddingRight: 0 } : {}) }}>{r.title}</div>
+          <div style={flush ? { ...strip, paddingLeft: 0, paddingRight: 0, scrollPaddingLeft: 0 } : strip} className="m-browse-strip">
             {r.shows.map((s) => (
               <button key={s.tvmazeId} onClick={() => onPick(s)} title={s.name} aria-label={s.name} style={card}>
                 <img src={s.imageUrl ?? undefined} alt="" loading="lazy" draggable={false} style={poster} />

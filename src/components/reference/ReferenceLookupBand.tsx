@@ -456,8 +456,10 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         {/* Four fixed slots per row (Alborz rev): placeholders sit exactly
             where the shows will land and stay put as the shelf fills; a full
             row grows one + slot. Mobile keeps the scroll row. */}
+          {/* Mobile: vertical stack with a SINGLE next-slot placeholder
+              (Alborz 2026-09-08); desktop keeps the four spread slots. */}
           <div style={mobile
-            ? { display: "flex", gap: 18, overflowX: "auto", paddingBottom: 6 }
+            ? { display: "flex", flexDirection: "column", gap: 18 }
             : { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
             {canonList.map((show) => {
               const poster = posters[show.id];
@@ -469,7 +471,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                 : openCard(show));
               const pw = 96, ph = 136;
               return (
-                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: mobile ? 300 : "auto", minWidth: 0, display: "flex", gap: 14, alignItems: "flex-start" }}>
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: mobile ? "100%" : "auto", minWidth: 0, display: "flex", gap: 14, alignItems: "flex-start" }}>
                   <button onClick={goto} style={{ flex: "0 0 auto", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
                     {poster ? (
                       <img src={poster} alt={show.name} loading="lazy" style={{ width: pw, height: ph, objectFit: "cover", borderRadius: 12, display: "block" }} />
@@ -527,7 +529,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                 </div>
               );
             })}
-            {Array.from({ length: Math.max(0, 4 - canonList.length) }).map((_, i) => (
+            {Array.from({ length: mobile ? (canonList.length < 4 ? 1 : 0) : Math.max(0, 4 - canonList.length) }).map((_, i) => (
               <button
                 key={`ph-${i}`}
                 onClick={() => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
@@ -733,7 +735,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           Find something to watch:
         </div>
         {mobile
-          ? <MobileBrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels />
+          ? <MobileBrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels flush />
           : <BrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels />}
       </div>
 
