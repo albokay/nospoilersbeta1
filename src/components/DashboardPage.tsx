@@ -1700,10 +1700,10 @@ export default function DashboardPage() {
               tail sits at the icon's bottom (shift up ~7px from center); the
               down-corner's tail at its top (drop ~6px to the first line's
               middle). 60% opacity (Alborz rev). */}
-          {/* Pinned to the PAGE edges; the centered deck card approaches as
-              the window narrows, the 8px-off-card box edge then forces the
-              wrap (Alborz 2026-09-08 — they slide relative to the card now). */}
-          <div style={{ position: "absolute", top: -26, left: 24, right: "calc(50% + 348px)", display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 8, color: CANON.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, whiteSpace: "nowrap" }}>
+          {/* Green label hugs the card's left edge (8px off — Alborz keep);
+              the yellow copy below pins to the page's right edge and slides
+              relative to the centered card, wrapping at the 8px stop. */}
+          <div style={{ position: "absolute", top: -26, left: 24, right: "calc(50% + 348px)", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, color: CANON.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, whiteSpace: "nowrap" }}>
             Your friend groups <CornerRightUp size={20} strokeWidth={1} style={{ transform: "translateY(-7px)" }} />
           </div>
           {/* Mirrored to the RIGHT of the deck card (equidistant from center),
