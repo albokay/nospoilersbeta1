@@ -363,6 +363,34 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
 
   const pickedReady = picked.s >= 1 && picked.e >= 1;
 
+  // "just log my progress" (Alborz 2026-09-08): same write as look-it-up,
+  // but the card just closes — the show pops onto the Watching shelf.
+  const [logBusy, setLogBusy] = useState(false);
+  async function justLogIt() {
+    if (!user || !cardShow || !pickedReady || logBusy || confirmBusy) return;
+    setLogBusy(true);
+    try {
+      const existing = progress[cardShow.id];
+      const exHS = existing?.highestS ?? 0;
+      const exHE = existing?.highestE ?? 0;
+      const keepCeiling = exHS > picked.s || (exHS === picked.s && exHE >= picked.e);
+      const entry: ProgressEntry = {
+        s: picked.s, e: picked.e,
+        highestS: keepCeiling ? exHS : picked.s,
+        highestE: keepCeiling ? exHE : picked.e,
+      };
+      await upsertRewatchStatus(user.id, cardShow.id, entry);
+      stampReferenceLookup(user.id, cardShow.id); // freshness + un-hide, fire-and-forget
+      setProgress((prev) => ({
+        ...prev,
+        [cardShow.id]: { ...(prev[cardShow.id] ?? {}), ...entry, lastLookedUpAt: Date.now(), shelfHiddenAt: undefined },
+      }));
+      setCardShow(null);
+      setCardPending(null);
+    } catch (e) { console.error("[ref-band] just-log failed", e); }
+    finally { setLogBusy(false); }
+  }
+
   async function lookItUp() {
     if (!user || !cardShow || !pickedReady || confirmBusy) return;
     setConfirmBusy(true);
@@ -531,6 +559,12 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         ) : (
           <>Look up an actor, a plot point you missed, or crew detail —<br />all of it, filtered to how far you&rsquo;ve watched.</>
         )}
+      </p>
+      {/* The quiet aside (Alborz 2026-09-08): the search is ALSO the way
+          shows get logged onto the shelves — set apart so the lookup pitch
+          stays the star. */}
+      <p style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: mobile ? 12 : 13, color: CREAM, opacity: 0.8, textAlign: "center", margin: "-8px auto 18px" }}>
+        Or just use it to log the shows you&rsquo;re watching.
       </p>
 
       {/* Search trigger — the group room's search-pill grammar (magnifying
@@ -706,11 +740,11 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
       {/* ── The search overlay — the group room's search grammar: dim +
             cream card, input, results list scrolling inside the card. ── */}
       {searchOpen && (
-        // Center is BIASED DOWN (paddingTop shifts the flex center ~10vh) so
-        // the card reads as part of the reference world below; no X — the
-        // dim-click closes (Alborz 2026-09-05).
-        <div style={{ ...overlay, paddingTop: "20vh", boxSizing: "border-box" }} onClick={() => setSearchOpen(false)}>
-          <div style={{ ...searchCard, maxHeight: "64vh", overflowY: "auto", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+        // TOP-ANCHORED (Alborz 2026-09-08): the box's top edge stays put as
+        // results populate — the card only grows DOWNWARD, so the result
+        // under your cursor never moves. No X — the dim-click closes.
+        <div style={{ ...overlay, alignItems: "flex-start", paddingTop: "14vh", boxSizing: "border-box" }} onClick={() => setSearchOpen(false)}>
+          <div style={{ ...searchCard, maxHeight: "70vh", overflowY: "auto", position: "relative" }} onClick={(e) => e.stopPropagation()}>
             <input
               autoFocus
               value={query}
@@ -846,7 +880,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               </div>
               <div style={yellowTitle}>How far in are you?</div>
               <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 14px" }}>
-                (Set your episode. Your reference page<br />will never go past it.)
+                (Set your episode. Nothing you see<br />will ever go past it.)
               </div>
               {/* The pill + the want button share one width (Alborz mock). */}
               <style>{`.ref-card-pick select{width:210px;box-sizing:border-box;text-overflow:ellipsis}`}</style>
@@ -865,10 +899,21 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                   <div style={{ color: CREAM, fontSize: 13, fontWeight: 700, padding: "10px 0" }}>loading episodes<LoadingDots /></div>
                 )}
               </div>
+              {/* Two-action grammar (Alborz 2026-09-08 — the group vote
+                  modal's pattern): blue hero opens the reference; the
+                  outlined "just log my progress" adds the show to the
+                  Watching shelf and stays right here. */}
               {cardShow && pickedReady && (
-                <div style={{ marginTop: 18 }}>
-                  <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={confirmBusy} onClick={lookItUp}>
-                    {confirmBusy ? <>one moment<LoadingDots /></> : "look it up"}
+                <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={confirmBusy || logBusy} onClick={lookItUp}>
+                    {confirmBusy ? <>one moment<LoadingDots /></> : "open show guide"}
+                  </button>
+                  <button
+                    style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0, background: "transparent", border: `2px solid ${CREAM}`, color: CREAM }}
+                    disabled={confirmBusy || logBusy}
+                    onClick={justLogIt}
+                  >
+                    {logBusy ? <>one moment<LoadingDots /></> : "just log my progress"}
                   </button>
                 </div>
               )}
