@@ -216,7 +216,7 @@ export default function ShowReference({
   if (failed) {
     return (
       <div style={{ color: CREAM, fontSize: 14, lineHeight: 1.5, maxWidth: 460 }}>
-        The reference couldn&rsquo;t load just now. Try again in a minute.
+        The show guide couldn&rsquo;t load just now. Try again in a minute.
       </div>
     );
   }
@@ -224,7 +224,7 @@ export default function ShowReference({
     return (
       <div style={{ color: CREAM }}>
         <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>
-          building this show&rsquo;s reference<LoadingDots />
+          building this show&rsquo;s guide<LoadingDots />
         </span>
         <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6, fontStyle: "italic" }}>
           (first visit only — takes a few seconds)
@@ -407,24 +407,32 @@ export default function ShowReference({
             );
           });
         }
+        // Rail's left edge sits AT the entries-column position (Alborz
+        // 2026-09-08) — the synopsis column shifts right instead of the
+        // rail hanging into the page margin.
         return (
-          <div style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", columnGap: 24, marginLeft: -264, alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", columnGap: 24, alignItems: "start" }}>
             {seasonsVisible.map((season, si) => {
               const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx).reverse();
               const isOpen = openSet.has(season.n);
               return (
                 <React.Fragment key={season.n}>
-                  {/* Season row: sticky rides the FIRST season's rail cell. */}
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    {si === 0 && user && canonOn && stickyVisible && (
-                      <StickyNote
-                        tone="cream" tilt={-3} width={170} fontSize={13} ignoreViewportGate
-                        onDismiss={() => { setStickyVisible(false); try { localStorage.setItem(stickyKey, "1"); } catch { /* fine */ } }}
-                        dismissLabel="Dismiss"
-                        style={{ position: "relative", zIndex: 5, display: "inline-block", marginBottom: 16 }}
-                      >
-                        Mark your essential episodes with a star.
-                      </StickyNote>
+                  {/* Season row: sticky rides the FIRST season's rail cell —
+                      its middle over the thumbnail column's left edge, and
+                      its SPACE stays reserved when X'd (visibility, not
+                      unmount) so closing never shifts the guide. */}
+                  <div>
+                    {si === 0 && user && canonOn && (
+                      <div style={{ marginLeft: -45, marginBottom: 12, visibility: stickyVisible ? ("visible" as const) : ("hidden" as const) }}>
+                        <StickyNote
+                          tone="cream" tilt={-3} width={170} fontSize={13} ignoreViewportGate
+                          onDismiss={() => { setStickyVisible(false); try { localStorage.setItem(stickyKey, "1"); } catch { /* fine */ } }}
+                          dismissLabel="Dismiss"
+                          style={{ position: "relative", zIndex: 5, display: "inline-block" }}
+                        >
+                          Mark your essential episodes with a star.
+                        </StickyNote>
+                      </div>
                     )}
                   </div>
                   <div style={{ marginBottom: isOpen ? 12 : 14 }}>{headerBtn(season, isOpen)}</div>

@@ -502,7 +502,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                       // page, where the stars live.
                       <button
                         onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true, essentialsNudge: true } })}
-                        title="Star this show's essential episodes on its reference page"
+                        title="Star this show's essential episodes on its show guide"
                         style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
                       >
                         ★ pick its essential episodes

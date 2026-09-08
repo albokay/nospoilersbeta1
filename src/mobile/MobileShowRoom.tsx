@@ -712,7 +712,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         {/* Tabs on the header/body boundary (same swap rule as desktop). */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "0 16px" }}>
           {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
-          {referenceAvailable && <RoomTab label="reference" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
+          {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
           {/* CP6: solo → drafts (desktop parity) — just-for-you space. */}
           <RoomTab label="drafts" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
         </div>
