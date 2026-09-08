@@ -823,7 +823,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             {/* No write on the reference tab (Alborz 2026-09-05) — it's a
                     lookup surface; the dial stays. */}
                 {tab !== "reference" && (
-                  <button style={writeBtn} onClick={() => setComposeOpen(true)}><SquarePen size={16} /> write</button>
+                  <button style={writeBtn} onClick={() => { setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> write</button>
                 )}
           </div>
         </div>
