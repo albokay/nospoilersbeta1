@@ -15,14 +15,15 @@ import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setCanonPin, setEssentialEps, upsertRewatchStatus } from "../../lib/db";
+import { setCanonPin, setEssentialEps, upsertRewatchStatus, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames } from "../../lib/db";
+import { groupDisplayName, joinNames } from "../../lib/groupNames";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
 const idx = (s: number, e: number) => s * 10000 + e;
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false, nudgeEssentials = false,
+  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false,
 }: {
   showId: string;
   /** The viewer's EFFECTIVE progress (rewatch-aware ceiling) — ≥ S1E1. */
@@ -31,6 +32,9 @@ export default function ShowReference({
   /** Arrived via the dashboard's "pick its essential episodes" prompt —
    *  always re-show the essentials sticky, even if it was X'd out. */
   nudgeEssentials?: boolean;
+  /** Standalone (dashboard-route) guide: link out to the viewer's open show
+   *  rooms for this show (one pill per friend-group room). */
+  showRoomLinks?: boolean;
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -64,6 +68,38 @@ export default function ShowReference({
   // "pick its essential episodes" prompt always re-summons it.
   const stickyKey = `ns_ess_sticky_x_${showId}`;
   const [stickyVisible, setStickyVisible] = useState(false);
+  // Open show rooms for this show (dashboard-route guide only) — one pill
+  // per friend-group room, labeled by the group's display name.
+  const [roomLinks, setRoomLinks] = useState<{ roomId: string; label: string }[]>([]);
+  useEffect(() => {
+    if (!user || !showRoomLinks) { setRoomLinks([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const rooms = await fetchFriendGroupsForUser(user.id, showId);
+        if (!rooms.length) { if (!cancelled) setRoomLinks([]); return; }
+        const [pgroups, contactNames] = await Promise.all([
+          fetchPeopleGroupsForUser(user.id),
+          fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
+        ]);
+        const links: { roomId: string; label: string }[] = [];
+        for (const room of rooms) {
+          let label = "your group";
+          if (room.parentGroupId) {
+            const pg = pgroups.find((g) => g.id === room.parentGroupId);
+            const members = await fetchPeopleGroupMembers(room.parentGroupId);
+            const others = members.filter((m) => m.userId !== user.id);
+            label = pg
+              ? groupDisplayName(pg, others, contactNames)
+              : joinNames(others.map((m) => contactNames[m.userId] ?? m.displayName ?? m.username));
+          }
+          links.push({ roomId: room.id, label });
+        }
+        if (!cancelled) setRoomLinks(links);
+      } catch { if (!cancelled) setRoomLinks([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [showId, user?.id, showRoomLinks]);
   // CP4: the owner's essential-episode stars (canon shows only) — epIndex set.
   const [essentials, setEssentials] = useState<Set<number>>(new Set());
   // Canon rule (Alborz 2026-09-07): adding a show to your canon SETS YOUR
@@ -258,14 +294,12 @@ export default function ShowReference({
       {/* ── Canon controls (rev 5 — Alborz 2026-09-07): the reference page
             only ADDS; the blurb, edit and remove all live on the dashboard's
             canon shelf now. ── */}
-      {user && canonOn !== null && (
-        <div style={{ marginBottom: 32 }}>
-          {!canonOn ? (
-            (canonCount ?? 0) >= 4 ? (
-              <div style={{ fontStyle: "italic", fontSize: 13, opacity: 0.9 }}>
-                (your canon is full &mdash; four shows; make room from your dashboard)
-              </div>
-            ) : (
+      {user && (canonOn !== null || roomLinks.length > 0) && (
+        <div style={{ marginBottom: 32, display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 10 }}>
+          {canonOn === null ? null : !canonOn ? (
+            // Canon full → no pill, no note (Alborz 2026-09-08); the room
+            // pills below still render.
+            (canonCount ?? 0) >= 4 ? null : (
               <>
                 <button
                   onClick={addToCanon}
@@ -290,6 +324,18 @@ export default function ShowReference({
               in your canon
             </button>
           )}
+          {/* Open show rooms for this show (dashboard-route only) — the
+              "in your canon" pill grammar; one per friend-group room. */}
+          {roomLinks.map((r) => (
+            <button
+              key={r.roomId}
+              onClick={() => navigate(`${mobile ? "/m" : ""}/show-room/${r.roomId}`)}
+              title={`Open your show room with ${r.label}`}
+              style={{ background: CREAM, border: "none", color: CANON.accent, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+            >
+              open your room with {r.label}
+            </button>
+          ))}
         </div>
       )}
 
@@ -408,33 +454,34 @@ export default function ShowReference({
           });
         }
         // Rail's left edge sits AT the entries-column position (Alborz
-        // 2026-09-08) — the synopsis column shifts right instead of the
-        // rail hanging into the page margin.
+        // 2026-09-08) — the synopsis column shifts right instead of the rail
+        // hanging into the page margin. The grid is WIDER than the host
+        // column (940 = 240 rail + 24 gap + 676 text) so long synopses don't
+        // run narrow-and-tall; the hidden map pane absorbs the spill. The
+        // sticky FLOATS in the margin left of the rail — fully out of flow,
+        // so neither dismissing it nor collapsing seasons ever moves the
+        // guide.
         return (
+          <div style={{ position: "relative", width: 940, maxWidth: "calc(100vw - 48px)" }}>
+          {user && canonOn && stickyVisible && (
+            <div style={{ position: "absolute", top: -2, left: -186, zIndex: 5 }}>
+              <StickyNote
+                tone="cream" tilt={-3} width={170} fontSize={13} ignoreViewportGate
+                onDismiss={() => { setStickyVisible(false); try { localStorage.setItem(stickyKey, "1"); } catch { /* fine */ } }}
+                dismissLabel="Dismiss"
+                style={{ position: "relative", display: "inline-block" }}
+              >
+                Mark your essential episodes with a star.
+              </StickyNote>
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", columnGap: 24, alignItems: "start" }}>
             {seasonsVisible.map((season, si) => {
               const watched = season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx).reverse();
               const isOpen = openSet.has(season.n);
               return (
                 <React.Fragment key={season.n}>
-                  {/* Season row: sticky rides the FIRST season's rail cell —
-                      its middle over the thumbnail column's left edge, and
-                      its SPACE stays reserved when X'd (visibility, not
-                      unmount) so closing never shifts the guide. */}
-                  <div>
-                    {si === 0 && user && canonOn && (
-                      <div style={{ marginLeft: -45, marginBottom: 12, visibility: stickyVisible ? ("visible" as const) : ("hidden" as const) }}>
-                        <StickyNote
-                          tone="cream" tilt={-3} width={170} fontSize={13} ignoreViewportGate
-                          onDismiss={() => { setStickyVisible(false); try { localStorage.setItem(stickyKey, "1"); } catch { /* fine */ } }}
-                          dismissLabel="Dismiss"
-                          style={{ position: "relative", zIndex: 5, display: "inline-block" }}
-                        >
-                          Mark your essential episodes with a star.
-                        </StickyNote>
-                      </div>
-                    )}
-                  </div>
+                  <div />
                   <div style={{ marginBottom: isOpen ? 12 : 14 }}>{headerBtn(season, isOpen)}</div>
                   {isOpen && watched.map((ep) => (
                     <React.Fragment key={`${season.n}-${ep.e}`}>
@@ -448,6 +495,7 @@ export default function ShowReference({
                 </React.Fragment>
               );
             })}
+          </div>
           </div>
         );
       })()}

@@ -816,7 +816,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
         {tab === "reference" && show && refEff ? (
-          <ShowReference showId={show.id} viewerProgress={refEff} mobile nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
+          <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
         ) : tab === "friend" ? (
           feedEntries.length === 0 ? (
             <div style={{ maxWidth: 420 }}>

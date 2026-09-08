@@ -23,6 +23,8 @@ export type FriendGroup = {
   name: string;
   createdBy: string;
   createdAt: number;
+  /** The people-group this show room belongs to (restructure model). */
+  parentGroupId?: string | null;
 };
 
 export type FriendGroupMember = {

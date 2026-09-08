@@ -2319,6 +2319,7 @@ function rowToFriendGroup(row: any): FriendGroup {
     name:      row.name,
     createdBy: row.created_by,
     createdAt: new Date(row.created_at).getTime(),
+    parentGroupId: row.parent_group_id ?? null,
   };
 }
 
