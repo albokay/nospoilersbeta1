@@ -62,7 +62,6 @@ const DashboardPage = lazyWithReload(() => import("./components/DashboardPage"),
 const GroupInviteAcceptPage = lazyWithReload(() => import("./components/GroupInviteAcceptPage"), "./components/GroupInviteAcceptPage");
 const ShowRoomPage = lazyWithReload(() => import("./components/ShowRoomPage"), "./components/ShowRoomPage");
 const PublicDashboardPage = lazyWithReload(() => import("./components/PublicDashboardPage"), "./components/PublicDashboardPage");
-const FriendProfilePage = lazyWithReload(() => import("./components/FriendProfilePage"), "./components/FriendProfilePage");
 
 // Full-screen fallback for lazy chunks. Matches the canon palette so the
 // transition from main bundle → lazy chunk doesn't flash white. Only
@@ -284,10 +283,13 @@ export default function App() {
   // Mobile viewport forks to the /m pool (same pattern as /show-room above).
   if (pathParts[0] === "pool" && pathParts[1]) {
     if (onMobile) return <Navigate to={`/m/pool/${pathParts[1]}`} replace />;
-    // 2026-09-08: name-clicks land on the friend PROFILE (canon + shelves);
-    // the pool rendering survives only in the invite arrival, which mounts
-    // PublicDashboardPage directly with the invite prop.
-    return <Suspense fallback={<RouteFallback />}><FriendProfilePage username={decodeURIComponent(pathParts[1])} /></Suspense>;
+    // 2026-09-08 pt 4: the desktop profile PAGE is retired (Sidebar is
+    // friends-only — no signed-out profile viewing); in-app name clicks open
+    // the friend-profile DRAWER instead, so a stray desktop /pool link just
+    // lands on the dashboard (its auth guard bounces signed-out visitors
+    // home). The pool rendering survives only in the invite arrival, which
+    // mounts PublicDashboardPage directly with the invite prop.
+    return <Navigate to="/dashboard" replace />;
   }
   // Dashboard "write by yourself" — private-only standalone for a show (no group).
   // Mobile viewport forks to the /m room (query preserved) — same pattern as

@@ -42,6 +42,8 @@ import RoomProgressTip from "./RoomProgressTip";
 import LoadingDots from "./LoadingDots";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
+import FriendProfileDrawer from "./profile/FriendProfileDrawer";
+import { openFriendProfile } from "./profile/friendProfileBus";
 import { CANON } from "../styles/canon";
 
 const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark };
@@ -662,11 +664,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     });
   }, []);
 
-  // Username byline click → that person's public dashboard (read-only pool),
-  // not the old profile.
+  // Username byline click → the friend-profile DRAWER (2026-09-08 pt 4 —
+  // the /pool page is retired; the room stays exactly as it is behind it).
   const handleClickProfile = useCallback((username: string) => {
-    navigate(`/pool/${encodeURIComponent(username)}`);
-  }, [navigate]);
+    openFriendProfile(username);
+  }, []);
 
   // username → the viewer's given name, for every room surface (map columns,
   // bylines, stubs, tooltips, highlight attributions, filter labels). Keys
@@ -1045,6 +1047,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {/* Help-system arc CP3 — the guided sample-room tour, re-entry
           context (the header's "how does this room work?" button). */}
       {tourOpen && <TSPDemoModal reentry onClose={() => setTourOpen(false)} />}
+
+      {/* The friend-profile drawer (2026-09-08 pt 4) — opens on byline /
+          nudge-pop-up name clicks via the bus; the room stays behind it. */}
+      <FriendProfileDrawer />
     </div>
   );
 }

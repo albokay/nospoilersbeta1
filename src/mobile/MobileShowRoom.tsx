@@ -760,7 +760,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                       <span style={{ ...rosterAvatar, marginRight: 10, ...(m.isDeparted ? { background: C.yellow, color: C.cream } : isSelf ? { background: C.green, color: C.cream } : {}) }}>
                         {((displayNames[m.username] ?? m.username)[0] ?? "?").toUpperCase()}
                       </span>
-                      <span style={{ flex: 1, fontWeight: isSelf ? 700 : 600, fontSize: 14, color: C.midnight, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {/* Non-self names open the friend profile as the same
+                          overlay bylines use (2026-09-08 pt 4). */}
+                      <span
+                        style={{ flex: 1, fontWeight: isSelf ? 700 : 600, fontSize: 14, color: C.midnight, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                        onClick={isSelf ? undefined : () => openPool(m.username)}
+                      >
                         {isSelf ? "(you)" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left show)" : ""}
                       </span>
                       <span style={{ fontWeight: 600, fontSize: 13, color: C.midnight, opacity: 0.8, flexShrink: 0 }}>

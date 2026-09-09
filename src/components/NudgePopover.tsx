@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { X, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../lib/db";
+import { openFriendProfile } from "./profile/friendProfileBus";
 import LoadingDots from "./LoadingDots";
 import SidebarAvatar from "./SidebarAvatar";
 import CanonRadio from "./CanonRadio";
@@ -233,7 +234,10 @@ export default function NudgePopover({
   function handleViewProfile(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
     onClose();
-    navigate(`/pool/${encodeURIComponent(recipientUsername)}`);
+    // 2026-09-08 pt 4: desktop opens the friend-profile DRAWER (the /pool
+    // page is retired); mobile keeps its full-screen profile surface.
+    if (/^\/m(\/|$)/.test(window.location.pathname)) navigate(`/m/pool/${encodeURIComponent(recipientUsername)}`);
+    else openFriendProfile(recipientUsername);
   }
 
   // ── Render ────────────────────────────────────────────────────────────

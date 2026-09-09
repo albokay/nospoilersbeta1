@@ -634,12 +634,17 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // Naming arc (2026-07-07, desktop parity): the header's TITLE is the
   // generic/custom label ("Group N" → custom name); the PEOPLE live in the
   // "with…" line as the viewer's given names (handle fallback).
-  const names = [
-    ...others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)),
-    // Pending invitees ride along — whoever invited them — so the whole
-    // group sees who's been asked (help-system arc CP2).
-    ...groupInvites.map((p) => p.name || "a friend"),
-  ].join(", ");
+  // Member names open the friend profile (2026-09-08 pt 4 — mobile's
+  // full-screen surface); pending invitees have no account, so they ride
+  // along as plain text (help-system arc CP2 — whoever invited them).
+  const nameNodes = [
+    ...others.map((m) => (
+      <span key={m.userId} onClick={() => navigate(`/m/pool/${encodeURIComponent(m.username)}`)}>
+        {personDisplayName(contactNames, m.userId, m.username, m.displayName)}
+      </span>
+    )),
+    ...groupInvites.map((p, i) => <span key={`pend-${i}`}>{p.name || "a friend"}</span>),
+  ];
   const groupName = group ? groupGenericName(group, viewerNumber) : "Group";
   const empty = groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0;
 
@@ -667,8 +672,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               <Settings size={22} color={C.cream} />
             </button>
           </div>
-          {names && (
-            <div style={headerMembers}><span style={{ color: C.greyblue }}>with</span> {names}</div>
+          {nameNodes.length > 0 && (
+            <div style={headerMembers}>
+              <span style={{ color: C.greyblue }}>with</span> {nameNodes.flatMap((n, i) => (i > 0 ? [", ", n] : [n]))}
+            </div>
           )}
         </div>
         {/* Tips "?" + chat ride the header's right corner (Alborz 2026-08-14

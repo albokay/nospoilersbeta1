@@ -95,6 +95,8 @@ import ReferenceLookupBand from "./reference/ReferenceLookupBand";
 import { prefetchTrailers } from "../lib/trailers";
 import TSPDemoModal from "./TSPDemoModal";
 import SocialOnboarding from "./SocialOnboarding";
+import FriendProfileDrawer from "./profile/FriendProfileDrawer";
+import { openFriendProfile } from "./profile/friendProfileBus";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
 import DeckGridCard from "./deck/DeckGridCard";
@@ -2340,6 +2342,10 @@ export default function DashboardPage() {
       {/* Feedback tab — same left-edge widget the homepage has, so feedback
           is reachable from every live desktop surface (2026-07-03). */}
       <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} />
+
+      {/* The friend-profile drawer (2026-09-08 pt 4) — opens on the group
+          heading's "with…" name clicks via the bus. */}
+      <FriendProfileDrawer />
     </div>
   );
 }
@@ -2600,14 +2606,24 @@ function GroupClusters({
     // viewer's given names (handle fallback). Pending invitees ride along —
     // whoever invited them — so the whole group sees who's been asked
     // (help-system arc CP2).
-    const names = [
-      ...others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)),
-      ...active.pendingInvites.map((p) => p.name || "a friend"),
-    ].join(", ");
+    // Member names open the friend-profile drawer (2026-09-08 pt 4);
+    // pending invitees have no account yet, so they stay plain text.
+    const nameNodes = [
+      ...others.map((m) => (
+        <span key={m.userId} style={{ cursor: "pointer" }} onClick={() => openFriendProfile(m.username)}>
+          {personDisplayName(contactNames, m.userId, m.username, m.displayName)}
+        </span>
+      )),
+      ...active.pendingInvites.map((p, i) => <span key={`pend-${i}`}>{p.name || "a friend"}</span>),
+    ];
     return (
       <div style={groupHeadingRow}>
         <h1 style={groupHeadingTitle}>{groupGenericName(active.group, groupNumberById[active.group.id])}</h1>
-        {names && <span style={groupHeadingMembers}><span style={{ color: C.greyblue }}>with</span> {names}</span>}
+        {nameNodes.length > 0 && (
+          <span style={groupHeadingMembers}>
+            <span style={{ color: C.greyblue }}>with</span> {nameNodes.flatMap((n, i) => (i > 0 ? [", ", n] : [n]))}
+          </span>
+        )}
         <button
           style={{ ...headingIconBtn, position: "relative" }}
           title="group options"

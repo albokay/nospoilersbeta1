@@ -54,15 +54,20 @@ function linIdx(s: number, e: number, seasons: number[] | undefined): number {
 }
 
 export default function FriendProfile({
-  ownerId, ownerName, mobile = false,
+  ownerId, ownerName, mobile = false, narrow = false,
 }: {
   ownerId: string;
   /** The viewer's name for the owner (contact name → display name → handle). */
   ownerName: string;
   mobile?: boolean;
+  /** Stacked narrow layout WITHOUT mobile navigation — the desktop drawer. */
+  narrow?: boolean;
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  // Layout is slim for mobile AND the desktop drawer; interaction (hover vs
+  // tap) and navigation targets stay keyed to `mobile` alone.
+  const slim = mobile || narrow;
 
   const [shows, setShows] = useState<Show[]>([]);
   const [theirProg, setTheirProg] = useState<Record<string, ProgressEntry>>({});
@@ -224,7 +229,7 @@ export default function FriendProfile({
   function openBubbleAt(show: Show, text: string, el: HTMLElement) {
     const r = el.getBoundingClientRect();
     const below = r.top < 170;
-    const half = 111; // half the bubble's max width + a screen-edge margin
+    const half = 126; // half the bubble's max width + a screen-edge margin
     const x = Math.min(Math.max(r.left + r.width / 2, half), window.innerWidth - half);
     setBubble({ showId: show.id, text, x, y: below ? r.bottom : r.top, below });
   }
@@ -302,12 +307,15 @@ export default function FriendProfile({
 
   // ── styles ──
   const shelfLabel: React.CSSProperties = { fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 };
-  const tileW = mobile ? 96 : 120, tileH = mobile ? 136 : 170;
+  const tileW = slim ? 96 : 120, tileH = slim ? 136 : 170;
+  // The group room's hover-bubble grammar (the dashboard tipBubble — cream,
+  // navy, rounded, −6° lean, subtle shadow), NOT the sticky (Alborz
+  // 2026-09-08 pt 4). Action links inside keep their Identity blue.
   const bubbleBox: React.CSSProperties = {
-    transform: "rotate(-2deg)", width: "max-content", maxWidth: 210,
-    background: CREAM, color: CANON.identity, fontFamily: '"Inter", sans-serif',
-    fontWeight: 600, fontSize: 13, lineHeight: 1.35, padding: "10px 12px",
-    boxShadow: "0 4px 14px rgba(0,0,0,0.18)", textAlign: "left",
+    transform: "rotate(-6deg)", width: "max-content", maxWidth: 240,
+    background: CREAM, color: CANON.dark, fontFamily: '"Inter", sans-serif',
+    fontWeight: 500, fontSize: 12, lineHeight: 1.35, padding: "6px 10px",
+    borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.10)", textAlign: "left",
   };
 
   // One shared group's row for a show — three states: your room exists →
@@ -385,7 +393,7 @@ export default function FriendProfile({
       <div style={{ marginTop: 40, display: "flex", justifyContent: "center" }}>
         <div style={{ maxWidth: "100%", minWidth: 0 }}>
           <div style={shelfLabel}>{label}</div>
-          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+          <div style={{ display: "flex", gap: slim ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
             {list.map((s) => tile(s, caption?.(s)))}
           </div>
         </div>
@@ -397,9 +405,9 @@ export default function FriendProfile({
   const pw = mobile ? 96 : 96, ph = mobile ? 136 : 136;
 
   return (
-    <div style={{ width: "100%", maxWidth: mobile ? undefined : 1178, margin: "0 auto" }}>
+    <div style={{ width: "100%", maxWidth: slim ? undefined : 1178, margin: "0 auto" }}>
       {/* ── {Name}'s canon — the featured block, view-only ── */}
-      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 26 : 32, letterSpacing: -1, color: CREAM, margin: 0, textAlign: "center" }}>
+      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: slim ? 26 : 32, letterSpacing: -1, color: CREAM, margin: 0, textAlign: "center" }}>
         {ownerName}&rsquo;s canon
       </h2>
       {canonList.length === 0 ? (
@@ -409,7 +417,7 @@ export default function FriendProfile({
       ) : (
         <div style={{
           marginTop: 32,
-          ...(mobile
+          ...(slim
             ? { display: "flex", flexDirection: "column" as const, gap: 18 }
             : { display: "grid", gridTemplateColumns: "repeat(2, 196px minmax(196px, 240px))", columnGap: 20, rowGap: 36, justifyContent: "center" }),
         }}>
@@ -441,7 +449,7 @@ export default function FriendProfile({
             );
             const body = (
               <div style={{ minWidth: 0, padding: "2px 8px 0 0", color: CREAM }}>
-                <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, lineHeight: 1.2, margin: "2px 0 6px" }}>{show.name}</div>
+                <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: slim ? 16 : 18, lineHeight: 1.2, margin: "2px 0 6px" }}>{show.name}</div>
                 {unlocked ? (
                   <>
                     {take && (
@@ -480,7 +488,7 @@ export default function FriendProfile({
                 )}
               </div>
             );
-            return mobile ? (
+            return slim ? (
               <div key={show.id} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                 {posterEl(pw, ph)}
                 {body}
