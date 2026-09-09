@@ -21,7 +21,7 @@
 // works logged-out like the pool always has; pre-SQL it degrades gracefully
 // (no want shelf, hides unrespected).
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { CANON } from "../../styles/canon";
@@ -78,8 +78,11 @@ export default function FriendProfile({
   }[]>([]);
   // `${groupId}:${showId}` while a group-want is saving.
   const [voteBusy, setVoteBusy] = useState<string | null>(null);
-  // Tilted gap bubble: which tile + its line.
-  const [bubble, setBubble] = useState<{ showId: string; text: string } | null>(null);
+  // Tilted gap bubble — rendered FIXED at the anchor tile's on-screen spot
+  // (2026-09-08 pt 3): the shelves scroll horizontally, and a bubble inside
+  // the scroll frame was clipped to its drop shadow (and made the frame
+  // scrollable). `below` = no headroom above the poster, hang it underneath.
+  const [bubble, setBubble] = useState<{ showId: string; text: string; x: number; y: number; below: boolean } | null>(null);
   // The log/want card for shows the viewer doesn't have yet.
   const [cardShow, setCardShow] = useState<Show | null>(null);
   const [picked, setPicked] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
@@ -218,22 +221,53 @@ export default function FriendProfile({
     if (their > my) { const d = their - my; return `${ownerName} is ${d} episode${d === 1 ? "" : "s"} ahead of you.`; }
     return `You're both at S${mine.s} E${mine.e}.`;
   }
+  function openBubbleAt(show: Show, text: string, el: HTMLElement) {
+    const r = el.getBoundingClientRect();
+    const below = r.top < 170;
+    const half = 111; // half the bubble's max width + a screen-edge margin
+    const x = Math.min(Math.max(r.left + r.width / 2, half), window.innerWidth - half);
+    setBubble({ showId: show.id, text, x, y: below ? r.bottom : r.top, below });
+  }
+  // Desktop close is on a short timer so the mouse can travel from the
+  // poster into the (now detached) bubble without killing it.
+  const closeTimer = useRef<number | null>(null);
+  const cancelClose = () => {
+    if (closeTimer.current != null) { window.clearTimeout(closeTimer.current); closeTimer.current = null; }
+  };
+  const scheduleClose = () => {
+    if (mobile) return; // mobile bubbles close by re-tap or scroll
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => setBubble(null), 120);
+  };
+  // Any scroll (the page or a shelf row) detaches a fixed bubble from its
+  // tile — close it instead of letting it drift.
+  useEffect(() => {
+    if (!bubble) return;
+    const close = () => setBubble(null);
+    window.addEventListener("scroll", close, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", close, true);
+  }, [bubble]);
+
   // Desktop: hover shows the bubble, click is inert for shelved shows.
   // Mobile: tap toggles the bubble. Unshelved (signed-in) → the card.
-  function onTileTap(show: Show) {
+  function onTileTap(show: Show, el: HTMLElement) {
     const text = bubbleTextFor(show);
     if (text) {
-      if (mobile) setBubble((prev) => (prev?.showId === show.id ? null : { showId: show.id, text }));
+      if (!mobile) return;
+      if (bubble?.showId === show.id) { setBubble(null); return; }
+      openBubbleAt(show, text, el);
       return;
     }
     if (!user) return;
     setPicked({ s: 0, e: 0 });
     setCardShow(show);
   }
-  function onTileHover(show: Show) {
+  function onTileHover(show: Show, el: HTMLElement) {
     if (mobile) return;
     const text = bubbleTextFor(show);
-    if (text) setBubble({ showId: show.id, text });
+    if (!text) return; // leaving a bubbled tile for this one lets the timer close it
+    cancelClose();
+    openBubbleAt(show, text, el);
   }
 
   const pickedReady = picked.s >= 1 && picked.e >= 1;
@@ -269,13 +303,6 @@ export default function FriendProfile({
   // ── styles ──
   const shelfLabel: React.CSSProperties = { fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 };
   const tileW = mobile ? 96 : 120, tileH = mobile ? 136 : 170;
-  // The bubble is INTERACTIVE since the group-want rows (2026-09-08 pt 2):
-  // the wrap's bottom padding bridges the visual gap so a desktop mouse can
-  // travel from poster to bubble without a mouseleave killing it.
-  const bubbleWrap: React.CSSProperties = {
-    position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)",
-    paddingBottom: 6, zIndex: 8,
-  };
   const bubbleBox: React.CSSProperties = {
     transform: "rotate(-2deg)", width: "max-content", maxWidth: 210,
     background: CREAM, color: CANON.identity, fontFamily: '"Inter", sans-serif',
@@ -324,31 +351,17 @@ export default function FriendProfile({
     );
   }
 
-  const renderBubble = (show: Show) => (
-    <div style={bubbleWrap}>
-      <div style={bubbleBox}>
-        {bubble?.text}
-        {sharedGroups.length > 0 && (
-          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 5 }}>
-            {sharedGroups.map((g) => groupRow(g, show, "bubble"))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
   const tile = (show: Show, caption?: string) => {
     const poster = posters[show.id];
     return (
       <div
         key={show.id}
         style={{ position: "relative", flexShrink: 0, width: tileW }}
-        onMouseEnter={() => onTileHover(show)}
-        onMouseLeave={() => setBubble((prev) => (prev?.showId === show.id ? null : prev))}
+        onMouseEnter={(e) => onTileHover(show, e.currentTarget)}
+        onMouseLeave={scheduleClose}
       >
-        {bubble?.showId === show.id && renderBubble(show)}
         <button
-          onClick={() => onTileTap(show)}
+          onClick={(e) => onTileTap(show, e.currentTarget)}
           style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: bubbleTextFor(show) && !mobile ? "default" : "pointer", textAlign: "left" }}
         >
           {poster ? (
@@ -409,12 +422,11 @@ export default function FriendProfile({
             const posterEl = (w: number, h: number) => (
               <div
                 style={{ position: "relative", flexShrink: 0, width: w }}
-                onMouseEnter={() => onTileHover(show)}
-                onMouseLeave={() => setBubble((prev) => (prev?.showId === show.id ? null : prev))}
+                onMouseEnter={(e) => onTileHover(show, e.currentTarget)}
+                onMouseLeave={scheduleClose}
               >
-                {bubble?.showId === show.id && renderBubble(show)}
                 <button
-                  onClick={() => onTileTap(show)}
+                  onClick={(e) => onTileTap(show, e.currentTarget)}
                   style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: bubbleTextFor(show) && !mobile ? "default" : "pointer" }}
                 >
                   {poster ? (
@@ -493,6 +505,30 @@ export default function FriendProfile({
       {nothingYet && (
         <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, color: CREAM, opacity: 0.85, textAlign: "center", marginTop: 40 }}>
           Nothing on the shelves yet.
+        </div>
+      )}
+
+      {/* ── The gap bubble — FIXED above the page so the shelves' scroll
+            frames can't clip it (it used to render inside them and showed
+            only its shadow). Anchored to the poster's on-screen spot. ── */}
+      {bubble && showsById[bubble.showId] && (
+        <div
+          style={{
+            position: "fixed", left: bubble.x, top: bubble.y, zIndex: 1000,
+            transform: bubble.below ? "translateX(-50%)" : "translate(-50%, -100%)",
+            ...(bubble.below ? { paddingTop: 6 } : { paddingBottom: 6 }),
+          }}
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+        >
+          <div style={bubbleBox}>
+            {bubble.text}
+            {sharedGroups.length > 0 && (
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+                {sharedGroups.map((g) => groupRow(g, showsById[bubble.showId], "bubble"))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
