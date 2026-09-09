@@ -1351,14 +1351,22 @@ export default function DashboardPage() {
           (payload) => {
             const r = payload.new as any;
             if (!r) return;
-            setChatMessages((prev) => prev.some((m) => m.id === r.id) ? prev : [...prev, {
-              id: r.id,
-              authorId: r.author_id,
-              username: nameById[r.author_id] ?? "…",
-              displayName: null, // nameById above already resolved the chain
-              body: r.body,
-              createdAt: new Date(r.created_at).getTime(),
-            }]);
+            setChatMessages((prev) => {
+              if (prev.some((m) => m.id === r.id)) return prev;
+              const row = {
+                id: r.id,
+                authorId: r.author_id,
+                username: nameById[r.author_id] ?? "…",
+                displayName: null, // nameById above already resolved the chain
+                body: r.body,
+                createdAt: new Date(r.created_at).getTime(),
+              };
+              // Our own optimistic echo may still be pending — swap it in
+              // place instead of appending a double.
+              const ti = prev.findIndex((m) => m.id.startsWith("temp-") && m.authorId === r.author_id && m.body === r.body);
+              if (ti !== -1) { const next = prev.slice(); next[ti] = row; return next; }
+              return [...prev, row];
+            });
             // Author not in the rail's member list (they joined after it
             // loaded — the "unknown" byline, Alborz 2026-09-01): re-pull the
             // history, which resolves every author from profiles directly.
@@ -1378,18 +1386,20 @@ export default function DashboardPage() {
     return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
   }, [chatGroupId, loadChat, railGroups, contactNames]);
 
-  // Live chat dot while you're VIEWING a group with the panel closed: a
-  // filtered, per-group realtime listen that flips the new-message dot the
-  // instant another member posts — no refetch, nothing polls (egress is just
-  // the small INSERT push for this one group, same cost as the open-chat
-  // socket). Mirrors that socket's auth handling: group_messages is member-
-  // gated RLS, so the token must be on the socket or it delivers nothing.
-  // Skipped while the panel is open for this group (chatGroupId === activeGroupId)
-  // — the open-chat effect already streams + marks seen there.
+  // Live chat dots: filtered realtime listens that flip a group's new-message
+  // dot the instant another member posts — no refetch, nothing polls. Mirrors
+  // the open-chat socket's auth handling: group_messages is member-gated RLS,
+  // so the token must be on the socket or it delivers nothing.
+  // 2026-09-09: listen for EVERY rail group, not just the one being viewed —
+  // it used to skip the plain dashboard entirely, so a message that arrived
+  // there left a stale no-dot when you then entered the room (same mounted
+  // page, no refetch). One filtered channel per group (a handful); the group
+  // whose panel is open streams via the open-chat effect instead.
+  const railGroupIdsKey = railGroups.map((r) => r.group.id).sort().join(",");
   useEffect(() => {
-    if (!activeGroupId || chatGroupId === activeGroupId) return;
-    const gid = activeGroupId;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    const targets = (railGroupIdsKey ? railGroupIdsKey.split(",") : []).filter((gid) => gid !== chatGroupId);
+    if (!targets.length) return;
+    const channels: ReturnType<typeof supabase.channel>[] = [];
     let cancelled = false;
     (async () => {
       try {
@@ -1397,43 +1407,59 @@ export default function DashboardPage() {
         if (session?.access_token) supabase.realtime.setAuth(session.access_token);
       } catch { /* tolerate */ }
       if (cancelled) return;
-      channel = supabase
-        .channel(`group-chat-dot-${gid}`)
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${gid}` },
-          (payload) => {
-            const r = payload.new as any;
-            if (!r || r.author_id === selfUserId) return;
-            const at = new Date(r.created_at).getTime();
-            setChatActivity((prev) => {
-              const idx = prev.findIndex((a) => a.groupId === gid);
-              if (idx === -1) return [...prev, { groupId: gid, chatLastSeenAt: null, latestMessageAt: at }];
-              const a = prev[idx];
-              if (a.latestMessageAt != null && a.latestMessageAt >= at) return prev;
-              const next = prev.slice();
-              next[idx] = { ...a, latestMessageAt: at };
-              return next;
-            });
-          },
-        )
-        .subscribe((status) => {
-          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            console.warn("[dashboard] chat-dot realtime status:", status);
-          }
-        });
+      for (const gid of targets) {
+        channels.push(supabase
+          .channel(`group-chat-dot-${gid}`)
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "group_messages", filter: `group_id=eq.${gid}` },
+            (payload) => {
+              const r = payload.new as any;
+              if (!r || r.author_id === selfUserId) return;
+              const at = new Date(r.created_at).getTime();
+              setChatActivity((prev) => {
+                const idx = prev.findIndex((a) => a.groupId === gid);
+                if (idx === -1) return [...prev, { groupId: gid, chatLastSeenAt: null, latestMessageAt: at }];
+                const a = prev[idx];
+                if (a.latestMessageAt != null && a.latestMessageAt >= at) return prev;
+                const next = prev.slice();
+                next[idx] = { ...a, latestMessageAt: at };
+                return next;
+              });
+            },
+          )
+          .subscribe((status) => {
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              console.warn("[dashboard] chat-dot realtime status:", status);
+            }
+          }));
+      }
     })();
-    return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
-  }, [activeGroupId, chatGroupId, selfUserId]);
+    return () => { cancelled = true; for (const ch of channels) supabase.removeChannel(ch); };
+  }, [railGroupIdsKey, chatGroupId, selfUserId]);
 
+  // Optimistic echo (2026-09-09): your message paints INSTANTLY; the insert
+  // confirms in the background and the temp row takes on the real id (send
+  // used to be three sequential round trips — rate check, insert, full
+  // history refetch — before anything appeared). On failure the ghost is
+  // removed and the draft handed back.
   async function sendChat() {
     if (!user || !chatGroupId || !chatInput.trim()) return;
     const body = chatInput.trim();
+    const gid = chatGroupId;
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setChatInput("");
+    setChatMessages((prev) => [...prev, { id: tempId, authorId: user.id, username: "", displayName: null, body, createdAt: Date.now() }]);
     try {
-      await sendGroupMessage(chatGroupId, user.id, body);
-      await loadChat(chatGroupId);
-    } catch (e) { console.error("[dashboard] send message failed", e); }
+      const sent = await sendGroupMessage(gid, user.id, body);
+      setChatMessages((prev) => prev.some((m) => m.id === sent.id)
+        ? prev.filter((m) => m.id !== tempId) // the realtime echo already swapped it in
+        : prev.map((m) => (m.id === tempId ? { ...m, id: sent.id, createdAt: sent.createdAt } : m)));
+    } catch (e) {
+      console.error("[dashboard] send message failed", e);
+      setChatMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setChatInput(body);
+    }
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────

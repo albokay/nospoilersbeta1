@@ -87,14 +87,22 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
           (payload) => {
             const r = payload.new as any;
             if (!r) return;
-            setMessages((prev) => prev.some((m) => m.id === r.id) ? prev : [...prev, {
-              id: r.id,
-              authorId: r.author_id,
-              username: nameById[r.author_id] ?? "…",
-              displayName: null, // nameById above already resolved the chain
-              body: r.body,
-              createdAt: new Date(r.created_at).getTime(),
-            }]);
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === r.id)) return prev;
+              const row = {
+                id: r.id,
+                authorId: r.author_id,
+                username: nameById[r.author_id] ?? "…",
+                displayName: null, // nameById above already resolved the chain
+                body: r.body,
+                createdAt: new Date(r.created_at).getTime(),
+              };
+              // Our own optimistic echo may still be pending — swap it in
+              // place instead of appending a double.
+              const ti = prev.findIndex((m) => m.id.startsWith("temp-") && m.authorId === r.author_id && m.body === r.body);
+              if (ti !== -1) { const next = prev.slice(); next[ti] = row; return next; }
+              return [...prev, row];
+            });
           },
         )
         .subscribe((status) => {
@@ -117,14 +125,26 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  // Optimistic echo (2026-09-09): the message paints instantly; the insert
+  // confirms in the background (mirrors desktop — send was three sequential
+  // round trips before anything appeared). Failure removes the ghost and
+  // hands the draft back.
   async function sendChat() {
     if (!user || !input.trim()) return;
     const body = input.trim();
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setInput("");
+    setMessages((prev) => [...prev, { id: tempId, authorId: user.id, username: "", displayName: null, body, createdAt: Date.now() }]);
     try {
-      await sendGroupMessage(groupId, user.id, body);
-      await loadChat();
-    } catch (e) { console.error("[m-chat] send failed", e); }
+      const sent = await sendGroupMessage(groupId, user.id, body);
+      setMessages((prev) => prev.some((m) => m.id === sent.id)
+        ? prev.filter((m) => m.id !== tempId) // the realtime echo already swapped it in
+        : prev.map((m) => (m.id === tempId ? { ...m, id: sent.id, createdAt: sent.createdAt } : m)));
+    } catch (e) {
+      console.error("[m-chat] send failed", e);
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setInput(body);
+    }
   }
 
   if (authLoading) return null;

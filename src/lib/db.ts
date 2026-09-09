@@ -2711,14 +2711,19 @@ export async function fetchGroupMessages(groupId: string): Promise<GroupMessage[
   }));
 }
 
-/** Post a message to a group's chat. */
-export async function sendGroupMessage(groupId: string, authorId: string, body: string): Promise<void> {
+/** Post a message to a group's chat. Returns the inserted row's identity so
+ *  callers can swap their optimistic echo for the real message (2026-09-09 —
+ *  sending used to be three sequential round trips before anything painted). */
+export async function sendGroupMessage(groupId: string, authorId: string, body: string): Promise<{ id: string; createdAt: number }> {
   await checkRateLimit('group_message', 20, 60);
   validateLength("Message", body, 1, 2000);
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("group_messages")
-    .insert({ group_id: groupId, author_id: authorId, body: body.trim() });
+    .insert({ group_id: groupId, author_id: authorId, body: body.trim() })
+    .select("id, created_at")
+    .single();
   if (error) throw error;
+  return { id: data.id as string, createdAt: new Date(data.created_at).getTime() };
 }
 
 // ── People-group lifecycle (restructure) ────────────────────────────────────
