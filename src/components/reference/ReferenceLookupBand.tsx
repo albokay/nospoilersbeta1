@@ -11,7 +11,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Search, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import { useAuth } from "../../lib/auth";
 import {
@@ -174,6 +174,10 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   const [canonCard, setCanonCard] = useState<{ show: Show | null; name: string; adding: boolean } | null>(null);
   const [canonDraft, setCanonDraft] = useState("");
   const [canonBusy, setCanonBusy] = useState(false);
+  // Canon pagination (Alborz 2026-09-09): desktop pages of four (cap 12);
+  // mobile collapses past four behind a "show all N" expander instead.
+  const [canonPage, setCanonPage] = useState(0);
+  const [canonExpanded, setCanonExpanded] = useState(false);
   function openCanonCard(show: Show) {
     const entry = progress[show.id];
     setCanonDraft(entry?.canonTake ?? "");
@@ -184,8 +188,8 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
   }
   async function confirmCanon() {
     if (!user || !canonCard?.show || canonBusy) return;
-    // Hard cap (Alborz 2026-09-07): the canon is four shows, full stop.
-    if (canonCard.adding && canonList.length >= 4) { setCanonCard(null); return; }
+    // Hard cap (Alborz 2026-09-09): TWELVE shows — three pages of four.
+    if (canonCard.adding && canonList.length >= 12) { setCanonCard(null); return; }
     const show = canonCard.show;
     setCanonBusy(true);
     try {
@@ -519,9 +523,13 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               </button>
             );
             if (mobile) {
+              // Past four the stack collapses behind "show all N" — twelve
+              // entries would push the shelves way down (Alborz 2026-09-09).
+              const collapsed = !canonExpanded && canonList.length > 4;
+              const shownCanon = collapsed ? canonList.slice(0, 4) : canonList;
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                  {canonList.map((show) => {
+                  {shownCanon.map((show) => {
                     const poster = posters[show.id];
                     return (
                       <div key={show.id} style={{ position: "relative", width: "100%", minWidth: 0, display: "flex", gap: 14, alignItems: "flex-start" }}>
@@ -539,7 +547,14 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                       </div>
                     );
                   })}
-                  {canonList.length < 4 && (
+                  {collapsed ? (
+                    <button
+                      onClick={() => setCanonExpanded(true)}
+                      style={{ alignSelf: "center", display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", padding: "6px 0", cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13 }}
+                    >
+                      show all {canonList.length} <ChevronDown size={16} color={CREAM} />
+                    </button>
+                  ) : canonList.length < 12 && (
                     <button
                       onClick={openCanonSearch}
                       title="Add a show to your canon"
@@ -552,10 +567,31 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               );
             }
             const TW = 196, TH = 277; // = the browse-row card size
+            // Pages of four, cap 12 (Alborz 2026-09-09): a fresh page of
+            // placeholders appears once the last page fills; the right
+            // chevron paginates forward, the left back, and the dots (the
+            // homepage modal's grammar, sans numbers/arrows) jump straight
+            // to a page.
+            const pageCount = Math.min(3, Math.floor(canonList.length / 4) + 1);
+            const page = Math.min(canonPage, pageCount - 1);
+            const pageShows = canonList.slice(page * 4, page * 4 + 4);
+            const chevronBtn: React.CSSProperties = {
+              width: 36, height: 36, background: "transparent", border: "none", cursor: "pointer",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0,
+            };
             return (
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(2, ${TW}px ${TW}px)`, columnGap: 20, rowGap: 36, justifyContent: "center" }}>
+              <>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <div style={{ width: 36, flexShrink: 0 }}>
+                  {page > 0 && (
+                    <button style={chevronBtn} title="previous canon page" onClick={() => setCanonPage(page - 1)}>
+                      <ChevronLeft size={30} color={CREAM} />
+                    </button>
+                  )}
+                </div>
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(2, ${TW}px ${TW}px)`, columnGap: 20, rowGap: 36, justifyContent: "center", flex: 1, minWidth: 0 }}>
                 {[0, 1, 2, 3].map((i) => {
-                  const show = canonList[i];
+                  const show = pageShows[i];
                   if (!show) {
                     // The placeholder spans its whole [thumb + text] section
                     // and centers, so empty/part-filled states stay symmetric
@@ -591,6 +627,26 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                   );
                 })}
               </div>
+                <div style={{ width: 36, flexShrink: 0 }}>
+                  {page < pageCount - 1 && (
+                    <button style={chevronBtn} title="more canon" onClick={() => setCanonPage(page + 1)}>
+                      <ChevronRight size={30} color={CREAM} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {pageCount > 1 && (
+                <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 24 }}>
+                  {Array.from({ length: pageCount }).map((_, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setCanonPage(i)}
+                      style={{ width: 10, height: 10, borderRadius: "50%", background: i === page ? CREAM : "rgba(253,248,236,0.35)", cursor: "pointer" }}
+                    />
+                  ))}
+                </div>
+              )}
+              </>
             );
           })()}
       </div>
@@ -753,7 +809,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                       </div>
                     )}
                   </button>
-                  {canonList.length < 4 && (
+                  {canonList.length < 12 && (
                     <button
                       onClick={() => openCanonCard(show)}
                       title={`Add ${show.name} to your canon`}

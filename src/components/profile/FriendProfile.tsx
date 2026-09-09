@@ -23,7 +23,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import { useAuth } from "../../lib/auth";
 import {
@@ -101,6 +101,10 @@ export default function FriendProfile({
   // finished the show).
   const [shareShow, setShareShow] = useState<Show | null>(null);
   const [shareRef, setShareRef] = useState<ShowReferenceData | null>(null);
+  // Canon past four (Alborz 2026-09-09): the drawer paginates in pages of
+  // four; mobile collapses behind a "show all N" expander instead.
+  const [canonPage, setCanonPage] = useState(0);
+  const [canonExpanded, setCanonExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -434,6 +438,11 @@ export default function FriendProfile({
     );
   };
 
+  const canonChevron: React.CSSProperties = {
+    width: 28, height: 28, background: "transparent", border: "none", cursor: "pointer",
+    display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0,
+  };
+
   const shelf = (label: string, list: Show[], caption?: (show: Show) => string | undefined) => {
     if (list.length === 0) return null;
     return (
@@ -461,14 +470,24 @@ export default function FriendProfile({
         <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, color: CREAM, opacity: 0.85, textAlign: "center", marginTop: 14 }}>
           {ownerName} hasn&rsquo;t picked a canon yet.
         </div>
-      ) : (
+      ) : (() => {
+        // Canon past four (Alborz 2026-09-09): drawer = pages of four with
+        // chevrons + dots; mobile = first four behind a "show all N".
+        const pageCount = narrow ? Math.max(1, Math.ceil(canonList.length / 4)) : 1;
+        const page = Math.min(canonPage, pageCount - 1);
+        const collapsed = mobile && !canonExpanded && canonList.length > 4;
+        const visibleCanon = narrow
+          ? canonList.slice(page * 4, page * 4 + 4)
+          : collapsed ? canonList.slice(0, 4) : canonList;
+        return (
+        <>
         <div style={{
           marginTop: 32,
           ...(slim
             ? { display: "flex", flexDirection: "column" as const, gap: 18 }
             : { display: "grid", gridTemplateColumns: "repeat(2, 196px minmax(196px, 240px))", columnGap: 20, rowGap: 36, justifyContent: "center" }),
         }}>
-          {canonList.map((show) => {
+          {visibleCanon.map((show) => {
             const entry = theirProg[show.id];
             const take = entry?.canonTake;
             const essCount = entry?.essentialEps?.length ?? 0;
@@ -548,7 +567,46 @@ export default function FriendProfile({
             );
           })}
         </div>
-      )}
+        {narrow && pageCount > 1 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 20 }}>
+            <div style={{ width: 28, flexShrink: 0 }}>
+              {page > 0 && (
+                <button style={canonChevron} title="previous canon page" onClick={() => setCanonPage(page - 1)}>
+                  <ChevronLeft size={22} color={CREAM} />
+                </button>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {Array.from({ length: pageCount }).map((_, i) => (
+                <div
+                  key={i}
+                  onClick={() => setCanonPage(i)}
+                  style={{ width: 10, height: 10, borderRadius: "50%", background: i === page ? CREAM : "rgba(253,248,236,0.35)", cursor: "pointer" }}
+                />
+              ))}
+            </div>
+            <div style={{ width: 28, flexShrink: 0 }}>
+              {page < pageCount - 1 && (
+                <button style={canonChevron} title="more canon" onClick={() => setCanonPage(page + 1)}>
+                  <ChevronRight size={22} color={CREAM} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        {collapsed && (
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>
+            <button
+              onClick={() => setCanonExpanded(true)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", padding: "6px 0", cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13 }}
+            >
+              show all {canonList.length} <ChevronDown size={16} color={CREAM} />
+            </button>
+          </div>
+        )}
+        </>
+        );
+      })()}
 
       {shelf(`${ownerName} is watching:`, watching, (s) => {
         const p = theirProg[s.id];

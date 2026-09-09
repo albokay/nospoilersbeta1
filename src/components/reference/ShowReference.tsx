@@ -297,9 +297,9 @@ export default function ShowReference({
       {user && (canonOn !== null || roomLinks.length > 0) && (
         <div style={{ marginBottom: 32, display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 10 }}>
           {canonOn === null ? null : !canonOn ? (
-            // Canon full → no pill, no note (Alborz 2026-09-08); the room
-            // pills below still render.
-            (canonCount ?? 0) >= 4 ? null : (
+            // Canon full (12 since 2026-09-09) → no pill, no note; the
+            // room pills below still render.
+            (canonCount ?? 0) >= 12 ? null : (
               <>
                 <button
                   onClick={addToCanon}
