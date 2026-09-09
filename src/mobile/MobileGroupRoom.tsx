@@ -639,7 +639,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // along as plain text (help-system arc CP2 — whoever invited them).
   const nameNodes = [
     ...others.map((m) => (
-      <span key={m.userId} onClick={() => navigate(`/m/pool/${encodeURIComponent(m.username)}`)}>
+      <span key={m.userId} style={{ textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => navigate(`/m/pool/${encodeURIComponent(m.username)}`)}>
         {personDisplayName(contactNames, m.userId, m.username, m.displayName)}
       </span>
     )),

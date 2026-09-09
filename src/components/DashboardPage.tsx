@@ -2610,7 +2610,7 @@ function GroupClusters({
     // pending invitees have no account yet, so they stay plain text.
     const nameNodes = [
       ...others.map((m) => (
-        <span key={m.userId} style={{ cursor: "pointer" }} onClick={() => openFriendProfile(m.username)}>
+        <span key={m.userId} style={{ cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openFriendProfile(m.username)}>
           {personDisplayName(contactNames, m.userId, m.username, m.displayName)}
         </span>
       )),

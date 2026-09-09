@@ -65,6 +65,10 @@ export default function FriendProfileDrawer() {
   if (!username) return null;
   const ready = loadedFor === username;
   return (
+    <>
+    {/* Click-away: anywhere outside the drawer closes it (Alborz) — a
+        transparent catcher, no dimming, like nothing modal is happening. */}
+    <div style={backdrop} onClick={() => setUsername(null)} />
     <div style={panel}>
       <button style={closeX} title="close" onClick={() => setUsername(null)}>
         <X size={20} color={CANON.cream} />
@@ -83,8 +87,13 @@ export default function FriendProfileDrawer() {
         )}
       </div>
     </div>
+    </>
   );
 }
+
+const backdrop: React.CSSProperties = {
+  position: "fixed", inset: 0, zIndex: 79, background: "transparent",
+};
 
 const panel: React.CSSProperties = {
   // The chat box's geometry (chatPanel), yellow like the profile world; one

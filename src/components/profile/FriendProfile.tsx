@@ -29,7 +29,7 @@ import { useAuth } from "../../lib/auth";
 import {
   fetchShows, fetchProgress, fetchPublicProgressForUser, upsertRewatchStatus,
   fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames,
-  fetchGroupShowVotes, fetchFriendGroupsForUser, setShowVote, ensureProgressRow,
+  fetchGroupDashboard, startShowRoom, setShowVote, ensureProgressRow,
   type Show,
 } from "../../lib/db";
 import { groupDisplayName } from "../../lib/groupNames";
@@ -44,6 +44,15 @@ import { yellowCard, yellowTitle, startBtn, modalClose } from "../dashboardChrom
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
+
+// One people-group the viewer shares with the profile's owner, with what the
+// per-show action rows need: the viewer's yeses, the rooms they're IN
+// (showId → roomId), and the shows they deliberately X'd out of (departed
+// marker — the vote survives an X, so `left` outranks `myVotes`).
+type SharedGroup = {
+  id: string; label: string;
+  myVotes: Set<string>; rooms: Record<string, string>; left: Set<string>;
+};
 
 // Linear episode distance across seasons (the room-map convention).
 function linIdx(s: number, e: number, seasons: number[] | undefined): number {
@@ -75,12 +84,8 @@ export default function FriendProfile({
   const [posters, setPosters] = useState<Record<string, string | null>>({});
   // The people-groups the viewer SHARES with the owner (any — show-agnostic;
   // Alborz correction 2026-09-08) — power the gated-canon chat invitation AND
-  // the per-show "want to watch it with {group}" actions (2026-09-08 pt 2).
-  // Per group: its display label, the shows anyone there wants (the pool),
-  // the viewer's own yeses, and the viewer's rooms under it (showId → roomId).
-  const [sharedGroups, setSharedGroups] = useState<{
-    id: string; label: string; myVotes: Set<string>; rooms: Record<string, string>;
-  }[]>([]);
+  // the per-show group action rows (2026-09-08 pt 2).
+  const [sharedGroups, setSharedGroups] = useState<SharedGroup[]>([]);
   // `${groupId}:${showId}` while a group-want is saving.
   const [voteBusy, setVoteBusy] = useState<string | null>(null);
   // Tilted gap bubble — rendered FIXED at the anchor tile's on-screen spot
@@ -163,24 +168,31 @@ export default function FriendProfile({
     let cancelled = false;
     (async () => {
       try {
-        const [groups, contactNames, myRooms] = await Promise.all([
+        const [groups, contactNames] = await Promise.all([
           fetchPeopleGroupsForUser(user.id),
           fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
-          fetchFriendGroupsForUser(user.id).catch(() => []),
         ]);
-        const shared: { id: string; label: string; myVotes: Set<string>; rooms: Record<string, string> }[] = [];
+        const shared: SharedGroup[] = [];
         for (const g of groups) {
           const members = await fetchPeopleGroupMembers(g.id);
           if (cancelled) return;
           if (!members.some((m) => m.userId === ownerId)) continue;
           const others = members.filter((m) => m.userId !== user.id);
           const label = groupDisplayName(g, others, contactNames);
-          const votes = await fetchGroupShowVotes(g.id).catch(() => []);
+          // The group-dashboard fetch knows each pooled show's room, whether
+          // the viewer is IN it, and whether they X'd out of it (viewerLeft
+          // — the vote survives an X, which is why votes alone lied here).
+          const dash = await fetchGroupDashboard(g.id).catch(() => [] as Awaited<ReturnType<typeof fetchGroupDashboard>>);
           if (cancelled) return;
-          const myVotes = new Set(votes.filter((v) => v.userId === user.id).map((v) => v.showId));
+          const myVotes = new Set<string>();
           const rooms: Record<string, string> = {};
-          for (const r of myRooms) if (r.parentGroupId === g.id && r.showId) rooms[r.showId] = r.id;
-          shared.push({ id: g.id, label, myVotes, rooms });
+          const left = new Set<string>();
+          for (const s of dash) {
+            if (s.members.some((m) => m.userId === user.id && m.voted)) myVotes.add(s.showId);
+            if (s.roomId && s.inRoom) rooms[s.showId] = s.roomId;
+            if (s.viewerLeft) left.add(s.showId);
+          }
+          shared.push({ id: g.id, label, myVotes, rooms, left });
         }
         if (!cancelled) setSharedGroups(shared);
       } catch { if (!cancelled) setSharedGroups([]); }
@@ -211,6 +223,25 @@ export default function FriendProfile({
     finally { setVoteBusy(null); }
   }
   const openRoom = (roomId: string) => navigate(`${mobile ? "/m" : ""}/show-room/${roomId}`);
+
+  // 'put back in the "{label}" pool' — the viewer had X'd this show out of
+  // that group's room (departed marker; a global remove also deletes the
+  // vote, so restore that too). Re-entering clears the marker and the row
+  // flips straight to the open-your-room link. Group-only, like the want.
+  async function putBackInPool(g: SharedGroup, show: Show) {
+    if (!user || voteBusy) return;
+    setVoteBusy(`${g.id}:${show.id}`);
+    try {
+      if (!g.myVotes.has(show.id)) await setShowVote(g.id, show.id, true);
+      const { roomId } = await startShowRoom(g.id, show.id);
+      setSharedGroups((prev) => prev.map((x) => {
+        if (x.id !== g.id) return x;
+        const left = new Set(x.left); left.delete(show.id);
+        return { ...x, rooms: { ...x.rooms, [show.id]: roomId }, left, myVotes: new Set(x.myVotes).add(show.id) };
+      }));
+    } catch (e) { console.error("[friend-profile] put back failed", e); }
+    finally { setVoteBusy(null); }
+  }
 
   // The tilted gap bubble's line — null when the show isn't on the
   // viewer's own shelves (then the tap opens the log/want card instead).
@@ -318,26 +349,37 @@ export default function FriendProfile({
     borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.10)", textAlign: "left",
   };
 
-  // One shared group's row for a show — three states: your room exists →
-  // open it; you've already said yes → inert ✓; else the want action.
-  function groupRow(g: { id: string; label: string; myVotes: Set<string>; rooms: Record<string, string> }, show: Show, surface: "bubble" | "card") {
+  // One shared group's row for a show — four states: your room exists →
+  // open it; you X'd out of the room → put it back; you've said yes → inert
+  // ✓; else the want action. Copy (Alborz 2026-09-08 pt 5): the group is
+  // named &ldquo;in quotes&rdquo; whenever the room/pool is mentioned.
+  function groupRow(g: SharedGroup, show: Show, surface: "bubble" | "card") {
     const roomId = g.rooms[show.id];
     const busy = voteBusy === `${g.id}:${show.id}`;
+    const roomLabel = <>open your room in &ldquo;{g.label}&rdquo;</>;
+    const putBackLabel = <>put back in the &ldquo;{g.label}&rdquo; pool</>;
+    const inPoolLabel = <>in the &ldquo;{g.label}&rdquo; pool ✓</>;
+    const wantLabel = <>want to watch it with {g.label}</>;
     if (surface === "bubble") {
       const link: React.CSSProperties = {
         display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer",
         color: CANON.identity, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12,
         textDecoration: "underline", textAlign: "left",
       };
-      if (roomId) return <button key={g.id} style={link} onClick={() => openRoom(roomId)}>open your room with {g.label}</button>;
+      if (roomId) return <button key={g.id} style={link} onClick={() => openRoom(roomId)}>{roomLabel}</button>;
+      if (g.left.has(show.id)) return (
+        <button key={g.id} style={link} disabled={busy} onClick={() => putBackInPool(g, show)}>
+          {busy ? <>one moment<LoadingDots /></> : putBackLabel}
+        </button>
+      );
       if (g.myVotes.has(show.id)) return (
         <div key={g.id} style={{ color: CANON.identity, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, opacity: 0.75 }}>
-          in {g.label}&rsquo;s pool ✓
+          {inPoolLabel}
         </div>
       );
       return (
         <button key={g.id} style={link} disabled={busy} onClick={() => wantWithGroup(g, show)}>
-          {busy ? <>one moment<LoadingDots /></> : <>want to watch it with {g.label}</>}
+          {busy ? <>one moment<LoadingDots /></> : wantLabel}
         </button>
       );
     }
@@ -346,15 +388,20 @@ export default function FriendProfile({
       ...startBtn, background: "transparent", border: `2px solid ${CREAM}`, color: CREAM,
       width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0,
     };
-    if (roomId) return <button key={g.id} style={outline} onClick={() => openRoom(roomId)}>open your room with {g.label}</button>;
+    if (roomId) return <button key={g.id} style={outline} onClick={() => openRoom(roomId)}>{roomLabel}</button>;
+    if (g.left.has(show.id)) return (
+      <button key={g.id} style={outline} disabled={busy} onClick={() => putBackInPool(g, show)}>
+        {busy ? <>one moment<LoadingDots /></> : putBackLabel}
+      </button>
+    );
     if (g.myVotes.has(show.id)) return (
       <div key={g.id} style={{ color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12 }}>
-        in {g.label}&rsquo;s pool ✓
+        {inPoolLabel}
       </div>
     );
     return (
       <button key={g.id} style={outline} disabled={busy} onClick={() => wantWithGroup(g, show)}>
-        {busy ? <>one moment<LoadingDots /></> : `want to watch it with ${g.label}`}
+        {busy ? <>one moment<LoadingDots /></> : wantLabel}
       </button>
     );
   }

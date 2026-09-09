@@ -766,7 +766,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                         style={{ flex: 1, fontWeight: isSelf ? 700 : 600, fontSize: 14, color: C.midnight, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                         onClick={isSelf ? undefined : () => openPool(m.username)}
                       >
-                        {isSelf ? "(you)" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left show)" : ""}
+                        {isSelf ? "(you)" : (
+                          <span style={{ textDecoration: "underline", textUnderlineOffset: 2 }}>{displayNames[m.username] ?? m.username}</span>
+                        )}{m.isDeparted ? " (left show)" : ""}
                       </span>
                       <span style={{ fontWeight: 600, fontSize: 13, color: C.midnight, opacity: 0.8, flexShrink: 0 }}>
                         s{p?.s ?? 0} e{p?.e ?? 0}
