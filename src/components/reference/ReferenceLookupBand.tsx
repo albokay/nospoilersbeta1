@@ -554,7 +554,12 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                     >
                       show all {canonList.length} <ChevronDown size={16} color={CREAM} />
                     </button>
-                  ) : canonList.length < 12 && (
+                  ) : (canonList.length < 4 || canonExpanded) && canonList.length < 12 && (
+                    // The default view never exceeds FOUR boxes (Alborz
+                    // 2026-09-12): at exactly four the "+" placeholder
+                    // yields — a fifth still arrives via the show guide's
+                    // add pill or the finished shelf's ★ link, and the
+                    // placeholder returns inside the expanded stack.
                     <button
                       onClick={openCanonSearch}
                       title="Add a show to your canon"
