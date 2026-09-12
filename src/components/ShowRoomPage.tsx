@@ -19,7 +19,7 @@ import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
-  persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen,
+  persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState,
   fetchHighlights, fetchPeopleGroupsForUser, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
   type Show,
 } from "../lib/db";
@@ -154,7 +154,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const [perThreadHiddenCount, setPerThreadHiddenCount] = useState<Record<string, number>>({});
   const [perThreadLatestHidden, setPerThreadLatestHidden] = useState<Record<string, number>>({});
   const [engagedSet, setEngagedSet] = useState<Set<string>>(new Set());
-  const [greenDismissedSet, setGreenDismissedSet] = useState<Set<string>>(new Set());
+  // Threads the viewer has RESPONDED in — green also fires there (Alborz
+  // 2026-09-12: a response in a conversation you're part of is for you).
+  const [myReplyThreadIds, setMyReplyThreadIds] = useState<Set<string>>(new Set());
   const [redDismissedAt, setRedDismissedAt] = useState<Record<string, number>>({});
   const [firstHighlightedSet, setFirstHighlightedSet] = useState<Set<string>>(new Set());
   const [latestHighlightOnViewerWriting, setLatestHighlightOnViewerWriting] = useState<Record<string, number>>({});
@@ -184,14 +186,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     } catch { prevVisibleThreadIdsRef.current = new Set(); }
   }, [user?.id, roomId, privateOnly]);
 
-  useEffect(() => {
-    if (privateOnly || !roomId || !user?.id) return;
-    const vKey = `ns_room_visible_threads_${user.id}_${roomId}`;
-    // Gated STUBS (CP4) don't count as "seen": the entry must still get its
-    // white newly-visible outline when the viewer catches up to the real thing.
-    const ids = feedEntries.filter((e) => !e.isDeleted && !e.gatedStub).map((e) => e.threadId);
-    try { localStorage.setItem(vKey, JSON.stringify(ids)); } catch { /* ignore quota */ }
-  }, [user?.id, roomId, privateOnly, feedEntries]);
+  // (2026-09-12: the seen-set is FROZEN — the outline now clears only on
+  // open, so nothing writes "seen on sight" anymore; the stored set stays
+  // as the historical baseline read above.)
 
   // Quietly keep this room's show episode list current (12h cadence; mostly a
   // no-op). Non-blocking — the progress dropdown reads show.seasons, so merging
@@ -369,6 +366,18 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       setPerThreadLatestReply(gr.latestVisibleReplyAt ?? {});
       setPerThreadHiddenCount(gr.hiddenCounts ?? {});
       setPerThreadLatestHidden(gr.latestHiddenReplyAt ?? {});
+      // Cross-device opens (2026-09-12): merge the server's per-entry open
+      // stamps into the local map — opening on your phone clears here too.
+      if (!privateOnly && roomId) {
+        fetchThreadViewState(roomId).then((sv) => {
+          setLastOpenedAt((prev) => {
+            const next = { ...prev };
+            for (const [tid, ts] of Object.entries(sv)) if (!(tid in next) || next[tid] < ts) next[tid] = ts;
+            try { localStorage.setItem("ns_last_opened", JSON.stringify(next)); } catch { /* ignore */ }
+            return next;
+          });
+        }).catch(() => { /* tolerate (migration state) */ });
+      }
       // Hydrate manual red-dot dismissals from localStorage (persist across sessions).
       const dismisses: Record<string, number> = {};
       for (const t of gr.threads as Thread[]) {
@@ -550,6 +559,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         const { data: viewerReplyRows } = await supabase
           .from("replies").select("id, thread_id").eq("group_id", roomId).eq("author_id", user.id);
         const allViewerReplyIds = (viewerReplyRows ?? []).map((r: any) => r.id);
+        if (!cancelled) setMyReplyThreadIds(new Set((viewerReplyRows ?? []).map((r: any) => r.thread_id as string)));
         const [entryHL, replyHL] = await Promise.all([
           fetchHighlights({ targetType: "thread", targetIds: entryIds, viewerProgress: progressForShow ?? undefined }),
           allViewerReplyIds.length > 0
@@ -584,38 +594,46 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if (entry.isDeleted) continue;
       const tid = entry.threadId;
       const isOwn = !!profile?.username && entry.authorUsername === profile.username;
-      // Green = a new reply since you last opened it, but ONLY on your OWN
-      // entries ("someone replied to your writing"). It must not fire on other
-      // members' cells — the map's own contract is green/red are own-column
-      // only; others' brand-new entries surface via the white "new" outline.
-      if (isOwn && (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0)) { out[tid] = { kind: "green" }; continue; }
+      // Green = a new readable response since you last opened the entry, on
+      // entries you WROTE or RESPONDED in (Alborz 2026-09-12 — was own-only).
+      // latestVisibleReplyAt excludes your own replies, so posting never
+      // notifies you. Catching up turns a red (hidden) response green here
+      // naturally: the revealed reply enters the visible-latest timestamp.
+      if ((isOwn || myReplyThreadIds.has(tid)) && (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0)) { out[tid] = { kind: "green" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
       const dismissedAt = redDismissedAt[tid] ?? 0;
       const manuallyDismissed = dismissedAt > 0 && dismissedAt >= (perThreadLatestHidden[tid] ?? 0);
-      if (isOwn && hiddenCount > 0 && !greenDismissedSet.has(tid) && !manuallyDismissed) {
+      // Red revives on every NEWER hidden response (mobile's rule; the old
+      // session-long silence after a green open swallowed live reds —
+      // Alborz 2026-09-12).
+      if (isOwn && hiddenCount > 0 && !manuallyDismissed) {
         out[tid] = { kind: "red", redCount: hiddenCount };
       }
     }
     return out;
-  }, [feedEntries, perThreadLatestReply, lastOpenedAt, perThreadHiddenCount, perThreadLatestHidden, greenDismissedSet, redDismissedAt, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, perThreadLatestHidden, redDismissedAt, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
 
-  // ── White "new since last visit" outline (others' entries, not yet engaged) ─
+  // ── White "never opened" outline (others' entries) — Alborz 2026-09-12:
+  //    it used to be "new since last visit", marked seen ON SIGHT, so an
+  //    unopened entry lost its outline on the next visit. Now it clears
+  //    only when the entry is opened (a stamp exists); the frozen legacy
+  //    seen-set covers everything from before this rule so old rooms don't
+  //    light up wholesale. ──────────────────────────────────────────────────
   const isNewMap = useMemo(() => {
     const out: Record<string, boolean> = {};
     if (!profile?.username) return out;
-    const prevSet = prevVisibleThreadIdsRef.current;
+    const legacySeen = prevVisibleThreadIdsRef.current;
     for (const entry of feedEntries) {
       if (entry.isDeleted || entry.gatedStub || entry.authorUsername === profile.username) continue;
-      if (!prevSet.has(entry.threadId) && !engagedSet.has(entry.threadId)) out[entry.threadId] = true;
+      if (!(entry.threadId in lastOpenedAt) && !legacySeen.has(entry.threadId)) out[entry.threadId] = true;
     }
     return out;
-  }, [feedEntries, engagedSet, profile?.username]);
+  }, [feedEntries, lastOpenedAt, profile?.username]);
 
   // ── Signal-clearing handlers (ported) ──────────────────────────────────────
   const handleEntryExpanded = useCallback((threadId: string) => {
     const latestSeenAt = perThreadLatestReply[threadId] ?? 0;
-    const wasGreen = latestSeenAt > (lastOpenedAt[threadId] ?? 0);
     setLastOpenedAt((prev) => {
       const next = { ...prev, [threadId]: latestSeenAt };
       try { localStorage.setItem("ns_last_opened", JSON.stringify(next)); } catch { /* ignore */ }
@@ -627,9 +645,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       try { localStorage.setItem("ns_highlight_seen", JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
-    if (wasGreen) setGreenDismissedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
     setEngagedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
-  }, [perThreadLatestReply, lastOpenedAt]);
+    // Server stamp — makes opens CROSS-DEVICE (and feeds CP2's exact room
+    // dots). Tolerant fire-and-forget.
+    if (!privateOnly && roomId) markThreadSeen(roomId, threadId).catch(() => { /* tolerate */ });
+  }, [perThreadLatestReply, lastOpenedAt, privateOnly, roomId]);
 
   const handleEntryCollapsed = useCallback((threadId: string) => {
     setEngagedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
