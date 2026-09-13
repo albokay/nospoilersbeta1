@@ -26,7 +26,7 @@ import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, Plus, Search, UserPen, CornerRightUp, CornerLeftDown } from "lucide-react";
+import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, MonitorCheck, Plus, Search, UserPen, CornerRightUp, CornerLeftDown } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import AccountModal from "./AccountModal";
 import FeedbackWidget from "./FeedbackWidget";
@@ -64,6 +64,9 @@ import {
   roomHasNewActivity,
   roomHasNewInvisibleActivity,
   fetchGroupChatActivity,
+  fetchFriendGroupMembers,
+  fetchRoomDnfMap,
+  setRoomDnf,
   chatHasNewActivity,
   markGroupChatSeen,
   fetchTspDemoSeen,
@@ -85,7 +88,7 @@ import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { groupDisplayName, groupGenericName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
 import { groupHeadingMembers, EDGE_TAB_TOP } from "./dashboardChrome";
-import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
+import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
 import LoadingDots from "./LoadingDots";
@@ -294,6 +297,14 @@ export default function DashboardPage() {
 
   // CP5: leave-a-room confirm (the X on an active-room button).
   const [leaveConfirm, setLeaveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
+  // Finished-together drawer (2026-09-13): per active-group room — DNF
+  // marks (roomId → ms), current room members (roomId → userIds, for the
+  // auto finished detection), open state, posters, and the revive modal.
+  const [roomDnf, setRoomDnfMap] = useState<Record<string, number>>({});
+  const [roomMembersById, setRoomMembersById] = useState<Record<string, string[]>>({});
+  const [finishedDrawerOpen, setFinishedDrawerOpen] = useState(false);
+  const [drawerPosters, setDrawerPosters] = useState<Record<string, string | null>>({});
+  const [reviveConfirm, setReviveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
 
   // §9 click-model popover (group context). mode captured at click time.
   // fromBrowse (2026-08-17): opened from a poster row — a "yes" proposes and
@@ -740,6 +751,93 @@ export default function DashboardPage() {
     return m;
   }, [railGroups, activeGroupId, contactNames]);
 
+  // ── Finished-together drawer data (2026-09-13) ─────────────────────────────
+  // DNF marks + each room's CURRENT members, refreshed with the group. Both
+  // tolerant (pre-migration dnf select fails → {}).
+  useEffect(() => {
+    const roomIds = groupShows.filter((gs) => gs.roomId).map((gs) => gs.roomId as string);
+    if (!activeGroupId || roomIds.length === 0) { setRoomDnfMap({}); setRoomMembersById({}); return; }
+    let cancelled = false;
+    fetchRoomDnfMap(roomIds)
+      .then((m) => { if (!cancelled) setRoomDnfMap(m); })
+      .catch(() => { if (!cancelled) setRoomDnfMap({}); });
+    Promise.all(roomIds.map(async (rid) => {
+      try { return [rid, (await fetchFriendGroupMembers(rid)).map((m) => m.userId)] as [string, string[]]; }
+      catch { return [rid, []] as [string, string[]]; }
+    })).then((pairs) => {
+      if (cancelled) return;
+      const out: Record<string, string[]> = {};
+      for (const [rid, ids] of pairs) out[rid] = ids;
+      setRoomMembersById(out);
+    });
+    return () => { cancelled = true; };
+  }, [activeGroupId, groupShows]);
+
+  // Group-finished = every CURRENT room member is at the show's last
+  // available episode (auto-detected; new episodes pull it back — the
+  // shelf rule recomputes from the fresher catalog on its own).
+  const finishedRoomIds = useMemo(() => {
+    const out = new Set<string>();
+    for (const gs of groupShows) {
+      if (!gs.roomId) continue;
+      const memberIds = roomMembersById[gs.roomId];
+      if (!memberIds || memberIds.length === 0) continue;
+      const seasons = showsById[gs.showId]?.seasons;
+      if (!seasons?.length) continue;
+      const ls = seasons.length, le = seasons[ls - 1] ?? 1;
+      const all = memberIds.every((uid) => {
+        const m = gs.members.find((mm) => mm.userId === uid);
+        return !!m && ((m.s ?? 0) > ls || ((m.s ?? 0) === ls && (m.e ?? 0) >= le));
+      });
+      if (all) out.add(gs.roomId);
+    }
+    return out;
+  }, [groupShows, roomMembersById, showsById]);
+
+  // The drawer's two piles. DNF wins when both would apply — the group
+  // called it, that's the truer label.
+  const drawerItems = useMemo(() => {
+    const finished: { roomId: string; showId: string; name: string }[] = [];
+    const dnf: { roomId: string; showId: string; name: string }[] = [];
+    for (const gs of groupShows) {
+      if (!gs.roomId) continue;
+      const item = { roomId: gs.roomId, showId: gs.showId, name: showsById[gs.showId]?.name ?? gs.showId };
+      if (roomDnf[gs.roomId]) dnf.push(item);
+      else if (finishedRoomIds.has(gs.roomId)) finished.push(item);
+    }
+    const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+    return { finished: finished.sort(byName), dnf: dnf.sort(byName) };
+  }, [groupShows, roomDnf, finishedRoomIds, showsById]);
+
+  // Posters for the drawer thumbnails (module-cached).
+  useEffect(() => {
+    let cancelled = false;
+    for (const it of [...drawerItems.finished, ...drawerItems.dnf]) {
+      const show = showsById[it.showId];
+      if (!show?.tvmazeId || drawerPosters[it.showId] !== undefined) continue;
+      fetchTvmazePoster(show.tvmazeId).then((url) => {
+        if (!cancelled) setDrawerPosters((prev) => ({ ...prev, [it.showId]: url }));
+      });
+    }
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerItems, showsById]);
+
+  async function doDnfRoom(roomId: string) {
+    setLeaveConfirm(null);
+    try {
+      await setRoomDnf(roomId, true);
+      setRoomDnfMap((prev) => ({ ...prev, [roomId]: Date.now() }));
+    } catch (e) { console.error("[dashboard] dnf failed", e); }
+  }
+  async function doReviveRoom(roomId: string) {
+    setReviveConfirm(null);
+    try {
+      await setRoomDnf(roomId, false);
+      setRoomDnfMap((prev) => { const n = { ...prev }; delete n[roomId]; return n; });
+    } catch (e) { console.error("[dashboard] revive failed", e); }
+  }
+
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
     type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean };
@@ -750,6 +848,9 @@ export default function DashboardPage() {
       // CP5: a room the viewer deliberately LEFT is hidden from THEIR view
       // (other members are unaffected); the in-group search re-enters it.
       if (gs.viewerLeft && !gs.inRoom) continue;
+      // Finished-together / DNF rooms live in the drawer, not the shelves
+      // (2026-09-13). New episodes un-finish a room automatically.
+      if (gs.roomId && (roomDnf[gs.roomId] || finishedRoomIds.has(gs.roomId))) continue;
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
       // Opted-in members other than you → the avatars overlapping the pill.
@@ -785,7 +886,7 @@ export default function DashboardPage() {
     const byActivity = (a: Row, b: Row) =>
       (a.tier - b.tier) || ((b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0)) || a.name.localeCompare(b.name);
     return { watching: watching.sort(byActivity), notStarted: notStarted.sort(byName) };
-  }, [groupShows, showsById, selfUserId, memberNameById]);
+  }, [groupShows, showsById, selfUserId, memberNameById, roomDnf, finishedRoomIds]);
 
   // ── New-activity dots ──────────────────────────────────────────────────────
   // Per room: blue = new VISIBLE writing; red = new INVISIBLE (ahead-of-progress)
@@ -1472,6 +1573,38 @@ export default function DashboardPage() {
     }
   }
 
+  // One drawer thumbnail — poster opens the room; DNF thumbs carry the
+  // hover x that offers to start watching again.
+  const drawerThumb = (it: { roomId: string; showId: string; name: string }, isDnf: boolean) => {
+    const poster = drawerPosters[it.showId];
+    return (
+      <div key={it.roomId} className="drawer-thumb-wrap" style={{ position: "relative", width: 96 }}>
+        <button
+          onClick={() => navigate(`/show-room/${it.roomId}`)}
+          title={`Open the ${it.name} room`}
+          style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer", width: "100%", textAlign: "left" }}
+        >
+          {poster ? (
+            <img src={poster} alt={it.name} loading="lazy" style={{ width: 96, height: 136, objectFit: "cover", borderRadius: 12, display: "block" }} />
+          ) : (
+            <div style={{ width: 96, height: 136, borderRadius: 12, border: `2px solid ${C.cream}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+              <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 13, color: C.cream, textAlign: "center" }}>{it.name}</span>
+            </div>
+          )}
+          <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 700, color: C.cream, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
+        </button>
+        {isDnf && (
+          <button
+            className="dash-pill-x"
+            style={{ position: "absolute", top: 6, right: 6 }}
+            title="Start watching again?"
+            onClick={() => setReviveConfirm(it)}
+          >×</button>
+        )}
+      </div>
+    );
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────────
   if (authLoading || loading) {
     return (
@@ -1584,6 +1717,13 @@ export default function DashboardPage() {
         <button style={chatTab} title="open chat" onClick={() => activeGroupId && setChatGroupId(activeGroupId)}>
           {!!activeGroupId && chatNewByGroup.get(activeGroupId) && <span style={notifDotChat} />}
           <MessageCircle size={24} color={C.green} />
+        </button>
+      )}
+      {/* Finished-together drawer tab (2026-09-13) — the chat tab's grammar,
+          one slot below; appears once the group's first show lands in it. */}
+      {inGroup && (drawerItems.finished.length > 0 || drawerItems.dnf.length > 0) && (
+        <button style={finishedTab} title="shows you've finished together" onClick={() => setFinishedDrawerOpen(true)}>
+          <MonitorCheck size={24} color={C.green} />
         </button>
       )}
       {/* CP3: the bootstrap group gets the onboarding explainer instead of
@@ -2276,23 +2416,74 @@ export default function DashboardPage() {
 
       {/* CP5: leave-a-show-room confirm (accent card / cream title / outline
           buttons). One version covers both the wrote / never-wrote cases. */}
+      {/* ── Finished-together drawer (2026-09-13) — the chat panel's
+            geometry; thumbnails open their rooms. ── */}
+      {finishedDrawerOpen && (
+        <>
+        <div style={{ position: "fixed", inset: 0, zIndex: 69, background: "transparent" }} onClick={() => setFinishedDrawerOpen(false)} />
+        <div style={finishedPanel}>
+          <div style={chatHeader}>
+            <MonitorCheck size={20} color={C.green} />
+            <button style={{ border: "none", background: "transparent", cursor: "pointer" }} onClick={() => setFinishedDrawerOpen(false)}><X size={18} color={C.sky} /></button>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 32px" }}>
+            {drawerItems.finished.length > 0 && (
+              <>
+                <div style={drawerHeading}>Finished watching:</div>
+                <div style={drawerGrid}>{drawerItems.finished.map((it) => drawerThumb(it, false))}</div>
+              </>
+            )}
+            {drawerItems.dnf.length > 0 && (
+              <>
+                <div style={{ ...drawerHeading, marginTop: drawerItems.finished.length ? 28 : 0 }}>Didn&rsquo;t finish:</div>
+                <div style={drawerGrid}>{drawerItems.dnf.map((it) => drawerThumb(it, true))}</div>
+              </>
+            )}
+          </div>
+        </div>
+        </>
+      )}
+
+      {/* Revive a DNF'd show (2026-09-13) — from the drawer's hover x. */}
+      {reviveConfirm && (
+        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setReviveConfirm(null); }}>
+          <div style={yellowCard}>
+            <button style={modalClose} onClick={() => setReviveConfirm(null)}><X size={16} color={CANON.cream} /></button>
+            <div style={{ ...yellowTitle, marginBottom: 12 }}>Start watching again?</div>
+            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
+              This puts <b>{reviveConfirm.name}</b> back on the group&rsquo;s shelf &mdash; right where you all left off.
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+              <button
+                style={{ ...startBtn, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }}
+                onClick={() => setReviveConfirm(null)}
+              >cancel</button>
+              <button style={identityBtn} onClick={() => doReviveRoom(reviveConfirm.roomId)}>bring it back</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {leaveConfirm && (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setLeaveConfirm(null); }}>
           <div style={yellowCard}>
             <button style={modalClose} onClick={() => setLeaveConfirm(null)}><X size={16} color={CANON.cream} /></button>
-            <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this show room?</div>
+            {/* Two paths since 2026-09-13: leaving (just you) vs DNF (the
+                whole group parks the show — copy locked by Alborz). */}
+            <div style={{ ...yellowTitle, marginBottom: 12 }}>Leaving, or done watching?</div>
             <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>
-              This takes you out of the <b>{leaveConfirm.name}</b> room in this group and removes this button from view.
+              Leaving takes you out of the <b>{leaveConfirm.name}</b> room in this group &mdash; your writing stays, and everyone else keeps going.
             </div>
             <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
-              If you have writing in the room, it will stay intact. Simply re-propose the show to rejoin the room.
+              Or call it for the whole group: the show moves to the finished drawer under &ldquo;Didn&rsquo;t finish:&rdquo;, and anyone can bring it back later.
             </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
               <button
                 style={{ ...startBtn, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }}
                 onClick={() => setLeaveConfirm(null)}
               >cancel</button>
               <button style={dangerBtn} onClick={() => doLeaveRoom(leaveConfirm.roomId, leaveConfirm.showId)}>leave</button>
+              <button style={identityBtn} onClick={() => doDnfRoom(leaveConfirm.roomId)}>we&rsquo;re done with it</button>
             </div>
           </div>
         </div>
@@ -2961,6 +3152,26 @@ const dangerBtn: React.CSSProperties = {
   border: `2px solid ${C.red}`, background: "transparent", color: C.red, fontWeight: 700, fontSize: 14,
   padding: "10px 32px", borderRadius: 65, cursor: "pointer",
 };
+// DNF / revive actions (Alborz 2026-09-13): Identity fill AND outline, cream text.
+const identityBtn: React.CSSProperties = {
+  border: `2px solid ${C.blue}`, background: C.blue, color: CANON.cream, fontWeight: 700, fontSize: 14,
+  padding: "10px 32px", borderRadius: 65, cursor: "pointer",
+};
+const finishedTab: React.CSSProperties = {
+  // The chat tab's grammar, one slot below it — the finished-together drawer.
+  position: "fixed", right: 0, top: EDGE_TAB_TOP + 112, background: C.cream, border: "none", cursor: "pointer",
+  borderTopLeftRadius: 48, borderBottomLeftRadius: 48, padding: "32px 24px 32px 40px",
+  display: "inline-flex", alignItems: "center", boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
+};
+const finishedPanel: React.CSSProperties = {
+  // The chat panel's geometry.
+  position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px, 44vw)", background: C.green,
+  display: "flex", flexDirection: "column", zIndex: 70, boxShadow: "-12px 0 30px rgba(0,0,0,0.18)",
+};
+const drawerHeading: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CANON.cream, marginBottom: 12,
+};
+const drawerGrid: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: 14 };
 
 function DashboardStyles() {
   return (
@@ -2995,6 +3206,7 @@ function DashboardStyles() {
       .dash-pill-wrap:hover .dash-pill-x { opacity: 1; }
       .group-pill-wrap { position: relative; margin-bottom: 8px; }
       .group-pill-wrap:hover .dash-pill-x { opacity: 1; }
+      .drawer-thumb-wrap:hover .dash-pill-x { opacity: 1; }
     `}</style>
   );
 }

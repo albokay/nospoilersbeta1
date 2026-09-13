@@ -2586,6 +2586,31 @@ export async function startShowRoom(
   return { roomId: data.room_id as string, created: !!data.created };
 }
 
+/** "We're done with this one" — any current room member parks (or revives)
+ *  the show for the whole group. Member-gated server-side (friend_groups
+ *  UPDATE is creator-only under RLS, so this rides an RPC). */
+export async function setRoomDnf(roomId: string, dnf: boolean): Promise<void> {
+  const { data, error } = await supabase.rpc("set_room_dnf", { p_room_id: roomId, p_dnf: dnf });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "set_room_dnf failed");
+}
+
+/** dnf_at per room (ms) for the given room ids. Tolerant — returns {} if
+ *  the dnf column isn't present yet (migration not applied). */
+export async function fetchRoomDnfMap(roomIds: string[]): Promise<Record<string, number>> {
+  if (!roomIds.length) return {};
+  const { data, error } = await supabase
+    .from("friend_groups")
+    .select("id, dnf_at")
+    .in("id", roomIds);
+  if (error) throw error;
+  const out: Record<string, number> = {};
+  for (const r of (data ?? []) as Array<{ id: string; dnf_at: string | null }>) {
+    if (r.dnf_at) out[r.id] = new Date(r.dnf_at).getTime();
+  }
+  return out;
+}
+
 /** The existing (group × show) room id, or null if none has been started yet. */
 export async function fetchRoomForGroupShow(groupId: string, showId: string): Promise<string | null> {
   const { data, error } = await supabase
