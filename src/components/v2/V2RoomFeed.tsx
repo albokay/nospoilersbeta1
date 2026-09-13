@@ -666,7 +666,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
             }}
           >
             <div
-              className={`card threadCard${entry.isInstructional ? " tsp-guide" : ""}`}
+              className={`card threadCard${entry.isInstructional ? " tsp-guide" : ""}${isNew && !entry.isInstructional ? " ticket-new" : ""}`}
               style={{
                 margin: 0,
                 // Pointer cursor + click-to-toggle are scoped to COLLAPSED
@@ -683,11 +683,14 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 // (cream in rooms); the attention pulse is a midnight-blue
                 // flashing dropshadow (`flash-glow`, box-shadow) so the lines
                 // never change color. Border precedence otherwise:
-                // white-when-new, then default. Clears via HIGHLIGHT_MS = 1500.
+                // blue-when-new, then default. Clears via HIGHLIGHT_MS = 1500.
                 // (Guide-ticket yellow outline is applied via the .tsp-guide
                 // class, since group-context forces the ticket border !important.)
+                // Never-opened → Identity blue (2026-09-13; the cream
+                // "white-when-new" was invisible against the room's cream
+                // default border). Group-context enforces via .ticket-new.
                 border: isNew
-                  ? "4px solid var(--canon-cream,#fef8ea)"
+                  ? "4px solid var(--canon-identity,#355eb8)"
                   : "4px solid var(--dos-border)",
                 animation: isHighlighted
                   ? "flash-glow 1.2s ease forwards"

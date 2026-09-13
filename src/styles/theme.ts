@@ -65,6 +65,11 @@ body.group-context .reply-card{ color:var(--canon-dark,#1a3a4a) !important; --do
 body.group-context .threadCard{ border:2px solid var(--canon-cream,#fef8ea) !important; }
 /* TSP demo: instructional "Alborz" guide tickets get a blue outline. */
 body.group-context .threadCard.tsp-guide{ border-color:var(--canon-identity,#355eb8) !important; }
+/* Never-opened entries announce on the TICKET too (Alborz 2026-09-13): the
+   old white-when-new border was invisible here (the default room border is
+   already cream). Identity blue = the site's "new for you" color; clears
+   when the entry is opened (the class drops off). */
+body.group-context .threadCard.ticket-new{ border-color:var(--canon-identity,#355eb8) !important; }
 body.group-context .likeWrap{ color:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-cream,#fef8ea) !important; }
 body.group-context .likeWrap:hover{ background:rgba(254,248,234,0.14) !important; }
 /* In friend rooms, the default .btn:hover border-color (--dos-light = dark

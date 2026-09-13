@@ -1478,8 +1478,10 @@ export default function V2RoomMap({
                       // and would visually contaminate the grey hidden-cell
                       // fill with a contrasting outline color.
                       const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer);
+                      // Identity blue since 2026-09-13 — one rule everywhere:
+                      // blue outline = an entry you haven't opened.
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
-                        ? { border: "2px solid var(--canon-cream,#fef8ea)" }
+                        ? { border: "2px solid var(--canon-identity,#355eb8)" }
                         : {};
 
                       // Receding back layers (multi-entry cells only). Each
