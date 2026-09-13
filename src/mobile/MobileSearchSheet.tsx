@@ -154,9 +154,6 @@ export default function MobileSearchSheet({
           )}
           {tvToAdd.length > 0 && (
             <div style={{ marginTop: 8 }}>
-              {results.length > 0 && (
-                <div style={{ padding: "4px 16px 6px", fontSize: 11, fontWeight: 700, color: C.midnight, opacity: 0.6 }}>Not in the list? Add it:</div>
-              )}
               {tvToAdd.map(({ tv, id }) => (
                 <button key={id} style={resultRow} disabled={creatingShow} onClick={() => addFromTvmaze(tv)}>
                   {tv.name}{networkLabel(tv) ? ` · ${networkLabel(tv)}` : ""}
@@ -189,7 +186,7 @@ export default function MobileSearchSheet({
             />
           </div>
           <button style={addBtn} onClick={() => onAdd(pickShow, pickProgress)}>
-            {addLabel ?? "add to my shows"}
+            {addLabel ?? (groupContext ? "propose show" : "add to my shows")}
           </button>
         </div>
       )}

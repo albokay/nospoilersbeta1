@@ -360,9 +360,6 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
             )}
             {tvToAdd.length > 0 && (
               <div style={{ marginTop: 8 }}>
-                {catalogMatches.length > 0 && (
-                  <div style={{ padding: "4px 16px 6px", fontSize: 11, fontWeight: 700, color: CANON.dark, opacity: 0.6 }}>Not in the list? Add it:</div>
-                )}
                 {tvToAdd.map(({ tv, id }) => (
                   <button key={id} className="dash-result" disabled={creatingShow} onClick={() => pickTvShow(tv)}>
                     {tv.name}{networkLabel(tv) ? ` · ${networkLabel(tv)}` : ""}
