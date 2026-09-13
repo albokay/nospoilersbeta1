@@ -630,14 +630,18 @@ export default function DashboardPage() {
     const g = new URLSearchParams(location.search).get("g");
     setActiveGroupId(g);
   }, [location.search]);
-  // A friend-profile chat link arrives as /dashboard?g={id} + openChat state
-  // (2026-09-08) — pop the group's chat panel once the group is active.
+  // A chat link arrives as /dashboard?g={id} + openChat state (friend
+  // profile, 2026-09-08) OR as ?chat=1 in the URL itself (digest emails,
+  // 2026-09-13 — state can't ride an email link) — pop the group's chat
+  // panel once the group is active.
   useEffect(() => {
-    if ((location.state as { openChat?: boolean } | null)?.openChat && activeGroupId) {
+    const fromState = (location.state as { openChat?: boolean } | null)?.openChat;
+    const fromUrl = new URLSearchParams(location.search).get("chat") === "1";
+    if ((fromState || fromUrl) && activeGroupId) {
       setChatGroupId(activeGroupId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeGroupId, location.state]);
+  }, [activeGroupId, location.state, location.search]);
 
   useEffect(() => {
     if (!activeGroupId) { setGroupShows([]); setGroupLoading(false); return; }

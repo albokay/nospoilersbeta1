@@ -161,6 +161,15 @@ export default function App() {
   if (onMobile && !adminExempt && !MOBILE_PASSTHROUGH.includes(pathParts[0] ?? "")) {
     if (mobileGateAuthLoading) return null;
     if (mobileGateUser && !mobileGateProfile) return null;
+    // Digest emails link the DESKTOP /dashboard?g=<id>(&chat=1) URL — a
+    // phone tap forks into the mobile group room / its chat instead of
+    // being flattened to /m (2026-09-13).
+    if (pathParts[0] === "dashboard" && !pathParts[1]) {
+      const qs = new URLSearchParams(location.search);
+      const g = qs.get("g");
+      if (g && qs.get("chat") === "1") return <Navigate to={`/m/group/${encodeURIComponent(g)}/chat`} replace />;
+      if (g) return <Navigate to={`/m/group/${encodeURIComponent(g)}`} replace />;
+    }
     return <Navigate to={`/m${location.hash || ""}`} replace />;
   }
   if (pathParts[0] === "lab") return <Suspense fallback={<RouteFallback />}><HomepageLab /></Suspense>;
