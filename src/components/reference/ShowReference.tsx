@@ -340,6 +340,102 @@ export default function ShowReference({
       )}
 
       {/* ── Previously on: watched episodes only ── */}
+      {/* ── Cast: the SELECTED episode only (rev 2 — Alborz 2026-09-05):
+            8 actors by default, "see whole cast" expands to THAT EPISODE's
+            full credit list. Old cached blobs (no per-episode credits)
+            degrade to the so-far list until the cache rebuilds. ── */}
+      {visiblePeople.length > 0 && (
+        <>
+          {/* "Cast for (picker):" — the picker mirrors the yellow modal's
+              progress pill (cream text + outline, yellow fill, overlay
+              chevron; OneSelectProgress's non-plain grammar). */}
+          <h2 style={{ ...sectionH, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            {episodeCast ? (
+              <>
+                Cast for
+                <span style={{ position: "relative", display: "inline-block" }}>
+                  <select
+                    value={`${selCastEp.s}-${selCastEp.e}`}
+                    onChange={(ev) => {
+                      const [ss, ee] = ev.target.value.split("-").map(Number);
+                      setCastEpisode({ s: ss, e: ee });
+                      setCastExpanded(false);
+                    }}
+                    aria-label="Pick an episode"
+                    style={{
+                      appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+                      background: "transparent", border: `2px solid ${CREAM}`, color: CREAM,
+                      borderRadius: 9999, height: 40, boxSizing: "border-box",
+                      padding: "8px 28px 8px 14px", fontSize: 12, fontWeight: 700,
+                      fontFamily: '"Inter", sans-serif', cursor: "pointer", outline: "none",
+                      textAlign: "center", textAlignLast: "center",
+                      maxWidth: mobile ? 210 : 320, textOverflow: "ellipsis",
+                    }}
+                  >
+                    {[...new Set(watchedEpisodes.map((ep) => ep.s))].map((sn) => (
+                      <optgroup key={sn} label={`Season ${sn}`}>
+                        {watchedEpisodes.filter(ep => ep.s === sn).map((ep) => (
+                          <option key={`${ep.s}-${ep.e}`} value={`${ep.s}-${ep.e}`}>S{ep.s} E{ep.e} · {ep.title}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} color={CREAM} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                </span>
+                :
+              </>
+            ) : "Cast so far:"}
+          </h2>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 14 : 18 }}>
+            {(castExpanded ? (episodeCast ?? visiblePeople) : foldedCast).map((p) => (
+              <button
+                key={p.name}
+                onClick={() => openActorImdb(p)}
+                title={`${p.name} on IMDb`}
+                style={{ width: mobile ? 132 : 150, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM, fontFamily: "inherit" }}
+              >
+                {p.img ? (
+                  <img
+                    src={`https://image.tmdb.org/t/p/w185${p.img}`}
+                    alt=""
+                    loading="lazy"
+                    style={{ width: mobile ? 64 : 72, height: mobile ? 64 : 72, borderRadius: "50%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <div style={{ width: mobile ? 64 : 72, height: mobile ? 64 : 72, borderRadius: "50%", background: "rgba(254,248,234,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 24 }}>
+                    {p.name[0]}
+                  </div>
+                )}
+                <div style={{ fontWeight: 700, fontSize: 13, marginTop: 6 }}>{p.name}</div>
+                {p.character && <div style={{ fontSize: 12, opacity: 0.9 }}>{p.character}</div>}
+                {/* "since …" only once that point is meaningfully behind you
+                    (pilot-cast "since S1 E1" is noise). */}
+                {idx(p.firstS, p.firstE) > idx(1, 1) && (
+                  <div style={{ ...small, marginTop: 2 }}>
+                    {p.exact ? `since S${p.firstS} E${p.firstE}` : `since season ${p.firstS}`}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+          {(episodeCast ?? visiblePeople).length > 8 && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+              <button
+                onClick={() => setCastExpanded((v) => !v)}
+                aria-label={castExpanded ? "Show fewer" : "Show this episode's whole cast"}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", padding: 4, color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13 }}
+              >
+                {castExpanded ? "show fewer" : "see whole cast"}
+                {castExpanded
+                  ? <ChevronUp size={20} color={CREAM} strokeWidth={2.5} />
+                  : <ChevronDown size={20} color={CREAM} strokeWidth={2.5} />}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+
       <h2 style={sectionH}>Previously on {ref.showName}:</h2>
       {/* The essentials sticky (mobile: in-flow; desktop: first rail cell of
           the grid below) — X'd out per show, re-summoned by the dashboard's
@@ -501,101 +597,6 @@ export default function ShowReference({
       })()}
       {/* Unwatched episodes/seasons render NOTHING at all (Alborz 2026-09-05
           — the dial's dropdown already tells the viewer how much is left). */}
-
-      {/* ── Cast: the SELECTED episode only (rev 2 — Alborz 2026-09-05):
-            8 actors by default, "see whole cast" expands to THAT EPISODE's
-            full credit list. Old cached blobs (no per-episode credits)
-            degrade to the so-far list until the cache rebuilds. ── */}
-      {visiblePeople.length > 0 && (
-        <>
-          {/* "Cast for (picker):" — the picker mirrors the yellow modal's
-              progress pill (cream text + outline, yellow fill, overlay
-              chevron; OneSelectProgress's non-plain grammar). */}
-          <h2 style={{ ...sectionH, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-            {episodeCast ? (
-              <>
-                Cast for
-                <span style={{ position: "relative", display: "inline-block" }}>
-                  <select
-                    value={`${selCastEp.s}-${selCastEp.e}`}
-                    onChange={(ev) => {
-                      const [ss, ee] = ev.target.value.split("-").map(Number);
-                      setCastEpisode({ s: ss, e: ee });
-                      setCastExpanded(false);
-                    }}
-                    aria-label="Pick an episode"
-                    style={{
-                      appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
-                      background: "transparent", border: `2px solid ${CREAM}`, color: CREAM,
-                      borderRadius: 9999, height: 40, boxSizing: "border-box",
-                      padding: "8px 28px 8px 14px", fontSize: 12, fontWeight: 700,
-                      fontFamily: '"Inter", sans-serif', cursor: "pointer", outline: "none",
-                      textAlign: "center", textAlignLast: "center",
-                      maxWidth: mobile ? 210 : 320, textOverflow: "ellipsis",
-                    }}
-                  >
-                    {[...new Set(watchedEpisodes.map((ep) => ep.s))].map((sn) => (
-                      <optgroup key={sn} label={`Season ${sn}`}>
-                        {watchedEpisodes.filter(ep => ep.s === sn).map((ep) => (
-                          <option key={`${ep.s}-${ep.e}`} value={`${ep.s}-${ep.e}`}>S{ep.s} E{ep.e} · {ep.title}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} color={CREAM} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
-                </span>
-                :
-              </>
-            ) : "Cast so far:"}
-          </h2>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 14 : 18 }}>
-            {(castExpanded ? (episodeCast ?? visiblePeople) : foldedCast).map((p) => (
-              <button
-                key={p.name}
-                onClick={() => openActorImdb(p)}
-                title={`${p.name} on IMDb`}
-                style={{ width: mobile ? 132 : 150, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM, fontFamily: "inherit" }}
-              >
-                {p.img ? (
-                  <img
-                    src={`https://image.tmdb.org/t/p/w185${p.img}`}
-                    alt=""
-                    loading="lazy"
-                    style={{ width: mobile ? 64 : 72, height: mobile ? 64 : 72, borderRadius: "50%", objectFit: "cover" }}
-                  />
-                ) : (
-                  <div style={{ width: mobile ? 64 : 72, height: mobile ? 64 : 72, borderRadius: "50%", background: "rgba(254,248,234,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 24 }}>
-                    {p.name[0]}
-                  </div>
-                )}
-                <div style={{ fontWeight: 700, fontSize: 13, marginTop: 6 }}>{p.name}</div>
-                {p.character && <div style={{ fontSize: 12, opacity: 0.9 }}>{p.character}</div>}
-                {/* "since …" only once that point is meaningfully behind you
-                    (pilot-cast "since S1 E1" is noise). */}
-                {idx(p.firstS, p.firstE) > idx(1, 1) && (
-                  <div style={{ ...small, marginTop: 2 }}>
-                    {p.exact ? `since S${p.firstS} E${p.firstE}` : `since season ${p.firstS}`}
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
-          {(episodeCast ?? visiblePeople).length > 8 && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-              <button
-                onClick={() => setCastExpanded((v) => !v)}
-                aria-label={castExpanded ? "Show fewer" : "Show this episode's whole cast"}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", padding: 4, color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13 }}
-              >
-                {castExpanded ? "show fewer" : "see whole cast"}
-                {castExpanded
-                  ? <ChevronUp size={20} color={CREAM} strokeWidth={2.5} />
-                  : <ChevronDown size={20} color={CREAM} strokeWidth={2.5} />}
-              </button>
-            </div>
-          )}
-        </>
-      )}
 
       {/* ── Trailers: launch + unlocked season trailers + ONE locked tease ── */}
       <h2 style={sectionH}>Trailers:</h2>

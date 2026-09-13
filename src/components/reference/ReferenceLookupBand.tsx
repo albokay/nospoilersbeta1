@@ -525,8 +525,12 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
             if (mobile) {
               // Past four the stack collapses behind "show all N" — twelve
               // entries would push the shelves way down (Alborz 2026-09-09).
+              // At EXACTLY four the expander reads "add more" and reveals
+              // the "+" placeholder (2026-09-13 — the default-four rule had
+              // orphaned the add path at the old cap).
               const collapsed = !canonExpanded && canonList.length > 4;
               const shownCanon = collapsed ? canonList.slice(0, 4) : canonList;
+              const showExpander = collapsed || (!canonExpanded && canonList.length === 4 && canonList.length < 12);
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                   {shownCanon.map((show) => {
@@ -547,12 +551,12 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                       </div>
                     );
                   })}
-                  {collapsed ? (
+                  {showExpander ? (
                     <button
                       onClick={() => setCanonExpanded(true)}
                       style={{ alignSelf: "center", display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", padding: "6px 0", cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13 }}
                     >
-                      show all {canonList.length} <ChevronDown size={16} color={CREAM} />
+                      {collapsed ? `show all ${canonList.length}` : "add more"} <ChevronDown size={16} color={CREAM} />
                     </button>
                   ) : (canonList.length < 4 || canonExpanded) && canonList.length < 12 && (
                     // The default view never exceeds FOUR boxes (Alborz
@@ -572,14 +576,14 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               );
             }
             const TW = 196, TH = 277; // = the browse-row card size
-            // Pages of four, cap 12 (Alborz 2026-09-09): a fresh page of
-            // placeholders appears once the last page fills; the right
-            // chevron paginates forward, the left back, and the dots (the
-            // homepage modal's grammar, sans numbers/arrows) jump straight
-            // to a page.
-            const pageCount = Math.min(3, Math.floor(canonList.length / 4) + 1);
+            // Pages of four, cap 12 (Alborz 2026-09-09; rev 2026-09-13):
+            // the chevron reveals at most TWO empty spots past the filled
+            // canon — never a barren page of four placeholders. Page 1
+            // keeps its four slots while the canon is still small. Dots =
+            // the homepage modal's grammar, sans numbers/arrows.
+            const slots = canonList.length < 4 ? 4 : Math.min(12, canonList.length + 2);
+            const pageCount = Math.ceil(slots / 4);
             const page = Math.min(canonPage, pageCount - 1);
-            const pageShows = canonList.slice(page * 4, page * 4 + 4);
             const chevronBtn: React.CSSProperties = {
               width: 36, height: 36, background: "transparent", border: "none", cursor: "pointer",
               display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0,
@@ -596,7 +600,9 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                 </div>
               <div style={{ display: "grid", gridTemplateColumns: `repeat(2, ${TW}px ${TW}px)`, columnGap: 20, rowGap: 36, justifyContent: "center", flex: 1, minWidth: 0 }}>
                 {[0, 1, 2, 3].map((i) => {
-                  const show = pageShows[i];
+                  const slotIdx = page * 4 + i;
+                  if (slotIdx >= slots) return null;
+                  const show = canonList[slotIdx];
                   if (!show) {
                     // The placeholder spans its whole [thumb + text] section
                     // and centers, so empty/part-filled states stay symmetric
@@ -983,7 +989,10 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
             "look it up" button exists only once an episode is picked. ── */}
       {(cardShow || cardPending) && (
         <div style={cardScrollOverlay} onClick={(e) => { if (e.target === e.currentTarget && !confirmBusy) { setCardShow(null); setCardPending(null); } }}>
-          <div style={cardCenterColumn} onClick={(e) => { if (e.target === e.currentTarget && !confirmBusy) { setCardShow(null); setCardPending(null); } }}>
+          {/* Mobile top-anchors (Alborz 2026-09-13): the card used to
+              center alone, then jump up when the trailer populated —
+              mis-taps. It now sits where it lands WITH the trailer. */}
+          <div style={{ ...cardCenterColumn, ...(mobile ? { justifyContent: "flex-start", paddingTop: 40 } : {}) }} onClick={(e) => { if (e.target === e.currentTarget && !confirmBusy) { setCardShow(null); setCardPending(null); } }}>
             <div style={yellowCard}>
               <button
                 style={modalClose}

@@ -699,7 +699,7 @@ export default function FriendProfile({
           onClick={(e) => { if (e.target === e.currentTarget && !cardBusy) setCardShow(null); }}
         >
           <div
-            style={{ minHeight: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "24px 16px", boxSizing: "border-box" }}
+            style={{ minHeight: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: mobile ? "flex-start" : "center", gap: 8, padding: mobile ? "40px 16px 24px" : "24px 16px", boxSizing: "border-box" }}
             onClick={(e) => { if (e.target === e.currentTarget && !cardBusy) setCardShow(null); }}
           >
             <div style={yellowCard}>
