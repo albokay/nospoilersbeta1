@@ -382,7 +382,6 @@ export default function ShowReference({
                   </select>
                   <ChevronDown size={14} color={CREAM} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                 </span>
-                :
               </>
             ) : "Cast so far:"}
           </h2>

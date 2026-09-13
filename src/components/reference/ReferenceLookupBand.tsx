@@ -576,14 +576,20 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
               );
             }
             const TW = 196, TH = 277; // = the browse-row card size
-            // Pages of four, cap 12 (Alborz 2026-09-09; rev 2026-09-13):
-            // the chevron reveals at most TWO empty spots past the filled
-            // canon — never a barren page of four placeholders. Page 1
-            // keeps its four slots while the canon is still small. Dots =
-            // the homepage modal's grammar, sans numbers/arrows.
+            // Sliding COLUMN window (Alborz 2026-09-13 rev 2): the canon
+            // reads down each column in pairs (1&2, then 3&4…); the chevron
+            // slides ONE column at a time, so past the filled canon you see
+            // the right-most filled pair beside a column of two empty spots
+            // — the section never feels empty. Cap 12; while the canon is
+            // small the first view keeps its four slots. Dots = one per
+            // window position (the homepage modal's grammar).
             const slots = canonList.length < 4 ? 4 : Math.min(12, canonList.length + 2);
-            const pageCount = Math.ceil(slots / 4);
+            const pageCount = Math.max(1, Math.ceil(slots / 2) - 1);
             const page = Math.min(canonPage, pageCount - 1);
+            // Grid cells flow row-major; this maps them to column-major
+            // slots (top-left, top-right, bottom-left, bottom-right →
+            // colA-top, colB-top, colA-bottom, colB-bottom).
+            const CELL_TO_SLOT = [0, 2, 1, 3];
             const chevronBtn: React.CSSProperties = {
               width: 36, height: 36, background: "transparent", border: "none", cursor: "pointer",
               display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0,
@@ -600,7 +606,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                 </div>
               <div style={{ display: "grid", gridTemplateColumns: `repeat(2, ${TW}px ${TW}px)`, columnGap: 20, rowGap: 36, justifyContent: "center", flex: 1, minWidth: 0 }}>
                 {[0, 1, 2, 3].map((i) => {
-                  const slotIdx = page * 4 + i;
+                  const slotIdx = page * 2 + CELL_TO_SLOT[i];
                   if (slotIdx >= slots) return null;
                   const show = canonList[slotIdx];
                   if (!show) {
