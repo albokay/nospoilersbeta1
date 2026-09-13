@@ -35,6 +35,7 @@ import {
   type RoomVisibility,
   type GroupChatActivity,
 } from "../lib/db";
+import { subscribeRoomDots } from "../lib/liveRoomDots";
 import { groupDisplayName, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import type { PeopleGroup, PeopleGroupMember } from "../types";
 
@@ -238,6 +239,14 @@ export default function MobileDashboard() {
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, loadRail]);
+
+  // Live ROOM dots (room-signals CP3, 2026-09-13): a friend's new entry or
+  // response refreshes the exact-dot data while you sit on the dashboard.
+  const roomDotsKey = useMemo(() => roomVis.map((v) => v.groupId).sort().join(","), [roomVis]);
+  useEffect(() => {
+    if (!user?.id || !roomDotsKey) return;
+    return subscribeRoomDots(user.id, roomDotsKey.split(","), setRoomVis);
+  }, [user?.id, roomDotsKey]);
 
   // Keep the instant-paint snapshot current.
   useEffect(() => {

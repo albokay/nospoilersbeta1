@@ -96,6 +96,7 @@ import { prefetchTrailers } from "../lib/trailers";
 import TSPDemoModal from "./TSPDemoModal";
 import SocialOnboarding from "./SocialOnboarding";
 import FriendProfileDrawer from "./profile/FriendProfileDrawer";
+import { subscribeRoomDots } from "../lib/liveRoomDots";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
@@ -1437,6 +1438,15 @@ export default function DashboardPage() {
     })();
     return () => { cancelled = true; for (const ch of channels) supabase.removeChannel(ch); };
   }, [railGroupIdsKey, chatGroupId, selfUserId]);
+
+  // Live ROOM dots (room-signals CP3, 2026-09-13): a friend's new entry or
+  // response refreshes the exact-dot data so cluster + shelf dots light up
+  // while you sit here — completing the chat dots' pattern.
+  const roomDotsKey = useMemo(() => roomVis.map((v) => v.groupId).sort().join(","), [roomVis]);
+  useEffect(() => {
+    if (!user?.id || !roomDotsKey) return;
+    return subscribeRoomDots(user.id, roomDotsKey.split(","), setRoomVis);
+  }, [user?.id, roomDotsKey]);
 
   // Optimistic echo (2026-09-09): your message paints INSTANTLY; the insert
   // confirms in the background and the temp row takes on the real id (send

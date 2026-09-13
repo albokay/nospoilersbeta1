@@ -48,6 +48,7 @@ import {
   type RoomVisibility,
   type BrowseShow,
 } from "../lib/db";
+import { subscribeRoomDots } from "../lib/liveRoomDots";
 import { ensureCatalogShow } from "../lib/browseCatalog";
 import MobileBrowseRows from "./MobileBrowseRows";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
@@ -399,6 +400,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     }
     return m;
   }, [roomVis]);
+
+  // Live ROOM dots (room-signals CP3, 2026-09-13): a friend's new entry or
+  // response refreshes the exact-dot data while you sit in the group room.
+  const roomDotsKey = useMemo(() => roomVis.map((v) => v.groupId).sort().join(","), [roomVis]);
+  useEffect(() => {
+    if (!user?.id || !roomDotsKey) return;
+    return subscribeRoomDots(user.id, roomDotsKey.split(","), setRoomVis);
+  }, [user?.id, roomDotsKey]);
 
   // The quiet line-2 gap text — desktop's hover tooltip copy, inline.
   function gapLine(r: { pill: PillData; opted: { username: string; s: number | null; e: number | null }[]; selfProg: { s: number; e: number } | null }): string | null {
