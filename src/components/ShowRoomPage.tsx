@@ -138,6 +138,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
   // CP4b: progress picker + rating capture.
   const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
+  // The automatic post-rating composition (Alborz 2026-09-13, restored):
+  // progress update → rating modal → compose opens with the "immediate
+  // thoughts" eyebrow. The write button's manual open keeps the standard
+  // copy (it clears this flag).
+  const [composeAuto, setComposeAuto] = useState(false);
   const ratingTimersRef = useRef<Record<string, number>>({});
 
   // ── In-room notification-signal state (ported from V2FriendRoomPage) ──────
@@ -474,6 +479,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, target);
     } catch (e) { console.warn("progress write failed", e); }
     await load();
+    setComposeAuto(!privateOnly);
+    setComposeOpen(true);
+    setComposeMinimized(false);
   }
 
   async function onProgressConfirm(val: { s: number; e: number }) {
@@ -484,7 +492,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }
 
   // "skip rating": commit the progress advance for the pending episode but
-  // don't write a rating.
+  // don't write a rating. Composition still follows — the flow is progress
+  // → rating → write, rated or not (Alborz 2026-09-13).
   async function skipRating() {
     if (!user || !show || !pendingRating) return;
     const target = pendingRating;
@@ -492,6 +501,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     try { await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, target); }
     catch (e) { console.warn("progress write failed", e); }
     await load();
+    setComposeAuto(!privateOnly);
+    setComposeOpen(true);
+    setComposeMinimized(false);
   }
 
   // Click-to-rate a self map cell: optimistic update + debounced write.
@@ -594,19 +606,19 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if (entry.isDeleted) continue;
       const tid = entry.threadId;
       const isOwn = !!profile?.username && entry.authorUsername === profile.username;
-      // Green = a new readable response since you last opened the entry, on
-      // entries you WROTE or RESPONDED in (Alborz 2026-09-12 — was own-only).
-      // latestVisibleReplyAt excludes your own replies, so posting never
-      // notifies you. Catching up turns a red (hidden) response green here
-      // naturally: the revealed reply enters the visible-latest timestamp.
-      if ((isOwn || myReplyThreadIds.has(tid)) && (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0)) { out[tid] = { kind: "green" }; continue; }
+      const hasNewReadable = (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0);
+      // Colors (Alborz 2026-09-13): RED = responses to YOUR OWN entry —
+      // readable here, hidden keeps its counted red below; GREEN =
+      // responses in threads you RESPONDED in. Your own replies are
+      // excluded from the visible-latest timestamp, so posting never
+      // self-notifies; catching up flips a hidden red to the readable kind.
+      if (isOwn && hasNewReadable) { out[tid] = { kind: "red" }; continue; }
+      if (!isOwn && myReplyThreadIds.has(tid) && hasNewReadable) { out[tid] = { kind: "green" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
       const dismissedAt = redDismissedAt[tid] ?? 0;
       const manuallyDismissed = dismissedAt > 0 && dismissedAt >= (perThreadLatestHidden[tid] ?? 0);
-      // Red revives on every NEWER hidden response (mobile's rule; the old
-      // session-long silence after a green open swallowed live reds —
-      // Alborz 2026-09-12).
+      // Hidden red (with count) revives on every NEWER hidden response.
       if (isOwn && hiddenCount > 0 && !manuallyDismissed) {
         out[tid] = { kind: "red", redCount: hiddenCount };
       }
@@ -824,7 +836,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 {/* No write on the reference tab (Alborz 2026-09-05) — it's a
                     lookup surface; the dial stays. */}
                 {tab !== "reference" && (
-                  <button style={writeBtn} onClick={() => { setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> write</button>
+                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> write</button>
                 )}
                 {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
                   <select
@@ -974,6 +986,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" title="Minimize — check the room or show guide; your draft stays" style={{ ...composeCloseX, right: 66, border: `2px solid ${CANON.identity}` }}><Minus size={16} color={CANON.identity} /></button>
             <ComposeForm
               ref={composeFormRef}
+              autoPrompt={composeAuto}
               showId={show?.id}
               restrictGroupId={privateOnly ? undefined : roomId}
               privateOnly={privateOnly}

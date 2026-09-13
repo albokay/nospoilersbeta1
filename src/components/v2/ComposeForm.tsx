@@ -88,6 +88,11 @@ type ComposeFormProps = {
    *  top-right corner. Default false (standalone page renders both the
    *  fixed top-right × AND the action-row "× not now"). */
   hideTopRightClose?: boolean;
+  /** The automatic post-rating composition (Alborz 2026-09-13): the
+   *  eyebrow reads "Write down your immediate thoughts / before reading
+   *  your friends':" instead of "capture your thoughts on:". The write
+   *  button's manual open keeps the standard copy. */
+  autoPrompt?: boolean;
   /** Mobile rebuild (/m) idiom: the paper sheds its blue bounding box and
    *  bleeds edge-to-edge, and the action buttons render in-flow directly
    *  under the paper instead of the sticky bottom-right footer (which
@@ -170,7 +175,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false },
+  { showId, fromRating = false, autoPrompt = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -641,7 +646,9 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                   marginBottom: 4,
                 }}
               >
-                capture your thoughts on:
+                {autoPrompt
+                  ? <>Write down your immediate thoughts<br />before reading your friends&rsquo;:</>
+                  : <>capture your thoughts on:</>}
               </div>
               <h1
                 style={{

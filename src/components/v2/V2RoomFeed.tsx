@@ -257,7 +257,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     isNewMap,
     cellSignals,
     entryRedDots,
-    entryRedChevron,
+    // entryRedChevron retired 2026-09-13 (red pills render everywhere now);
+    // the prop stays accepted so existing callers don't break.
     engagedThreadIds,
     initialExpandedThreadId,
     initialFocusReplyId,
@@ -636,16 +637,17 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         }
         const isExpanded = expandedThreadId === entry.threadId;
         const isHighlighted = highlightedId === entry.threadId;
-        // Notification-signal lookups (computed in V2FriendRoomPage).
+        // Notification-signal lookups (computed by the host page).
         // isNew → A1 white card outline.
-        // signal.kind === "green" → A2 canon-green circle behind chevron.
-        // signal.kind === "red" + entryRedChevron → the same circle in Alert
-        //   red (mobile friend rooms' hidden-responses signal, 2026-08-21).
+        // signal green/red → a PILL behind the envelope + count (Alborz
+        //   2026-09-13; replaces the circled chevron). Red = responses to
+        //   YOUR entry (readable, or hidden-with-count for when you catch
+        //   up); green = responses in threads you're part of. Red no
+        //   longer needs the old mobile-only entryRedChevron opt-in.
         // engagedThreadIds.has(...) → A4 dim to 50% opacity.
         const isNew = !!isNewMap?.[entry.threadId];
         const signal = cellSignals?.[entry.threadId] ?? null;
-        const showGreenChevron = signal?.kind === "green";
-        const showRedChevron = !!entryRedChevron && signal?.kind === "red";
+        const pillKind = signal?.kind === "green" || signal?.kind === "red" ? signal.kind : null;
         const redDot = entryRedDots?.[entry.threadId] ?? null;
         const isEngaged = !!engagedThreadIds?.has(entry.threadId);
         return (
@@ -910,88 +912,66 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     gap: 10,
                   }}
                 >
-                  {(() => {
-                    // A2 — when there are new visible responses, the
-                    // chevron sits inside a 32px canon-green perfect
-                    // circle. Tooltip on hover with V1 copy. The RED twin
-                    // (entryRedChevron surfaces, 2026-08-21): same circle
-                    // in Alert red = hidden ahead-of-progress responses on
-                    // your entry; expanding clears it.
-                    const circled = showGreenChevron || showRedChevron;
-                    const chevronButton = (
-                      <button
-                        onClick={(e) => toggleExpand(entry.threadId, e)}
-                        aria-label="Expand"
-                        style={
-                          circled
-                            ? {
-                                background: showGreenChevron ? CANON.personal : CANON.alert,
-                                border: "none",
-                                color: CANON.cream,
-                                cursor: "pointer",
-                                width: 32,
-                                height: 32,
-                                borderRadius: "50%",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontFamily: "inherit",
-                                padding: 0,
-                              }
-                            : {
-                                background: "transparent",
-                                border: "none",
-                                color: CANON.cream,
-                                cursor: "pointer",
-                                padding: 4,
-                                display: "inline-flex",
-                                alignItems: "center",
-                                fontFamily: "inherit",
-                              }
-                        }
+                  <button
+                    onClick={(e) => toggleExpand(entry.threadId, e)}
+                    aria-label="Expand"
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: CANON.cream,
+                      cursor: "pointer",
+                      padding: 4,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <ChevronDown size={20} color={CANON.cream} />
+                  </button>
+                  {/* Mail icon + reply count. When the entry carries a
+                      signal, the WHOLE envelope + number gets a green/red
+                      pill behind it (Alborz 2026-09-13 — restored from the
+                      pre-circle design). Renders only with at least one
+                      visible reply (count includes ahead-of-progress stubs,
+                      so a hidden-response signal always has a number). */}
+                  {entry.replyCount > 0 && (() => {
+                    const countInner = (
+                      <span
+                        aria-label={`${entry.replyCount} response${entry.replyCount === 1 ? "" : "s"}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          color: CANON.cream,
+                          fontSize: 14,
+                          fontWeight: 500,
+                          userSelect: "none",
+                          ...(pillKind
+                            ? { background: pillKind === "green" ? CANON.personal : CANON.alert, borderRadius: 65, padding: "5px 11px" }
+                            : {}),
+                        }}
                       >
-                        <ChevronDown size={20} color={CANON.cream} />
-                      </button>
+                        <Mail size={16} color={CANON.cream} />
+                        {entry.replyCount}
+                      </span>
                     );
-                    if (circled) {
-                      return (
-                        <Tooltip
-                          text={showGreenChevron ? "There is new writing in here for you." : "There is new writing in here for when you catch up."}
-                          direction="above"
-                          align="right"
-                          width={180}
-                          portal
-                        >
-                          {chevronButton}
-                        </Tooltip>
-                      );
-                    }
-                    return chevronButton;
+                    if (!pillKind) return countInner;
+                    return (
+                      <Tooltip
+                        text={pillKind === "green"
+                          ? "There is new writing in here for you."
+                          : signal?.redCount
+                            ? "There is new writing in here for when you catch up."
+                            : "Someone responded to your writing."}
+                        direction="above"
+                        align="right"
+                        width={180}
+                        portal
+                      >
+                        {countInner}
+                      </Tooltip>
+                    );
                   })()}
-                  {/* Mail icon + reply count to the right of the chevron.
-                      Renders only when the entry has at least one visible
-                      reply (count includes ahead-of-progress stubs per
-                      fetchGroupThreads.aheadCounts plumbing — same number
-                      V2InlineThread sees). Coexists with the chevron's
-                      green-circle "new since last visit" signal; the green
-                      circle is lifecycle-scoped, this count is all-time. */}
-                  {entry.replyCount > 0 && (
-                    <span
-                      aria-label={`${entry.replyCount} response${entry.replyCount === 1 ? "" : "s"}`}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        color: CANON.cream,
-                        fontSize: 14,
-                        fontWeight: 500,
-                        userSelect: "none",
-                      }}
-                    >
-                      <Mail size={16} color={CANON.cream} />
-                      {entry.replyCount}
-                    </span>
-                  )}
                 </div>
               )}
             </div>

@@ -1398,7 +1398,9 @@ export default function V2RoomMap({
                       ? "There is new writing for you."
                       : signal.kind === "yellow"
                         ? "Someone reacted to your writing."
-                        : "There is new writing in here for you… for when you catch up.";
+                        : signal.redCount
+                          ? "There is new writing in here for you… for when you catch up."
+                          : "Someone responded to your writing.";
                   signalLine = (
                     <span style={{
                       display: "block",
@@ -1614,7 +1616,7 @@ export default function V2RoomMap({
                         direction="left"
                         width="auto"
                         portal
-                        disabled={signal.kind !== "red"}
+                        disabled={!(signal.kind === "red" && signal.redCount)}
                         // Anchor the Tooltip wrapper at the outer cell's
                         // top-left with 0 footprint so the inner dot's
                         // absolute positioning (left:-8, top:CELL/2-8)
@@ -1632,11 +1634,11 @@ export default function V2RoomMap({
                         <MapCellDot
                           kind={signal.kind}
                           redCount={signal.redCount}
-                          showX={cellHovered && signal.kind === "red"}
+                          showX={cellHovered && signal.kind === "red" && !!signal.redCount}
                           onDotMouseEnter={() => setHoveredDotKey(fullCellKey)}
                           onDotMouseLeave={() => setHoveredDotKey((prev) => (prev === fullCellKey ? null : prev))}
                           onDismiss={
-                            signal.kind === "red" && onDismissRedDot
+                            signal.kind === "red" && !!signal.redCount && onDismissRedDot
                               ? () => onDismissRedDot(entry.threadId)
                               : undefined
                           }
@@ -1792,6 +1794,9 @@ function MapCellDot({
         height: 16,
         borderRadius: "50%",
         background: bg,
+        // Green-on-green was invisible (Alborz 2026-09-13): the green dot
+        // wears a Friend-sky ring so it registers on any cell color.
+        boxShadow: kind === "green" ? `0 0 0 2px ${CANON.friend}` : undefined,
         color: CANON.cream,
         display: "flex",
         alignItems: "center",

@@ -42,6 +42,15 @@ function TipBody({ tip, first = true }: { tip: Tip; first?: boolean }) {
   );
 }
 
+// 2026-09-13 (Alborz): the stickies used to be viewport-FIXED, so the page
+// scrolled behind them and they drifted off whatever they point at. This
+// absolute frame replicates the viewport at the page top and scrolls WITH
+// the content; the stickies keep their placed coordinates inside it.
+const scrollFrame: CSSProperties = {
+  position: "absolute", top: 0, left: 0, width: "100%", height: "100vh",
+  pointerEvents: "none", zIndex: 60,
+};
+
 export default function TipsNote({ page, onDismiss }: {
   page: TipsPage;
   onDismiss: () => void;
@@ -64,6 +73,7 @@ export default function TipsNote({ page, onDismiss }: {
     const atStart = idx === 0;
     const atEnd = idx === GROUP_ROOM_TIPS.length - 1;
     return (
+      <div style={scrollFrame}>
       <StickyNote
         key={idx}
         tilt={t.tilt}
@@ -76,7 +86,7 @@ export default function TipsNote({ page, onDismiss }: {
         entranceDelayMs={0}
         // Subtle drop shadow (Alborz 2026-08-15) — lifts the tip off the page.
         boxShadow="0 4px 14px rgba(0,0,0,0.13)"
-        style={{ top: t.top, left: t.left }}
+        style={{ position: "absolute", top: t.top, left: t.left, pointerEvents: "auto" }}
       >
         <TipBody tip={t} />
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 10 }}>
@@ -91,10 +101,12 @@ export default function TipsNote({ page, onDismiss }: {
           </button>
         </div>
       </StickyNote>
+      </div>
     );
   }
   const tips = tipsFor(page, "desktop");
   return (
+    <div style={scrollFrame}>
     <StickyNote
       tilt={-2}
       width={300}
@@ -107,10 +119,11 @@ export default function TipsNote({ page, onDismiss }: {
       boxShadow="0 4px 14px rgba(0,0,0,0.13)"
       // Adjacent to the avatar clusters (QA round 3) — just right of the
       // centered cluster row, ~1/3 down where the clusters rest.
-      style={{ top: "36%", left: "min(calc(50% + 340px), calc(100vw - 180px))" }}
+      style={{ position: "absolute", top: "36%", left: "min(calc(50% + 340px), calc(100vw - 180px))", pointerEvents: "auto" }}
     >
       {tips.map((t, i) => <TipBody key={i} tip={t} first={i === 0} />)}
     </StickyNote>
+    </div>
   );
 }
 

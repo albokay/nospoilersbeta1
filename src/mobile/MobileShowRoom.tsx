@@ -134,6 +134,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
   // Progress picker → rating capture (forward picks only).
   const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
+  // The automatic post-rating composition (Alborz 2026-09-13, restored) —
+  // desktop parity; the write button's manual open clears the flag.
+  const [composeAuto, setComposeAuto] = useState(false);
 
   // Digest gear (friend room only) — lazy fetch on open, same as desktop.
   const [digestModalOpen, setDigestModalOpen] = useState(false);
@@ -500,6 +503,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, target);
     } catch (e) { console.warn("progress write failed", e); }
     await load();
+    setComposeAuto(!privateOnly);
+    setComposeOpen(true);
+    setComposeMinimized(false);
   }
 
   async function onProgressConfirm(val: { s: number; e: number }) {
@@ -509,6 +515,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     await load();
   }
 
+  // Composition still follows a skipped rating — the flow is progress →
+  // rating → write, rated or not (Alborz 2026-09-13).
   async function skipRating() {
     if (!user || !show || !pendingRating) return;
     const target = pendingRating;
@@ -516,6 +524,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     try { await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, target); }
     catch (e) { console.warn("progress write failed", e); }
     await load();
+    setComposeAuto(!privateOnly);
+    setComposeOpen(true);
+    setComposeMinimized(false);
   }
 
   // ── Yellow signal: unseen highlights on the viewer's writing ──────────────
@@ -570,10 +581,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       if (entry.isDeleted) continue;
       const tid = entry.threadId;
       const isOwn = !!profile?.username && entry.authorUsername === profile.username;
-      // Green = new readable response on entries you wrote OR responded in
-      // (Alborz 2026-09-12 — was own-only); your own replies are excluded
-      // from the visible-latest timestamp, so posting never notifies you.
-      if ((isOwn || myReplyThreadIds.has(tid)) && (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0)) { out[tid] = { kind: "green" }; continue; }
+      const hasNewReadable = (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0);
+      // Colors (Alborz 2026-09-13): RED = responses to YOUR OWN entry
+      // (readable here; hidden keeps its counted red below); GREEN =
+      // responses in threads you RESPONDED in. Own replies excluded, so
+      // posting never self-notifies.
+      if (isOwn && hasNewReadable) { out[tid] = { kind: "red" }; continue; }
+      if (!isOwn && myReplyThreadIds.has(tid) && hasNewReadable) { out[tid] = { kind: "green" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
       const dismissedAt = redDismissedAt[tid] ?? 0;
@@ -848,7 +862,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             {/* No write on the reference tab (Alborz 2026-09-05) — it's a
                     lookup surface; the dial stays. */}
                 {tab !== "reference" && (
-                  <button style={writeBtn} onClick={() => { setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> write</button>
+                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> write</button>
                 )}
           </div>
         </div>
@@ -925,6 +939,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" style={{ ...composeCloseX, right: 60, border: `2px solid ${CANON.identity}` }}><Minus size={16} color={CANON.identity} /></button>
           <ComposeForm
             ref={composeFormRef}
+            autoPrompt={composeAuto}
             mobileIdiom
             showId={show?.id}
             restrictGroupId={privateOnly ? undefined : roomId}
