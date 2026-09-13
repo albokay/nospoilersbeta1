@@ -303,6 +303,10 @@ export default function DashboardPage() {
   const [roomDnf, setRoomDnfMap] = useState<Record<string, number>>({});
   const [roomMembersById, setRoomMembersById] = useState<Record<string, string[]>>({});
   const [finishedDrawerOpen, setFinishedDrawerOpen] = useState(false);
+  // Blue dot on the finished tab (Alborz 2026-09-13): lit whenever the
+  // drawer holds a room the viewer hasn't seen in it — including the very
+  // first one (the tab's debut). Opening the drawer stamps everything seen.
+  const [drawerSeenTick, setDrawerSeenTick] = useState(0);
   const [drawerPosters, setDrawerPosters] = useState<Record<string, string | null>>({});
   const [reviveConfirm, setReviveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
 
@@ -808,6 +812,22 @@ export default function DashboardPage() {
     const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
     return { finished: finished.sort(byName), dnf: dnf.sort(byName) };
   }, [groupShows, roomDnf, finishedRoomIds, showsById]);
+
+  const drawerSeenKey = `ns_fin_drawer_seen_${selfUserId}_${activeGroupId}`;
+  const drawerUnseen = useMemo(() => {
+    void drawerSeenTick;
+    let seen: string[] = [];
+    try { seen = JSON.parse(localStorage.getItem(drawerSeenKey) || "[]"); } catch { /* ignore */ }
+    const seenSet = new Set(seen);
+    return [...drawerItems.finished, ...drawerItems.dnf].some((it) => !seenSet.has(it.roomId));
+  }, [drawerItems, drawerSeenKey, drawerSeenTick]);
+  const openFinishedDrawer = () => {
+    setFinishedDrawerOpen(true);
+    try {
+      localStorage.setItem(drawerSeenKey, JSON.stringify([...drawerItems.finished, ...drawerItems.dnf].map((it) => it.roomId)));
+    } catch { /* ignore */ }
+    setDrawerSeenTick((t) => t + 1);
+  };
 
   // Posters for the drawer thumbnails (module-cached).
   useEffect(() => {
@@ -1722,7 +1742,8 @@ export default function DashboardPage() {
       {/* Finished-together drawer tab (2026-09-13) — the chat tab's grammar,
           one slot below; appears once the group's first show lands in it. */}
       {inGroup && (drawerItems.finished.length > 0 || drawerItems.dnf.length > 0) && (
-        <button style={finishedTab} title="shows you've finished together" onClick={() => setFinishedDrawerOpen(true)}>
+        <button style={finishedTab} title="shows you've finished together" onClick={openFinishedDrawer}>
+          {drawerUnseen && <span style={notifDotChat} />}
           <MonitorCheck size={24} color={C.green} />
         </button>
       )}

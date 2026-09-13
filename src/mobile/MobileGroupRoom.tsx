@@ -153,6 +153,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [roomDnf, setRoomDnfMap] = useState<Record<string, number>>({});
   const [roomMembersById, setRoomMembersById] = useState<Record<string, string[]>>({});
   const [finishedDrawerOpen, setFinishedDrawerOpen] = useState(false);
+  // Blue dot on the finished tab (Alborz 2026-09-13): lit whenever the
+  // drawer holds a room the viewer hasn't seen in it — including its debut.
+  const [drawerSeenTick, setDrawerSeenTick] = useState(0);
   const [drawerPosters, setDrawerPosters] = useState<Record<string, string | null>>({});
   const [reviveConfirm, setReviveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
   const [sheetFor, setSheetFor] = useState<{ roomId: string; showId: string; name: string } | null>(null);
@@ -423,6 +426,22 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
     return { finished: finished.sort(byName), dnf: dnf.sort(byName) };
   }, [groupShows, roomDnf, finishedRoomIds, showsById]);
+
+  const drawerSeenKey = `ns_fin_drawer_seen_${selfUserId}_${groupId}`;
+  const drawerUnseen = useMemo(() => {
+    void drawerSeenTick;
+    let seen: string[] = [];
+    try { seen = JSON.parse(localStorage.getItem(drawerSeenKey) || "[]"); } catch { /* ignore */ }
+    const seenSet = new Set(seen);
+    return [...drawerItems.finished, ...drawerItems.dnf].some((it) => !seenSet.has(it.roomId));
+  }, [drawerItems, drawerSeenKey, drawerSeenTick]);
+  const openFinishedDrawer = () => {
+    setFinishedDrawerOpen(true);
+    try {
+      localStorage.setItem(drawerSeenKey, JSON.stringify([...drawerItems.finished, ...drawerItems.dnf].map((it) => it.roomId)));
+    } catch { /* ignore */ }
+    setDrawerSeenTick((t) => t + 1);
+  };
 
   // Posters for the drawer thumbnails (module-cached).
   useEffect(() => {
@@ -844,7 +863,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             {/* Finished-together drawer tab (2026-09-13) — the chat tab's
                 grammar, right below it; appears once it has contents. */}
             {(drawerItems.finished.length > 0 || drawerItems.dnf.length > 0) && (
-              <button style={chatTab} aria-label="shows you've finished together" onClick={() => setFinishedDrawerOpen(true)}>
+              <button style={chatTab} aria-label="shows you've finished together" onClick={openFinishedDrawer}>
+                {drawerUnseen && <span style={notifDotChatInline} />}
                 <MonitorCheck size={20} color={C.green} />
               </button>
             )}
