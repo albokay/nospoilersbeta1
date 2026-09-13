@@ -69,12 +69,19 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
   // Mobile's sheet doesn't POINT at the chat button the way the placed
   // desktop sticky does, so "this 💬 button" reads as "the 💬 button"
   // there (QA round 8).
-  return GROUP_ROOM_TIPS
+  const tips: Tip[] = GROUP_ROOM_TIPS
     .filter((t) => !(idiom === "mobile" && t.mobileOmit))
     .map(({ body, aside }) => ({
       body: idiom === "mobile" ? body.replace("use this 💬 button", "use the 💬 button") : body,
       aside,
     }));
+  // MOBILE-ONLY (Alborz 2026-09-13): long-press is mobile's show-button
+  // organizing gesture (desktop has the hover x); slots in after the
+  // welcome tip. Desktop's placed stickies are untouched.
+  if (idiom === "mobile") {
+    tips.splice(1, 0, { body: "Press and hold a show button for more options." });
+  }
+  return tips;
 }
 
 // Seen flags are PER USER as of 2026-08-01 (Alborz's invitee-flow catch):

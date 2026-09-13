@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { X, ArrowLeft, Settings, MessageCircle, Search } from "lucide-react";
+import { X, ArrowLeft, Settings, MessageCircle, MonitorCheck, Search } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
@@ -27,6 +27,10 @@ import {
   fetchContactNames,
   setContactName,
   fetchGroupDashboard,
+  fetchFriendGroupMembers,
+  fetchRoomDnfMap,
+  setRoomDnf,
+  leaveShowRoom,
   setShowVote,
   ensureProgressRow,
   startShowRoom,
@@ -50,6 +54,7 @@ import {
 } from "../lib/db";
 import { subscribeRoomDots } from "../lib/liveRoomDots";
 import { ensureCatalogShow } from "../lib/browseCatalog";
+import { fetchTvmazePoster } from "../lib/tvmaze";
 import MobileBrowseRows from "./MobileBrowseRows";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { groupGenericName, personDisplayName } from "../lib/groupNames";
@@ -142,6 +147,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [outOfPool, setOutOfPool] = useState<Set<string>>(new Set());
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
+  // Finished-together drawer (2026-09-13, desktop parity): DNF marks, each
+  // room's CURRENT members (for the auto finished detection), the drawer
+  // sheet, posters, the revive modal, and the long-press action sheet.
+  const [roomDnf, setRoomDnfMap] = useState<Record<string, number>>({});
+  const [roomMembersById, setRoomMembersById] = useState<Record<string, string[]>>({});
+  const [finishedDrawerOpen, setFinishedDrawerOpen] = useState(false);
+  const [drawerPosters, setDrawerPosters] = useState<Record<string, string | null>>({});
+  const [reviveConfirm, setReviveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
+  const [sheetFor, setSheetFor] = useState<{ roomId: string; showId: string; name: string } | null>(null);
   const [chatNew, setChatNew] = useState(false);
   const [loading, setLoading] = useState(true);
   // Swipe-deck arc CP2: the invitee's WAVE 2 fires on entry here — but NOT
@@ -356,6 +370,129 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     return m;
   }, [members, contactNames]);
 
+  // ── Finished-together drawer data (2026-09-13, desktop parity) ─────────────
+  useEffect(() => {
+    const roomIds = groupShows.filter((gs) => gs.roomId).map((gs) => gs.roomId as string);
+    if (roomIds.length === 0) { setRoomDnfMap({}); setRoomMembersById({}); return; }
+    let cancelled = false;
+    fetchRoomDnfMap(roomIds)
+      .then((m) => { if (!cancelled) setRoomDnfMap(m); })
+      .catch(() => { if (!cancelled) setRoomDnfMap({}); });
+    Promise.all(roomIds.map(async (rid) => {
+      try { return [rid, (await fetchFriendGroupMembers(rid)).map((m) => m.userId)] as [string, string[]]; }
+      catch { return [rid, []] as [string, string[]]; }
+    })).then((pairs) => {
+      if (cancelled) return;
+      const out: Record<string, string[]> = {};
+      for (const [rid, ids] of pairs) out[rid] = ids;
+      setRoomMembersById(out);
+    });
+    return () => { cancelled = true; };
+  }, [groupShows]);
+
+  // Group-finished = every CURRENT room member at the show's last available
+  // episode (auto; new episodes pull the show back to the shelf).
+  const finishedRoomIds = useMemo(() => {
+    const out = new Set<string>();
+    for (const gs of groupShows) {
+      if (!gs.roomId) continue;
+      const memberIds = roomMembersById[gs.roomId];
+      if (!memberIds || memberIds.length === 0) continue;
+      const seasons = showsById[gs.showId]?.seasons;
+      if (!seasons?.length) continue;
+      const ls = seasons.length, le = seasons[ls - 1] ?? 1;
+      const all = memberIds.every((uid) => {
+        const m = gs.members.find((mm) => mm.userId === uid);
+        return !!m && ((m.s ?? 0) > ls || ((m.s ?? 0) === ls && (m.e ?? 0) >= le));
+      });
+      if (all) out.add(gs.roomId);
+    }
+    return out;
+  }, [groupShows, roomMembersById, showsById]);
+
+  // The drawer's two piles — DNF wins when both would apply.
+  const drawerItems = useMemo(() => {
+    const finished: { roomId: string; showId: string; name: string }[] = [];
+    const dnf: { roomId: string; showId: string; name: string }[] = [];
+    for (const gs of groupShows) {
+      if (!gs.roomId) continue;
+      const item = { roomId: gs.roomId, showId: gs.showId, name: showsById[gs.showId]?.name ?? gs.showId };
+      if (roomDnf[gs.roomId]) dnf.push(item);
+      else if (finishedRoomIds.has(gs.roomId)) finished.push(item);
+    }
+    const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+    return { finished: finished.sort(byName), dnf: dnf.sort(byName) };
+  }, [groupShows, roomDnf, finishedRoomIds, showsById]);
+
+  // Posters for the drawer thumbnails (module-cached).
+  useEffect(() => {
+    let cancelled = false;
+    for (const it of [...drawerItems.finished, ...drawerItems.dnf]) {
+      const show = showsById[it.showId];
+      if (!show?.tvmazeId || drawerPosters[it.showId] !== undefined) continue;
+      fetchTvmazePoster(show.tvmazeId).then((url) => {
+        if (!cancelled) setDrawerPosters((prev) => ({ ...prev, [it.showId]: url }));
+      });
+    }
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerItems, showsById]);
+
+  // Long-press sheet actions (copy locked by Alborz 2026-09-13). Optimistic
+  // like desktop; each is reversible (re-propose to rejoin / revive from
+  // the drawer).
+  async function doLeaveRoom(roomId: string, showId: string) {
+    setSheetFor(null);
+    try {
+      await leaveShowRoom(roomId);
+      setGroupShows((prev) => prev.map((gs) => (gs.showId === showId ? { ...gs, inRoom: false, viewerLeft: true } : gs)));
+    } catch (e) { console.error("[m-group] leave room failed", e); }
+  }
+  async function doDnfRoom(roomId: string) {
+    setSheetFor(null);
+    try {
+      await setRoomDnf(roomId, true);
+      setRoomDnfMap((prev) => ({ ...prev, [roomId]: Date.now() }));
+    } catch (e) { console.error("[m-group] dnf failed", e); }
+  }
+  async function doReviveRoom(roomId: string) {
+    setReviveConfirm(null);
+    try {
+      await setRoomDnf(roomId, false);
+      setRoomDnfMap((prev) => { const n = { ...prev }; delete n[roomId]; return n; });
+    } catch (e) { console.error("[m-group] revive failed", e); }
+  }
+
+  // One drawer thumbnail — poster opens the room; DNF thumbs carry an
+  // always-visible x (no hover on touch) that offers to start again.
+  const drawerThumb = (it: { roomId: string; showId: string; name: string }, isDnf: boolean) => {
+    const poster = drawerPosters[it.showId];
+    return (
+      <div key={it.roomId} style={{ position: "relative", width: 96 }}>
+        <button
+          onClick={() => { setFinishedDrawerOpen(false); navigate(`/m/show-room/${it.roomId}`); }}
+          style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer", width: "100%", textAlign: "left" }}
+        >
+          {poster ? (
+            <img src={poster} alt={it.name} loading="lazy" style={{ width: 96, height: 136, objectFit: "cover", borderRadius: 12, display: "block" }} />
+          ) : (
+            <div style={{ width: 96, height: 136, borderRadius: 12, border: `2px solid ${C.sky}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+              <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 13, color: C.midnight, textAlign: "center" }}>{it.name}</span>
+            </div>
+          )}
+          <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 700, color: C.midnight, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
+        </button>
+        {isDnf && (
+          <button
+            onClick={() => setReviveConfirm(it)}
+            aria-label="Start watching again?"
+            style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: "50%", border: "none", background: C.cream, color: C.red, fontSize: 15, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.18)", padding: 0 }}
+          >×</button>
+        )}
+      </div>
+    );
+  };
+
   // ── Shelves — identical pill computation + ordering to desktop ────────────
   const groupShelves = useMemo(() => {
     type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean };
@@ -366,6 +503,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       // CP5: a room the viewer deliberately LEFT is hidden from THEIR shelves
       // only (never-joined rooms stay visible for discovery; desktop parity).
       if (gs.viewerLeft && !gs.inRoom) continue;
+      // Finished-together / DNF rooms live in the drawer, not the shelves
+      // (2026-09-13). New episodes un-finish a room automatically.
+      if (gs.roomId && (roomDnf[gs.roomId] || finishedRoomIds.has(gs.roomId))) continue;
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
       const opted: OptIn[] = gs.members
@@ -386,7 +526,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     const byActivity = (a: Row, b: Row) =>
       (a.tier - b.tier) || ((b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0)) || a.name.localeCompare(b.name);
     return { watching: watching.sort(byActivity), notStarted: notStarted.sort(byName) };
-  }, [groupShows, showsById, selfUserId, memberNameById]);
+  }, [groupShows, showsById, selfUserId, memberNameById, roomDnf, finishedRoomIds]);
 
   // Per-room dot — desktop's grammar (the mobile red-layer cut was reversed,
   // Alborz 2026-08-21): blue = new VISIBLE writing; red = new INVISIBLE
@@ -696,10 +836,19 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             tab truly reaches the edge. New-chat dot straddles the curve. */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexShrink: 0, marginRight: -12 }}>
           {user && groupWaveDone && <MobileTipsSheet page="groupRoom" />}
-          <button style={chatTab} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
-            {chatNew && <span style={notifDotChatInline} />}
-            <MessageCircle size={20} color={C.green} />
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+            <button style={chatTab} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
+              {chatNew && <span style={notifDotChatInline} />}
+              <MessageCircle size={20} color={C.green} />
+            </button>
+            {/* Finished-together drawer tab (2026-09-13) — the chat tab's
+                grammar, right below it; appears once it has contents. */}
+            {(drawerItems.finished.length > 0 || drawerItems.dnf.length > 0) && (
+              <button style={chatTab} aria-label="shows you've finished together" onClick={() => setFinishedDrawerOpen(true)}>
+                <MonitorCheck size={20} color={C.green} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -751,7 +900,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               <h1 style={shelfHeader}>OPEN SHOW ROOMS:</h1>
               <div style={shelfCol}>
                 {groupShelves.watching.map((r) => (
-                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={gapLine(r)} onClick={() => onRowClick(r.pill, r.name)} />
+                  <ShowRow
+                    key={r.pill.showId}
+                    row={r}
+                    dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined}
+                    line2={gapLine(r)}
+                    onClick={() => onRowClick(r.pill, r.name)}
+                    onLongPress={r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined}
+                  />
                 ))}
               </div>
             </>
@@ -1017,17 +1173,103 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           onCatalogAdd={(show) => setShows((prev) => (prev.some((s) => s.id === show.id) ? prev : [...prev, show]))}
         />
       )}
+
+      {/* ── Long-press action sheet (2026-09-13; copy locked by Alborz) ── */}
+      {sheetFor && (
+        <div style={sheetBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setSheetFor(null); }}>
+          <div style={sheetPanel}>
+            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 20, letterSpacing: -0.5, color: C.midnight, marginBottom: 14 }}>{sheetFor.name}</div>
+            <button style={sheetRow} onClick={() => { const rid = sheetFor.roomId; setSheetFor(null); navigate(`/m/show-room/${rid}`); }}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: C.midnight }}>open the room</span>
+            </button>
+            <button style={sheetRow} onClick={() => doLeaveRoom(sheetFor.roomId, sheetFor.showId)}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: C.red }}>leave this room (just you)</span>
+              <span style={sheetSub}>Your writing stays &mdash; everyone else keeps going.</span>
+            </button>
+            <button style={{ ...sheetRow, borderBottom: "none" }} onClick={() => doDnfRoom(sheetFor.roomId)}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: C.blue }}>we&rsquo;re done with this one</span>
+              <span style={sheetSub}>Parks the show for the whole group &mdash; anyone can bring it back later.</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Finished-together drawer (2026-09-13) — bottom sheet ── */}
+      {finishedDrawerOpen && (
+        <div style={sheetBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setFinishedDrawerOpen(false); }}>
+          <div style={{ ...sheetPanel, maxHeight: "72dvh", overflowY: "auto" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <MonitorCheck size={20} color={C.green} />
+              <button style={{ border: "none", background: "transparent", cursor: "pointer", padding: 6, lineHeight: 0 }} onClick={() => setFinishedDrawerOpen(false)}><X size={18} color={C.midnight} /></button>
+            </div>
+            {drawerItems.finished.length > 0 && (
+              <>
+                <div style={drawerHeading}>Finished watching:</div>
+                <div style={drawerGrid}>
+                  {drawerItems.finished.map((it) => drawerThumb(it, false))}
+                </div>
+              </>
+            )}
+            {drawerItems.dnf.length > 0 && (
+              <>
+                <div style={{ ...drawerHeading, marginTop: drawerItems.finished.length ? 24 : 0 }}>Didn&rsquo;t finish:</div>
+                <div style={drawerGrid}>
+                  {drawerItems.dnf.map((it) => drawerThumb(it, true))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Revive a DNF'd show — from the drawer's x. */}
+      {reviveConfirm && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1300, background: "rgba(26,58,74,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={(e) => { if (e.target === e.currentTarget) setReviveConfirm(null); }}>
+          <div style={{ background: C.yellow, borderRadius: 24, padding: "26px 24px", width: "min(360px, 92vw)", boxSizing: "border-box", position: "relative", textAlign: "center" }}>
+            <button style={{ position: "absolute", top: 14, right: 14, border: "none", background: "transparent", cursor: "pointer", padding: 4, lineHeight: 0 }} onClick={() => setReviveConfirm(null)}><X size={16} color={CANON.cream} /></button>
+            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 20, color: CANON.cream, marginBottom: 10 }}>Start watching again?</div>
+            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
+              This puts <b>{reviveConfirm.name}</b> back on the group&rsquo;s shelf &mdash; right where you all left off.
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+              <button style={{ border: "2px solid var(--canon-cream,#fef8ea)", background: "transparent", color: CANON.cream, fontWeight: 700, fontSize: 14, padding: "10px 28px", borderRadius: 65, cursor: "pointer" }} onClick={() => setReviveConfirm(null)}>cancel</button>
+              <button style={{ border: `2px solid ${C.blue}`, background: C.blue, color: CANON.cream, fontWeight: 700, fontSize: 14, padding: "10px 28px", borderRadius: 65, cursor: "pointer" }} onClick={() => doReviveRoom(reviveConfirm.roomId)}>bring it back</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Show row (full-width, two-line, opt-in avatars right) ───────────────────
-function ShowRow({ row, dot, line2, onClick }: {
+function ShowRow({ row, dot, line2, onClick, onLongPress }: {
   row: { pill: PillData; name: string; opted: { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean }[] };
   dot: "blue" | "red" | undefined;
   line2: string | null;
   onClick: () => void;
+  /** Long-press (500ms hold) opens the organizing sheet (2026-09-13) —
+   *  only rooms the viewer is IN pass one. Any pointer movement cancels,
+   *  so scrolling never triggers it. */
+  onLongPress?: () => void;
 }) {
+  const lpTimer = React.useRef<number | null>(null);
+  const lpFired = React.useRef(false);
+  const lpOrigin = React.useRef<{ x: number; y: number } | null>(null);
+  const lpStart = (e: React.PointerEvent) => {
+    if (!onLongPress) return;
+    lpFired.current = false;
+    lpOrigin.current = { x: e.clientX, y: e.clientY };
+    lpTimer.current = window.setTimeout(() => { lpFired.current = true; onLongPress(); }, 500);
+  };
+  const lpCancel = () => {
+    if (lpTimer.current != null) { window.clearTimeout(lpTimer.current); lpTimer.current = null; }
+  };
+  // Cancel only on REAL movement (>10px) — a resting fingertip jitters.
+  const lpMove = (e: React.PointerEvent) => {
+    const o = lpOrigin.current;
+    if (o && Math.hypot(e.clientX - o.x, e.clientY - o.y) > 10) lpCancel();
+  };
   const pill = row.pill;
   const isSelfWatching = pill.selfWatching;
   const isGreen = pill.fill === "green";
@@ -1043,7 +1285,16 @@ function ShowRow({ row, dot, line2, onClick }: {
   return (
     <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: plateColor }} onTouchStart={() => {}}>
       <span className="sb-plate" />
-    <button onClick={onClick} style={{ ...rowBase, background: bg, border, color: fg }}>
+    <button
+      onClick={() => { if (lpFired.current) { lpFired.current = false; return; } onClick(); }}
+      onPointerDown={lpStart}
+      onPointerUp={lpCancel}
+      onPointerMove={lpMove}
+      onPointerCancel={lpCancel}
+      onPointerLeave={lpCancel}
+      onContextMenu={(e) => { if (onLongPress) e.preventDefault(); }}
+      style={{ ...rowBase, background: bg, border, color: fg, ...(onLongPress ? ({ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" } as React.CSSProperties) : {}) }}
+    >
       {dot && <span style={{ ...rowDot, background: dot === "red" ? C.red : C.blue }} />}
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: -0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -1118,6 +1369,30 @@ const chatTab: React.CSSProperties = {
   height: 44, padding: "0 14px 0 18px",
   boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)",
 };
+
+// ── Finished-together drawer + long-press sheet (2026-09-13) ────────────────
+const sheetBackdrop: React.CSSProperties = {
+  position: "fixed", inset: 0, zIndex: 1200, background: "rgba(26,58,74,0.35)",
+  display: "flex", flexDirection: "column", justifyContent: "flex-end",
+};
+const sheetPanel: React.CSSProperties = {
+  // Bottom-sheet grammar: cream, rounded top, left-justified content.
+  width: "100%", boxSizing: "border-box", background: C.cream,
+  borderRadius: "24px 24px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)",
+  textAlign: "left",
+};
+const sheetRow: React.CSSProperties = {
+  display: "flex", flexDirection: "column", gap: 3, width: "100%", textAlign: "left",
+  background: "transparent", border: "none", cursor: "pointer", padding: "13px 0",
+  borderBottom: `1px solid rgba(26,58,74,0.12)`, fontFamily: '"Inter", sans-serif',
+};
+const sheetSub: React.CSSProperties = {
+  fontWeight: 400, fontSize: 12, color: C.midnight, opacity: 0.75, lineHeight: 1.4,
+};
+const drawerHeading: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: C.midnight, marginBottom: 12,
+};
+const drawerGrid: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: 12 };
 const notifDotChatInline: React.CSSProperties = {
   // Straddles the tab's rounded left edge — desktop's placement rule (the
   // right edge is off-screen, so the dot can't live there).
