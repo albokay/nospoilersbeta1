@@ -1685,7 +1685,7 @@ export default function DashboardPage() {
           aria-label="Home"
           title="Home"
         >
-          <SidebarLogo scale={0.5} blocksOpacity={1} bg={activeGroupId ? "sky" : "green"} />
+          <SidebarLogo scale={0.5} blocksOpacity={1} bg={activeGroupId ? "sky" : "green"} betaBadge />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {/* CP2: the invite affordances moved into the body — dashboard gets

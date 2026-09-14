@@ -128,6 +128,13 @@ export interface SidebarLogoProps {
    */
   bg?: "green" | "sky";
   /**
+   * "beta!" badge (Alborz 2026-09-13 trial): an Alert pill with cream text
+   * and the blocks' corner radius, 12px right of the wordmark's "r". It
+   * renders ABOVE every block, so a block settling into that corner lands
+   * behind it. Off by default — enabled on the page-corner logos.
+   */
+  betaBadge?: boolean;
+  /**
    * The immediate SURFACE the logo sits on, when it isn't the page bg (e.g.
    * the findings card puts the logo on cream inside a group-context page).
    * Overrides the body-class-derived bg for the match-darkening rule, so the
@@ -147,6 +154,7 @@ export default function SidebarLogo({
   arrangements,
   bg = "green",
   surfaceBg,
+  betaBadge = false,
 }: SidebarLogoProps) {
   const [layout, setLayout] = useState<Layout | null>(null);
   const [settled, setSettled] = useState(false);
@@ -332,6 +340,20 @@ export default function SidebarLogo({
               mixBlendMode: "normal",
             }}
           />
+        )}
+        {/* "beta!" badge — 12px right of the "r" (wordmark box ends at
+            x=210), block radius, above everything so blocks land behind. */}
+        {betaBadge && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute", left: 222, bottom: 2, zIndex: 8,
+              background: CANON.alert, color: CANON.cream, borderRadius: 15,
+              height: 36, padding: "0 14px", display: "inline-flex", alignItems: "center",
+              fontFamily: '"Inter", system-ui, sans-serif', fontWeight: 700, fontSize: 22,
+              whiteSpace: "nowrap", lineHeight: 1,
+            }}
+          >beta!</div>
         )}
       </div>
     </div>

@@ -264,7 +264,7 @@ function AnimatedLogo() {
         opacity: visible ? 1 : 0,
         transition: (!animating && visible) ? "opacity 0.9s ease 0.2s" : "none",
       }}>
-        <SidebarLogo scale={1} blocksOpacity={blocksOpacity} />
+        <SidebarLogo scale={1} blocksOpacity={blocksOpacity} betaBadge />
         <p style={{
           margin: 0, fontSize: 13, fontWeight: 700,
           letterSpacing: "0.12em", textTransform: "lowercase",
@@ -285,7 +285,7 @@ function StaticLogo() {
   const { ref, visible } = useReveal(0.3);
   return (
     <div ref={ref} style={{ width: LOGO_W, height: LOGO_H, flexShrink: 0 }}>
-      {visible && <SidebarLogo scale={1} blocksOpacity={1} />}
+      {visible && <SidebarLogo scale={1} blocksOpacity={1} betaBadge />}
     </div>
   );
 }

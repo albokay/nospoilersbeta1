@@ -1069,7 +1069,7 @@ function AppShell() {
                 }
               }}
             >
-              <SidebarLogo key={headerLogoResetKey} scale={0.6} />
+              <SidebarLogo key={headerLogoResetKey} scale={0.6} betaBadge />
             </h1>
           )}
           <span className="mobileHide topHeaderSearch" style={{ display: "inline-flex" }}>

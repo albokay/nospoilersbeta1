@@ -787,7 +787,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           role="button"
           aria-label="Home"
           title="Home"
-        ><SidebarLogo scale={0.45} blocksOpacity={1} /></div>
+        ><SidebarLogo scale={0.45} blocksOpacity={1} betaBadge /></div>
 
         <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap" }}>
           <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: C.cream, margin: 0 }}>
