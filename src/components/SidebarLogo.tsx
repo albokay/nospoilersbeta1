@@ -347,7 +347,10 @@ export default function SidebarLogo({
           <div
             aria-hidden
             style={{
-              position: "absolute", left: 222, bottom: 2, zIndex: 8,
+              // Visually re-seated (Alborz 2026-09-13): the pill descends
+              // under the text baseline, so a straight bottom-align read
+              // low — lifted 6px and pulled 2px left.
+              position: "absolute", left: 220, bottom: 8, zIndex: 8,
               background: CANON.alert, color: CANON.cream, borderRadius: 15,
               height: 36, padding: "0 14px", display: "inline-flex", alignItems: "center",
               fontFamily: '"Inter", system-ui, sans-serif', fontWeight: 700, fontSize: 22,
