@@ -8,7 +8,7 @@ import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState,
   fetchHighlights, fetchPeopleGroupsForUser, fetchRoomDigestOptOut, setRoomDigestOptOut,
-  leaveShowRoom, fetchContactNames,
+  leaveShowRoom, setRoomDnf, fetchContactNames,
   type Show,
 } from "../lib/db";
 import { joinNames } from "../lib/groupNames";
@@ -173,6 +173,24 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [leaveBusy, setLeaveBusy] = useState(false);
   const leaveSwipe = useSheetSwipeDown(() => setLeaveConfirmOpen(false), { enabled: !leaveBusy });
+  // "We're done with this one" from the gear (Alborz 2026-09-13) — parks
+  // the show for the whole group (same action as the shelf long-press) and
+  // returns to the group room; revivable from the finished drawer.
+  const [dnfBusy, setDnfBusy] = useState(false);
+  async function doDnfRoom() {
+    if (!roomId || dnfBusy) return;
+    setDnfBusy(true);
+    try {
+      await setRoomDnf(roomId, true);
+      setDigestModalOpen(false);
+      closeRoom();
+    } catch (e) {
+      console.error("[m-show-room] dnf failed", e);
+      alert("Couldn't park the show. Please try again.");
+    } finally {
+      setDnfBusy(false);
+    }
+  }
   async function doLeaveRoom() {
     if (!roomId || leaveBusy) return;
     setLeaveBusy(true);
@@ -1009,11 +1027,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 </div>
               </>
             )}
-            {/* CP5: per-room leave lives here (the room's own gear) — mobile
-                has no hover-X on the group shelf rows. */}
+            {/* CP5 + DNF (2026-09-13): per-room leave AND "we're done with
+                this one" both live here (alongside the shelf long-press) —
+                the two-path grammar, locked copy. */}
             <div style={digestDivider} />
-            <div style={digestTitle}>Leave this show room?</div>
-            <button style={alertBtn} onClick={() => { setDigestModalOpen(false); setLeaveConfirmOpen(true); }}>yes, leave</button>
+            <div style={digestTitle}>Leaving, or done watching?</div>
+            <button style={alertBtn} onClick={() => { setDigestModalOpen(false); setLeaveConfirmOpen(true); }}>leave (just you)</button>
+            <div style={{ ...digestSub, marginTop: 10 }}>Your writing stays &mdash; everyone else keeps going.</div>
+            <div style={digestDivider} />
+            <button style={identityBtnM} disabled={dnfBusy} onClick={doDnfRoom}>{dnfBusy ? "one moment…" : "we’re done with this one"}</button>
+            <div style={{ ...digestSub, marginTop: 10 }}>Parks the show for the whole group &mdash; anyone can bring it back later.</div>
           </div>
         </div>
       )}
@@ -1148,6 +1171,11 @@ const digestTitle: React.CSSProperties = {
 };
 const alertBtn: React.CSSProperties = {
   border: `2px solid ${CANON.alert}`, background: "transparent", color: CANON.alert,
+  fontWeight: 700, fontSize: 14, padding: "10px 32px", borderRadius: 9999, cursor: "pointer", minHeight: 44,
+};
+const identityBtnM: React.CSSProperties = {
+  // DNF / revive grammar (Alborz): Identity fill AND outline, cream text.
+  border: `2px solid ${CANON.identity}`, background: CANON.identity, color: CANON.cream,
   fontWeight: 700, fontSize: 14, padding: "10px 32px", borderRadius: 9999, cursor: "pointer", minHeight: 44,
 };
 const digestDivider: React.CSSProperties = { height: 1, background: "rgba(253,248,236,0.5)", margin: "20px 0 14px" };
