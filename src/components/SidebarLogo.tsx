@@ -70,12 +70,14 @@ const ARRANGEMENTS: Layout[] = [
   },
   // 4 · lightBlue upper-left, blue overlapping lightBlue lower-left,
   //     white upper-center, orange center, green isolated lower-right (behind "bar")
+  //     (the "green" id is the YELLOW/accent block; x nudged 168→164 so it
+  //     clears the beta badge — Alborz 2026-09-13)
   {
     lightBlue: { x: -8,  y: 4   },
     blue:      { x: -24, y: 29  },
     white:     { x: 75,  y: 19  },
     orange:    { x: 40,  y: 66  },
-    green:     { x: 168, y: 94  },
+    green:     { x: 164, y: 94  },
   },
 ];
 
