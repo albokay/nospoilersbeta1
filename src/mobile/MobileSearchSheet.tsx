@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { CANON } from "../styles/canon";
+import { M } from "./m";
 import OneSelectProgress from "../components/OneSelectProgress";
 import { createShow, type Show } from "../lib/db";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
@@ -118,7 +119,11 @@ export default function MobileSearchSheet({
 
   return (
     <div style={sheet}>
-      <button style={sheetClose} onClick={onClose}><X size={20} color={C.green} /></button>
+      {/* The × lives in a real top bar (polish pass 2026-09-14) — content
+          starts right under it instead of a fixed 64px paddingTop. */}
+      <div style={{ ...M.topBar, justifyContent: "flex-end" }}>
+        <button style={M.iconBtn} onClick={onClose} aria-label="Close"><X size={20} color={C.green} /></button>
+      </div>
       {!pickShow ? (
         <div style={sheetInner}>
           <input
@@ -197,16 +202,10 @@ export default function MobileSearchSheet({
 const sheet: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, overflowY: "auto",
   WebkitOverflowScrolling: "touch", background: C.cream,
-  paddingTop: "calc(env(safe-area-inset-top, 0px) + 64px)",
   paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)",
   boxSizing: "border-box",
 };
-const sheetClose: React.CSSProperties = {
-  position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 12,
-  width: 44, height: 44, border: "none", background: "transparent", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1001,
-};
-const sheetInner: React.CSSProperties = { maxWidth: 420, margin: "0 auto", padding: "0 20px" };
+const sheetInner: React.CSSProperties = { maxWidth: 420, margin: "0 auto", padding: "8px 20px 0" };
 const searchInput: React.CSSProperties = {
   width: "100%", boxSizing: "border-box", border: `2px solid ${C.green}`, borderRadius: 65,
   padding: "14px 24px", fontFamily: '"Inter", sans-serif', fontSize: 16, color: C.green,

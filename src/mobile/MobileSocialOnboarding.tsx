@@ -26,9 +26,10 @@
  * persisted at screen 2→3 so the real compose form loads normally.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { CANON } from "../styles/canon";
+import { M } from "./m";
 import { joinNames } from "../lib/groupNames";
 import LoadingDots from "../components/LoadingDots";
 import OneSelectProgress from "../components/OneSelectProgress";
@@ -283,6 +284,12 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
     return (
       <>
         <div style={{ ...fullScreen, background: "transparent", justifyContent: "flex-start", paddingTop: "18vh" }}>
+          {/* Step caption (polish pass 2026-09-14) — screen 1 has nowhere to
+              go back to, so its top bar is the caption alone. */}
+          <div style={onbTopBar}>
+            <div style={{ flex: 1 }} />
+            <span style={onbStepCaption}>1 of 3</span>
+          </div>
           <div style={{ textAlign: "center", maxWidth: 420, padding: "0 24px" }}>
             <h1 style={onbHeading}>What&rsquo;s the show you&rsquo;re most excited to watch with a friend?</h1>
             <div style={onbSubline}>(You can add more later.)</div>
@@ -345,7 +352,15 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
   if (step === 2) {
     return (
       <div style={{ ...fullScreen, background: C.sky }}>
-        <button style={backLink} onClick={() => setStep(1)}>← back</button>
+        {/* Standard top bar (polish pass 2026-09-14): 44px back arrow +
+            step caption — replaces the "← back" text link. */}
+        <div style={onbTopBar}>
+          <button style={{ ...M.iconBtn }} aria-label="Back" onClick={() => setStep(1)}>
+            <ArrowLeft size={20} color={C.cream} />
+          </button>
+          <div style={{ flex: 1 }} />
+          <span style={onbStepCaption}>2 of 3</span>
+        </div>
         <div style={{ width: "100%", maxWidth: 420, padding: "0 24px", boxSizing: "border-box", textAlign: "center" }}>
           <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, letterSpacing: 0, color: C.cream, margin: "0 0 8px" }}>
             Who&rsquo;s at least one friend<br />you always text about TV?
@@ -519,6 +534,17 @@ const backLink: React.CSSProperties = {
   position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 14px)", left: 18,
   border: "none", background: "transparent",
   color: CANON.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 8,
+};
+// Screens 1–2's standard top bar (polish pass 2026-09-14): absolute so the
+// full-screen panel's centered content stays put; back arrow left (screen 2),
+// "N of 3" step caption right.
+const onbTopBar: React.CSSProperties = {
+  ...M.topBar,
+  position: "absolute", top: 0, left: 0, right: 0, boxSizing: "border-box",
+};
+const onbStepCaption: React.CSSProperties = {
+  fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream,
+  opacity: 0.8, padding: "0 8px",
 };
 const accentPill: React.CSSProperties = {
   border: "none", background: CANON.accent, color: CANON.cream, fontWeight: 700, fontSize: 14,

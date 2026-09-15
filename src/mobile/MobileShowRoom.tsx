@@ -12,6 +12,7 @@ import {
   type Show,
 } from "../lib/db";
 import { joinNames } from "../lib/groupNames";
+import { M } from "./m";
 import { effectiveProgress } from "../lib/utils";
 import { linearIndex } from "../lib/groupPills";
 import type { Thread, ProgressEntry } from "../types";
@@ -753,28 +754,30 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       <div style={{ background: tab === "private" ? C.sky : C.green }}>
         <div style={topBar}>
           <button style={iconBtn} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
-            <ArrowLeft size={22} color={C.cream} />
+            <ArrowLeft size={20} color={C.cream} />
           </button>
           {/* Gear rides RIGHT BESIDE the title (Alborz 2026-08-14 —
-              group-room parity; was at the bar's far right). */}
-          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 2 }}>
-            <h1 style={{ ...headerTitle, flex: "0 1 auto" }}>
-              {show?.name ?? "Show"}
-              {/* "with …" matches desktop (naming arc): cream, Inter bold 14
-                  (Body) — was blue. */}
-              {tab === "reference" && refCreatedBy.length > 0
-                ? <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: C.cream }}> created by {refCreatedBy.join(" & ")}</span>
-                : groupName ? <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: C.cream }}> with {groupName}</span> : null}
-            </h1>
-            {!privateOnly && roomId && (
-              <button style={iconBtn} aria-label="Email updates for this room" title="Email updates for this room" onClick={openDigestModal}>
-                <Settings size={20} color={C.cream} />
-              </button>
-            )}
+              group-room parity); the "with {group}" / "created by …" line
+              is a CAPTION under the title (polish pass 2026-09-14 — it
+              lived inline inside the h1). */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
+              <h1 style={{ ...headerTitle, flex: "0 1 auto" }}>{show?.name ?? "Show"}</h1>
+              {!privateOnly && roomId && (
+                <button style={{ ...iconBtn, margin: "-8px 0" }} aria-label="Email updates for this room" title="Email updates for this room" onClick={openDigestModal}>
+                  <Settings size={20} color={C.cream} />
+                </button>
+              )}
+            </div>
+            {(tab === "reference" && refCreatedBy.length > 0) || groupName ? (
+              <div style={{ fontFamily: '"Inter", system-ui, sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: C.cream, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {tab === "reference" && refCreatedBy.length > 0 ? <>created by {refCreatedBy.join(" & ")}</> : <>with {groupName}</>}
+              </div>
+            ) : null}
           </div>
         </div>
         {/* Tabs on the header/body boundary (same swap rule as desktop). */}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "0 16px" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "8px 16px 0" }}>
           {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
           {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
           {/* CP6: solo → drafts (desktop parity) — just-for-you space. */}
@@ -1073,8 +1076,8 @@ function RoomTab({ label, active, bg, onClick }: { label: string; active: boolea
     <button
       onClick={onClick}
       style={{
-        cursor: "pointer", padding: "8px 18px", minHeight: 40,
-        borderTopLeftRadius: 14, borderTopRightRadius: 14,
+        cursor: "pointer", padding: "10px 18px", minHeight: 44,
+        borderTopLeftRadius: 12, borderTopRightRadius: 12,
         borderTop: active ? "none" : `2px solid ${C.cream}`,
         borderLeft: active ? "none" : `2px solid ${C.cream}`,
         borderRight: active ? "none" : `2px solid ${C.cream}`,
@@ -1095,16 +1098,10 @@ const page: React.CSSProperties = {
   position: "fixed", inset: 0, overflowY: "auto", WebkitOverflowScrolling: "touch",
   fontFamily: '"Inter", system-ui, sans-serif',
 };
-const topBar: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 4,
-  padding: "calc(env(safe-area-inset-top, 0px) + 8px) 8px 4px",
-};
-const iconBtn: React.CSSProperties = {
-  width: 44, height: 44, flexShrink: 0, border: "none", background: "transparent", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-};
+const topBar: React.CSSProperties = { ...M.topBar };
+const iconBtn: React.CSSProperties = { ...M.iconBtn };
 const headerTitle: React.CSSProperties = {
-  flex: 1, minWidth: 0, fontFamily: LORA, fontWeight: 700, fontSize: 20, letterSpacing: -0.5,
+  flex: 1, minWidth: 0, fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: 0,
   color: C.cream, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
 };
 const rosterShell: React.CSSProperties = {

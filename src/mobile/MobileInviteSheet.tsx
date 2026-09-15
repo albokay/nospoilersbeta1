@@ -3,6 +3,7 @@ import { Plus, X } from "lucide-react";
 import InviteLinkRow from "../components/InviteLinkRow";
 import LoadingDots from "../components/LoadingDots";
 import { CANON } from "../styles/canon";
+import { M } from "./m";
 import { useAuth } from "../lib/auth";
 import { preventLastWordOrphan } from "../lib/utils";
 import {
@@ -194,7 +195,11 @@ export default function MobileInviteSheet({
 
   return (
     <div style={sheet}>
-      <button style={sheetClose} onClick={close} aria-label="Close"><X size={20} color={C.cream} /></button>
+      {/* The × lives in a real top bar (polish pass 2026-09-14) — content
+          starts right under it instead of a fixed 64px paddingTop. */}
+      <div style={{ ...M.topBar, justifyContent: "flex-end" }}>
+        <button style={M.iconBtn} onClick={close} aria-label="Close"><X size={20} color={C.cream} /></button>
+      </div>
       <div style={inner}>
         {!links ? (
           <>
@@ -357,16 +362,10 @@ function CopyLinkRow({ email, link }: { email: string; link: string }) {
 const sheet: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, overflowY: "auto",
   WebkitOverflowScrolling: "touch", background: C.sky,
-  paddingTop: "calc(env(safe-area-inset-top, 0px) + 64px)",
   paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)",
   boxSizing: "border-box",
 };
-const sheetClose: React.CSSProperties = {
-  position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 12,
-  width: 44, height: 44, border: "none", background: "transparent", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1001,
-};
-const inner: React.CSSProperties = { maxWidth: 420, margin: "0 auto", padding: "0 20px" };
+const inner: React.CSSProperties = { maxWidth: 420, margin: "0 auto", padding: "8px 20px 0" };
 const title: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 26, letterSpacing: 0, color: C.cream,
   textAlign: "center", margin: "8px 0 24px",

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { CANON } from "../styles/canon";
+import { M } from "./m";
 import { useAuth } from "../lib/auth";
 import SidebarLogo from "../components/SidebarLogo";
 import LoadingDots from "../components/LoadingDots";
@@ -76,7 +77,7 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
     <div style={rootStyle}>
       <div style={topBar}>
         <button style={iconBtn} title="back" onClick={goBack}>
-          <ArrowLeft size={22} color={C.cream} />
+          <ArrowLeft size={20} color={C.cream} />
         </button>
         <SidebarLogo scale={0.5} blocksOpacity={1} surfaceBg={CANON.accent} />
       </div>
@@ -109,14 +110,8 @@ const page: React.CSSProperties = {
 // The standard mobile header bar + back arrow (mirrors MobileShowRoom —
 // identical position, so the overlay's arrow lands exactly where the room's
 // was; Alborz 2026-09-08).
-const topBar: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 4,
-  padding: "calc(env(safe-area-inset-top, 0px) + 8px) 8px 4px",
-};
-const iconBtn: React.CSSProperties = {
-  width: 44, height: 44, flexShrink: 0, border: "none", background: "transparent", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-};
+const topBar: React.CSSProperties = { ...M.topBar };
+const iconBtn: React.CSSProperties = { ...M.iconBtn };
 const signInPill: React.CSSProperties = {
   border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14,
   padding: "14px 48px", borderRadius: 65, cursor: "pointer",

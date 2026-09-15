@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { LogOut, UserPen, MessageCircleWarning, CornerRightUp, CornerLeftDown } from "lucide-react";
+import { UserPen, MessageCircleWarning, CornerRightUp, CornerLeftDown } from "lucide-react";
 import { CANON } from "../styles/canon";
+import { M } from "./m";
 import { markJoinedThisSession } from "../lib/joinSession";
 import { useAuth } from "../lib/auth";
 import AccountModal from "../components/AccountModal";
@@ -369,34 +370,30 @@ export default function MobileDashboard() {
         {!showSocialOnb && !postAccept && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* The tips "?" leads the row (Alborz 2026-08-14 — moved up from
-                the bottom-right dock; the whole row shrank a touch so four
-                circles clear the logo on the smallest phones). onbResolved
-                keeps its first-visit auto-open off until the dashboard is
-                settled. */}
+                the bottom-right dock). onbResolved keeps its first-visit
+                auto-open off until the dashboard is settled. */}
             {user && onbResolved && (
-              <MobileTipsSheet page="dashboard" tabStyle={{ width: 42, height: 42, fontSize: 17 }} />
+              <MobileTipsSheet page="dashboard" tabStyle={{ width: 44, height: 44, fontSize: 20 }} />
             )}
             {/* Alert fill + Alert outline + Cream icon (Alborz 2026-08-14)
-                — the feedback circle stands out from the account/sign-out
-                pair. */}
+                — the feedback circle stands out from its neighbors. Sign-out
+                moved into the account sheet (polish pass 2026-09-14). */}
             <button style={{ ...topCircleBtn, background: C.red, border: `2px solid ${C.red}` }} title="feedback" onClick={() => setFeedbackOpen(true)}>
-              <MessageCircleWarning size={17} color={C.cream} />
+              <MessageCircleWarning size={20} color={C.cream} />
             </button>
             <button style={topCircleBtn} title="account" onClick={() => setShowAccount(true)}>
-              <UserPen size={17} color={C.cream} />
-            </button>
-            <button
-              style={topCircleBtn}
-              title="sign out"
-              onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/m", { replace: true }); }}
-            >
-              <LogOut size={17} color={C.cream} />
+              <UserPen size={20} color={C.cream} />
             </button>
           </div>
         )}
       </div>
 
-      {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
+      {showAccount && (
+        <AccountModal
+          onClose={() => setShowAccount(false)}
+          onSignOut={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/m", { replace: true }); }}
+        />
+      )}
       {feedbackOpen && <MobileFeedbackSheet onClose={() => setFeedbackOpen(false)} />}
 
       {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
@@ -589,13 +586,13 @@ const page: React.CSSProperties = {
   paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)",
 };
 const topBar: React.CSSProperties = {
-  display: "flex", justifyContent: "space-between", alignItems: "center",
-  padding: "calc(env(safe-area-inset-top, 0px) + 12px) 16px 8px",
+  ...M.topBar, justifyContent: "space-between",
 };
-// 42px (was 44): the tips "?" joined the row 2026-08-14 and four circles at
-// 44 didn't clear the logo on the smallest phones.
+// Back to 44 (polish pass 2026-09-14): sign-out moved into the account sheet,
+// so THREE circles clear the logo at full size again (the 42 shrink existed
+// only for the four-circle squeeze).
 const topCircleBtn: React.CSSProperties = {
-  width: 42, height: 42, borderRadius: "50%", background: "transparent",
+  width: 44, height: 44, borderRadius: "50%", background: "transparent",
   border: `2px solid ${C.cream}`, cursor: "pointer",
   display: "inline-flex", alignItems: "center", justifyContent: "center",
 };

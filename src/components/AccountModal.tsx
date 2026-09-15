@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X } from "lucide-react";
+import { X, LogOut } from "lucide-react";
 import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
@@ -13,7 +13,11 @@ import { CANON } from "../styles/canon";
 // because the action is permanent and irreversible.
 const C = { red: CANON.alert, cream: CANON.cream, midnight: CANON.dark, greyblue: CANON.business };
 
-export default function AccountModal({ onClose }: { onClose: () => void }) {
+// onSignOut (opt-in; mobile polish 2026-09-14): when passed, a "Signed in"
+// section with a Sign out button renders between the name and delete
+// sections — /m's dashboard dropped its sign-out circle and routes the
+// action here. Desktop callers pass nothing and are unchanged.
+export default function AccountModal({ onClose, onSignOut }: { onClose: () => void; onSignOut?: () => void | Promise<void> }) {
   const { user, profile, refreshProfile } = useAuth() as any;
   const [phase, setPhase] = useState<"main" | "confirm">("main");
   const [confirmText, setConfirmText] = useState("");
@@ -122,6 +126,15 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
         </div>
       )}
 
+      {phase === "main" && onSignOut && (
+        <div style={{ borderTop: `1px solid ${C.cream}`, paddingTop: 16, marginBottom: 20 }}>
+          <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: C.midnight }}>Signed in</p>
+          <button onClick={() => { void onSignOut(); }} style={signOutBtn}>
+            <LogOut size={16} /> Sign out
+          </button>
+        </div>
+      )}
+
       {phase === "main" && (
         <div style={{ borderTop: `1px solid ${C.cream}`, paddingTop: 16 }}>
           <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: C.red }}>Delete account</p>
@@ -169,3 +182,11 @@ const dangerOutline: React.CSSProperties = { padding: "10px 18px", borderRadius:
 const dangerSolid: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: "none", background: C.red, color: CANON.cream, fontSize: 14, fontWeight: 700 };
 const cancelBtn: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: `2px solid ${C.cream}`, background: "transparent", color: C.cream, fontSize: 14, fontWeight: 700, cursor: "pointer" };
 const saveBtn: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: "none", background: C.midnight, color: CANON.cream, fontSize: 14, fontWeight: 700, flexShrink: 0 };
+// M-size dark-outline pill (the mobile polish's overlay grammar) — the same
+// shape the Part-2 account sheet keeps, so this row won't need a restyle.
+const signOutBtn: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 8,
+  padding: "12px 28px", minHeight: 44, borderRadius: 999, boxSizing: "border-box",
+  border: `2px solid ${C.midnight}`, background: "transparent", color: C.midnight,
+  fontSize: 14, fontWeight: 700, cursor: "pointer",
+};

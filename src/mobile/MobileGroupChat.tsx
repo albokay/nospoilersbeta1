@@ -9,12 +9,15 @@ import {
   fetchGroupMessages,
   sendGroupMessage,
   fetchPeopleGroupMembers,
+  fetchPeopleGroupsForUser,
+  fetchMyGroupJoinOrder,
   fetchContactNames,
   markGroupChatSeen,
   type GroupMessage,
 } from "../lib/db";
-import { personDisplayName } from "../lib/groupNames";
-import type { PeopleGroupMember } from "../types";
+import { personDisplayName, groupGenericName } from "../lib/groupNames";
+import { M } from "./m";
+import type { PeopleGroup, PeopleGroupMember } from "../types";
 
 /**
  * MobileGroupChat (CP5) — the chat side of the group room's shows↔chat
@@ -43,6 +46,10 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
   const [contactNames, setContactNames] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [input, setInput] = useState("");
+  // Header title (polish pass 2026-09-14): "Group N chat" — the group's
+  // generic/custom label, same derivation as the group room's header.
+  const [group, setGroup] = useState<PeopleGroup | null>(null);
+  const [viewerNumber, setViewerNumber] = useState<number | undefined>(undefined);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const loadChat = useCallback(async () => {
@@ -69,6 +76,17 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
       // connected-with line render given names; tolerant → handles.
       fetchContactNames(user.id)
         .then((cn) => { if (!cancelled) setContactNames(cn); })
+        .catch(() => { /* tolerate */ });
+      // Group label for the header title (same derivation as the group room:
+      // the viewer's Nth group by their own join order).
+      Promise.all([fetchPeopleGroupsForUser(user.id), fetchMyGroupJoinOrder(user.id)])
+        .then(([gs, jo]) => {
+          if (cancelled) return;
+          setGroup(gs.find((g) => g.id === groupId) ?? null);
+          const sorted = gs.map((g) => ({ id: g.id, j: jo[g.id] ?? 0 })).sort((a, b) => a.j - b.j);
+          const idx = sorted.findIndex((g) => g.id === groupId);
+          if (idx >= 0) setViewerNumber(idx + 1);
+        })
         .catch(() => { /* tolerate */ });
 
       // group_messages is member-gated RLS, so the realtime socket must carry
@@ -153,20 +171,26 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
   // Given names, bare (naming arc: the "@" drops wherever a display name
   // renders; an unnamed person shows their handle).
   const others = members.filter((m) => m.userId !== selfUserId);
-  const connected: React.ReactNode = others.length
+  const connected = others.length
     ? others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ")
-    : <em>(your friends haven&rsquo;t joined yet)</em>;
+    : "your friends haven't joined yet";
 
   return (
     <div style={page}>
-      {/* ── Header (cream bar): back + connected-with line ── */}
+      {/* ── Header (cream bar — the "not spoiler-gated" signal): back +
+             room-grammar title/caption (polish pass 2026-09-14; the caption
+             now SAYS not spoiler-gated, freeing the input placeholder). ── */}
       <div style={header}>
         <button style={iconBtn} title="back to group" onClick={() => navigate(`/m/group/${groupId}`)}>
-          <ArrowLeft size={22} color={C.green} />
+          <ArrowLeft size={20} color={C.green} />
         </button>
-        <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3, minWidth: 0 }}>
-          <span style={{ color: C.blue }}>You're connected with:</span><br />
-          <span style={{ color: C.green }}>{connected}</span>
+        <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.25, color: C.green, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {group ? groupGenericName(group, viewerNumber) : "Group"} chat
+          </div>
+          <div style={{ fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: C.blue, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            with {connected} &middot; not spoiler-gated
+          </div>
         </div>
       </div>
 
@@ -213,15 +237,11 @@ const page: React.CSSProperties = {
   fontFamily: '"Inter", system-ui, sans-serif',
 };
 const header: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 6,
+  ...M.topBar,
   background: C.cream,
-  padding: "calc(env(safe-area-inset-top, 0px) + 10px) 14px 10px 6px",
   flexShrink: 0,
 };
-const iconBtn: React.CSSProperties = {
-  width: 44, height: 44, flexShrink: 0, border: "none", background: "transparent", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-};
+const iconBtn: React.CSSProperties = { ...M.iconBtn };
 const body: React.CSSProperties = {
   flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch",
   padding: "20px 16px", display: "flex", flexDirection: "column",

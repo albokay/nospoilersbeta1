@@ -1,6 +1,7 @@
 import { CANON } from "../styles/canon";
+import { M } from "./m";
 import React, { useState } from "react";
-import { X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
@@ -270,33 +271,28 @@ export default function MobileAuth() {
       minHeight: "100dvh",
       background: "var(--dos-bg, var(--canon-personal,#7abd8e))",
       color: CANON.cream,
-      padding: "32px 20px",
       boxSizing: "border-box",
       display: "flex",
       flexDirection: "column",
     }}>
-      {/* ── Top-right × — same exit as the bottom "← Back" (returnTo-aware
-             so an invitee's context is preserved; else the homepage). ── */}
-      <button
-        type="button"
-        aria-label="Close"
-        onClick={() => {
-          const back = new URLSearchParams(location.search).get("returnTo");
-          navigate(back && back.startsWith("/m/") && !back.includes("//") ? back : "/m");
-        }}
-        style={{
-          position: "fixed",
-          top: "calc(env(safe-area-inset-top, 0px) + 12px)",
-          right: 12,
-          width: 44, height: 44,
-          border: "none", background: "transparent", cursor: "pointer",
-          display: "inline-flex", alignItems: "center", justifyContent: "center",
-          zIndex: 10,
-        }}
-      >
-        <X size={20} color={CANON.cream} />
-      </button>
-      <div style={{ width: "100%", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", flex: 1 }}>
+      {/* ── Standard top bar (polish pass 2026-09-14): ONE back arrow —
+             replaces both the old fixed × and the bottom "← Back"; same
+             returnTo-aware exit (an invitee's context is preserved; else
+             the homepage). ── */}
+      <div style={M.topBar}>
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => {
+            const back = new URLSearchParams(location.search).get("returnTo");
+            navigate(back && back.startsWith("/m/") && !back.includes("//") ? back : "/m");
+          }}
+          style={M.iconBtn}
+        >
+          <ArrowLeft size={20} color={CANON.cream} />
+        </button>
+      </div>
+      <div style={{ width: "100%", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", flex: 1, padding: "24px 16px 32px", boxSizing: "border-box" }}>
         {/* ── Header ── */}
         {hint && (
           <p style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.5, opacity: 0.95, margin: "12px 0 0", textAlign: "center" }}>
@@ -444,32 +440,8 @@ export default function MobileAuth() {
           </div>
         )}
 
-        {/* ── Back link ── */}
-        <div style={{ marginTop: "auto", paddingTop: 32, textAlign: "center" }}>
-          <button
-            type="button"
-            onClick={() => {
-              // If the user arrived via ?returnTo (typically the invite
-              // flow), Back returns to that origin so they don't lose the
-              // invite context. Default Back goes to /m (the narrative).
-              const back = new URLSearchParams(location.search).get("returnTo");
-              navigate(back && back.startsWith("/m/") && !back.includes("//") ? back : "/m");
-            }}
-            style={{
-              background: "transparent",
-              color: CANON.cream,
-              border: "none",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              opacity: 0.85,
-              padding: "8px 12px",
-            }}
-          >
-            ← Back
-          </button>
-        </div>
+        {/* (The bottom "← Back" collapsed into the top bar's arrow —
+            polish pass 2026-09-14.) */}
       </div>
     </div>
   );

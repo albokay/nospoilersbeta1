@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { X, ArrowLeft, Settings, MessageCircle, MonitorCheck, Search } from "lucide-react";
 import { CANON } from "../styles/canon";
+import { M } from "./m";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import OneSelectProgress from "../components/OneSelectProgress";
@@ -823,12 +824,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
              it used to hang at the bar's far right). ── */}
       <div style={topBar}>
         <button style={iconBtn} title="back to dashboard" onClick={() => navigate("/m/dashboard")}>
-          <ArrowLeft size={22} color={C.cream} />
+          <ArrowLeft size={20} color={C.cream} />
         </button>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
             <h1 style={{ ...headerTitle, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{groupName}</h1>
-            <button style={{ ...iconBtn, position: "relative" }} title="group options" onClick={() => {
+            {/* margin -8px 0 so the 44px hit doesn't inflate the title row
+                (polish pass — the "with" line below gets real spacing). */}
+            <button style={{ ...iconBtn, position: "relative", margin: "-8px 0" }} title="group options" onClick={() => {
               setRenameValue(group?.name ?? "");
               // Seed the contact-rename inputs with the viewer's current names.
               const edits: Record<string, string> = {};
@@ -837,7 +840,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               setGearOpen(true);
             }}>
               {staleInviteCount > 0 && <span style={gearStaleDot} />}
-              <Settings size={22} color={C.cream} />
+              <Settings size={20} color={C.cream} />
             </button>
           </div>
           {nameNodes.length > 0 && (
@@ -1353,14 +1356,8 @@ const page: React.CSSProperties = {
   fontFamily: '"Inter", system-ui, sans-serif',
   paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)",
 };
-const topBar: React.CSSProperties = {
-  display: "flex", alignItems: "center", gap: 8,
-  padding: "calc(env(safe-area-inset-top, 0px) + 12px) 12px 8px",
-};
-const iconBtn: React.CSSProperties = {
-  width: 44, height: 44, flexShrink: 0, border: "none", background: "transparent", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-};
+const topBar: React.CSSProperties = { ...M.topBar };
+const iconBtn: React.CSSProperties = { ...M.iconBtn };
 // Pending-invites changeset: the blue stale-invite dot on the gear (one dot
 // regardless of how many invites are stale; sky ring = the page bg).
 const gearStaleDot: React.CSSProperties = {
@@ -1372,10 +1369,10 @@ const headerTitle: React.CSSProperties = {
   margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
 };
 const headerMembers: React.CSSProperties = {
-  // Negative top margin pulls the line up under the name so they read as one
-  // unit (Alborz 2026-08-20) — the 44px-tall gear button inflates the title
-  // row, leaving ~9px of dead space below the 22px name before this line.
-  fontWeight: 700, fontSize: 12, color: C.cream, marginTop: -6,
+  // Caption under the title (polish pass 2026-09-14): the gear's -8px margin
+  // stopped inflating the title row, so the old -6px pull-up is retired and
+  // the line reads as a real caption (13/400) with 2px of honest gap.
+  fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: C.cream,
   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
 };
 // Desktop's chatTab, scaled to the header (Alborz 2026-08-17): icon only,
