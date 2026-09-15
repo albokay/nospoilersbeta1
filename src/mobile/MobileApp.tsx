@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { CANON, withAlpha } from "../styles/canon";
 import MobileNarrative from "./MobileNarrative";
 import MobileAuth from "./MobileAuth";
 import MobileDashboard from "./MobileDashboard";
@@ -41,16 +42,33 @@ import MobilePool from "./MobilePool";
 // so they don't have to scroll past the narrative pitch every time. Mirrors
 // the desktop rule for signed-in non-admins on / → /dashboard.
 
-// Mobile-scoped placeholder color. Class-scoped (.m-input) so it doesn't
-// bleed into desktop's input styling. Injected once into document.head
-// the first time MobileApp mounts; idempotent via the element id check.
+// Mobile-scoped shared CSS, injected once into document.head the first time
+// MobileApp mounts; idempotent via the element id check. Scoped two ways so
+// nothing bleeds into desktop: class-scoped (.m-input) or [data-m]-scoped —
+// MobileApp stamps `data-m` on <body> while mounted (same pattern as the
+// body-class contexts in theme.ts).
+//
+// 2026-09 mobile-polish rules:
+//  - one press feedback for every /m button (instant, no transition) — except
+//    plated rows, whose .sb-press drop (theme.ts) is restored at higher
+//    specificity so the plate behavior stays byte-identical;
+//  - no iOS gray tap flash anywhere on /m;
+//  - one placeholder color for cream fields. .m-input fields (translucent
+//    auth fields, colored legacy fields) keep their cream placeholder until
+//    each converts to a cream pill and drops the class.
 function injectMobileStyles() {
   if (typeof document === "undefined") return;
   const id = "mobile-input-placeholder";
   if (document.getElementById(id)) return;
   const styleEl = document.createElement("style");
   styleEl.id = id;
-  styleEl.textContent = `.m-input::placeholder { color: rgba(253,248,236,0.55); }`;
+  styleEl.textContent = [
+    `.m-input::placeholder { color: rgba(253,248,236,0.55); }`,
+    `[data-m] button:active { transform: translateY(1px); opacity: .9; }`,
+    `[data-m] .sb-press > button:active { transform: translate(-2px,6px); opacity: 1; }`,
+    `[data-m] button, [data-m] a { -webkit-tap-highlight-color: transparent; }`,
+    `[data-m] input:not(.m-input)::placeholder { color: ${withAlpha(CANON.dark, 0.45)}; }`,
+  ].join("\n");
   document.head.appendChild(styleEl);
 }
 
@@ -59,7 +77,13 @@ export default function MobileApp() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  useEffect(() => { injectMobileStyles(); }, []);
+  useEffect(() => {
+    injectMobileStyles();
+    // Scope the shared [data-m] rules above to the /m surface for as long as
+    // any mobile page is mounted (covers portaled sheets/dialogs too).
+    document.body.setAttribute("data-m", "");
+    return () => { document.body.removeAttribute("data-m"); };
+  }, []);
 
   const subPath = location.pathname.replace(/^\/m/, "") || "/";
   const subParts = subPath.split("/").filter(Boolean);
