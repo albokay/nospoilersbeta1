@@ -196,12 +196,23 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
 
       {/* ── Messages ── */}
       <div style={body} ref={bodyRef}>
+        {/* Empty state (polish pass 2026-09-14): one caption above the input
+            instead of a blank green field. */}
+        {messages.length === 0 && (
+          <div style={{ marginTop: "auto", textAlign: "center", fontSize: 13, lineHeight: 1.45, color: C.cream, opacity: 0.8, paddingBottom: 8 }}>
+            Nothing here yet. Remember, chat isn&rsquo;t spoiler-gated.
+          </div>
+        )}
         {messages.map((m) => {
           const mine = m.authorId === selfUserId;
+          // Optimistic echo renders dimmed with a "sending…" caption until
+          // the insert confirms (polish pass 2026-09-14).
+          const pending = m.id.startsWith("temp-");
           return (
-            <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
+            <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12, ...(pending ? { opacity: 0.6 } : null) }}>
               {!mine && <div style={{ fontSize: 13, color: C.cream, opacity: 0.9, marginBottom: 4 }}>{personDisplayName(contactNames, m.authorId, m.username, m.displayName)}</div>}
               <div style={mine ? bubbleMine : bubbleOther}>{linkifyText(m.body)}</div>
+              {pending && <div style={{ fontSize: 13, color: C.cream, opacity: 0.9, marginTop: 3 }}>sending&hellip;</div>}
             </div>
           );
         })}

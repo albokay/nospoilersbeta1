@@ -9,6 +9,7 @@ import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
 import TrailerCard from "../components/TrailerCard";
 import MobileSearchSheet from "./MobileSearchSheet";
+import MobileGhostRow from "./MobileGhostRow";
 import MobileInviteSheet from "./MobileInviteSheet";
 import DeckWave from "../components/deck/DeckWave";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
@@ -860,14 +861,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           {user && groupWaveDone && <MobileTipsSheet page="groupRoom" />}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
             <button style={chatTab} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
-              {chatNew && <span style={notifDotChatInline} />}
+              {chatNew && <span className="m-dot-in" style={notifDotChatInline} />}
               <MessageCircle size={20} color={C.green} />
             </button>
             {/* Finished-together drawer tab (2026-09-13) — the chat tab's
                 grammar, right below it; appears once it has contents. */}
             {(drawerItems.finished.length > 0 || drawerItems.dnf.length > 0) && (
               <button style={chatTab} aria-label="shows you've finished together" onClick={openFinishedDrawer}>
-                {drawerUnseen && <span style={notifDotChatInline} />}
+                {drawerUnseen && <span className="m-dot-in" style={notifDotChatInline} />}
                 <MonitorCheck size={20} color={C.green} />
               </button>
             )}
@@ -913,7 +914,17 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       )}
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
+        // Cold-open ghosts (polish pass 2026-09-14): the shelf header paints
+        // immediately and two ghost rows hold the layout — same pattern as
+        // the dashboard; static, no shimmer.
+        <div style={contentWrap}>
+          <h1 style={shelfHeader}>Open show rooms</h1>
+          <div style={shelfCol}>
+            <MobileGhostRow barWidth={120} />
+            <MobileGhostRow barWidth={160} />
+          </div>
+          <div style={{ textAlign: "center", padding: "24px 0", color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
+        </div>
       ) : (
         // CP2 four-part group room (desktop parity): SHOW ROOMS shelf →
         // Proposed shelf → "Propose more shows?" → "Add more friends…".
@@ -1318,7 +1329,7 @@ function ShowRow({ row, dot, line2, onClick, onLongPress }: {
       onContextMenu={(e) => { if (onLongPress) e.preventDefault(); }}
       style={{ ...rowBase, background: bg, border, color: fg, ...(onLongPress ? ({ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" } as React.CSSProperties) : {}) }}
     >
-      {dot && <span style={{ ...rowDot, background: dot === "red" ? C.red : C.blue }} />}
+      {dot && <span className="m-dot-in" style={{ ...rowDot, background: dot === "red" ? C.red : C.blue }} />}
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={{ fontWeight: 700, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {row.name}

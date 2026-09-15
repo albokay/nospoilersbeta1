@@ -68,6 +68,12 @@ function injectMobileStyles() {
     `[data-m] .sb-press > button:active { transform: translate(-2px,6px); opacity: 1; }`,
     `[data-m] button, [data-m] a { -webkit-tap-highlight-color: transparent; }`,
     `[data-m] input:not(.m-input)::placeholder { color: ${withAlpha(CANON.dark, 0.45)}; }`,
+    // Overlay motion (polish pass Part 2): every sheet arrives with the same
+    // 180ms rise + dim fade; activity dots scale in once on mount.
+    `@keyframes mSheetRise { from { transform: translateY(16px); opacity: 0 } to { transform: none; opacity: 1 } }`,
+    `@keyframes mDimIn { from { opacity: 0 } to { opacity: 1 } }`,
+    `@keyframes mDotIn { from { transform: scale(0) } to { transform: scale(1) } }`,
+    `[data-m] .m-dot-in { animation: mDotIn 200ms ease-out; }`,
   ].join("\n");
   document.head.appendChild(styleEl);
 }

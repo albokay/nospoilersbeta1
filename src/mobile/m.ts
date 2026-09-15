@@ -59,3 +59,30 @@ export const M = {
   dim: { position: "fixed", inset: 0, background: withAlpha(CANON.dark, 0.35), display: "flex", alignItems: "flex-end", justifyContent: "center" } as CSSProperties,
   disabledOpacity: 0.6,
 };
+
+// ── Overlay grammar (Part 2 of the polish pass) ──────────────────────────────
+// Sheet vs dialog: can the user back out with nothing lost? Yes → bottom
+// sheet (full-screen panel if multi-step / typing-heavy). No, because it
+// irreversibly affects other people → dialog (on /m that is exactly revive
+// and the type-DELETE step of delete-account). Color: yellow when the surface
+// acts on a show/room; cream when it's about the user or is info/typing; sky
+// stays the invite/onboarding surface, never an overlay color.
+// Sheets: grabber + swipe-down + tap-out, NO ×; × only on full-screen panels.
+export const OVERLAY = {
+  dim: { position: "fixed", inset: 0, background: withAlpha(CANON.dark, 0.35), display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "mDimIn 180ms ease-out" } as CSSProperties,
+  // Bottom sheet: grabber + swipe-down + tap-out. No ×. Left-justified.
+  // Scrolls inside past 80dvh.
+  sheet: { width: "100%", boxSizing: "border-box", borderTopLeftRadius: 24, borderTopRightRadius: 24,
+           padding: "12px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)", maxHeight: "80dvh", overflowY: "auto",
+           animation: "mSheetRise 180ms ease-out" } as CSSProperties,
+  grabber: (ink: string): CSSProperties => ({ width: 36, height: 4, borderRadius: 2, background: withAlpha(ink, ink === CANON.cream ? 0.5 : 0.25), margin: "0 auto 20px" }),
+  // Dialog: only irreversible, group-affecting confirms. Cancel is the exit;
+  // no tap-out, no ×.
+  dialogWrap: { position: "fixed", inset: 0, background: withAlpha(CANON.dark, 0.35), display: "flex", alignItems: "center", justifyContent: "center", padding: 16, boxSizing: "border-box", animation: "mDimIn 180ms ease-out" } as CSSProperties,
+  dialog: { width: "min(360px, 92vw)", borderRadius: 24, padding: 24, boxSizing: "border-box", textAlign: "left" } as CSSProperties,
+  // Full-screen panel: standard top bar with a 44px × / back; content max
+  // 420, gutter 20.
+  panel: { position: "fixed", inset: 0, zIndex: 1000, overflowY: "auto", WebkitOverflowScrolling: "touch" } as CSSProperties,
+  panelInner: { maxWidth: 420, margin: "0 auto", padding: "8px 20px calc(env(safe-area-inset-bottom, 0px) + 32px)" } as CSSProperties,
+  divider: (ink: string): CSSProperties => ({ height: 1, background: withAlpha(ink, ink === CANON.cream ? 0.4 : 0.12), margin: "24px 0" }),
+};

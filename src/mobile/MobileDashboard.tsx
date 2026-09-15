@@ -16,6 +16,7 @@ import YoureInCard from "../components/deck/YoureInCard";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
 import MobileTipsSheet from "../components/MobileTipsSheet";
 import MobileAddToHomeScreen from "./MobileAddToHomeScreen";
+import MobileGhostRow from "./MobileGhostRow";
 import ReferenceLookupBand from "../components/reference/ReferenceLookupBand";
 import {
   markSocialOnboarded,
@@ -402,7 +403,25 @@ export default function MobileDashboard() {
         // resolves — the welcome/first card must be the first thing seen,
         // not a flash of empty dashboard. Established accounts (groups or
         // invites present) never hit it.
-        <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
+        // Cold-open ghosts (polish pass 2026-09-14): while the DATA loads,
+        // the headline paints immediately (it depends on nothing) and two
+        // ghost rows hold the layout so the real rows land in place. The
+        // onboarding-gate wait keeps the bare line — ghosts there would
+        // promise rows a brand-new account doesn't have.
+        loading ? (
+          <>
+            <h1 style={{ ...M.type.display, color: C.cream, textAlign: "center", margin: "16px 0 0" }}>
+              Your dashboard
+            </h1>
+            <div style={groupsWrap}>
+              <MobileGhostRow barWidth={120} />
+              <MobileGhostRow barWidth={160} />
+            </div>
+            <div style={{ textAlign: "center", padding: "8px 0 48px", color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
+          </>
+        ) : (
+          <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
+        )
       ) : (
         <>
           {/* Page headlines ("Your shows" arc CP1, 2026-09-07). */}
@@ -446,8 +465,8 @@ export default function MobileDashboard() {
                     <span style={groupRowName}>
                       {groupDisplayName(group, others, contactNames, groupPending.map((p) => p.name || "a friend"), groupNumberById[group.id])}
                     </span>
-                    {anyNew && <span style={writingDot} />}
-                    {invisibleOnly && <span style={{ ...writingDot, background: C.red }} />}
+                    {anyNew && <span className="m-dot-in" style={writingDot} />}
+                    {invisibleOnly && <span className="m-dot-in" style={{ ...writingDot, background: C.red }} />}
                   </button>
                   </span>
                 );
