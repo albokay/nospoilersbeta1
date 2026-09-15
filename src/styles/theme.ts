@@ -1046,6 +1046,18 @@ body .btn.sb-send:hover{ background:var(--canon-friend,#adc8d7) !important; bord
    strip and rubber-band area change. Class set at boot (installPrompt). */
 body.pwa-standalone{ background-image:none !important; }
 
+/* ── Desktop polish pass (2026-09-15) ─────────────────────────────────────
+   Overlay motion: every card arrives the same way (dim fade + 8px rise).
+   .d-press: the press REACTION for unplated pills/circles — the .sb-press
+   hover-lift / active-drop spirit without a plate. Applied per-button as
+   screens migrate; .sb-press itself stays byte-identical (the 2026-08-20
+   revert lock). Never both classes on one element. */
+@keyframes dDimIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes dCardRise { from { transform: translateY(8px); opacity: 0 } to { transform: none; opacity: 1 } }
+.d-press{ transition:none !important; }
+@media (hover:hover){ .d-press:hover:not(:disabled){ transform:translate(1px,-2px); } }
+.d-press:active:not(:disabled){ transform:translateY(1px); opacity:.9; }
+
 `;
 
   const el = document.createElement("style"); el.id = id; el.textContent = css; document.head.appendChild(el);
